@@ -2,7 +2,23 @@
 
     <Operation Class="PatchOperationReplace">
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/robotSkills/li/level</xpath>-->
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/robotSkills/li/level</xpath>
+                <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/robotSkills/li/level</xpath>
+<!--        <xpath>Defs/ThingDef-->
+<!--            [-->
+<!--            defName="AIRobot_Hauler_V" or-->
+
+<!--            defName="RPP_Bot_Crafter_V" or-->
+
+<!--            defName="RPP_Bot_Kitchen_V" or-->
+
+<!--            defName="RPP_Bot_Builder_V" or-->
+
+<!--            defName="RPP_Bot_ER_V" or-->
+
+<!--            defName="RPP_Bot_Omni_V"-->
+<!--            ]-->
+<!--            /robotSkills/li/level-->
+<!--        </xpath>-->
         <value>
             <!--技能等级-->
             <level>99</level>
@@ -10,14 +26,45 @@
     </Operation>
     <Operation Class="PatchOperationReplace">
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/race/mechFixedSkillLevel</xpath>-->
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/race/mechFixedSkillLevel</xpath>
+                <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/race/mechFixedSkillLevel</xpath>
+<!--        <xpath>Defs/ThingDef-->
+<!--            [-->
+<!--            defName="AIRobot_Hauler_V" or-->
+
+<!--            defName="RPP_Bot_Crafter_V" or-->
+
+<!--            defName="RPP_Bot_Kitchen_V" or-->
+
+<!--            defName="RPP_Bot_Builder_V" or-->
+
+<!--            defName="RPP_Bot_ER_V" or-->
+
+<!--            defName="RPP_Bot_Omni_V"-->
+<!--            ]-->
+<!--            /race/mechFixedSkillLevel-->
+<!--        </xpath>-->
         <value>
             <!--技能等级-->
             <mechFixedSkillLevel>99</mechFixedSkillLevel>
         </value>
     </Operation>
     <Operation Class="PatchOperationAdd">
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>
+        <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>-->
+        <xpath>Defs/ThingDef
+            [
+            defName="AIRobot_Hauler_V" or
+
+            defName="RPP_Bot_Crafter_V" or
+
+            defName="RPP_Bot_Kitchen_V" or
+
+            defName="RPP_Bot_Builder_V" or
+
+            defName="RPP_Bot_ER_V" or
+
+            defName="RPP_Bot_Omni_V"
+            ]
+        </xpath>
         <value>
             <modExtensions>
                 <li MayRequire="pathfinding.framework" Class="PathfindingFramework.MovementExtension">
@@ -27,62 +74,130 @@
         </value>
     </Operation>
     <Operation Class="PatchOperationAdd">
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>
+        <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>-->
+        <xpath>Defs/ThingDef
+            [
+            defName="AIRobot_Hauler_V" or
+
+            defName="RPP_Bot_Crafter_V" or
+
+            defName="RPP_Bot_Kitchen_V" or
+
+            defName="RPP_Bot_Builder_V" or
+
+            defName="RPP_Bot_ER_V" or
+
+            defName="RPP_Bot_Omni_V"
+            ]
+        </xpath>
         <value>
             <rechargeEfficiency>0.8</rechargeEfficiency>
         </value>
     </Operation>
-    <!--            <robotSkills>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Medicine</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Cooking</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Plants</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Construction</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Mining</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Crafting</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Social</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Intellectual</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--                <li>-->
-    <!--                    <skillDef>Animals</skillDef>-->
-    <!--                    <level>20</level>-->
-    <!--                    <passion>Minor</passion>-->
-    <!--                </li>-->
-    <!--            </robotSkills>-->
 
+    <!--    <Operation Class="PatchOperationAdd">-->
+    <!--        &lt;!&ndash;        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/statBases</xpath>&ndash;&gt;-->
+    <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>-->
+    <!--        <value>-->
+    <!--            &lt;!&ndash; 额外负重 &ndash;&gt;-->
+    <!--            <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>-->
+    <!--            &lt;!&ndash; 携带能力 &ndash;&gt;-->
+    <!--            <CarryingCapacity>100000</CarryingCapacity>-->
+    <!--            &lt;!&ndash; 移动速度 &ndash;&gt;-->
+    <!--            <MoveSpeed>1000</MoveSpeed>-->
+
+    <!--            <Efficiency>20.0</Efficiency>-->
+
+    <!--            <ToxicResistance>1</ToxicResistance>&lt;!&ndash;毒性抵抗系数&ndash;&gt;-->
+    <!--            <MeleeHitChance>200</MeleeHitChance>&lt;!&ndash;近战命中&ndash;&gt;-->
+    <!--            <MeleeDodgeChance>200</MeleeDodgeChance>&lt;!&ndash;近战闪避，最大值 50 &ndash;&gt;-->
+    <!--            <ShootingAccuracyPawn>200</ShootingAccuracyPawn>&lt;!&ndash;射击精度&ndash;&gt;-->
+    <!--            <CrawlSpeed>200</CrawlSpeed>&lt;!&ndash; 爬行速度&ndash;&gt;-->
+
+    <!--            <MeleeDamageFactor>30</MeleeDamageFactor>&lt;!&ndash;近战伤害系数&ndash;&gt;-->
+    <!--            <AimingDelayFactor>0.01</AimingDelayFactor>&lt;!&ndash;瞄准延迟系数&ndash;&gt;-->
+    <!--            <RangedCooldownFactor>0.01</RangedCooldownFactor>&lt;!&ndash;远程冷却系数&ndash;&gt;-->
+    <!--            <StaggerDurationFactor>0.01</StaggerDurationFactor>&lt;!&ndash;抑止时间系数&ndash;&gt;-->
+    <!--            <IncomingDamageFactor>0.01</IncomingDamageFactor>&lt;!&ndash;受到伤害乘数&ndash;&gt;-->
+    <!--            <MeleeCooldownFactor>0.01</MeleeCooldownFactor>&lt;!&ndash; 近战冷却&ndash;&gt;-->
+
+    <!--            &lt;!&ndash;最低适应温度&ndash;&gt;-->
+    <!--            <ComfyTemperatureMin>-300</ComfyTemperatureMin>-->
+    <!--            &lt;!&ndash;最高适应温度&ndash;&gt;-->
+    <!--            <ComfyTemperatureMax>3000</ComfyTemperatureMax>-->
+    <!--            &lt;!&ndash;钝器护甲&ndash;&gt;-->
+    <!--            <ArmorRating_Blunt>2000</ArmorRating_Blunt>-->
+    <!--            &lt;!&ndash;锐器护甲&ndash;&gt;-->
+    <!--            <ArmorRating_Sharp>2000</ArmorRating_Sharp>-->
+    <!--            &lt;!&ndash;高温护甲&ndash;&gt;-->
+    <!--            <ArmorRating_Heat>2000</ArmorRating_Heat>-->
+
+    <!--            &lt;!&ndash;全局工作速度系数&ndash;&gt;-->
+    <!--            <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>-->
+
+    <!--            <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>-->
+    <!--        </value>-->
+    <!--    </Operation>-->
     <Operation Class="PatchOperationAdd">
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/statBases</xpath>-->
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>
+        <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>-->
+        <!--        <xpath>Defs/ThingDef-->
+        <!--            [-->
+        <!--            defName="AIRobot_Hauler_I" or-->
+        <!--            defName="AIRobot_Hauler_II" or-->
+        <!--            defName="AIRobot_Hauler_III" or-->
+        <!--            defName="AIRobot_Hauler_IV" or-->
+        <!--            defName="AIRobot_Hauler_V" or-->
+
+        <!--            defName="RPP_Bot_Crafter_I" or-->
+        <!--            defName="RPP_Bot_Crafter_II" or-->
+        <!--            defName="RPP_Bot_Crafter_III" or-->
+        <!--            defName="RPP_Bot_Crafter_IV" or-->
+        <!--            defName="RPP_Bot_Crafter_V" or-->
+
+        <!--            defName="RPP_Bot_Kitchen_I" or-->
+        <!--            defName="RPP_Bot_Kitchen_II" or-->
+        <!--            defName="RPP_Bot_Kitchen_III" or-->
+        <!--            defName="RPP_Bot_Kitchen_IV" or-->
+        <!--            defName="RPP_Bot_Kitchen_V" or-->
+
+        <!--            defName="RPP_Bot_Builder_I" or-->
+        <!--            defName="RPP_Bot_Builder_II" or-->
+        <!--            defName="RPP_Bot_Builder_III" or-->
+        <!--            defName="RPP_Bot_Builder_IV" or-->
+        <!--            defName="RPP_Bot_Builder_V" or-->
+
+        <!--            defName="RPP_Bot_ER_I" or-->
+        <!--            defName="RPP_Bot_ER_II" or-->
+        <!--            defName="RPP_Bot_ER_III" or-->
+        <!--            defName="RPP_Bot_ER_IV" or-->
+        <!--            defName="RPP_Bot_ER_V" or-->
+
+        <!--            defName="RPP_Bot_Omni_I" or-->
+        <!--            defName="RPP_Bot_Omni_II" or-->
+        <!--            defName="RPP_Bot_Omni_III" or-->
+        <!--            defName="RPP_Bot_Omni_IV" or-->
+        <!--            defName="RPP_Bot_Omni_V"-->
+        <!--            ]-->
+        <!--            /statBases-->
+        <!--        </xpath>-->
+
+        <xpath>Defs/ThingDef
+            [
+            defName="AIRobot_Hauler_V" or
+
+            defName="RPP_Bot_Crafter_V" or
+
+            defName="RPP_Bot_Kitchen_V" or
+
+            defName="RPP_Bot_Builder_V" or
+
+            defName="RPP_Bot_ER_V" or
+
+            defName="RPP_Bot_Omni_V"
+            ]
+            /statBases
+        </xpath>
         <value>
             <!-- 额外负重 -->
             <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>
@@ -123,29 +238,25 @@
             <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
         </value>
     </Operation>
-    <Operation Class="PatchOperationAdd">
-        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/statBases</xpath>
-        <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>-->
-        <value>
-
-            <!-- 携带能力 -->
-            <CarryingCapacity>100000</CarryingCapacity>
-            <!-- 移动速度 -->
-            <MoveSpeed>1000</MoveSpeed>
-            <!-- 爬行速度-->
-            <CrawlSpeed>200</CrawlSpeed>
-
-            <!--全局工作速度系数-->
-            <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>
-
-            <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
-        </value>
-    </Operation>
 
 
     <Operation Class="PatchOperationAdd">
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]</xpath>-->
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]</xpath>
+<!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]</xpath>-->
+        <xpath>Defs/ThingDef
+            [
+            defName="AIRobot_Hauler_V" or
+
+            defName="RPP_Bot_Crafter_V" or
+
+            defName="RPP_Bot_Kitchen_V" or
+
+            defName="RPP_Bot_Builder_V" or
+
+            defName="RPP_Bot_ER_V" or
+
+            defName="RPP_Bot_Omni_V"
+            ]</xpath>
         <value>
             <equippedStatOffsets>
                 <!-- 额外负重 -->
