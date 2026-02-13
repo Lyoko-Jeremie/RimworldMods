@@ -11,7 +11,7 @@
     <techLevel>Archotech</techLevel>
     <useHitPoints>false</useHitPoints> <!-- 装备无耐久限制，永远不会损坏 -->
     <smeltable>true</smeltable> <!-- 修复：显式设置为不可熔炼，解决 Config error -->
-    <burnable>false</burnable> <!-- 设置为不可焚烧 -->
+<!--    <burnable>false</burnable> &lt;!&ndash; 设置为不可焚烧 &ndash;&gt;-->
 
     <!-- 这里的 costList 仅用于：1. 熔炼返还物；2. 计算物品的市场价值 -->
     <!-- 即使制作不花钱，这里也建议写上材料，否则熔炼会报错 -->
@@ -81,7 +81,7 @@
       <!-- 护盾组件：注意这里使用的是自定义的 Armorshield 类，需确保前置 Mod 存在 -->
       <li Class="CompProperties_Shield">
         <compClass>Armorshield.CompShieldRanged</compClass>
-        <blocksRangedHeapons>false</blocksRangedHeapons> <!-- 允许穿戴者向外射击 -->
+<!--        <blocksRangedHeapons>false</blocksRangedHeapons> &lt;!&ndash; 允许穿戴者向外射击 &ndash;&gt;-->
       </li>
     </comps>
 
