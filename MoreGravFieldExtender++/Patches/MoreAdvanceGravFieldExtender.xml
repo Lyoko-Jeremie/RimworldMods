@@ -1,0 +1,10 @@
+<Patch>
+
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="AdvanceGravFieldExtender"]/comps/li[@Class="CompProperties_GravshipFacility"]/maxSimultaneous</xpath>
+    <value>
+      <maxSimultaneous>255</maxSimultaneous>
+    </value>
+  </Operation>
+
+</Patch>

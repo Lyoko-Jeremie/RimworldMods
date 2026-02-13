@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>HKJBlackTechPatch</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+    <packageId>Jeremie.HKJBlackTech.Patch</packageId>
+    <description>
+		一些 黑科技 mod 的补丁
+
+		Walkable HKJ_SterileTile
+		给 纳米无菌地板 添加 可通行 属性。
+	</description>
+	<loadAfter>
+		<li>Ludeon.RimWorld.Odyssey</li>
+		<li>None1637.HKJBlackTech.Core</li>
+	</loadAfter>
+	
+	<modDependencies>
+	    <li>
+	        <packageId>None1637.HKJBlackTech.Core</packageId>
+	        <displayName>黑科技</displayName>
+<!--	        <steamWorkshopUrl>steam://url/CommunityFilePage/3523400807</steamWorkshopUrl>-->
+	    </li>
+	</modDependencies>
+</ModMetaData>

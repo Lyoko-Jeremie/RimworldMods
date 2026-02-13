@@ -1,0 +1,85 @@
+<Patch>
+
+<!--  &lt;!&ndash;纳米无菌地板&ndash;&gt;-->
+<!--  <Operation Class="PatchOperationAdd">-->
+<!--    <xpath>Defs/TerrainDef[defName="HKJ_SterileTile"]/affordances</xpath>-->
+<!--    <value>-->
+<!--      <li>Walkable</li>-->
+<!--    </value>-->
+<!--  </Operation>-->
+<!--  <Operation Class="PatchOperationReplace">-->
+<!--    <xpath>Defs/TerrainDef[defName="HKJ_SterileTile"]/statBases/Beauty</xpath>-->
+<!--    <value>-->
+<!--      <Beauty>1000</Beauty>-->
+<!--    </value>-->
+<!--  </Operation>-->
+<!--  <Operation Class="PatchOperationReplace">-->
+<!--    <xpath>Defs/TerrainDef[defName="HKJ_SterileTile"]/statBases/WorkToBuild</xpath>-->
+<!--    <value>-->
+<!--      <WorkToBuild>1</WorkToBuild>-->
+<!--    </value>-->
+<!--  </Operation>-->
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="SNS_Gun_Turret_Pinnacle"]/statBases/AccuracyTouch</xpath>
+    <value>
+      <!-- 精度  -->
+      <AccuracyTouch>1</AccuracyTouch>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="SNS_Gun_Turret_Pinnacle"]/statBases/AccuracyShort</xpath>
+    <value>
+      <!-- 精度  -->
+      <AccuracyShort>1</AccuracyShort>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="SNS_Gun_Turret_Pinnacle"]/statBases/AccuracyMedium</xpath>
+    <value>
+      <!-- 精度  -->
+      <AccuracyMedium>1</AccuracyMedium>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="SNS_Gun_Turret_Pinnacle"]/statBases/AccuracyLong</xpath>
+    <value>
+      <!-- 精度  -->
+      <AccuracyLong>1</AccuracyLong>
+    </value>
+  </Operation>
+
+</Patch>
+
+<!--<Patch>-->
+
+<!--<Operation Class="PatchOperationReplace">-->
+<!--  <xpath>Defs/ThingDef[defName="GravFieldExtender"]/comps/li[@Class="CompProperties_GravshipFacility"]/maxSimultaneous</xpath>-->
+<!--  <value>-->
+<!--    <maxSimultaneous>255</maxSimultaneous>-->
+<!--  </value>-->
+<!--</Operation>-->
+
+<!--<Operation Class="PatchOperationRemove">-->
+<!--  <xpath>Defs/ThingDef[defName="GravFieldExtender"]/placeWorkers/li[.="PlaceWorker_InRangeOfGravEngine"]</xpath>-->
+<!--</Operation>-->
+<!--<Operation Class="PatchOperationAdd">-->
+<!--  <xpath>Defs/ThingDef[defName="GravFieldExtender"]/comps</xpath>-->
+<!--  <value>-->
+<!--    <li Class="CompProperties_AffectedByFacilities">-->
+<!--      <linkableFacilities>-->
+<!--        <li>GravFieldExtender</li>-->
+<!--        <li>PilotConsole</li>-->
+<!--        <li>ChemfuelTank</li>-->
+<!--        <li>LargeChemfuelTank</li>-->
+<!--        <li>SmallThruster</li>-->
+<!--        <li>LargeThruster</li>-->
+<!--        <li>FuelOptimizer</li>-->
+<!--        <li>SignalJammer</li>-->
+<!--        <li>PilotSubpersonaCore</li>-->
+<!--        <li>GravshipShieldGenerator</li>-->
+<!--      </linkableFacilities>-->
+<!--    </li>-->
+<!--  </value>-->
+<!--</Operation>-->
+<!--</Patch>-->
+

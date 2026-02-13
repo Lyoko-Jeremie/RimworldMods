@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+
+<!--    <Operation Class="PatchOperationAdd">-->
+<!--        <xpath>Defs/TerrainDef[defName="VFEArch_Grass"]/affordances</xpath>-->
+<!--        <value>-->
+<!--            <li>Walkable</li>-->
+<!--        </value>-->
+<!--    </Operation>-->
+<!--    <Operation Class="PatchOperationAdd">-->
+<!--        <xpath>Defs/TerrainDef[defName="VFEArch_LawnPlot"]/affordances</xpath>-->
+<!--        <value>-->
+<!--            <li>Walkable</li>-->
+<!--        </value>-->
+<!--    </Operation>-->
+
+    <Operation Class="PatchOperationRemove">
+      <xpath>Defs/ThingDef[defName="VFEArch_LawnPlot"]/terrainAffordanceNeeded</xpath>
+    </Operation>
+    <Operation Class="PatchOperationRemove">
+      <xpath>Defs/ThingDef[defName="VFEArch_Grass"]/terrainAffordanceNeeded</xpath>
+    </Operation>
+
+</Patch>

@@ -1,0 +1,19 @@
+<Patch>
+
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/fertility</xpath>
+        <value>
+            <!-- 肥沃 -->
+            <fertility>10000</fertility>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/fillPercent</xpath>
+        <value>
+            <fillPercent>0</fillPercent><!--掩体和减速-->
+        </value>
+    </Operation>
+    <!--            <pathCost>60</pathCost>-->
+    <!--            <passability>PassThroughOnly</passability>-->
+
+</Patch>

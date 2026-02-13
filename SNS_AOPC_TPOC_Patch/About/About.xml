@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>Jeremie 的 SNS:AOPC:TPOC 补丁</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.SNS.AOPC.TPOC.Patchs</packageId>
+    <description>
+Jeremie 的 SNS:AOPC:TPOC 补丁 ， 在正义的基础上更进一步 ！
+
+SNS : 科学永不止步 （Science Never Stops）
+AOPC : 宇宙雄心 （Ambition of the Cosmic [Continued]）
+TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
+
+- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投影仪” 加了回来，并大幅增强了相关属性。
+	由于时空立场投影仪是一个眼部饰品，这就意味着不需要干扰穿着的衣服，
+	所以鼠鼠等具有特色服饰的种族可在保留服饰的基础上，通过这个物品获得各项属性加成和一个超级强力的随身能量护盾。
+
+- 修改了 “稳定壁垒” 和 “永续自律型群星之怒炮塔” 的攻击准确度，使得其更加符合最强远程炮台的设定了。（再也不会人体描边乱炸一通，敌人衣角微脏，家里建筑却炸了个稀巴烂）
+- 修改了 “星河水栽培III代” 的肥沃度为 10000 ， 让它更符合最强水栽培的设定。解决了种植超级作物（生长时间600天的植物）的问题。（种植超级作物再也不需要依赖 永恒科学 的 生态方舱 了）
+
+
+	</description>
+	<loadAfter>
+	</loadAfter>
+	
+	<modDependencies>
+	    <li>
+			<packageId>para0234.snsambitioncosmicgen4addon</packageId>
+	        <displayName>AOTC: True Pinnacle of Creation[Continued]</displayName>
+	        <steamWorkshopUrl>steam://url/CommunityFilePage/3379479793</steamWorkshopUrl>
+	    </li>
+	    <li>
+			<packageId>Para0234.SNSAmbitionCosmic</packageId>
+	        <displayName>Ambition of the Cosmic [Continued]</displayName>
+	        <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+	    </li>
+	</modDependencies>
+</ModMetaData>

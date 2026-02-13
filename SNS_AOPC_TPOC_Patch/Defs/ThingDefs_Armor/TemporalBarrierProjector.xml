@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!-- 时空立场投影仪 -->
+  <ThingDef ParentName="ApparelBase">
+    <defName>SNS_CE_TemporalBarrierProjector</defName>
+    <label>Temporal Barrier Projector</label>
+    <description>A picoscale-sized device that projects an invisible temporal barrier, much like the one that the Cycle Alpha Armor uses. Prevents wounds from being inflicted at all by altering time locally around the user with Eternium and Stable Matter, allowing them to ignore attacks. Additionally, brain controlled manipulation of the temporal field allows for rapid movement in zero gravity environments, such as space. While this is technically less protective than the Cycle Alpha armor, nothing's ever really going to get through this anyway...</description>
+	<techLevel>Archotech</techLevel>
+	<useHitPoints>false</useHitPoints>
+    <graphicData>
+      <texPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <tickerType>Normal</tickerType>
+    <statBases>
+      <MaxHitPoints>99999</MaxHitPoints>
+	  <MarketValue>50000000</MarketValue> <!-- value so high to ensure nobody spawns with it -->
+	  <DeteriorationRate>0.0</DeteriorationRate>
+      <Mass>0.001</Mass>
+      <Flammability>0.0</Flammability>
+      <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+      <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+      <ArmorRating_Heat>10000</ArmorRating_Heat>
+      <Insulation_Cold>10000</Insulation_Cold>
+      <Insulation_Heat>10000</Insulation_Heat>
+      <EquipDelay>0</EquipDelay>
+	  
+      <EnergyShieldRechargeRate>100</EnergyShieldRechargeRate>
+      <EnergyShieldEnergyMax>15000</EnergyShieldEnergyMax>
+    </statBases>
+	<comps>
+      <li Class="CompProperties_Shield">
+        <compClass>Armorshield.CompShieldRanged</compClass>
+      </li>
+    </comps>
+    <equippedStatOffsets>
+      <MoveSpeed>+200</MoveSpeed> <!-- You can run, you can run, but I'll always catch up. -->
+      <ShootingAccuracyPawn>10</ShootingAccuracyPawn>
+      <AimingDelayFactor>-0.5</AimingDelayFactor>
+      <RangedCooldownFactor>-0.5</RangedCooldownFactor>
+      <MeleeHitChance>0.5</MeleeHitChance>
+      <MeleeDodgeChance>0.25</MeleeDodgeChance>
+      <ToxicResistance>1</ToxicResistance>
+      <MeleeCooldownFactor>-1</MeleeCooldownFactor>
+      <MeleeDamageFactor>1</MeleeDamageFactor>
+      <PsychicSensitivity>3</PsychicSensitivity>
+      <MentalBreakThreshold>-2</MentalBreakThreshold>
+      <PsychicEntropyRecoveryRate>10</PsychicEntropyRecoveryRate>
+      <PsychicEntropyMax>2000</PsychicEntropyMax>
+      <StaggerDurationFactor>-1</StaggerDurationFactor>
+      <!--<CarryingCapacity>5000</CarryingCapacity>--> <!--Probably doesn't work.-->
+      <PsychicSensitivity>1</PsychicSensitivity>
+      <SubcoreEncodingSpeed>3</SubcoreEncodingSpeed>
+      <MechRepairSpeed>3</MechRepairSpeed>
+      <MechControlGroups>9</MechControlGroups>
+      <MechRemoteShieldEnergy>250</MechRemoteShieldEnergy>
+      <MechBandwidth>60</MechBandwidth>
+      <WorkSpeedGlobalOffsetMech>4</WorkSpeedGlobalOffsetMech>
+      <MechFormingSpeed>4</MechFormingSpeed>
+      <EatingSpeed>1</EatingSpeed>
+      <FilthRate>-1.5</FilthRate> <!--brainwashes you to clean up after yourself-->
+      <RestFallRateFactor>-0.5</RestFallRateFactor> <!--NO SLEEP TILL BROOKLYN!-->
+      <WorkSpeedGlobal>2</WorkSpeedGlobal>
+      <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency>
+      <ConstructSuccessChance>1</ConstructSuccessChance>
+      <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
+
+      <!-- 额外负重 -->
+      <RI_MassCarryCapacity>+1000</RI_MassCarryCapacity>
+      <!-- 携带能力 -->
+      <CarryingCapacity>+100000</CarryingCapacity>
+      <!--全局工作速度系数-->
+      <WorkSpeedGlobal>+100000.0</WorkSpeedGlobal>
+    </equippedStatOffsets>
+    <thingCategories>
+      <li>ApparelArmor</li>
+    </thingCategories>
+    <tradeTags>
+      <li>HiTechArmor</li>
+    </tradeTags>
+    <costList>
+    </costList>
+    <apparel>
+      <bodyPartGroups>
+        <li>Eyes</li>
+      </bodyPartGroups>
+      <wornGraphicPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</wornGraphicPath>
+      <layers>
+        <li>EyeCover</li>
+      </layers>
+	  <tags>
+		<li>EVA</li>
+	    <li>PrestigeCombatGear</li>
+	  </tags>
+      <useDeflectMetalEffect>false</useDeflectMetalEffect>
+	  <careIfWornByCorpse>false</careIfWornByCorpse>
+    </apparel>
+  </ThingDef>
+  
+</Defs>
