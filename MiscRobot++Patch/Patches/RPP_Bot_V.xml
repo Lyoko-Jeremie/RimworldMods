@@ -16,6 +16,22 @@
             <mechFixedSkillLevel>99</mechFixedSkillLevel>
         </value>
     </Operation>
+    <Operation Class="PatchOperationAdd">
+        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>
+        <value>
+            <modExtensions>
+                <li MayRequire="pathfinding.framework" Class="PathfindingFramework.MovementExtension">
+                    <movementDef>PF_Movement_Amphibious</movementDef>
+                </li>
+            </modExtensions>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationAdd">
+        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>
+        <value>
+            <rechargeEfficiency>0.8</rechargeEfficiency>
+        </value>
+    </Operation>
     <!--            <robotSkills>-->
     <!--                <li>-->
     <!--                    <skillDef>Medicine</skillDef>-->
@@ -74,6 +90,8 @@
             <CarryingCapacity>100000</CarryingCapacity>
             <!-- 移动速度 -->
             <MoveSpeed>1000</MoveSpeed>
+
+            <Efficiency>20.0</Efficiency>
 
             <ToxicResistance>1</ToxicResistance><!--毒性抵抗系数-->
             <MeleeHitChance>200</MeleeHitChance><!--近战命中-->
