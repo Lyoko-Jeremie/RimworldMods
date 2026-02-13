@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>Jeremie 的 MiscRobot++ 增强补丁</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.3</li>
+		<li>1.4</li>
+		<li>1.5</li>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.MiscRobotPP.Patch</packageId>
+    <description>
+Jeremie 的 Misc.Robot++ 增强（正义）补丁
+
+修改了 V 级 机器人的参数，以及万能机V的参数。
+
+
+- 护甲和抗性拉满，不会再那么容易被其他正义mod的武器误伤打爆了（说的就是你，SNS:AOPC:TPOC 的 “世界尽头”）。
+- 移动速度提升到 1000 ， 既然是正义的 V 级 机器人了，当然要让它跑得飞快了。
+- 增加了近战攻击，虽然它们不太会用，但当敌人入侵基地时，机器人（女仆）当然要能够（从裙底拿出武器）独当一面啦。
+- 全局工作速度修改为 100000 ， 让它们能够飞速地完成工作，某些耗时的正义mod就不那么拖延时间了（你，乌托邦装置！）。
+- 调整携带能力为 100000 ， 彻底解决在使用超大堆栈时需要蚂蚁搬家的尴尬了。
+- 调整负重能力为 1000 。（好像借用了 RimImmortal 边缘仙路 的 RI_MassCarryCapacity 属性，如果没生效记得安装边缘仙路）
+- 调整全局技能等级为 99 ， 让它们能够胜任任何工作了（虽然它们已经是万能机了，但技能等级太低总感觉不太对劲）。
+
+	</description>
+	<loadAfter>
+	</loadAfter>
+	
+	<modDependencies>
+	    <li>
+			<packageId>Alaestor.MiscRobots.PlusPlus</packageId>
+	        <displayName>Misc. Robots++</displayName>
+	        <steamWorkshopUrl>steam://url/CommunityFilePage/3253308913</steamWorkshopUrl>
+	    </li>
+	</modDependencies>
+</ModMetaData>

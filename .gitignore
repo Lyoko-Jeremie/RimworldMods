@@ -90,5 +90,7 @@ fabric.properties
 !MoreGravFieldExtender++/**/*
 !HKJBlackTechPatch/
 !HKJBlackTechPatch/**/*
+!MiscRobot++Patch/
+!MiscRobot++Patch/**/*
 !.gitignore
 
