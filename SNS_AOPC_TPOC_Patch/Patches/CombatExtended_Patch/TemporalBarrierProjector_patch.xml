@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+    <!-- 检查 Combat Extended 是否加载 -->
+    <Operation Class="PatchOperationFindMod">
+        <mods>
+            <li>Combat Extended</li>
+        </mods>
+        <match Class="PatchOperationSequence">
+            <operations>
+
+                <!-- 1. 替换基础属性：适配 CE 的 RHA 护甲系统与体积系统 -->
+                <li Class="PatchOperationReplace">
+                    <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/statBases</xpath>
+                    <value>
+                        <statBases>
+                            <MaxHitPoints>99999</MaxHitPoints>
+                            <MarketValue>50000000</MarketValue>
+                            <Mass>0.001</Mass>
+                            <Bulk>0</Bulk> <!-- CE: 物品体积 -->
+                            <WornBulk>0</WornBulk> <!-- CE: 穿戴体积 -->
+                            <DeteriorationRate>0</DeteriorationRate>
+                            <Flammability>0</Flammability>
+
+                            <!-- 绝对防御数值：5000mm RHA 穿透防护 -->
+                            <ArmorRating_Sharp>5000</ArmorRating_Sharp>
+                            <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+                            <ArmorRating_Heat>10.0</ArmorRating_Heat>
+
+                            <Insulation_Cold>10000</Insulation_Cold>
+                            <Insulation_Heat>10000</Insulation_Heat>
+                            <EquipDelay>0</EquipDelay>
+                        </statBases>
+                    </value>
+                </li>
+
+                <!-- 2. 替换护盾组件：使用 CE 专用的能量护盾逻辑 -->
+                <li Class="PatchOperationReplace">
+                    <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/comps/li[@Class="CompProperties_Shield"]</xpath>
+                    <value>
+                        <li Class="CombatExtended.CompProperties_Shield">
+                            <healthLossPerDamage>0.0000001</healthLossPerDamage> <!-- 极低受损系数 -->
+                            <maxEnergy>1500000</maxEnergy> <!-- 护盾能量上限 -->
+                            <energyRegenPerTick>1000</energyRegenPerTick> <!-- 充能速度 -->
+                            <minShieldRechargeTick>1</minShieldRechargeTick> <!-- 护盾过载恢复时间 -->
+                            <blocksRangedWeapons>false</blocksRangedWeapons> <!-- 允许远程射击 -->
+                        </li>
+                    </value>
+                </li>
+
+                <!-- 3. 整合所有超神属性偏移：同步 Canvas 中的最新数值与 CE 特有属性 -->
+                <li Class="PatchOperationReplace">
+                    <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/equippedStatOffsets</xpath>
+                    <value>
+                        <equippedStatOffsets>
+                            <!-- 核心战斗加成 -->
+                            <IncomingDamageFactor>0.00015</IncomingDamageFactor> <!-- 受到伤害乘数 -->
+                            <AimingDelayFactor>-0.995</AimingDelayFactor> <!-- 瞄准延迟缩减 -->
+                            <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 远程冷却缩减 -->
+                            <ShootingAccuracyPawn>10</ShootingAccuracyPawn> <!-- 射击精度 -->
+                            <MoveSpeed>200</MoveSpeed> <!-- 移动速度 -->
+
+                            <!-- 近战属性 -->
+                            <MeleeHitChance>0.5</MeleeHitChance> <!-- 近战命中率 -->
+                            <MeleeDodgeChance>0.25</MeleeDodgeChance> <!-- 近战闪避率 -->
+                            <MeleeCooldownFactor>-1</MeleeCooldownFactor> <!-- 近战无冷却 -->
+                            <MeleeDamageFactor>1</MeleeDamageFactor> <!-- 额外伤害加成 -->
+                            <StaggerDurationFactor>-1</StaggerDurationFactor> <!-- 免疫被击中后的减速僵直 -->
+
+                            <!-- 精神与生存 -->
+                            <ToxicResistance>1</ToxicResistance> <!-- 免疫毒性 -->
+                            <MentalBreakThreshold>-2</MentalBreakThreshold> <!-- 永不崩溃 -->
+                            <PsychicSensitivity>1</PsychicSensitivity> <!-- 精神敏感度 -->
+                            <PsychicEntropyMax>2000</PsychicEntropyMax> <!-- 精神熵上限 -->
+                            <PsychicEntropyRecoveryRate>10</PsychicEntropyRecoveryRate> <!-- 精神熵恢复速度 -->
+                            <EatingSpeed>1</EatingSpeed> <!-- 进食速度 -->
+                            <RestFallRateFactor>-0.5</RestFallRateFactor> <!-- 睡眠需求减半 -->
+                            <FilthRate>-1.5</FilthRate> <!-- 不产生污垢 -->
+
+                            <!-- 机械师 (Biotech) 相关属性 -->
+                            <SubcoreEncodingSpeed>+30</SubcoreEncodingSpeed> <!-- 次级核心编码/扫描速度 -->
+                            <MechRepairSpeed>+300</MechRepairSpeed> <!-- 机械体修理速度 -->
+                            <MechControlGroups>9</MechControlGroups> <!-- 机械控制组数量 -->
+                            <MechRemoteShieldEnergy>+2500</MechRemoteShieldEnergy> <!-- 远程机械盾能量加成 -->
+                            <MechBandwidth>+600</MechBandwidth> <!-- 机械带宽 -->
+                            <WorkSpeedGlobalOffsetMech>+110</WorkSpeedGlobalOffsetMech> <!-- 受控机械体的全局工作速度偏移 -->
+                            <MechFormingSpeed>+120</MechFormingSpeed> <!-- 机械体妊娠/制造速度 -->
+
+                            <!-- 生产、搬运与工作 -->
+                            <WorkSpeedGlobal>100000.0</WorkSpeedGlobal> <!-- 全局工作速度 -->
+                            <CarryingCapacity>100000</CarryingCapacity> <!-- 携带量 -->
+                            <RI_MassCarryCapacity>1000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
+                            <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency> <!-- 拆解机械体效率 -->
+                            <ConstructSuccessChance>1</ConstructSuccessChance> <!-- 建造成功率 -->
+
+                            <!-- 特殊环境与 CE 追加属性 -->
+                            <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance> <!-- 真空抗性 -->
+                            <Flammability>-1</Flammability> <!-- 绝对不可燃 -->
+                            <MeleeCritChance>10</MeleeCritChance> <!-- CE: 近战暴击率 -->
+                            <MeleeParryChance>10</MeleeParryChance> <!-- CE: 近战招架率 -->
+                            <Suppressability>-1</Suppressability> <!-- CE: 免疫压制 -->
+                            <SightsEfficiency>10</SightsEfficiency> <!-- CE: 瞄准效率 -->
+                            <ReloadSpeed>5</ReloadSpeed> <!-- CE: 装弹速度 -->
+                            <AimingAccuracy>5</AimingAccuracy> <!-- CE: 瞄准精度 -->
+                            <NightVisionEfficiency_General>1.0</NightVisionEfficiency_General> <!-- CE: 全夜视能力 -->
+                        </equippedStatOffsets>
+                    </value>
+                </li>
+
+            </operations>
+        </match>
+    </Operation>
+</Patch>
