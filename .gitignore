@@ -92,5 +92,7 @@ fabric.properties
 !HKJBlackTechPatch/**/*
 !MiscRobot++Patch/
 !MiscRobot++Patch/**/*
+!Archotech_Patch/
+!Archotech_Patch/**/*
 !.gitignore
 

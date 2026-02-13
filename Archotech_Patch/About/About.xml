@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>Jeremie 的 超凡物品 补丁</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.Archotech.Things.Patch</packageId>
+    <description>
+Jeremie 的 超凡物品 补丁 ， 在超凡的基础上更加正义 ！
+
+- 更多超凡科技物品 (More Archotech Garbage (Continued))
+  * 万能水处理器 MAG_ArchotechWaterThing ， 调高了范围、水处理能力、抽水能力， 解决了原版万能水处理器抽水抽一万年还没填满的尴尬
+- 卫生与温控 (Dubs Bad Hygiene)
+  * 添加 超凡水井、超凡深水井 ， 扩大了范围。配合万能水处理器的抽水能力使用。
+
+	</description>
+	<loadAfter>
+	</loadAfter>
+	
+	<modDependencies>
+	    <li>
+			<packageId>zal.morearchotechgarbage</packageId>
+	        <displayName>More Archotech Garbage (Continued)</displayName>
+	        <steamWorkshopUrl>steam://url/CommunityFilePage/3241944893</steamWorkshopUrl>
+	    </li>
+	    <li>
+			<packageId>Dubwise.DubsBadHygiene</packageId>
+	        <displayName>Dubs Bad Hygiene</displayName>
+	        <steamWorkshopUrl>steam://url/CommunityFilePage/836308268</steamWorkshopUrl>
+	    </li>
+	</modDependencies>
+</ModMetaData>

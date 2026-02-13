@@ -1,0 +1,65 @@
+<Defs>
+
+    <ThingDef ParentName="BasedWaterWell" DBHLite="true">
+        <defName>ArchotechWaterWellInlet</defName>
+        <label>Archotech water well</label>
+        <description>Accesses ground water which can be pumped by water pumps. The presence of sewage or other pollution will reduce water quality and can cause contamination.</description>
+        <!--<specialDisplayRadius>7.9</specialDisplayRadius>-->
+        <researchPrerequisites>
+            <li MayRequire="dbhlitemode">Plumbing</li>
+        </researchPrerequisites>
+        <comps>
+            <li Class="DubsBadHygiene.CompProperties_Pipe">
+                <mode>Sewage</mode>
+            </li>
+            <li Class="DubsBadHygiene.CompProperties_WaterInlet">
+                <Radius>20</Radius>
+            </li>
+        </comps>
+        <placeWorkers>
+            <li>DubsBadHygiene.PlaceWorker_WaterGrid</li>
+            <li>DubsBadHygiene.PlaceWorker_SewageGrid</li>
+            <li>DubsBadHygiene.PlaceWorker_UserGrid</li>
+            <li>PlaceWorker_InvalidOverSubstructure</li>
+        </placeWorkers>
+    </ThingDef>
+
+    <ThingDef ParentName="BasedWaterWell" DBHLite="true">
+        <defName>DeepWaterWellInlet</defName>
+        <label>deep water well</label>
+        <description>Accesses a large area of ground water which can be pumped by water pumps. Deep wells are unaffected by pollution.</description>
+        <graphicData>
+            <texPath>DBH/Things/Building/Water/DeepWaterWell</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(1,1)</drawSize>
+            <drawRotated>false</drawRotated>
+        </graphicData>
+        <!--<specialDisplayRadius>13.7</specialDisplayRadius>-->
+        <statBases>
+            <WorkToBuild>29000</WorkToBuild>
+        </statBases>
+        <costList>
+            <Steel>100</Steel>
+        </costList>
+        <researchPrerequisites>
+            <li MayRequire="dbhlitemode">DeepWells</li>
+        </researchPrerequisites>
+        <comps>
+            <li Class="DubsBadHygiene.CompProperties_Pipe">
+                <mode>Sewage</mode>
+            </li>
+            <li Class="DubsBadHygiene.CompProperties_WaterInlet">
+                <Deep>true</Deep>
+                <Radius>20</Radius>
+            </li>
+        </comps>
+        <placeWorkers>
+            <li>DubsBadHygiene.PlaceWorker_DeepWaterGrid</li>
+            <li>DubsBadHygiene.PlaceWorker_SewageGrid</li>
+            <li>DubsBadHygiene.PlaceWorker_UserGrid</li>
+            <li>PlaceWorker_InvalidOverSubstructure</li>
+        </placeWorkers>
+    </ThingDef>
+
+
+</Defs>

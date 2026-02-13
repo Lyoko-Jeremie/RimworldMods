@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Patch>
+
+    <!--抽水能力-->
+    <Operation Class="PatchOperationReplace">
+        <xpath>
+            Defs/ThingDef[defName="MAG_ArchotechWaterThing"]/comps/li[@Class="DubsBadHygiene.CompProperties_WaterPumpingStation"]/Capacity
+        </xpath>
+        <value>
+            <Capacity>500000</Capacity>
+        </value>
+    </Operation>
+    <!--水处理能力-->
+    <Operation Class="PatchOperationReplace">
+        <xpath>
+            Defs/ThingDef[defName="MAG_ArchotechWaterThing"]/comps/li[@Class="DubsBadHygiene.CompProperties_SepticTank"]/TreatedPerDay
+        </xpath>
+        <value>
+            <TreatedPerDay>500000</TreatedPerDay>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>
+            Defs/ThingDef[defName="MAG_ArchotechWaterThing"]/comps/li[@Class="DubsBadHygiene.CompProperties_SepticTank"]/capacity
+        </xpath>
+        <value>
+            <capacity>500000</capacity>
+        </value>
+    </Operation>
+    <!--抽水范围-->
+    <Operation Class="PatchOperationReplace">
+        <xpath>
+            Defs/ThingDef[defName="MAG_ArchotechWaterThing"]/comps/li[@Class="DubsBadHygiene.CompProperties_WaterInlet"]/Radius
+        </xpath>
+        <value>
+            <Radius>30</Radius>
+        </value>
+    </Operation>
+
+</Patch>
