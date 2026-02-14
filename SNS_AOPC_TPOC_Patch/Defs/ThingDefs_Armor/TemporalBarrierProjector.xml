@@ -1,166 +1,177 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-  <!-- 时空立场投影仪：这是一款基于 Archotech（远古超科）技术的顶级防御装备 -->
-  <ThingDef ParentName="ApparelBase">
-    <defName>SNS_CE_TemporalBarrierProjector</defName>
-    <label>Temporal Barrier Projector</label>
-    <description>A picoscale-sized device that projects an invisible temporal barrier, much like the one that the Cycle Alpha Armor uses. Prevents wounds from being inflicted at all by altering time locally around the user with Eternium and Stable Matter, allowing them to ignore attacks. Additionally, brain controlled manipulation of the temporal field allows for rapid movement in zero gravity environments, such as space. While this is technically less protective than the Cycle Alpha armor, nothing's ever really going to get through this anyway...</description>
+    <!-- 时空立场投影仪：这是一款基于 Archotech（远古超科）技术的顶级防御装备 -->
+    <ThingDef ParentName="ApparelBase">
+        <defName>SNS_CE_TemporalBarrierProjector</defName>
+        <label>Temporal Barrier Projector</label>
+        <description>A picoscale-sized device that projects an invisible temporal barrier, much like the one that the
+            Cycle Alpha Armor uses. Prevents wounds from being inflicted at all by altering time locally around the user
+            with Eternium and Stable Matter, allowing them to ignore attacks. Additionally, brain controlled
+            manipulation of the temporal field allows for rapid movement in zero gravity environments, such as space.
+            While this is technically less protective than the Cycle Alpha armor, nothing's ever really going to get
+            through this anyway...
+        </description>
 
-    <!-- 技术等级与耐用度 -->
-    <techLevel>Archotech</techLevel>
-    <useHitPoints>false</useHitPoints> <!-- 装备无耐久限制，永远不会损坏 -->
-    <smeltable>true</smeltable> <!-- 修复：显式设置为不可熔炼，解决 Config error -->
-<!--    <burnable>false</burnable> &lt;!&ndash; 设置为不可焚烧 &ndash;&gt;-->
+        <!-- 技术等级与耐用度 -->
+        <techLevel>Archotech</techLevel>
+        <useHitPoints>false</useHitPoints> <!-- 装备无耐久限制，永远不会损坏 -->
+        <smeltable>true</smeltable> <!-- 修复：显式设置为不可熔炼，解决 Config error -->
+        <!--    <burnable>false</burnable> &lt;!&ndash; 设置为不可焚烧 &ndash;&gt;-->
 
-    <!-- 这里的 costList 仅用于：1. 熔炼返还物；2. 计算物品的市场价值 -->
-    <!-- 即使制作不花钱，这里也建议写上材料，否则熔炼会报错 -->
-    <costList>
-      <SNS_Unobtainium>1000</SNS_Unobtainium>
-      <SNS_Unobtainium_Fiber>1000</SNS_Unobtainium_Fiber>
-      <SNS_CosmicAlloy>1000</SNS_CosmicAlloy>
-      <SNS_CosmicAlloyWeave>1000</SNS_CosmicAlloyWeave>
-      <SNS_Component_GenII>1000</SNS_Component_GenII>
-      <SNS_Component_GenIII>1000</SNS_Component_GenIII>
-      <SNS_CosmicMatter>1000</SNS_CosmicMatter>
-      <SNS_Eternium>1000</SNS_Eternium>
-      <SNS_StableMatter>1000</SNS_StableMatter>
-      <SNS_Meal_Normal_GenIV>100</SNS_Meal_Normal_GenIV>
-      <SNS_Medicine_Pinnacle>100</SNS_Medicine_Pinnacle>
-      <SNS_Medicine_GenIII>100</SNS_Medicine_GenIII>
-      <SNS_Medicine_GenII>100</SNS_Medicine_GenII>
-      <SNS_Medicine_GenI>100</SNS_Medicine_GenI>
-      <SNS_Meal_Normal_GenIII>100</SNS_Meal_Normal_GenIII>
-      <SNS_Meal_Normal_GenII>100</SNS_Meal_Normal_GenII>
-      <SNS_Meal_Normal_GenI>100</SNS_Meal_Normal_GenI>
-      <SNS_Meal_Nutrient_GenIII>100</SNS_Meal_Nutrient_GenIII>
-      <SNS_CosmicCall_Component_V>1</SNS_CosmicCall_Component_V>
-      <SNS_CosmicCall_Component_IV>1</SNS_CosmicCall_Component_IV>
-      <SNS_CosmicCall_Component_III>1</SNS_CosmicCall_Component_III>
-      <SNS_CosmicCall_Component_II>1</SNS_CosmicCall_Component_II>
-      <SNS_CosmicCall_Component_I>1</SNS_CosmicCall_Component_I>
-      <SNS_Apparel_FirstCycleArmor>1</SNS_Apparel_FirstCycleArmor>
-      <SNS_Apparel_FirstCycleHelmet>1</SNS_Apparel_FirstCycleHelmet>
-      <SNS_TerminusGun>1</SNS_TerminusGun>
-      <SNS_BeholderGun>1</SNS_BeholderGun>
-      <SNS_RecursionMelee>1</SNS_RecursionMelee>
-    </costList>
+        <!-- 这里的 costList 仅用于：1. 熔炼返还物；2. 计算物品的市场价值 -->
+        <!-- 即使制作不花钱，这里也建议写上材料，否则熔炼会报错 -->
+        <costList>
+            <SNS_Unobtainium>1000</SNS_Unobtainium>
+            <SNS_Unobtainium_Fiber>1000</SNS_Unobtainium_Fiber>
+            <SNS_CosmicAlloy>1000</SNS_CosmicAlloy>
+            <SNS_CosmicAlloyWeave>1000</SNS_CosmicAlloyWeave>
+            <SNS_Component_GenII>1000</SNS_Component_GenII>
+            <SNS_Component_GenIII>1000</SNS_Component_GenIII>
+            <SNS_CosmicMatter>1000</SNS_CosmicMatter>
+            <SNS_Eternium>1000</SNS_Eternium>
+            <SNS_StableMatter>1000</SNS_StableMatter>
+            <SNS_Meal_Normal_GenIV>100</SNS_Meal_Normal_GenIV>
+            <SNS_Medicine_Pinnacle>100</SNS_Medicine_Pinnacle>
+            <SNS_Medicine_GenIII>100</SNS_Medicine_GenIII>
+            <SNS_Medicine_GenII>100</SNS_Medicine_GenII>
+            <SNS_Medicine_GenI>100</SNS_Medicine_GenI>
+            <SNS_Meal_Normal_GenIII>100</SNS_Meal_Normal_GenIII>
+            <SNS_Meal_Normal_GenII>100</SNS_Meal_Normal_GenII>
+            <SNS_Meal_Normal_GenI>100</SNS_Meal_Normal_GenI>
+            <SNS_Meal_Nutrient_GenIII>100</SNS_Meal_Nutrient_GenIII>
+            <SNS_CosmicCall_Component_V>1</SNS_CosmicCall_Component_V>
+            <SNS_CosmicCall_Component_IV>1</SNS_CosmicCall_Component_IV>
+            <SNS_CosmicCall_Component_III>1</SNS_CosmicCall_Component_III>
+            <SNS_CosmicCall_Component_II>1</SNS_CosmicCall_Component_II>
+            <SNS_CosmicCall_Component_I>1</SNS_CosmicCall_Component_I>
+            <SNS_Apparel_FirstCycleArmor>1</SNS_Apparel_FirstCycleArmor>
+            <SNS_Apparel_FirstCycleHelmet>1</SNS_Apparel_FirstCycleHelmet>
+            <SNS_TerminusGun>1</SNS_TerminusGun>
+            <SNS_BeholderGun>1</SNS_BeholderGun>
+            <SNS_RecursionMelee>1</SNS_RecursionMelee>
+        </costList>
 
-    <graphicData>
-      <texPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</texPath>
-      <graphicClass>Graphic_Single</graphicClass>
-    </graphicData>
+        <graphicData>
+            <texPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+        </graphicData>
 
-    <tickerType>Normal</tickerType> <!-- 开启每刻逻辑更新，通常是为了支持护盾充能 -->
+        <tickerType>Normal</tickerType> <!-- 开启每刻逻辑更新，通常是为了支持护盾充能 -->
 
-    <statBases>
-      <!-- 基础生存属性 -->
-      <MaxHitPoints>99999</MaxHitPoints>
-      <MarketValue>50000000</MarketValue> <!-- 极高的价值：防止在任何随机NPC身上刷新（太贵了，系统买不起） -->
-      <DeteriorationRate>0.0</DeteriorationRate> <!-- 不会因风吹雨打腐烂 -->
-      <Mass>0.001</Mass> <!-- 几乎没有重量 -->
-      <Flammability>0.0</Flammability> <!-- 绝对不可燃 -->
+        <statBases>
+            <!-- 基础生存属性 -->
+            <MaxHitPoints>99999</MaxHitPoints>
+            <MarketValue>50000000</MarketValue> <!-- 极高的价值：防止在任何随机NPC身上刷新（太贵了，系统买不起） -->
+            <DeteriorationRate>0.0</DeteriorationRate> <!-- 不会因风吹雨打腐烂 -->
+            <Mass>0.001</Mass> <!-- 几乎没有重量 -->
+            <Flammability>0.0</Flammability> <!-- 绝对不可燃 -->
 
-      <!-- 原始防御数值 (非CE环境下) -->
-      <!-- 10000 代表 1,000,000%，在原版算法下是绝对无敌 -->
-      <ArmorRating_Sharp>10000</ArmorRating_Sharp>
-      <ArmorRating_Blunt>10000</ArmorRating_Blunt>
-      <ArmorRating_Heat>10000</ArmorRating_Heat>
+            <!-- 原始防御数值 (非CE环境下) -->
+            <!-- 10000 代表 1,000,000%，在原版算法下是绝对无敌 -->
+            <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+            <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+            <ArmorRating_Heat>10000</ArmorRating_Heat>
 
-      <!-- 极端环境抗性：能让小人在绝对零度或恒星表面生存 -->
-      <Insulation_Cold>10000</Insulation_Cold>
-      <Insulation_Heat>10000</Insulation_Heat>
-      <EquipDelay>0</EquipDelay> <!-- 即时穿戴 -->
+            <!-- 极端环境抗性：能让小人在绝对零度或恒星表面生存 -->
+            <Insulation_Cold>10000</Insulation_Cold>
+            <Insulation_Heat>10000</Insulation_Heat>
+            <EquipDelay>0</EquipDelay> <!-- 即时穿戴 -->
 
-      <!-- 能量护盾属性 -->
-      <EnergyShieldRechargeRate>100000</EnergyShieldRechargeRate> <!-- 充能极快，瞬间回满 -->
-      <EnergyShieldEnergyMax>1500000</EnergyShieldEnergyMax> <!-- 护盾容量极巨化 -->
-    </statBases>
+            <!-- 能量护盾属性 -->
+            <EnergyShieldRechargeRate>100000</EnergyShieldRechargeRate> <!-- 充能极快，瞬间回满 -->
+            <EnergyShieldEnergyMax>1500000</EnergyShieldEnergyMax> <!-- 护盾容量极巨化 -->
+        </statBases>
 
-    <comps>
-      <!-- 护盾组件：注意这里使用的是自定义的 Armorshield 类，需确保前置 Mod 存在 -->
-      <li Class="CompProperties_Shield">
-        <compClass>Armorshield.CompShieldRanged</compClass>
-<!--        <blocksRangedHeapons>false</blocksRangedHeapons> &lt;!&ndash; 允许穿戴者向外射击 &ndash;&gt;-->
-      </li>
-    </comps>
+        <comps>
+            <!-- 护盾组件：注意这里使用的是自定义的 Armorshield 类，需确保前置 Mod 存在 -->
+            <li Class="CompProperties_Shield">
+                <compClass>Armorshield.CompShieldRanged</compClass>
+                <!--        <blocksRangedHeapons>false</blocksRangedHeapons> &lt;!&ndash; 允许穿戴者向外射击 &ndash;&gt;-->
+            </li>
+        </comps>
 
-    <equippedStatOffsets>
-      <!-- 核心战斗加成 -->
-      <IncomingDamageFactor>0.00015</IncomingDamageFactor> <!-- 受到伤害乘数降至极低 -->
-      <AimingDelayFactor>-0.999</AimingDelayFactor> <!-- 近乎瞬发瞄准 (1 - 0.995 = 0.005) -->
-      <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 近乎没有冷却 (1 - 0.999 = 0.001) -->
-      <ShootingAccuracyPawn>100</ShootingAccuracyPawn> <!-- 射击精度补正 -->
-      <MoveSpeed>+200</MoveSpeed> <!-- 极速移动 -->
-      <SwimSpeed>+200</SwimSpeed> <!-- 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks -->
+        <equippedStatOffsets>
+            <!-- 核心战斗加成 -->
+            <IncomingDamageFactor>0.00015</IncomingDamageFactor> <!-- 受到伤害乘数降至极低 -->
+            <AimingDelayFactor>-0.999</AimingDelayFactor> <!-- 近乎瞬发瞄准 (1 - 0.995 = 0.005) -->
+            <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 近乎没有冷却 (1 - 0.999 = 0.001) -->
+            <ShootingAccuracyPawn>100</ShootingAccuracyPawn> <!-- 射击精度补正 -->
+            <MoveSpeed>+200</MoveSpeed> <!-- 极速移动 -->
+            <SwimSpeed>+200</SwimSpeed> <!-- 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks -->
 
-      <!-- 近战属性 -->
-      <MeleeHitChance>1</MeleeHitChance> <!-- 近战命中率 -->
-      <MeleeDodgeChance>1</MeleeDodgeChance> <!-- 近战闪避率 -->
-      <MeleeCooldownFactor>-1</MeleeCooldownFactor> <!-- 近战无冷却 -->
-      <MeleeDamageFactor>1</MeleeDamageFactor> <!-- 额外伤害加成 -->
-      <StaggerDurationFactor>-1</StaggerDurationFactor> <!-- 免疫被击中后的减速僵直 -->
+            <!-- 近战属性 -->
+            <MeleeHitChance>1</MeleeHitChance> <!-- 近战命中率 -->
+            <MeleeDodgeChance>1</MeleeDodgeChance> <!-- 近战闪避率 -->
+            <MeleeCooldownFactor>-1</MeleeCooldownFactor> <!-- 近战无冷却 -->
+            <MeleeDamageFactor>1</MeleeDamageFactor> <!-- 额外伤害加成 -->
+            <StaggerDurationFactor>-1</StaggerDurationFactor> <!-- 免疫被击中后的减速僵直 -->
 
-      <!-- 精神与生存 -->
-      <ToxicResistance>1</ToxicResistance> <!-- 免疫毒性 -->
-      <MentalBreakThreshold>-2</MentalBreakThreshold> <!-- 永不崩溃 -->
-      <PsychicSensitivity>1</PsychicSensitivity> <!-- 精神敏感度保持标准 -->
-      <PsychicEntropyMax>2000</PsychicEntropyMax> <!-- 精神熵上限极大化 -->
-      <PsychicEntropyRecoveryRate>+100</PsychicEntropyRecoveryRate> <!-- 精神熵恢复速度 -->
-      <EatingSpeed>1</EatingSpeed> <!-- 进食速度 -->
-      <RestFallRateFactor>-0.5</RestFallRateFactor> <!-- 睡眠需求减半 -->
-      <FilthRate>-1.5</FilthRate> <!-- 不产生污垢 -->
+            <!-- 精神与生存 -->
+            <ToxicResistance>1</ToxicResistance> <!-- 免疫毒性 -->
+            <MentalBreakThreshold>-2</MentalBreakThreshold> <!-- 永不崩溃 -->
+            <PsychicSensitivity>1</PsychicSensitivity> <!-- 精神敏感度保持标准 -->
+            <PsychicEntropyMax>2000</PsychicEntropyMax> <!-- 精神熵上限极大化 -->
+            <PsychicEntropyRecoveryRate>+100</PsychicEntropyRecoveryRate> <!-- 精神熵恢复速度 -->
+            <EatingSpeed>1</EatingSpeed> <!-- 进食速度 -->
+            <RestFallRateFactor>-0.5</RestFallRateFactor> <!-- 睡眠需求减半 -->
+            <FilthRate>-1.5</FilthRate> <!-- 不产生污垢 -->
 
-      <!-- 机械师 (Biotech) 相关属性 -->
-      <SubcoreEncodingSpeed>+30</SubcoreEncodingSpeed> <!-- 次级核心编码/扫描速度 -->
-      <MechRepairSpeed>+300</MechRepairSpeed> <!-- 机械体修理速度 -->
-      <MechControlGroups>9</MechControlGroups> <!-- 机械控制组数量 -->
-      <MechRemoteShieldEnergy>+2500</MechRemoteShieldEnergy> <!-- 远程机械盾能量加成 -->
-      <MechBandwidth>+600</MechBandwidth> <!-- 机械带宽 -->
-      <WorkSpeedGlobalOffsetMech>+110</WorkSpeedGlobalOffsetMech> <!-- 受控机械体的全局工作速度偏移 -->
-      <MechFormingSpeed>+120</MechFormingSpeed> <!-- 机械体妊娠/制造速度 -->
+            <!-- 机械师 (Biotech) 相关属性 -->
+            <SubcoreEncodingSpeed>+30</SubcoreEncodingSpeed> <!-- 次级核心编码/扫描速度 -->
+            <MechRepairSpeed>+300</MechRepairSpeed> <!-- 机械体修理速度 -->
+            <MechControlGroups>9</MechControlGroups> <!-- 机械控制组数量 -->
+            <MechRemoteShieldEnergy>+2500</MechRemoteShieldEnergy> <!-- 远程机械盾能量加成 -->
+            <MechBandwidth>+600</MechBandwidth> <!-- 机械带宽 -->
+            <WorkSpeedGlobalOffsetMech>+110</WorkSpeedGlobalOffsetMech> <!-- 受控机械体的全局工作速度偏移 -->
+            <MechFormingSpeed>+120</MechFormingSpeed> <!-- 机械体妊娠/制造速度 -->
 
 
-      <!-- 生产、搬运与工作 -->
-      <WorkSpeedGlobal>100000.0</WorkSpeedGlobal> <!-- 瞬间完成所有工作 -->
-      <CarryingCapacity>100000</CarryingCapacity> <!-- 极大的携带量 -->
-      <RI_MassCarryCapacity>1000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
-      <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency> <!-- 拆解机械体产出效率 -->
-      <ConstructSuccessChance>1</ConstructSuccessChance> <!-- 建造成功率 -->
+            <!-- 生产、搬运与工作 -->
+            <WorkSpeedGlobal>100000.0</WorkSpeedGlobal> <!-- 瞬间完成所有工作 -->
+            <CarryingCapacity>100000</CarryingCapacity> <!-- 极大的携带量 -->
+            <RI_MassCarryCapacity>1000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
+            <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency> <!-- 拆解机械体产出效率 -->
+            <ConstructSuccessChance>1</ConstructSuccessChance> <!-- 建造成功率 -->
 
-      <!-- 特殊环境抗性 -->
-      <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance> <!-- SOS2/Odyssey 真空抗性 -->
-      <Flammability>-1</Flammability> <!-- 绝对不可燃 -->
-    </equippedStatOffsets>
+            <!-- 特殊环境抗性 -->
+            <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance> <!-- SOS2/Odyssey 真空抗性 -->
+            <Flammability>-1</Flammability> <!-- 绝对不可燃 -->
+        </equippedStatOffsets>
 
-    <thingCategories>
-      <li>ApparelArmor</li>
-    </thingCategories>
-    <tradeTags>
-      <li>HiTechArmor</li>
-    </tradeTags>
-    <costList>
-    </costList>
-    <apparel>
-      <bodyPartGroups>
-        <li>Eyes</li>
-        <li>Torso</li>
-        <li>Neck</li>
-        <li>Arms</li>
-        <li>Legs</li>
-        <li>FullHead</li>
-      </bodyPartGroups>
-      <wornGraphicPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</wornGraphicPath>
-      <layers>
-        <li>EyeCover</li>
-      </layers>
-	  <tags>
-        <li>EVA</li> <!-- 适配空间生存环境 -->
-	    <li>PrestigeCombatGear</li>
-	  </tags>
-      <useDeflectMetalEffect>false</useDeflectMetalEffect>
-      <careIfWornByCorpse>false</careIfWornByCorpse> <!-- 即使是尸体穿过，也不会有“死人衣服”Debuff -->
-    </apparel>
-  </ThingDef>
-  
+        <thingCategories>
+            <li>ApparelArmor</li>
+        </thingCategories>
+        <tradeTags>
+            <li>HiTechArmor</li>
+        </tradeTags>
+        <costList>
+        </costList>
+        <apparel>
+            <bodyPartGroups>
+                <li>Eyes</li>
+                <li>Torso</li>
+                <li>Neck</li>
+                <li>Arms</li>
+                <li>Legs</li>
+                <li>FullHead</li>
+            </bodyPartGroups>
+
+            <renderSkipFlags>
+                <!--强制不隐藏任何内容-->
+                <li>None</li>
+            </renderSkipFlags>
+            <wornGraphicPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</wornGraphicPath>
+            <layers>
+                <li>EyeCover</li>
+            </layers>
+            <tags>
+                <li>EVA</li> <!-- 适配空间生存环境 -->
+                <li>PrestigeCombatGear</li>
+            </tags>
+            <useDeflectMetalEffect>false</useDeflectMetalEffect>
+            <careIfWornByCorpse>false</careIfWornByCorpse> <!-- 即使是尸体穿过，也不会有“死人衣服”Debuff -->
+        </apparel>
+    </ThingDef>
+
 </Defs>
