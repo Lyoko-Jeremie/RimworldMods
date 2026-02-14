@@ -92,10 +92,11 @@
       <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 近乎没有冷却 (1 - 0.999 = 0.001) -->
       <ShootingAccuracyPawn>100</ShootingAccuracyPawn> <!-- 射击精度补正 -->
       <MoveSpeed>+200</MoveSpeed> <!-- 极速移动 -->
+      <SwimSpeed>+200</SwimSpeed> <!-- 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks -->
 
       <!-- 近战属性 -->
-      <MeleeHitChance>0.5</MeleeHitChance> <!-- 近战命中率 -->
-      <MeleeDodgeChance>0.25</MeleeDodgeChance> <!-- 近战闪避率 -->
+      <MeleeHitChance>1</MeleeHitChance> <!-- 近战命中率 -->
+      <MeleeDodgeChance>1</MeleeDodgeChance> <!-- 近战闪避率 -->
       <MeleeCooldownFactor>-1</MeleeCooldownFactor> <!-- 近战无冷却 -->
       <MeleeDamageFactor>1</MeleeDamageFactor> <!-- 额外伤害加成 -->
       <StaggerDurationFactor>-1</StaggerDurationFactor> <!-- 免疫被击中后的减速僵直 -->
