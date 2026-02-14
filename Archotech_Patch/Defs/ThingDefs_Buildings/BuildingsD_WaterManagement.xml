@@ -13,7 +13,7 @@
                 <mode>Sewage</mode>
             </li>
             <li Class="DubsBadHygiene.CompProperties_WaterInlet">
-                <Radius>20</Radius>
+                <Radius>30</Radius>
             </li>
         </comps>
         <placeWorkers>
@@ -25,8 +25,8 @@
     </ThingDef>
 
     <ThingDef ParentName="BasedWaterWell" DBHLite="true">
-        <defName>DeepWaterWellInlet</defName>
-        <label>deep water well</label>
+        <defName>ArchotechDeepWaterWellInlet</defName>
+        <label>Archotech deep water well</label>
         <description>Accesses a large area of ground water which can be pumped by water pumps. Deep wells are unaffected by pollution.</description>
         <graphicData>
             <texPath>DBH/Things/Building/Water/DeepWaterWell</texPath>
@@ -50,7 +50,7 @@
             </li>
             <li Class="DubsBadHygiene.CompProperties_WaterInlet">
                 <Deep>true</Deep>
-                <Radius>20</Radius>
+                <Radius>30</Radius>
             </li>
         </comps>
         <placeWorkers>
