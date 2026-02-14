@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <ArchotechWaterWellInlet.label>超凡水井</ArchotechWaterWellInlet.label>
+    <ArchotechWaterWellInlet.description>可以通过水泵获取地下水，如果取水范围内存在污水或其他污染物，会降低水质并有卫生疾病风险。</ArchotechWaterWellInlet.description>
+    <ArchotechDeepWaterWellInlet.label>超凡深水井</ArchotechDeepWaterWellInlet.label>
+    <ArchotechDeepWaterWellInlet.description>可以通过水泵获取大量地下水，不受地面污水影响。</ArchotechDeepWaterWellInlet.description>
+
+    <ArchotechWaterWell.label>超凡水井</ArchotechWaterWell.label>
+    <ArchotechDeepWells.label>凡深水井</ArchotechDeepWells.label>
+
+</LanguageData>
