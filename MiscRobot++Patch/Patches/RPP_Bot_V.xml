@@ -206,6 +206,7 @@
             <CarryingCapacity>100000</CarryingCapacity>
             <!-- 移动速度 -->
             <MoveSpeed>1000</MoveSpeed>
+            <SwimSpeed>+200</SwimSpeed> <!-- 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks -->
 
             <Efficiency>20.0</Efficiency>
 
