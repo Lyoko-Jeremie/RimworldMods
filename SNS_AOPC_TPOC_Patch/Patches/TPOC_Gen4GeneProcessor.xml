@@ -1,0 +1,17 @@
+<Patch>
+
+    <!--稳定物质基因处理器-->
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="TPOC_Gen4GeneProcessor"]/comps/li[Class="CompProperties_GenepackContainer"]/maxCapacity</xpath>
+        <value>
+            <maxCapacity>10000</maxCapacity>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="TPOC_Gen4GeneProcessor"]/statBases/GeneticComplexityIncrease</xpath>
+        <value>
+            <GeneticComplexityIncrease>100000</GeneticComplexityIncrease>
+        </value>
+    </Operation>
+
+</Patch>

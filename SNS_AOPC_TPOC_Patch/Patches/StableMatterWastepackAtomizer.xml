@@ -1,0 +1,17 @@
+<Patch>
+
+    <!--奇迹垃圾分解器-->
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="StableMatterWastepackAtomizer"]/comps/li[Class="CompProperties_Atomizer"]/ticksPerAtomize</xpath>
+        <value>
+            <ticksPerAtomize>100</ticksPerAtomize>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="StableMatterWastepackAtomizer"]/comps/li[Class="CompProperties_Atomizer"]/stackLimit</xpath>
+        <value>
+            <stackLimit>100000</stackLimit>
+        </value>
+    </Operation>
+
+</Patch>
