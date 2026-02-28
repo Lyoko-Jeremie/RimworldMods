@@ -14,18 +14,51 @@ SNS : 科学永不止步 （Science Never Stops）
 AOPC : 宇宙雄心 （Ambition of the Cosmic [Continued]）
 TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 
-- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投影仪” 加了回来，并大幅增强了相关属性。
+- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投影仪(Temporal Barrier Projector)” 加了回来，并大幅增强了相关属性。
 	由于时空立场投影仪是一个眼部饰品，这就意味着不需要干扰穿着的衣服，
 	所以鼠鼠等具有特色服饰的种族可在保留服饰的基础上，通过这个物品获得各项属性加成和一个超级强力的随身能量护盾。
 
-- 修改了 “稳定壁垒” 和 “永续自律型群星之怒炮塔” 的攻击准确度，使得其更加符合最强远程炮台的设定了。（再也不会人体描边乱炸一通，敌人衣角微脏，家里建筑却炸了个稀巴烂）
-- 修改了 “星河水栽培III代” 的肥沃度为 10000 ， 让它更符合最强水栽培的设定。解决了种植超级作物（生长时间600天的植物）的问题。（种植超级作物再也不需要依赖 永恒科学 的 生态方舱 了）
+- 修改了 “稳定壁垒(Bastion of Stability)” 和 “永续自律型群星之怒炮塔(Eternal EXARCH Turret)” 的攻击准确度，使得其更加符合最强远程炮台的设定了。（再也不会人体描边乱炸一通，敌人衣角微脏，家里建筑却炸了个稀巴烂）
+- 修改了 “星河水栽培III代(Cosmic Hydroponics Generation Omega)” 的肥沃度为 10000 ， 让它更符合最强水栽培的设定。解决了种植超级作物（生长时间600天的植物）的问题。（种植超级作物再也不需要依赖 永恒科学(Eternal Science) 的 生态方舱(Eco-Ark[EcoArk_LostS1ght]) 了）
 
 - 时空立场投影仪 添加 CE 支持，虽然我不玩 CE ，但是也让 gemini 帮我写了 CE 补丁，如果有问题请及时反馈。
 - 另外， AOTC 的 稳定壁垒 听说好像在CE中不工作。
 
-- 修改 “奇迹垃圾分解器” 的分解速度，虽然它的分解速度已经很快了，但我觉得它还可以再快一点点，所以就把它的分解速度提升了十倍。
-- 修改 “稳定物质基因处理器” ，将容量调到10000，提供的基因复杂度调整为100000，让它更符合最强基因处理器的设定。
+- 修改 “奇迹垃圾分解器(Miraculous Wastepack Atomizer)” 的分解速度，虽然它的分解速度已经很快了，但我觉得它还可以再快一点点，所以就把它的分解速度提升了十倍。
+- 修改 “稳定物质基因处理器(Stable Matter Gene Processor)” ，将容量调到10000，提供的基因复杂度调整为100000，让它更符合最强基因处理器的设定。
+
+----------------
+
+[The English Describe Translated by Gemini]
+
+
+Jeremie's SNS:AOPC:TPOC Patch – Taking Justice One Step Further!
+
+SNS: Science Never Stops
+AOPC: Ambition of the Cosmic [Continued]
+TPOC: True Pinnacle of Creation [Continued]
+
+- Restored the "Temporal Barrier Projector" from Ambition of the Cosmic: Custom Edition and significantly buffed its attributes.
+Since the projector is an eye accessory, it does not interfere with worn apparel. This allows races with unique outfits (like Ratkins) to keep their signature look while gaining massive stat boosts and a super-powerful portable energy shield.
+
+- Tweaked the accuracy of the "Bastion of Stability" and "Eternal EXARCH Turret" to better fit their status as the "ultimate ranged turrets."
+(No more "outline painting" where the enemy walks away with a dusty coat while your own base is blown to smithereens.)
+
+- Increased the fertility of "Cosmic Hydroponics Generation Omega" to 10,000, aligning it with its identity as the ultimate hydroponics basin.
+This resolves the issue of growing super-crops (plants with 600-day growth cycles). You no longer need to rely on the Eco-Ark from Eternal Science.
+
+- Added Combat Extended (CE) support for the Temporal Barrier Projector.
+(Disclaimer: I don't play CE myself, but I had Gemini write the patch for me. If you encounter any issues, please provide feedback.)
+- Note: I’ve heard rumors that the Stabilized Bulwark from AOTC may not function correctly in CE.
+
+- Increased the speed of the "Miraculous Wastepack Atomizer"
+While it was already fast, I felt it could be a bit faster, so I boosted its processing speed tenfold.
+
+- Modified the "Stable Matter Gene Processor"
+Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, ensuring it truly feels like the ultimate gene processor.
+
+
+
 
 	</description>
 	<loadAfter>
