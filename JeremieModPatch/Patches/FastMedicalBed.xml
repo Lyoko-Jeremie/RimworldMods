@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+
+<!--    <name>Faster Healing Bed</name>-->
+<!--    <packageId>sshark.fasterhealingbed</packageId>-->
+
+    <!--先进医疗床-->
+
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="FastMedicalBed"]/statBases/ImmunityGainSpeedFactor</xpath>
+        <value>
+            <!-- 免疫速度乘数  -->
+            <ImmunityGainSpeedFactor>10000000</ImmunityGainSpeedFactor>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="FastMedicalBed"]/statBases/MedicalTendQualityOffset</xpath>
+        <value>
+            <!-- 医疗质量增益  -->
+            <MedicalTendQualityOffset>1000000000</MedicalTendQualityOffset>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/ThingDef[defName="FastMedicalBed"]/statBases/SurgerySuccessChanceFactor</xpath>
+        <value>
+            <!-- 手术成功率乘数  -->
+            <SurgerySuccessChanceFactor>100000</SurgerySuccessChanceFactor>
+        </value>
+    </Operation>
+
+</Patch>
