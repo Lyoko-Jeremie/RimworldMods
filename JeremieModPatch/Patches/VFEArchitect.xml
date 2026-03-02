@@ -14,11 +14,16 @@
 <!--        </value>-->
 <!--    </Operation>-->
 
-    <Operation Class="PatchOperationRemove">
-      <xpath>Defs/ThingDef[defName="VFEArch_LawnPlot"]/terrainAffordanceNeeded</xpath>
-    </Operation>
-    <Operation Class="PatchOperationRemove">
-      <xpath>Defs/ThingDef[defName="VFEArch_Grass"]/terrainAffordanceNeeded</xpath>
-    </Operation>
+
+
+
+
+<!--    bug ?-->
+<!--    <Operation Class="PatchOperationRemove">-->
+<!--      <xpath>Defs/ThingDef[defName="VFEArch_LawnPlot"]/terrainAffordanceNeeded</xpath>-->
+<!--    </Operation>-->
+<!--    <Operation Class="PatchOperationRemove">-->
+<!--      <xpath>Defs/ThingDef[defName="VFEArch_Grass"]/terrainAffordanceNeeded</xpath>-->
+<!--    </Operation>-->
 
 </Patch>
