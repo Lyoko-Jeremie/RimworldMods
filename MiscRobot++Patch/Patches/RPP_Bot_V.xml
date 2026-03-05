@@ -74,27 +74,27 @@
             </modExtensions>
         </value>
     </Operation>
-    <Operation Class="PatchOperationAdd">
-        <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>-->
-        <xpath>Defs/ThingDef
-            [
-            defName="AIRobot_Hauler_V" or
+<!--    <Operation Class="PatchOperationAdd">-->
+<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>&ndash;&gt;-->
+<!--        <xpath>Defs/ThingDef-->
+<!--            [-->
+<!--            defName="AIRobot_Hauler_V" or-->
 
-            defName="RPP_Bot_Crafter_V" or
+<!--            defName="RPP_Bot_Crafter_V" or-->
 
-            defName="RPP_Bot_Kitchen_V" or
+<!--            defName="RPP_Bot_Kitchen_V" or-->
 
-            defName="RPP_Bot_Builder_V" or
+<!--            defName="RPP_Bot_Builder_V" or-->
 
-            defName="RPP_Bot_ER_V" or
+<!--            defName="RPP_Bot_ER_V" or-->
 
-            defName="RPP_Bot_Omni_V"
-            ]
-        </xpath>
-        <value>
-            <rechargeEfficiency>0.8</rechargeEfficiency>
-        </value>
-    </Operation>
+<!--            defName="RPP_Bot_Omni_V"-->
+<!--            ]-->
+<!--        </xpath>-->
+<!--        <value>-->
+<!--            <rechargeEfficiency>0.8</rechargeEfficiency>-->
+<!--        </value>-->
+<!--    </Operation>-->
 
     <Operation Class="PatchOperationReplace">
         <xpath>Defs/ThingDef[
