@@ -96,6 +96,36 @@
         </value>
     </Operation>
 
+<!--    <Operation Class="PatchOperationSequence">-->
+<!--        <operations>-->
+<!--            <li Class="PatchOperationRemove">-->
+<!--                <success>Always</success>-->
+<!--                <xpath>Defs/ThingDef[-->
+<!--                    defName="AIRobot_Hauler_V" or-->
+<!--                    defName="RPP_Bot_Crafter_V" or-->
+<!--                    defName="RPP_Bot_Kitchen_V" or-->
+<!--                    defName="RPP_Bot_Builder_V" or-->
+<!--                    defName="RPP_Bot_ER_V" or-->
+<!--                    defName="RPP_Bot_Omni_V"-->
+<!--                    ]/*[name()='rechargeEfficiency']</xpath>-->
+<!--            </li>-->
+
+<!--            <li Class="PatchOperationAdd">-->
+<!--                <xpath>Defs/ThingDef[-->
+<!--                    defName="AIRobot_Hauler_V" or-->
+<!--                    defName="RPP_Bot_Crafter_V" or-->
+<!--                    defName="RPP_Bot_Kitchen_V" or-->
+<!--                    defName="RPP_Bot_Builder_V" or-->
+<!--                    defName="RPP_Bot_ER_V" or-->
+<!--                    defName="RPP_Bot_Omni_V"-->
+<!--                    ]</xpath>-->
+<!--                <value>-->
+<!--                    <rechargeEfficiency>0.8</rechargeEfficiency>-->
+<!--                </value>-->
+<!--            </li>-->
+<!--        </operations>-->
+<!--    </Operation>-->
+
     <!--    <Operation Class="PatchOperationAdd">-->
     <!--        &lt;!&ndash;        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/statBases</xpath>&ndash;&gt;-->
     <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>-->
@@ -139,7 +169,7 @@
     <!--            <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>-->
     <!--        </value>-->
     <!--    </Operation>-->
-    <Operation Class="PatchOperationAdd">
+<!--    <Operation Class="PatchOperationAdd">-->
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/statBases</xpath>-->
         <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>-->
         <!--        <xpath>Defs/ThingDef-->
@@ -182,63 +212,112 @@
         <!--            ]-->
         <!--            /statBases-->
         <!--        </xpath>-->
+<!--    </Operation>-->
 
-        <xpath>Defs/ThingDef
-            [
-            defName="AIRobot_Hauler_V" or
+    <Operation Class="PatchOperationSequence">
+        <operations>
+            <li Class="PatchOperationRemove">
+                <success>Always</success>
+                <xpath>Defs/ThingDef[
+                    defName="AIRobot_Hauler_V" or
+                    defName="RPP_Bot_Crafter_V" or
+                    defName="RPP_Bot_Kitchen_V" or
+                    defName="RPP_Bot_Builder_V" or
+                    defName="RPP_Bot_ER_V" or
+                    defName="RPP_Bot_Omni_V"
+                    ]/statBases/*[
+                    name()='RI_MassCarryCapacity' or
+                    name()='CarryingCapacity' or
+                    name()='MoveSpeed' or
+                    name()='SwimSpeed' or
+                    name()='Efficiency' or
+                    name()='ToxicResistance' or
+                    name()='MeleeHitChance' or
+                    name()='MeleeDodgeChance' or
+                    name()='ShootingAccuracyPawn' or
+                    name()='CrawlSpeed' or
+                    name()='MeleeDamageFactor' or
+                    name()='AimingDelayFactor' or
+                    name()='RangedCooldownFactor' or
+                    name()='StaggerDurationFactor' or
+                    name()='IncomingDamageFactor' or
+                    name()='MeleeCooldownFactor' or
+                    name()='ComfyTemperatureMin' or
+                    name()='ComfyTemperatureMax' or
+                    name()='ArmorRating_Blunt' or
+                    name()='ArmorRating_Sharp' or
+                    name()='ArmorRating_Heat' or
+                    name()='WorkSpeedGlobal' or
+                    name()='VacuumResistance'
+                    ]</xpath>
+            </li>
 
-            defName="RPP_Bot_Crafter_V" or
+            <li Class="PatchOperationAdd">
+                <xpath>Defs/ThingDef[
+                    defName="AIRobot_Hauler_V" or
+                    defName="RPP_Bot_Crafter_V" or
+                    defName="RPP_Bot_Kitchen_V" or
+                    defName="RPP_Bot_Builder_V" or
+                    defName="RPP_Bot_ER_V" or
+                    defName="RPP_Bot_Omni_V"
+                    ]/statBases</xpath>
+                <value>
+                    <!-- 额外负重 -->
+                    <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">1000</RI_MassCarryCapacity>
+                    <!-- 携带能力 -->
+                    <CarryingCapacity>100000</CarryingCapacity>
+                    <!-- 移动速度 -->
+                    <MoveSpeed>1000</MoveSpeed>
 
-            defName="RPP_Bot_Kitchen_V" or
+                    <efficiency>20.0</efficiency>
 
-            defName="RPP_Bot_Builder_V" or
+                    <ToxicResistance>1</ToxicResistance><!--毒性抵抗系数-->
+                    <MeleeHitChance>200</MeleeHitChance><!--近战命中-->
+                    <MeleeDodgeChance>200</MeleeDodgeChance><!--近战闪避，最大值 50 -->
+                    <ShootingAccuracyPawn>200</ShootingAccuracyPawn><!--射击精度-->
+                    <CrawlSpeed>200</CrawlSpeed><!-- 爬行速度-->
 
-            defName="RPP_Bot_ER_V" or
+                    <MeleeDamageFactor>30</MeleeDamageFactor><!--近战伤害系数-->
+                    <AimingDelayFactor>0.01</AimingDelayFactor><!--瞄准延迟系数-->
+                    <RangedCooldownFactor>0.01</RangedCooldownFactor><!--远程冷却系数-->
+                    <StaggerDurationFactor>0.01</StaggerDurationFactor><!--抑止时间系数-->
+                    <IncomingDamageFactor>0.01</IncomingDamageFactor><!--受到伤害乘数-->
+                    <MeleeCooldownFactor>0.01</MeleeCooldownFactor><!-- 近战冷却-->
 
-            defName="RPP_Bot_Omni_V"
-            ]
-            /statBases
-        </xpath>
-        <value>
-            <!-- 额外负重 -->
-            <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>
-            <!-- 携带能力 -->
-            <CarryingCapacity>100000</CarryingCapacity>
-            <!-- 移动速度 -->
-            <MoveSpeed>1000</MoveSpeed>
-            <SwimSpeed>+200</SwimSpeed> <!-- 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks -->
+                    <!--最低适应温度-->
+                    <ComfyTemperatureMin>-300</ComfyTemperatureMin>
+                    <!--最高适应温度-->
+                    <ComfyTemperatureMax>3000</ComfyTemperatureMax>
+                    <!--钝器护甲-->
+                    <ArmorRating_Blunt>2000</ArmorRating_Blunt>
+                    <!--锐器护甲-->
+                    <ArmorRating_Sharp>2000</ArmorRating_Sharp>
+                    <!--高温护甲-->
+                    <ArmorRating_Heat>2000</ArmorRating_Heat>
 
-            <Efficiency>20.0</Efficiency>
+                    <!--全局工作速度系数-->
+                    <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>
 
-            <ToxicResistance>1</ToxicResistance><!--毒性抵抗系数-->
-            <MeleeHitChance>200</MeleeHitChance><!--近战命中-->
-            <MeleeDodgeChance>200</MeleeDodgeChance><!--近战闪避，最大值 50 -->
-            <ShootingAccuracyPawn>200</ShootingAccuracyPawn><!--射击精度-->
-            <CrawlSpeed>200</CrawlSpeed><!-- 爬行速度-->
-
-            <MeleeDamageFactor>30</MeleeDamageFactor><!--近战伤害系数-->
-            <AimingDelayFactor>0.01</AimingDelayFactor><!--瞄准延迟系数-->
-            <RangedCooldownFactor>0.01</RangedCooldownFactor><!--远程冷却系数-->
-            <StaggerDurationFactor>0.01</StaggerDurationFactor><!--抑止时间系数-->
-            <IncomingDamageFactor>0.01</IncomingDamageFactor><!--受到伤害乘数-->
-            <MeleeCooldownFactor>0.01</MeleeCooldownFactor><!-- 近战冷却-->
-
-            <!--最低适应温度-->
-            <ComfyTemperatureMin>-300</ComfyTemperatureMin>
-            <!--最高适应温度-->
-            <ComfyTemperatureMax>3000</ComfyTemperatureMax>
-            <!--钝器护甲-->
-            <ArmorRating_Blunt>2000</ArmorRating_Blunt>
-            <!--锐器护甲-->
-            <ArmorRating_Sharp>2000</ArmorRating_Sharp>
-            <!--高温护甲-->
-            <ArmorRating_Heat>2000</ArmorRating_Heat>
-
-            <!--全局工作速度系数-->
-            <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>
-
-            <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
-        </value>
+                    <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
+                </value>
+            </li>
+            <li Class="PatchOperationConditional">
+                <xpath>Defs/StatDef[defName="SwimSpeed"]</xpath>
+                <match Class="PatchOperationAdd">
+                    <xpath>Defs/ThingDef[
+                        defName="AIRobot_Hauler_V" or
+                        defName="RPP_Bot_Crafter_V" or
+                        defName="RPP_Bot_Kitchen_V" or
+                        defName="RPP_Bot_Builder_V" or
+                        defName="RPP_Bot_ER_V" or
+                        defName="RPP_Bot_Omni_V"
+                        ]/statBases</xpath>
+                    <value>
+                        <SwimSpeed MayRequire="pyrce.swimming.modkit">+200</SwimSpeed> <!-- 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks -->
+                    </value>
+                </match>
+            </li>
+        </operations>
     </Operation>
 
 
