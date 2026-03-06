@@ -96,9 +96,9 @@
 <!--        </value>-->
 <!--    </Operation>-->
 
+<!--    defName="RPP_RechargeStation_V" or-->
     <Operation Class="PatchOperationReplace">
         <xpath>Defs/ThingDef[
-            defName="RPP_RechargeStation_V" or
             defName="AIRobot_RechargeStation_Hauler_V" or
             defName="AIRobot_RechargeStation_Cleaner_V" or
             defName="RPP_RechargeStation_Builder_V" or
@@ -247,7 +247,6 @@
                     name()='CarryingCapacity' or
                     name()='MoveSpeed' or
                     name()='SwimSpeed' or
-                    name()='Efficiency' or
                     name()='ToxicResistance' or
                     name()='MeleeHitChance' or
                     name()='MeleeDodgeChance' or
@@ -285,9 +284,6 @@
                     <CarryingCapacity>100000</CarryingCapacity>
                     <!-- 移动速度 -->
                     <MoveSpeed>1000</MoveSpeed>
-
-                    <!-- 效率 -->
-                    <efficiency>20.0</efficiency>
 
                     <ToxicResistance>1</ToxicResistance><!--毒性抵抗系数-->
                     <MeleeHitChance>200</MeleeHitChance><!--近战命中-->
@@ -370,36 +366,54 @@
                     </value>
                 </match>
             </li>
+            <li Class="PatchOperationConditional">
+                <xpath>Defs/StatDef[defName="efficiency"]</xpath>
+                <match Class="PatchOperationAdd">
+                    <xpath>Defs/ThingDef[
+                        defName="AIRobot_Hauler_V" or
+                        defName="RPP_Bot_Crafter_V" or
+                        defName="RPP_Bot_Kitchen_V" or
+                        defName="RPP_Bot_Builder_V" or
+                        defName="RPP_Bot_ER_V" or
+                        defName="RPP_Bot_Omni_V"
+                        ]/statBases
+                    </xpath>
+                    <value>
+                        <!-- 效率 -->
+                        <efficiency>2000.0</efficiency>
+                    </value>
+                </match>
+            </li>
         </operations>
     </Operation>
 
 
-    <Operation Class="PatchOperationAdd">
-        <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]</xpath>-->
-        <!--        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]</xpath>-->
-        <xpath>Defs/ThingDef
-            [
-            defName="AIRobot_Hauler_V" or
+<!--    <Operation Class="PatchOperationAdd">-->
+<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]</xpath>&ndash;&gt;-->
+<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]</xpath>&ndash;&gt;-->
+<!--        <xpath>Defs/ThingDef-->
+<!--            [-->
+<!--            defName="AIRobot_Hauler_V" or-->
 
-            defName="RPP_Bot_Crafter_V" or
+<!--            defName="RPP_Bot_Crafter_V" or-->
 
-            defName="RPP_Bot_Kitchen_V" or
+<!--            defName="RPP_Bot_Kitchen_V" or-->
 
-            defName="RPP_Bot_Builder_V" or
+<!--            defName="RPP_Bot_Builder_V" or-->
 
-            defName="RPP_Bot_ER_V" or
+<!--            defName="RPP_Bot_ER_V" or-->
 
-            defName="RPP_Bot_Omni_V"
-            ]
-        </xpath>
-        <value>
-            <equippedStatOffsets>
-                <!-- 额外负重 -->
-                <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>
-                <!-- 携带能力 -->
-                <CarryingCapacity>100000</CarryingCapacity>
-            </equippedStatOffsets>
-        </value>
-    </Operation>
+<!--            defName="RPP_Bot_Omni_V"-->
+<!--            ]-->
+<!--        </xpath>-->
+<!--        <value>-->
+<!--            <equippedStatOffsets>-->
+<!--                &lt;!&ndash; 额外负重 &ndash;&gt;-->
+<!--                <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>-->
+<!--                &lt;!&ndash; 携带能力 &ndash;&gt;-->
+<!--                <CarryingCapacity>100000</CarryingCapacity>-->
+<!--            </equippedStatOffsets>-->
+<!--        </value>-->
+<!--    </Operation>-->
 
 </Patch>
