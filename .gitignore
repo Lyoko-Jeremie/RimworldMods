@@ -94,5 +94,7 @@ fabric.properties
 !MiscRobot++Patch/**/*
 !Archotech_Patch/
 !Archotech_Patch/**/*
+!JeremieEggSafeBox/
+!JeremieEggSafeBox/**/*
 !.gitignore
 

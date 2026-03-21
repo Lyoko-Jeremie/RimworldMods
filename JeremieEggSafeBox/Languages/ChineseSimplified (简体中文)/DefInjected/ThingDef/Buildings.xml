@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ThingDef -->
+<LanguageData>
+  <Jeremie_Building_AdvanceEggDelayHatcher.label>受精卵保管箱</Jeremie_Building_AdvanceEggDelayHatcher.label>
+  <Jeremie_Building_AdvanceEggDelayHatcher.description>专为存储受精卵而设计的受精卵保管箱。
+
+延迟受精卵的孵化过程。
+
+同时保护脆弱的胚胎免受极热或极冷的影响。
+
+一次只能容纳一堆受精卵。
+
+非常适合想要安全存储大量受精卵的殖民者。</Jeremie_Building_AdvanceEggDelayHatcher.description>
+  
+</LanguageData>

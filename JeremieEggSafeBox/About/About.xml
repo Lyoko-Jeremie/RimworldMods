@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>Jeremie 的 受精卵保管箱</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.EggSafeBox</packageId>
+    <description>
+Jeremie 的 受精卵保管箱 ， 保管你的受精卵（永久！） ！
+
+基于 边缘农科之孵蛋器 进行简单修改，创造的受精卵保管箱，能让受精卵在里面安全地存放（永久！），直到你准备好孵化它们为止。
+
+解决了有上千个蛋，既想孵化又不想放在冰箱里导致它们被冻坏的尴尬问题。
+
+这个idea来自于某位超凡智能某一天从旅行商处买到了3595个绮罗蛋后发生的故事（事故）。
+
+---
+
+[English Translation]
+
+Jeremie's Egg Delay Hatcher, a simple mod that allows you to safely store fertilized eggs (forever) until you're ready to hatch them!
+
+This mod is a simple modification of the Edge of Agriculture's Incubator, creating an Egg Delay Hatcher that can safely store fertilized eggs (forever) until you're ready to hatch them.
+
+This solves the awkward problem of having thousands of eggs that you want to hatch but don't want to put in the fridge and risk them getting frozen.
+
+The idea came from the story (accident) that happened one day when I bought 3595 Kiro Eggs from a traveling merchant.
+
+
+
+
+---
+
+感谢边缘农科之孵蛋器：https://steamcommunity.com/sharedfiles/filedetails/?id=3552532627
+dll代码修改自边缘农科之孵蛋器，感谢原作者的辛勤劳动！
+
+Thanks to Mod: https://steamcommunity.com/sharedfiles/filedetails/?id=3552532627
+The dll code is modified from the mod, thanks to the original author's hard work!
+
+	</description>
+	<loadAfter>
+	</loadAfter>
+	
+	<modDependencies>
+	    <li>
+			<packageId>mf.AHM</packageId>
+	        <displayName>Advance Incubator</displayName>
+	        <steamWorkshopUrl>steam://url/CommunityFilePage/3552532627</steamWorkshopUrl>
+	    </li>
+	</modDependencies>
+</ModMetaData>

@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="BuildingBase">
+    <defName>Jeremie_Building_AdvanceEggDelayHatcher</defName>
+    <label>Advance Egg Delay Hatcher</label>
+    <description>Fertilized egg storage box designed specifically for storing fertilized eggs.
+
+Delays the hatching process of fertilized eggs.
+
+Also protects fragile embryos from extreme heat or cold.
+
+It can only hold one bunch of fertilized eggs at a time.
+
+Ideal for colonists who want to safely store large quantities of fertilized eggs.</description>
+    <thingClass>Building_Storage</thingClass>
+    <drawerType>MapMeshAndRealTime</drawerType>
+    <fillPercent>0.3</fillPercent>
+    <tickerType>Normal</tickerType>
+    <drawGUIOverlay>true</drawGUIOverlay>
+    <containedItemsSelectable>true</containedItemsSelectable>
+    <graphicData>
+      <texPath>Things/Building/AdvanceEggDelayHatcher</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shadowData>
+        <volume>(1,0.5,1)</volume>
+      </shadowData>
+      <damageData>
+        <rect>(0,0,1,1)</rect>
+      </damageData>
+    </graphicData>
+    <altitudeLayer>Building</altitudeLayer>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
+    <statBases>
+      <MaxHitPoints>500</MaxHitPoints>
+      <WorkToBuild>2000</WorkToBuild>
+      <Flammability>0</Flammability>
+      <Mass>5</Mass>
+    </statBases>
+    <comps>
+      <!--<li Class="CompProperties_ThingContainer"><compClass>CompEggContainer</compClass><stackLimit>25</stackLimit><minCountToEmpty>20</minCountToEmpty><drawStackLabel>true</drawStackLabel></li>-->
+<!--      <li Class="HatchMachine.CompProperties_AdvanceEggContainer">-->
+<!--        <compClass>HatchMachine.CompAdvanceEggContainer</compClass>-->
+<!--        <hatchSpeedMultiplier>0.1</hatchSpeedMultiplier>-->
+<!--      </li>-->
+      <li Class="EggSafeBox.CompProperties_EggSafeBox">
+        <compClass>EggSafeBox.CompEggSafeBox</compClass>
+        <frozenSafeBox>true</frozenSafeBox>
+      </li>
+      <li Class="HatchMachine.CompProperties_LayerDrawer">
+        <graphics>
+          <li>
+            <graphicData>
+              <texPath>Things/Building/AdvanceEggDelayHatcherGlass</texPath>
+              <graphicClass>Graphic_Single</graphicClass>
+              <drawSize>(1,1)</drawSize>
+            </graphicData>
+            <altitudeLayer>LayingPawn</altitudeLayer>
+          </li>
+        </graphics>
+      </li>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>300</basePowerConsumption>
+      </li>
+    </comps>
+    <costList>
+      <Steel>100</Steel>
+      <ComponentIndustrial>3</ComponentIndustrial>
+    </costList>
+    <pathCost>10</pathCost>
+    <designationCategory>Misc</designationCategory>
+    <uiOrder>2100</uiOrder>
+    <rotatable>false</rotatable>
+    <building>
+      <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <maxItemsInCell>1</maxItemsInCell>
+      <blueprintClass>Blueprint_Storage</blueprintClass>
+      <paintable>true</paintable>
+      <fixedStorageSettings>
+        <filter>
+          <disallowNotEverStorable>true</disallowNotEverStorable>
+          <categories>
+            <li>EggsFertilized</li>
+          </categories>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Preferred</priority>
+        <filter>
+          <categories>
+            <li>EggsFertilized</li>
+          </categories>
+        </filter>
+      </defaultStorageSettings>
+    </building>
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
+  </ThingDef>
+</Defs>

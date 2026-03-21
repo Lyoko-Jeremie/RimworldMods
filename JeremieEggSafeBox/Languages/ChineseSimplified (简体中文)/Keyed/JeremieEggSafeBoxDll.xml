@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Use in dll -->
+<LanguageData>
+    <HatchPeriodProgressBeFrozen>孵化进度已冻结</HatchPeriodProgressBeFrozen>
+    <JeremieEggSafeBoxIsWorking>受精卵保管箱正在工作</JeremieEggSafeBoxIsWorking>
+    <JeremieEggSafeBoxIsNotWorking>受精卵保管箱状态异常</JeremieEggSafeBoxIsNotWorking>
+</LanguageData>
