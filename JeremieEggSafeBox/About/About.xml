@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <ModMetaData>
-	<name>Jeremie 的 受精卵保管箱</name>
+	<name>受精卵保管箱</name>
     <author>Jeremie</author>
     <supportedVersions>
 		<li>1.6</li>
     </supportedVersions>
 	<packageId>Jeremie.EggSafeBox</packageId>
     <description>
-Jeremie 的 受精卵保管箱 ， 保管你的受精卵（永久！） ！
+受精卵保管箱 ， 保管你的受精卵（永久！） ！
 
 基于 边缘农科之孵蛋器 进行简单修改，创造的受精卵保管箱，能让受精卵在里面安全地存放（永久！），直到你准备好孵化它们为止。
 
-解决了有上千个蛋，既想孵化又不想放在冰箱里导致它们被冻坏的尴尬问题。
+解决了有上千个蛋，不能一下子全部孵化导致爆炸，想之后再孵化，又不想放在冰箱里导致它们被冻坏的尴尬问题。
 
 这个idea来自于某位超凡智能某一天从旅行商处买到了3595个绮罗蛋后发生的故事（事故）。
 
@@ -20,23 +20,22 @@ Jeremie 的 受精卵保管箱 ， 保管你的受精卵（永久！） ！
 
 [English Translation]
 
-Jeremie's Egg Delay Hatcher, a simple mod that allows you to safely store fertilized eggs (forever) until you're ready to hatch them!
+Egg Safe Box, keep your fertilized eggs (permanently!) safe!
 
-This mod is a simple modification of the Edge of Agriculture's Incubator, creating an Egg Delay Hatcher that can safely store fertilized eggs (forever) until you're ready to hatch them.
+Based on the Mod: Advance Incubator, I made a simple modification to create the Egg Safe Box, which allows fertilized eggs to be stored safely inside (permanently!) until you're ready to hatch them.
 
-This solves the awkward problem of having thousands of eggs that you want to hatch but don't want to put in the fridge and risk them getting frozen.
+This solves the awkward problem of having thousands of eggs that can't be hatched all at once, leading to an explosion, and wanting to hatch them later without putting them in the fridge and risking them getting frozen.
 
-The idea came from the story (accident) that happened one day when I bought 3595 Kiro Eggs from a traveling merchant.
-
-
+The idea came from a story (accident) that happened to a certain superintelligent one when they bought 3595 Kiro eggs from a traveling merchant one day.
 
 
 ---
 
-感谢边缘农科之孵蛋器：https://steamcommunity.com/sharedfiles/filedetails/?id=3552532627
+感谢 边缘农科之孵蛋器 ：https://steamcommunity.com/sharedfiles/filedetails/?id=3552532627
 dll代码修改自边缘农科之孵蛋器，感谢原作者的辛勤劳动！
+本以为直接创建一个xml修改一下参数就能实现，然而发现孵蛋器在dll中硬编码了物体的id，所以只能复制了对应的dll代码，并进行修改和优化后，才得以实现这个功能。
 
-Thanks to Mod: https://steamcommunity.com/sharedfiles/filedetails/?id=3552532627
+Thanks to Advance Incubator: https://steamcommunity.com/sharedfiles/filedetails/?id=3552532627
 The dll code is modified from the mod, thanks to the original author's hard work!
 
 	</description>
