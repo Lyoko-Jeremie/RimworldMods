@@ -97,15 +97,16 @@
 <!--    </Operation>-->
 
 <!--    defName="RPP_RechargeStation_V" or-->
+<!--    defName="AIRobot_RechargeStation_Hauler_V" or-->
+<!--    defName="AIRobot_RechargeStation_Cleaner_V" or-->
+<!--    defName="RPP_RechargeStation_Builder_V" or-->
+<!--    defName="RPP_RechargeStation_Crafter_V" or-->
+<!--    defName="RPP_RechargeStation_ER_V" or-->
+<!--    defName="RPP_RechargeStation_Kitchen_V" or-->
+<!--    defName="RPP_RechargeStation_Omni_V"-->
     <Operation Class="PatchOperationReplace">
         <xpath>Defs/ThingDef[
-            defName="AIRobot_RechargeStation_Hauler_V" or
-            defName="AIRobot_RechargeStation_Cleaner_V" or
-            defName="RPP_RechargeStation_Builder_V" or
-            defName="RPP_RechargeStation_Crafter_V" or
-            defName="RPP_RechargeStation_ER_V" or
-            defName="RPP_RechargeStation_Kitchen_V" or
-            defName="RPP_RechargeStation_Omni_V"
+            @Name="RPP_RechargeStation_V"
             ]/rechargeEfficiency
         </xpath>
         <value>
@@ -384,6 +385,24 @@
                     </value>
                 </match>
             </li>
+<!--            <li Class="PatchOperationConditional">-->
+<!--                <xpath>Defs/StatDef[defName="VEF_RangedDodgeChance"]</xpath>-->
+<!--                <match Class="PatchOperationAdd">-->
+<!--                    <xpath>Defs/ThingDef[-->
+<!--                        defName="AIRobot_Hauler_V" or-->
+<!--                        defName="RPP_Bot_Crafter_V" or-->
+<!--                        defName="RPP_Bot_Kitchen_V" or-->
+<!--                        defName="RPP_Bot_Builder_V" or-->
+<!--                        defName="RPP_Bot_ER_V" or-->
+<!--                        defName="RPP_Bot_Omni_V"-->
+<!--                        ]/statBases-->
+<!--                    </xpath>-->
+<!--                    <value>-->
+<!--                        &lt;!&ndash; 远程闪避率 &ndash;&gt;-->
+<!--                        <VEF_RangedDodgeChance>2</VEF_RangedDodgeChance>-->
+<!--                    </value>-->
+<!--                </match>-->
+<!--            </li>-->
         </operations>
     </Operation>
 
