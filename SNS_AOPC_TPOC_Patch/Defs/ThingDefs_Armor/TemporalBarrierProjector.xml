@@ -148,8 +148,8 @@
         </costList>
         <apparel>
             <bodyPartGroups>
-                <li MayRequire="Ingendum.AnimalApparelFramework">AnimalEyes</li>
                 <li MayRequire="Ingendum.AnimalApparelFramework">AnimalBody</li>
+                <li MayRequire="Ingendum.AnimalApparelFramework">AnimalLegs</li>
                 <li>Eyes</li>
                 <li>Torso</li>
                 <li>Neck</li>
