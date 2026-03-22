@@ -2,7 +2,7 @@
 <Defs>
 
     <!-- 时空立场投影仪：这是一款基于 Archotech（远古超科）技术的顶级防御装备 -->
-    <ThingDef ParentName="ApparelBase">
+    <ThingDef ParentName="ApparelBase" Name="SNS_CE_TemporalBarrierProjector">
         <defName>SNS_CE_TemporalBarrierProjector</defName>
         <label>Temporal Barrier Projector</label>
         <description>A picoscale-sized device that projects an invisible temporal barrier, much like the one that the
@@ -148,6 +148,8 @@
         </costList>
         <apparel>
             <bodyPartGroups>
+                <li MayRequire="Ingendum.AnimalApparelFramework">AnimalEyes</li>
+                <li MayRequire="Ingendum.AnimalApparelFramework">AnimalBody</li>
                 <li>Eyes</li>
                 <li>Torso</li>
                 <li>Neck</li>
@@ -167,10 +169,17 @@
             <tags>
                 <li>EVA</li> <!-- 适配空间生存环境 -->
                 <li>PrestigeCombatGear</li>
+                <li MayRequire="Ingendum.AnimalApparelFramework">AnimalApparel</li>
             </tags>
             <useDeflectMetalEffect>false</useDeflectMetalEffect>
             <careIfWornByCorpse>false</careIfWornByCorpse> <!-- 即使是尸体穿过，也不会有“死人衣服”Debuff -->
         </apparel>
+        
+        <modExtensions>
+            <li Class="AnimalGear.AnimalApparelDefExtension" MayRequire="Ingendum.AnimalApparelFramework">
+                <showCoverageForBodyType>QuadrupedAnimalWithPaws</showCoverageForBodyType>
+            </li>
+        </modExtensions>
     </ThingDef>
 
 </Defs>

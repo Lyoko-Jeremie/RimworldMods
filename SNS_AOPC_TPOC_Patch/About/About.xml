@@ -30,6 +30,10 @@ TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 - 2026.03.20
 - 再次增加了时空立场投影仪的携带能力，因为我发现外出时携带能力还不够大。
 
+- 2026.03.22
+- 为动物提供了穿戴时空立场投影仪的支持。现在动物也可以穿戴时空立场投影仪了。当风雪遗孤模式动物单主角与动物时，让动物作为后备力量的可靠性大大提升。
+（需要安装能让动物穿衣服的mod框架：（Animal Apparel: Framework）） https://steamcommunity.com/workshop/filedetails/?id=3513825850
+
 
 ----------------
 
@@ -64,6 +68,9 @@ Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, en
 - 2026.03.20
 - Further increased the carrying capacity of the Temporal Barrier Projector, as I found it still wasn't quite enough for venturing out.
 
+- 2026.03.22
+- Added support for animals to wear the Temporal Barrier Projector. Now animals can also benefit from wearing the projector. 
+(Requires the "Animal Apparel: Framework" mod that allows animals to wear apparel) https://steamcommunity.com/workshop/filedetails/?id
 
 
 	</description>
