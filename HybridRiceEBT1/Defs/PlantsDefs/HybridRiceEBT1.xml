@@ -1,0 +1,107 @@
+<Defs>
+
+
+    <ThingDef ParentName="PlantBase" Name="Jeremie_Plant_HybridRiceEBT1">
+        <defName>Jeremie_Plant_HybridRiceEBT1</defName>
+        <label>Perennial Hybrid Rice EBT1</label>
+        <description>Perennial super hybrid rice has high yield, is easy to grow, can be harvested multiple times after sowing once, and can grow in harsh environments.</description>
+
+        <!-- 基础属性：比普通水稻更强壮 -->
+        <statBases>
+            <!-- MaxHitPoints: 植物的最大生命值。被火烧、被攻击扣到0就会被摧毁 -->
+            <MaxHitPoints>500</MaxHitPoints>
+            <!-- 茂茂盛生长的水稻代表粮食无忧，让人心情舒畅，这意味着在室内和室外的美观度都很高 -->
+            <Beauty>20</Beauty>
+            <BeautyOutdoors>20</BeautyOutdoors>
+            <!-- Nutrition: 动物（比如敲击兽或牛）直接吃掉整棵植株（不是吃果实）能获得的营养值 -->
+            <Nutrition>1</Nutrition>
+        </statBases>
+
+        <!-- 视觉模型：借用原版水稻的贴图 -->
+        <graphicData>
+            <texPath>Things/Plant/RicePlant</texPath>
+            <graphicClass>Graphic_Random</graphicClass>
+        </graphicData>
+
+        <!-- selectable: 玩家能否用鼠标左键点击选中这棵植物。true为可以 -->
+        <selectable>true</selectable>
+
+        <!-- neverMultiSelect: 是否禁止被框选。false代表你可以拉一个框把好几棵浆果丛一起选中 -->
+        <neverMultiSelect>false</neverMultiSelect>
+
+        <!-- fillPercent: 掩体比例。0.50代表小人躲在它后面有50%的概率挡住飞来的子弹 -->
+        <fillPercent>0.90</fillPercent>
+
+        <!-- pathCost: 寻路成本/移动惩罚。数值越高，小人或动物从它上面走过去时减速越严重（原版树木通常是130） -->
+        <pathCost>10</pathCost>
+
+        <plant>
+            <!-- 最低肥沃度：【杂交特性】：极其适应土壤  -->
+            <fertilityMin>0.2</fertilityMin>
+            <!-- 肥力敏感度：种在肥沃土壤或水培盆里生长速度会起飞 -->
+            <fertilitySensitivity>1.2</fertilitySensitivity>
+
+            <!-- 基础生长天数：3天 （实际游戏中有夜晚，通常需要*2） -->
+            <growDays>3</growDays>
+
+            <!-- 必须添加 sowTags 才能让小人主动种植 -->
+            <sowTags>
+                <li>Ground</li>
+                <li>Hydroponic</li> <!-- 允许在水培盆中种植 -->
+            </sowTags>
+
+            <!-- 【高产特性】：每次收获基础数量为60 (原版水稻通常只有6) -->
+            <harvestYield>60</harvestYield>
+            <sowWork>30</sowWork>
+            <harvestWork>100</harvestWork> <!-- 优化基因，收割比较轻松 -->
+            <harvestAfterGrowth>0.80</harvestAfterGrowth> <!-- 杂交水稻建议长到80%以上再提前收割 -->
+
+            <!-- 收获产物：原版大米 -->
+            <harvestedThingDef>RawRice</harvestedThingDef>
+
+            <!-- 【多年生核心】：收割后会恢复生长进度 -->
+            <harvestAfterGrowth>0.7</harvestAfterGrowth>
+
+            <!-- 视觉大小变化：从0.4长到1.0倍大小 -->
+            <visualSizeRange>
+                <min>0.4</min>
+                <max>1.0</max>
+            </visualSizeRange>
+            <!-- topWindExposure: 受风力影响程度。决定了刮风时植物顶部摇摆的剧烈程度 -->
+            <topWindExposure>0.1</topWindExposure>
+
+            <!-- 以下三个决定植物在野外大地图自然生成的规律 -->
+            <!-- wildClusterRadius: 野外生成时，一丛植物分布的半径大小 -->
+            <wildClusterRadius>15</wildClusterRadius>
+            <!-- wildClusterWeight: 在野外生成的权重/概率。数值越大，你在地图上看到它的几率越高 -->
+            <wildClusterWeight>250</wildClusterWeight>
+            <!-- wildOrder: 生成顺序的优先级。生成地图时，数字小的植物类群优先生成 -->
+            <wildOrder>2</wildOrder>
+
+            <!-- purpose: 游戏系统对该植物主要用途的分类（Food=食物，Beauty=美观等），会影响AI的判断 -->
+            <purpose>Food</purpose>
+        </plant>
+        <comps>
+            <li Class="HSJZChineseCulture.CompProperties_TemperaturePlant" MayRequire="Dajian.ChiTeaditional.Expanded">
+                <MinGrowthTemperature>-25</MinGrowthTemperature>
+                <MaxGrowthTemperature>80</MaxGrowthTemperature>
+                <MinOptimalGrowthTemperature>5</MinOptimalGrowthTemperature>
+                <MaxOptimalGrowthTemperature>58</MaxOptimalGrowthTemperature>
+                
+                <!-- Include this comp if you wish to modify any of the below properties. All values listed are default. This example will behave exactly like a regular plant. -->
+                <!-- <minLeaflessTemperature>-10</minLeaflessTemperature> Low end of range at which plant will become leafless. Plant will become leafless below this temperature. -->
+                <!-- <maxLeaflessTemperature>-2</maxLeaflessTemperature> High end of range at which plant will become leafless. Plant might become leafless below this temperature. -->
+                <!-- <minGrowthTemperature>0</minGrowthTemperature> Minimum temperature at which plant will grow. Also minimum temperature at which plant will be sown. -->
+                <!-- <minOptimalGrowthTemperature>6</minOptimalGrowthTemperature> Minimum temperature at which plant will grow at full rate. -->
+                <!-- The range between these two values is the temperature range at which the plant will grow optimally. -->
+                <!-- <maxOptimalGrowthTemperature>42</maxOptimalGrowthTemperature> Maximum temperature at which plant will grow at full rate. -->
+                <!-- <maxGrowthTemperature>58</maxGrowthTemperature> Maximum temperature at which plant will grow. Also maximum temperature at which plant will be sown. -->
+                <!-- <restBegins>0.8</restBegins> When the plant will start to rest, expressed as a percentage of the day from midnight. -->
+                <!-- <restEnds>0.25</restEnds> When the plant will stop resting, expressed as a percentage of the day from midnight. -->
+                <!-- If these two times are equal, the plant will not rest. -->
+            </li>
+        </comps>
+    </ThingDef>
+
+
+</Defs>

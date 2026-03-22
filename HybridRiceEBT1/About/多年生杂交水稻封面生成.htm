@@ -1,0 +1,271 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多年生水稻 Mod 封面生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #111111;
+            color: #eeeeee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        .canvas-container {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 2px solid #3d444c;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #1a1c1e;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="max-w-3xl w-full text-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-200 mb-2">多年生杂交水稻 EBT1 - 封面生成器</h1>
+        <p class="text-gray-400 text-sm">已经按照 640x360 比例自动排版。由于浏览器安全限制，如果下方没有自动显示水稻贴图，请手动选择你上传的图片。</p>
+    </div>
+
+    <!-- 文件上传后备方案（当相对路径无法加载时显示） -->
+    <div id="fallback-ui" class="hidden mb-6 bg-gray-800 p-4 rounded-lg border border-gray-600">
+        <label class="block text-sm font-medium text-gray-300 mb-2">图片未自动加载？请手动选择 HybridRicePlantA.png：</label>
+        <input type="file" id="imageLoader" accept="image/png, image/jpeg" class="block w-full text-sm text-gray-400
+          file:mr-4 file:py-2 file:px-4
+          file:rounded file:border-0
+          file:text-sm file:font-semibold
+          file:bg-blue-600 file:text-white
+          hover:file:bg-blue-700 cursor-pointer" />
+    </div>
+
+    <!-- 画布容器 -->
+    <div class="canvas-container mb-6">
+        <canvas id="coverCanvas" width="640" height="360"></canvas>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="flex gap-4">
+        <button id="downloadBtn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded shadow-lg transition duration-200 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+            下载 640x360 封面图
+        </button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('coverCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentImage = null;
+
+        // 初始化背景
+        function drawBackground() {
+            // RimWorld 风格暗色渐变背景
+            const gradient = ctx.createRadialGradient(320, 180, 50, 320, 180, 450);
+            gradient.addColorStop(0, '#2d343b'); 
+            gradient.addColorStop(1, '#111315');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 640, 360);
+
+            // 绘制科技感网格线
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            for(let i = 0; i < 640; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 360); ctx.stroke();
+            }
+            for(let i = 0; i < 360; i += 40) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(640, i); ctx.stroke();
+            }
+            
+            // 边缘发光/暗角效果
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(0, 0, 640, 360);
+            ctx.shadowBlur = 0; // 重置
+        }
+
+        // 绘制带箭头的循环圈（体现多年生）
+        function drawCycleLoop(cx, cy, radius) {
+            ctx.strokeStyle = '#4cd137'; // 绿色代表生机
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+
+            // 绘制大半个圆环
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, -Math.PI/2 + 0.3, Math.PI*1.5 - 0.3);
+            ctx.stroke();
+
+            // 绘制箭头
+            const arrowAngle = Math.PI*1.5 - 0.3;
+            const arrowX = cx + radius * Math.cos(arrowAngle);
+            const arrowY = cy + radius * Math.sin(arrowAngle);
+            
+            ctx.save();
+            ctx.translate(arrowX, arrowY);
+            ctx.rotate(arrowAngle + Math.PI/2);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-12, -10);
+            ctx.lineTo(-12, 10);
+            ctx.closePath();
+            ctx.fillStyle = '#4cd137';
+            ctx.fill();
+            ctx.restore();
+
+            // 绘制状态文字
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = 'bold 16px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('多次收获 (Harvest)', cx, cy - radius - 15);
+            ctx.fillStyle = '#fbc531'; // 黄色强调无需重新种植
+            ctx.fillText('无需播种 (Regrow)', cx, cy + radius + 25);
+            ctx.textAlign = 'left'; // 重置
+        }
+
+        // 绘制文本和UI
+        function drawContent(img) {
+            drawBackground();
+
+            // --- 左侧文本区 ---
+            // 阴影设置
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetY = 3;
+
+            // 主标题
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 48px "Segoe UI", sans-serif';
+            ctx.fillText('多年杂交生水稻', 40, 90);
+
+            // 副标题
+            ctx.fillStyle = '#a8b5c2';
+            ctx.font = 'bold 24px "Segoe UI", sans-serif';
+            ctx.fillText('Perennial Hybrid Rice EBT1', 42, 130);
+
+            // 分割线
+            ctx.beginPath();
+            ctx.moveTo(40, 150);
+            ctx.lineTo(260, 150);
+            ctx.strokeStyle = '#4cd137';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 重置阴影给小字
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 2;
+
+            // 特点列表
+            const features = [
+                { icon: '🌱', text: '一次播种  Sow Once' },
+                { icon: '🌾', text: '永久收获  Continuous Yield' },
+                { icon: '⚙️', text: '节省劳力  Saves Labor' }
+            ];
+
+            ctx.font = 'bold 20px "Segoe UI", sans-serif';
+            features.forEach((feat, index) => {
+                const y = 200 + (index * 45);
+                ctx.fillStyle = '#fbc531';
+                ctx.fillText(feat.icon, 40, y);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(feat.text, 75, y);
+            });
+
+            // --- 右侧图像区 ---
+            const cx = 460;
+            const cy = 190;
+
+            // 重置阴影
+            ctx.shadowColor = 'transparent';
+
+            if (img) {
+                // 背景高光圈
+                ctx.beginPath();
+                ctx.arc(cx, cy, 70, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(76, 209, 55, 0.15)';
+                ctx.fill();
+
+                // 绘制循环箭头
+                drawCycleLoop(cx, cy, 95);
+
+                // 绘制植物贴图 (放大显示)
+                // 假设原图比较小，我们将其渲染为 110x110
+                const imgSize = 110;
+                
+                // 增加一点图片阴影让贴图更立体
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 10;
+                
+                // 为了保持像素风格，关闭平滑
+                ctx.imageSmoothingEnabled = false; 
+                ctx.drawImage(img, cx - imgSize/2, cy - imgSize/2, imgSize, imgSize);
+                
+                ctx.shadowColor = 'transparent'; // 重置
+            } else {
+                // 占位符
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 70, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('等待图片加载...', cx, cy);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        // 初始化默认绘制
+        drawBackground();
+        drawContent(null);
+
+        // 尝试加载用户提供的图片
+        const plantImg = new Image();
+        plantImg.crossOrigin = "anonymous";
+        plantImg.src = 'HybridRicePlantA.png'; 
+        
+        plantImg.onload = () => {
+            currentImage = plantImg;
+            drawContent(plantImg);
+        };
+        
+        plantImg.onerror = () => {
+            console.log("无法自动加载同名图片，显示手动上传选项。");
+            document.getElementById('fallback-ui').classList.remove('hidden');
+        };
+
+        // 处理手动上传
+        document.getElementById('imageLoader').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    drawContent(img);
+                }
+                img.src = event.target.result;
+            }
+            if(e.target.files[0]) {
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // 下载功能
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            const link = document.createElement('a');
+            link.download = 'PerennialRice_ModCover.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html>

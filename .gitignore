@@ -96,5 +96,7 @@ fabric.properties
 !Archotech_Patch/**/*
 !JeremieEggSafeBox/
 !JeremieEggSafeBox/**/*
+!HybridRiceEBT1/
+!HybridRiceEBT1/**/*
 !.gitignore
 

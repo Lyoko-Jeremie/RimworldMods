@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ModMetaData>
+    <name>多年生杂交水稻 EBT1 (Perennial Hybrid Rice EBT1)</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+        <li>1.6</li>
+    </supportedVersions>
+    <packageId>Jeremie.HybridRiceEBT1</packageId>
+    <description>
+《稻田有望像果园 闪耀世界科学家首次发现水稻多年生“长寿基因” EBT1》
+
+---
+
+[通讯台接收信息]
+标题： 稻田有望像果园：闪耀世界科学家分离出水稻多年生“长寿基因”EBT1
+来源： 新夏星际通讯网，翠象10日（记者张建松、胡喆）
+“时雨及芒种，四野皆插秧。”
+这句古老的诗词描述了水稻传统的、一年生的生命周期。这意味着种植工必须在每一个生长季，煞费苦心地为这些作物重新播种。
+如今，闪耀世界科学家在农业领域取得了重大突破，他们发现并克隆了“长寿基因”EBT1。这项基因改造技术创造出了一种多年生高产水稻品种，让种植区能够像果园一样运作 ——只需一次播种，就能为殖民地带来源源不断的持续收获。
+
+---
+
+[English Translation By Gemini 3.1 Pro]
+
+[Comms Console Transmission]
+Title: Rice Fields to Rival Orchards: Glitterworld Scientists Isolate Perennial "Longevity Gene" EBT1
+Source: New Xia Comms Network, 10th of Aprimay (Reporters Zhang Jiansong, Hu Zhe)
+"When seasonal rains grace the tilled earth, across the fields the seedlings are sown."
+This ancient poetry describes the traditional, annual life cycle of the rice plant, demanding that growers painstakingly re-sow the crop every single growing season.
+Today, Glitterworld scientists have achieved an agricultural breakthrough by discovering and cloning the "longevity gene" EBT1.
+This genetic modification creates a perennial rice strain, allowing growing zones to function much like orchards—requiring only a single sowing for continuous, ongoing harvests.
+
+---
+
+https://www.news.cn/20260320/f6adabd54d70457ba966828a9cbe6b98/c.html
+
+</description>
+    <loadAfter>
+    </loadAfter>
+
+    <modDependencies>
+    </modDependencies>
+</ModMetaData>
