@@ -80,13 +80,22 @@
 
             <!-- purpose: 游戏系统对该植物主要用途的分类（Food=食物，Beauty=美观等），会影响AI的判断 -->
             <purpose>Food</purpose>
+
+            <!-- 温度适应范围：比普通水稻更耐寒耐热 -->
+            <minGrowthTemperature>-127</minGrowthTemperature>
+            <maxGrowthTemperature>95</maxGrowthTemperature>
+            <!-- 最佳生长温度范围：在这个温度范围内生长速度最快 -->
+            <minOptimalGrowthTemperature>0</minOptimalGrowthTemperature>
+            <maxOptimalGrowthTemperature>58</maxOptimalGrowthTemperature>
         </plant>
         <comps>
             <li Class="HSJZChineseCulture.CompProperties_TemperaturePlant" MayRequire="Dajian.ChiTeaditional.Expanded">
-                <MinGrowthTemperature>-25</MinGrowthTemperature>
-                <MaxGrowthTemperature>80</MaxGrowthTemperature>
-                <MinOptimalGrowthTemperature>5</MinOptimalGrowthTemperature>
-                <MaxOptimalGrowthTemperature>58</MaxOptimalGrowthTemperature>
+                <!-- 温度适应范围：比普通水稻更耐寒耐热 -->
+                <minGrowthTemperature>-127</minGrowthTemperature>
+                <maxGrowthTemperature>95</maxGrowthTemperature>
+                <!-- 最佳生长温度范围：在这个温度范围内生长速度最快 -->
+                <minOptimalGrowthTemperature>0</minOptimalGrowthTemperature>
+                <maxOptimalGrowthTemperature>58</maxOptimalGrowthTemperature>
                 
                 <!-- Include this comp if you wish to modify any of the below properties. All values listed are default. This example will behave exactly like a regular plant. -->
                 <!-- <minLeaflessTemperature>-10</minLeaflessTemperature> Low end of range at which plant will become leafless. Plant will become leafless below this temperature. -->

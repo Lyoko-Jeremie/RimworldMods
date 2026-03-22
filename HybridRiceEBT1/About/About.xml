@@ -32,8 +32,37 @@ This genetic modification creates a perennial rice strain, allowing growing zone
 
 ---
 
+这是一种多年生超级杂交水稻：
+* 茂盛生长的水稻代表粮食无忧，观之心情舒畅
+* 容易被动物吃掉，要小心，动物觉得它好吃
+* 可以在贫瘠的土地上生长（0.2
+* 超高的作物产率（产出60
+* 极短的生长周期（首次只要3~5天即可收获
+* 广泛的温度适应范围（可生长范围-127~95摄氏度，最佳生长温度0~58摄氏度
+* 容易种植和收获（种植30工作量，收获100工作量，优化基因让工作更轻松
+* 首次收获后能快速收获下一季（收割后生长进度恢复到70%，只要再等半天左右就能再次收获
+* 偶尔会在野外出现
+* 在水培盆中可以按照预期生长
+
+This is a perennial hybrid rice:
+* Lush growth represents food security and is pleasing to the eye.
+* It is easily eaten by animals, so be cautious as they find it tasty.
+* It can grow in poor soil (0.2 min need).
+* It has an extremely high crop yield (producing 60).
+* It has a very short growth cycle (the first harvest can be ready in just 3-5 days).
+* It has a wide temperature tolerance (can grow in -127 to 95 degrees Celsius, with an optimal growth range of 0 to 58 degrees Celsius).
+* It is easy to plant and harvest (planting requires 30 work units, harvesting requires 100 work units, and optimized genetics make the work easier).
+* After the first harvest, it can quickly produce the next season's crop (after harvesting, growth progress resets to 70%, and it takes about half a day to be ready for the next harvest).
+* It occasionally appears in the wild.
+* It can grow as expected in hydroponic pots.
+
+---
+
 - 2026.03.22
 - 为了修复红字，修改了defName。 从 Jeremie_Plant_HybridRiceEBT1 改为 Jeremie_Plant_HybridRiceEBT1g 。 如果之前存档里存在这个植物，可能会出错，铲掉应该就ok。
+
+- 2026.03.23
+- 修改温度适应范围。 可生长范围 -127~95 摄氏度。 最佳生长温度 0~58 摄氏度。 真不愧是超级水稻呀~~~~~
 
 
 ---
@@ -42,6 +71,7 @@ https://www.news.cn/20260320/f6adabd54d70457ba966828a9cbe6b98/c.html
 
 </description>
     <loadAfter>
+        <li>Dajian.ChiTeaditional.Expanded</li>
     </loadAfter>
 
     <modDependencies>
