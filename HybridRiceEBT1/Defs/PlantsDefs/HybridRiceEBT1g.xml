@@ -2,7 +2,7 @@
 
 
     <ThingDef ParentName="PlantBase" Name="Jeremie_Plant_HybridRiceEBT1g">
-        <defName>Jeremie_Plant_HybridRiceEBT1</defName>
+        <defName>Jeremie_Plant_HybridRiceEBT1g</defName>
         <label>Perennial Hybrid Rice EBT1</label>
         <description>Perennial super hybrid rice has high yield, is easy to grow, can be harvested multiple times after sowing once, and can grow in harsh environments.</description>
 

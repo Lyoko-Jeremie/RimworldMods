@@ -32,6 +32,12 @@ This genetic modification creates a perennial rice strain, allowing growing zone
 
 ---
 
+- 2026.03.22
+- 为了修复红字，修改了defName。 从 Jeremie_Plant_HybridRiceEBT1 改为 Jeremie_Plant_HybridRiceEBT1g 。 如果之前存档里存在这个植物，可能会出错，铲掉应该就ok。
+
+
+---
+
 https://www.news.cn/20260320/f6adabd54d70457ba966828a9cbe6b98/c.html
 
 </description>
