@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <ModMetaData>
-	<name>JeremieModPatch</name>
+    <name>JeremieModPatch</name>
     <author>Jeremie</author>
     <supportedVersions>
-		<li>1.6</li>
+        <li>1.6</li>
     </supportedVersions>
     <packageId>Jeremie.JeremieModPatch</packageId>
     <description>Jeremie's Mod Patch Pack</description>
-	<loadAfter>
-		<li>Ludeon.RimWorld.Odyssey</li>
-	</loadAfter>
-	
-	<modDependencies>
-	    <li>
-			<packageId>VanillaExpanded.VFEArchitect</packageId>
-	        <displayName>Vanilla Furniture Expanded - Architect</displayName>
-	        <steamWorkshopUrl>steam://url/CommunityFilePage/2608762624</steamWorkshopUrl>
-	    </li>
-	</modDependencies>
+    <loadAfter>
+        <li>Ludeon.RimWorld.Odyssey</li>
+    </loadAfter>
+
+    <modDependencies>
+        <!--	    <li>-->
+        <!--			<packageId>VanillaExpanded.VFEArchitect</packageId>-->
+        <!--	        <displayName>Vanilla Furniture Expanded - Architect</displayName>-->
+        <!--	        <steamWorkshopUrl>steam://url/CommunityFilePage/2608762624</steamWorkshopUrl>-->
+        <!--	    </li>-->
+        <li>
+            <displayName>Faster Healing Bed</displayName>
+            <packageId>sshark.fasterhealingbed</packageId>
+            <steamWorkshopUrl>steam://url/CommunityFilePage/3525415170</steamWorkshopUrl>
+        </li>
+    </modDependencies>
 </ModMetaData>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+  
+  <!-- EN: <color=#8cffd1>【Cheat】Supreme divine soul</color> -->
+  <Jeremie_RI_Trait_God.degreeDatas.color8cffd1CheatSupreme_divine_soulcolor.label>&lt;color=#8cffd1>【作弊】至尊神魂&lt;/color></Jeremie_RI_Trait_God.degreeDatas.color8cffd1CheatSupreme_divine_soulcolor.label>
+  <!-- EN: {PAWN_nameDef}Will not bow to fate. -->
+  <Jeremie_RI_Trait_God.degreeDatas.color8cffd1CheatSupreme_divine_soulcolor.description>{PAWN_nameDef}不会向命运低头，他让命运给他端洗脚水。</Jeremie_RI_Trait_God.degreeDatas.color8cffd1CheatSupreme_divine_soulcolor.description>
+  
+  <!-- EN: <color=#8cffd1>【Cheat】One step to immortal</color> -->
+  <Jeremie_RI_Trait_Superman.degreeDatas.color8cffd1CheatOne_step_to_immortalcolor.label>&lt;color=#8cffd1>【作弊】一步登仙&lt;/color></Jeremie_RI_Trait_Superman.degreeDatas.color8cffd1CheatOne_step_to_immortalcolor.label>
+  <!-- EN: {PAWN_nameDef}to be able to reach immortal in one step. -->
+  <Jeremie_RI_Trait_Superman.degreeDatas.color8cffd1CheatOne_step_to_immortalcolor.description>{PAWN_nameDef}能一步登仙，贼牛逼。</Jeremie_RI_Trait_Superman.degreeDatas.color8cffd1CheatOne_step_to_immortalcolor.description>
+  
+</LanguageData>
