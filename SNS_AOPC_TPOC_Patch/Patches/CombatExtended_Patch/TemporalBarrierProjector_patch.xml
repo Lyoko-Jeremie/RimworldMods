@@ -88,8 +88,8 @@
 
                             <!-- 生产、搬运与工作 -->
                             <WorkSpeedGlobal>100000.0</WorkSpeedGlobal> <!-- 全局工作速度 -->
-                            <CarryingCapacity>100000</CarryingCapacity> <!-- 携带量 -->
-                            <RI_MassCarryCapacity>1000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
+                            <CarryingCapacity>10000000</CarryingCapacity> <!-- 携带量 -->
+                            <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">100000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
                             <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency> <!-- 拆解机械体效率 -->
                             <ConstructSuccessChance>1</ConstructSuccessChance> <!-- 建造成功率 -->
 
