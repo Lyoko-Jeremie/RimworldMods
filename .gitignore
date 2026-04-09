@@ -81,6 +81,8 @@ fabric.properties
 */**/*
 *
 
+*/**/*.zstd
+
 
 !SNS_AOPC_TPOC_Patch/
 !SNS_AOPC_TPOC_Patch/**/*
@@ -98,5 +100,8 @@ fabric.properties
 !JeremieEggSafeBox/**/*
 !HybridRiceEBT1/
 !HybridRiceEBT1/**/*
+!TemporalBarrierProjector/
+!TemporalBarrierProjector/**/*
+!.gitignore
 !.gitignore
 
