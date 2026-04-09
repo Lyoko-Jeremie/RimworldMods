@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Defs>
+
+    <!-- Temporal Barrier Projector -->
+    <!--	<RecipeDef ParentName="SNS_PinnacleFabricator_Item">-->
+    <!--		<defName>SNS_Production_PinnacleFabricator_TemporalBarrierProjector</defName>-->
+    <!--		<workAmount>1</workAmount>-->
+    <!--		<label>Pattern Temporal barrier projector</label>-->
+    <!--		<description>Forge a Temporal barrier projector from nothingness.</description>-->
+    <!--		<products><SNS_CE_TemporalBarrierProjector>1</SNS_CE_TemporalBarrierProjector></products>-->
+    <!--	</RecipeDef>-->
+
+</Defs>
