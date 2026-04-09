@@ -14,7 +14,7 @@
                     <value>
                         <statBases>
                             <MaxHitPoints>99999</MaxHitPoints>
-                            <MarketValue>50000000</MarketValue>
+                            <MarketValue>1</MarketValue>
                             <Mass>0.001</Mass>
                             <Bulk>0</Bulk> <!-- CE: 物品体积 -->
                             <WornBulk>0</WornBulk> <!-- CE: 穿戴体积 -->

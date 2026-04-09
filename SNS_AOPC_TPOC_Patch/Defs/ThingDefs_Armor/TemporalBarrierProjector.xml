@@ -13,6 +13,15 @@
             through this anyway...
         </description>
 
+        <!-- https://ludeon.com/forums/index.php?topic=37912.0 -->
+        
+        <!-- 绝不自然刷新 -->
+        <generateCommonality>0</generateCommonality>
+        <!--        <generateAllowChance>0</generateAllowChance>-->
+        <stockGenerators>0</stockGenerators>
+        <!-- 不会在交易商出现（只可售出不可购买） -->
+        <tradeability>Sellable</tradeability>
+
         <!-- 技术等级与耐用度 -->
         <techLevel>Archotech</techLevel>
         <useHitPoints>false</useHitPoints> <!-- 装备无耐久限制，永远不会损坏 -->
@@ -22,33 +31,33 @@
         <!-- 这里的 costList 仅用于：1. 熔炼返还物；2. 计算物品的市场价值 -->
         <!-- 即使制作不花钱，这里也建议写上材料，否则熔炼会报错 -->
         <costList>
-            <SNS_Unobtainium>1000</SNS_Unobtainium>
-            <SNS_Unobtainium_Fiber>1000</SNS_Unobtainium_Fiber>
-            <SNS_CosmicAlloy>1000</SNS_CosmicAlloy>
-            <SNS_CosmicAlloyWeave>1000</SNS_CosmicAlloyWeave>
-            <SNS_Component_GenII>1000</SNS_Component_GenII>
-            <SNS_Component_GenIII>1000</SNS_Component_GenIII>
-            <SNS_CosmicMatter>1000</SNS_CosmicMatter>
-            <SNS_Eternium>1000</SNS_Eternium>
-            <SNS_StableMatter>1000</SNS_StableMatter>
-            <SNS_Meal_Normal_GenIV>100</SNS_Meal_Normal_GenIV>
-            <SNS_Medicine_Pinnacle>100</SNS_Medicine_Pinnacle>
-            <SNS_Medicine_GenIII>100</SNS_Medicine_GenIII>
-            <SNS_Medicine_GenII>100</SNS_Medicine_GenII>
-            <SNS_Medicine_GenI>100</SNS_Medicine_GenI>
-            <SNS_Meal_Normal_GenIII>100</SNS_Meal_Normal_GenIII>
-            <SNS_Meal_Normal_GenII>100</SNS_Meal_Normal_GenII>
-            <SNS_Meal_Nutrient_GenIII>100</SNS_Meal_Nutrient_GenIII>
-            <SNS_CosmicCall_Component_V>1</SNS_CosmicCall_Component_V>
-            <SNS_CosmicCall_Component_IV>1</SNS_CosmicCall_Component_IV>
-            <SNS_CosmicCall_Component_III>1</SNS_CosmicCall_Component_III>
-            <SNS_CosmicCall_Component_II>1</SNS_CosmicCall_Component_II>
-            <SNS_CosmicCall_Component_I>1</SNS_CosmicCall_Component_I>
-            <SNS_Apparel_FirstCycleArmor>1</SNS_Apparel_FirstCycleArmor>
-            <SNS_Apparel_FirstCycleHelmet>1</SNS_Apparel_FirstCycleHelmet>
-            <SNS_TerminusGun>1</SNS_TerminusGun>
-            <SNS_BeholderGun>1</SNS_BeholderGun>
-            <SNS_RecursionMelee>1</SNS_RecursionMelee>
+<!--            <SNS_Unobtainium>1000</SNS_Unobtainium>-->
+<!--            <SNS_Unobtainium_Fiber>1000</SNS_Unobtainium_Fiber>-->
+<!--            <SNS_CosmicAlloy>1000</SNS_CosmicAlloy>-->
+<!--            <SNS_CosmicAlloyWeave>1000</SNS_CosmicAlloyWeave>-->
+<!--            <SNS_Component_GenII>1000</SNS_Component_GenII>-->
+<!--            <SNS_Component_GenIII>1000</SNS_Component_GenIII>-->
+<!--            <SNS_CosmicMatter>1000</SNS_CosmicMatter>-->
+<!--            <SNS_Eternium>1000</SNS_Eternium>-->
+<!--            <SNS_StableMatter>1000</SNS_StableMatter>-->
+<!--            <SNS_Meal_Normal_GenIV>100</SNS_Meal_Normal_GenIV>-->
+<!--            <SNS_Medicine_Pinnacle>100</SNS_Medicine_Pinnacle>-->
+<!--            <SNS_Medicine_GenIII>100</SNS_Medicine_GenIII>-->
+<!--            <SNS_Medicine_GenII>100</SNS_Medicine_GenII>-->
+<!--            <SNS_Medicine_GenI>100</SNS_Medicine_GenI>-->
+<!--            <SNS_Meal_Normal_GenIII>100</SNS_Meal_Normal_GenIII>-->
+<!--            <SNS_Meal_Normal_GenII>100</SNS_Meal_Normal_GenII>-->
+<!--            <SNS_Meal_Nutrient_GenIII>100</SNS_Meal_Nutrient_GenIII>-->
+<!--            <SNS_CosmicCall_Component_V>1</SNS_CosmicCall_Component_V>-->
+<!--            <SNS_CosmicCall_Component_IV>1</SNS_CosmicCall_Component_IV>-->
+<!--            <SNS_CosmicCall_Component_III>1</SNS_CosmicCall_Component_III>-->
+<!--            <SNS_CosmicCall_Component_II>1</SNS_CosmicCall_Component_II>-->
+<!--            <SNS_CosmicCall_Component_I>1</SNS_CosmicCall_Component_I>-->
+<!--            <SNS_Apparel_FirstCycleArmor>1</SNS_Apparel_FirstCycleArmor>-->
+<!--            <SNS_Apparel_FirstCycleHelmet>1</SNS_Apparel_FirstCycleHelmet>-->
+<!--            <SNS_TerminusGun>1</SNS_TerminusGun>-->
+<!--            <SNS_BeholderGun>1</SNS_BeholderGun>-->
+<!--            <SNS_RecursionMelee>1</SNS_RecursionMelee>-->
         </costList>
 
         <graphicData>
@@ -61,7 +70,13 @@
         <statBases>
             <!-- 基础生存属性 -->
             <MaxHitPoints>99999</MaxHitPoints>
-            <MarketValue>50000000</MarketValue> <!-- 极高的价值：防止在任何随机NPC身上刷新（太贵了，系统买不起） -->
+
+            <!-- 极高的价值：防止在任何随机NPC身上刷新（太贵了，系统买不起） -->
+<!--            <MarketValue>50000000</MarketValue>-->
+
+            <!-- 为了避免殖民地价值过高，这里用 1。而在上面采用 generateCommonality 和 tradeability 来控制自然刷新 -->
+            <MarketValue>1</MarketValue>
+            
             <DeteriorationRate>0.0</DeteriorationRate> <!-- 不会因风吹雨打腐烂 -->
             <Mass>0.001</Mass> <!-- 几乎没有重量 -->
             <Flammability>0.0</Flammability> <!-- 绝对不可燃 -->
@@ -97,7 +112,7 @@
             <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 近乎没有冷却 (1 - 0.999 = 0.001) -->
             <ShootingAccuracyPawn>100</ShootingAccuracyPawn> <!-- 射击精度补正 -->
             <MoveSpeed>+200</MoveSpeed> <!-- 极速移动 -->
-<!--            <SwimSpeed>+200</SwimSpeed> &lt;!&ndash; 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks &ndash;&gt;-->
+            <!--            <SwimSpeed>+200</SwimSpeed> &lt;!&ndash; 极速游泳 SwimmingKit/[FSF] FrozenSnowFox Tweaks &ndash;&gt;-->
 
             <!-- 近战属性 -->
             <MeleeHitChance>1</MeleeHitChance> <!-- 近战命中率 -->
@@ -159,7 +174,7 @@
             </bodyPartGroups>
 
             <renderSkipFlags>
-                <!--强制不隐藏任何内容-->
+                <!--强制不隐藏任何内容，避免导致鼠鼠等的race的头发消失-->
                 <li>None</li>
             </renderSkipFlags>
             <wornGraphicPath>Things/Pawn/Humanlike/Apparel/TemporalBarrier/TemporalBarrier</wornGraphicPath>
@@ -174,7 +189,7 @@
             <useDeflectMetalEffect>false</useDeflectMetalEffect>
             <careIfWornByCorpse>false</careIfWornByCorpse> <!-- 即使是尸体穿过，也不会有“死人衣服”Debuff -->
         </apparel>
-        
+
         <modExtensions>
             <li Class="AnimalGear.AnimalApparelDefExtension" MayRequire="Ingendum.AnimalApparelFramework">
                 <showCoverageForBodyType>QuadrupedAnimalWithPaws</showCoverageForBodyType>
