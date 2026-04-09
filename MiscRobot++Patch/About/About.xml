@@ -26,6 +26,11 @@ Jeremie 的 Misc.Robot++ 增强（正义）补丁
 
 	</description>
 	<loadAfter>
+		<li>Ludeon.RimWorld.Odyssey</li>
+		<li>RI.RimImmortal.Core</li>
+		<li>pyrce.swimming.modkit</li>
+		<li>pathfinding.framework</li>
+		<li>rabiosus.autoblink</li>
 	</loadAfter>
 	
 	<modDependencies>

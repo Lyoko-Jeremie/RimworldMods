@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Patch>
 
+    <li Class="PatchOperationAdd">
+        <xpath>/Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>
+        <value>
+            <RestRateMultiplier>10</RestRateMultiplier>
+        </value>
+    </li>
+
     <Operation Class="PatchOperationReplace">
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/robotSkills/li/level</xpath>-->
         <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/robotSkills/li/level</xpath>
@@ -74,36 +81,36 @@
             </modExtensions>
         </value>
     </Operation>
-<!--    <Operation Class="PatchOperationAdd">-->
-<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>&ndash;&gt;-->
-<!--        <xpath>Defs/ThingDef-->
-<!--            [-->
-<!--            defName="AIRobot_Hauler_V" or-->
+    <!--    <Operation Class="PatchOperationAdd">-->
+    <!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>&ndash;&gt;-->
+    <!--        <xpath>Defs/ThingDef-->
+    <!--            [-->
+    <!--            defName="AIRobot_Hauler_V" or-->
 
-<!--            defName="RPP_Bot_Crafter_V" or-->
+    <!--            defName="RPP_Bot_Crafter_V" or-->
 
-<!--            defName="RPP_Bot_Kitchen_V" or-->
+    <!--            defName="RPP_Bot_Kitchen_V" or-->
 
-<!--            defName="RPP_Bot_Builder_V" or-->
+    <!--            defName="RPP_Bot_Builder_V" or-->
 
-<!--            defName="RPP_Bot_ER_V" or-->
+    <!--            defName="RPP_Bot_ER_V" or-->
 
-<!--            defName="RPP_Bot_Omni_V"-->
-<!--            ]-->
-<!--        </xpath>-->
-<!--        <value>-->
-<!--            <rechargeEfficiency>0.8</rechargeEfficiency>-->
-<!--        </value>-->
-<!--    </Operation>-->
+    <!--            defName="RPP_Bot_Omni_V"-->
+    <!--            ]-->
+    <!--        </xpath>-->
+    <!--        <value>-->
+    <!--            <rechargeEfficiency>0.8</rechargeEfficiency>-->
+    <!--        </value>-->
+    <!--    </Operation>-->
 
-<!--    defName="RPP_RechargeStation_V" or-->
-<!--    defName="AIRobot_RechargeStation_Hauler_V" or-->
-<!--    defName="AIRobot_RechargeStation_Cleaner_V" or-->
-<!--    defName="RPP_RechargeStation_Builder_V" or-->
-<!--    defName="RPP_RechargeStation_Crafter_V" or-->
-<!--    defName="RPP_RechargeStation_ER_V" or-->
-<!--    defName="RPP_RechargeStation_Kitchen_V" or-->
-<!--    defName="RPP_RechargeStation_Omni_V"-->
+    <!--    defName="RPP_RechargeStation_V" or-->
+    <!--    defName="AIRobot_RechargeStation_Hauler_V" or-->
+    <!--    defName="AIRobot_RechargeStation_Cleaner_V" or-->
+    <!--    defName="RPP_RechargeStation_Builder_V" or-->
+    <!--    defName="RPP_RechargeStation_Crafter_V" or-->
+    <!--    defName="RPP_RechargeStation_ER_V" or-->
+    <!--    defName="RPP_RechargeStation_Kitchen_V" or-->
+    <!--    defName="RPP_RechargeStation_Omni_V"-->
     <Operation Class="PatchOperationReplace">
         <xpath>Defs/ThingDef[
             @Name="RPP_RechargeStation_V"
@@ -385,31 +392,58 @@
                     </value>
                 </match>
             </li>
-<!--            <li Class="PatchOperationConditional">-->
-<!--                <xpath>Defs/StatDef[defName="VEF_RangedDodgeChance"]</xpath>-->
-<!--                <match Class="PatchOperationAdd">-->
-<!--                    <xpath>Defs/ThingDef[-->
-<!--                        defName="AIRobot_Hauler_V" or-->
-<!--                        defName="RPP_Bot_Crafter_V" or-->
-<!--                        defName="RPP_Bot_Kitchen_V" or-->
-<!--                        defName="RPP_Bot_Builder_V" or-->
-<!--                        defName="RPP_Bot_ER_V" or-->
-<!--                        defName="RPP_Bot_Omni_V"-->
-<!--                        ]/statBases-->
-<!--                    </xpath>-->
-<!--                    <value>-->
-<!--                        &lt;!&ndash; 远程闪避率 &ndash;&gt;-->
-<!--                        <VEF_RangedDodgeChance>2</VEF_RangedDodgeChance>-->
-<!--                    </value>-->
-<!--                </match>-->
-<!--            </li>-->
+            <!--            <li Class="PatchOperationConditional">-->
+            <!--                <xpath>Defs/StatDef[defName="VEF_RangedDodgeChance"]</xpath>-->
+            <!--                <match Class="PatchOperationAdd">-->
+            <!--                    <xpath>Defs/ThingDef[-->
+            <!--                        defName="AIRobot_Hauler_V" or-->
+            <!--                        defName="RPP_Bot_Crafter_V" or-->
+            <!--                        defName="RPP_Bot_Kitchen_V" or-->
+            <!--                        defName="RPP_Bot_Builder_V" or-->
+            <!--                        defName="RPP_Bot_ER_V" or-->
+            <!--                        defName="RPP_Bot_Omni_V"-->
+            <!--                        ]/statBases-->
+            <!--                    </xpath>-->
+            <!--                    <value>-->
+            <!--                        &lt;!&ndash; 远程闪避率 &ndash;&gt;-->
+            <!--                        <VEF_RangedDodgeChance>2</VEF_RangedDodgeChance>-->
+            <!--                    </value>-->
+            <!--                </match>-->
+            <!--            </li>-->
         </operations>
     </Operation>
 
 
+    <!--    <Operation Class="PatchOperationAdd">-->
+    <!--        &lt;!&ndash;        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]</xpath>&ndash;&gt;-->
+    <!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]</xpath>&ndash;&gt;-->
+    <!--        <xpath>Defs/ThingDef-->
+    <!--            [-->
+    <!--            defName="AIRobot_Hauler_V" or-->
+
+    <!--            defName="RPP_Bot_Crafter_V" or-->
+
+    <!--            defName="RPP_Bot_Kitchen_V" or-->
+
+    <!--            defName="RPP_Bot_Builder_V" or-->
+
+    <!--            defName="RPP_Bot_ER_V" or-->
+
+    <!--            defName="RPP_Bot_Omni_V"-->
+    <!--            ]-->
+    <!--        </xpath>-->
+    <!--        <value>-->
+    <!--            <equippedStatOffsets>-->
+    <!--                &lt;!&ndash; 额外负重 &ndash;&gt;-->
+    <!--                <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>-->
+    <!--                &lt;!&ndash; 携带能力 &ndash;&gt;-->
+    <!--                <CarryingCapacity>100000</CarryingCapacity>-->
+    <!--            </equippedStatOffsets>-->
+    <!--        </value>-->
+    <!--    </Operation>-->
+
 <!--    <Operation Class="PatchOperationAdd">-->
-<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]</xpath>&ndash;&gt;-->
-<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]</xpath>&ndash;&gt;-->
+<!--        &lt;!&ndash;        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/</xpath>&ndash;&gt;-->
 <!--        <xpath>Defs/ThingDef-->
 <!--            [-->
 <!--            defName="AIRobot_Hauler_V" or-->
@@ -423,15 +457,101 @@
 <!--            defName="RPP_Bot_ER_V" or-->
 
 <!--            defName="RPP_Bot_Omni_V"-->
-<!--            ]-->
+<!--            ]/comps-->
 <!--        </xpath>-->
 <!--        <value>-->
-<!--            <equippedStatOffsets>-->
-<!--                &lt;!&ndash; 额外负重 &ndash;&gt;-->
-<!--                <RI_MassCarryCapacity>1000</RI_MassCarryCapacity>-->
-<!--                &lt;!&ndash; 携带能力 &ndash;&gt;-->
-<!--                <CarryingCapacity>100000</CarryingCapacity>-->
-<!--            </equippedStatOffsets>-->
+<!--            <li Class="AutoBlink.CompProperties_AutoBlink">-->
+<!--                &lt;!&ndash; ====== Basic settings for AutoBlink ====== &ndash;&gt;-->
+<!--                &lt;!&ndash; Minimum distance required to trigger blink (initial default).-->
+<!--                        If the target is closer than this, no blink will occur.-->
+<!--                        This initial value is adjustable via a gizmo slider in-game. &ndash;&gt;-->
+<!--                <minDistanceToBlink>10</minDistanceToBlink>-->
+
+<!--                &lt;!&ndash; Maximum blink distance. &ndash;&gt;-->
+<!--                <maxDistanceToBlink>400</maxDistanceToBlink>-->
+
+<!--                &lt;!&ndash; Cooldown between blinks, in ticks &ndash;&gt;-->
+<!--                <blinkIntervalTicks>12</blinkIntervalTicks>-->
+
+<!--                &lt;!&ndash; Optional: Delay (in ticks) after determining blink eligibility before executing the blink.-->
+<!--                        If set to 0, blinking happens as soon as possible, but the check runs every 12 ticks for performance reasons,-->
+<!--                        so there will be a small inherent delay. &ndash;&gt;-->
+<!--                <delayAfterEligibleTicks>60</delayAfterEligibleTicks>-->
+
+<!--                &lt;!&ndash; Optional: How many cells before the target to blink from.-->
+<!--                        In this example, blink 3 cells before the destination, then walk the final 3 cells.-->
+<!--                        If set to 0, blink directly to the destination cell. &ndash;&gt;-->
+<!--                <cellsBeforeTarget>1</cellsBeforeTarget>-->
+
+<!--                &lt;!&ndash; Optional: Stun duration after blink, in ticks &ndash;&gt;-->
+<!--                <postBlinkStanceTicks>0</postBlinkStanceTicks>-->
+
+<!--                &lt;!&ndash; Optional: Initial value for auto-blink while drafted or idle.-->
+<!--                        This is the initial value and can be changed from the gizmo detail window unless drawGizmo is set to false. &ndash;&gt;-->
+<!--                &lt;!&ndash;                <defaultAutoBlinkDrafted>false</defaultAutoBlinkDrafted>&ndash;&gt;-->
+<!--                &lt;!&ndash;                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; Optional: Initial value for Jump As Far As Possible.-->
+<!--                        This is the initial value and can be changed from the gizmo detail window unless drawGizmo is set to false.&ndash;&gt;-->
+<!--                &lt;!&ndash;                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; Optional: If false, non-player faction pawns can use AutoBlink. Defaults to true if not specified &ndash;&gt;-->
+<!--                &lt;!&ndash;                <playerFactionOnly>false</playerFactionOnly>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; Optional: List of jobs that allow auto-blink.-->
+<!--                        When this list is used, auto-blink only triggers while performing listed jobs.-->
+<!--                        Use either this or excludedJobDefs, not both. Using both is not an error but unnecessary. &ndash;&gt;-->
+<!--                &lt;!&ndash;                <allowedJobDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                    <li>AttackMelee</li>&ndash;&gt;-->
+<!--                &lt;!&ndash;                </allowedJobDefs>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; Optional: List of jobs that disable auto-blink.-->
+<!--                        Auto-blink will not trigger while performing any of the jobs listed here. &ndash;&gt;-->
+<!--                <excludedJobDefs>-->
+<!--                    <li>GotoWander</li>-->
+<!--                    <li>Carried</li>-->
+<!--                </excludedJobDefs>-->
+
+<!--                &lt;!&ndash; ====== Gizmo settings ====== &ndash;&gt;-->
+<!--                &lt;!&ndash; If false, the gizmo button will be hidden.-->
+<!--&lt;!&ndash;                        Also disables interaction via multi-selection, and settings will be locked to what's defined in the Def. &ndash;&gt;&ndash;&gt;-->
+<!--                &lt;!&ndash;                <drawGizmo>true</drawGizmo>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; Optional: Label displayed on the gizmo button. If not set, AutoBlink.AutoBlink_Label will be used &ndash;&gt;-->
+<!--                &lt;!&ndash;                <gizmoLabel>Teleport</gizmoLabel>&ndash;&gt;-->
+<!--                &lt;!&ndash; Optional: Path to the gizmo button icon &ndash;&gt;-->
+<!--                &lt;!&ndash;                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; ====== Sound and visual effect settings ====== &ndash;&gt;-->
+<!--                &lt;!&ndash; Effects played on the origin cell before blinking &ndash;&gt;-->
+<!--                &lt;!&ndash; SoundDefs &ndash;&gt;-->
+<!--                &lt;!&ndash;                <preBlinkSoundDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                    <li>AutoBlink_Skip_Small</li>&ndash;&gt;-->
+<!--                &lt;!&ndash;                </preBlinkSoundDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash; MoteDefs &ndash;&gt;-->
+<!--                &lt;!&ndash;                <preBlinkMoteDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                    &lt;!&ndash; leave empty if none &ndash;&gt;&ndash;&gt;-->
+<!--                &lt;!&ndash;                </preBlinkMoteDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash; EffecterDefs &ndash;&gt;-->
+<!--                &lt;!&ndash;                <preBlinkEffecterDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                    <li>Skip_Entry</li>&ndash;&gt;-->
+<!--                &lt;!&ndash;                </preBlinkEffecterDefs>&ndash;&gt;-->
+
+<!--                &lt;!&ndash; Effects played on the destination cell after blinking &ndash;&gt;-->
+<!--                &lt;!&ndash; SoundDefs &ndash;&gt;-->
+<!--                &lt;!&ndash;                <postBlinkSoundDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                    <li>AutoBlink_Skip_Exit_Small</li>&ndash;&gt;-->
+<!--                &lt;!&ndash;                </postBlinkSoundDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash; MoteDefs &ndash;&gt;-->
+<!--                &lt;!&ndash;                <postBlinkMoteDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                </postBlinkMoteDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash; EffecterDefs &ndash;&gt;-->
+<!--                &lt;!&ndash;                <postBlinkEffecterDefs>&ndash;&gt;-->
+<!--                &lt;!&ndash;                    <li>Skip_ExitNoDelay</li>&ndash;&gt;-->
+<!--                &lt;!&ndash;                </postBlinkEffecterDefs>&ndash;&gt;-->
+
+
+<!--            </li>-->
 <!--        </value>-->
 <!--    </Operation>-->
 
