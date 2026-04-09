@@ -14,9 +14,19 @@ SNS : 科学永不止步 （Science Never Stops）
 AOPC : 宇宙雄心 （Ambition of the Cosmic [Continued]）
 TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 
-- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投影仪(Temporal Barrier Projector)” 加了回来，并大幅增强了相关属性。
+- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投影仪(Temporal Barrier Projector)” ，并大幅增强了相关属性。
 	由于时空立场投影仪是一个眼部饰品，这就意味着不需要干扰穿着的衣服，
 	所以鼠鼠等具有特色服饰的种族可在保留服饰的基础上，通过这个物品获得各项属性加成和一个超级强力的随身能量护盾。
+	此物品大幅增加了角色的搬运能力，工作速度，移动速度，战斗能力，生存能力。
+	在安装 Animal Apparel: Framework (AnimalApparelFramework) 后，你的宠物也可以装备这个物品，获得同样的属性加成和护盾。
+	在安装 边缘仙路 (RimImmortal) 后，能增加负重上限。
+	在安装 奥德赛 DLC (Odyssey) 后，能增加真空抗性。
+	
+	最适合的场景：
+	- 鼠鼠、龙、猫猫等具有特色服饰的种族，想要在不牺牲外观的前提下获得强力属性加成和护盾。
+	- 想要一个强力的终极防御装备选项的玩家。
+	- 需要大量搬运能力的玩家。（例如使用 边缘弹道导弹 (IRBM) 但是觉得装填速度太慢）
+	- 需要超模防御力的玩家。（穿上这个可以跟虫贴脸）
 
 - 修改了 “稳定壁垒(Bastion of Stability)” 和 “永续自律型群星之怒炮塔(Eternal EXARCH Turret)” 的攻击准确度，使得其更加符合最强远程炮台的设定了。（再也不会人体描边乱炸一通，敌人衣角微脏，家里建筑却炸了个稀巴烂）
 - 修改了 “星河水栽培III代(Cosmic Hydroponics Generation Omega)” 的肥沃度为 10000 ， 让它更符合最强水栽培的设定。解决了种植超级作物（生长时间600天的植物）的问题。（种植超级作物再也不需要依赖 永恒科学(Eternal Science) 的 生态方舱(Eco-Ark[EcoArk_LostS1ght]) 了）
@@ -31,9 +41,11 @@ TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 - 再次增加了时空立场投影仪的携带能力，因为我发现外出时携带能力还不够大。
 
 - 2026.03.22
-- 为动物提供了穿戴时空立场投影仪的支持。现在动物也可以穿戴时空立场投影仪了。当风雪遗孤模式动物单主角与动物时，让动物作为后备力量的可靠性大大提升。
+- 为动物提供了穿戴时空立场投影仪的支持。现在动物也可以穿戴时空立场投影仪了。当风雪遗孤剧本下只有单主角与动物时，大大提升动物的存货率。
 （需要安装能让动物穿衣服的mod框架：（Animal Apparel: Framework）） https://steamcommunity.com/workshop/filedetails/?id=3513825850
 
+- 2026.03.23
+- 让「隔岸观火」和「世界尽头」可以与盾牌一起装备。（貌似还存在问题？）（当使用了 Vanilla Weapons Expanded 的情况下） https://steamcommunity.com/workshop/filedetails/?id=2023507013
 
 ----------------
 
@@ -46,9 +58,21 @@ SNS: Science Never Stops
 AOPC: Ambition of the Cosmic [Continued]
 TPOC: True Pinnacle of Creation [Continued]
 
-- Restored the "Temporal Barrier Projector" from Ambition of the Cosmic: Custom Edition and significantly buffed its attributes.
-Since the projector is an eye accessory, it does not interfere with worn apparel. This allows races with unique outfits (like Ratkins) to keep their signature look while gaining massive stat boosts and a super-powerful portable energy shield.
 
+- Restored the "Temporal Barrier Projector" from Ambition of the Cosmic: Custom Edition and significantly buffed its attributes.
+Since the projector is an eye accessory, it does not interfere with worn apparel.
+This allows races with unique outfits (like Ratkins) to keep their signature look while gaining massive stat boosts and a super-powerful portable energy shield.
+This item greatly enhances carrying capacity, work speed, movement speed, combat ability, and survivability.
+With the Animal Apparel: Framework installed, your pets can also equip this item to gain the same stat boosts and shield.
+With RimImmortal installed, it increases carrying capacity. With the Odyssey DLC installed, it increases vacuum resistance.
+With Odyssey DLC installed, it increases vacuum resistance.
+
+Best for:
+- Players who want powerful stat boosts and a shield without sacrificing their character's unique appearance.
+- Players looking for a strong endgame defensive equipment option.
+- Players who need a lot of carrying capacity (e.g., using IRBM but find the reload speed too slow).
+- Players who want super high defense (you can facehug bugs with this).
+		
 - Tweaked the accuracy of the "Bastion of Stability" and "Eternal EXARCH Turret" to better fit their status as the "ultimate ranged turrets."
 (No more "outline painting" where the enemy walks away with a dusty coat while your own base is blown to smithereens.)
 
@@ -70,11 +94,19 @@ Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, en
 
 - 2026.03.22
 - Added support for animals to wear the Temporal Barrier Projector. Now animals can also benefit from wearing the projector. 
-(Requires the "Animal Apparel: Framework" mod that allows animals to wear apparel) https://steamcommunity.com/workshop/filedetails/?id
+- This significantly increases the survivability of animals, especially in scenarios like the "Wind and Snow Orphan" (OAGene_Snowstorm_SnowstormStory) where you have a single protagonist and animals.
+(Requires a mod framework that allows animals to wear apparel: Animal Apparel: Framework) https://steamcommunity.com/workshop/filedetails/?id=3513825850
+
+- 2026.03.23
+- Made the "B.E.H.O.L.D.E.R." and "T.E.R.M.I.N.U.S." compatible with shields when using Vanilla Weapons Expanded. https://steamcommunity.com/workshop/filedetails/?id=2023507013
+
 
 
 	</description>
 	<loadAfter>
+		<li>OskarPotocki.VanillaFactionsExpanded.Core</li>
+		<li>Ingendum.AnimalApparelFramework</li>
+		<li>ri.rimimmortal.core</li>
 	</loadAfter>
 	
 	<modDependencies>
