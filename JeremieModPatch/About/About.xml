@@ -10,6 +10,13 @@
     <description>Jeremie's Mod Patch Pack</description>
     <loadAfter>
         <li>Ludeon.RimWorld.Odyssey</li>
+        <li>KindSeal.LOL</li>
+        <li>rabiosus.autoblink</li>
+        <li>AZD.Phasecore</li>
+        <!--<name>ZeroTech-Defence (Continued)</name>-->
+        <li>Mlie.ZeroTechDefence</li>
+        <!--<name>ZeroTech-Defence</name>-->
+        <li>LingLuo.ZeroTechDefence</li>
     </loadAfter>
 
     <modDependencies>
@@ -22,6 +29,16 @@
             <displayName>Faster Healing Bed</displayName>
             <packageId>sshark.fasterhealingbed</packageId>
             <steamWorkshopUrl>steam://url/CommunityFilePage/3525415170</steamWorkshopUrl>
+        </li>
+        <li>
+            <displayName>联合重工-UF Heavy Industries</displayName>
+            <packageId>KindSeal.LOL</packageId>
+            <steamWorkshopUrl>steam://url/CommunityFilePage/3555662938</steamWorkshopUrl>
+        </li>
+        <li>
+            <displayName>Phasecore相位核心</displayName>
+            <packageId>AZD.Phasecore</packageId>
+            <steamWorkshopUrl>steam://url/CommunityFilePage/3566266760</steamWorkshopUrl>
         </li>
     </modDependencies>
 </ModMetaData>

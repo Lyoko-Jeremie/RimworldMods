@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+
+    <!--AT发生器-->
+
+    <Operation Class="PatchOperationReplace">
+        <xpath>
+            Defs/ThingDef[defName="KT_ATFieldGenerator"]/comps/li[@Class="ATFieldGenerator.CompProperties_AbsoluteTerrorField"]/energyMax
+        </xpath>
+        <value>
+            <!-- 最大护盾量  -->
+            <energyMax>2147483647</energyMax>
+        </value>
+    </Operation>
+    <Operation Class="PatchOperationReplace">
+        <xpath>
+            Defs/ThingDef[defName="KT_ATFieldGenerator"]/comps/li[@Class="ATFieldGenerator.CompProperties_AbsoluteTerrorField"]/energyGainPerTick
+        </xpath>
+        <value>
+            <!-- 护盾恢复速度  -->
+            <energyGainPerTick>10000000</energyGainPerTick>
+        </value>
+    </Operation>
+
+</Patch>

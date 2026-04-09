@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- 双屏障 -->
+  <LingSandbagA.label>分解屏障</LingSandbagA.label>
+  <LingSandbagA.description>一款特制的屏障,生物可以穿过,但会将子弹和爆炸波拦截(对空抛弹无效).</LingSandbagA.description>
+  <LingSandbagA_Blueprint.label>分解屏障 (蓝图)</LingSandbagA_Blueprint.label>
+  <LingSandbagA_Frame.label>分解屏障 (建造中)</LingSandbagA_Frame.label>
+  <LingSandbagA_Frame.description>一款特制的屏障,生物可以穿过,但会将子弹和爆炸波拦截(对空抛弹无效).</LingSandbagA_Frame.description>
+  <LingSandbagB.label>细胞屏障</LingSandbagB.label>
+  <LingSandbagB.description>一款特制的屏障,可以阻挡生物但不能阻挡爆炸波和飞行物,另外不会提供任何掩体效果.</LingSandbagB.description>
+  <LingSandbagB_Blueprint.label>细胞屏障 (蓝图)</LingSandbagB_Blueprint.label>
+  <LingSandbagB_Frame.label>细胞屏障 (建造中)</LingSandbagB_Frame.label>
+  <LingSandbagB_Frame.description>一款特制的屏障,可以阻挡生物但不能阻挡爆炸波和飞行物,另外不会提供任何掩体效果.</LingSandbagB_Frame.description>
+</LanguageData>

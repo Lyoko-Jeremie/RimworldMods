@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+
+    <!--    <name>Phasecore相位核心</name>-->
+    <!--    <packageId>AZD.Phasecore</packageId>-->
+
+    <!--    <Operation Class="PatchOperationReplace">-->
+    <!--        <xpath>Defs/HediffDef[defName="AZD_Hediff_Phasecore"]/stages/li/painFactor</xpath>-->
+    <!--        <value>-->
+    <!--            <painFactor>1</painFactor>-->
+    <!--        </value>-->
+    <!--    </Operation>-->
+    <Operation Class="PatchOperationRemove">
+        <xpath>Defs/HediffDef[defName="AZD_Hediff_Phasecore"]/stages/li/painFactor</xpath>
+    </Operation>
+
+    <!--    <Operation Class="PatchOperationReplace">-->
+    <!--        <xpath>Defs/HediffDef[defName="AZD_Hediff_Phasecore"]/stages/li/statOffsets/MoveSpeed</xpath>-->
+    <!--        <value>-->
+    <!--            <MoveSpeed>+0</MoveSpeed>-->
+    <!--        </value>-->
+    <!--    </Operation>-->
+    <Operation Class="PatchOperationRemove">
+        <xpath>Defs/HediffDef[defName="AZD_Hediff_Phasecore"]/stages/li/statOffsets/MoveSpeed</xpath>
+    </Operation>
+
+    <Operation Class="PatchOperationReplace">
+        <xpath>Defs/HediffDef[defName="AZD_Hediff_Phasecore"]/stages/li/statOffsets/IncomingDamageFactor</xpath>
+        <value>
+            <IncomingDamageFactor>-0.5</IncomingDamageFactor>
+        </value>
+    </Operation>
+    <!--    <Operation Class="PatchOperationRemove">-->
+    <!--        <xpath>Defs/HediffDef[defName="AZD_Hediff_Phasecore"]/stages/li/statOffsets/IncomingDamageFactor</xpath>-->
+    <!--    </Operation>-->
+
+
+    <!--<Defs>-->
+    <!--<HediffDef>-->
+    <!--    <defName>AZD_Hediff_Phasecore</defName>-->
+    <!--    <label>Phasecore</label>-->
+    <!--    <labelNoun>a phasecore</labelNoun>-->
+    <!--    <description>A Phasecore implanted within the body, granting the user the ability to perform short-range phase-shifts.</description>-->
+    <!--    <descriptionHyperlinks><ThingDef>AZD_Implant_Phasecore</ThingDef></descriptionHyperlinks>-->
+    <!--    <hediffClass>HediffWithComps</hediffClass>-->
+    <!--    <defaultLabelColor>(0.6, 0.6, 1.0)</defaultLabelColor>-->
+    <!--    <stages>-->
+    <!--        <li>-->
+    <!--            <painFactor>1.2</painFactor>-->
+    <!--            <statOffsets>-->
+    <!--                <IncomingDamageFactor>0.1</IncomingDamageFactor>-->
+    <!--                <MoveSpeed>-0.2</MoveSpeed>-->
+    <!--            </statOffsets>-->
+    <!--        </li>-->
+    <!--    </stages>-->
+
+</Patch>
