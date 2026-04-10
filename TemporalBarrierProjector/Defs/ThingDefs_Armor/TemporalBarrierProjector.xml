@@ -125,8 +125,9 @@
             <ToxicResistance>1</ToxicResistance> <!-- 免疫毒性 -->
             <MentalBreakThreshold>-2</MentalBreakThreshold> <!-- 永不崩溃 -->
             <PsychicSensitivity>1</PsychicSensitivity> <!-- 精神敏感度保持标准 -->
-            <PsychicEntropyMax>2000</PsychicEntropyMax> <!-- 精神熵上限极大化 -->
-            <PsychicEntropyRecoveryRate>+100</PsychicEntropyRecoveryRate> <!-- 精神熵恢复速度 -->
+            <PsychicEntropyMax MayRequire="Ludeon.RimWorld.Ideology">200000</PsychicEntropyMax> <!-- 精神熵上限（阈值） -->
+            <PsychicEntropyRecoveryRate MayRequire="Ludeon.RimWorld.Ideology">+10000</PsychicEntropyRecoveryRate> <!-- 精神熵恢复（消散）速度 -->
+            <MeditationFocusGain MayRequire="Ludeon.RimWorld.Ideology">30</MeditationFocusGain> <!-- 冥想效力乘数 -->
             <EatingSpeed>1</EatingSpeed> <!-- 进食速度 -->
             <RestFallRateFactor>-0.5</RestFallRateFactor> <!-- 睡眠需求减半 -->
             <FilthRate>-1.5</FilthRate> <!-- 不产生污垢 -->
