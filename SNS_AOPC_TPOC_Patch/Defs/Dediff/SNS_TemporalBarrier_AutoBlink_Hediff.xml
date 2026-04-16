@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <HediffDef MayRequire="rabiosus.autoblink">
+        <defName>SNS_TemporalBarrier_AutoBlink_Hediff</defName>
+        <label>Temporal Barrier Auto Blink</label>
+        <description>Auto Blink Ability By Temporal Barrier Projector</description>
+        <hediffClass>HediffWithComps</hediffClass>
+        <isBad>false</isBad>
+        <!-- 是否影响殖民者的市场价值 -->
+        <priceImpact>false</priceImpact>
+        <!-- 计入人造器官或植入物 -->
+        <countsAsAddedPartOrImplant>false</countsAsAddedPartOrImplant>
+        <!-- 允许低优先级世界角色被封存/休眠 -->
+        <allowMothballIfLowPriorityWorldPawn>true</allowMothballIfLowPriorityWorldPawn>
+        <comps>
+            <li Class="AutoBlink.HediffCompProperties_AutoBlink">
+                <minDistanceToBlink>5</minDistanceToBlink>
+                <maxDistanceToBlink>300</maxDistanceToBlink>
+                <blinkIntervalTicks>60</blinkIntervalTicks>
+                <delayAfterEligibleTicks>40</delayAfterEligibleTicks>
+                <cellsBeforeTarget>1</cellsBeforeTarget>
+                <postBlinkStanceTicks>30</postBlinkStanceTicks>
+                <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
+                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
+                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
+                <playerFactionOnly>false</playerFactionOnly>
+                <excludedJobDefs>
+                    <!-- 闲逛时 -->
+                    <li>GotoWander</li>
+                    <!-- 被携带搬运时 -->
+                    <li>Carried</li>
+                </excludedJobDefs>
+                <drawGizmo>true</drawGizmo>
+                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>
+                <preBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Small</li>
+                </preBlinkSoundDefs>
+                <preBlinkEffecterDefs>
+                    <li>Skip_Entry</li>
+                </preBlinkEffecterDefs>
+                <postBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Exit_Small</li>
+                </postBlinkSoundDefs>
+                <postBlinkEffecterDefs>
+                    <li>Skip_ExitNoDelay</li>
+                </postBlinkEffecterDefs>
+            </li>
+        </comps>
+    </HediffDef>
+
+</Defs>

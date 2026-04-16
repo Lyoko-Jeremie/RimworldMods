@@ -82,7 +82,7 @@ fabric.properties
 *
 
 */**/*.zstd
-
+*.zstd
 
 !SNS_AOPC_TPOC_Patch/
 !SNS_AOPC_TPOC_Patch/**/*
@@ -103,5 +103,7 @@ fabric.properties
 !TemporalBarrierProjector/
 !TemporalBarrierProjector/**/*
 !.gitignore
-!.gitignore
 
+
+*/**/*.zstd
+*.zstd

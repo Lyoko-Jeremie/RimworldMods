@@ -14,13 +14,14 @@ SNS : 科学永不止步 （Science Never Stops）
 AOPC : 宇宙雄心 （Ambition of the Cosmic [Continued]）
 TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 
-- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投影仪(Temporal Barrier Projector)” ，并大幅增强了相关属性。
-	由于时空立场投影仪是一个眼部饰品，这就意味着不需要干扰穿着的衣服，
+- 将 Ambition of the Cosmic: Custom Edition 中的 “时空立场投射仪(Temporal Barrier Projector)” ，并大幅增强了相关属性。
+	由于时空立场投射仪是一个眼部饰品，这就意味着不需要干扰穿着的衣服，
 	所以鼠鼠等具有特色服饰的种族可在保留服饰的基础上，通过这个物品获得各项属性加成和一个超级强力的随身能量护盾。
 	此物品大幅增加了角色的搬运能力，工作速度，移动速度，战斗能力，生存能力。
 	在安装 Animal Apparel: Framework (AnimalApparelFramework) 后，你的宠物也可以装备这个物品，获得同样的属性加成和护盾。
 	在安装 边缘仙路 (RimImmortal) 后，能增加负重上限。
 	在安装 奥德赛 DLC (Odyssey) 后，能增加真空抗性。
+	在安装 AutoBlink 后，在穿戴时自动获得一个传送能力HeDiff "时空立场闪烁" 。如果存档中角色已经穿戴了这个物品，脱下再穿上即可获得传送能力。
 	
 	最适合的场景：
 	- 鼠鼠、龙、猫猫等具有特色服饰的种族，想要在不牺牲外观的前提下获得强力属性加成和护盾。
@@ -31,21 +32,24 @@ TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 - 修改了 “稳定壁垒(Bastion of Stability)” 和 “永续自律型群星之怒炮塔(Eternal EXARCH Turret)” 的攻击准确度，使得其更加符合最强远程炮台的设定了。（再也不会人体描边乱炸一通，敌人衣角微脏，家里建筑却炸了个稀巴烂）
 - 修改了 “星河水栽培III代(Cosmic Hydroponics Generation Omega)” 的肥沃度为 10000 ， 让它更符合最强水栽培的设定。解决了种植超级作物（生长时间600天的植物）的问题。（种植超级作物再也不需要依赖 永恒科学(Eternal Science) 的 生态方舱(Eco-Ark[EcoArk_LostS1ght]) 了）
 
-- 时空立场投影仪 添加 CE 支持，虽然我不玩 CE ，但是也让 gemini 帮我写了 CE 补丁，如果有问题请及时反馈。
+- 时空立场投射仪 添加 CE 支持，虽然我不玩 CE ，但是也让 gemini 帮我写了 CE 补丁，如果有问题请及时反馈。
 - 另外， AOTC 的 稳定壁垒 听说好像在CE中不工作。
 
 - 修改 “奇迹垃圾分解器(Miraculous Wastepack Atomizer)” 的分解速度，虽然它的分解速度已经很快了，但我觉得它还可以再快一点点，所以就把它的分解速度提升了十倍。
 - 修改 “稳定物质基因处理器(Stable Matter Gene Processor)” ，将容量调到10000，提供的基因复杂度调整为100000，让它更符合最强基因处理器的设定。
 
 - 2026.03.20
-- 再次增加了时空立场投影仪的携带能力，因为我发现外出时携带能力还不够大。
+- 再次增加了时空立场投射仪的携带能力，因为我发现外出时携带能力还不够大。
 
 - 2026.03.22
-- 为动物提供了穿戴时空立场投影仪的支持。现在动物也可以穿戴时空立场投影仪了。当风雪遗孤剧本下只有单主角与动物时，大大提升动物的存货率。
+- 为动物提供了穿戴时空立场投射仪的支持。现在动物也可以穿戴时空立场投射仪了。当风雪遗孤剧本下只有单主角与动物时，大大提升动物的存货率。
 （需要安装能让动物穿衣服的mod框架：（Animal Apparel: Framework）） https://steamcommunity.com/workshop/filedetails/?id=3513825850
 
 - 2026.03.23
 - 让「隔岸观火」和「世界尽头」可以与盾牌一起装备。（貌似还存在问题？）（当使用了 Vanilla Weapons Expanded 的情况下） https://steamcommunity.com/workshop/filedetails/?id=2023507013
+
+- 2026.04.16
+- 添加 "时空立场闪烁" Hediff ， 修改中文名称为 "时空立场投射仪" 以便更符合语境。
 
 ----------------
 
@@ -66,6 +70,7 @@ This item greatly enhances carrying capacity, work speed, movement speed, combat
 With the Animal Apparel: Framework installed, your pets can also equip this item to gain the same stat boosts and shield.
 With RimImmortal installed, it increases carrying capacity. With the Odyssey DLC installed, it increases vacuum resistance.
 With Odyssey DLC installed, it increases vacuum resistance.
+With AutoBlink installed, it grants an automatic teleportation ability "Temporal Barrier AutoBlink" Hediff while worn. If a character in your save already has this item equipped, simply unequip and re-equip it to gain the teleportation ability.
 
 Best for:
 - Players who want powerful stat boosts and a shield without sacrificing their character's unique appearance.
@@ -100,6 +105,8 @@ Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, en
 - 2026.03.23
 - Made the "B.E.H.O.L.D.E.R." and "T.E.R.M.I.N.U.S." compatible with shields when using Vanilla Weapons Expanded. https://steamcommunity.com/workshop/filedetails/?id=2023507013
 
+- 2026.04.16
+- Added the "Temporal Barrier AutoBlink" Hediff .
 
 
 	</description>
@@ -107,6 +114,12 @@ Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, en
 		<li>OskarPotocki.VanillaFactionsExpanded.Core</li>
 		<li>Ingendum.AnimalApparelFramework</li>
 		<li>ri.rimimmortal.core</li>
+		<li>rabiosus.autoblink</li>
+<!--		<li>-->
+<!--			<packageId>rabiosus.autoblink</packageId>-->
+<!--			<displayName>AutoBlink</displayName>-->
+<!--			<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>-->
+<!--		</li>-->
 	</loadAfter>
 	
 	<modDependencies>
