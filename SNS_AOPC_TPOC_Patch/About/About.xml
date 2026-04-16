@@ -50,6 +50,7 @@ TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 
 - 2026.04.16
 - 添加 "时空立场闪烁" Hediff ， 修改中文名称为 "时空立场投射仪" 以便更符合语境。
+- 修改了时空立场投射仪的价值，为了避免价值过高导致殖民地财富爆炸问题，现在价值是1，并且禁止自然生成在袭击者身上（应该），且星际贸易只会回收而不会销售它。现在应该只能通过乌托邦装置和开发者模式来获得。
 
 ----------------
 
@@ -107,7 +108,7 @@ Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, en
 
 - 2026.04.16
 - Added the "Temporal Barrier AutoBlink" Hediff .
-
+- Change the value of the Temporal Barrier Projector to 1 to avoid wealth explosion issues in colonies. It should now only be obtainable through Utopian Apparatus and developer mode, and should not naturally spawn on raiders (hopefully), and will only be recycled but not sold in interstellar trade.
 
 	</description>
 	<loadAfter>
