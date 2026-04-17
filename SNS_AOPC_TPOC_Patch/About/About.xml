@@ -41,6 +41,7 @@ TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 - 新增自动水栽培功能，现在为星河水栽培III代添加了自动采摘种植逻辑，只需要通电并选择植物类型，就可以自动种植了。
 - 对于拥有大量水栽培盆的殖民地，这个特性可以大大减少管理水栽培盆所需的工作量和殖民者，减少Pawn太多导致的性能问题。
 - 建议将水栽培盆设置为禁用，以免殖民者抢种植任务。如果需要停止自动生长逻辑，直接断电即可。
+- 性能：在我681个mod的环境下，260个水栽培盆，TPS下降不明显。且因为效率远高于人工种植，目测实际上50个水培盆的效率几乎相当于200个水栽培盆的人工种植效率了。且水培盆本身效率越高，相对于人工种植的效率提升越大。
 
 For Mod 作者，只需一个以下的补丁就可以让任意标准的水栽培盆拥有自动水栽培功能：
 ```xml
@@ -68,6 +69,8 @@ For Mod 作者，只需一个以下的补丁就可以让任意标准的水栽培
 
 - 2026.04.17
 - 新增自动水栽培功能，现在为星河水栽培III代添加了自动采摘种植逻辑，只需要通电并选择植物类型，就可以自动种植了。
+
+Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/SNS_AOPC_TPOC_Patch
 
 ----------------
 
@@ -115,6 +118,9 @@ Increased the capacity to 10,000 and the provided Gene Complexity to 100,000, en
 - Added an auto-hydroponics feature, now the "Cosmic Hydroponics Generation Omega" will automatically harvest and replant crops. Just power it up, select the plant type, and it will take care of the rest.
 For colonies with a large number of hydroponics basins, this feature can significantly reduce the workload and the number of colonists needed to manage them, alleviating performance issues caused by too many pawns.
 It’s recommended to set the hydroponics basins to "forbidden" to prevent colonists from taking the planting job. If you need to stop the auto-growing logic, simply cut the power.
+- Performance-wise, in my environment with 681 mods and 260 hydroponics basins, the TPS drop is negligible. 
+Given the efficiency far surpasses manual planting, it seems that the efficiency of 50 auto-hydroponics basins is almost equivalent to 200 manually tended hydroponics basins.
+And the higher the efficiency of the hydroponics basins, the greater the efficiency boost compared to manual planting.
 
 For mod authors, a single patch like the following can give any standard hydroponics basin the auto-hydroponics feature:
 ```xml
@@ -143,6 +149,8 @@ For mod authors, a single patch like the following can give any standard hydropo
 
 - 2026.04.17
 - Added an auto-hydroponics feature, now the "Cosmic Hydroponics Generation Omega" will automatically harvest and replant crops. Just power it up, select the plant type, and it will take care of the rest.
+
+Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/SNS_AOPC_TPOC_Patch
 
 	</description>
 	<loadAfter>
