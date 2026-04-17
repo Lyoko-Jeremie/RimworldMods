@@ -90,6 +90,13 @@ namespace AutoHydroponicsThingComp
     // 继承自 ThingComp，作为挂载在水培盆建筑上的自定义组件
     public class ThingComp_AutoHydroponics : ThingComp
     {
+        // ── 缓存的图标贴图 ──
+        private static readonly Texture2D IconAutoHarvest =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoHarvest", false) ?? BaseContent.WhiteTex;
+
+        private static readonly Texture2D IconAutoSow =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoSow", false) ?? BaseContent.WhiteTex;
+
         // ── 持久化开关字段 ──
         // 是否启用自动收获功能（默认值由 CompProperties 决定）
         public bool autoHarvest;
@@ -123,8 +130,7 @@ namespace AutoHydroponicsThingComp
             {
                 defaultLabel = "autoHarvest".Translate(),
                 defaultDesc = "autoHarvestDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/autoHarvest", false)
-                       ?? BaseContent.WhiteTex,
+                icon = IconAutoHarvest,
                 isActive = () => autoHarvest,
                 toggleAction = () =>
                 {
@@ -138,8 +144,7 @@ namespace AutoHydroponicsThingComp
             {
                 defaultLabel = "autoSow".Translate(),
                 defaultDesc = "autoSowDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/autoSow", false)
-                       ?? BaseContent.WhiteTex,
+                icon = IconAutoSow,
                 isActive = () => autoSow,
                 toggleAction = () =>
                 {
@@ -246,11 +251,11 @@ namespace AutoHydroponicsThingComp
 
                             if (!autoSow)
                                 continue;
-                            
+
                             // 检查生长季节（温度等条件）
                             if (!PlantUtility.GrowthSeasonNow(pos, map, plantDefToGrow))
                                 continue;
-                            
+
                             Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
                             newPlant.Growth = Plant.BaseSownGrowthPercent;
                             newPlant.sown = true;
