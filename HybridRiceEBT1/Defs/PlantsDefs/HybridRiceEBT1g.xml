@@ -54,7 +54,7 @@
             <harvestYield>60</harvestYield>
             <sowWork>30</sowWork>
             <harvestWork>100</harvestWork> <!-- 优化基因，收割比较轻松 -->
-            <harvestAfterGrowth>0.80</harvestAfterGrowth> <!-- 杂交水稻建议长到80%以上再提前收割 -->
+<!--            <harvestAfterGrowth>0.80</harvestAfterGrowth> &lt;!&ndash; 杂交水稻建议长到80%以上再提前收割 &ndash;&gt;-->
 
             <!-- 收获产物：原版大米 -->
             <harvestedThingDef>RawRice</harvestedThingDef>
@@ -63,10 +63,10 @@
             <harvestAfterGrowth>0.7</harvestAfterGrowth>
 
             <!-- 视觉大小变化：从0.4长到1.0倍大小 -->
-            <visualSizeRange>
-                <min>0.4</min>
-                <max>1.0</max>
-            </visualSizeRange>
+<!--            <visualSizeRange>-->
+<!--                <min>0.4</min>-->
+<!--                <max>1.0</max>-->
+<!--            </visualSizeRange>-->
             <!-- topWindExposure: 受风力影响程度。决定了刮风时植物顶部摇摆的剧烈程度 -->
             <topWindExposure>0.1</topWindExposure>
 
