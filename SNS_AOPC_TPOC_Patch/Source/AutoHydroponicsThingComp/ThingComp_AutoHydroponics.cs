@@ -260,6 +260,11 @@ namespace AutoHydroponicsThingComp
 
                             if (!autoSow)
                                 continue;
+                            
+                            // 检查生长季节（温度等条件）
+                            if (!PlantUtility.GrowthSeasonNow(pos, map, plantDefToGrow))
+                                continue;
+                            
                             Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
                             newPlant.Growth = Plant.BaseSownGrowthPercent;
                             newPlant.sown = true;
