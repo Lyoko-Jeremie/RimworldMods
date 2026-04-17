@@ -1,5 +1,7 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 
@@ -74,6 +76,70 @@ namespace AutoHydroponicsThingComp
     // 继承自 ThingComp，作为挂载在水培盆建筑上的自定义组件
     public class ThingComp_AutoHydroponics : ThingComp
     {
+        // ── 持久化开关字段 ──
+        // 是否启用自动收获功能（默认开启）
+        public bool autoHarvest = true;
+
+        // 是否启用自动耕种功能（默认开启）
+        public bool autoSow = true;
+
+        // ── 存档序列化：让两个开关随存档持久化 ──
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref autoHarvest, "autoHarvest", true);
+            Scribe_Values.Look(ref autoSow, "autoSow", true);
+        }
+
+        // ── UI 按钮：在选中水培盆时显示开关 Gizmo ──
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            // 自动收获开关
+            yield return new Command_Toggle
+            {
+                defaultLabel = "自动收获",
+                defaultDesc = "开启后，水培盆中的植物成熟时将自动收获产物。",
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/Harvest", false)
+                       ?? BaseContent.WhiteTex,
+                isActive = () => autoHarvest,
+                toggleAction = () =>
+                {
+                    // 多选时同步所有选中水培盆的状态
+                    foreach (object obj in Find.Selector.SelectedObjects)
+                    {
+                        if (obj is ThingWithComps twc)
+                        {
+                            ThingComp_AutoHydroponics comp = twc.GetComp<ThingComp_AutoHydroponics>();
+                            if (comp != null)
+                                comp.autoHarvest = !comp.autoHarvest;
+                        }
+                    }
+                }
+            };
+
+            // 自动耕种开关
+            yield return new Command_Toggle
+            {
+                defaultLabel = "自动耕种",
+                defaultDesc = "开启后，水培盆中的空格将自动补种设定的植物。",
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/Plant", false)
+                       ?? BaseContent.WhiteTex,
+                isActive = () => autoSow,
+                toggleAction = () =>
+                {
+                    foreach (object obj in Find.Selector.SelectedObjects)
+                    {
+                        if (obj is ThingWithComps twc)
+                        {
+                            ThingComp_AutoHydroponics comp = twc.GetComp<ThingComp_AutoHydroponics>();
+                            if (comp != null)
+                                comp.autoSow = !comp.autoSow;
+                        }
+                    }
+                }
+            };
+        }
+
         // 重写 CompTickRare()，每 250 tick 由游戏自动调用一次
         public override void CompTickRare()
         {
@@ -88,99 +154,108 @@ namespace AutoHydroponicsThingComp
             Building_PlantGrower grower = parent as Building_PlantGrower;
             if (grower == null)
                 return;
-            
+
             // 若水培盆没有电力供应，则不执行任何自动操作
             if (!grower.CanAcceptSowNow())
                 return;
 
             // ── 阶段一：收获已成熟的植物 ──
             // 遍历水培盆上所有格子中的植物（ToList() 防止在遍历中修改集合导致异常）
-            foreach (Plant plant in grower.PlantsOnMe.ToList())
+            if (autoHarvest)
             {
-                // 跳过已经被销毁的植物（防止访问无效对象）
-                if (plant == null || plant.Destroyed)
-                    continue;
-
-                // 如果植物尚未完全成熟（生长度 < 100%），跳过，等待下次检查
-                if (plant.Growth < 1.0f)
-                    continue;
-
-                // 记录植物当前所在的地图格坐标
-                IntVec3 pos = plant.Position;
-                // 记录植物所在的地图对象
-                Map map = plant.Map;
-
-                // 如果植物没有 plant 属性定义，则跳过（防御性检查）
-                if (plant.def.plant == null)
-                    continue;
-
-                // 仅当该植物有定义的收获物时才进行收获
-                if (plant.def.plant.harvestedThingDef != null)
+                foreach (Plant plant in grower.PlantsOnMe.ToList())
                 {
-                    // 计算当前植物在现有生长度和血量下的实际产量
-                    int yieldCount = plant.YieldNow();
-                    // 只有产量大于 0 时才生成收获物，避免创建无意义的空物品
-                    if (yieldCount > 0)
+                    // 跳过已经被销毁的植物（防止访问无效对象）
+                    if (plant == null || plant.Destroyed)
+                        continue;
+
+                    // 如果植物尚未完全成熟（生长度 < 100%），跳过，等待下次检查
+                    if (plant.Growth < 1.0f)
+                        continue;
+
+                    // 记录植物当前所在的地图格坐标
+                    IntVec3 pos = plant.Position;
+                    // 记录植物所在的地图对象
+                    Map map = plant.Map;
+
+                    // 如果植物没有 plant 属性定义，则跳过（防御性检查）
+                    if (plant.def.plant == null)
+                        continue;
+
+                    // 仅当该植物有定义的收获物时才进行收获
+                    if (plant.def.plant.harvestedThingDef != null)
                     {
-                        // 根据植物定义的收获物类型创建一个新的 Thing 实例
-                        Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
-                        // 设置收获物的数量
-                        yieldThing.stackCount = yieldCount;
-                        // 将收获物放置到水培盆附近（Near 模式会自动寻找最近的可放置位置）
-                        GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
+                        // 计算当前植物在现有生长度和血量下的实际产量
+                        int yieldCount = plant.YieldNow();
+                        // 只有产量大于 0 时才生成收获物，避免创建无意义的空物品
+                        if (yieldCount > 0)
+                        {
+                            // 根据植物定义的收获物类型创建一个新的 Thing 实例
+                            Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
+                            // 设置收获物的数量
+                            yieldThing.stackCount = yieldCount;
+                            // 将收获物放置到水培盆附近（Near 模式会自动寻找最近的可放置位置）
+                            GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
+                        }
                     }
-                }
 
-                // 判断该植物是否为多年生植物（即收获后不销毁，而是恢复到一定生长度继续生长）
-                // HarvestDestroys 为 true 表示 harvestAfterGrowth <= 0，即一年生植物，需要销毁并重种
-                // HarvestDestroys 为 false 表示多年生植物（如莓果），收获后将生长度重置为 harvestAfterGrowth 即可
-                if (plant.def.plant.HarvestDestroys)
-                {
-                    // ── 一年生植物：销毁旧植物，在原位重新种一株新植物 ──
-
-                    // 销毁已收获完毕的旧植物，释放该格子以便重新种植
-                    plant.Destroy();
-
-                    // 从水培盆中读取玩家设定的目标种植植物类型
-                    ThingDef plantDefToGrow = grower.GetPlantDefToGrow();
-                    // 只有种植类型有效时才继续（防止种植计划为空时生成错误）
-                    if (plantDefToGrow != null)
+                    // 判断该植物是否为多年生植物（即收获后不销毁，而是恢复到一定生长度继续生长）
+                    // HarvestDestroys 为 true 表示 harvestAfterGrowth <= 0，即一年生植物，需要销毁并重种
+                    // HarvestDestroys 为 false 表示多年生植物（如莓果），收获后将生长度重置为 harvestAfterGrowth 即可
+                    if (plant.def.plant.HarvestDestroys)
                     {
-                        // 修复：使用 BaseSownGrowthPercent 并设置 sown=true，
-                        // 确保植物进入 Growing 阶段（而非 Sowing 阶段），
-                        // 从而显示正常幼苗图像且能继续生长。
-                        Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
-                        newPlant.Growth = Plant.BaseSownGrowthPercent;
-                        newPlant.sown = true;
-                    }
-                }
-                else
-                {
-                    // ── 多年生植物（如莓果）：不销毁，仅将生长度回退到 harvestAfterGrowth，让其继续生长 ──
+                        // ── 一年生植物：销毁旧植物，在原位重新种一株新植物 ──
 
-                    // 检查当前种植的植物是否与玩家设定的目标植物一致
-                    ThingDef plantDefToGrow = grower.GetPlantDefToGrow();
-                    if (plantDefToGrow != null && plant.def != plantDefToGrow)
-                    {
-                        // 植物种类不一致：销毁当前植物，在原位种植正确种类的植物
+                        // 销毁已收获完毕的旧植物，释放该格子以便重新种植
                         plant.Destroy();
 
-                        Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
-                        newPlant.Growth = Plant.BaseSownGrowthPercent;
-                        newPlant.sown = true;
+                        if (!autoSow)
+                            continue;
+                        // 从水培盆中读取玩家设定的目标种植植物类型
+                        ThingDef plantDefToGrow = grower.GetPlantDefToGrow();
+                        // 只有种植类型有效时才继续（防止种植计划为空时生成错误）
+                        if (plantDefToGrow != null)
+                        {
+                            // 修复：使用 BaseSownGrowthPercent 并设置 sown=true，
+                            // 确保植物进入 Growing 阶段（而非 Sowing 阶段），
+                            // 从而显示正常幼苗图像且能继续生长。
+                            Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
+                            newPlant.Growth = Plant.BaseSownGrowthPercent;
+                            newPlant.sown = true;
+                        }
                     }
                     else
                     {
-                        // 将生长进度设回收获后的初始值（由植物 Def 定义，例如 0.08 表示 8%）
-                        plant.Growth = plant.def.plant.harvestAfterGrowth;
+                        // ── 多年生植物（如莓果）：不销毁，仅将生长度回退到 harvestAfterGrowth，让其继续生长 ──
 
-                        // 标记该格子的地图网格需要重绘，以更新植物的外观（与原版 PlantCollected 逻辑一致）
-                        map.mapDrawer.MapMeshDirty(pos, MapMeshFlagDefOf.Things);
+                        // 检查当前种植的植物是否与玩家设定的目标植物一致
+                        ThingDef plantDefToGrow = grower.GetPlantDefToGrow();
+                        if (plantDefToGrow != null && plant.def != plantDefToGrow)
+                        {
+                            // 植物种类不一致：销毁当前植物，在原位种植正确种类的植物
+                            plant.Destroy();
+
+                            if (!autoSow)
+                                continue;
+                            Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
+                            newPlant.Growth = Plant.BaseSownGrowthPercent;
+                            newPlant.sown = true;
+                        }
+                        else
+                        {
+                            // 将生长进度设回收获后的初始值（由植物 Def 定义，例如 0.08 表示 8%）
+                            plant.Growth = plant.def.plant.harvestAfterGrowth;
+
+                            // 标记该格子的地图网格需要重绘，以更新植物的外观（与原版 PlantCollected 逻辑一致）
+                            map.mapDrawer.MapMeshDirty(pos, MapMeshFlagDefOf.Things);
+                        }
                     }
                 }
             }
 
             // ── 阶段二：自动种植——对所有没有植物的空格进行补种 ──
+            if (!autoSow)
+                return;
             ThingDef defToGrow = grower.GetPlantDefToGrow();
             if (defToGrow == null)
                 return;
