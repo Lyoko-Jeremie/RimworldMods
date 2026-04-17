@@ -158,11 +158,25 @@ namespace AutoHydroponicsThingComp
                 {
                     // ── 多年生植物（如莓果）：不销毁，仅将生长度回退到 harvestAfterGrowth，让其继续生长 ──
 
-                    // 将生长进度设回收获后的初始值（由植物 Def 定义，例如 0.08 表示 8%）
-                    plant.Growth = plant.def.plant.harvestAfterGrowth;
+                    // 检查当前种植的植物是否与玩家设定的目标植物一致
+                    ThingDef plantDefToGrow = grower.GetPlantDefToGrow();
+                    if (plantDefToGrow != null && plant.def != plantDefToGrow)
+                    {
+                        // 植物种类不一致：销毁当前植物，在原位种植正确种类的植物
+                        plant.Destroy();
 
-                    // 标记该格子的地图网格需要重绘，以更新植物的外观（与原版 PlantCollected 逻辑一致）
-                    map.mapDrawer.MapMeshDirty(pos, MapMeshFlagDefOf.Things);
+                        Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
+                        newPlant.Growth = Plant.BaseSownGrowthPercent;
+                        newPlant.sown = true;
+                    }
+                    else
+                    {
+                        // 将生长进度设回收获后的初始值（由植物 Def 定义，例如 0.08 表示 8%）
+                        plant.Growth = plant.def.plant.harvestAfterGrowth;
+
+                        // 标记该格子的地图网格需要重绘，以更新植物的外观（与原版 PlantCollected 逻辑一致）
+                        map.mapDrawer.MapMeshDirty(pos, MapMeshFlagDefOf.Things);
+                    }
                 }
             }
 
