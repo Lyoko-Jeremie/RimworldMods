@@ -60,6 +60,17 @@ using Verse;
 
 namespace AutoHydroponicsThingComp
 {
+    // 新增属性类
+    public class CompProperties_AutoHydroponics : CompProperties
+    {
+        public CompProperties_AutoHydroponics()
+        {
+            // 将这个属性类与你的逻辑类绑定
+            this.compClass = typeof(ThingComp_AutoHydroponics);
+        }
+    }
+
+
     // 继承自 ThingComp，作为挂载在水培盆建筑上的自定义组件
     public class ThingComp_AutoHydroponics : ThingComp
     {
