@@ -5,47 +5,47 @@ using Verse;
 
 // 让一个真正种植了原版植物的水培盆实现“自动收获”和“自动重新种植”
 // 编写自定义组件 (C# ThingComp) —— 最正规且主流的做法
-//
+// 
 // RimWorld 的物品（Thing）可以通过挂载组件（Comp）来拓展功能。你可以用 C# 写一个专门用于水培盆的组件，例如 CompAutoPlanter。
-//
+// 
 //     工作原理：
-//
+// 
 //         让这个组件使用 CompTickRare() 或 CompTickLong()，让游戏每隔一段时间（比如 250 tick 或 2000 tick）唤醒一次这个水培盆。
-//
+// 
 //         水培盆被唤醒后，扫描自己所在的格子上是否有植物（Plant）。
-//
+// 
 //         自动收获：检查该植物的生长进度（plant.Growth）。如果达到 1.0（100% 成熟），通过代码生成植物的产物（ThingMaker.MakeThing）并掉落在水培盆旁边。
-//
+// 
 //         自动重种：将刚刚那株植物销毁，然后读取水培盆当前设置的种植计划（IPlantToGrowSettable.GetPlantDefToGrow()），直接在原位生成一株进度为 0% 的新植物。
-//
+// 
 //     优点：逻辑清晰，只对挂载了该组件的特定水培盆生效，不影响原版普通农田，性能消耗可控。
-//
+// 
 //
 // 简化的 C# 逻辑概念演示
 // ```C#
 // public override void CompTickRare()
 // {
 //     base.CompTickRare();
-//
+//     
 //     // 1. 获取水培盆位置
-//     IntVec3 pos = this.parent.Position;
+//     IntVec3 pos = this.parent.Position; 
 //     Map map = this.parent.Map;
-//
+// 
 //     // 2. 找到上面的植物
-//     Plant plant = pos.GetPlant(map);
-//
+//     Plant plant = pos.GetPlant(map); 
+// 
 //     // 3. 判断是否成熟
-//     if (plant != null && plant.Growth >= 1.0f)
+//     if (plant != null && plant.Growth >= 1.0f) 
 //     {
 //         // 掉落产物
 //         int yieldCount = plant.YieldNow();
 //         Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
 //         yieldThing.stackCount = yieldCount;
 //         GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
-//
+// 
 //         // 销毁老植物
 //         plant.Destroy();
-//
+// 
 //         // 4. 获取设定的植物类型并种下新植物
 //         ThingDef plantDefToGrow = ((Building_PlantGrower)this.parent).GetPlantDefToGrow();
 //         if (plantDefToGrow != null)
@@ -85,15 +85,9 @@ namespace AutoHydroponicsThingComp
                 return;
 
             // 尝试将宿主建筑转型为 Building_PlantGrower（水培盆）；若不是则跳过
-            Building_PlantGrower grower = parent as Building_PlantGrower;
-            if (grower == null)
-                return;
-            
-            // 若水培盆没有电力供应，则不执行任何自动操作
-            if (!grower.CanAcceptSowNow())
+            if (parent is not Building_PlantGrower grower)
                 return;
 
-            // ── 阶段一：收获已成熟的植物 ──
             // 遍历水培盆上所有格子中的植物（ToList() 防止在遍历中修改集合导致异常）
             foreach (Plant plant in grower.PlantsOnMe.ToList())
             {
@@ -146,12 +140,10 @@ namespace AutoHydroponicsThingComp
                     // 只有种植类型有效时才继续（防止种植计划为空时生成错误）
                     if (plantDefToGrow != null)
                     {
-                        // 修复：使用 BaseSownGrowthPercent 并设置 sown=true，
-                        // 确保植物进入 Growing 阶段（而非 Sowing 阶段），
-                        // 从而显示正常幼苗图像且能继续生长。
+                        // 在原来的格子上生成一株新植物
                         Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
-                        newPlant.Growth = Plant.BaseSownGrowthPercent;
-                        newPlant.sown = true;
+                        // 将新植物的生长进度重置为 0，从头开始生长
+                        newPlant.Growth = 0f;
                     }
                 }
                 else
@@ -164,26 +156,6 @@ namespace AutoHydroponicsThingComp
                     // 标记该格子的地图网格需要重绘，以更新植物的外观（与原版 PlantCollected 逻辑一致）
                     map.mapDrawer.MapMeshDirty(pos, MapMeshFlagDefOf.Things);
                 }
-            }
-
-            // ── 阶段二：自动种植——对所有没有植物的空格进行补种 ──
-            ThingDef defToGrow = grower.GetPlantDefToGrow();
-            if (defToGrow == null)
-                return;
-
-            foreach (IntVec3 cell in grower.OccupiedRect())
-            {
-                // 若该格已有植物则跳过
-                if (cell.GetPlant(grower.Map) != null)
-                    continue;
-
-                // 检查生长季节（温度等条件）
-                if (!PlantUtility.GrowthSeasonNow(cell, grower.Map, defToGrow))
-                    continue;
-
-                Plant sownPlant = (Plant)GenSpawn.Spawn(defToGrow, cell, grower.Map);
-                sownPlant.Growth = Plant.BaseSownGrowthPercent;
-                sownPlant.sown = true;
             }
         }
     }
