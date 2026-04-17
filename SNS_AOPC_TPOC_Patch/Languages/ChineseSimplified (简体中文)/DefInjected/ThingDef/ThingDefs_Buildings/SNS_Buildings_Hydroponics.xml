@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+
+    <!-- EN: Cosmic Hydroponics Generation Omega -->
+    <SNS_Hydroponics_III.label>星河水栽培三代</SNS_Hydroponics_III.label>
+    <!-- EN: An arcane device that channels the raw power of another reality entirely, drawing Eternium straight from the Eternal Plane to allow plants to grow beyond the biological limits. Without power, the Eternium cannot flow, and the plants will die; the plants will die without power. -->
+    <SNS_Hydroponics_III.description>这款终极奥术级水栽培装置，可引导异次元的原始能量，直接从永恒位面汲取恒金能量，让植物突破所有生物生长极限。异次元的原始能量能让植物源源不断地自我种植和收割。装置一旦断电，恒金能量便无法输送，依赖其存活的植物会迅速死亡。</SNS_Hydroponics_III.description>
+
+</LanguageData>

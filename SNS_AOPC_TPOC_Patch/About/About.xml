@@ -158,11 +158,14 @@ Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/SNS_AOPC_
 		<li>Ingendum.AnimalApparelFramework</li>
 		<li>ri.rimimmortal.core</li>
 		<li>rabiosus.autoblink</li>
-<!--		<li>-->
-<!--			<packageId>rabiosus.autoblink</packageId>-->
-<!--			<displayName>AutoBlink</displayName>-->
-<!--			<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>-->
-<!--		</li>-->
+		<!-- <li>-->
+		<!-- 	<packageId>rabiosus.autoblink</packageId>-->
+		<!-- 	<displayName>AutoBlink</displayName>-->
+		<!-- 	<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>-->
+		<!-- </li>-->
+			 
+		<!-- Ambition of the Cosmic_zh：AOTC简体中文汉化 -->
+		<li>snsambitioncosmic.zh819</li>
 	</loadAfter>
 	
 	<modDependencies>
