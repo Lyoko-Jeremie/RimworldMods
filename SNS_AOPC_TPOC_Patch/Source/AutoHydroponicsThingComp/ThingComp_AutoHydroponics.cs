@@ -135,7 +135,7 @@ namespace AutoHydroponicsThingComp
                 toggleAction = () =>
                 {
                     autoHarvest = !autoHarvest;
-                    Log.Message($"[AutoHydroponics] {parent.ThingID} 自动收获 -> {autoHarvest}");
+                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动收获 -> {autoHarvest}");
                 }
             };
 
@@ -149,7 +149,7 @@ namespace AutoHydroponicsThingComp
                 toggleAction = () =>
                 {
                     autoSow = !autoSow;
-                    Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
+                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
                 }
             };
         }
