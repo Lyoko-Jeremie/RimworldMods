@@ -60,11 +60,24 @@ using Verse;
 // ```
 //
 
+// ```
+// <comps>
+//   <li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">
+//     <defaultAutoHarvest>true</defaultAutoHarvest>
+//     <defaultAutoSow>false</defaultAutoSow>
+//   </li>
+// </comps>
+// ```
+
 namespace AutoHydroponicsThingComp
 {
     // 新增属性类
     public class CompProperties_AutoHydroponics : CompProperties
     {
+        // 可在 XML Def 中配置的默认开关值
+        public bool defaultAutoHarvest = true;
+        public bool defaultAutoSow = true;
+
         public CompProperties_AutoHydroponics()
         {
             // 将这个属性类与你的逻辑类绑定
@@ -77,18 +90,28 @@ namespace AutoHydroponicsThingComp
     public class ThingComp_AutoHydroponics : ThingComp
     {
         // ── 持久化开关字段 ──
-        // 是否启用自动收获功能（默认开启）
-        public bool autoHarvest = true;
+        // 是否启用自动收获功能（默认值由 CompProperties 决定）
+        public bool autoHarvest;
 
-        // 是否启用自动耕种功能（默认开启）
-        public bool autoSow = true;
+        // 是否启用自动耕种功能（默认值由 CompProperties 决定）
+        public bool autoSow;
+
+        private CompProperties_AutoHydroponics Props => (CompProperties_AutoHydroponics)props;
+
+        // 首次生成时从 Props 读取默认值
+        public override void PostPostMake()
+        {
+            base.PostPostMake();
+            autoHarvest = Props.defaultAutoHarvest;
+            autoSow = Props.defaultAutoSow;
+        }
 
         // ── 存档序列化：让两个开关随存档持久化 ──
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref autoHarvest, "autoHarvest", true);
-            Scribe_Values.Look(ref autoSow, "autoSow", true);
+            Scribe_Values.Look(ref autoHarvest, "autoHarvest", Props.defaultAutoHarvest);
+            Scribe_Values.Look(ref autoSow, "autoSow", Props.defaultAutoSow);
         }
 
         // ── UI 按钮：在选中水培盆时显示开关 Gizmo ──
