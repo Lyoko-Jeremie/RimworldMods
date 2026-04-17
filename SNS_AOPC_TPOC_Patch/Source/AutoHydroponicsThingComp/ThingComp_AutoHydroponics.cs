@@ -127,14 +127,15 @@ namespace AutoHydroponicsThingComp
                 isActive = () => autoHarvest,
                 toggleAction = () =>
                 {
-                    // 多选时同步所有选中水培盆的状态
+                    // 多选时统一切换为图标所示状态的反向（即以当前组件状态为基准，统一设置所有选中水培盆）
+                    bool newValue = !autoHarvest;
                     foreach (object obj in Find.Selector.SelectedObjects)
                     {
                         if (obj is ThingWithComps twc)
                         {
                             ThingComp_AutoHydroponics comp = twc.GetComp<ThingComp_AutoHydroponics>();
                             if (comp != null)
-                                comp.autoHarvest = !comp.autoHarvest;
+                                comp.autoHarvest = newValue;
                         }
                     }
                 }
@@ -150,13 +151,15 @@ namespace AutoHydroponicsThingComp
                 isActive = () => autoSow,
                 toggleAction = () =>
                 {
+                    // 多选时统一切换为图标所示状态的反向（即以当前组件状态为基准，统一设置所有选中水培盆）
+                    bool newValue = !autoSow;
                     foreach (object obj in Find.Selector.SelectedObjects)
                     {
                         if (obj is ThingWithComps twc)
                         {
                             ThingComp_AutoHydroponics comp = twc.GetComp<ThingComp_AutoHydroponics>();
                             if (comp != null)
-                                comp.autoSow = !comp.autoSow;
+                                comp.autoSow = newValue;
                         }
                     }
                 }
