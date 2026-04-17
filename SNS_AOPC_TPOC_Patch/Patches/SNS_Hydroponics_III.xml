@@ -19,7 +19,10 @@
     <Operation Class="PatchOperationAdd">
         <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
         <value>
-            <li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics"/>
+            <li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">
+                <defaultAutoHarvest>true</defaultAutoHarvest>
+                <defaultAutoSow>true</defaultAutoSow>
+            </li>
         </value>
     </Operation>
 

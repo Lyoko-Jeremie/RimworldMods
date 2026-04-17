@@ -160,6 +160,10 @@ namespace AutoHydroponicsThingComp
             // 调用父类的 CompTickRare，保留原有逻辑
             base.CompTickRare();
 
+            // 如果自动耕种和自动收获均未启用，则跳过。减少无效的计算和对象访问。
+            if (!autoSow && !autoHarvest)
+                return;
+
             // 如果宿主建筑尚未生成到地图上（例如正在建造中），则跳过本次处理
             if (!parent.Spawned)
                 return;
