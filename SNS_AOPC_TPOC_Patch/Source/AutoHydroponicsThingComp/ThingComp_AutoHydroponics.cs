@@ -128,21 +128,8 @@ namespace AutoHydroponicsThingComp
                 isActive = () => autoHarvest,
                 toggleAction = () =>
                 {
-                    Log.Message("切换自动收获: " + !autoHarvest);
-                    // 多选时统一切换为图标所示状态的反向（即以当前组件状态为基准，统一设置所有选中水培盆）
-                    bool newValue = !autoHarvest;
-                    foreach (object obj in Find.Selector.SelectedObjects)
-                    {
-                        if (obj is Building_PlantGrower b)
-                        {
-                            ThingComp_AutoHydroponics comp = b.GetComp<ThingComp_AutoHydroponics>();
-                            if (comp != null)
-                            {
-                                Log.Message("b: " + b.ThingID);
-                                comp.autoHarvest = newValue;
-                            }
-                        }
-                    }
+                    autoHarvest = !autoHarvest;
+                    Log.Message($"[AutoHydroponics] {parent.ThingID} 自动收获 -> {autoHarvest}");
                 }
             };
 
@@ -156,21 +143,8 @@ namespace AutoHydroponicsThingComp
                 isActive = () => autoSow,
                 toggleAction = () =>
                 {
-                    Log.Message("切换自动耕种开: " + !autoSow);
-                    // 多选时统一切换为图标所示状态的反向（即以当前组件状态为基准，统一设置所有选中水培盆）
-                    bool newValue = !autoSow;
-                    foreach (object obj in Find.Selector.SelectedObjects)
-                    {
-                        if (obj is Building_PlantGrower b)
-                        {
-                            ThingComp_AutoHydroponics comp = b.GetComp<ThingComp_AutoHydroponics>();
-                            if (comp != null)
-                            {
-                                Log.Message("b: " + b.ThingID);
-                                comp.autoSow = newValue;
-                            }
-                        }
-                    }
+                    autoSow = !autoSow;
+                    Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
                 }
             };
         }
