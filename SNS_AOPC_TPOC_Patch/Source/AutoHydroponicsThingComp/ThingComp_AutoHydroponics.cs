@@ -131,9 +131,9 @@ namespace AutoHydroponicsThingComp
                     bool newValue = !autoHarvest;
                     foreach (object obj in Find.Selector.SelectedObjects)
                     {
-                        if (obj is ThingWithComps twc)
+                        if (obj is Building_PlantGrower b)
                         {
-                            ThingComp_AutoHydroponics comp = twc.GetComp<ThingComp_AutoHydroponics>();
+                            ThingComp_AutoHydroponics comp = b.GetComp<ThingComp_AutoHydroponics>();
                             if (comp != null)
                                 comp.autoHarvest = newValue;
                         }
@@ -155,9 +155,9 @@ namespace AutoHydroponicsThingComp
                     bool newValue = !autoSow;
                     foreach (object obj in Find.Selector.SelectedObjects)
                     {
-                        if (obj is ThingWithComps twc)
+                        if (obj is Building_PlantGrower b)
                         {
-                            ThingComp_AutoHydroponics comp = twc.GetComp<ThingComp_AutoHydroponics>();
+                            ThingComp_AutoHydroponics comp = b.GetComp<ThingComp_AutoHydroponics>();
                             if (comp != null)
                                 comp.autoSow = newValue;
                         }
