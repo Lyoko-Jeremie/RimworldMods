@@ -120,9 +120,9 @@ namespace AutoHydroponicsThingComp
             // 自动收获开关
             yield return new Command_Toggle
             {
-                defaultLabel = "自动收获",
-                defaultDesc = "开启后，水培盆中的植物成熟时将自动收获产物。",
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/Harvest", false)
+                defaultLabel = "autoHarvest".Translate(),
+                defaultDesc = "autoHarvestDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/autoHarvest", false)
                        ?? BaseContent.WhiteTex,
                 isActive = () => autoHarvest,
                 toggleAction = () =>
@@ -143,9 +143,9 @@ namespace AutoHydroponicsThingComp
             // 自动耕种开关
             yield return new Command_Toggle
             {
-                defaultLabel = "自动耕种",
-                defaultDesc = "开启后，水培盆中的空格将自动补种设定的植物。",
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/Plant", false)
+                defaultLabel = "autoSow".Translate(),
+                defaultDesc = "autoSowDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/autoSow", false)
                        ?? BaseContent.WhiteTex,
                 isActive = () => autoSow,
                 toggleAction = () =>
