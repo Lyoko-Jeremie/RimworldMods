@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Use in dll -->
-<LanguageData>
-    <autoHarvest>自动收获</autoHarvest>
-    <autoHarvestDesc>开启后，水培盆中的植物成熟时将自动收获产物。</autoHarvestDesc>
-    <autoSow>自动耕种</autoSow>
-    <autoSowDesc>开启后，水培盆中的空格将自动补种设定的植物。</autoSowDesc>
-</LanguageData>
