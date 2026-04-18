@@ -46,6 +46,26 @@
 
 在使用 链接水栽培 (Linked Planters) 时，自动播种和自动收获功能不会在链接的水栽培盆之间传播，需要先选中整组水栽培盆后切换开关，但这个影响不大。
 
+### 信息 :
+
+当前已经为所有继承自 Building_PlantGrower 的水栽培盆添加了这个功能。
+
+如果有非继承自 Building_PlantGrower 的水栽培盆，可以尝试通过以下代码片段来为特定物品添加这个补丁：
+
+```
+		<Operation Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
+			<value>
+				<li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics" MayRequire="Jeremie.Fully.Automatic.Hydroponics">
+					<!-- 默认状态下是否自动收获 -->
+					<defaultAutoHarvest>false</defaultAutoHarvest>
+					<!-- 默认状态下是否自动种植 -->
+					<defaultAutoSow>false</defaultAutoSow>
+				</li>
+			</value>
+		</Operation>
+```
+
 ---
 
 Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticHydroponics
@@ -92,6 +112,29 @@ Because its efficiency is far higher than manual planting, testing showed that 5
 It might conflict with mods that alter planting requirements, like SeedsPlease (untested). But honestly, if you are already using hardcore mods like that, you probably aren't looking for an overpowered QoL mod like this anyway.
 
 When using Linked Planters, the auto-sow and auto-harvest toggles do not propagate between linked basins. You will need to select the entire group of basins first before toggling the settings, but this is a minor inconvenience.
+
+### Information:
+
+Now this feature has been added to all hydroponics basins that inherit from Building_PlantGrower. 
+If there are hydroponics basins that do not inherit from Building_PlantGrower, you can try adding this patch to specific items using the following code snippet:
+
+```
+		<Operation Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
+			<value>
+				<li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics" MayRequire="Jeremie.Fully.Automatic.Hydroponics">
+					<!-- Whether to auto-harvest by default -->
+					<defaultAutoHarvest>false</defaultAutoHarvest>
+					<!-- Whether to auto-sow by default -->
+					<defaultAutoSow>false</defaultAutoSow>
+				</li>
+			</value>
+		</Operation>
+```
+
+---
+
+Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticHydroponics
 
 	</description>
 	<loadBefore>
