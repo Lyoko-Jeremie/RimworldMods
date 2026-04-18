@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Use in dll -->
+<LanguageData>
+    <FullyAutoHydroponics_autoHarvest>auto harvest</FullyAutoHydroponics_autoHarvest>
+    <!-- 开启后，水培盆中的植物成熟时将自动收获产物。 -->
+    <FullyAutoHydroponics_autoHarvestDesc>Will automatically harvest mature plants in the hydroponics basin.</FullyAutoHydroponics_autoHarvestDesc>
+    <FullyAutoHydroponics_autoSow>auto sow</FullyAutoHydroponics_autoSow>
+    <!-- 开启后，水培盆中的空格将自动补种设定的植物。 -->
+    <FullyAutoHydroponics_autoSowDesc>Will automatically sow plants in empty spaces in the hydroponics basin.</FullyAutoHydroponics_autoSowDesc>
+</LanguageData>
