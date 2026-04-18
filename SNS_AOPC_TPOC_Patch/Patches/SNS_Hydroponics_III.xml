@@ -16,14 +16,51 @@
     <!--            <pathCost>60</pathCost>-->
     <!--            <passability>PassThroughOnly</passability>-->
 
-    <Operation Class="PatchOperationAdd">
-        <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
-        <value>
-            <li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">
-                <defaultAutoHarvest>true</defaultAutoHarvest>
-                <defaultAutoSow>true</defaultAutoSow>
+<!--    <Operation Class="PatchOperationAdd">-->
+<!--        <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>-->
+<!--        <value>-->
+<!--            <li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">-->
+<!--                <defaultAutoHarvest>true</defaultAutoHarvest>-->
+<!--                <defaultAutoSow>true</defaultAutoSow>-->
+<!--            </li>-->
+<!--        </value>-->
+<!--    </Operation>-->
+    
+    <Operation Class="PatchOperationSequence">
+        <operations>
+<!--            如果没有comps节点，就添加一个空的comps节点；如果有了，就不添加，继续往下走。-->
+            <li Class="PatchOperationConditional">
+                <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
+                <nomatch Class="PatchOperationAdd">
+                    <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]</xpath>
+                    <value>
+                        <comps />
+                    </value>
+                </nomatch>
             </li>
-        </value>
+<!--            检查是否已经有了 FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics 组件，如果有了，就替换它；如果没有，就添加一个新的组件。-->
+            <li Class="PatchOperationConditional">
+                <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps/li[@Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics"]</xpath>
+                <match Class="PatchOperationReplace">
+                    <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps/li[@Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics"]</xpath>
+                    <value>
+                        <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics" MayRequire="Jeremie.Fully.Automatic.Hydroponics">
+                            <defaultAutoHarvest>true</defaultAutoHarvest>
+                            <defaultAutoSow>true</defaultAutoSow>
+                        </li>
+                    </value>
+                </match>
+                <nomatch Class="PatchOperationAdd">
+                    <xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
+                    <value>
+                        <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics" MayRequire="Jeremie.Fully.Automatic.Hydroponics">
+                            <defaultAutoHarvest>true</defaultAutoHarvest>
+                            <defaultAutoSow>true</defaultAutoSow>
+                        </li>
+                    </value>
+                </nomatch>
+            </li>
+        </operations>
     </Operation>
-
+    
 </Patch>

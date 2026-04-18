@@ -44,19 +44,6 @@ TPOC : 真·创造巅峰 （AOTC: True Pinnacle of Creation[Continued]）
 - 性能：在我681个mod的环境下，260个水栽培盆，TPS下降不明显。且因为效率远高于人工种植，目测实际上50个水培盆的效率几乎相当于200个水栽培盆的人工种植效率了。且水培盆本身效率越高，相对于人工种植的效率提升越大。
 - 添加自动种植和自动收获开关，可以让玩家根据需要选择是否启用自动水栽培功能。
 
-For Mod 作者，只需一个以下的补丁就可以让任意标准的水栽培盆拥有自动水栽培功能：
-```xml
-<Operation Class="PatchOperationAdd">
-	<xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
-	<value>
-		<li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">
-			<defaultAutoHarvest>true</defaultAutoHarvest>
-			<defaultAutoSow>true</defaultAutoSow>
-		</li>
-	</value>
-</Operation>
-```
-
 - 2026.03.20
 - 再次增加了时空立场投射仪的携带能力，因为我发现外出时携带能力还不够大。
 
@@ -129,19 +116,6 @@ It’s recommended to set the hydroponics basins to "forbidden" to prevent colon
 Given the efficiency far surpasses manual planting, it seems that the efficiency of 50 auto-hydroponics basins is almost equivalent to 200 manually tended hydroponics basins.
 And the higher the efficiency of the hydroponics basins, the greater the efficiency boost compared to manual planting.
 
-For mod authors, a single patch like the following can give any standard hydroponics basin the auto-hydroponics feature:
-```xml
-<Operation Class="PatchOperationAdd">
-	<xpath>Defs/ThingDef[defName="SNS_Hydroponics_III"]/comps</xpath>
-	<value>
-		<li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">
-			<defaultAutoHarvest>true</defaultAutoHarvest>
-			<defaultAutoSow>true</defaultAutoSow>
-		</li>
-	</value>
-</Operation>
-```
-
 - 2026.03.20
 - Further increased the carrying capacity of the Temporal Barrier Projector, as I found it still wasn't quite enough for venturing out.
 
@@ -179,6 +153,8 @@ Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/SNS_AOPC_
 			 
 		<!-- Ambition of the Cosmic_zh：AOTC简体中文汉化 -->
 		<li>snsambitioncosmic.zh819</li>
+		
+		<li>Jeremie.Fully.Automatic.Hydroponics</li>
 	</loadAfter>
 	
 	<modDependencies>
