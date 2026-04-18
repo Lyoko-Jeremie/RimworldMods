@@ -70,25 +70,25 @@ using Verse;
 // </comps>
 // ```
 
-namespace AutoHydroponicsThingComp
+namespace FullyAutoHydroponicsThingComp
 {
     // 新增属性类
-    public class CompProperties_AutoHydroponics : CompProperties
+    public class CompProperties_FullyAutoHydroponics : CompProperties
     {
         // 可在 XML Def 中配置的默认开关值
         public bool defaultAutoHarvest = true;
         public bool defaultAutoSow = true;
 
-        public CompProperties_AutoHydroponics()
+        public CompProperties_FullyAutoHydroponics()
         {
             // 将这个属性类与你的逻辑类绑定
-            this.compClass = typeof(ThingComp_AutoHydroponics);
+            this.compClass = typeof(ThingComp_FullyAutoHydroponics);
         }
     }
 
 
     // 继承自 ThingComp，作为挂载在水培盆建筑上的自定义组件
-    public class ThingComp_AutoHydroponics : ThingComp
+    public class ThingComp_FullyAutoHydroponics : ThingComp
     {
         // ── 缓存的图标贴图 ──
         private static readonly Texture2D IconAutoHarvest =
@@ -104,7 +104,7 @@ namespace AutoHydroponicsThingComp
         // 是否启用自动耕种功能（默认值由 CompProperties 决定）
         public bool autoSow;
 
-        private CompProperties_AutoHydroponics Props => (CompProperties_AutoHydroponics)props;
+        private CompProperties_FullyAutoHydroponics Props => (CompProperties_FullyAutoHydroponics)props;
 
         // 首次生成时从 Props 读取默认值
         public override void PostPostMake()
@@ -128,8 +128,8 @@ namespace AutoHydroponicsThingComp
             // 自动收获开关
             yield return new Command_Toggle
             {
-                defaultLabel = "autoHarvest".Translate(),
-                defaultDesc = "autoHarvestDesc".Translate(),
+                defaultLabel = "FullyAutoHydroponics_autoHarvest".Translate(),
+                defaultDesc = "FullyAutoHydroponics_autoHarvestDesc".Translate(),
                 icon = IconAutoHarvest,
                 isActive = () => autoHarvest,
                 toggleAction = () =>
@@ -142,8 +142,8 @@ namespace AutoHydroponicsThingComp
             // 自动耕种开关
             yield return new Command_Toggle
             {
-                defaultLabel = "autoSow".Translate(),
-                defaultDesc = "autoSowDesc".Translate(),
+                defaultLabel = "FullyAutoHydroponics_autoSow".Translate(),
+                defaultDesc = "FullyAutoHydroponics_autoSowDesc".Translate(),
                 icon = IconAutoSow,
                 isActive = () => autoSow,
                 toggleAction = () =>

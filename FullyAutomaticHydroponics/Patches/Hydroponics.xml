@@ -1,0 +1,27 @@
+<Patch>
+
+    <Operation Class="PatchOperationAdd">
+        <xpath>Defs/ThingDef[thingClass="Building_PlantGrower"]/comps</xpath>
+        <success>Always</success>
+        <value>
+            <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
+                <defaultAutoHarvest>false</defaultAutoHarvest>
+                <defaultAutoSow>false</defaultAutoSow>
+            </li>
+        </value>
+    </Operation>
+    
+    <Operation Class="PatchOperationAdd">
+        <xpath>Defs/ThingDef[thingClass="Building_PlantGrower"][not(comps)]</xpath>
+        <success>Always</success>
+        <value>
+            <comps>
+                <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
+                    <defaultAutoHarvest>false</defaultAutoHarvest>
+                    <defaultAutoSow>false</defaultAutoSow>
+                </li>
+            </comps>
+        </value>
+    </Operation>
+
+</Patch>

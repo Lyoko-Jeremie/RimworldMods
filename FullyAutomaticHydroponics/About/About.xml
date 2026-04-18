@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>全自动水栽培盆 FullyAutomaticHydroponics</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.Fully.Automatic.Hydroponics</packageId>
+    <description>
+## Jeremie 的 全自动水栽培盆 FullyAutomaticHydroponics 补丁。 解放你的双手！
+
+为什么水栽培盆能够自动生长了，为什么不能自动播种和收获？现在，它来了！
+
+众望所归的全自动水栽培盆补丁，让所有水栽培盆都不再需要人工种植和收获！
+
+提供两个开关，分别控制自动播种和自动收获，默认都是关闭的。
+
+打开自动播种开关后，水栽培盆会在没有植物的时候自动播种选定的植物。
+
+打开自动收获开关后，水栽培盆会在植物成熟的时候自动收获。如果是一年生植物，收获后会自动播种；如果是多年生植物，收获后会继续生长，并等待再次成熟。
+
+对于正在生长的莓果、树木这类多年生植物，同时开启自动播种和自动收获后，如果切换了设置的目标植物的种类，新的植物会在下一次成熟后自动收获时播种。
+
+自动收获的产物会堆积在附近，就像正常人工收获的逻辑一样。
+
+### 提示：
+
+在打开自动播种和自动收获功能后，因为任务分配问题，小人可能会抢任务，所以请禁用水栽培盆，让小人不要去执行任务。
+
+对于圈养的动物，可以把水栽培盆放在动物区域内，选择种植干草，打开自动播种并关闭自动收获，让动物自己去吃水栽培盆上的作物，达到自动喂食的效果。
+
+### 性能：
+
+当同时关闭自动播种和自动收获时，水栽培盆会恢复到原来的状态，且不产生任何副作用和性能影响。
+
+当同时开启时，在我681个mod的环境下，260个 (AOTC:TPOC 的 星河水栽培三代 SNS_Hydroponics_III) 水栽培盆，TPS下降不明显。
+
+因为效率远高于人工种植，实测50个星河水栽培三代水培盆的效率几乎相当于200个水栽培盆的人工种植效率了。且水培盆本身效率越高，相对于人工种植的效率提升越大。
+
+---
+
+### 兼容性：
+
+可能和 种子需求 (SeedsPlease) 等等修改了种植需求的mod冲突，未测试。但我相信既然你都用上负正义mod了，肯定也不需要这个正义mod。
+
+在使用 链接水栽培 (Linked Planters) 时，自动播种和自动收获功能不会在链接的水栽培盆之间传播，需要先选中整组水栽培盆后切换开关，但这个影响不大。
+
+---
+
+Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticHydroponics
+
+-------
+
+[English Translated By Gemini 3]
+
+
+## Jeremie's FullyAutomaticHydroponics Patch. Free your hands!
+
+Since hydroponics basins can grow plants automatically, why can't they sow and harvest automatically? Well, now they can!
+
+The highly anticipated fully automatic hydroponics patch is here, eliminating the need for manual sowing and harvesting for all hydroponics basins!
+
+It provides two toggles to control automatic sowing and automatic harvesting independently. Both are disabled by default.
+
+When the auto-sow toggle is enabled, the hydroponics basin will automatically sow the selected plant when it is empty.
+
+When the auto-harvest toggle is enabled, the hydroponics basin will automatically harvest the plant once it fully matures. For annual plants, it will auto-sow again after harvesting; for perennial plants, they will continue to grow and wait for the next harvest.
+
+For growing perennials like berries or trees, if both auto-sow and auto-harvest are enabled and you change the target plant type, the new plant will be sown right after the next automatic harvest.
+
+The automatically harvested produce will drop nearby, just like the vanilla manual harvesting logic.
+
+### Tips:
+
+After enabling auto-sow and auto-harvest, pawns might try to compete for the tasks due to job assignment logic. Therefore, please **forbid** the hydroponics basins to prevent pawns from trying to interact with them.
+
+For penned animals, you can place hydroponics basins inside the animal pen, set them to grow haygrass, enable auto-sow, and disable auto-harvest. The animals will eat the crops straight from the basins, acting as an automated feeder!
+
+### Performance:
+
+When both auto-sow and auto-harvest are disabled, the hydroponics basins will revert to their vanilla state without any side effects or performance impact.
+
+When both are enabled, in my heavily modded environment (681 mods) running 260 SNS_Hydroponics_III basins (from AOTC:TPOC), there is no noticeable TPS drop.
+
+Because its efficiency is far higher than manual planting, testing showed that 50 SNS_Hydroponics_III basins running this mod are roughly equivalent to 200 basins being manually tended. Furthermore, the higher the base efficiency of the hydroponics basin itself, the greater the efficiency boost compared to manual farming.
+
+---
+
+### Compatibility:
+
+It might conflict with mods that alter planting requirements, like SeedsPlease (untested). But honestly, if you are already using hardcore mods like that, you probably aren't looking for an overpowered QoL mod like this anyway.
+
+When using Linked Planters, the auto-sow and auto-harvest toggles do not propagate between linked basins. You will need to select the entire group of basins first before toggling the settings, but this is a minor inconvenience.
+
+	</description>
+	<loadBefore>
+	</loadBefore>
+	<loadAfter>
+	</loadAfter>
+	<modDependencies>
+	</modDependencies>
+</ModMetaData>

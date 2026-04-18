@@ -102,6 +102,8 @@ fabric.properties
 !HybridRiceEBT1/**/*
 !TemporalBarrierProjector/
 !TemporalBarrierProjector/**/*
+!FullyAutomaticHydroponics/
+!FullyAutomaticHydroponics/**/*
 !.gitignore
 
 
