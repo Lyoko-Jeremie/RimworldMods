@@ -24,4 +24,23 @@
         </value>
     </Operation>
 
+
+<!--    &lt;!&ndash; EN: hydroponics basin &ndash;&gt;-->
+<!--    <HydroponicsBasin.label>水栽培植物盆</HydroponicsBasin.label>-->
+<!--    &lt;!&ndash; EN: An artificial nutrient bath for growing plants. The nutrients pumps must work continuously; the plants will die if power is cut. &ndash;&gt;-->
+<!--    <HydroponicsBasin.description>在人工培养液中快速种植植物。运行时需要消耗电力，断电后植物会死亡。</HydroponicsBasin.description>-->
+    <Operation Class="PatchOperationConditional">
+        <xpath>Defs/ThingDef[defName="HydroponicsBasin"]/comps/li[@Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics"]</xpath>
+
+        <nomatch Class="PatchOperationAdd">
+            <xpath>Defs/ThingDef[defName="HydroponicsBasin"]/comps</xpath>
+            <value>
+                <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
+                    <defaultAutoHarvest>false</defaultAutoHarvest>
+                    <defaultAutoSow>false</defaultAutoSow>
+                </li>
+            </value>
+        </nomatch>
+    </Operation>
+    
 </Patch>

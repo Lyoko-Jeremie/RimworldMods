@@ -50,6 +50,8 @@
 
 当前已经为所有继承自 Building_PlantGrower 的水栽培盆添加了这个功能。
 
+某些mod会修改水栽培盆的定义，导致它们不再继承自 Building_PlantGrower，这种情况下就无法自动获得这个功能了。
+
 如果有非继承自 Building_PlantGrower 的水栽培盆，可以尝试通过以下代码片段来为特定物品添加这个补丁：
 
 ```
@@ -116,6 +118,7 @@ When using Linked Planters, the auto-sow and auto-harvest toggles do not propaga
 ### Information:
 
 Now this feature has been added to all hydroponics basins that inherit from Building_PlantGrower. 
+Some mods modify the definition of hydroponics basins in a way that they no longer inherit from Building_PlantGrower, which means they won't automatically get this feature.
 If there are hydroponics basins that do not inherit from Building_PlantGrower, you can try adding this patch to specific items using the following code snippet:
 
 ```
