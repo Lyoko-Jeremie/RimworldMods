@@ -46,10 +46,6 @@ namespace FullyAutoHydroponicsThingComp
         // 是否启用自动存储功能：将收获物传送到最近的最合适存储区（默认值由 CompProperties 决定）
         public bool autoStore;
 
-        // 【性能优化】：用于记录下一次允许进行寻路判定的游戏 Tick 时间
-        // 不需要被存档持久化（游戏重启后重新尝试一次无伤大雅），从而保持存档干净
-        private int _nextAllowedStoreTick = -1;
-
         private CompProperties_FullyAutoHydroponics Props => (CompProperties_FullyAutoHydroponics)props;
 
         // 首次生成时从 Props 读取默认值
@@ -148,8 +144,18 @@ namespace FullyAutoHydroponicsThingComp
                 toggleAction = () =>
                 {
                     autoStore = !autoStore;
-                    // 若玩家手动开启自动存储，立刻重置冷却，方便玩家调整仓库后立即生效
-                    if (autoStore) _nextAllowedStoreTick = -1;
+
+                    if (autoStore && Manager != null)
+                    {
+                        // 获取当前盆子里计划种植的作物类型
+                        ThingDef currentPlantDef = (parent as Building_PlantGrower)?.GetPlantDefToGrow()?.plant
+                            ?.harvestedThingDef;
+                        if (currentPlantDef != null)
+                        {
+                            Manager.ResetCooldown(currentPlantDef);
+                        }
+                    }
+
                     UpdateRegistration();
                 }
             };
@@ -209,64 +215,43 @@ namespace FullyAutoHydroponicsThingComp
                         if (yieldCount > 0)
                         {
                             // 根据植物定义的收获物类型创建一个新的 Thing 实例
+                            // 1. 创建处于虚空状态的产物，不去干扰地面物理实体
                             Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
                             // 设置收获物的数量
                             yieldThing.stackCount = yieldCount;
 
-                            // 先将收获物放置到水培盆附近（Near 模式自动寻找最近的可放置位置）
-                            // 使用带 out 参数的重载，获取实际生成的物体（可能因堆叠而与 yieldThing 不同）
-                            if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near,
-                                    out Thing placedThing))
+                            bool stored = false;
+
+                            // 2. 优先尝试直接将其存入仓库
+                            if (autoStore && Manager != null)
                             {
-                                // 【核心优化】：只有开启了自动存储，且当前游戏时间已经度过了冷却期，才进行搜索
-                                // 通过 Manager 获取缓存的格子，性能提升百倍
-                                bool canTryStore = autoStore && Find.TickManager.TicksGame >= _nextAllowedStoreTick;
-
-                                if (canTryStore && placedThing != null && placedThing.Spawned)
+                                if (Manager.TryGetSmartStoreCell(yieldThing, out IntVec3 storeCell))
                                 {
-                                    // 向大管家请求智能寻址
-                                    if (Manager != null &&
-                                        Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
+                                    Thing existingStack = storeCell.GetFirstThing(map, yieldThing.def);
+                                    if (existingStack != null)
                                     {
-                                        // 先从水培盆旁边的地上“拿”起来（进入悬空状态）
-                                        placedThing.DeSpawn();
-
-                                        // 检查仓库目标格子上是否已经有同类物品的堆叠
-                                        Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
-
-                                        if (existingStack != null)
-                                        {
-                                            // 目标格子有同类物品，尝试让它吸收
-                                            existingStack.TryAbsorbStack(placedThing, true);
-                                        }
-                                        else
-                                        {
-                                            // 【关键分支】：目标格子是空的。
-                                            // 因为格子是空的，不存在重叠挤出的风险，可以直接霸道生成进去。
-                                            GenSpawn.Spawn(placedThing, storeCell, map);
-                                        }
-
-                                        // 核心判定：处理“手中”剩余的物品
-                                        // 1. !placedThing.Destroyed : 没有被 TryAbsorbStack 100% 吸干
-                                        // 2. placedThing.stackCount > 0 : 还有剩余数量
-                                        // 3. !placedThing.Spawned : 确认它刚才没有被 GenSpawn 放进空仓库里
-                                        if (!placedThing.Destroyed && placedThing.stackCount > 0 &&
-                                            !placedThing.Spawned)
-                                        {
-                                            // 把它扔回刚刚收获这株植物的位置（水培盆旁边）
-                                            // pos 变量是前面 `IntVec3 pos = plant.Position;` 记录的植物原坐标
-                                            GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
-                                        }
-
-                                        // 无论有没有剩余，只要找到了合法的存储格，就解除冷却
-                                        _nextAllowedStoreTick = -1;
+                                        // 格子里有同类，直接吸收（完全不需要事先 Spawn）
+                                        existingStack.TryAbsorbStack(yieldThing, true);
                                     }
                                     else
                                     {
-                                        // 全局找了一圈都没地方放，挂上冷却惩罚
-                                        _nextAllowedStoreTick = Find.TickManager.TicksGame + 2500;
+                                        // 格子是空的，直接凭空生成到目标格
+                                        GenSpawn.Spawn(yieldThing, storeCell, map);
+                                    }
+
+                                    // 检查存放结果：如果被完全吸干、或者成功生成到了目标格，则标记为已存放
+                                    if (yieldThing.Destroyed || yieldThing.stackCount <= 0 || yieldThing.Spawned)
+                                    {
+                                        stored = true;
                                     }
                                 }
+                            }
+
+                            // 3. 托底机制：没开自动存放、没找到仓库，或是被吸走了一半还剩下一半
+                            if (!stored && !yieldThing.Destroyed && yieldThing.stackCount > 0)
+                            {
+                                // 安安稳稳地掉落在水培盆附近
+                                GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
                             }
                         }
                     }

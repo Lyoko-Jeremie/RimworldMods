@@ -17,6 +17,9 @@ namespace FullyAutoHydroponicsThingComp
         // 值：上次成功找到的有效存储格坐标
         private Dictionary<ThingDef, IntVec3> _storeCellCache = new Dictionary<ThingDef, IntVec3>();
 
+        // 全局寻路失败冷却缓存 (物品类型 -> 下次允许寻路的Tick)
+        private Dictionary<ThingDef, int> _searchCooldownCache = new Dictionary<ThingDef, int>();
+
         public AutoHydroponicsManager(Map map) : base(map)
         {
         }
@@ -34,6 +37,23 @@ namespace FullyAutoHydroponicsThingComp
         public void Deregister(ThingComp_FullyAutoHydroponics comp)
         {
             activeComps.Remove(comp);
+        }
+
+        public void ResetCooldown(ThingDef def)
+        {
+            if (def == null) return;
+
+            // 移除全局寻路失败的记号
+            if (_searchCooldownCache.ContainsKey(def))
+            {
+                _searchCooldownCache.Remove(def);
+            }
+
+            // 同时建议清除该物品的缓存格子，强制下一次逻辑重新进行一次全局搜索
+            if (_storeCellCache.ContainsKey(def))
+            {
+                _storeCellCache.Remove(def);
+            }
         }
 
         // MapComponent 自带每 tick 执行一次的心跳
@@ -79,7 +99,7 @@ namespace FullyAutoHydroponicsThingComp
         {
             result = IntVec3.Invalid;
 
-            // 1. 尝试命中缓存
+            // 1. 尝试命中可用缓存
             if (_storeCellCache.TryGetValue(item.def, out IntVec3 cachedCell))
             {
                 // 极速单格验证：检查缓存的格子当前是否还能塞下这个物品
@@ -88,14 +108,21 @@ namespace FullyAutoHydroponicsThingComp
                     result = cachedCell;
                     return true;
                 }
-                else
+
+                // 缓存已失效（格子满了，或者存储区设置被玩家改了），移除旧缓存
+                _storeCellCache.Remove(item.def);
+            }
+
+            // 2. 【核心拦截】：检查该物品是否处于全局寻找失败的冷却期中
+            if (_searchCooldownCache.TryGetValue(item.def, out int nextAllowedTick))
+            {
+                if (Find.TickManager.TicksGame < nextAllowedTick)
                 {
-                    // 缓存已失效（格子满了，或者存储区设置被玩家改了），移除旧缓存
-                    _storeCellCache.Remove(item.def);
+                    return false; // 瞬间驳回，0 性能消耗
                 }
             }
 
-            // 2. 缓存未命中或已失效，执行一次（且仅执行一次）昂贵的全局搜索
+            // 3. 执行全局搜索
             if (StoreUtility.TryFindBestBetterStoreCellFor(
                     item, null, this.map,
                     StoragePriority.Unstored, Faction.OfPlayer,
@@ -107,7 +134,9 @@ namespace FullyAutoHydroponicsThingComp
                 return true;
             }
 
-            // 3. 全局搜索也失败了（地图上真没地方放了）
+            // 4. 全图都没有找到，挂上 1000 Ticks（约16秒）的全局冷却
+            // 这样所有水培盆在这16秒内都不会去卡顿游戏，直接把产物丢地上
+            _searchCooldownCache[item.def] = Find.TickManager.TicksGame + 1000;
             return false;
         }
     }
