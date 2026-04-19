@@ -5,71 +5,6 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 
-
-// 让一个真正种植了原版植物的水培盆实现“自动收获”和“自动重新种植”
-// 编写自定义组件 (C# ThingComp) —— 最正规且主流的做法
-//
-// RimWorld 的物品（Thing）可以通过挂载组件（Comp）来拓展功能。你可以用 C# 写一个专门用于水培盆的组件，例如 CompAutoPlanter。
-//
-//     工作原理：
-//
-//         让这个组件使用 CompTickRare() 或 CompTickLong()，让游戏每隔一段时间（比如 250 tick 或 2000 tick）唤醒一次这个水培盆。
-//
-//         水培盆被唤醒后，扫描自己所在的格子上是否有植物（Plant）。
-//
-//         自动收获：检查该植物的生长进度（plant.Growth）。如果达到 1.0（100% 成熟），通过代码生成植物的产物（ThingMaker.MakeThing）并掉落在水培盆旁边。
-//
-//         自动重种：将刚刚那株植物销毁，然后读取水培盆当前设置的种植计划（IPlantToGrowSettable.GetPlantDefToGrow()），直接在原位生成一株进度为 0% 的新植物。
-//
-//     优点：逻辑清晰，只对挂载了该组件的特定水培盆生效，不影响原版普通农田，性能消耗可控。
-//
-//
-// 简化的 C# 逻辑概念演示
-// ```C#
-// public override void CompTickRare()
-// {
-//     base.CompTickRare();
-//
-//     // 1. 获取水培盆位置
-//     IntVec3 pos = this.parent.Position;
-//     Map map = this.parent.Map;
-//
-//     // 2. 找到上面的植物
-//     Plant plant = pos.GetPlant(map);
-//
-//     // 3. 判断是否成熟
-//     if (plant != null && plant.Growth >= 1.0f)
-//     {
-//         // 掉落产物
-//         int yieldCount = plant.YieldNow();
-//         Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
-//         yieldThing.stackCount = yieldCount;
-//         GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
-//
-//         // 销毁老植物
-//         plant.Destroy();
-//
-//         // 4. 获取设定的植物类型并种下新植物
-//         ThingDef plantDefToGrow = ((Building_PlantGrower)this.parent).GetPlantDefToGrow();
-//         if (plantDefToGrow != null)
-//         {
-//             Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
-//             newPlant.Growth = 0f; // 从零开始
-//         }
-//     }
-// }
-// ```
-//
-
-// ```
-// <comps>
-//   <li Class="AutoHydroponicsThingComp.CompProperties_AutoHydroponics">
-//     <defaultAutoHarvest>true</defaultAutoHarvest>
-//     <defaultAutoSow>false</defaultAutoSow>
-//   </li>
-// </comps>
-// ```
-
 namespace FullyAutoHydroponicsThingComp
 {
     // 新增属性类
@@ -110,6 +45,10 @@ namespace FullyAutoHydroponicsThingComp
 
         // 是否启用自动存储功能：将收获物传送到最近的最合适存储区（默认值由 CompProperties 决定）
         public bool autoStore;
+
+        // 【性能优化】：用于记录下一次允许进行寻路判定的游戏 Tick 时间
+        // 不需要被存档持久化（游戏重启后重新尝试一次无伤大雅），从而保持存档干净
+        private int _nextAllowedStoreTick = -1;
 
         private CompProperties_FullyAutoHydroponics Props => (CompProperties_FullyAutoHydroponics)props;
 
@@ -181,8 +120,7 @@ namespace FullyAutoHydroponicsThingComp
                 toggleAction = () =>
                 {
                     autoSow = !autoSow;
-                    UpdateRegistration(); // 开关变化后，立刻通知管家
-                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
+                    UpdateRegistration();
                 }
             };
 
@@ -196,8 +134,7 @@ namespace FullyAutoHydroponicsThingComp
                 toggleAction = () =>
                 {
                     autoHarvest = !autoHarvest;
-                    UpdateRegistration(); // 开关变化后，立刻通知管家
-                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动收获 -> {autoHarvest}");
+                    UpdateRegistration();
                 }
             };
 
@@ -211,16 +148,17 @@ namespace FullyAutoHydroponicsThingComp
                 toggleAction = () =>
                 {
                     autoStore = !autoStore;
-                    UpdateRegistration(); // 开关变化后，立刻通知管家
-                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动存储 -> {autoStore}");
+                    // 若玩家手动开启自动存储，立刻重置冷却，方便玩家调整仓库后立即生效
+                    if (autoStore) _nextAllowedStoreTick = -1;
+                    UpdateRegistration();
                 }
             };
         }
 
         public void DoAutoWork()
         {
-            // 调用父类的 CompTickRare，保留原有逻辑
-            base.CompTickRare();
+            // 【移除】 base.CompTickRare(); 
+            // 因为现在的调用方是 Manager，不要在这里触发原版的 Rare 生命周期
 
             // 如果自动耕种和自动收获均未启用，则跳过。减少无效的计算和对象访问。
             if (!autoSow && !autoHarvest)
@@ -280,26 +218,35 @@ namespace FullyAutoHydroponicsThingComp
                             if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near,
                                     out Thing placedThing))
                             {
-                                // 若启用自动存储，尝试找到优先级更高的最佳存储格（仓库、储物柜等）
-                                if (autoStore && placedThing != null && placedThing.Spawned &&
-                                    StoreUtility.TryFindBestBetterStoreCellFor(
-                                        placedThing, null, map,
-                                        StoragePriority.Unstored, Faction.OfPlayer,
-                                        out IntVec3 storeCell))
-                                {
-                                    // 找到了更好的存储位置：先从当前位置移除
-                                    placedThing.DeSpawn();
+                                // 【核心优化】：只有开启了自动存储，且当前游戏时间已经度过了冷却期，才进行寻路
+                                bool canTryStore = autoStore && Find.TickManager.TicksGame >= _nextAllowedStoreTick;
 
-                                    // 尝试与目标格已有的同类物品合并堆叠，避免产生重复的独立堆
-                                    Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
-                                    if (existingStack == null || !existingStack.TryAbsorbStack(placedThing, true))
+                                if (canTryStore && placedThing != null && placedThing.Spawned)
+                                {
+                                    if (StoreUtility.TryFindBestBetterStoreCellFor(
+                                            placedThing, null, map,
+                                            StoragePriority.Unstored, Faction.OfPlayer,
+                                            out IntVec3 storeCell))
                                     {
-                                        // 目标格无同类物品，或合并失败（例如质量不同）：直接生成到目标格
-                                        GenSpawn.Spawn(placedThing, storeCell, map);
+                                        placedThing.DeSpawn();
+
+                                        Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
+                                        if (existingStack == null || !existingStack.TryAbsorbStack(placedThing, true))
+                                        {
+                                            GenSpawn.Spawn(placedThing, storeCell, map);
+                                        }
+
+                                        // 成功找到仓库：确保冷却期保持可用状态
+                                        _nextAllowedStoreTick = -1;
                                     }
-                                    // 合并成功时 placedThing 已被吸收销毁，无需额外处理
+                                    else
+                                    {
+                                        // 【惩罚机制】：寻路失败！说明全图都没地方放这个物品。
+                                        // 给予 2500 Ticks（游戏内1小时）的寻路冷却惩罚。
+                                        // 在此期间，就算有再多植物成熟，也只会掉在地上，绝不占用 CPU 去找仓库。
+                                        _nextAllowedStoreTick = Find.TickManager.TicksGame + 2500;
+                                    }
                                 }
-                                // 若未启用自动存储或找不到合适存储格，物品保持在水培盆附近，等待殖民者手动搬运
                             }
                         }
                     }
@@ -366,6 +313,7 @@ namespace FullyAutoHydroponicsThingComp
             // ── 阶段二：自动种植——对所有没有植物的空格进行补种 ──
             if (!autoSow)
                 return;
+
             ThingDef defToGrow = grower.GetPlantDefToGrow();
             if (defToGrow == null)
                 return;
@@ -385,44 +333,5 @@ namespace FullyAutoHydroponicsThingComp
                 sownPlant.sown = true;
             }
         }
-
-        // // 以下代码为了兼容 “「农业」联合水果优品金麦克种植箱” 这类使用不同于 <tickerType>Rare</tickerType> 的建筑，而hook三种钩子来确保兼容性
-        //
-        // // 内部计时器，用于节流
-        // private int _normalTickCounter = 0;
-        //
-        // // 每 1 tick 由游戏自动调用一次
-        // // 处理 <tickerType>Normal</tickerType> 的建筑
-        // public override void CompTick()
-        // {
-        //     base.CompTick();
-        //
-        //     // 累加计数器，达到 250 才执行一次，防止卡顿
-        //     _normalTickCounter++;
-        //     if (_normalTickCounter >= 250)
-        //     {
-        //         _normalTickCounter = 0;
-        //         DoAutoWork();
-        //     }
-        // }
-        //
-        // // 每 250 tick 由游戏自动调用一次
-        // // 处理 <tickerType>Rare</tickerType> 的建筑
-        // public override void CompTickRare()
-        // {
-        //     base.CompTickRare();
-        //
-        //     // Rare 本身就是每 250 ticks 触发一次，直接执行
-        //     DoAutoWork();
-        // }
-        //
-        // // （可选）处理 <tickerType>Long</tickerType> 的建筑（每 2000 ticks 触发一次）
-        // public override void CompTickLong()
-        // {
-        //     base.CompTickLong();
-        //
-        //     // 虽然水培盆很少用 Long，但为了你的补丁万无一失，可以加上
-        //     DoAutoWork();
-        // }
     }
 }
