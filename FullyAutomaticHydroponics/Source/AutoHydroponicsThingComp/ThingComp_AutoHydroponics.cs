@@ -248,9 +248,17 @@ namespace FullyAutoHydroponicsThingComp
                                         StoragePriority.Unstored, Faction.OfPlayer,
                                         out IntVec3 storeCell))
                                 {
-                                    // 找到了更好的存储位置：将物品从当前位置移到目标存储格
+                                    // 找到了更好的存储位置：先从当前位置移除
                                     placedThing.DeSpawn();
-                                    GenSpawn.Spawn(placedThing, storeCell, map);
+
+                                    // 尝试与目标格已有的同类物品合并堆叠，避免产生重复的独立堆
+                                    Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
+                                    if (existingStack == null || !existingStack.TryAbsorbStack(placedThing, true))
+                                    {
+                                        // 目标格无同类物品，或合并失败（例如质量不同）：直接生成到目标格
+                                        GenSpawn.Spawn(placedThing, storeCell, map);
+                                    }
+                                    // 合并成功时 placedThing 已被吸收销毁，无需额外处理
                                 }
                                 // 若未启用自动存储或找不到合适存储格，物品保持在水培盆附近，等待殖民者手动搬运
                             }
