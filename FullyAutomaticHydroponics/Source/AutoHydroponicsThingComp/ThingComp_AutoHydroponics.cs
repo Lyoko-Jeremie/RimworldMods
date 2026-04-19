@@ -228,12 +228,26 @@ namespace FullyAutoHydroponicsThingComp
                                     if (Manager != null &&
                                         Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
                                     {
+                                        // 从水培盆旁边的地上捡起来
                                         placedThing.DeSpawn();
 
                                         Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
-                                        if (existingStack == null || !existingStack.TryAbsorbStack(placedThing, true))
+                                        if (existingStack != null)
                                         {
-                                            GenSpawn.Spawn(placedThing, storeCell, map);
+                                            // 尝试让目标格子的物品吸收。
+                                            // 如果全部吸收，placedThing 会被自动销毁 (Destroyed = true)。
+                                            // 如果部分吸收，placedThing 的 stackCount 会减少。
+                                            existingStack.TryAbsorbStack(placedThing, true);
+                                        }
+
+                                        // 吸收完毕后，检查手中是否还有剩余（格子原本是空的，或者刚才没吸完）
+                                        if (!placedThing.Destroyed && placedThing.stackCount > 0)
+                                        {
+                                            // 【关键修复】：永远不要对可能存在碰撞的格子使用 GenSpawn.Spawn！
+                                            // 使用 GenPlace.TryPlaceThing 并配合 ThingPlaceMode.Near。
+                                            // 这样，如果格子空着，它会精准放进去；
+                                            // 如果格子满了（合并溢出的产物），它会像原版掉落物一样，安全地散落在仓库格子旁边的空地上，绝不会引发“挤出效应”。
+                                            GenPlace.TryPlaceThing(placedThing, storeCell, map, ThingPlaceMode.Near);
                                         }
 
                                         // 成功放入，确保冷却期解除
