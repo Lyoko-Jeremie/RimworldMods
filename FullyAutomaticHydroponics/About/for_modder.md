@@ -1,7 +1,4 @@
 
-为了解决某些mod会篡改原版 水栽培植物盆 HydroponicsBasin 导致此 mod 无效的问题，使用dll在xml patch之后再进行一次检查
- 
-
 当前dll注入逻辑的等价xml实现
  
 ```xml
@@ -12,6 +9,7 @@
         <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
             <defaultAutoHarvest>false</defaultAutoHarvest>
             <defaultAutoSow>false</defaultAutoSow>
+            <defaultAutoStore>false</defaultAutoStore>
         </li>
     </value>
 </Operation>
@@ -24,6 +22,7 @@
   <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
    <defaultAutoHarvest>false</defaultAutoHarvest>
    <defaultAutoSow>false</defaultAutoSow>
+   <defaultAutoStore>false</defaultAutoStore>
   </li>
  </comps>
 </value>
@@ -40,25 +39,27 @@
         <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
             <defaultAutoHarvest>false</defaultAutoHarvest>
             <defaultAutoSow>false</defaultAutoSow>
+            <defaultAutoStore>false</defaultAutoStore>
         </li>
     </value>
 </nomatch>
 </Operation>
 ```
 
-手动注入请使用以下方法
+请使用以下方法手动添加标签
 ```xml
 
 <comps>
     <li Class="FullyAutoHydroponicsThingComp.CompProperties_FullyAutoHydroponics">
         <defaultAutoHarvest>false</defaultAutoHarvest>
         <defaultAutoSow>false</defaultAutoSow>
+        <defaultAutoStore>false</defaultAutoStore>
     </li>
 </comps>
 
 ```
 
-请采用如下代码来阻止自动添加标签
+请采用如下代码来阻止注入
 ```xml
 
 <comps>
