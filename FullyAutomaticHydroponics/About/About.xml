@@ -18,7 +18,6 @@
 * **自动收获：** 开启后，植物成熟时会自动收获。对于一年生植物，收获后会自动播种；对于多年生植物（如莓果、树木），收获后会继续生长并等待下一次成熟。
 * **自动存储：** 开启后，收获的产物会自动存储在附近最适合的存储区中。如果附近没有存储区或者关闭该开关，产物将堆积在附近。
 * 如果在同时开启两项功能的情况下切换了目标植物，新植物将在当前作物下一次成熟并自动收获后进行播种。
-* 自动收获的产物会堆积在附近，逻辑与正常人工收获一致。
 
 ### 提示：
 
@@ -64,7 +63,6 @@ The mod provides three toggles to independently control **Auto-Sow**, **Auto-Har
 * **Auto-Harvest:** When enabled, the basin will automatically harvest plants once they reach maturity. For annual plants, it will re-sow immediately after; for perennials (like berries or certain trees), it will harvest the produce and allow the plant to continue growing for the next cycle.
 * **Auto-Store:** When enabled, harvested products will automatically be stored in the nearest suitable stockpile. If no stockpile is nearby or if this toggle is disabled, the products will pile up nearby instead.
 * If you switch the target plant type while both toggles are active, the new plant will be sown automatically after the current crop reaches maturity and is harvested.
-* Harvested products will pile up nearby, following the same logic as standard manual harvesting.
 
 ### Tips:
 
