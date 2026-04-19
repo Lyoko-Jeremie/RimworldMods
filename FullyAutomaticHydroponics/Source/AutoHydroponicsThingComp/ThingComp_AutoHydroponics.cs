@@ -134,19 +134,6 @@ namespace FullyAutoHydroponicsThingComp
         // ── UI 按钮：在选中水培盆时显示开关 Gizmo ──
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            // 自动收获开关
-            yield return new Command_Toggle
-            {
-                defaultLabel = "FullyAutoHydroponics_autoHarvest".Translate(),
-                defaultDesc = "FullyAutoHydroponics_autoHarvestDesc".Translate(),
-                icon = IconAutoHarvest,
-                isActive = () => autoHarvest,
-                toggleAction = () =>
-                {
-                    autoHarvest = !autoHarvest;
-                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动收获 -> {autoHarvest}");
-                }
-            };
 
             // 自动耕种开关
             yield return new Command_Toggle
@@ -159,6 +146,20 @@ namespace FullyAutoHydroponicsThingComp
                 {
                     autoSow = !autoSow;
                     // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
+                }
+            };
+            
+            // 自动收获开关
+            yield return new Command_Toggle
+            {
+                defaultLabel = "FullyAutoHydroponics_autoHarvest".Translate(),
+                defaultDesc = "FullyAutoHydroponics_autoHarvestDesc".Translate(),
+                icon = IconAutoHarvest,
+                isActive = () => autoHarvest,
+                toggleAction = () =>
+                {
+                    autoHarvest = !autoHarvest;
+                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动收获 -> {autoHarvest}");
                 }
             };
 
