@@ -134,7 +134,6 @@ namespace FullyAutoHydroponicsThingComp
         // ── UI 按钮：在选中水培盆时显示开关 Gizmo ──
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-
             // 自动耕种开关
             yield return new Command_Toggle
             {
@@ -148,7 +147,7 @@ namespace FullyAutoHydroponicsThingComp
                     // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
                 }
             };
-            
+
             // 自动收获开关
             yield return new Command_Toggle
             {
@@ -178,8 +177,7 @@ namespace FullyAutoHydroponicsThingComp
             };
         }
 
-        // 重写 CompTickRare()，每 250 tick 由游戏自动调用一次
-        public override void CompTickRare()
+        public void DoAutoWork()
         {
             // 调用父类的 CompTickRare，保留原有逻辑
             base.CompTickRare();
@@ -240,7 +238,7 @@ namespace FullyAutoHydroponicsThingComp
                             // 先将收获物放置到水培盆附近（Near 模式自动寻找最近的可放置位置）
                             // 使用带 out 参数的重载，获取实际生成的物体（可能因堆叠而与 yieldThing 不同）
                             if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near,
-                                out Thing placedThing))
+                                    out Thing placedThing))
                             {
                                 // 若启用自动存储，尝试找到优先级更高的最佳存储格（仓库、储物柜等）
                                 if (autoStore && placedThing != null && placedThing.Spawned &&
@@ -347,5 +345,45 @@ namespace FullyAutoHydroponicsThingComp
                 sownPlant.sown = true;
             }
         }
+
+        // 以下代码为了兼容 “「农业」联合水果优品金麦克种植箱” 这类使用不同于 <tickerType>Rare</tickerType> 的建筑，而hook三种钩子来确保兼容性
+        
+        // 内部计时器，用于节流
+        private int _normalTickCounter = 0;
+
+        // 每 1 tick 由游戏自动调用一次
+        // 处理 <tickerType>Normal</tickerType> 的建筑
+        public override void CompTick()
+        {
+            base.CompTick();
+
+            // 累加计数器，达到 250 才执行一次，防止卡顿
+            _normalTickCounter++;
+            if (_normalTickCounter >= 250)
+            {
+                _normalTickCounter = 0;
+                DoAutoWork();
+            }
+        }
+
+        // 每 250 tick 由游戏自动调用一次
+        // 处理 <tickerType>Rare</tickerType> 的建筑
+        public override void CompTickRare()
+        {
+            base.CompTickRare();
+
+            // Rare 本身就是每 250 ticks 触发一次，直接执行
+            DoAutoWork();
+        }
+
+        // （可选）处理 <tickerType>Long</tickerType> 的建筑（每 2000 ticks 触发一次）
+        public override void CompTickLong()
+        {
+            base.CompTickLong();
+
+            // 虽然水培盆很少用 Long，但为了你的补丁万无一失，可以加上
+            DoAutoWork();
+        }
     }
 }
+
