@@ -10,7 +10,7 @@
     <description>
 ## Jeremie 的 全自动水栽培盆 FullyAutomaticHydroponics 补丁。 解放小人的双手！
 
-为什么水栽培盆都能够自动生长了，却不能自动播种和收获？现在，它来了！
+既然水栽培盆可以自动生长了，为什么不能自动播种和收获？现在，它来了！
 众望所归的全自动水栽培盆补丁，让所有水栽培盆都不再需要人工种植和收获！
 
 提供两个开关，分别控制自动播种和自动收获，默认都是关闭的。
@@ -34,16 +34,16 @@
 
 ### 兼容性：
 
+已经使用C#来对所有继承自 Building_PlantGrower 的水栽培盆添加了这个功能了。所有继承自 Building_PlantGrower 的水栽培盆都应该能自动获得这个功能了。
+
 可能和 种子需求 (SeedsPlease) 等等修改了种植需求的mod冲突，未测试。但我相信既然你都用上负正义mod了，肯定也不需要这个正义mod。
 在使用 链接水栽培 (Linked Planters) 时，自动播种和自动收获功能不会在链接的水栽培盆之间传播，需要先选中整组水栽培盆后切换开关，但这个影响不大。
 
+不支持 Automatic Hydroponics 自动水培舱 ， 因为他的水栽培盆实际上是一个类似发酵桶的自动工作台，而不是真正的植物生长建筑。
+
 ### 信息 :
 
-当前已经为所有继承自 Building_PlantGrower 的水栽培盆添加了这个功能。
-某些mod会修改水栽培盆的定义，导致它们不再继承自 Building_PlantGrower，这种情况下就无法自动获得这个功能了。
-如果有非继承自 Building_PlantGrower 的水栽培盆，可以尝试通过以下代码片段来为特定物品添加这个补丁：
-
-DEL
+mod 作者请参见 本mod的 for_modder.md 文档，了解如何为特定物品添加这个功能，或是阻止特定物品获得这个功能。
 
 ---
 
@@ -53,47 +53,41 @@ Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAuto
 
 [English Translated By Gemini 3]
 
+## Jeremie's Fully Automatic Hydroponics Patch. Free your colonists' hands!
 
-## Jeremie's FullyAutomaticHydroponics Patch. Free your hands!
+If hydroponic basins can grow plants automatically, why shouldn't they sow and harvest automatically too? Well, now they can!
+This long-awaited patch brings full automation to all hydroponic basins, eliminating the need for manual labor in planting and harvesting.
 
-Since hydroponics basins can grow plants automatically, why can't they sow and harvest automatically? Well, now they can!
-The highly anticipated fully automatic hydroponics patch is here, eliminating the need for manual sowing and harvesting for all hydroponics basins!
-
-It provides two toggles to control automatic sowing and automatic harvesting independently. Both are disabled by default.
-When the auto-sow toggle is enabled, the hydroponics basin will automatically sow the selected plant when it is empty.
-When the auto-harvest toggle is enabled, the hydroponics basin will automatically harvest the plant once it fully matures. For annual plants, it will auto-sow again after harvesting; for perennial plants, they will continue to grow and wait for the next harvest.
-For growing perennials like berries or trees, if both auto-sow and auto-harvest are enabled and you change the target plant type, the new plant will be sown right after the next automatic harvest.
-The automatically harvested produce will drop nearby, just like the vanilla manual harvesting logic.
+The mod provides two toggles to independently control **Auto-Sow** and **Auto-Harvest** (both are disabled by default).
+* **Auto-Sow:** When enabled, the basin will automatically sow the selected plant whenever it is empty.
+* **Auto-Harvest:** When enabled, the basin will automatically harvest plants once they reach maturity. For annual plants, it will re-sow immediately after; for perennials (like berries or certain trees), it will harvest the produce and allow the plant to continue growing for the next cycle.
+* If you switch the target plant type while both toggles are active, the new plant will be sown automatically after the current crop reaches maturity and is harvested.
+* Harvested products will pile up nearby, following the same logic as standard manual harvesting.
 
 ### Tips:
 
-After enabling auto-sow and auto-harvest, pawns might try to compete for the tasks due to job assignment logic. Therefore, please **forbid** the hydroponics basins to prevent pawns from trying to interact with them.
-For penned animals, you can place hydroponics basins inside the animal pen, set them to grow haygrass, enable auto-sow, and disable auto-harvest. The animals will eat the crops straight from the basins, acting as an automated feeder!
+* **Task Conflicts:** After enabling Auto-Sow and Auto-Harvest, pawns might still try to "compete" for the job due to task assignment logic. It is recommended to **forbid** the hydroponic basins to ensure colonists stay away and let the mod handle it.
+* **Auto-Feeder:** For livestock, you can place hydroponic basins within an animal area, set them to grow Haygrass, enable Auto-Sow, and **disable** Auto-Harvest. Animals will eat the crops directly from the basin, creating an automated feeding system.
 
 ### Performance:
 
-When both auto-sow and auto-harvest are disabled, the hydroponics basins will revert to their vanilla state without any side effects or performance impact.
-When both are enabled, in my heavily modded environment (681 mods) running 260 SNS_Hydroponics_III basins (from AOTC:TPOC), there is no noticeable TPS drop.
-Because its efficiency is far higher than manual planting, testing showed that 50 SNS_Hydroponics_III basins running this mod are roughly equivalent to 200 basins being manually tended. Furthermore, the higher the base efficiency of the hydroponics basin itself, the greater the efficiency boost compared to manual farming.
+* When both toggles are disabled, the hydroponic basins revert to their vanilla state with no side effects or performance impact.
+* In a testing environment with 681 mods and 260 high-tier basins (SNS_Hydroponics_III from AOTC:TPOC), the impact on TPS (Ticks Per Second) was negligible.
+* Because automation is far more efficient than manual labor, 50 automated high-tier basins are roughly equivalent to 200 manually tended ones. The higher the base efficiency of the basin, the greater the performance gain compared to manual labor.
 
 ---
 
 ### Compatibility:
 
-It might conflict with mods that alter planting requirements, like SeedsPlease (untested). But honestly, if you are already using hardcore mods like that, you probably aren't looking for an overpowered QoL mod like this anyway.
-When using Linked Planters, the auto-sow and auto-harvest toggles do not propagate between linked basins. You will need to select the entire group of basins first before toggling the settings, but this is a minor inconvenience.
+This mod uses C# to apply functionality to all buildings inheriting from `Building_PlantGrower`. Most modded hydroponic basins should be supported automatically.
+
+* **Conflicts:** May conflict with mods that fundamentally change planting requirements (such as *SeedsPlease*). These have not been tested. (Though if you are playing with hardcore difficulty mods, you likely wouldn't want an "OP" automation mod like this anyway!)
+* **Linked Planters:** When using the *Linked Planters* mod, the auto-sow/harvest settings do not automatically propagate through the link. You will need to select the entire group of basins to toggle the settings, but this is a minor inconvenience.
+* **Unsupported:** Does **not** support the mod *Automatic Hydroponics*, as those "basins" are technically structured as automated workbenches (similar to fermenting barrels) rather than actual plant-growing buildings.
 
 ### Information:
 
-Now this feature has been added to all hydroponics basins that inherit from Building_PlantGrower. 
-Some mods modify the definition of hydroponics basins in a way that they no longer inherit from Building_PlantGrower, which means they won't automatically get this feature.
-If there are hydroponics basins that do not inherit from Building_PlantGrower, you can try adding this patch to specific items using the following code snippet:
-
-DEL
-
----
-
-Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticHydroponics
+Mod authors should refer to the `for_modder.md` documentation in this mod's folder to learn how to manually add this feature to specific items or exclude specific items from receiving it.
 
 	</description>
 	<loadBefore>
