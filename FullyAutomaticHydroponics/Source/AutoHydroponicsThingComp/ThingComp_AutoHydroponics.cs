@@ -78,6 +78,7 @@ namespace FullyAutoHydroponicsThingComp
         // 可在 XML Def 中配置的默认开关值
         public bool defaultAutoHarvest = true;
         public bool defaultAutoSow = true;
+        public bool defaultAutoStore = true;
 
         public CompProperties_FullyAutoHydroponics()
         {
@@ -97,12 +98,18 @@ namespace FullyAutoHydroponicsThingComp
         private static readonly Texture2D IconAutoSow =
             ContentFinder<Texture2D>.Get("UI/Commands/autoSow", false) ?? BaseContent.WhiteTex;
 
+        private static readonly Texture2D IconAutoStore =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoStore", false) ?? BaseContent.WhiteTex;
+
         // ── 持久化开关字段 ──
         // 是否启用自动收获功能（默认值由 CompProperties 决定）
         public bool autoHarvest;
 
         // 是否启用自动耕种功能（默认值由 CompProperties 决定）
         public bool autoSow;
+
+        // 是否启用自动存储功能：将收获物传送到最近的最合适存储区（默认值由 CompProperties 决定）
+        public bool autoStore;
 
         private CompProperties_FullyAutoHydroponics Props => (CompProperties_FullyAutoHydroponics)props;
 
@@ -112,6 +119,7 @@ namespace FullyAutoHydroponicsThingComp
             base.PostPostMake();
             autoHarvest = Props.defaultAutoHarvest;
             autoSow = Props.defaultAutoSow;
+            autoStore = Props.defaultAutoStore;
         }
 
         // ── 存档序列化：让两个开关随存档持久化 ──
@@ -120,6 +128,7 @@ namespace FullyAutoHydroponicsThingComp
             base.PostExposeData();
             Scribe_Values.Look(ref autoHarvest, "autoHarvest", Props.defaultAutoHarvest);
             Scribe_Values.Look(ref autoSow, "autoSow", Props.defaultAutoSow);
+            Scribe_Values.Look(ref autoStore, "autoStore", Props.defaultAutoStore);
         }
 
         // ── UI 按钮：在选中水培盆时显示开关 Gizmo ──
@@ -150,6 +159,20 @@ namespace FullyAutoHydroponicsThingComp
                 {
                     autoSow = !autoSow;
                     // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动耕种 -> {autoSow}");
+                }
+            };
+
+            // 自动存储开关
+            yield return new Command_Toggle
+            {
+                defaultLabel = "FullyAutoHydroponics_autoStore".Translate(),
+                defaultDesc = "FullyAutoHydroponics_autoStoreDesc".Translate(),
+                icon = IconAutoStore,
+                isActive = () => autoStore,
+                toggleAction = () =>
+                {
+                    autoStore = !autoStore;
+                    // Log.Message($"[AutoHydroponics] {parent.ThingID} 自动存储 -> {autoStore}");
                 }
             };
         }
@@ -218,9 +241,8 @@ namespace FullyAutoHydroponicsThingComp
                             if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near,
                                 out Thing placedThing))
                             {
-                                // 尝试找到优先级更高的最佳存储格（仓库、储物柜等）
-                                // carrier 传 null 表示无搬运者（直接瞬移），以水培盆位置为起点搜索
-                                if (placedThing != null && placedThing.Spawned &&
+                                // 若启用自动存储，尝试找到优先级更高的最佳存储格（仓库、储物柜等）
+                                if (autoStore && placedThing != null && placedThing.Spawned &&
                                     StoreUtility.TryFindBestBetterStoreCellFor(
                                         placedThing, null, map,
                                         StoragePriority.Unstored, Faction.OfPlayer,
@@ -230,7 +252,7 @@ namespace FullyAutoHydroponicsThingComp
                                     placedThing.DeSpawn();
                                     GenSpawn.Spawn(placedThing, storeCell, map);
                                 }
-                                // 若找不到合适存储格，物品保持在水培盆附近，等待殖民者手动搬运
+                                // 若未启用自动存储或找不到合适存储格，物品保持在水培盆附近，等待殖民者手动搬运
                             }
                         }
                     }
