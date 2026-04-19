@@ -228,34 +228,42 @@ namespace FullyAutoHydroponicsThingComp
                                     if (Manager != null &&
                                         Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
                                     {
-                                        // 从水培盆旁边的地上捡起来
+                                        // 先从水培盆旁边的地上“拿”起来（进入悬空状态）
                                         placedThing.DeSpawn();
 
+                                        // 检查仓库目标格子上是否已经有同类物品的堆叠
                                         Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
+
                                         if (existingStack != null)
                                         {
-                                            // 尝试让目标格子的物品吸收。
-                                            // 如果全部吸收，placedThing 会被自动销毁 (Destroyed = true)。
-                                            // 如果部分吸收，placedThing 的 stackCount 会减少。
+                                            // 目标格子有同类物品，尝试让它吸收
                                             existingStack.TryAbsorbStack(placedThing, true);
                                         }
-
-                                        // 吸收完毕后，检查手中是否还有剩余（格子原本是空的，或者刚才没吸完）
-                                        if (!placedThing.Destroyed && placedThing.stackCount > 0)
+                                        else
                                         {
-                                            // 【关键修复】：永远不要对可能存在碰撞的格子使用 GenSpawn.Spawn！
-                                            // 使用 GenPlace.TryPlaceThing 并配合 ThingPlaceMode.Near。
-                                            // 这样，如果格子空着，它会精准放进去；
-                                            // 如果格子满了（合并溢出的产物），它会像原版掉落物一样，安全地散落在仓库格子旁边的空地上，绝不会引发“挤出效应”。
-                                            GenPlace.TryPlaceThing(placedThing, storeCell, map, ThingPlaceMode.Near);
+                                            // 【关键分支】：目标格子是空的。
+                                            // 因为格子是空的，不存在重叠挤出的风险，可以直接霸道生成进去。
+                                            GenSpawn.Spawn(placedThing, storeCell, map);
                                         }
 
-                                        // 成功放入，确保冷却期解除
+                                        // 核心判定：处理“手中”剩余的物品
+                                        // 1. !placedThing.Destroyed : 没有被 TryAbsorbStack 100% 吸干
+                                        // 2. placedThing.stackCount > 0 : 还有剩余数量
+                                        // 3. !placedThing.Spawned : 确认它刚才没有被 GenSpawn 放进空仓库里
+                                        if (!placedThing.Destroyed && placedThing.stackCount > 0 &&
+                                            !placedThing.Spawned)
+                                        {
+                                            // 把它扔回刚刚收获这株植物的位置（水培盆旁边）
+                                            // pos 变量是前面 `IntVec3 pos = plant.Position;` 记录的植物原坐标
+                                            GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
+                                        }
+
+                                        // 无论有没有剩余，只要找到了合法的存储格，就解除冷却
                                         _nextAllowedStoreTick = -1;
                                     }
                                     else
                                     {
-                                        // 失败（全图无位置），挂上 2500 Ticks 冷却惩罚
+                                        // 全局找了一圈都没地方放，挂上冷却惩罚
                                         _nextAllowedStoreTick = Find.TickManager.TicksGame + 2500;
                                     }
                                 }
