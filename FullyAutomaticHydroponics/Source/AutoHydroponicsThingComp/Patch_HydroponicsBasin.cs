@@ -52,7 +52,6 @@ using FullyAutoHydroponicsThingComp;
 //     </comps> 
 
 
-
 namespace FullyAutoHydroponicsThingComp
 {
     [StaticConstructorOnStartup]
@@ -88,6 +87,14 @@ namespace FullyAutoHydroponicsThingComp
                     def.comps = new List<CompProperties>();
                 }
 
+                // // 【新增核心修复逻辑】：强制唤醒没有 Ticker 的植物盆
+                // if (def.tickerType == TickerType.Never)
+                // {
+                //     def.tickerType = TickerType.Rare;
+                //     // 可选：打印日志方便排查
+                //     Log.Message($"[FullyAutoHydroponics] 唤醒了沉睡的建筑: [{def.defName}] [{def.label}] (将 TickerType 从 Never 修改为 Rare)");
+                // }
+
                 // 3. 检查是否已经存在全自动组件 (防止重复添加)
                 bool hasAutoComp = def.comps.Any(c => c is CompProperties_FullyAutoHydroponics);
 
@@ -100,7 +107,7 @@ namespace FullyAutoHydroponicsThingComp
                         defaultAutoSow = false,
                         defaultAutoStore = false,
                     });
-                    
+
                     Log.Message($"[FullyAutoHydroponics] 成功为 [{def.defName}] [{def.label}] 注入了全自动组件。");
 
                     patchedCount++;
