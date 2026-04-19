@@ -212,8 +212,26 @@ namespace FullyAutoHydroponicsThingComp
                             Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
                             // 设置收获物的数量
                             yieldThing.stackCount = yieldCount;
-                            // 将收获物放置到水培盆附近（Near 模式会自动寻找最近的可放置位置）
-                            GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
+
+                            // 先将收获物放置到水培盆附近（Near 模式自动寻找最近的可放置位置）
+                            // 使用带 out 参数的重载，获取实际生成的物体（可能因堆叠而与 yieldThing 不同）
+                            if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near,
+                                out Thing placedThing))
+                            {
+                                // 尝试找到优先级更高的最佳存储格（仓库、储物柜等）
+                                // carrier 传 null 表示无搬运者（直接瞬移），以水培盆位置为起点搜索
+                                if (placedThing != null && placedThing.Spawned &&
+                                    StoreUtility.TryFindBestBetterStoreCellFor(
+                                        placedThing, null, map,
+                                        StoragePriority.Unstored, Faction.OfPlayer,
+                                        out IntVec3 storeCell))
+                                {
+                                    // 找到了更好的存储位置：将物品从当前位置移到目标存储格
+                                    placedThing.DeSpawn();
+                                    GenSpawn.Spawn(placedThing, storeCell, map);
+                                }
+                                // 若找不到合适存储格，物品保持在水培盆附近，等待殖民者手动搬运
+                            }
                         }
                     }
 
