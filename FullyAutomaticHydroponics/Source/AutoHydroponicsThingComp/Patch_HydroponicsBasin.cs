@@ -97,7 +97,8 @@ namespace FullyAutoHydroponicsThingComp
                     def.comps.Add(new CompProperties_FullyAutoHydroponics
                     {
                         defaultAutoHarvest = false,
-                        defaultAutoSow = false
+                        defaultAutoSow = false,
+                        defaultAutoStore = false,
                     });
                     
                     Log.Message($"[FullyAutoHydroponics] 成功为 [{def.defName}] [{def.label}] 注入了全自动组件。");
