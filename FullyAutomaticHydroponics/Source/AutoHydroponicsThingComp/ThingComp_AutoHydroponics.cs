@@ -70,7 +70,7 @@ namespace FullyAutoHydroponicsThingComp
         private AutoHydroponicsManager Manager => parent.Map?.GetComponent<AutoHydroponicsManager>();
 
         // 检查当前是否应该被管家管理（只要有一个功能开启，就需要进入活跃名单）
-        private bool ShouldBeActive => autoSow || autoHarvest || autoStore;
+        private bool ShouldBeActive => autoSow || autoHarvest /*|| autoStore*/;
 
         // ── 状态同步机制 ──
         private void UpdateRegistration()
