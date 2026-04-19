@@ -30,6 +30,8 @@
 * 在 681 个 Mod 的复杂环境下测试，260 个高阶水培盆（AOTC:TPOC 的 SNS_Hydroponics_III）运行时的 TPS 下降并不明显。
 * 由于自动化效率远高于人工：实测 50 个高阶水培盆的效率几乎等同于 200 个手工操作的水培盆。水培盆本身的生长效率越高，相对于人工种植的效率提升就越大。
 
+* 改进的实现，当前在3472个SNS_Hydroponics_III上进行了测试，TPS可以保持在100上下，性能非常好。
+
 ---
 
 ### 兼容性：
@@ -74,6 +76,8 @@ The mod provides three toggles to independently control **Auto-Sow**, **Auto-Har
 * When both toggles are disabled, the hydroponic basins revert to their vanilla state with no side effects or performance impact.
 * In a testing environment with 681 mods and 260 high-tier basins (SNS_Hydroponics_III from AOTC:TPOC), the impact on TPS (Ticks Per Second) was negligible.
 * Because automation is far more efficient than manual labor, 50 automated high-tier basins are roughly equivalent to 200 manually tended ones. The higher the base efficiency of the basin, the greater the performance gain compared to manual labor.
+
+* With the improved implementation, testing on 3472 SNS_Hydroponics_III basins showed TPS can be maintained around 100, which is very good.
 
 ---
 
