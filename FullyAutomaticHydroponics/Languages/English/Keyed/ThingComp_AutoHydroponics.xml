@@ -7,4 +7,7 @@
     <FullyAutoHydroponics_autoSow>auto sow</FullyAutoHydroponics_autoSow>
     <!-- 开启后，水培盆中的空格将自动补种设定的植物。 -->
     <FullyAutoHydroponics_autoSowDesc>Will automatically sow plants in empty spaces in the hydroponics basin.</FullyAutoHydroponics_autoSowDesc>
+    <FullyAutoHydroponics_autoStore>auto store</FullyAutoHydroponics_autoStore>
+    <!-- 开启后，收获的产物将自动存储到最近的最合适的存储区中。 -->
+    <FullyAutoHydroponics_autoStoreDesc>Will automatically store harvested products in the nearest appropriate storage area.</FullyAutoHydroponics_autoStoreDesc>
 </LanguageData>
