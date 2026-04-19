@@ -78,7 +78,7 @@ namespace FullyAutoHydroponicsThingComp
                 if (hasExcludeComp)
                 {
                     // 可选：在日志里输出一下谁被跳过了，方便你排查兼容性
-                    Log.Message($"[FullyAutoHydroponics] [{def.defName}] 带有拒绝标签，跳过。");
+                    Log.Message($"[FullyAutoHydroponics] [{def.defName}] [{def.label}] 带有拒绝标签，跳过。");
                     continue;
                 }
 
@@ -100,13 +100,13 @@ namespace FullyAutoHydroponicsThingComp
                         defaultAutoSow = false
                     });
                     
-                    Log.Message($"[FullyAutoHydroponics] 成功为 [{def.defName}] 注入了全自动组件。");
+                    Log.Message($"[FullyAutoHydroponics] 成功为 [{def.defName}] [{def.label}] 注入了全自动组件。");
 
                     patchedCount++;
                 }
                 else
                 {
-                    Log.Message($"[FullyAutoHydroponics] [{def.defName}] 已经有全自动组件，跳过。");
+                    Log.Message($"[FullyAutoHydroponics] [{def.defName}] [{def.label}] 已经有全自动组件，跳过。");
                 }
             }
 
