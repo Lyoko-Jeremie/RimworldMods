@@ -184,74 +184,66 @@ namespace FullyAutoHydroponicsThingComp
                 return;
 
             // ── 阶段一：收获已成熟的植物 ──
-            // 遍历水培盆上所有格子中的植物（ToList() 防止在遍历中修改集合导致异常）
             if (autoHarvest)
             {
                 foreach (Plant plant in grower.PlantsOnMe.ToList())
                 {
                     // 跳过已经被销毁的植物（防止访问无效对象）
-                    if (plant == null || plant.Destroyed)
-                        continue;
-
                     // 如果植物尚未完全成熟（生长度 < 100%），跳过，等待下次检查
-                    if (plant.Growth < 1.0f)
+                    // 如果植物没有 plant 属性定义，则跳过（防御性检查）
+                    // 仅当该植物有定义的收获物时才进行收获
+                    if (plant == null || plant.Destroyed || plant.Growth < 1.0f ||
+                        plant.def.plant?.harvestedThingDef == null)
                         continue;
 
                     // 记录植物当前所在的地图格坐标
                     IntVec3 pos = plant.Position;
                     // 记录植物所在的地图对象
                     Map map = plant.Map;
+                    // 计算当前植物在现有生长度和血量下的实际产量
+                    int yieldCount = plant.YieldNow();
 
-                    // 如果植物没有 plant 属性定义，则跳过（防御性检查）
-                    if (plant.def.plant == null)
-                        continue;
-
-                    // 仅当该植物有定义的收获物时才进行收获
-                    if (plant.def.plant.harvestedThingDef != null)
+                    // 只有产量大于 0 时才生成收获物，避免创建无意义的空物品
+                    if (yieldCount > 0)
                     {
-                        // 计算当前植物在现有生长度和血量下的实际产量
-                        int yieldCount = plant.YieldNow();
-                        // 只有产量大于 0 时才生成收获物，避免创建无意义的空物品
-                        if (yieldCount > 0)
+                        Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
+                        yieldThing.stackCount = yieldCount;
+
+                        // 1. 【核心修正】：必须先将物品安全地生成在水培盆附近。
+                        // 这样物品就拥有了合法的 Map 和 Position，各种存储 Mod (如 ASF) 在计算距离时就不会报 NullReferenceException 了。
+                        if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near, out Thing placedThing))
                         {
-                            // 根据植物定义的收获物类型创建一个新的 Thing 实例
-                            // 1. 创建处于虚空状态的产物，不去干扰地面物理实体
-                            Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
-                            // 设置收获物的数量
-                            yieldThing.stackCount = yieldCount;
-
-                            bool stored = false;
-
-                            // 2. 优先尝试直接将其存入仓库
+                            // 2. 如果开启了自动存储，向大管家请求智能寻址
                             if (autoStore && Manager != null)
                             {
-                                if (Manager.TryGetSmartStoreCell(yieldThing, out IntVec3 storeCell))
+                                // 此时传递的是 placedThing，它已经真实存在于地图上
+                                if (Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
                                 {
-                                    Thing existingStack = storeCell.GetFirstThing(map, yieldThing.def);
+                                    // 3. 找到了目标仓库，先把它从水培盆脚下的地上“捡起来”（脱离物理地面）
+                                    placedThing.DeSpawn();
+
+                                    // 检查目标格子上是否已经有同类物品
+                                    Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
                                     if (existingStack != null)
                                     {
-                                        // 格子里有同类，直接吸收（完全不需要事先 Spawn）
-                                        existingStack.TryAbsorbStack(yieldThing, true);
+                                        // 尝试吸收
+                                        existingStack.TryAbsorbStack(placedThing, true);
                                     }
                                     else
                                     {
-                                        // 格子是空的，直接凭空生成到目标格
-                                        GenSpawn.Spawn(yieldThing, storeCell, map);
+                                        // 格子是空的，直接霸道生成进去
+                                        GenSpawn.Spawn(placedThing, storeCell, map);
                                     }
 
-                                    // 检查存放结果：如果被完全吸干、或者成功生成到了目标格，则标记为已存放
-                                    if (yieldThing.Destroyed || yieldThing.stackCount <= 0 || yieldThing.Spawned)
+                                    // 4. 处理没吸完的剩余物品（完美规避挤出Bug）
+                                    if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
                                     {
-                                        stored = true;
+                                        // 乖乖扔回水培盆旁边
+                                        GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
                                     }
                                 }
-                            }
-
-                            // 3. 托底机制：没开自动存放、没找到仓库，或是被吸走了一半还剩下一半
-                            if (!stored && !yieldThing.Destroyed && yieldThing.stackCount > 0)
-                            {
-                                // 安安稳稳地掉落在水培盆附近
-                                GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near);
+                                // 如果 Manager.TryGetSmartStoreCell 返回 false（全局冷却中，或全图满载）
+                                // 代码什么都不做，物品就安安静静地留在刚才 GenPlace 掉落的地方，逻辑完美闭环。
                             }
                         }
                     }
