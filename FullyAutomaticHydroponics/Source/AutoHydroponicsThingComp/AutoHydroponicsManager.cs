@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -10,6 +11,11 @@ namespace FullyAutoHydroponicsThingComp
     {
         // 改用 List 以支持按索引遍历
         private List<ThingComp_FullyAutoHydroponics> activeComps = new List<ThingComp_FullyAutoHydroponics>();
+
+        // 【核心新增】：按物品类型缓存目标存储格
+        // 键：物品的 Def (如水稻、土豆)
+        // 值：上次成功找到的有效存储格坐标
+        private Dictionary<ThingDef, IntVec3> _storeCellCache = new Dictionary<ThingDef, IntVec3>();
 
         public AutoHydroponicsManager(Map map) : base(map)
         {
@@ -66,6 +72,43 @@ namespace FullyAutoHydroponicsThingComp
                     activeComps.RemoveAt(i);
                 }
             }
+        }
+
+        // 【核心新增】：提供给水培盆调用的智能寻址方法
+        public bool TryGetSmartStoreCell(Thing item, out IntVec3 result)
+        {
+            result = IntVec3.Invalid;
+
+            // 1. 尝试命中缓存
+            if (_storeCellCache.TryGetValue(item.def, out IntVec3 cachedCell))
+            {
+                // 极速单格验证：检查缓存的格子当前是否还能塞下这个物品
+                if (StoreUtility.IsGoodStoreCell(cachedCell, this.map, item, null, Faction.OfPlayer))
+                {
+                    result = cachedCell;
+                    return true;
+                }
+                else
+                {
+                    // 缓存已失效（格子满了，或者存储区设置被玩家改了），移除旧缓存
+                    _storeCellCache.Remove(item.def);
+                }
+            }
+
+            // 2. 缓存未命中或已失效，执行一次（且仅执行一次）昂贵的全局搜索
+            if (StoreUtility.TryFindBestBetterStoreCellFor(
+                    item, null, this.map,
+                    StoragePriority.Unstored, Faction.OfPlayer,
+                    out IntVec3 newCell))
+            {
+                // 搜索成功，更新缓存
+                _storeCellCache[item.def] = newCell;
+                result = newCell;
+                return true;
+            }
+
+            // 3. 全局搜索也失败了（地图上真没地方放了）
+            return false;
         }
     }
 }

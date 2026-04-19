@@ -218,15 +218,15 @@ namespace FullyAutoHydroponicsThingComp
                             if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near,
                                     out Thing placedThing))
                             {
-                                // 【核心优化】：只有开启了自动存储，且当前游戏时间已经度过了冷却期，才进行寻路
+                                // 【核心优化】：只有开启了自动存储，且当前游戏时间已经度过了冷却期，才进行搜索
+                                // 通过 Manager 获取缓存的格子，性能提升百倍
                                 bool canTryStore = autoStore && Find.TickManager.TicksGame >= _nextAllowedStoreTick;
 
                                 if (canTryStore && placedThing != null && placedThing.Spawned)
                                 {
-                                    if (StoreUtility.TryFindBestBetterStoreCellFor(
-                                            placedThing, null, map,
-                                            StoragePriority.Unstored, Faction.OfPlayer,
-                                            out IntVec3 storeCell))
+                                    // 向大管家请求智能寻址
+                                    if (Manager != null &&
+                                        Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
                                     {
                                         placedThing.DeSpawn();
 
@@ -236,14 +236,12 @@ namespace FullyAutoHydroponicsThingComp
                                             GenSpawn.Spawn(placedThing, storeCell, map);
                                         }
 
-                                        // 成功找到仓库：确保冷却期保持可用状态
+                                        // 成功放入，确保冷却期解除
                                         _nextAllowedStoreTick = -1;
                                     }
                                     else
                                     {
-                                        // 【惩罚机制】：寻路失败！说明全图都没地方放这个物品。
-                                        // 给予 2500 Ticks（游戏内1小时）的寻路冷却惩罚。
-                                        // 在此期间，就算有再多植物成熟，也只会掉在地上，绝不占用 CPU 去找仓库。
+                                        // 失败（全图无位置），挂上 2500 Ticks 冷却惩罚
                                         _nextAllowedStoreTick = Find.TickManager.TicksGame + 2500;
                                     }
                                 }
