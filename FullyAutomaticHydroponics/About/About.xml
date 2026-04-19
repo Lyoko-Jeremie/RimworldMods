@@ -10,12 +10,13 @@
     <description>
 ## Jeremie 的 全自动水栽培盆 FullyAutomaticHydroponics 补丁。 解放小人的双手！
 
-既然水栽培盆可以自动生长了，为什么不能自动播种和收获？现在，它来了！
-众望所归的全自动水栽培盆补丁，让所有水栽培盆都不再需要人工种植和收获！
+既然水栽培盆可以自动生长了，为什么不能自动播种和收获、自动放到该放的地方？现在，它来了！
+众望所归的全自动水栽培盆补丁，让所有水栽培盆都不再需要人工参与！
 
-提供两个开关，分别控制 **自动播种** 和 **自动收获**（默认均为关闭状态）：
+提供三个开关，分别控制 **自动播种**  **自动收获** **自动存储** （默认均为关闭状态）：
 * **自动播种：** 开启后，当水栽培盆没有植物时，会自动播种选定的植物。
 * **自动收获：** 开启后，植物成熟时会自动收获。对于一年生植物，收获后会自动播种；对于多年生植物（如莓果、树木），收获后会继续生长并等待下一次成熟。
+* **自动存储：** 开启后，收获的产物会自动存储在附近最适合的存储区中。如果附近没有存储区或者关闭该开关，产物将堆积在附近。
 * 如果在同时开启两项功能的情况下切换了目标植物，新植物将在当前作物下一次成熟并自动收获后进行播种。
 * 自动收获的产物会堆积在附近，逻辑与正常人工收获一致。
 
@@ -38,7 +39,7 @@
 
 * **潜在冲突：** 可能与修改了种植基础需求的模组（如 *SeedsPlease* 种子需求）冲突，尚未经过测试。（不过既然你都用上增加难度的模组了，大概也不需要这种“正义”的自动化补丁）。
 * **链接水栽培 (Linked Planters)：** 使用该模组时，自动化设置不会在链接的盆之间自动传播。你需要选中整组水栽培盆后统一切换开关，但这影响不大。
-* **明确不支持：** 不支持 *Automatic Hydroponics* (自动水培舱)，因为该模组的水培盆本质上是类似发酵桶的自动工作台，而非真正的植物生长建筑。
+* **不支持：** 不支持 *Automatic Hydroponics* (自动水培舱)，因为该模组的水培盆本质上是类似发酵桶的自动工作台，而非真正的植物生长建筑。可以同时安装和使用，不互相影响。
 
 ### 信息：
 
@@ -55,12 +56,13 @@ Source Code: https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAuto
 
 ## Jeremie's Fully Automatic Hydroponics Patch. Free your colonists' hands!
 
-If hydroponic basins can grow plants automatically, why shouldn't they sow and harvest automatically too? Well, now they can!
+If hydroponic basins can grow plants automatically, why shouldn't they sow and harvest and store automatically too? Well, now they can!
 This long-awaited patch brings full automation to all hydroponic basins, eliminating the need for manual labor in planting and harvesting.
 
-The mod provides two toggles to independently control **Auto-Sow** and **Auto-Harvest** (both are disabled by default).
+The mod provides three toggles to independently control **Auto-Sow**, **Auto-Harvest**, and **Auto-Store** (all are disabled by default).
 * **Auto-Sow:** When enabled, the basin will automatically sow the selected plant whenever it is empty.
 * **Auto-Harvest:** When enabled, the basin will automatically harvest plants once they reach maturity. For annual plants, it will re-sow immediately after; for perennials (like berries or certain trees), it will harvest the produce and allow the plant to continue growing for the next cycle.
+* **Auto-Store:** When enabled, harvested products will automatically be stored in the nearest suitable stockpile. If no stockpile is nearby or if this toggle is disabled, the products will pile up nearby instead.
 * If you switch the target plant type while both toggles are active, the new plant will be sown automatically after the current crop reaches maturity and is harvested.
 * Harvested products will pile up nearby, following the same logic as standard manual harvesting.
 
@@ -83,7 +85,7 @@ This mod uses C# to apply functionality to all buildings inheriting from `Buildi
 
 * **Conflicts:** May conflict with mods that fundamentally change planting requirements (such as *SeedsPlease*). These have not been tested. (Though if you are playing with hardcore difficulty mods, you likely wouldn't want an "OP" automation mod like this anyway!)
 * **Linked Planters:** When using the *Linked Planters* mod, the auto-sow/harvest settings do not automatically propagate through the link. You will need to select the entire group of basins to toggle the settings, but this is a minor inconvenience.
-* **Unsupported:** Does **not** support the mod *Automatic Hydroponics*, as those "basins" are technically structured as automated workbenches (similar to fermenting barrels) rather than actual plant-growing buildings.
+* **Unsupported:** Does **not** support the mod *Automatic Hydroponics*, as those "basins" are technically structured as automated workbenches (similar to fermenting barrels) rather than actual plant-growing buildings. You can have both mods installed and they will not effect each other.
 
 ### Information:
 
