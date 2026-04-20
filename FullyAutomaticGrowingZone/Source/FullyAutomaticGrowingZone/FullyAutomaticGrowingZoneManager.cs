@@ -161,10 +161,12 @@ namespace FullyAutomaticGrowingZone
                         continue;
                     }
 
+                    // 【无法播种的格子在此处理】：CanAutoSowAndClear 返回 false 时（如非生长季节、肥力不足、
+                    // 格子上有建筑/物品等），该格子不会从 pendingCellsToSow 中移除，而是保留以便下次 tick 重试。
                     if (CanAutoSowAndClear(plantDef, cell, map))
                     {
                         ExecuteSow(cell, plantDef);
-                        pendingCellsToSow.Remove(cell);
+                        pendingCellsToSow.Remove(cell); // 播种成功，从待播种集合中移除
                     }
                     // 否则保留在集合中，下次 tick 自动重试（HashSet 天然去重）
                 }
