@@ -44,6 +44,11 @@ namespace FullyAutomaticGrowingZone
         // 抑制标记：在 CanAutoSowAndClear 清除旧植物时，防止 DeSpawn patch 将格子重新加入播种队列
         public bool suppressDeSpawnResow;
 
+        // 用于跨 ExposeData 阶段保持引用的临时列表
+        private List<Zone_Growing> _saveSowList;
+        private List<Zone_Growing> _saveHarvestList;
+        private List<Zone_Growing> _saveStoreList;
+
         public Queue<Plant> plantsToHarvest = new Queue<Plant>();
 
         // 去重集合：防止同一植物被多次加入收获队列（用 thingIDNumber 作为 key）
@@ -59,12 +64,16 @@ namespace FullyAutomaticGrowingZone
             // 保存虚拟仓库
             Scribe_Collections.Look(ref virtualYieldBuffer, "virtualYieldBuffer", LookMode.Def, LookMode.Value);
 
-            List<Zone_Growing> sowList = autoSowZones.ToList();
-            List<Zone_Growing> harvestList = autoHarvestZones.ToList();
-            List<Zone_Growing> storeList = autoStoreZones.ToList();
-            Scribe_Collections.Look(ref sowList, "autoSowZones", LookMode.Reference);
-            Scribe_Collections.Look(ref harvestList, "autoHarvestZones", LookMode.Reference);
-            Scribe_Collections.Look(ref storeList, "autoStoreZones", LookMode.Reference);
+            if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                _saveSowList = autoSowZones.ToList();
+                _saveHarvestList = autoHarvestZones.ToList();
+                _saveStoreList = autoStoreZones.ToList();
+            }
+
+            Scribe_Collections.Look(ref _saveSowList, "autoSowZones", LookMode.Reference);
+            Scribe_Collections.Look(ref _saveHarvestList, "autoHarvestZones", LookMode.Reference);
+            Scribe_Collections.Look(ref _saveStoreList, "autoStoreZones", LookMode.Reference);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -73,23 +82,27 @@ namespace FullyAutomaticGrowingZone
                 autoHarvestZones = new HashSet<Zone_Growing>();
                 autoStoreZones = new HashSet<Zone_Growing>();
 
-                if (sowList != null)
-                    foreach (var z in sowList)
+                if (_saveSowList != null)
+                    foreach (var z in _saveSowList)
                     {
                         if (z != null) autoSowZones.Add(z);
                     }
 
-                if (harvestList != null)
-                    foreach (var z in harvestList)
+                if (_saveHarvestList != null)
+                    foreach (var z in _saveHarvestList)
                     {
                         if (z != null) autoHarvestZones.Add(z);
                     }
 
-                if (storeList != null)
-                    foreach (var z in storeList)
+                if (_saveStoreList != null)
+                    foreach (var z in _saveStoreList)
                     {
                         if (z != null) autoStoreZones.Add(z);
                     }
+
+                _saveSowList = null;
+                _saveHarvestList = null;
+                _saveStoreList = null;
 
                 RebuildActiveCache();
 
@@ -128,6 +141,7 @@ namespace FullyAutomaticGrowingZone
                     _deferredIterBuffer.Add(cell);
                     if (++moved >= batch) break;
                 }
+
                 for (int i = 0; i < _deferredIterBuffer.Count; i++)
                 {
                     IntVec3 cell = _deferredIterBuffer[i];
@@ -205,6 +219,7 @@ namespace FullyAutomaticGrowingZone
                         deferredCellsToSow.Add(cell);
                     }
                 }
+
                 suppressDeSpawnResow = false;
             }
         }
