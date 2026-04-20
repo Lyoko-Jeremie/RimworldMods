@@ -218,10 +218,10 @@ namespace FullyAutomaticGrowingZone
 
                     virtualYieldBuffer[harvestedThingDef] += yieldAmount;
 
-                    // 使用原版堆叠上限，但设置一个合理的刷出阈值（至少75），
+                    // 使用原版堆叠上限，但设置一个合理的刷出阈值（至少500），
                     // 防止超大堆叠mod导致物资长期滞留在虚拟仓库中
                     int stackLimit = harvestedThingDef.stackLimit;
-                    int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(75, stackLimit / 10));
+                    int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(500, stackLimit / 10));
                     while (virtualYieldBuffer[harvestedThingDef] >= flushThreshold)
                     {
                         // 每次刷出量不超过原版堆叠上限，也不超过当前库存
