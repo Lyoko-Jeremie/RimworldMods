@@ -41,6 +41,7 @@
 * **潜在冲突：** 可能与修改了种植基础需求的模组（如 *SeedsPlease* 种子需求）冲突，尚未经过测试。（不过既然你都用上增加难度的模组了，大概也不需要这种“正义”的自动化补丁）。
 * **链接水栽培 (Linked Planters)：** 使用该模组时，自动化设置不会在链接的盆之间自动传播。你需要选中整组水栽培盆后统一切换开关，但这影响不大。
 * **不支持：** 不支持 *Automatic Hydroponics* (自动水培舱)，因为该模组的水培盆本质上是类似发酵桶的自动工作台，而非真正的植物生长建筑。可以同时安装和使用，不互相影响。
+* 可以在游戏中途添加或删除
 
 ### 信息：
 
@@ -88,6 +89,7 @@ This mod uses C# to apply functionality to all buildings inheriting from `Buildi
 * **Conflicts:** May conflict with mods that fundamentally change planting requirements (such as *SeedsPlease*). These have not been tested. (Though if you are playing with hardcore difficulty mods, you likely wouldn't want an "OP" automation mod like this anyway!)
 * **Linked Planters:** When using the *Linked Planters* mod, the auto-sow/harvest settings do not automatically propagate through the link. You will need to select the entire group of basins to toggle the settings, but this is a minor inconvenience.
 * **Unsupported:** Does **not** support the mod *Automatic Hydroponics*, as those "basins" are technically structured as automated workbenches (similar to fermenting barrels) rather than actual plant-growing buildings. You can have both mods installed and they will not effect each other.
+* Can be added to or removed from existing saves at any time.
 
 ### Information:
 
