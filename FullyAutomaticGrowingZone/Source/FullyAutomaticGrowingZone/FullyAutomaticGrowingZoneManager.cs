@@ -229,12 +229,8 @@ namespace FullyAutomaticGrowingZone
                         Thing fullStack = ThingMaker.MakeThing(harvestedThingDef);
                         fullStack.stackCount = spawnCount;
 
-                        // 尝试放入最佳仓库
-                        if (!TryPlaceInStockpile(fullStack))
-                        {
-                            // 找不到仓库，回退到就地放置
-                            GenPlace.TryPlaceThing(fullStack, position, map, ThingPlaceMode.Near);
-                        }
+                        // 尝试放入最佳仓库，先就地生成再搬运
+                        TryPlaceInStockpile(fullStack, position);
 
                         virtualYieldBuffer[harvestedThingDef] -= spawnCount;
                     }
@@ -258,18 +254,26 @@ namespace FullyAutomaticGrowingZone
         /// <summary>
         /// 尝试将物品放入地图上最合适的仓库格子
         /// </summary>
-        private bool TryPlaceInStockpile(Thing thing)
+        private bool TryPlaceInStockpile(Thing thing, IntVec3 fallbackCell)
         {
-            // 使用原版的 StoreUtility 来找到最佳仓库位置
-            if (StoreUtility.TryFindBestBetterStoreCellFor(thing, null, map, StoragePriority.Unstored, null,
-                    out IntVec3 storeCell))
+            // 先将物品生成到地图上，使其拥有有效的 Position/Map/SpawnedOrAnyParentSpawned，
+            // 这样其他 mod 的 Harmony patch 在访问 thing 时不会因为缺少上下文而抛 NRE。
+            GenPlace.TryPlaceThing(thing, fallbackCell, map, ThingPlaceMode.Near);
+
+            // 物品现在已经在地图上了，尝试找到更好的仓库位置
+            if (!thing.Destroyed && thing.Spawned)
             {
-                GenPlace.TryPlaceThing(thing, storeCell, map, ThingPlaceMode.Near);
-                return true;
+                if (StoreUtility.TryFindBestBetterStoreCellFor(thing, null, map, StoragePriority.Unstored, null,
+                        out IntVec3 storeCell))
+                {
+                    thing.DeSpawn();
+                    GenPlace.TryPlaceThing(thing, storeCell, map, ThingPlaceMode.Near);
+                }
             }
 
-            return false;
+            return true;
         }
+
 
         /// <summary>
         /// 定期将虚拟仓库中未满一组的残余物资刷出到仓库或田地上，
@@ -298,10 +302,7 @@ namespace FullyAutomaticGrowingZone
                 Thing stack = ThingMaker.MakeThing(def);
                 stack.stackCount = amount;
 
-                if (!TryPlaceInStockpile(stack))
-                {
-                    GenPlace.TryPlaceThing(stack, fallbackCell, map, ThingPlaceMode.Near);
-                }
+                TryPlaceInStockpile(stack, fallbackCell);
 
                 virtualYieldBuffer[def] = 0;
             }
