@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Use in dll -->
+<LanguageData>
+    <FullyAutomaticGrowingZone_autoSow>Auto Sow</FullyAutomaticGrowingZone_autoSow>
+    <FullyAutomaticGrowingZone_autoSowDesc>When enabled, this zone will automatically sow crops.</FullyAutomaticGrowingZone_autoSowDesc>
+    <FullyAutomaticGrowingZone_autoHarvest>Auto Harvest</FullyAutomaticGrowingZone_autoHarvest>
+    <FullyAutomaticGrowingZone_autoHarvestDesc>When enabled, this zone will automatically harvest mature crops.</FullyAutomaticGrowingZone_autoHarvestDesc>
+    <FullyAutomaticGrowingZone_autoStore>Auto Store</FullyAutomaticGrowingZone_autoStore>
+    <FullyAutomaticGrowingZone_autoStoreDesc>When enabled, harvested crops will be hauled to storage automatically. When disabled, they will drop directly on the field.</FullyAutomaticGrowingZone_autoStoreDesc>
+    <FullyAutomaticGrowingZone_autoStore>Spawn Virtual Storage</FullyAutomaticGrowingZone_autoStore>
+    <FullyAutomaticGrowingZone_autoStoreDesc>Immediately flush all items temporarily stored in virtual storage to storage or onto the field.</FullyAutomaticGrowingZone_autoStoreDesc>
+</LanguageData>

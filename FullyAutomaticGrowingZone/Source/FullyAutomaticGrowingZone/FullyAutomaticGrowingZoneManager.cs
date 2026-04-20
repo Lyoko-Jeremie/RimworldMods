@@ -571,8 +571,8 @@ namespace FullyAutomaticGrowingZone
             // 自动播种开关
             yield return new Command_Toggle
             {
-                defaultLabel = "自动播种",
-                defaultDesc = "开启后，本区域将自动播种作物。",
+                defaultLabel = "FullyAutomaticGrowingZone_autoSow".Translate(),
+                defaultDesc = "FullyAutomaticGrowingZone_autoSowDesc".Translate(),
                 icon = IconAutoSow,
                 isActive = () => comp.autoSowZones.Contains(__instance),
                 toggleAction = () =>
@@ -597,8 +597,8 @@ namespace FullyAutomaticGrowingZone
             // 自动收获开关
             yield return new Command_Toggle
             {
-                defaultLabel = "自动收获",
-                defaultDesc = "开启后，本区域将自动收割成熟作物。",
+                defaultLabel = "FullyAutomaticGrowingZone_autoHarvest".Translate(),
+                defaultDesc = "FullyAutomaticGrowingZone_autoHarvestDesc".Translate(),
                 icon = IconAutoHarvest,
                 isActive = () => comp.autoHarvestZones.Contains(__instance),
                 toggleAction = () =>
@@ -619,8 +619,8 @@ namespace FullyAutomaticGrowingZone
             // 自动存储开关
             yield return new Command_Toggle
             {
-                defaultLabel = "自动存储",
-                defaultDesc = "开启后，收获的作物将自动搬运到仓库。关闭则直接掉落在田地上。",
+                defaultLabel = "FullyAutomaticGrowingZone_autoStore".Translate(),
+                defaultDesc = "FullyAutomaticGrowingZone_autoStoreDesc".Translate(),
                 icon = IconAutoStore,
                 isActive = () => comp.autoStoreZones.Contains(__instance),
                 toggleAction = () =>
@@ -645,16 +645,12 @@ namespace FullyAutomaticGrowingZone
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "刷出虚拟仓库",
-                    defaultDesc = "立即将虚拟仓库中暂存的所有物资刷出到仓库或田地上。",
+                    defaultLabel = "FullyAutomaticGrowingZone_autoStore".Translate(),
+                    defaultDesc = "FullyAutomaticGrowingZone_autoStoreDesc".Translate(),
                     icon = IconFlushBuffer,
-                    action = () =>
-                    {
-                        comp.FlushVirtualBuffer();
-                    }
+                    action = () => { comp.FlushVirtualBuffer(); }
                 };
             }
         }
     }
 }
-
