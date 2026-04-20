@@ -138,10 +138,12 @@ namespace FullyAutomaticGrowingZone
                         plantsInHarvestQueue.Remove(plant.thingIDNumber);
                     if (plant != null && !plant.Destroyed && plant.Growth >= 1f)
                     {
+                        IntVec3 pos = plant.Position;
+                        bool isPerennial = !plant.def.plant.HarvestDestroys;
                         ExecuteHarvest(plant);
-                        if (IsAutoSow(plant.Position))
+                        if (!isPerennial && IsAutoSow(pos))
                         {
-                            pendingCellsToSow.Add(plant.Position);
+                            pendingCellsToSow.Add(pos);
                         }
                     }
                 }
@@ -196,7 +198,16 @@ namespace FullyAutomaticGrowingZone
             IntVec3 position = plant.Position;
             bool shouldStore = IsAutoStore(position);
 
-            plant.Destroy(DestroyMode.Vanish);
+            bool harvestDestroys = plant.def.plant.HarvestDestroys;
+
+            if (harvestDestroys)
+            {
+                plant.Destroy(DestroyMode.Vanish);
+            }
+            else
+            {
+                plant.Growth = plant.def.plant.harvestAfterGrowth;
+            }
 
             if (harvestedThingDef != null && yieldAmount > 0)
             {
