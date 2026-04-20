@@ -10,8 +10,41 @@
     <description>
 ## Jeremie 的 全自动种植区 FullyAutomaticGrowingZone 补丁。闪耀世界高科技！！！
 
-性能测试
-采用触发式工作，52900 大小的单个种植区，非成熟时间不产生任何性能影响，可以跑到 890 TPS，成熟时TPS下降到20-30，收割完毕后恢复。
+为种植区提供自动播种、自动收获和自动存储功能！解放小人的双手，让他们专注于更重要的事情！
+
+提供三个开关，分别控制 **自动播种**  **自动收获** **自动存储** （默认均为关闭状态）：
+* **自动播种：** 开启后，当种植区没有植物时，会自动播种选定的植物。
+* **自动收获：** 开启后，植物成熟时会自动收获。对于一年生植物，收获后会自动播种；对于多年生植物（如莓果、树木），收获后会继续生长并等待下一次成熟。
+* **自动存储：** 开启后，收获的产物会自动存储在附近最适合的存储区中。如果附近没有存储区或者关闭该开关，产物将堆积在附近。
+* 如果在同时开启两项功能的情况下切换了目标植物，新植物将立即进行播种，无需等待当前作物成熟。
+
+### 性能测试
+采用触发式工作，52900 大小的单个种植区，非成熟时间不产生任何性能影响，可以跑到 890 TPS，成熟收割时基本无性能下降，种植时会有性能下降。
+
+### 兼容性
+* 理论上应该不存在任何冲突（大概）
+* 可以在游戏中途添加或删除
+
+------
+
+[Translated by Gemini 3]
+
+## Jeremie's FullyAutomaticGrowingZone Patch. Glitterworld High-Tech!!!
+
+Provides automatic sowing, automatic harvesting, and automatic storage for growing zones! Free your pawns' hands and let them focus on more important matters!
+
+Features three toggles to control **Auto-Sowing**, **Auto-Harvesting**, and **Auto-Storing** (all are disabled by default):
+* **Auto-Sowing:** When enabled, the selected plant will be automatically sown whenever the growing zone is empty.
+* **Auto-Harvesting:** When enabled, plants will be automatically harvested upon reaching maturity. For annuals, sowing will occur immediately after harvest; for perennials (such as berry bushes or trees), the plant will remain and continue growing for the next harvest.
+* **Auto-Storing:** When enabled, harvested products will be automatically moved to the most suitable nearby storage zone. If no storage is available or the toggle is off, products will be left on the ground nearby.
+* If you change the target plant while both functions are enabled, the new plant will be sown immediately without waiting for the current crop to mature.
+
+### Performance Test
+Uses a trigger-based system. Tested on a single growing zone of size 52,900: zero performance impact during growth phases (maintaining up to 890 TPS). There is negligible performance loss during harvesting, though some impact may occur during the sowing phase.
+
+### Compatibility
+* Theoretically compatible with everything (probably).
+* Can be added to or removed from existing saves at any time.
 
 	</description>
 	<loadBefore>
