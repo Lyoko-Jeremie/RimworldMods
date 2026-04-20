@@ -10,7 +10,8 @@
     <description>
 ## Jeremie 的 全自动种植区 FullyAutomaticGrowingZone 补丁。闪耀世界高科技！！！
 
-
+性能测试
+采用触发式工作，52900 大小的单个种植区，非成熟时间不产生任何性能影响，可以跑到 890 TPS，成熟时TPS下降到20-30，收割完毕后恢复。
 
 	</description>
 	<loadBefore>
