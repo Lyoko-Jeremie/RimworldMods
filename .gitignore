@@ -104,6 +104,8 @@ fabric.properties
 !TemporalBarrierProjector/**/*
 !FullyAutomaticHydroponics/
 !FullyAutomaticHydroponics/**/*
+!FullyAutomaticGrowingZone/
+!FullyAutomaticGrowingZone/**/*
 !.gitignore
 
 

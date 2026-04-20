@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>全自动种植区 FullyAutomaticGrowingZone</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.Fully.Automatic.GrowingZone</packageId>
+    <description>
+## Jeremie 的 全自动种植区 FullyAutomaticGrowingZone 补丁。闪耀世界高科技！！！
+
+
+
+	</description>
+	<loadBefore>
+	</loadBefore>
+	<loadAfter>
+	</loadAfter>
+	<modDependencies>
+	</modDependencies>
+</ModMetaData>
