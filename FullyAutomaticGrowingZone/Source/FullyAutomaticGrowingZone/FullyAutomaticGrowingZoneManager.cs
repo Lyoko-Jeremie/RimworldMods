@@ -33,6 +33,10 @@ namespace FullyAutomaticGrowingZone
             _activeAutoZonesCache.UnionWith(autoStoreZones);
         }
 
+        // 延迟重试集合：播种失败的格子移入此处，每隔 DeferredRetryInterval ticks 才重新尝试
+        public HashSet<IntVec3> deferredCellsToSow = new HashSet<IntVec3>();
+        private const int DeferredRetryInterval = 900;
+
         // 用于遍历 pendingCellsToSow 的临时缓冲，避免每帧分配
         private List<IntVec3> _iterBuffer = new List<IntVec3>();
 
@@ -109,6 +113,13 @@ namespace FullyAutomaticGrowingZone
                 RebuildActiveCache();
             }
 
+            // 定期将延迟重试集合中的格子移回待播种集合
+            if (Find.TickManager.TicksGame % DeferredRetryInterval == 0 && deferredCellsToSow.Count > 0)
+            {
+                pendingCellsToSow.UnionWith(deferredCellsToSow);
+                deferredCellsToSow.Clear();
+            }
+
             // 定期刷出虚拟仓库中未满一组的残余物资，防止超大堆叠mod下物资长期滞留
             if (Find.TickManager.TicksGame % 600 == 0)
             {
@@ -162,13 +173,18 @@ namespace FullyAutomaticGrowingZone
                     }
 
                     // 【无法播种的格子在此处理】：CanAutoSowAndClear 返回 false 时（如非生长季节、肥力不足、
-                    // 格子上有建筑/物品等），该格子不会从 pendingCellsToSow 中移除，而是保留以便下次 tick 重试。
+                    // 格子上有建筑/物品等），将格子移入延迟重试集合，避免每 tick 反复检查造成性能浪费。
                     if (CanAutoSowAndClear(plantDef, cell, map))
                     {
                         ExecuteSow(cell, plantDef);
                         pendingCellsToSow.Remove(cell); // 播种成功，从待播种集合中移除
                     }
-                    // 否则保留在集合中，下次 tick 自动重试（HashSet 天然去重）
+                    else
+                    {
+                        // 播种失败，移入延迟重试集合，等待 DeferredRetryInterval ticks 后再重试
+                        pendingCellsToSow.Remove(cell);
+                        deferredCellsToSow.Add(cell);
+                    }
                 }
             }
         }
