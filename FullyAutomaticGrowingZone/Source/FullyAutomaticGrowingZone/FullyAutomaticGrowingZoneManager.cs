@@ -557,7 +557,7 @@ namespace FullyAutomaticGrowingZone
             ContentFinder<Texture2D>.Get("UI/Commands/autoStoreGrowingZone", false) ?? BaseContent.WhiteTex;
 
         private static readonly Texture2D IconFlushBuffer =
-            ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBuffer", false) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBufferGrowingZone", false) ?? BaseContent.WhiteTex;
 
         // 使用 Postfix 返回 IEnumerable 的经典写法
         public static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> values, Zone_Growing __instance)
@@ -648,8 +648,8 @@ namespace FullyAutomaticGrowingZone
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "FullyAutomaticGrowingZone_autoStore".Translate(),
-                    defaultDesc = "FullyAutomaticGrowingZone_autoStoreDesc".Translate(),
+                    defaultLabel = "FullyAutomaticGrowingZone_flushVirtualBuffer".Translate(),
+                    defaultDesc = "FullyAutomaticGrowingZone_flushVirtualBufferDesc".Translate(),
                     icon = IconFlushBuffer,
                     action = () => { comp.FlushVirtualBuffer(); }
                 };
