@@ -7,6 +7,6 @@
     <FullyAutomaticGrowingZone_autoHarvestDesc>When enabled, this zone will automatically harvest mature crops.</FullyAutomaticGrowingZone_autoHarvestDesc>
     <FullyAutomaticGrowingZone_autoStore>Auto Store</FullyAutomaticGrowingZone_autoStore>
     <FullyAutomaticGrowingZone_autoStoreDesc>When enabled, harvested crops will be hauled to storage automatically. When disabled, they will drop directly on the field.</FullyAutomaticGrowingZone_autoStoreDesc>
-    <FullyAutomaticGrowingZone_autoStore>Spawn Virtual Storage</FullyAutomaticGrowingZone_autoStore>
-    <FullyAutomaticGrowingZone_autoStoreDesc>Immediately flush all items temporarily stored in virtual storage to storage or onto the field.</FullyAutomaticGrowingZone_autoStoreDesc>
+    <FullyAutomaticGrowingZone_flushVirtualBuffer>Spawn Virtual Storage</FullyAutomaticGrowingZone_flushVirtualBuffer>
+    <FullyAutomaticGrowingZone_flushVirtualBufferDesc>Immediately flush all items temporarily stored in virtual storage to storage or onto the field.</FullyAutomaticGrowingZone_flushVirtualBufferDesc>
 </LanguageData>
