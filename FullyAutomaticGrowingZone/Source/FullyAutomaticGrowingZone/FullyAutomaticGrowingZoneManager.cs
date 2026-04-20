@@ -39,6 +39,10 @@ namespace FullyAutomaticGrowingZone
 
         // 用于遍历 pendingCellsToSow 的临时缓冲，避免每帧分配
         private List<IntVec3> _iterBuffer = new List<IntVec3>();
+        private List<IntVec3> _deferredIterBuffer = new List<IntVec3>();
+
+        // 抑制标记：在 CanAutoSowAndClear 清除旧植物时，防止 DeSpawn patch 将格子重新加入播种队列
+        public bool suppressDeSpawnResow;
 
         public Queue<Plant> plantsToHarvest = new Queue<Plant>();
 
@@ -113,11 +117,23 @@ namespace FullyAutomaticGrowingZone
                 RebuildActiveCache();
             }
 
-            // 定期将延迟重试集合中的格子移回待播种集合
+            // 定期将延迟重试集合中的格子分批移回待播种集合，避免一次性涌入数万格子
             if (Find.TickManager.TicksGame % DeferredRetryInterval == 0 && deferredCellsToSow.Count > 0)
             {
-                pendingCellsToSow.UnionWith(deferredCellsToSow);
-                deferredCellsToSow.Clear();
+                int batch = Mathf.Min(deferredCellsToSow.Count, 500);
+                int moved = 0;
+                _deferredIterBuffer.Clear();
+                foreach (IntVec3 cell in deferredCellsToSow)
+                {
+                    _deferredIterBuffer.Add(cell);
+                    if (++moved >= batch) break;
+                }
+                for (int i = 0; i < _deferredIterBuffer.Count; i++)
+                {
+                    IntVec3 cell = _deferredIterBuffer[i];
+                    deferredCellsToSow.Remove(cell);
+                    pendingCellsToSow.Add(cell);
+                }
             }
 
             // 定期刷出虚拟仓库中未满一组的残余物资，防止超大堆叠mod下物资长期滞留
@@ -149,10 +165,11 @@ namespace FullyAutomaticGrowingZone
                 }
             }
 
-            // 处理待播种集合 —— 每帧批量处理，大幅提升吞吐量
+            // 处理待播种集合 —— 每帧批量生成植物
+            // 每 tick 限制为 80 棵，兼顾速度与帧率（52900格约11秒种完）
             if (pendingCellsToSow.Count > 0)
             {
-                int toProcess = Mathf.Min(pendingCellsToSow.Count, 200);
+                int toProcess = Mathf.Min(pendingCellsToSow.Count, 80);
 
                 _iterBuffer.Clear();
                 int count = 0;
@@ -162,32 +179,33 @@ namespace FullyAutomaticGrowingZone
                     if (++count >= toProcess) break;
                 }
 
+                suppressDeSpawnResow = true;
                 for (int i = 0; i < _iterBuffer.Count; i++)
                 {
                     IntVec3 cell = _iterBuffer[i];
-                    ThingDef plantDef = GetPlantDefForCell(cell);
+                    pendingCellsToSow.Remove(cell);
 
+                    ThingDef plantDef = GetPlantDefForCell(cell);
                     if (plantDef == null)
                     {
-                        // 格子已不在自动区内，移除
-                        pendingCellsToSow.Remove(cell);
                         continue;
                     }
 
-                    // 【无法播种的格子在此处理】：CanAutoSowAndClear 返回 false 时（如非生长季节、肥力不足、
-                    // 格子上有建筑/物品等），将格子移入延迟重试集合，避免每 tick 反复检查造成性能浪费。
                     if (CanAutoSowAndClear(plantDef, cell, map))
                     {
-                        ExecuteSow(cell, plantDef);
-                        pendingCellsToSow.Remove(cell); // 播种成功，从待播种集合中移除
+                        Plant newPlant = (Plant)ThingMaker.MakeThing(plantDef);
+                        newPlant.Growth = Plant.BaseSownGrowthPercent;
+                        newPlant.sown = true;
+                        newPlant.Rotation = Rot4.North;
+                        newPlant.Position = cell;
+                        newPlant.SpawnSetup(map, false);
                     }
                     else
                     {
-                        // 播种失败，移入延迟重试集合，等待 DeferredRetryInterval ticks 后再重试
-                        pendingCellsToSow.Remove(cell);
                         deferredCellsToSow.Add(cell);
                     }
                 }
+                suppressDeSpawnResow = false;
             }
         }
 
@@ -436,7 +454,7 @@ namespace FullyAutomaticGrowingZone
             if (__instance.Spawned && __instance.Map != null)
             {
                 var comp = __instance.Map.GetComponent<FullyAutomaticGrowingZoneManager>();
-                if (comp != null && comp.IsAutoSow(__instance.Position))
+                if (comp != null && !comp.suppressDeSpawnResow && comp.IsAutoSow(__instance.Position))
                 {
                     comp.pendingCellsToSow.Add(__instance.Position);
                 }
