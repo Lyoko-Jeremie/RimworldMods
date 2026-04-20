@@ -13,12 +13,8 @@ namespace FullyAutomaticGrowingZone
         {
         }
 
-        // 活跃队列：刚刚被收获，或者刚刚被划定为自动种植区的格子。
-        // 这里的格子大概率是可以直接播种的。
-        public Queue<IntVec3> activeCellsToSow = new Queue<IntVec3>();
-
-        // 休眠池：因为任何原因暂时无法播种的格子。
-        private List<IntVec3> sleepingCells = new List<IntVec3>();
+        // 待播种集合：用 HashSet 天然去重，避免同一格子被重复加入
+        public HashSet<IntVec3> pendingCellsToSow = new HashSet<IntVec3>();
 
         // 三个独立开关集合
         public HashSet<Zone_Growing> autoSowZones = new HashSet<Zone_Growing>();
@@ -36,6 +32,9 @@ namespace FullyAutomaticGrowingZone
             _activeAutoZonesCache.UnionWith(autoHarvestZones);
             _activeAutoZonesCache.UnionWith(autoStoreZones);
         }
+
+        // 用于遍历 pendingCellsToSow 的临时缓冲，避免每帧分配
+        private List<IntVec3> _iterBuffer = new List<IntVec3>();
 
         public Queue<Plant> plantsToHarvest = new Queue<Plant>();
 
@@ -91,7 +90,7 @@ namespace FullyAutomaticGrowingZone
                 {
                     foreach (IntVec3 cell in zone.Cells)
                     {
-                        activeCellsToSow.Enqueue(cell);
+                        pendingCellsToSow.Add(cell);
                     }
                 }
             }
@@ -116,10 +115,9 @@ namespace FullyAutomaticGrowingZone
                 FlushVirtualBuffer();
             }
 
-            // 处理收获队列
-            int harvestCountThisTick = Mathf.CeilToInt(plantsToHarvest.Count / 60f);
-            // 设定一个硬性上限，防止极端情况单帧卡死（比如一次最多处理 100 个）
-            harvestCountThisTick = Mathf.Clamp(harvestCountThisTick, 0, 100);
+            // 处理收获队列 —— 提高吞吐量：每帧处理 1/10 而非 1/60，上限 500
+            int harvestCountThisTick = Mathf.CeilToInt(plantsToHarvest.Count / 10f);
+            harvestCountThisTick = Mathf.Clamp(harvestCountThisTick, 0, 500);
 
             for (int i = 0; i < harvestCountThisTick; i++)
             {
@@ -132,112 +130,78 @@ namespace FullyAutomaticGrowingZone
                         ExecuteHarvest(plant);
                         if (IsAutoSow(plant.Position))
                         {
-                            activeCellsToSow.Enqueue(plant.Position);
+                            pendingCellsToSow.Add(plant.Position);
                         }
                     }
                 }
             }
 
-            // 处理活跃队列
-            int activeToProcess = Mathf.Min(activeCellsToSow.Count, 10);
-            for (int i = 0; i < activeToProcess; i++)
+            // 处理待播种集合 —— 每帧批量处理，大幅提升吞吐量
+            if (pendingCellsToSow.Count > 0)
             {
-                IntVec3 cell = activeCellsToSow.Dequeue();
+                int toProcess = Mathf.Min(pendingCellsToSow.Count, 200);
 
-                ThingDef plantDef = GetPlantDefForCell(cell);
-                if (plantDef != null)
+                _iterBuffer.Clear();
+                int count = 0;
+                foreach (IntVec3 cell in pendingCellsToSow)
                 {
-                    if (CanAutoSowAndClear(plantDef, cell, map))
-                    {
-                        ExecuteSow(cell, plantDef);
-                    }
-                    else
-                    {
-                        sleepingCells.Add(cell);
-                    }
+                    _iterBuffer.Add(cell);
+                    if (++count >= toProcess) break;
                 }
-                // 如果 plantDef == null，说明格子已不在自动区内，直接丢弃
-            }
 
-            // 随机乱步重试休眠池
-            if (sleepingCells.Count > 0)
-            {
-                // 无论休眠池里有 5 个还是 50,000 个，每帧只随机抽查 5 个！
-                // 性能开销永远是 O(1)
-                int retryCount = Mathf.Min(sleepingCells.Count, 5);
-                for (int i = 0; i < retryCount; i++)
+                for (int i = 0; i < _iterBuffer.Count; i++)
                 {
-                    // 随机抽取一个索引
-                    int randomIndex = Rand.Range(0, sleepingCells.Count);
-                    IntVec3 cell = sleepingCells[randomIndex];
-
+                    IntVec3 cell = _iterBuffer[i];
                     ThingDef plantDef = GetPlantDefForCell(cell);
 
-                    // 如果格子已不在自动区内，从休眠池移除
                     if (plantDef == null)
                     {
-                        sleepingCells[randomIndex] = sleepingCells[sleepingCells.Count - 1];
-                        sleepingCells.RemoveAt(sleepingCells.Count - 1);
+                        // 格子已不在自动区内，移除
+                        pendingCellsToSow.Remove(cell);
                         continue;
                     }
 
                     if (CanAutoSowAndClear(plantDef, cell, map))
                     {
                         ExecuteSow(cell, plantDef);
-                        sleepingCells[randomIndex] = sleepingCells[sleepingCells.Count - 1];
-                        sleepingCells.RemoveAt(sleepingCells.Count - 1);
+                        pendingCellsToSow.Remove(cell);
                     }
+                    // 否则保留在集合中，下次 tick 自动重试（HashSet 天然去重）
                 }
             }
         }
 
         public void ExecuteHarvest(Plant plant)
         {
-            // 1. 获取作物的产出物类型（比如水稻、玉米）
             ThingDef harvestedThingDef = plant.def.plant.harvestedThingDef;
-
-            // 2. 计算产量。
-            // plant.YieldNow() 会根据植物当前的生长进度、健康状态计算出基础产量。
-            // 因为是全自动农场没有小人参与，所以不需要计算小人的农业技能加成（这本身也是一种平衡）。
             int yieldAmount = plant.YieldNow();
-            IntVec3 position = plant.Position; // 在销毁前缓存位置
-
-            // 检查该格子所在区是否开启了 autoStore
+            IntVec3 position = plant.Position;
             bool shouldStore = IsAutoStore(position);
 
             plant.Destroy(DestroyMode.Vanish);
 
-            // 4. 将产物放入虚拟仓库进行“合并堆叠”
             if (harvestedThingDef != null && yieldAmount > 0)
             {
                 if (shouldStore)
                 {
-                    // autoStore 模式：合并堆叠后尝试搬运到仓库
                     if (!virtualYieldBuffer.ContainsKey(harvestedThingDef))
                         virtualYieldBuffer[harvestedThingDef] = 0;
 
                     virtualYieldBuffer[harvestedThingDef] += yieldAmount;
 
-                    // 使用原版堆叠上限，但设置一个合理的刷出阈值（至少500），
-                    // 防止超大堆叠mod导致物资长期滞留在虚拟仓库中
                     int stackLimit = harvestedThingDef.stackLimit;
                     int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(500, stackLimit / 10));
                     while (virtualYieldBuffer[harvestedThingDef] >= flushThreshold)
                     {
-                        // 每次刷出量不超过原版堆叠上限，也不超过当前库存
                         int spawnCount = Mathf.Min(virtualYieldBuffer[harvestedThingDef], stackLimit);
                         Thing fullStack = ThingMaker.MakeThing(harvestedThingDef);
                         fullStack.stackCount = spawnCount;
-
-                        // 尝试放入最佳仓库，先就地生成再搬运
                         TryPlaceInStockpile(fullStack, position);
-
                         virtualYieldBuffer[harvestedThingDef] -= spawnCount;
                     }
                 }
                 else
                 {
-                    // 非 autoStore 模式：直接就地掉落，不经过虚拟仓库
                     int stackLimit = harvestedThingDef.stackLimit;
                     while (yieldAmount > 0)
                     {
@@ -251,16 +215,10 @@ namespace FullyAutomaticGrowingZone
             }
         }
 
-        /// <summary>
-        /// 尝试将物品放入地图上最合适的仓库格子
-        /// </summary>
         private bool TryPlaceInStockpile(Thing thing, IntVec3 fallbackCell)
         {
-            // 先将物品生成到地图上，使其拥有有效的 Position/Map/SpawnedOrAnyParentSpawned，
-            // 这样其他 mod 的 Harmony patch 在访问 thing 时不会因为缺少上下文而抛 NRE。
             GenPlace.TryPlaceThing(thing, fallbackCell, map, ThingPlaceMode.Near);
 
-            // 物品现在已经在地图上了，尝试找到更好的仓库位置
             if (!thing.Destroyed && thing.Spawned)
             {
                 if (StoreUtility.TryFindBestBetterStoreCellFor(thing, null, map, StoragePriority.Unstored, null,
@@ -274,11 +232,6 @@ namespace FullyAutomaticGrowingZone
             return true;
         }
 
-
-        /// <summary>
-        /// 定期将虚拟仓库中未满一组的残余物资刷出到仓库或田地上，
-        /// 防止在超大堆叠 mod 下物资长期滞留在虚拟仓库中。
-        /// </summary>
         public void FlushVirtualBuffer()
         {
             foreach (var def in virtualYieldBuffer.Keys.ToList())
@@ -286,7 +239,6 @@ namespace FullyAutomaticGrowingZone
                 int amount = virtualYieldBuffer[def];
                 if (amount <= 0) continue;
 
-                // 找一个 autoStore 区的格子作为回退掉落点
                 IntVec3 fallbackCell = IntVec3.Invalid;
                 foreach (var zone in autoStoreZones)
                 {
@@ -297,13 +249,11 @@ namespace FullyAutomaticGrowingZone
                     }
                 }
 
-                if (!fallbackCell.IsValid) break; // 没有 autoStore 区了，保留buffer
+                if (!fallbackCell.IsValid) break;
 
                 Thing stack = ThingMaker.MakeThing(def);
                 stack.stackCount = amount;
-
                 TryPlaceInStockpile(stack, fallbackCell);
-
                 virtualYieldBuffer[def] = 0;
             }
         }
@@ -328,26 +278,17 @@ namespace FullyAutomaticGrowingZone
 
         public void ExecuteSow(IntVec3 cell, ThingDef plantDef)
         {
-            // 1. O(1) 极速查询该格子当前所属的 Zone
             Zone zone = map.zoneManager.ZoneAt(cell);
 
-            // 2. 校验：这个格子还在种植区里吗？它是普通的种植区吗？
             if (zone is Zone_Growing growingZone)
             {
                 if (autoSowZones.Contains(growingZone))
                 {
-                    // 4. 获取玩家【当前时刻】设定的植物类型！
-                    // 这样无论玩家怎么更改作物，你的 Mod 永远种的是正确的类型
                     ThingDef plantDefToGrow = growingZone.GetPlantDefToGrow();
                     if (plantDefToGrow != null)
                     {
-                        // 5. 校验：这个格子现在可以种这个植物吗？（比如温度够不够，有没有被石头挡住）
                         if (CanAutoSowAndClear(plantDefToGrow, cell, map))
                         {
-                            // 6. 终于可以安全地生成植物了
-                            // 修复：使用 BaseSownGrowthPercent 并设置 sown=true，
-                            // 确保植物进入 Growing 阶段（而非 Sowing 阶段），
-                            // 从而显示正常幼苗图像且能继续生长。
                             Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, cell, map);
                             newPlant.Growth = Plant.BaseSownGrowthPercent;
                             newPlant.sown = true;
@@ -359,87 +300,54 @@ namespace FullyAutomaticGrowingZone
 
         public ThingDef GetPlantDefForCell(IntVec3 cell)
         {
-            // O(1) 极速查询：底层直接读取 map.zoneManager.zoneGrid 数组
             Zone zone = map.zoneManager.ZoneAt(cell);
 
-            // 如果这个格子属于原版的种植区
             if (zone is Zone_Growing growingZone)
             {
                 if (autoSowZones.Contains(growingZone))
                 {
-                    // 直接返回玩家当前在该区指定的作物类型
                     return growingZone.GetPlantDefToGrow();
                 }
             }
 
-            // 不在自动种植区内，或者根本不是种植区
             return null;
         }
 
         public bool CanAutoSowAndClear(ThingDef plantDef, IntVec3 c, Map map)
         {
-            // ==========================================
-            // 1. 生长季节与温度校验 (原生方法：完美处理室内外)
-            // 底层会直接 $O(1)$ 查询该格子所属 Room 的缓存温度
-            // 注: 如果你在极老版本(1.3之前)，这个方法在 GenPlant.GrowthSeasonNow
-            // ==========================================
             if (!PlantUtility.GrowthSeasonNow(c, map, plantDef))
             {
                 return false;
             }
 
-            // ==========================================
-            // 2. 地形肥力校验
-            // 防止玩家把种植区划好后，地形被炸弹破坏变成了沙地
-            // 极速原生查询：直接读取 fertilityGrid 浮点数组
-            // ==========================================
             if (plantDef.plant.fertilityMin > 0f && map.fertilityGrid.FertilityAt(c) < plantDef.plant.fertilityMin)
             {
                 return false;
             }
 
-            // ==========================================
-            // 3. 物理遮挡与自动清障 (核心精华)
-            // ==========================================
             List<Thing> thingList = c.GetThingList(map);
 
-            // 【关键】：必须倒序遍历！
-            // 因为我们可能会在循环中 Destroy 植物，正序遍历会导致 List 长度改变引发越界报错。
             for (int i = thingList.Count - 1; i >= 0; i--)
             {
                 Thing thing = thingList[i];
 
-                // 遇到建筑（墙、建造蓝图、风力发电机）或物品（岩石碎块、掉落物）
-                // 判定为真正的物理阻塞 -> 返回 false，让格子进入 sleepingCells (休眠池)
                 if (thing.def.category == ThingCategory.Building || thing.def.category == ThingCategory.Item)
                 {
                     return false;
                 }
 
-                // 遇到植物
                 if (thing.def.category == ThingCategory.Plant)
                 {
-                    // 情况 A：格子上的植物就是我们要种的植物
-                    // 可能是休眠池重试时发现小人已经帮忙种上了，直接跳过，防止同一格 Spawn 两个植物
                     if (thing.def == plantDef) return false;
-
-                    // 情况 B：格子上有野草、树木，或者是玩家刚刚把这个区的种植计划从“水稻”改成了“玉米”
-                    // 自动农场特权：无情抹除！直接腾出地块，且不产生任何垃圾或掉落物
                     thing.Destroy(DestroyMode.Vanish);
                 }
-
-                // 至于污物(Filth)、特效(Mote)、动物或小人(Pawn)踩在上面，
-                // 在 RimWorld 的规则里都不影响播种，所以直接无视，最大化性能！
             }
 
-            // 通过了所有考验：温度合适、地块肥沃、没有遮挡（或杂草已被清除）
             return true;
         }
 
-
         // ===========================================================
 
-        // 提供给 Harmony 快速调用的辅助方法
         public bool IsAutoZone(IntVec3 cell)
         {
             Zone zone = map.zoneManager.ZoneAt(cell);
@@ -464,7 +372,6 @@ namespace FullyAutomaticGrowingZone
             return false;
         }
 
-        // 带去重的入队方法，防止同一植物被多次加入收获队列
         public bool TryEnqueueHarvest(Plant plant)
         {
             if (plantsInHarvestQueue.Add(plant.thingIDNumber))
@@ -476,14 +383,33 @@ namespace FullyAutomaticGrowingZone
             return false;
         }
 
-        // 当玩家更改某个自动区的作物类型时，重新扫描该区所有格子
         public void OnPlantDefChanged(Zone_Growing zone)
         {
             if (autoSowZones.Contains(zone))
             {
                 foreach (IntVec3 cell in zone.Cells)
                 {
-                    activeCellsToSow.Enqueue(cell);
+                    pendingCellsToSow.Add(cell);
+                }
+            }
+        }
+    }
+
+    // =====================================================
+    // 关键修复：当植物被任何原因 DeSpawn（火灾、战斗、其他mod等）时，
+    // 自动将该格子重新加入播种队列
+    // =====================================================
+    [HarmonyPatch(typeof(Plant), "DeSpawn")]
+    public static class Plant_DeSpawn_Patch
+    {
+        public static void Prefix(Plant __instance)
+        {
+            if (__instance.Spawned && __instance.Map != null)
+            {
+                var comp = __instance.Map.GetComponent<FullyAutomaticGrowingZoneManager>();
+                if (comp != null && comp.IsAutoSow(__instance.Position))
+                {
+                    comp.pendingCellsToSow.Add(__instance.Position);
                 }
             }
         }
@@ -492,22 +418,17 @@ namespace FullyAutomaticGrowingZone
     [HarmonyPatch(typeof(Plant), "TickLong")]
     public static class Plant_TickLong_Patch
     {
-        // 使用 Postfix (后置补丁)，等原版计算完生长进度后再执行我们的逻辑
         public static void Postfix(Plant __instance)
         {
-            // 1. 安全校验：植物可能在 TickLong 期间因起火等原因被摧毁，或者地图已关闭
             if (__instance.Destroyed || __instance.Map == null) return;
 
-            // 2. 检查是否成熟 (Growth 达到 1.0)
             if (__instance.Growth >= 1f)
             {
-                // 3. 获取我们自定义的 MapComponent
                 var comp = __instance.Map.GetComponent<FullyAutomaticGrowingZoneManager>();
                 if (comp != null)
                 {
                     if (comp.IsAutoZone(__instance.Position) && comp.TryEnqueueHarvest(__instance))
                     {
-                        // 已加入收获队列
                     }
                 }
             }
@@ -525,12 +446,11 @@ namespace FullyAutomaticGrowingZone
             var comp = map.GetComponent<FullyAutomaticGrowingZoneManager>();
             if (comp != null && comp.autoSowZones.Contains(__instance))
             {
-                comp.activeCellsToSow.Enqueue(c);
+                comp.pendingCellsToSow.Add(c);
             }
         }
     }
 
-    // 当玩家更改种植区的作物类型时，重新扫描
     [HarmonyPatch(typeof(Zone_Growing), "SetPlantDefToGrow")]
     public static class Zone_Growing_SetPlantDefToGrow_Patch
     {
@@ -547,7 +467,6 @@ namespace FullyAutomaticGrowingZone
     [HarmonyPatch(typeof(Zone_Growing), "GetGizmos")]
     public static class Zone_Growing_GetGizmos_Patch
     {
-        // ── 缓存的图标贴图 ──
         private static readonly Texture2D IconAutoHarvest =
             ContentFinder<Texture2D>.Get("UI/Commands/autoHarvestGrowingZone", false) ?? BaseContent.WhiteTex;
 
@@ -560,10 +479,8 @@ namespace FullyAutomaticGrowingZone
         private static readonly Texture2D IconFlushBuffer =
             ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBufferGrowingZone", false) ?? BaseContent.WhiteTex;
 
-        // 使用 Postfix 返回 IEnumerable 的经典写法
         public static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> values, Zone_Growing __instance)
         {
-            // 1. 先把原版的按钮（如允许播种、选择植物）全部 yield return 出去
             foreach (var gizmo in values)
             {
                 yield return gizmo;
@@ -572,7 +489,6 @@ namespace FullyAutomaticGrowingZone
             var comp = __instance.Map.GetComponent<FullyAutomaticGrowingZoneManager>();
             if (comp == null) yield break;
 
-            // 自动播种开关
             yield return new Command_Toggle
             {
                 defaultLabel = "FullyAutomaticGrowingZone_autoSow".Translate(),
@@ -590,7 +506,7 @@ namespace FullyAutomaticGrowingZone
                         comp.autoSowZones.Add(__instance);
                         foreach (IntVec3 cell in __instance.Cells)
                         {
-                            comp.activeCellsToSow.Enqueue(cell);
+                            comp.pendingCellsToSow.Add(cell);
                         }
                     }
 
@@ -598,7 +514,6 @@ namespace FullyAutomaticGrowingZone
                 }
             };
 
-            // 自动收获开关
             yield return new Command_Toggle
             {
                 defaultLabel = "FullyAutomaticGrowingZone_autoHarvest".Translate(),
@@ -620,7 +535,6 @@ namespace FullyAutomaticGrowingZone
                 }
             };
 
-            // 自动存储开关
             yield return new Command_Toggle
             {
                 defaultLabel = "FullyAutomaticGrowingZone_autoStore".Translate(),
@@ -632,7 +546,6 @@ namespace FullyAutomaticGrowingZone
                     if (comp.autoStoreZones.Contains(__instance))
                     {
                         comp.autoStoreZones.Remove(__instance);
-                        // 关闭时吐出虚拟仓库中的剩余物资
                         comp.ForceDropAllBuffer(__instance.Cells.First());
                     }
                     else
@@ -644,7 +557,6 @@ namespace FullyAutomaticGrowingZone
                 }
             };
 
-            // 强制刷出虚拟仓库
             if (comp.autoStoreZones.Contains(__instance))
             {
                 yield return new Command_Action
@@ -658,3 +570,4 @@ namespace FullyAutomaticGrowingZone
         }
     }
 }
+
