@@ -482,21 +482,26 @@ namespace FullyAutomaticGrowingZone
         }
     }
 
+
+    [StaticConstructorOnStartup]
+    public static class FullyAutomaticGrowingZoneTex
+    {
+        public static readonly Texture2D IconAutoHarvest =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoHarvestGrowingZone", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconAutoSow =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoSowGrowingZone", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconAutoStore =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoStoreGrowingZone", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconFlushBuffer =
+            ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBufferGrowingZone", true) ?? BaseContent.WhiteTex;
+    }
+
     [HarmonyPatch(typeof(Zone_Growing), "GetGizmos")]
     public static class Zone_Growing_GetGizmos_Patch
     {
-        private static readonly Texture2D IconAutoHarvest =
-            ContentFinder<Texture2D>.Get("UI/Commands/autoHarvestGrowingZone", false) ?? BaseContent.WhiteTex;
-
-        private static readonly Texture2D IconAutoSow =
-            ContentFinder<Texture2D>.Get("UI/Commands/autoSowGrowingZone", false) ?? BaseContent.WhiteTex;
-
-        private static readonly Texture2D IconAutoStore =
-            ContentFinder<Texture2D>.Get("UI/Commands/autoStoreGrowingZone", false) ?? BaseContent.WhiteTex;
-
-        private static readonly Texture2D IconFlushBuffer =
-            ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBufferGrowingZone", false) ?? BaseContent.WhiteTex;
-
         public static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> values, Zone_Growing __instance)
         {
             foreach (var gizmo in values)
@@ -511,7 +516,7 @@ namespace FullyAutomaticGrowingZone
             {
                 defaultLabel = "FullyAutomaticGrowingZone_autoSow".Translate(),
                 defaultDesc = "FullyAutomaticGrowingZone_autoSowDesc".Translate(),
-                icon = IconAutoSow,
+                icon = FullyAutomaticGrowingZoneTex.IconAutoSow,
                 isActive = () => comp.autoSowZones.Contains(__instance),
                 toggleAction = () =>
                 {
@@ -536,7 +541,7 @@ namespace FullyAutomaticGrowingZone
             {
                 defaultLabel = "FullyAutomaticGrowingZone_autoHarvest".Translate(),
                 defaultDesc = "FullyAutomaticGrowingZone_autoHarvestDesc".Translate(),
-                icon = IconAutoHarvest,
+                icon = FullyAutomaticGrowingZoneTex.IconAutoHarvest,
                 isActive = () => comp.autoHarvestZones.Contains(__instance),
                 toggleAction = () =>
                 {
@@ -557,7 +562,7 @@ namespace FullyAutomaticGrowingZone
             {
                 defaultLabel = "FullyAutomaticGrowingZone_autoStore".Translate(),
                 defaultDesc = "FullyAutomaticGrowingZone_autoStoreDesc".Translate(),
-                icon = IconAutoStore,
+                icon = FullyAutomaticGrowingZoneTex.IconAutoStore,
                 isActive = () => comp.autoStoreZones.Contains(__instance),
                 toggleAction = () =>
                 {
@@ -581,11 +586,10 @@ namespace FullyAutomaticGrowingZone
                 {
                     defaultLabel = "FullyAutomaticGrowingZone_flushVirtualBuffer".Translate(),
                     defaultDesc = "FullyAutomaticGrowingZone_flushVirtualBufferDesc".Translate(),
-                    icon = IconFlushBuffer,
+                    icon = FullyAutomaticGrowingZoneTex.IconFlushBuffer,
                     action = () => { comp.FlushVirtualBuffer(); }
                 };
             }
         }
     }
 }
-

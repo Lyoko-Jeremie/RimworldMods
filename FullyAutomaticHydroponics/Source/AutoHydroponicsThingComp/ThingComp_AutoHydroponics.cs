@@ -22,20 +22,23 @@ namespace FullyAutoHydroponicsThingComp
         }
     }
 
+    [StaticConstructorOnStartup]
+    public static class FullyAutoHydroponicsTex
+    {
+        // ── 缓存的图标贴图 ──
+        public static readonly Texture2D IconAutoHarvest =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoHarvest", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconAutoSow =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoSow", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconAutoStore =
+            ContentFinder<Texture2D>.Get("UI/Commands/autoStore", true) ?? BaseContent.WhiteTex;
+    }
 
     // 继承自 ThingComp，作为挂载在水培盆建筑上的自定义组件
     public class ThingComp_FullyAutoHydroponics : ThingComp
     {
-        // ── 缓存的图标贴图 ──
-        private static readonly Texture2D IconAutoHarvest =
-            ContentFinder<Texture2D>.Get("UI/Commands/autoHarvest", false) ?? BaseContent.WhiteTex;
-
-        private static readonly Texture2D IconAutoSow =
-            ContentFinder<Texture2D>.Get("UI/Commands/autoSow", false) ?? BaseContent.WhiteTex;
-
-        private static readonly Texture2D IconAutoStore =
-            ContentFinder<Texture2D>.Get("UI/Commands/autoStore", false) ?? BaseContent.WhiteTex;
-
         // ── 持久化开关字段 ──
         // 是否启用自动收获功能（默认值由 CompProperties 决定）
         public bool autoHarvest;
@@ -111,7 +114,7 @@ namespace FullyAutoHydroponicsThingComp
             {
                 defaultLabel = "FullyAutoHydroponics_autoSow".Translate(),
                 defaultDesc = "FullyAutoHydroponics_autoSowDesc".Translate(),
-                icon = IconAutoSow,
+                icon = FullyAutoHydroponicsTex.IconAutoSow,
                 isActive = () => autoSow,
                 toggleAction = () =>
                 {
@@ -125,7 +128,7 @@ namespace FullyAutoHydroponicsThingComp
             {
                 defaultLabel = "FullyAutoHydroponics_autoHarvest".Translate(),
                 defaultDesc = "FullyAutoHydroponics_autoHarvestDesc".Translate(),
-                icon = IconAutoHarvest,
+                icon = FullyAutoHydroponicsTex.IconAutoHarvest,
                 isActive = () => autoHarvest,
                 toggleAction = () =>
                 {
@@ -139,7 +142,7 @@ namespace FullyAutoHydroponicsThingComp
             {
                 defaultLabel = "FullyAutoHydroponics_autoStore".Translate(),
                 defaultDesc = "FullyAutoHydroponics_autoStoreDesc".Translate(),
-                icon = IconAutoStore,
+                icon = FullyAutoHydroponicsTex.IconAutoStore,
                 isActive = () => autoStore,
                 toggleAction = () =>
                 {
