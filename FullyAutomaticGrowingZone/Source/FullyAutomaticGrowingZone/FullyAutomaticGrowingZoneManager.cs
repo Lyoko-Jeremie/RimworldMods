@@ -275,7 +275,7 @@ namespace FullyAutomaticGrowingZone
         /// 定期将虚拟仓库中未满一组的残余物资刷出到仓库或田地上，
         /// 防止在超大堆叠 mod 下物资长期滞留在虚拟仓库中。
         /// </summary>
-        private void FlushVirtualBuffer()
+        public void FlushVirtualBuffer()
         {
             foreach (var def in virtualYieldBuffer.Keys.ToList())
             {
@@ -553,6 +553,9 @@ namespace FullyAutomaticGrowingZone
         private static readonly Texture2D IconAutoStore =
             ContentFinder<Texture2D>.Get("UI/Commands/autoStoreGrowingZone", false) ?? BaseContent.WhiteTex;
 
+        private static readonly Texture2D IconFlushBuffer =
+            ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBuffer", false) ?? BaseContent.WhiteTex;
+
         // 使用 Postfix 返回 IEnumerable 的经典写法
         public static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> values, Zone_Growing __instance)
         {
@@ -636,6 +639,22 @@ namespace FullyAutomaticGrowingZone
                     comp.RebuildActiveCache();
                 }
             };
+
+            // 强制刷出虚拟仓库
+            if (comp.autoStoreZones.Contains(__instance))
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "刷出虚拟仓库",
+                    defaultDesc = "立即将虚拟仓库中暂存的所有物资刷出到仓库或田地上。",
+                    icon = IconFlushBuffer,
+                    action = () =>
+                    {
+                        comp.FlushVirtualBuffer();
+                    }
+                };
+            }
         }
     }
 }
+
