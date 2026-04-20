@@ -110,6 +110,12 @@ namespace FullyAutomaticGrowingZone
                 RebuildActiveCache();
             }
 
+            // 定期刷出虚拟仓库中未满一组的残余物资，防止超大堆叠mod下物资长期滞留
+            if (Find.TickManager.TicksGame % 600 == 0)
+            {
+                FlushVirtualBuffer();
+            }
+
             // 处理收获队列
             int harvestCountThisTick = Mathf.CeilToInt(plantsToHarvest.Count / 60f);
             // 设定一个硬性上限，防止极端情况单帧卡死（比如一次最多处理 100 个）
@@ -212,11 +218,16 @@ namespace FullyAutomaticGrowingZone
 
                     virtualYieldBuffer[harvestedThingDef] += yieldAmount;
 
+                    // 使用原版堆叠上限，但设置一个合理的刷出阈值（至少75），
+                    // 防止超大堆叠mod导致物资长期滞留在虚拟仓库中
                     int stackLimit = harvestedThingDef.stackLimit;
-                    while (virtualYieldBuffer[harvestedThingDef] >= stackLimit)
+                    int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(75, stackLimit / 10));
+                    while (virtualYieldBuffer[harvestedThingDef] >= flushThreshold)
                     {
+                        // 每次刷出量不超过原版堆叠上限，也不超过当前库存
+                        int spawnCount = Mathf.Min(virtualYieldBuffer[harvestedThingDef], stackLimit);
                         Thing fullStack = ThingMaker.MakeThing(harvestedThingDef);
-                        fullStack.stackCount = stackLimit;
+                        fullStack.stackCount = spawnCount;
 
                         // 尝试放入最佳仓库
                         if (!TryPlaceInStockpile(fullStack))
@@ -225,7 +236,7 @@ namespace FullyAutomaticGrowingZone
                             GenPlace.TryPlaceThing(fullStack, position, map, ThingPlaceMode.Near);
                         }
 
-                        virtualYieldBuffer[harvestedThingDef] -= stackLimit;
+                        virtualYieldBuffer[harvestedThingDef] -= spawnCount;
                     }
                 }
                 else
@@ -258,6 +269,42 @@ namespace FullyAutomaticGrowingZone
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 定期将虚拟仓库中未满一组的残余物资刷出到仓库或田地上，
+        /// 防止在超大堆叠 mod 下物资长期滞留在虚拟仓库中。
+        /// </summary>
+        private void FlushVirtualBuffer()
+        {
+            foreach (var def in virtualYieldBuffer.Keys.ToList())
+            {
+                int amount = virtualYieldBuffer[def];
+                if (amount <= 0) continue;
+
+                // 找一个 autoStore 区的格子作为回退掉落点
+                IntVec3 fallbackCell = IntVec3.Invalid;
+                foreach (var zone in autoStoreZones)
+                {
+                    if (zone != null && zone.Cells.Count > 0)
+                    {
+                        fallbackCell = zone.Cells.First();
+                        break;
+                    }
+                }
+
+                if (!fallbackCell.IsValid) break; // 没有 autoStore 区了，保留buffer
+
+                Thing stack = ThingMaker.MakeThing(def);
+                stack.stackCount = amount;
+
+                if (!TryPlaceInStockpile(stack))
+                {
+                    GenPlace.TryPlaceThing(stack, fallbackCell, map, ThingPlaceMode.Near);
+                }
+
+                virtualYieldBuffer[def] = 0;
+            }
         }
 
         public void ForceDropAllBuffer(IntVec3 dropCell)
