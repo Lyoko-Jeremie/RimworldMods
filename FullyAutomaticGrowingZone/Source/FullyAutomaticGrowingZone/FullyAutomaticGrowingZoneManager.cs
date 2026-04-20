@@ -344,8 +344,11 @@ namespace FullyAutomaticGrowingZone
                         if (CanAutoSowAndClear(plantDefToGrow, cell, map))
                         {
                             // 6. 终于可以安全地生成植物了
+                            // 修复：使用 BaseSownGrowthPercent 并设置 sown=true，
+                            // 确保植物进入 Growing 阶段（而非 Sowing 阶段），
+                            // 从而显示正常幼苗图像且能继续生长。
                             Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, cell, map);
-                            newPlant.Growth = 0f;
+                            newPlant.Growth = Plant.BaseSownGrowthPercent;
                             newPlant.sown = true;
                         }
                     }
