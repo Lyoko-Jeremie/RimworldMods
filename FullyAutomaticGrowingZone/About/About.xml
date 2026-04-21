@@ -25,6 +25,8 @@
 * 理论上应该不存在任何冲突（大概）
 * 可以在游戏中途添加或删除
 
+建议配合 Toggle Harvest 使用，以便阻止殖民者抢割除工作。 https://steamcommunity.com/sharedfiles/filedetails/?id=1499848654
+
 ------
 
 [Translated by Gemini 3]
@@ -46,6 +48,7 @@ Uses a trigger-based system. Tested on a single growing zone of size 52,900: zer
 * Theoretically compatible with everything (probably).
 * Can be added to or removed from existing saves at any time.
 
+Recommended to use with Toggle Harvest to prevent colonists from stealing harvest jobs. https://steamcommunity.com/sharedfiles/filedetails/?id=1499848654
 
 
 	</description>
