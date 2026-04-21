@@ -162,6 +162,29 @@ namespace FullyAutoHydroponicsThingComp
                     UpdateRegistration();
                 }
             };
+
+            // ── 上帝模式专属：一键成熟当前水培盆内所有植物 ──
+            if (DebugSettings.godMode)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "Instant Grow",
+                    defaultDesc = "Instantly set all plants in this zone to fully grown (Growth = 1).",
+                    icon = BaseContent.WhiteTex,
+                    action = () =>
+                    {
+                        Building_PlantGrower grower = parent as Building_PlantGrower;
+                        if (grower == null) return;
+
+                        foreach (Plant plant in grower.PlantsOnMe.ToList())
+                        {
+                            if (plant == null || plant.Destroyed) continue;
+                            plant.Growth = 1.0f;
+                            parent.Map?.mapDrawer.MapMeshDirty(plant.Position, MapMeshFlagDefOf.Things);
+                        }
+                    }
+                };
+            }
         }
 
         public void DoAutoWork()

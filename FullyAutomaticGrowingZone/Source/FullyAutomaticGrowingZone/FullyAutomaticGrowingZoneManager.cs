@@ -640,6 +640,28 @@ namespace FullyAutomaticGrowingZone
                     action = () => { comp.FlushVirtualBuffer(); }
                 };
             }
+
+            // Debug: instantly mature all plants in this zone
+            if (DebugSettings.godMode)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "Instant Grow",
+                    defaultDesc = "Instantly set all plants in this zone to fully grown (Growth = 1).",
+                    icon = BaseContent.WhiteTex,
+                    action = () =>
+                    {
+                        foreach (IntVec3 cell in __instance.Cells)
+                        {
+                            Plant plant = cell.GetPlant(__instance.Map);
+                            if (plant != null && !plant.Destroyed)
+                            {
+                                plant.Growth = 1f;
+                            }
+                        }
+                    }
+                };
+            }
         }
     }
 }
