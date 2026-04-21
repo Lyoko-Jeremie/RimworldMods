@@ -631,9 +631,10 @@ namespace FullyAutomaticGrowingZone
 
             if (comp.autoStoreZones.Contains(__instance))
             {
+                int totalBuffered = comp.virtualYieldBuffer.Values.Sum();
                 yield return new Command_Action
                 {
-                    defaultLabel = "FullyAutomaticGrowingZone_flushVirtualBuffer".Translate(),
+                    defaultLabel = "FullyAutomaticGrowingZone_flushVirtualBuffer".Translate() + $" ({totalBuffered})",
                     defaultDesc = "FullyAutomaticGrowingZone_flushVirtualBufferDesc".Translate(),
                     icon = FullyAutomaticGrowingZoneTex.IconFlushBuffer,
                     action = () => { comp.FlushVirtualBuffer(); }
