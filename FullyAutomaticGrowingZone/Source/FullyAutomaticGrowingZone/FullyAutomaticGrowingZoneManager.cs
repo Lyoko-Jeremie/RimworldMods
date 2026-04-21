@@ -257,7 +257,7 @@ namespace FullyAutomaticGrowingZone
                     virtualYieldBuffer[harvestedThingDef] += yieldAmount;
 
                     int stackLimit = harvestedThingDef.stackLimit;
-                    int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(500, stackLimit / 10));
+                    int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(1000, stackLimit / 10));
                     while (virtualYieldBuffer[harvestedThingDef] >= flushThreshold)
                     {
                         int spawnCount = Mathf.Min(virtualYieldBuffer[harvestedThingDef], stackLimit);
