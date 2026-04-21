@@ -166,7 +166,8 @@ namespace FullyAutomaticGrowingZone
                 {
                     if (plant != null)
                         plantsInHarvestQueue.Remove(plant.thingIDNumber);
-                    if (plant != null && !plant.Destroyed && plant.Growth >= 1f)
+                    // 跳过已被外部逻辑销毁、移除或提前采摘（多年生 Growth 已重置）的植物
+                    if (plant != null && !plant.Destroyed && plant.Spawned && plant.Growth >= 1f)
                     {
                         IntVec3 pos = plant.Position;
                         bool isPerennial = !plant.def.plant.HarvestDestroys;
@@ -193,7 +194,6 @@ namespace FullyAutomaticGrowingZone
                     if (++count >= toProcess) break;
                 }
 
-                suppressDeSpawnResow = true;
                 for (int i = 0; i < _iterBuffer.Count; i++)
                 {
                     IntVec3 cell = _iterBuffer[i];
@@ -205,7 +205,14 @@ namespace FullyAutomaticGrowingZone
                         continue;
                     }
 
-                    if (CanAutoSowAndClear(plantDef, cell, map))
+                    // 仅在 CanAutoSowAndClear 调用期间抑制 DeSpawn 重播种，
+                    // 避免清除旧植物时触发 patch 重新加入队列；
+                    // 作用域缩小到单次调用，即使中途出错也不会影响后续格子
+                    suppressDeSpawnResow = true;
+                    bool canSow = CanAutoSowAndClear(plantDef, cell, map);
+                    suppressDeSpawnResow = false;
+
+                    if (canSow)
                     {
                         Plant newPlant = (Plant)ThingMaker.MakeThing(plantDef);
                         newPlant.Growth = Plant.BaseSownGrowthPercent;
@@ -219,8 +226,6 @@ namespace FullyAutomaticGrowingZone
                         deferredCellsToSow.Add(cell);
                     }
                 }
-
-                suppressDeSpawnResow = false;
             }
         }
 
