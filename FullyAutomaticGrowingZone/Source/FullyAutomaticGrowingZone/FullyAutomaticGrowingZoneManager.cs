@@ -648,7 +648,7 @@ namespace FullyAutomaticGrowingZone
                 {
                     defaultLabel = "Instant Grow",
                     defaultDesc = "Instantly set all plants in this zone to fully grown (Growth = 1).",
-                    icon = BaseContent.WhiteTex,
+                    icon = BaseContent.BadTex,
                     action = () =>
                     {
                         foreach (IntVec3 cell in __instance.Cells)

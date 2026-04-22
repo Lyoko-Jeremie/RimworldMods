@@ -405,12 +405,19 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "OmniCrafter_OpenUI".Translate(),
                 defaultDesc = "OmniCrafter_OpenUIDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", false) ?? BaseContent.BadTex,
+                icon = FullyAutomaticOmniCrafterTex.IconLaunchReport,
                 action = () => Find.WindowStack.Add(new Dialog_OmniCrafter(this))
             };
         }
     }
 
+    [StaticConstructorOnStartup]
+    public static class FullyAutomaticOmniCrafterTex
+    {
+        public static readonly Texture2D IconLaunchReport =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_LaunchReport", true) ?? BaseContent.WhiteTex;
+    }
+    
     // ─── Dialog ───────────────────────────────────────────────────────────────
     public class Dialog_OmniCrafter : Window
     {

@@ -170,7 +170,7 @@ namespace FullyAutoHydroponicsThingComp
                 {
                     defaultLabel = "Instant Grow",
                     defaultDesc = "Instantly set all plants in this zone to fully grown (Growth = 1).",
-                    icon = BaseContent.WhiteTex,
+                    icon = BaseContent.BadTex,
                     action = () =>
                     {
                         Building_PlantGrower grower = parent as Building_PlantGrower;
