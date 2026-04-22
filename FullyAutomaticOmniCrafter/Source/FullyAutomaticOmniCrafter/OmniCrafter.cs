@@ -603,8 +603,10 @@ namespace FullyAutomaticOmniCrafter
         private Vector2 middleScroll;
         private Vector2 leftScroll;
         private Vector2 rightPanelScroll;
+        private Vector2 farRightScroll;
 
         private ThingDef selectedDef;
+        private AutoOrder selectedAutoOrder; // highlighted row in far-right panel
         private List<ThingDef> currentList;
 
         private enum SortMode
@@ -627,7 +629,7 @@ namespace FullyAutomaticOmniCrafter
         private OutputMode outputMode = OutputMode.DropNear;
         private List<ThingDef> validStuffs;
 
-        public override Vector2 InitialSize => new Vector2(1100f, 700f);
+        public override Vector2 InitialSize => new Vector2(1350f, 700f);
 
         public Dialog_OmniCrafter(Building_OmniCrafter building)
         {
@@ -661,12 +663,19 @@ namespace FullyAutomaticOmniCrafter
             DrawTopBar(topRect);
 
             float leftW = 200f;
-            float rightW = 340f;
-            float midW = bodyRect.width - leftW - rightW - 8f;
+            float farRightW = 300f;
+            float midRightW = 360f;
+            float midLeftW = bodyRect.width - leftW - midRightW - farRightW - 12f;
 
-            DrawLeftPanel(new Rect(bodyRect.x, bodyRect.y, leftW, bodyRect.height));
-            DrawMiddlePanel(new Rect(bodyRect.x + leftW + 4f, bodyRect.y, midW, bodyRect.height));
-            DrawRightPanel(new Rect(bodyRect.x + leftW + 4f + midW + 4f, bodyRect.y, rightW, bodyRect.height));
+            float x0 = bodyRect.x;
+            float x1 = x0 + leftW + 4f;
+            float x2 = x1 + midLeftW + 4f;
+            float x3 = x2 + midRightW + 4f;
+
+            DrawLeftPanel(new Rect(x0, bodyRect.y, leftW, bodyRect.height));
+            DrawMiddlePanel(new Rect(x1, bodyRect.y, midLeftW, bodyRect.height));
+            DrawMidRightPanel(new Rect(x2, bodyRect.y, midRightW, bodyRect.height));
+            DrawFarRightPanel(new Rect(x3, bodyRect.y, farRightW, bodyRect.height));
         }
 
         private void DrawTopBar(Rect rect)
@@ -1064,13 +1073,29 @@ namespace FullyAutomaticOmniCrafter
         private void SelectDef(ThingDef def)
         {
             selectedDef = def;
+            selectedAutoOrder = null;
             validStuffs = def.MadeFromStuff ? OmniCrafterCache.GetValidStuffs(def) : null;
             selectedStuff = validStuffs != null && validStuffs.Count > 0 ? validStuffs[0] : null;
             selectedQuality = QualityCategory.Normal;
             craftCount = 1;
         }
 
-        private void DrawRightPanel(Rect rect)
+        private void SelectDefFromOrder(AutoOrder ao)
+        {
+            selectedAutoOrder = ao;
+            selectedDef = ao.thingDef;
+            validStuffs = selectedDef != null && selectedDef.MadeFromStuff
+                ? OmniCrafterCache.GetValidStuffs(selectedDef)
+                : null;
+            selectedStuff = ao.stuffDef ?? (validStuffs != null && validStuffs.Count > 0 ? validStuffs[0] : null);
+            selectedQuality = ao.quality;
+            maintainCount = ao.targetCount;
+            outputMode = ao.outputMode;
+            productionMode = ProductionMode.MaintainStock;
+            craftCount = 1;
+        }
+
+        private void DrawMidRightPanel(Rect rect)
         {
             Widgets.DrawBoxSolid(rect, new Color(0.12f, 0.12f, 0.12f, 0.6f));
             rect = rect.ContractedBy(6f);
@@ -1088,11 +1113,10 @@ namespace FullyAutomaticOmniCrafter
             float contentH = 70f; // icon + name + fav
             if (!selectedDef.description.NullOrEmpty()) contentH += 60f;
             contentH += 6f + 6f; // separators
-            if (validStuffs != null && validStuffs.Count > 0) contentH += 22f + 28f + 12f; // label + dropdown + sep
-            if (selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f; // label + dropdown + sep
-            contentH += 22f + 28f + 28f + 22f + 26f + 30f + 6f; // mode + counts + output + sep
-            contentH += 22f + 48f + 22f + 36f; // stock + power + action
-            contentH += building.autoOrders.Count * 22f + 46f;
+            if (validStuffs != null && validStuffs.Count > 0) contentH += 22f + 28f + 12f;
+            if (selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f;
+            contentH += 22f + 28f + 28f + 22f + 26f + 30f + 6f;
+            contentH += 22f + 48f + 22f + 36f;
 
             Rect viewRect = new Rect(0f, 0f, viewW, contentH);
             Widgets.BeginScrollView(rect, ref rightPanelScroll, viewRect);
@@ -1293,7 +1317,11 @@ namespace FullyAutomaticOmniCrafter
                 if (hasOrder)
                 {
                     if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_RemoveAutoOrder".Translate()))
+                    {
                         building.autoOrders.RemoveAll(o => o.thingDef == selectedDef);
+                        if (selectedAutoOrder != null && selectedAutoOrder.thingDef == selectedDef)
+                            selectedAutoOrder = null;
+                    }
                 }
                 else
                 {
@@ -1311,32 +1339,65 @@ namespace FullyAutomaticOmniCrafter
                 y += 36f;
             }
 
-            // Auto order list (flat, no inner scroll — outer panel scroll handles it)
-            if (building.autoOrders.Count > 0)
-            {
-                Widgets.DrawLineHorizontal(0f, y, viewW);
-                y += 4f;
-                Widgets.Label(new Rect(0f, y, viewW, 20f),
-                    "OmniCrafter_AutoOrdersHeader".Translate(building.autoOrders.Count));
-                y += 22f;
-                for (int i = 0; i < building.autoOrders.Count; i++)
-                {
-                    AutoOrder ao = building.autoOrders[i];
-                    int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
-                    bool full = onMap >= ao.targetCount;
-                    GUI.color = full ? Color.green : Color.white;
-                    string lbl = (ao.thingDef?.LabelCap ?? "?") +
-                                 $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
-                    Widgets.Label(new Rect(0f, y, viewW - 26f, 20f), lbl);
-                    GUI.color = Color.white;
-                    if (Widgets.ButtonText(new Rect(viewW - 24f, y, 22f, 20f), "X"))
-                    {
-                        building.autoOrders.RemoveAt(i);
-                        break;
-                    }
+            Widgets.EndScrollView();
+        }
 
-                    y += 22f;
+        private void DrawFarRightPanel(Rect rect)
+        {
+            Widgets.DrawBoxSolid(rect, new Color(0.10f, 0.12f, 0.10f, 0.6f));
+            rect = rect.ContractedBy(6f);
+
+            float viewW = rect.width - 16f;
+            float rowH = 24f;
+            float headerH = 26f;
+
+            int count = building.autoOrders.Count;
+            float totalH = headerH + count * rowH + 4f;
+
+            Rect viewRect = new Rect(0f, 0f, viewW, Mathf.Max(totalH, rect.height));
+            Widgets.BeginScrollView(rect, ref farRightScroll, viewRect);
+
+            float y = 0f;
+            Widgets.Label(new Rect(0f, y, viewW, 22f),
+                "OmniCrafter_AutoOrdersHeader".Translate(count));
+            y += headerH;
+
+            for (int i = 0; i < count; i++)
+            {
+                AutoOrder ao = building.autoOrders[i];
+                int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
+                bool full = onMap >= ao.targetCount;
+
+                Rect rowRect = new Rect(0f, y, viewW, rowH);
+
+                // Highlight selected
+                if (selectedAutoOrder == ao)
+                    Widgets.DrawHighlight(rowRect);
+                else if (i % 2 == 0)
+                    Widgets.DrawBoxSolid(rowRect, new Color(1f, 1f, 1f, 0.03f));
+                if (Mouse.IsOver(rowRect) && selectedAutoOrder != ao)
+                    Widgets.DrawHighlightIfMouseover(rowRect);
+
+                GUI.color = full ? Color.green : Color.white;
+                string lbl = (ao.thingDef?.LabelCap ?? "?") +
+                             $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
+                Widgets.Label(new Rect(0f, y, viewW - 26f, rowH), lbl);
+                GUI.color = Color.white;
+
+                // Delete button
+                if (Widgets.ButtonText(new Rect(viewW - 24f, y + 2f, 22f, 20f), "X"))
+                {
+                    if (selectedAutoOrder == ao) selectedAutoOrder = null;
+                    building.autoOrders.RemoveAt(i);
+                    break;
                 }
+
+                // Click row → populate mid-right panel
+                Rect clickRect = new Rect(0f, y, viewW - 26f, rowH);
+                if (Widgets.ButtonInvisible(clickRect))
+                    SelectDefFromOrder(ao);
+
+                y += rowH;
             }
 
             Widgets.EndScrollView();
