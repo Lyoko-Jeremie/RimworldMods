@@ -473,6 +473,69 @@ namespace FullyAutomaticOmniCrafter
             ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_LaunchReport", true) ?? BaseContent.WhiteTex;
     }
 
+    // ─── Category Tree Listing ────────────────────────────────────────────────
+    /// <summary>
+    /// 原版风格树状菜单，用于单选 ThingCategoryDef。
+    /// 继承自游戏原版 Listing_Tree，复用其展开/折叠小部件与缩进逻辑。
+    /// </summary>
+    public class Listing_TreeCategorySelect : Listing_Tree
+    {
+        private readonly ThingCategoryDef _selected;
+        private readonly Action<ThingCategoryDef> _onSelect;
+        private readonly HashSet<ThingCategoryDef> _validCats;
+        private Rect _visibleRect;
+
+        public Listing_TreeCategorySelect(
+            HashSet<ThingCategoryDef> validCats,
+            ThingCategoryDef selected,
+            Action<ThingCategoryDef> onSelect)
+        {
+            _validCats = validCats;
+            _selected = selected;
+            _onSelect = onSelect;
+            lineHeight = 24f;
+        }
+
+        public void SetVisibleRect(Rect r)
+        {
+            _visibleRect = r;
+        }
+
+        public void DoCategoryNode(TreeNode_ThingCategory node, int indentLevel, int openMask)
+        {
+            if (!_validCats.Contains(node.catDef)) return;
+
+            bool hasChildren = node.catDef.childCategories.Any(c => _validCats.Contains(c));
+            bool onScreen = curY + lineHeight >= _visibleRect.yMin && curY <= _visibleRect.yMax;
+
+            if (onScreen)
+            {
+                bool isSelected = _selected == node.catDef;
+                if (isSelected)
+                    Widgets.DrawHighlight(new Rect(0f, curY, ColumnWidth, lineHeight));
+
+                if (hasChildren)
+                    OpenCloseWidget(node, indentLevel, openMask);
+
+                LabelLeft(node.LabelCap, node.catDef.description, indentLevel);
+
+                // 点击整行选中该分类
+                float xMin = XAtIndentLevel(indentLevel);
+                Rect clickRect = new Rect(xMin, curY, ColumnWidth - xMin, lineHeight);
+                if (Widgets.ButtonInvisible(clickRect))
+                    _onSelect(node.catDef);
+            }
+
+            EndLine();
+
+            if (IsOpen(node, openMask) && hasChildren)
+            {
+                foreach (TreeNode_ThingCategory child in node.ChildCategoryNodes)
+                    DoCategoryNode(child, indentLevel + 1, openMask);
+            }
+        }
+    }
+
     // ─── Dialog ───────────────────────────────────────────────────────────────
     public class Dialog_OmniCrafter : Window
     {
@@ -483,8 +546,6 @@ namespace FullyAutomaticOmniCrafter
         private bool showFavorites;
         private bool showRecent;
 
-        // Tree expand state: defName -> expanded
-        private Dictionary<string, bool> treeExpanded = new Dictionary<string, bool>();
 
         private string searchText = "";
         private List<ThingDef> searchCache;
@@ -576,144 +637,56 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        // ── Left panel tree helpers ──────────────────────────────────────────
+        // ── Left panel helpers ───────────────────────────────────────────────
 
-        /// <summary>Collect root-level ThingCategoryDefs (those whose parent has no craftable items in our cache,
-        /// or whose parent is null). We treat any category with parent==null as a tree root.</summary>
-        private List<ThingCategoryDef> GetRootCategories()
+        /// <summary>返回包含可制造物品的所有分类及其祖先分类的集合。</summary>
+        private HashSet<ThingCategoryDef> GetValidCategorySet()
         {
-            var roots = new List<ThingCategoryDef>();
-            var all = OmniCrafterCache.ByCategory;
-            foreach (var kv in all)
+            var set = new HashSet<ThingCategoryDef>();
+            foreach (ThingCategoryDef cat in OmniCrafterCache.ByCategory.Keys)
             {
-                ThingCategoryDef cat = kv.Key;
-                // A root is a cat whose parent is null OR whose parent has no craftable items of its own
-                if (cat.parent == null || !all.ContainsKey(cat.parent))
-                    roots.Add(cat);
-            }
-
-            roots.SortBy(c => c.label ?? c.defName);
-            return roots;
-        }
-
-        private bool IsExpanded(ThingCategoryDef cat)
-        {
-            bool v;
-            return treeExpanded.TryGetValue(cat.defName, out v) && v;
-        }
-
-        private void SetExpanded(ThingCategoryDef cat, bool value)
-        {
-            treeExpanded[cat.defName] = value;
-        }
-
-        /// <summary>Compute total virtual height needed for the tree.</summary>
-        private float MeasureTree(List<ThingCategoryDef> roots, float lh)
-        {
-            float h = 0f;
-            foreach (var root in roots)
-                h += MeasureCatNode(root, lh);
-            return h;
-        }
-
-        private float MeasureCatNode(ThingCategoryDef cat, float lh)
-        {
-            float h = lh;
-            if (IsExpanded(cat))
-            {
-                var all = OmniCrafterCache.ByCategory;
-                var children = cat.childCategories.Where(c => all.ContainsKey(c))
-                    .OrderBy(c => c.label ?? c.defName).ToList();
-                foreach (var child in children)
-                    h += MeasureCatNode(child, lh);
-            }
-
-            return h;
-        }
-
-        private void DrawCategoryTree(List<ThingCategoryDef> roots, ref float y, float viewW, float lh, int depth = 0)
-        {
-            foreach (var root in roots)
-                DrawCatNode(root, ref y, viewW, lh, depth);
-        }
-
-        private void DrawCatNode(ThingCategoryDef cat, ref float y, float viewW, float lh, int depth)
-        {
-            var all = OmniCrafterCache.ByCategory;
-            List<ThingDef> items;
-            all.TryGetValue(cat, out items);
-            int count = items?.Count ?? 0;
-
-            var children = cat.childCategories.Where(c => all.ContainsKey(c))
-                .OrderBy(c => c.label ?? c.defName).ToList();
-            bool hasChildren = children.Count > 0;
-            bool expanded = IsExpanded(cat);
-
-            float indent = depth * 14f;
-            Rect rowRect = new Rect(0f, y, viewW, lh);
-
-            bool isSelected = selectedCategory == cat && !showFavorites && !showRecent && !showAll;
-            if (isSelected) Widgets.DrawHighlight(rowRect);
-            else if (Mouse.IsOver(rowRect)) Widgets.DrawHighlightIfMouseover(rowRect);
-
-            // Triangle expand button
-            if (hasChildren)
-            {
-                Rect triRect = new Rect(indent + 2f, y + (lh - 16f) / 2f, 16f, 16f);
-                if (Widgets.ButtonText(triRect, expanded ? "▼" : "▶", false, false, false))
+                ThingCategoryDef c = cat;
+                while (c != null)
                 {
-                    SetExpanded(cat, !expanded);
-                    currentList = null;
-                    searchCache = null;
+                    set.Add(c);
+                    c = c.parent;
                 }
             }
 
-            // Category icon (if any)
-            float textX = indent + 20f;
-            if (cat.icon != null && cat.icon != BaseContent.BadTex)
+            return set;
+        }
+
+        /// <summary>递归计算树的总虚拟高度（用于滚动视图）。</summary>
+        private float ComputeTreeHeight(TreeNode_ThingCategory node, HashSet<ThingCategoryDef> validCats, float lh)
+        {
+            float h = 0f;
+            foreach (TreeNode_ThingCategory child in node.ChildCategoryNodes)
             {
-                Rect iconRect = new Rect(textX, y + (lh - 18f) / 2f, 18f, 18f);
-                GUI.DrawTexture(iconRect, cat.icon);
-                textX += 20f;
+                if (!validCats.Contains(child.catDef)) continue;
+                h += lh + 2f; // lineHeight + verticalSpacing
+                if (child.IsOpen(1))
+                    h += ComputeTreeHeight(child, validCats, lh);
             }
 
-            string catLabel = (cat.label ?? cat.defName).CapitalizeFirst() + $" ({count})";
-            Rect labelRect = new Rect(textX, y, viewW - textX, lh);
-            Widgets.Label(labelRect, catLabel);
-
-            // Click label to select
-            Rect clickRect = new Rect(indent + 20f, y, viewW - indent - 20f, lh);
-            if (Widgets.ButtonInvisible(clickRect))
-            {
-                selectedCategory = cat;
-                showFavorites = false;
-                showRecent = false;
-                showAll = false;
-                currentList = null;
-                searchCache = null;
-            }
-
-            y += lh;
-
-            if (expanded && hasChildren)
-                DrawCategoryTree(children, ref y, viewW, lh, depth + 1);
+            return h;
         }
 
         private void DrawLeftPanel(Rect rect)
         {
             Widgets.DrawBoxSolid(rect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
             rect = rect.ContractedBy(3f);
-            float lh = 26f;
+            float lh = 24f;
 
-            var roots = GetRootCategories();
-            float treeH = MeasureTree(roots, lh);
-            float totalH = lh * 3 + 6f + treeH; // All + Favorites + Recent + separator + tree
+            var validCats = GetValidCategorySet();
+            float treeH = ComputeTreeHeight(ThingCategoryDefOf.Root.treeNode, validCats, lh);
+            float totalH = (lh + 2f) * 3 + 6f + treeH;
+
             Rect view = new Rect(0f, 0f, rect.width - 16f, totalH);
             Widgets.BeginScrollView(rect, ref leftScroll, view);
             float y = 0f;
 
-            // All
-            DrawNavItem(new Rect(0f, y, view.width, lh), "🔍 " + "OmniCrafter_All".Translate(),
+            // 全部
+            DrawNavItem(new Rect(0f, y, view.width, lh), "OmniCrafter_All".Translate(),
                 showAll, () =>
                 {
                     showAll = true;
@@ -723,9 +696,9 @@ namespace FullyAutomaticOmniCrafter
                     currentList = null;
                     searchCache = null;
                 });
-            y += lh;
+            y += lh + 2f;
 
-            // Favorites
+            // 收藏
             DrawNavItem(new Rect(0f, y, view.width, lh), "★ " + "OmniCrafter_Favorites".Translate(),
                 showFavorites, () =>
                 {
@@ -736,9 +709,9 @@ namespace FullyAutomaticOmniCrafter
                     currentList = null;
                     searchCache = null;
                 });
-            y += lh;
+            y += lh + 2f;
 
-            // Recent
+            // 最近
             DrawNavItem(new Rect(0f, y, view.width, lh), "⟳ " + "OmniCrafter_Recent".Translate(),
                 showRecent, () =>
                 {
@@ -749,10 +722,31 @@ namespace FullyAutomaticOmniCrafter
                     currentList = null;
                     searchCache = null;
                 });
-            y += lh + 6f;
+            y += lh + 2f + 6f;
 
-            // Tree
-            DrawCategoryTree(roots, ref y, view.width, lh, 0);
+            // 原版树状分类菜单
+            float treeAreaH = Mathf.Max(treeH, 1f);
+            Rect treeRect = new Rect(0f, y, view.width, treeAreaH);
+            // 可视区域（相对于树的局部坐标）
+            Rect visibleRect = new Rect(0f, leftScroll.y - y, view.width, rect.height);
+
+            var listing = new Listing_TreeCategorySelect(
+                validCats,
+                selectedCategory,
+                cat =>
+                {
+                    selectedCategory = cat;
+                    showFavorites = false;
+                    showRecent = false;
+                    showAll = false;
+                    currentList = null;
+                    searchCache = null;
+                });
+            listing.SetVisibleRect(visibleRect);
+            listing.Begin(treeRect);
+            foreach (TreeNode_ThingCategory child in ThingCategoryDefOf.Root.treeNode.ChildCategoryNodes)
+                listing.DoCategoryNode(child, 0, 1);
+            listing.End();
 
             Widgets.EndScrollView();
         }
