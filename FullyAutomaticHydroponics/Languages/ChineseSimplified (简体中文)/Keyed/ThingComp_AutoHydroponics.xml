@@ -7,4 +7,8 @@
     <FullyAutoHydroponics_autoSowDesc>开启后，水培盆中的空格将自动补种设定的植物。</FullyAutoHydroponics_autoSowDesc>
     <FullyAutoHydroponics_autoStore>自动存储</FullyAutoHydroponics_autoStore>
     <FullyAutoHydroponics_autoStoreDesc>开启后，收获的产物将自动存储到最近的最合适的存储区中。</FullyAutoHydroponics_autoStoreDesc>
+    <FullyAutoHydroponics_harvestAll>立即收获/割除全部</FullyAutoHydroponics_harvestAll>
+    <FullyAutoHydroponics_harvestAllDesc>立即收获或割除此水培盆中的所有植物。</FullyAutoHydroponics_harvestAllDesc>
+    <FullyAutoHydroponics_harvestBlighted>割除枯萎病植物</FullyAutoHydroponics_harvestBlighted>
+    <FullyAutoHydroponics_harvestBlightedDesc>立即割除此水培盆中所有感染枯萎病的植物。</FullyAutoHydroponics_harvestBlightedDesc>
 </LanguageData>

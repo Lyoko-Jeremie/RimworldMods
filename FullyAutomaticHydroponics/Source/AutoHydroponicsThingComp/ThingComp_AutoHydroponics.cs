@@ -34,6 +34,12 @@ namespace FullyAutoHydroponicsThingComp
 
         public static readonly Texture2D IconAutoStore =
             ContentFinder<Texture2D>.Get("UI/Commands/autoStore", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconHarvest =
+            ContentFinder<Texture2D>.Get("UI/Commands/Harvest", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconCutAllBlightedPlants =
+            ContentFinder<Texture2D>.Get("UI/Commands/CutAllBlightedPlants", true) ?? BaseContent.WhiteTex;
     }
 
     // 继承自 ThingComp，作为挂载在水培盆建筑上的自定义组件
@@ -163,6 +169,24 @@ namespace FullyAutoHydroponicsThingComp
                 }
             };
 
+            // ── 立即收获/割除全部植物 ──
+            yield return new Command_Action
+            {
+                defaultLabel = "FullyAutoHydroponics_harvestAll".Translate(),
+                defaultDesc = "FullyAutoHydroponics_harvestAllDesc".Translate(),
+                icon = FullyAutoHydroponicsTex.IconHarvest,
+                action = () => HarvestAllNow(false)
+            };
+
+            // ── 立即收获/割除枯萎病植物 ──
+            yield return new Command_Action
+            {
+                defaultLabel = "FullyAutoHydroponics_harvestBlighted".Translate(),
+                defaultDesc = "FullyAutoHydroponics_harvestBlightedDesc".Translate(),
+                icon = FullyAutoHydroponicsTex.IconCutAllBlightedPlants,
+                action = () => HarvestAllNow(true)
+            };
+
             // ── 上帝模式专属：一键成熟当前水培盆内所有植物 ──
             if (DebugSettings.godMode)
             {
@@ -184,6 +208,70 @@ namespace FullyAutoHydroponicsThingComp
                         }
                     }
                 };
+            }
+        }
+
+        // ── 立即收获辅助方法 ──
+        // blightedOnly = true 时只处理枯萎病植物；false 时处理全部植物
+        private void HarvestAllNow(bool blightedOnly)
+        {
+            Building_PlantGrower grower = parent as Building_PlantGrower;
+            if (grower == null) return;
+
+            foreach (Plant plant in grower.PlantsOnMe.ToList())
+            {
+                if (plant == null || plant.Destroyed) continue;
+
+                // 如果仅处理枯萎病植物，跳过未感染的植物
+                if (blightedOnly && !plant.Blighted) continue;
+
+                IntVec3 pos = plant.Position;
+                Map map = plant.Map;
+
+                // 有可收获产物时先生成收获物
+                if (plant.def.plant?.harvestedThingDef != null)
+                {
+                    int yieldCount = plant.YieldNow();
+                    if (yieldCount > 0)
+                    {
+                        Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
+                        yieldThing.stackCount = yieldCount;
+                        if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near, out Thing placedThing))
+                        {
+                            if (autoStore && Manager != null)
+                            {
+                                if (Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
+                                {
+                                    placedThing.DeSpawn();
+                                    Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
+                                    if (existingStack != null)
+                                        existingStack.TryAbsorbStack(placedThing, true);
+                                    else
+                                        GenSpawn.Spawn(placedThing, storeCell, map);
+
+                                    if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
+                                        GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 销毁植物（枯萎病直接割除；普通植物收获后销毁）
+                if (!plant.Destroyed)
+                    plant.Destroy();
+
+                // 如果开启了自动播种，在原位补种
+                if (autoSow)
+                {
+                    ThingDef plantDefToGrow = grower.GetPlantDefToGrow();
+                    if (plantDefToGrow != null && PlantUtility.GrowthSeasonNow(pos, map, plantDefToGrow))
+                    {
+                        Plant newPlant = (Plant)GenSpawn.Spawn(plantDefToGrow, pos, map);
+                        newPlant.Growth = Plant.BaseSownGrowthPercent;
+                        newPlant.sown = true;
+                    }
+                }
             }
         }
 

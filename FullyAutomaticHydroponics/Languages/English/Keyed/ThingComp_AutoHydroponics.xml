@@ -10,4 +10,8 @@
     <FullyAutoHydroponics_autoStore>auto store</FullyAutoHydroponics_autoStore>
     <!-- 开启后，收获的产物将自动存储到最近的最合适的存储区中。 -->
     <FullyAutoHydroponics_autoStoreDesc>Will automatically store harvested products in the nearest appropriate storage area.</FullyAutoHydroponics_autoStoreDesc>
+    <FullyAutoHydroponics_harvestAll>Harvest / Cut All</FullyAutoHydroponics_harvestAll>
+    <FullyAutoHydroponics_harvestAllDesc>Immediately harvest or cut all plants in this hydroponics basin.</FullyAutoHydroponics_harvestAllDesc>
+    <FullyAutoHydroponics_harvestBlighted>Cut Blighted Plants</FullyAutoHydroponics_harvestBlighted>
+    <FullyAutoHydroponics_harvestBlightedDesc>Immediately cut all blighted plants in this hydroponics basin.</FullyAutoHydroponics_harvestBlightedDesc>
 </LanguageData>
