@@ -25,6 +25,13 @@
             <ComponentIndustrial>8</ComponentIndustrial>
             <ComponentSpacer>4</ComponentSpacer>
         </costList>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+        <statBases>
+            <Mass>50</Mass>
+        </statBases>
         <building>
             <paintable>true</paintable>
         </building>
@@ -46,7 +53,7 @@
         <!--    </researchPrerequisites>-->
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
-        <rotatable>true</rotatable>
+        <rotatable>false</rotatable>
         <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
     </ThingDef>
 </Defs>
