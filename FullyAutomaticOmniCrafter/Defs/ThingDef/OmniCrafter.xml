@@ -8,7 +8,7 @@
     <graphicData>
       <texPath>Things/Building/Production/FabricationBench</texPath>
       <graphicClass>Graphic_Single</graphicClass>
-      <drawSize>(3,1)</drawSize>
+      <drawSize>(1,1)</drawSize>
       <shaderType>CutoutComplex</shaderType>
     </graphicData>
     <altitudeLayer>Building</altitudeLayer>
@@ -19,7 +19,7 @@
     <staticSunShadowHeight>0.2</staticSunShadowHeight>
     <fillPercent>0.5</fillPercent>
     <canOverlapZones>false</canOverlapZones>
-    <size>(3,1)</size>
+    <size>(1,1)</size>
     <costList>
       <Steel>200</Steel>
       <ComponentIndustrial>8</ComponentIndustrial>
@@ -41,9 +41,9 @@
     <hasInteractionCell>true</hasInteractionCell>
     <terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
     <designationCategory>Production</designationCategory>
-    <researchPrerequisites>
-      <li>Fabrication</li>
-    </researchPrerequisites>
+<!--    <researchPrerequisites>-->
+<!--      <li>Fabrication</li>-->
+<!--    </researchPrerequisites>-->
     <constructEffect>ConstructMetal</constructEffect>
     <repairEffect>Repair</repairEffect>
     <rotatable>true</rotatable>
