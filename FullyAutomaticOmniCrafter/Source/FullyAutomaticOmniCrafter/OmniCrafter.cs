@@ -218,8 +218,10 @@ namespace FullyAutomaticOmniCrafter
                 foreach (Thing t in map.listerThings.ThingsOfDef(def))
                     count += t.stackCount;
                 if (def.minifiedDef != null)
-                    foreach (Thing t in map.listerThings.ThingsOfDef(def.minifiedDef))
-                        count += t.stackCount;
+                    foreach (Thing t in map.listerThings.ThingsMatching(
+                                 ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)))
+                        if (t is MinifiedThing mt && mt.InnerThing?.def == def)
+                            count += t.stackCount;
             }
             catch (Exception ex)
             {
