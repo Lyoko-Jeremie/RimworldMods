@@ -69,13 +69,13 @@ namespace FullyAutomaticOmniCrafter
 
         private static bool IsValidCraftable(ThingDef def)
         {
-            if (def == null || def.isAbstract) return false;
+            if (def == null) return false;
             if (def.IsBlueprint || def.IsFrame) return false;
             if (def.destroyable == false) return false;
             if (def.category == ThingCategory.Mote) return false;
             if (def.category == ThingCategory.Ethereal) return false;
             if (def.category == ThingCategory.Projectile) return false;
-            if (def.category == ThingCategory.AttachmentPoint) return false;
+            if (def.category == ThingCategory.Attachment) return false;
             if (def.category == ThingCategory.Pawn) return false;
             if (def.thingClass == null) return false;
             if (typeof(Skyfaller).IsAssignableFrom(def.thingClass)) return false;
