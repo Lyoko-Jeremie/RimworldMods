@@ -313,6 +313,9 @@ namespace FullyAutomaticOmniCrafter
 
         private int rareTickCounter = 0;
 
+        // TickRare = every 250 ticks; we want ~every 1000 ticks (4 rare ticks)
+        private const int RareTicksPerCheck = 3;
+
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
@@ -333,22 +336,33 @@ namespace FullyAutomaticOmniCrafter
         public override void TickRare()
         {
             base.TickRare();
-            ProcessAutoOrders();
+            rareTickCounter++;
+            if (rareTickCounter >= RareTicksPerCheck)
+            {
+                rareTickCounter = 0;
+                ProcessAutoOrders();
+            }
+            // ProcessAutoOrders();
         }
 
         private void ProcessAutoOrders()
         {
+            Log.Message($"[OmniCrafter] Processing {autoOrders.Count} auto orders...");
             if (powerComp == null || !powerComp.PowerOn) return;
             PowerNet net = powerComp.PowerNet;
             if (net == null) return;
             foreach (AutoOrder order in autoOrders)
             {
+                Log.Message($"[OmniCrafter] Processing auto order: {order?.thingDef?.defName} x {order?.targetCount}");
                 try
                 {
                     if (order.thingDef == null) continue;
                     int current = OmniCrafterCache.CountOnMap(order.thingDef, Map);
+                    Log.Message($"[OmniCrafter] Current count of {order.thingDef.defName} on map: {current}");
                     if (current >= order.targetCount) continue;
                     int needed = order.targetCount - current;
+
+                    Log.Message($"[OmniCrafter] Current count: {current}, Needed: {needed}");
 
                     // 计算单件电力消耗，按当前可用电量推算最多能制造的数量
                     // 避免「一次性要求全部电力，不足则跳过」导致自动订单永远无法执行
@@ -366,10 +380,14 @@ namespace FullyAutomaticOmniCrafter
                         toCraft = Mathf.Min(needed, canAfford);
                     }
 
+                    Log.Message($"[OmniCrafter] Unit cost: {unitCost}, Available: {available}, Craft: {toCraft}");
+
                     if (toCraft <= 0) continue;
 
                     float totalCost = unitCost * toCraft;
                     if (!OmniPowerCost.TryDrainPower(net, totalCost)) continue;
+                    Log.Message(
+                        $"[OmniCrafter] Attempting to craft {toCraft} {order.thingDef?.defName} with total cost {totalCost}");
                     SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
                 }
                 catch (Exception ex)

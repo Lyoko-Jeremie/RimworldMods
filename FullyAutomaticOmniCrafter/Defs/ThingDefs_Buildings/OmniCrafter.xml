@@ -32,6 +32,7 @@
         <statBases>
             <Mass>50</Mass>
         </statBases>
+        <tickerType>Rare</tickerType>
         <building>
             <paintable>true</paintable>
         </building>
