@@ -999,7 +999,15 @@ namespace FullyAutomaticOmniCrafter
             foreach (SortMode sm in Enum.GetValues(typeof(SortMode)))
             {
                 if (sortMode == sm) GUI.color = Color.cyan;
-                if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 72f, 24f), sm.ToString()))
+                string smLabel;
+                switch (sm)
+                {
+                    case SortMode.Value: smLabel = "OmniCrafter_SortValue".Translate(); break;
+                    case SortMode.Weight: smLabel = "OmniCrafter_SortWeight".Translate(); break;
+                    default: smLabel = "OmniCrafter_SortName".Translate(); break;
+                }
+
+                if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 72f, 24f), smLabel))
                 {
                     sortMode = sm;
                     currentList = null;

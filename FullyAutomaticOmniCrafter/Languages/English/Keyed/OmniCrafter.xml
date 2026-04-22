@@ -12,6 +12,9 @@
     <OmniCrafter_Search>Search:</OmniCrafter_Search>
     <!-- Middle panel - sort & mod filter -->
     <OmniCrafter_Sort>Sort:</OmniCrafter_Sort>
+    <OmniCrafter_SortName>Name</OmniCrafter_SortName>
+    <OmniCrafter_SortValue>Value</OmniCrafter_SortValue>
+    <OmniCrafter_SortWeight>Weight</OmniCrafter_SortWeight>
     <OmniCrafter_Mod>Mod:</OmniCrafter_Mod>
     <OmniCrafter_ModAll>All</OmniCrafter_ModAll>
     <OmniCrafter_AllMods>All Mods</OmniCrafter_AllMods>

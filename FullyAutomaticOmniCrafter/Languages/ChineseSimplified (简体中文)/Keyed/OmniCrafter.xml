@@ -12,6 +12,9 @@
     <OmniCrafter_Search>搜索：</OmniCrafter_Search>
     <!-- 中栏 - 排序和Mod筛选 -->
     <OmniCrafter_Sort>排序：</OmniCrafter_Sort>
+    <OmniCrafter_SortName>名称</OmniCrafter_SortName>
+    <OmniCrafter_SortValue>价值</OmniCrafter_SortValue>
+    <OmniCrafter_SortWeight>重量</OmniCrafter_SortWeight>
     <OmniCrafter_Mod>Mod：</OmniCrafter_Mod>
     <OmniCrafter_ModAll>全部</OmniCrafter_ModAll>
     <OmniCrafter_AllMods>全部Mod</OmniCrafter_AllMods>
