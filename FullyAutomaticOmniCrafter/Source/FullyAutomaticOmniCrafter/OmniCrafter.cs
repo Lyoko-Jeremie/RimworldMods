@@ -726,66 +726,86 @@ namespace FullyAutomaticOmniCrafter
             Rect modFilterBar = new Rect(rect.x, rect.y + 32f, rect.width, 28f);
             DrawModFilterBar(modFilterBar);
 
-            Rect gridArea = new Rect(rect.x, rect.y + 64f, rect.width, rect.height - 64f);
+            Rect listArea = new Rect(rect.x, rect.y + 64f, rect.width, rect.height - 64f);
             List<ThingDef> list = CurrentList;
 
-            float iconSize = 64f;
-            float pad = 4f;
-            int cols = Mathf.Max(1, (int)((gridArea.width - pad) / (iconSize + pad)));
-            int rows = list.Count > 0 ? Mathf.CeilToInt((float)list.Count / cols) : 1;
-            float totalH = rows * (iconSize + pad) + pad;
+            float rowH = 36f;
+            float iconSize = 30f;
+            float infoBtnW = 26f;
+            float totalH = list.Count * rowH;
 
-            Rect view = new Rect(0f, 0f, gridArea.width - 16f, totalH);
-            Widgets.BeginScrollView(gridArea, ref middleScroll, view);
+            Rect view = new Rect(0f, 0f, listArea.width - 16f, totalH);
+            Widgets.BeginScrollView(listArea, ref middleScroll, view);
             float scrollY = middleScroll.y;
-            float visH = gridArea.height;
+            float visH = listArea.height;
+            float viewW = view.width;
 
             for (int i = 0; i < list.Count; i++)
             {
-                int row = i / cols, col = i % cols;
-                float x = pad + col * (iconSize + pad);
-                float y = pad + row * (iconSize + pad);
-
-                if (y + iconSize < scrollY || y > scrollY + visH) continue;
+                float y = i * rowH;
+                if (y + rowH < scrollY || y > scrollY + visH) continue;
 
                 ThingDef def = list[i];
-                Rect ir = new Rect(x, y, iconSize, iconSize);
+                Rect rowRect = new Rect(0f, y, viewW, rowH);
 
-                if (selectedDef == def) Widgets.DrawHighlight(ir);
-                else Widgets.DrawHighlightIfMouseover(ir);
+                // Background highlight
+                if (selectedDef == def) Widgets.DrawHighlight(rowRect);
+                else if (i % 2 == 0) Widgets.DrawBoxSolid(rowRect, new Color(1f, 1f, 1f, 0.03f));
+                if (Mouse.IsOver(rowRect) && selectedDef != def) Widgets.DrawHighlightIfMouseover(rowRect);
 
-                // 外源异常捕获：某些 Mod 的物品可能缺少贴图或图标数据
+                // Icon
+                float iconX = 3f;
+                float iconY = y + (rowH - iconSize) / 2f;
+                Rect iconRect = new Rect(iconX, iconY, iconSize, iconSize);
                 try
                 {
-                    Widgets.ThingIcon(ir, def);
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning($"[OmniCrafter] ThingIcon failed for '{def?.defName}': {ex.Message}");
-                    GUI.color = Color.gray;
-                    Widgets.DrawBox(ir);
-                    GUI.color = Color.white;
-                }
-
-                if (building.favorites.Contains(def.defName))
-                {
-                    GUI.color = Color.yellow;
-                    Widgets.Label(new Rect(x, y, 12f, 12f), "★");
-                    GUI.color = Color.white;
-                }
-
-                // 外源异常捕获：description 可能含非法字符
-                try
-                {
-                    string tip = def.LabelCap + (def.description.NullOrEmpty() ? "" : "\n" + def.description);
-                    TooltipHandler.TipRegion(ir, tip);
+                    Widgets.ThingIcon(iconRect, def);
                 }
                 catch
                 {
-                    TooltipHandler.TipRegion(ir, def?.defName ?? "?");
+                    GUI.color = Color.gray;
+                    Widgets.DrawBox(iconRect);
+                    GUI.color = Color.white;
                 }
 
-                if (Widgets.ButtonInvisible(ir)) SelectDef(def);
+                // Favorite star
+                if (building.favorites.Contains(def.defName))
+                {
+                    GUI.color = Color.yellow;
+                    Widgets.Label(new Rect(iconX, iconY, 12f, 12f), "★");
+                    GUI.color = Color.white;
+                }
+
+                // Label
+                float labelX = iconX + iconSize + 4f;
+                float labelW = viewW - labelX - infoBtnW - 4f;
+                Rect labelRect = new Rect(labelX, y + (rowH - 20f) / 2f, labelW, 20f);
+                Widgets.Label(labelRect, def.LabelCap);
+
+                // Info "i" button
+                Rect infoRect = new Rect(viewW - infoBtnW, y + (rowH - 24f) / 2f, infoBtnW, 24f);
+                if (Widgets.ButtonText(infoRect, "i"))
+                {
+                    ThingDef stuffForInfo = def.MadeFromStuff
+                        ? (selectedDef == def && selectedStuff != null ? selectedStuff : GenStuff.DefaultStuffFor(def))
+                        : null;
+                    Find.WindowStack.Add(new Dialog_InfoCard(def, stuffForInfo));
+                }
+
+                // Tooltip
+                try
+                {
+                    string tip = def.LabelCap + (def.description.NullOrEmpty() ? "" : "\n" + def.description);
+                    TooltipHandler.TipRegion(labelRect, tip);
+                }
+                catch
+                {
+                    TooltipHandler.TipRegion(labelRect, def?.defName ?? "?");
+                }
+
+                // Click row to select
+                Rect clickRect = new Rect(0f, y, viewW - infoBtnW - 2f, rowH);
+                if (Widgets.ButtonInvisible(clickRect)) SelectDef(def);
             }
 
             Widgets.EndScrollView();
