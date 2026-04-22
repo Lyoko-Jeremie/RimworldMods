@@ -351,13 +351,40 @@ namespace FullyAutomaticOmniCrafter
             if (net == null) return;
             foreach (AutoOrder order in autoOrders)
             {
-                if (order.thingDef == null) continue;
-                int current = OmniCrafterCache.CountOnMap(order.thingDef, Map);
-                if (current >= order.targetCount) continue;
-                int needed = order.targetCount - current;
-                float cost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, needed);
-                if (!OmniPowerCost.TryDrainPower(net, cost)) continue;
-                SpawnItems(order.thingDef, order.stuffDef, order.quality, needed, order.outputMode);
+                try
+                {
+                    if (order.thingDef == null) continue;
+                    int current = OmniCrafterCache.CountOnMap(order.thingDef, Map);
+                    if (current >= order.targetCount) continue;
+                    int needed = order.targetCount - current;
+
+                    // 计算单件电力消耗，按当前可用电量推算最多能制造的数量
+                    // 避免「一次性要求全部电力，不足则跳过」导致自动订单永远无法执行
+                    float unitCost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, 1);
+                    float available = OmniPowerCost.TotalStoredEnergy(net);
+
+                    int toCraft;
+                    if (unitCost <= 0f)
+                    {
+                        toCraft = needed;
+                    }
+                    else
+                    {
+                        int canAfford = Mathf.FloorToInt(available / unitCost);
+                        toCraft = Mathf.Min(needed, canAfford);
+                    }
+
+                    if (toCraft <= 0) continue;
+
+                    float totalCost = unitCost * toCraft;
+                    if (!OmniPowerCost.TryDrainPower(net, totalCost)) continue;
+                    SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(
+                        $"[OmniCrafter] ProcessAutoOrders failed for '{order?.thingDef?.defName}': {ex.Message}");
+                }
             }
         }
 
