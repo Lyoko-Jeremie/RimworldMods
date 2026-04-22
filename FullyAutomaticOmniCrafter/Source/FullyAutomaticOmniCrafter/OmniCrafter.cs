@@ -393,8 +393,9 @@ namespace FullyAutomaticOmniCrafter
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(
+                    Log.Error(
                         $"[OmniCrafter] ProcessAutoOrders failed for '{order?.thingDef?.defName}': {ex.Message}");
+                    Log.Error(ex.StackTrace);
                 }
             }
         }
@@ -423,19 +424,40 @@ namespace FullyAutomaticOmniCrafter
                     continue;
                 }
 
-                if (mode == OutputMode.SendToStorage)
+                // 第一步：先将物品安全地生成在建筑附近，使其拥有合法的 Map 和 Position，
+                // 避免存储 Mod（如 ASF）在计算距离时因 Position 无效而抛出 NullReferenceException。
+                if (GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near, out Thing placedThing))
                 {
-                    // 先找存储格再生成，避免先生成再移动导致的合堆/DeSpawn 问题
-                    IntVec3 storeCell;
-                    if (StoreUtility.TryFindBestBetterStoreCellFor(
-                            thing, null, Map, StoragePriority.Unstored, Faction.OfPlayer, out storeCell))
-                        GenSpawn.Spawn(thing, storeCell, Map);
-                    else
-                        GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
-                }
-                else
-                {
-                    GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
+                    if (mode == OutputMode.SendToStorage)
+                    {
+                        // 第二步：物品已在地图上，尝试寻找最优存储格
+                        IntVec3 storeCell;
+                        if (StoreUtility.TryFindBestBetterStoreCellFor(
+                                placedThing, null, Map, StoragePriority.Unstored, Faction.OfPlayer, out storeCell))
+                        {
+                            // 第三步：找到目标仓库，先将其从地面"捡起"（脱离物理地面）
+                            placedThing.DeSpawn();
+
+                            // 检查目标格子上是否已有同类物品，有则尝试合堆
+                            Thing existingStack = storeCell.GetFirstThing(Map, placedThing.def);
+                            if (existingStack != null)
+                            {
+                                existingStack.TryAbsorbStack(placedThing, true);
+                            }
+                            else
+                            {
+                                // 格子为空，直接生成到目标格
+                                GenSpawn.Spawn(placedThing, storeCell, Map);
+                            }
+
+                            // 第四步：处理合堆后未被吸收的剩余物品，扔回建筑旁边
+                            if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
+                            {
+                                GenPlace.TryPlaceThing(placedThing, Position, Map, ThingPlaceMode.Near);
+                            }
+                        }
+                        // 若全图无合适存储格，物品已通过第一步落在建筑附近，逻辑自然闭环
+                    }
                 }
 
                 remaining -= stackSize;
