@@ -479,8 +479,12 @@ namespace FullyAutomaticOmniCrafter
         private readonly Building_OmniCrafter building;
 
         private ThingCategoryDef selectedCategory;
+        private bool showAll = true; // default: show all
         private bool showFavorites;
         private bool showRecent;
+
+        // Tree expand state: defName -> expanded
+        private Dictionary<string, bool> treeExpanded = new Dictionary<string, bool>();
 
         private string searchText = "";
         private List<ThingDef> searchCache;
@@ -488,7 +492,7 @@ namespace FullyAutomaticOmniCrafter
 
         private Vector2 middleScroll;
         private Vector2 leftScroll;
-        private Vector2 rightScroll;
+        private Vector2 rightPanelScroll;
 
         private ThingDef selectedDef;
         private List<ThingDef> currentList;
@@ -572,53 +576,183 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        // ── Left panel tree helpers ──────────────────────────────────────────
+
+        /// <summary>Collect root-level ThingCategoryDefs (those whose parent has no craftable items in our cache,
+        /// or whose parent is null). We treat any category with parent==null as a tree root.</summary>
+        private List<ThingCategoryDef> GetRootCategories()
+        {
+            var roots = new List<ThingCategoryDef>();
+            var all = OmniCrafterCache.ByCategory;
+            foreach (var kv in all)
+            {
+                ThingCategoryDef cat = kv.Key;
+                // A root is a cat whose parent is null OR whose parent has no craftable items of its own
+                if (cat.parent == null || !all.ContainsKey(cat.parent))
+                    roots.Add(cat);
+            }
+
+            roots.SortBy(c => c.label ?? c.defName);
+            return roots;
+        }
+
+        private bool IsExpanded(ThingCategoryDef cat)
+        {
+            bool v;
+            return treeExpanded.TryGetValue(cat.defName, out v) && v;
+        }
+
+        private void SetExpanded(ThingCategoryDef cat, bool value)
+        {
+            treeExpanded[cat.defName] = value;
+        }
+
+        /// <summary>Compute total virtual height needed for the tree.</summary>
+        private float MeasureTree(List<ThingCategoryDef> roots, float lh)
+        {
+            float h = 0f;
+            foreach (var root in roots)
+                h += MeasureCatNode(root, lh);
+            return h;
+        }
+
+        private float MeasureCatNode(ThingCategoryDef cat, float lh)
+        {
+            float h = lh;
+            if (IsExpanded(cat))
+            {
+                var all = OmniCrafterCache.ByCategory;
+                var children = cat.childCategories.Where(c => all.ContainsKey(c))
+                    .OrderBy(c => c.label ?? c.defName).ToList();
+                foreach (var child in children)
+                    h += MeasureCatNode(child, lh);
+            }
+
+            return h;
+        }
+
+        private void DrawCategoryTree(List<ThingCategoryDef> roots, ref float y, float viewW, float lh, int depth = 0)
+        {
+            foreach (var root in roots)
+                DrawCatNode(root, ref y, viewW, lh, depth);
+        }
+
+        private void DrawCatNode(ThingCategoryDef cat, ref float y, float viewW, float lh, int depth)
+        {
+            var all = OmniCrafterCache.ByCategory;
+            List<ThingDef> items;
+            all.TryGetValue(cat, out items);
+            int count = items?.Count ?? 0;
+
+            var children = cat.childCategories.Where(c => all.ContainsKey(c))
+                .OrderBy(c => c.label ?? c.defName).ToList();
+            bool hasChildren = children.Count > 0;
+            bool expanded = IsExpanded(cat);
+
+            float indent = depth * 14f;
+            Rect rowRect = new Rect(0f, y, viewW, lh);
+
+            bool isSelected = selectedCategory == cat && !showFavorites && !showRecent && !showAll;
+            if (isSelected) Widgets.DrawHighlight(rowRect);
+            else if (Mouse.IsOver(rowRect)) Widgets.DrawHighlightIfMouseover(rowRect);
+
+            // Triangle expand button
+            if (hasChildren)
+            {
+                Rect triRect = new Rect(indent + 2f, y + (lh - 16f) / 2f, 16f, 16f);
+                if (Widgets.ButtonText(triRect, expanded ? "▼" : "▶", false, false, false))
+                {
+                    SetExpanded(cat, !expanded);
+                    currentList = null;
+                    searchCache = null;
+                }
+            }
+
+            // Category icon (if any)
+            float textX = indent + 20f;
+            if (cat.icon != null && cat.icon != BaseContent.BadTex)
+            {
+                Rect iconRect = new Rect(textX, y + (lh - 18f) / 2f, 18f, 18f);
+                GUI.DrawTexture(iconRect, cat.icon);
+                textX += 20f;
+            }
+
+            string catLabel = (cat.label ?? cat.defName).CapitalizeFirst() + $" ({count})";
+            Rect labelRect = new Rect(textX, y, viewW - textX, lh);
+            Widgets.Label(labelRect, catLabel);
+
+            // Click label to select
+            Rect clickRect = new Rect(indent + 20f, y, viewW - indent - 20f, lh);
+            if (Widgets.ButtonInvisible(clickRect))
+            {
+                selectedCategory = cat;
+                showFavorites = false;
+                showRecent = false;
+                showAll = false;
+                currentList = null;
+                searchCache = null;
+            }
+
+            y += lh;
+
+            if (expanded && hasChildren)
+                DrawCategoryTree(children, ref y, viewW, lh, depth + 1);
+        }
+
         private void DrawLeftPanel(Rect rect)
         {
             Widgets.DrawBoxSolid(rect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
             rect = rect.ContractedBy(3f);
             float lh = 26f;
-            var cats = OmniCrafterCache.ByCategory.OrderBy(k => k.Key.label ?? k.Key.defName).ToList();
-            float totalH = lh * 2 + 6f + lh * cats.Count;
+
+            var roots = GetRootCategories();
+            float treeH = MeasureTree(roots, lh);
+            float totalH = lh * 3 + 6f + treeH; // All + Favorites + Recent + separator + tree
             Rect view = new Rect(0f, 0f, rect.width - 16f, totalH);
             Widgets.BeginScrollView(rect, ref leftScroll, view);
             float y = 0f;
 
-            DrawNavItem(new Rect(0f, y, view.width, lh), "★ " + "OmniCrafter_Favorites".Translate(),
-                showFavorites, () =>
+            // All
+            DrawNavItem(new Rect(0f, y, view.width, lh), "🔍 " + "OmniCrafter_All".Translate(),
+                showAll, () =>
                 {
-                    showFavorites = true;
+                    showAll = true;
+                    showFavorites = false;
                     showRecent = false;
                     selectedCategory = null;
                     currentList = null;
                     searchCache = null;
                 });
             y += lh;
+
+            // Favorites
+            DrawNavItem(new Rect(0f, y, view.width, lh), "★ " + "OmniCrafter_Favorites".Translate(),
+                showFavorites, () =>
+                {
+                    showFavorites = true;
+                    showRecent = false;
+                    showAll = false;
+                    selectedCategory = null;
+                    currentList = null;
+                    searchCache = null;
+                });
+            y += lh;
+
+            // Recent
             DrawNavItem(new Rect(0f, y, view.width, lh), "⟳ " + "OmniCrafter_Recent".Translate(),
                 showRecent, () =>
                 {
                     showRecent = true;
                     showFavorites = false;
+                    showAll = false;
                     selectedCategory = null;
                     currentList = null;
                     searchCache = null;
                 });
             y += lh + 6f;
 
-            foreach (var kv in cats)
-            {
-                ThingCategoryDef cat = kv.Key;
-                string label = (cat.label ?? cat.defName).CapitalizeFirst() + $" ({kv.Value.Count})";
-                DrawNavItem(new Rect(0f, y, view.width, lh), label, selectedCategory == cat,
-                    () =>
-                    {
-                        selectedCategory = cat;
-                        showFavorites = false;
-                        showRecent = false;
-                        currentList = null;
-                        searchCache = null;
-                    });
-                y += lh;
-            }
+            // Tree
+            DrawCategoryTree(roots, ref y, view.width, lh, 0);
 
             Widgets.EndScrollView();
         }
@@ -640,7 +774,7 @@ namespace FullyAutomaticOmniCrafter
             else if (showRecent)
                 source = building.recentCrafted.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
                     .Where(d => d != null).ToList();
-            else if (selectedCategory != null)
+            else if (selectedCategory != null && !showAll)
             {
                 List<ThingDef> catList;
                 OmniCrafterCache.ByCategory.TryGetValue(selectedCategory, out catList);
@@ -896,11 +1030,26 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            float y = rect.y;
             float w = rect.width;
+            float viewW = w - 16f;
+
+            // Estimate content height for the virtual scroll view
+            float contentH = 70f; // icon + name + fav
+            if (!selectedDef.description.NullOrEmpty()) contentH += 60f;
+            contentH += 6f + 6f; // separators
+            if (validStuffs != null && validStuffs.Count > 0) contentH += 22f + 28f + 12f; // label + dropdown + sep
+            if (selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f; // label + dropdown + sep
+            contentH += 22f + 28f + 28f + 22f + 26f + 30f + 6f; // mode + counts + output + sep
+            contentH += 22f + 48f + 22f + 36f; // stock + power + action
+            contentH += building.autoOrders.Count * 22f + 46f;
+
+            Rect viewRect = new Rect(0f, 0f, viewW, contentH);
+            Widgets.BeginScrollView(rect, ref rightPanelScroll, viewRect);
+
+            float y = 0f;
 
             // Icon + Name + Favorite
-            Rect ir = new Rect(rect.x, y, 64f, 64f);
+            Rect ir = new Rect(0f, y, 64f, 64f);
             try
             {
                 Widgets.ThingIcon(ir, selectedDef, selectedStuff);
@@ -911,11 +1060,10 @@ namespace FullyAutomaticOmniCrafter
             }
 
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x + 70f, y, w - 70f, 32f), selectedDef.LabelCap);
+            Widgets.Label(new Rect(70f, y, viewW - 70f, 32f), selectedDef.LabelCap);
             Text.Font = GameFont.Small;
             bool isFav = building.favorites.Contains(selectedDef.defName);
-            if (Widgets.ButtonText(new Rect(rect.x + 70f, y + 34f, 120f, 24f),
-                    isFav ? "★ Unfavorite" : "☆ Favorite"))
+            if (Widgets.ButtonText(new Rect(70f, y + 34f, 120f, 24f), isFav ? "★ Unfavorite" : "☆ Favorite"))
             {
                 if (isFav) building.favorites.Remove(selectedDef.defName);
                 else building.favorites.Add(selectedDef.defName);
@@ -928,101 +1076,109 @@ namespace FullyAutomaticOmniCrafter
                 string desc = selectedDef.description.Length > 160
                     ? selectedDef.description.Substring(0, 157) + "..."
                     : selectedDef.description;
-                Widgets.Label(new Rect(rect.x, y, w, 56f), desc);
+                Widgets.Label(new Rect(0f, y, viewW, 56f), desc);
                 y += 60f;
             }
 
-            Widgets.DrawLineHorizontal(rect.x, y, w);
+            Widgets.DrawLineHorizontal(0f, y, viewW);
             y += 6f;
 
-            // Stuff
+            // Stuff — dropdown
             if (validStuffs != null && validStuffs.Count > 0)
             {
-                Widgets.Label(new Rect(rect.x, y, w, 20f), "Material:");
-                y += 22f;
-                int stuffCols = Mathf.Max(1, (int)(w / 88f));
-                for (int i = 0; i < validStuffs.Count; i++)
+                Widgets.Label(new Rect(0f, y, 80f, 22f), "Material:");
+                string stuffLabel = selectedStuff != null
+                    ? (selectedStuff.label ?? selectedStuff.defName).CapitalizeFirst()
+                    : "None";
+                if (Widgets.ButtonText(new Rect(84f, y, viewW - 84f, 24f), $"▼ {stuffLabel}"))
                 {
-                    Rect sr = new Rect(rect.x + (i % stuffCols) * 88f, y + (i / stuffCols) * 26f, 84f, 24f);
-                    if (selectedStuff == validStuffs[i]) GUI.color = Color.cyan;
-                    if (Widgets.ButtonText(sr, (validStuffs[i].label ?? validStuffs[i].defName).CapitalizeFirst()))
-                        selectedStuff = validStuffs[i];
-                    GUI.color = Color.white;
+                    var stuffOptions = new List<FloatMenuOption>();
+                    foreach (ThingDef s in validStuffs)
+                    {
+                        ThingDef captured = s;
+                        stuffOptions.Add(new FloatMenuOption(
+                            (captured.label ?? captured.defName).CapitalizeFirst(),
+                            () => { selectedStuff = captured; }));
+                    }
+
+                    Find.WindowStack.Add(new FloatMenu(stuffOptions));
                 }
 
-                y += Mathf.CeilToInt((float)validStuffs.Count / stuffCols) * 26f + 4f;
-                Widgets.DrawLineHorizontal(rect.x, y, w);
+                y += 28f;
+                Widgets.DrawLineHorizontal(0f, y, viewW);
                 y += 6f;
             }
 
-            // Quality
+            // Quality — dropdown
             if (selectedDef.HasComp(typeof(CompQuality)))
             {
-                Widgets.Label(new Rect(rect.x, y, w, 20f), "Quality:");
-                y += 22f;
-                QualityCategory[] quals = (QualityCategory[])Enum.GetValues(typeof(QualityCategory));
-                int qCols = 4;
-                float qW = w / qCols - 2f;
-                for (int i = 0; i < quals.Length; i++)
+                Widgets.Label(new Rect(0f, y, 80f, 22f), "Quality:");
+                if (Widgets.ButtonText(new Rect(84f, y, viewW - 84f, 24f), $"▼ {selectedQuality.GetLabel()}"))
                 {
-                    Rect qr = new Rect(rect.x + (i % qCols) * (qW + 2f), y + (i / qCols) * 26f, qW, 24f);
-                    if (selectedQuality == quals[i]) GUI.color = Color.cyan;
-                    if (Widgets.ButtonText(qr, quals[i].GetLabel())) selectedQuality = quals[i];
-                    GUI.color = Color.white;
+                    var qualOptions = new List<FloatMenuOption>();
+                    foreach (QualityCategory q in (QualityCategory[])Enum.GetValues(typeof(QualityCategory)))
+                    {
+                        QualityCategory captured = q;
+                        qualOptions.Add(new FloatMenuOption(
+                            captured.GetLabel(),
+                            () => { selectedQuality = captured; }));
+                    }
+
+                    Find.WindowStack.Add(new FloatMenu(qualOptions));
                 }
 
-                y += Mathf.CeilToInt((float)quals.Length / qCols) * 26f + 4f;
-                Widgets.DrawLineHorizontal(rect.x, y, w);
+                y += 28f;
+                Widgets.DrawLineHorizontal(0f, y, viewW);
                 y += 6f;
             }
 
             // Production mode
-            Widgets.Label(new Rect(rect.x, y, w, 20f), "Mode:");
+            Widgets.Label(new Rect(0f, y, viewW, 20f), "Mode:");
             y += 22f;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w / 2f - 2f, 24f), "Fixed Count",
+            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW / 2f - 2f, 24f), "Fixed Count",
                     productionMode == ProductionMode.FixedCount))
                 productionMode = ProductionMode.FixedCount;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x + w / 2f, y, w / 2f - 2f, 24f), "Maintain Stock",
+            if (Widgets.RadioButtonLabeled(new Rect(viewW / 2f, y, viewW / 2f - 2f, 24f), "Maintain Stock",
                     productionMode == ProductionMode.MaintainStock))
                 productionMode = ProductionMode.MaintainStock;
             y += 28f;
 
             if (productionMode == ProductionMode.FixedCount)
             {
-                Widgets.Label(new Rect(rect.x, y, 60f, 24f), "Count:");
-                string cs = Widgets.TextField(new Rect(rect.x + 62f, y, 55f, 24f), craftCount.ToString());
+                Widgets.Label(new Rect(0f, y, 60f, 24f), "Count:");
+                string cs = Widgets.TextField(new Rect(62f, y, 55f, 24f), craftCount.ToString());
                 if (int.TryParse(cs, out int cp) && cp > 0) craftCount = cp;
-                if (Widgets.ButtonText(new Rect(rect.x + 120f, y, 24f, 24f), "+")) craftCount++;
-                if (craftCount > 1 && Widgets.ButtonText(new Rect(rect.x + 146f, y, 24f, 24f), "-")) craftCount--;
+                if (Widgets.ButtonText(new Rect(120f, y, 24f, 24f), "+")) craftCount++;
+                if (craftCount > 1 && Widgets.ButtonText(new Rect(146f, y, 24f, 24f), "-")) craftCount--;
             }
             else
             {
-                Widgets.Label(new Rect(rect.x, y, 100f, 24f), "Target Stock:");
-                string ms = Widgets.TextField(new Rect(rect.x + 102f, y, 55f, 24f), maintainCount.ToString());
+                Widgets.Label(new Rect(0f, y, 100f, 24f), "Target Stock:");
+                string ms = Widgets.TextField(new Rect(102f, y, 55f, 24f), maintainCount.ToString());
                 if (int.TryParse(ms, out int mp) && mp > 0) maintainCount = mp;
-                if (Widgets.ButtonText(new Rect(rect.x + 160f, y, 24f, 24f), "+")) maintainCount++;
-                if (maintainCount > 1 && Widgets.ButtonText(new Rect(rect.x + 186f, y, 24f, 24f), "-")) maintainCount--;
+                if (Widgets.ButtonText(new Rect(160f, y, 24f, 24f), "+")) maintainCount++;
+                if (maintainCount > 1 && Widgets.ButtonText(new Rect(186f, y, 24f, 24f), "-")) maintainCount--;
             }
 
             y += 28f;
 
             // Output mode
-            Widgets.Label(new Rect(rect.x, y, w, 20f), "Output:");
+            Widgets.Label(new Rect(0f, y, viewW, 20f), "Output:");
             y += 22f;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w, 24f), "Drop Near", outputMode == OutputMode.DropNear))
+            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "Drop Near", outputMode == OutputMode.DropNear))
                 outputMode = OutputMode.DropNear;
             y += 26f;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w, 24f), "Send To Storage",
+            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "Send To Storage",
                     outputMode == OutputMode.SendToStorage))
                 outputMode = OutputMode.SendToStorage;
             y += 30f;
 
-            Widgets.DrawLineHorizontal(rect.x, y, w);
+            Widgets.DrawLineHorizontal(0f, y, viewW);
             y += 6f;
 
             // Current stock
             int currentStock = OmniCrafterCache.CountOnMap(selectedDef, building.Map);
-            Widgets.Label(new Rect(rect.x, y, w, 20f), $"On Map: {currentStock}");
+            Widgets.Label(new Rect(0f, y, viewW, 20f), $"On Map: {currentStock}");
             y += 22f;
 
             // Power cost
@@ -1033,7 +1189,6 @@ namespace FullyAutomaticOmniCrafter
                 countForCost = craftCount;
             else
                 countForCost = Mathf.Max(0, maintainCount - currentStock);
-            // 库存满或无需生产时费用为0，避免误导性显示
             float cost = countForCost > 0
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
@@ -1044,15 +1199,15 @@ namespace FullyAutomaticOmniCrafter
                 ? $"✔ Stock full ({currentStock}/{maintainCount})\nStored: {stored:F0} Wd"
                 : $"Power Cost: {cost:F0} Wd  /  Stored: {stored:F0} Wd";
             if (!canAfford) costLabel += "\n⚠ Insufficient power!";
-            Widgets.Label(new Rect(rect.x, y, w, 44f), costLabel);
+            Widgets.Label(new Rect(0f, y, viewW, 44f), costLabel);
             GUI.color = Color.white;
             y += 48f;
 
-            // Building 提示：每次仅能生产1个（MinifiedThing不可堆叠）
+            // Building 提示
             if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
             {
                 GUI.color = new Color(1f, 0.85f, 0.2f);
-                Widgets.Label(new Rect(rect.x, y, w, 20f), "⚠ Buildings craft 1 at a time (minified)");
+                Widgets.Label(new Rect(0f, y, viewW, 20f), "⚠ Buildings craft 1 at a time (minified)");
                 GUI.color = Color.white;
                 y += 22f;
             }
@@ -1060,9 +1215,8 @@ namespace FullyAutomaticOmniCrafter
             // Action button
             if (productionMode == ProductionMode.FixedCount)
             {
-                Color btnColor = canAfford ? Color.white : new Color(0.5f, 0.5f, 0.5f);
-                GUI.color = btnColor;
-                if (Widgets.ButtonText(new Rect(rect.x, y, w, 32f), $"Craft x{craftCount}"))
+                GUI.color = canAfford ? Color.white : new Color(0.5f, 0.5f, 0.5f);
+                if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), $"Craft x{craftCount}"))
                 {
                     if (canAfford)
                     {
@@ -1084,12 +1238,12 @@ namespace FullyAutomaticOmniCrafter
                 bool hasOrder = building.autoOrders.Any(o => o.thingDef == selectedDef);
                 if (hasOrder)
                 {
-                    if (Widgets.ButtonText(new Rect(rect.x, y, w, 32f), "Remove Auto Order"))
+                    if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "Remove Auto Order"))
                         building.autoOrders.RemoveAll(o => o.thingDef == selectedDef);
                 }
                 else
                 {
-                    if (Widgets.ButtonText(new Rect(rect.x, y, w, 32f), "Add Auto Order"))
+                    if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "Add Auto Order"))
                     {
                         building.autoOrders.Add(new AutoOrder
                         {
@@ -1103,39 +1257,34 @@ namespace FullyAutomaticOmniCrafter
                 y += 36f;
             }
 
-            // Auto order list
+            // Auto order list (flat, no inner scroll — outer panel scroll handles it)
             if (building.autoOrders.Count > 0)
             {
-                Widgets.DrawLineHorizontal(rect.x, y, w);
+                Widgets.DrawLineHorizontal(0f, y, viewW);
                 y += 4f;
-                Widgets.Label(new Rect(rect.x, y, w, 20f), $"Auto Orders ({building.autoOrders.Count}):");
+                Widgets.Label(new Rect(0f, y, viewW, 20f), $"Auto Orders ({building.autoOrders.Count}):");
                 y += 22f;
-                float listH = rect.yMax - y;
-                if (listH > 20f)
+                for (int i = 0; i < building.autoOrders.Count; i++)
                 {
-                    Rect lr = new Rect(rect.x, y, w, listH);
-                    Rect lv = new Rect(0f, 0f, w - 16f, building.autoOrders.Count * 22f);
-                    Widgets.BeginScrollView(lr, ref rightScroll, lv);
-                    for (int i = 0; i < building.autoOrders.Count; i++)
+                    AutoOrder ao = building.autoOrders[i];
+                    int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
+                    bool full = onMap >= ao.targetCount;
+                    GUI.color = full ? Color.green : Color.white;
+                    string lbl = (ao.thingDef?.LabelCap ?? "?") +
+                                 $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
+                    Widgets.Label(new Rect(0f, y, viewW - 26f, 20f), lbl);
+                    GUI.color = Color.white;
+                    if (Widgets.ButtonText(new Rect(viewW - 24f, y, 22f, 20f), "X"))
                     {
-                        AutoOrder ao = building.autoOrders[i];
-                        int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
-                        bool full = onMap >= ao.targetCount;
-                        GUI.color = full ? Color.green : Color.white;
-                        string lbl = (ao.thingDef?.LabelCap ?? "?") +
-                                     $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
-                        Widgets.Label(new Rect(0f, i * 22f, lv.width - 24f, 20f), lbl);
-                        GUI.color = Color.white;
-                        if (Widgets.ButtonText(new Rect(lv.width - 22f, i * 22f, 22f, 20f), "X"))
-                        {
-                            building.autoOrders.RemoveAt(i);
-                            break;
-                        }
+                        building.autoOrders.RemoveAt(i);
+                        break;
                     }
 
-                    Widgets.EndScrollView();
+                    y += 22f;
                 }
             }
+
+            Widgets.EndScrollView();
         }
     }
 }
