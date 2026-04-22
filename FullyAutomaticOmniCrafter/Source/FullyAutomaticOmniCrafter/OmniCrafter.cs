@@ -617,40 +617,17 @@ namespace FullyAutomaticOmniCrafter
 
         public override Vector2 InitialSize => new Vector2(1350f, 700f);
 
-        private bool _didPause;
-        private TimeSpeed _pausedSpeed;
-
         public Dialog_OmniCrafter(Building_OmniCrafter building)
         {
             this.building = building;
             doCloseButton = true;
             doCloseX = true;
-            forcePause = false;
+            forcePause = true;
             absorbInputAroundWindow = false;
             draggable = true;
             resizeable = true;
         }
 
-        public override void PostOpen()
-        {
-            base.PostOpen();
-            if (Find.TickManager != null && !Find.TickManager.Paused)
-            {
-                _pausedSpeed = Find.TickManager.CurTimeSpeed;
-                Find.TickManager.Pause();
-                _didPause = true;
-            }
-        }
-
-        public override void PostClose()
-        {
-            base.PostClose();
-            if (_didPause && Find.TickManager != null)
-            {
-                Find.TickManager.CurTimeSpeed = _pausedSpeed;
-                _didPause = false;
-            }
-        }
 
         /// <summary>当前选中的是一条自动订单时，将面板中的设置同步回该订单。</summary>
         private void SyncSelectedAutoOrder()
