@@ -35,6 +35,7 @@ namespace FullyAutomaticOmniCrafter
     {
         private static List<ThingDef> _allCraftable;
         private static Dictionary<ThingCategoryDef, List<ThingDef>> _byCategory;
+        private static List<string> _allModNames;
         private static Game _cachedForGame;
 
         public static List<ThingDef> AllCraftable
@@ -47,10 +48,24 @@ namespace FullyAutomaticOmniCrafter
             get { InvalidateIfNeeded(); if (_byCategory == null) BuildCache(); return _byCategory; }
         }
 
+        /// <summary>所有可制造物品涉及的 Mod 名称列表（已排序，首项为原版）</summary>
+        public static List<string> AllModNames
+        {
+            get { InvalidateIfNeeded(); if (_allModNames == null) BuildCache(); return _allModNames; }
+        }
+
+        /// <summary>获取 ThingDef 所属 Mod 的友好名称，外源异常时返回 "Unknown"</summary>
+        public static string GetModName(ThingDef def)
+        {
+            try { return def?.modContentPack?.Name ?? "Unknown"; }
+            catch { return "Unknown"; }
+        }
+
         public static void Reset()
         {
             _allCraftable = null;
             _byCategory = null;
+            _allModNames = null;
             _cachedForGame = null;
         }
 
@@ -60,6 +75,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 _allCraftable = null;
                 _byCategory = null;
+                _allModNames = null;
                 _cachedForGame = Current.Game;
             }
         }
@@ -71,17 +87,31 @@ namespace FullyAutomaticOmniCrafter
 
             foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
             {
-                if (IsValidCraftable(def) && alreadyAdded.Add(def))
-                    _allCraftable.Add(def);
+                try
+                {
+                    if (IsValidCraftable(def) && alreadyAdded.Add(def))
+                        _allCraftable.Add(def);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[OmniCrafter] Skipped def '{def?.defName}' during cache build: {ex.Message}");
+                }
             }
 
             // 植物特殊处理：将可收割植物的收获产物加入列表
             foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
             {
-                if (def.plant?.harvestedThingDef == null) continue;
-                ThingDef harvested = def.plant.harvestedThingDef;
-                if (IsValidCraftable(harvested) && alreadyAdded.Add(harvested))
-                    _allCraftable.Add(harvested);
+                try
+                {
+                    if (def.plant?.harvestedThingDef == null) continue;
+                    ThingDef harvested = def.plant.harvestedThingDef;
+                    if (IsValidCraftable(harvested) && alreadyAdded.Add(harvested))
+                        _allCraftable.Add(harvested);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[OmniCrafter] Skipped plant harvest def '{def?.defName}': {ex.Message}");
+                }
             }
 
             _allCraftable.SortBy(d => d.label ?? d.defName);
@@ -89,61 +119,104 @@ namespace FullyAutomaticOmniCrafter
             _byCategory = new Dictionary<ThingCategoryDef, List<ThingDef>>();
             foreach (ThingDef def in _allCraftable)
             {
-                if (def.thingCategories == null) continue;
-                foreach (ThingCategoryDef cat in def.thingCategories)
+                try
                 {
-                    if (!_byCategory.ContainsKey(cat)) _byCategory[cat] = new List<ThingDef>();
-                    _byCategory[cat].Add(def);
+                    if (def.thingCategories == null) continue;
+                    foreach (ThingCategoryDef cat in def.thingCategories)
+                    {
+                        if (!_byCategory.ContainsKey(cat)) _byCategory[cat] = new List<ThingDef>();
+                        _byCategory[cat].Add(def);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[OmniCrafter] Skipped category assignment for '{def?.defName}': {ex.Message}");
                 }
             }
+
+            // 收集所有涉及的 Mod 名称
+            var modSet = new HashSet<string>();
+            foreach (ThingDef def in _allCraftable)
+            {
+                try { modSet.Add(GetModName(def)); }
+                catch { /* ignore */ }
+            }
+            _allModNames = modSet.OrderBy(n => n).ToList();
         }
 
         private static bool IsValidCraftable(ThingDef def)
         {
-            if (def == null) return false;
-            if (def.IsBlueprint || def.IsFrame) return false;
-            if (def.destroyable == false) return false;
-            if (def.category == ThingCategory.Mote) return false;
-            if (def.category == ThingCategory.Ethereal) return false;
-            if (def.category == ThingCategory.Projectile) return false;
-            if (def.category == ThingCategory.Attachment) return false;
-            if (def.category == ThingCategory.Pawn) return false;
-            if (def.thingClass == null) return false;
-            if (typeof(Skyfaller).IsAssignableFrom(def.thingClass)) return false;
-            if (typeof(Mote).IsAssignableFrom(def.thingClass)) return false;
-            if (typeof(Projectile).IsAssignableFrom(def.thingClass)) return false;
-            if (typeof(Plant).IsAssignableFrom(def.thingClass)) return false;
-            if ((def.label.NullOrEmpty()) && def.defName.NullOrEmpty()) return false;
-            if (def.category != ThingCategory.Item && def.category != ThingCategory.Building) return false;
-            return true;
+            try
+            {
+                if (def == null) return false;
+                if (def.IsBlueprint || def.IsFrame) return false;
+                if (def.destroyable == false) return false;
+                if (def.category == ThingCategory.Mote) return false;
+                if (def.category == ThingCategory.Ethereal) return false;
+                if (def.category == ThingCategory.Projectile) return false;
+                if (def.category == ThingCategory.Attachment) return false;
+                if (def.category == ThingCategory.Pawn) return false;
+                if (def.thingClass == null) return false;
+                if (typeof(Skyfaller).IsAssignableFrom(def.thingClass)) return false;
+                if (typeof(Mote).IsAssignableFrom(def.thingClass)) return false;
+                if (typeof(Projectile).IsAssignableFrom(def.thingClass)) return false;
+                if (typeof(Plant).IsAssignableFrom(def.thingClass)) return false;
+                if (def.label.NullOrEmpty() && def.defName.NullOrEmpty()) return false;
+                if (def.category != ThingCategory.Item && def.category != ThingCategory.Building) return false;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniCrafter] IsValidCraftable failed for '{def?.defName}': {ex.Message}");
+                return false;
+            }
         }
 
         public static int CountOnMap(ThingDef def, Map map)
         {
             if (map == null || def == null) return 0;
             int count = 0;
-            foreach (Thing t in map.listerThings.ThingsOfDef(def))
-                count += t.stackCount;
-            if (def.minifiedDef != null)
-                foreach (Thing t in map.listerThings.ThingsOfDef(def.minifiedDef))
+            try
+            {
+                foreach (Thing t in map.listerThings.ThingsOfDef(def))
                     count += t.stackCount;
+                if (def.minifiedDef != null)
+                    foreach (Thing t in map.listerThings.ThingsOfDef(def.minifiedDef))
+                        count += t.stackCount;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniCrafter] CountOnMap failed for '{def?.defName}': {ex.Message}");
+            }
             return count;
         }
 
         public static List<ThingDef> GetValidStuffs(ThingDef def)
         {
-            if (!def.MadeFromStuff || def.stuffCategories == null) return new List<ThingDef>();
-            List<ThingDef> result = new List<ThingDef>();
-            foreach (ThingDef stuff in DefDatabase<ThingDef>.AllDefs)
+            try
             {
-                if (!stuff.IsStuff || stuff.stuffProps?.categories == null) continue;
-                foreach (StuffCategoryDef cat in def.stuffCategories)
+                if (!def.MadeFromStuff || def.stuffCategories == null) return new List<ThingDef>();
+                List<ThingDef> result = new List<ThingDef>();
+                foreach (ThingDef stuff in DefDatabase<ThingDef>.AllDefs)
                 {
-                    if (stuff.stuffProps.categories.Contains(cat)) { result.Add(stuff); break; }
+                    try
+                    {
+                        if (!stuff.IsStuff || stuff.stuffProps?.categories == null) continue;
+                        foreach (StuffCategoryDef cat in def.stuffCategories)
+                        {
+                            if (stuff.stuffProps.categories.Contains(cat)) { result.Add(stuff); break; }
+                        }
+                    }
+                    catch { /* skip malformed stuff def */ }
                 }
+                result.SortBy(s => s.label ?? s.defName);
+                return result;
             }
-            result.SortBy(s => s.label ?? s.defName);
-            return result;
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniCrafter] GetValidStuffs failed for '{def?.defName}': {ex.Message}");
+                return new List<ThingDef>();
+            }
         }
     }
 
@@ -361,6 +434,9 @@ namespace FullyAutomaticOmniCrafter
         private enum SortMode { Name, Value, Weight }
         private SortMode sortMode = SortMode.Name;
 
+        // Mod Filter
+        private string selectedModFilter = null; // null = show all mods
+
         private ThingDef selectedStuff;
         private QualityCategory selectedQuality = QualityCategory.Normal;
         private int craftCount = 1;
@@ -476,6 +552,10 @@ namespace FullyAutomaticOmniCrafter
             else
                 source = OmniCrafterCache.AllCraftable;
 
+            // Mod 筛选器
+            if (selectedModFilter != null)
+                source = source.Where(d => OmniCrafterCache.GetModName(d) == selectedModFilter).ToList();
+
             string q = searchText?.ToLower() ?? "";
             if (!q.NullOrEmpty())
             {
@@ -483,17 +563,31 @@ namespace FullyAutomaticOmniCrafter
                 {
                     lastSearch = q;
                     searchCache = source.Where(d =>
-                        (d.label != null && d.label.ToLower().Contains(q)) ||
-                        (d.defName != null && d.defName.ToLower().Contains(q))).ToList();
+                    {
+                        try
+                        {
+                            return (d.label != null && d.label.ToLower().Contains(q)) ||
+                                   (d.defName != null && d.defName.ToLower().Contains(q));
+                        }
+                        catch { return false; }
+                    }).ToList();
                 }
                 source = searchCache;
             }
 
-            switch (sortMode)
+            try
             {
-                case SortMode.Value: return source.OrderByDescending(d => d.GetStatValueAbstract(StatDefOf.MarketValue)).ToList();
-                case SortMode.Weight: return source.OrderBy(d => d.GetStatValueAbstract(StatDefOf.Mass)).ToList();
-                default: return source.OrderBy(d => d.label ?? d.defName).ToList();
+                switch (sortMode)
+                {
+                    case SortMode.Value: return source.OrderByDescending(d => { try { return d.GetStatValueAbstract(StatDefOf.MarketValue); } catch { return 0f; } }).ToList();
+                    case SortMode.Weight: return source.OrderBy(d => { try { return d.GetStatValueAbstract(StatDefOf.Mass); } catch { return 0f; } }).ToList();
+                    default: return source.OrderBy(d => d.label ?? d.defName).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniCrafter] BuildFilteredList sort failed: {ex.Message}");
+                return source;
             }
         }
 
@@ -505,7 +599,11 @@ namespace FullyAutomaticOmniCrafter
             Rect sortBar = new Rect(rect.x, rect.y, rect.width, 28f);
             DrawSortButtons(sortBar);
 
-            Rect gridArea = new Rect(rect.x, rect.y + 32f, rect.width, rect.height - 32f);
+            // Mod filter bar
+            Rect modFilterBar = new Rect(rect.x, rect.y + 32f, rect.width, 28f);
+            DrawModFilterBar(modFilterBar);
+
+            Rect gridArea = new Rect(rect.x, rect.y + 64f, rect.width, rect.height - 64f);
             List<ThingDef> list = CurrentList;
 
             float iconSize = 64f;
@@ -533,7 +631,15 @@ namespace FullyAutomaticOmniCrafter
                 if (selectedDef == def) Widgets.DrawHighlight(ir);
                 else Widgets.DrawHighlightIfMouseover(ir);
 
-                Widgets.ThingIcon(ir, def);
+                // 外源异常捕获：某些 Mod 的物品可能缺少贴图或图标数据
+                try { Widgets.ThingIcon(ir, def); }
+                catch (Exception ex)
+                {
+                    Log.Warning($"[OmniCrafter] ThingIcon failed for '{def?.defName}': {ex.Message}");
+                    GUI.color = Color.gray;
+                    Widgets.DrawBox(ir);
+                    GUI.color = Color.white;
+                }
 
                 if (building.favorites.Contains(def.defName))
                 {
@@ -542,10 +648,51 @@ namespace FullyAutomaticOmniCrafter
                     GUI.color = Color.white;
                 }
 
-                TooltipHandler.TipRegion(ir, def.LabelCap + (def.description.NullOrEmpty() ? "" : "\n" + def.description));
+                // 外源异常捕获：description 可能含非法字符
+                try
+                {
+                    string tip = def.LabelCap + (def.description.NullOrEmpty() ? "" : "\n" + def.description);
+                    TooltipHandler.TipRegion(ir, tip);
+                }
+                catch { TooltipHandler.TipRegion(ir, def?.defName ?? "?"); }
+
                 if (Widgets.ButtonInvisible(ir)) SelectDef(def);
             }
             Widgets.EndScrollView();
+        }
+
+        private void DrawModFilterBar(Rect rect)
+        {
+            float x = rect.x + 4f;
+            Widgets.Label(new Rect(x, rect.y + 2f, 44f, 24f), "Mod:");
+            x += 46f;
+
+            // "All" button
+            if (selectedModFilter == null) GUI.color = Color.cyan;
+            if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 48f, 24f), "All"))
+            {
+                selectedModFilter = null;
+                currentList = null;
+                searchCache = null;
+            }
+            GUI.color = Color.white;
+            x += 50f;
+
+            // Show current filter name button (opens FloatMenu to pick a mod)
+            string currentLabel = selectedModFilter ?? "All";
+            string btnLabel = currentLabel.Length > 20 ? currentLabel.Substring(0, 18) + "…" : currentLabel;
+            if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 180f, 24f), $"▼ {btnLabel}"))
+            {
+                var modNames = OmniCrafterCache.AllModNames;
+                var options = new List<FloatMenuOption>();
+                options.Add(new FloatMenuOption("All Mods", () => { selectedModFilter = null; currentList = null; searchCache = null; }));
+                foreach (string mod in modNames)
+                {
+                    string captured = mod;
+                    options.Add(new FloatMenuOption(captured, () => { selectedModFilter = captured; currentList = null; searchCache = null; }));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
         }
 
         private void DrawSortButtons(Rect rect)
@@ -588,7 +735,8 @@ namespace FullyAutomaticOmniCrafter
 
             // Icon + Name + Favorite
             Rect ir = new Rect(rect.x, y, 64f, 64f);
-            Widgets.ThingIcon(ir, selectedDef, selectedStuff);
+            try { Widgets.ThingIcon(ir, selectedDef, selectedStuff); }
+            catch { Widgets.DrawBox(ir); }
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x + 70f, y, w - 70f, 32f), selectedDef.LabelCap);
             Text.Font = GameFont.Small;
