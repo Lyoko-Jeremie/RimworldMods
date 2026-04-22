@@ -35,24 +35,55 @@ namespace FullyAutomaticOmniCrafter
     {
         private static List<ThingDef> _allCraftable;
         private static Dictionary<ThingCategoryDef, List<ThingDef>> _byCategory;
+        private static Game _cachedForGame;
 
         public static List<ThingDef> AllCraftable
         {
-            get { if (_allCraftable == null) BuildCache(); return _allCraftable; }
+            get { InvalidateIfNeeded(); if (_allCraftable == null) BuildCache(); return _allCraftable; }
         }
 
         public static Dictionary<ThingCategoryDef, List<ThingDef>> ByCategory
         {
-            get { if (_byCategory == null) BuildCache(); return _byCategory; }
+            get { InvalidateIfNeeded(); if (_byCategory == null) BuildCache(); return _byCategory; }
+        }
+
+        public static void Reset()
+        {
+            _allCraftable = null;
+            _byCategory = null;
+            _cachedForGame = null;
+        }
+
+        private static void InvalidateIfNeeded()
+        {
+            if (Current.Game != _cachedForGame)
+            {
+                _allCraftable = null;
+                _byCategory = null;
+                _cachedForGame = Current.Game;
+            }
         }
 
         private static void BuildCache()
         {
             _allCraftable = new List<ThingDef>();
+            var alreadyAdded = new HashSet<ThingDef>();
+
             foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
             {
-                if (IsValidCraftable(def)) _allCraftable.Add(def);
+                if (IsValidCraftable(def) && alreadyAdded.Add(def))
+                    _allCraftable.Add(def);
             }
+
+            // 植物特殊处理：将可收割植物的收获产物加入列表
+            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
+            {
+                if (def.plant?.harvestedThingDef == null) continue;
+                ThingDef harvested = def.plant.harvestedThingDef;
+                if (IsValidCraftable(harvested) && alreadyAdded.Add(harvested))
+                    _allCraftable.Add(harvested);
+            }
+
             _allCraftable.SortBy(d => d.label ?? d.defName);
 
             _byCategory = new Dictionary<ThingCategoryDef, List<ThingDef>>();
@@ -218,7 +249,10 @@ namespace FullyAutomaticOmniCrafter
             int remaining = count;
             while (remaining > 0)
             {
-                int stackMax = def.stackLimit > 0 ? def.stackLimit : 1;
+                // 建筑打包为 MinifiedThing，每次只能生成 1 个
+                int stackMax = (def.category == ThingCategory.Building)
+                    ? 1
+                    : (def.stackLimit > 0 ? def.stackLimit : 1);
                 int stackSize = Mathf.Min(remaining, stackMax);
                 Thing thing = MakeThing(def, stuff, quality, stackSize);
                 if (thing == null) { remaining--; continue; }
@@ -401,10 +435,10 @@ namespace FullyAutomaticOmniCrafter
             float y = 0f;
 
             DrawNavItem(new Rect(0f, y, view.width, lh), "★ " + "OmniCrafter_Favorites".Translate(),
-                showFavorites, () => { showFavorites = true; showRecent = false; selectedCategory = null; currentList = null; });
+                showFavorites, () => { showFavorites = true; showRecent = false; selectedCategory = null; currentList = null; searchCache = null; });
             y += lh;
             DrawNavItem(new Rect(0f, y, view.width, lh), "⟳ " + "OmniCrafter_Recent".Translate(),
-                showRecent, () => { showRecent = true; showFavorites = false; selectedCategory = null; currentList = null; });
+                showRecent, () => { showRecent = true; showFavorites = false; selectedCategory = null; currentList = null; searchCache = null; });
             y += lh + 6f;
 
             foreach (var kv in cats)
@@ -412,7 +446,7 @@ namespace FullyAutomaticOmniCrafter
                 ThingCategoryDef cat = kv.Key;
                 string label = (cat.label ?? cat.defName).CapitalizeFirst() + $" ({kv.Value.Count})";
                 DrawNavItem(new Rect(0f, y, view.width, lh), label, selectedCategory == cat,
-                    () => { selectedCategory = cat; showFavorites = false; showRecent = false; currentList = null; });
+                    () => { selectedCategory = cat; showFavorites = false; showRecent = false; currentList = null; searchCache = null; });
                 y += lh;
             }
             Widgets.EndScrollView();
@@ -665,16 +699,29 @@ namespace FullyAutomaticOmniCrafter
                 countForCost = craftCount;
             else
                 countForCost = Mathf.Max(0, maintainCount - currentStock);
-            float cost = OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, Mathf.Max(1, countForCost));
+            // 库存满或无需生产时费用为0，避免误导性显示
+            float cost = countForCost > 0
+                ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
+                : 0f;
             bool canAfford = countForCost <= 0 || stored >= cost;
 
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
-                ? $"Stock full ({currentStock}/{maintainCount})\nStored: {stored:F0} Wd"
-                : $"Power Cost: {cost:F0} Wd\nStored: {stored:F0} Wd";
-            Widgets.Label(new Rect(rect.x, y, w, 36f), costLabel);
+                ? $"✔ Stock full ({currentStock}/{maintainCount})\nStored: {stored:F0} Wd"
+                : $"Power Cost: {cost:F0} Wd  /  Stored: {stored:F0} Wd";
+            if (!canAfford) costLabel += "\n⚠ Insufficient power!";
+            Widgets.Label(new Rect(rect.x, y, w, 44f), costLabel);
             GUI.color = Color.white;
-            y += 40f;
+            y += 48f;
+
+            // Building 提示：每次仅能生产1个（MinifiedThing不可堆叠）
+            if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
+            {
+                GUI.color = new Color(1f, 0.85f, 0.2f);
+                Widgets.Label(new Rect(rect.x, y, w, 20f), "⚠ Buildings craft 1 at a time (minified)");
+                GUI.color = Color.white;
+                y += 22f;
+            }
 
             // Action button
             if (productionMode == ProductionMode.FixedCount)
