@@ -9,8 +9,17 @@ using UnityEngine;
 namespace FullyAutomaticOmniCrafter
 {
     // ─── Enums & Data ─────────────────────────────────────────────────────────
-    public enum OutputMode { DropNear, SendToStorage }
-    public enum ProductionMode { FixedCount, MaintainStock }
+    public enum OutputMode
+    {
+        DropNear,
+        SendToStorage
+    }
+
+    public enum ProductionMode
+    {
+        FixedCount,
+        MaintainStock
+    }
 
     public class AutoOrder : IExposable
     {
@@ -40,25 +49,46 @@ namespace FullyAutomaticOmniCrafter
 
         public static List<ThingDef> AllCraftable
         {
-            get { InvalidateIfNeeded(); if (_allCraftable == null) BuildCache(); return _allCraftable; }
+            get
+            {
+                InvalidateIfNeeded();
+                if (_allCraftable == null) BuildCache();
+                return _allCraftable;
+            }
         }
 
         public static Dictionary<ThingCategoryDef, List<ThingDef>> ByCategory
         {
-            get { InvalidateIfNeeded(); if (_byCategory == null) BuildCache(); return _byCategory; }
+            get
+            {
+                InvalidateIfNeeded();
+                if (_byCategory == null) BuildCache();
+                return _byCategory;
+            }
         }
 
         /// <summary>所有可制造物品涉及的 Mod 名称列表（已排序，首项为原版）</summary>
         public static List<string> AllModNames
         {
-            get { InvalidateIfNeeded(); if (_allModNames == null) BuildCache(); return _allModNames; }
+            get
+            {
+                InvalidateIfNeeded();
+                if (_allModNames == null) BuildCache();
+                return _allModNames;
+            }
         }
 
         /// <summary>获取 ThingDef 所属 Mod 的友好名称，外源异常时返回 "Unknown"</summary>
         public static string GetModName(ThingDef def)
         {
-            try { return def?.modContentPack?.Name ?? "Unknown"; }
-            catch { return "Unknown"; }
+            try
+            {
+                return def?.modContentPack?.Name ?? "Unknown";
+            }
+            catch
+            {
+                return "Unknown";
+            }
         }
 
         public static void Reset()
@@ -138,9 +168,16 @@ namespace FullyAutomaticOmniCrafter
             var modSet = new HashSet<string>();
             foreach (ThingDef def in _allCraftable)
             {
-                try { modSet.Add(GetModName(def)); }
-                catch { /* ignore */ }
+                try
+                {
+                    modSet.Add(GetModName(def));
+                }
+                catch
+                {
+                    /* ignore */
+                }
             }
+
             _allModNames = modSet.OrderBy(n => n).ToList();
         }
 
@@ -188,6 +225,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Log.Warning($"[OmniCrafter] CountOnMap failed for '{def?.defName}': {ex.Message}");
             }
+
             return count;
         }
 
@@ -204,11 +242,19 @@ namespace FullyAutomaticOmniCrafter
                         if (!stuff.IsStuff || stuff.stuffProps?.categories == null) continue;
                         foreach (StuffCategoryDef cat in def.stuffCategories)
                         {
-                            if (stuff.stuffProps.categories.Contains(cat)) { result.Add(stuff); break; }
+                            if (stuff.stuffProps.categories.Contains(cat))
+                            {
+                                result.Add(stuff);
+                                break;
+                            }
                         }
                     }
-                    catch { /* skip malformed stuff def */ }
+                    catch
+                    {
+                        /* skip malformed stuff def */
+                    }
                 }
+
                 result.SortBy(s => s.label ?? s.defName);
                 return result;
             }
@@ -249,6 +295,7 @@ namespace FullyAutomaticOmniCrafter
                 bat.DrawPower(draw);
                 remaining -= draw;
             }
+
             return true;
         }
     }
@@ -261,7 +308,9 @@ namespace FullyAutomaticOmniCrafter
         public List<AutoOrder> autoOrders = new List<AutoOrder>();
 
         private CompPowerTrader powerComp;
+
         private int rareTickCounter = 0;
+
         // TickRare = every 250 ticks; we want ~every 1000 ticks (4 rare ticks)
         private const int RareTicksPerCheck = 4;
 
@@ -328,7 +377,11 @@ namespace FullyAutomaticOmniCrafter
                     : (def.stackLimit > 0 ? def.stackLimit : 1);
                 int stackSize = Mathf.Min(remaining, stackMax);
                 Thing thing = MakeThing(def, stuff, quality, stackSize);
-                if (thing == null) { remaining--; continue; }
+                if (thing == null)
+                {
+                    remaining--;
+                    continue;
+                }
 
                 if (mode == OutputMode.SendToStorage)
                 {
@@ -417,7 +470,7 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconLaunchReport =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_LaunchReport", true) ?? BaseContent.WhiteTex;
     }
-    
+
     // ─── Dialog ───────────────────────────────────────────────────────────────
     public class Dialog_OmniCrafter : Window
     {
@@ -438,7 +491,13 @@ namespace FullyAutomaticOmniCrafter
         private ThingDef selectedDef;
         private List<ThingDef> currentList;
 
-        private enum SortMode { Name, Value, Weight }
+        private enum SortMode
+        {
+            Name,
+            Value,
+            Weight
+        }
+
         private SortMode sortMode = SortMode.Name;
 
         // Mod Filter
@@ -503,7 +562,12 @@ namespace FullyAutomaticOmniCrafter
             float sx = rect.x + 230f;
             Widgets.Label(new Rect(sx, rect.y + 4f, 50f, 26f), "Search:");
             string ns = Widgets.TextField(new Rect(sx + 52f, rect.y + 4f, 280f, 26f), searchText);
-            if (ns != searchText) { searchText = ns; searchCache = null; currentList = null; }
+            if (ns != searchText)
+            {
+                searchText = ns;
+                searchCache = null;
+                currentList = null;
+            }
         }
 
         private void DrawLeftPanel(Rect rect)
@@ -518,10 +582,24 @@ namespace FullyAutomaticOmniCrafter
             float y = 0f;
 
             DrawNavItem(new Rect(0f, y, view.width, lh), "★ " + "OmniCrafter_Favorites".Translate(),
-                showFavorites, () => { showFavorites = true; showRecent = false; selectedCategory = null; currentList = null; searchCache = null; });
+                showFavorites, () =>
+                {
+                    showFavorites = true;
+                    showRecent = false;
+                    selectedCategory = null;
+                    currentList = null;
+                    searchCache = null;
+                });
             y += lh;
             DrawNavItem(new Rect(0f, y, view.width, lh), "⟳ " + "OmniCrafter_Recent".Translate(),
-                showRecent, () => { showRecent = true; showFavorites = false; selectedCategory = null; currentList = null; searchCache = null; });
+                showRecent, () =>
+                {
+                    showRecent = true;
+                    showFavorites = false;
+                    selectedCategory = null;
+                    currentList = null;
+                    searchCache = null;
+                });
             y += lh + 6f;
 
             foreach (var kv in cats)
@@ -529,9 +607,17 @@ namespace FullyAutomaticOmniCrafter
                 ThingCategoryDef cat = kv.Key;
                 string label = (cat.label ?? cat.defName).CapitalizeFirst() + $" ({kv.Value.Count})";
                 DrawNavItem(new Rect(0f, y, view.width, lh), label, selectedCategory == cat,
-                    () => { selectedCategory = cat; showFavorites = false; showRecent = false; currentList = null; searchCache = null; });
+                    () =>
+                    {
+                        selectedCategory = cat;
+                        showFavorites = false;
+                        showRecent = false;
+                        currentList = null;
+                        searchCache = null;
+                    });
                 y += lh;
             }
+
             Widgets.EndScrollView();
         }
 
@@ -547,9 +633,11 @@ namespace FullyAutomaticOmniCrafter
         {
             List<ThingDef> source;
             if (showFavorites)
-                source = building.favorites.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n)).Where(d => d != null).ToList();
+                source = building.favorites.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
+                    .Where(d => d != null).ToList();
             else if (showRecent)
-                source = building.recentCrafted.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n)).Where(d => d != null).ToList();
+                source = building.recentCrafted.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
+                    .Where(d => d != null).ToList();
             else if (selectedCategory != null)
             {
                 List<ThingDef> catList;
@@ -576,9 +664,13 @@ namespace FullyAutomaticOmniCrafter
                             return (d.label != null && d.label.ToLower().Contains(q)) ||
                                    (d.defName != null && d.defName.ToLower().Contains(q));
                         }
-                        catch { return false; }
+                        catch
+                        {
+                            return false;
+                        }
                     }).ToList();
                 }
+
                 source = searchCache;
             }
 
@@ -586,8 +678,30 @@ namespace FullyAutomaticOmniCrafter
             {
                 switch (sortMode)
                 {
-                    case SortMode.Value: return source.OrderByDescending(d => { try { return d.GetStatValueAbstract(StatDefOf.MarketValue); } catch { return 0f; } }).ToList();
-                    case SortMode.Weight: return source.OrderBy(d => { try { return d.GetStatValueAbstract(StatDefOf.Mass); } catch { return 0f; } }).ToList();
+                    case SortMode.Value:
+                        return source.OrderByDescending(d =>
+                        {
+                            try
+                            {
+                                return d.GetStatValueAbstract(StatDefOf.MarketValue);
+                            }
+                            catch
+                            {
+                                return 0f;
+                            }
+                        }).ToList();
+                    case SortMode.Weight:
+                        return source.OrderBy(d =>
+                        {
+                            try
+                            {
+                                return d.GetStatValueAbstract(StatDefOf.Mass);
+                            }
+                            catch
+                            {
+                                return 0f;
+                            }
+                        }).ToList();
                     default: return source.OrderBy(d => d.label ?? d.defName).ToList();
                 }
             }
@@ -639,7 +753,10 @@ namespace FullyAutomaticOmniCrafter
                 else Widgets.DrawHighlightIfMouseover(ir);
 
                 // 外源异常捕获：某些 Mod 的物品可能缺少贴图或图标数据
-                try { Widgets.ThingIcon(ir, def); }
+                try
+                {
+                    Widgets.ThingIcon(ir, def);
+                }
                 catch (Exception ex)
                 {
                     Log.Warning($"[OmniCrafter] ThingIcon failed for '{def?.defName}': {ex.Message}");
@@ -661,10 +778,14 @@ namespace FullyAutomaticOmniCrafter
                     string tip = def.LabelCap + (def.description.NullOrEmpty() ? "" : "\n" + def.description);
                     TooltipHandler.TipRegion(ir, tip);
                 }
-                catch { TooltipHandler.TipRegion(ir, def?.defName ?? "?"); }
+                catch
+                {
+                    TooltipHandler.TipRegion(ir, def?.defName ?? "?");
+                }
 
                 if (Widgets.ButtonInvisible(ir)) SelectDef(def);
             }
+
             Widgets.EndScrollView();
         }
 
@@ -682,6 +803,7 @@ namespace FullyAutomaticOmniCrafter
                 currentList = null;
                 searchCache = null;
             }
+
             GUI.color = Color.white;
             x += 50f;
 
@@ -692,12 +814,23 @@ namespace FullyAutomaticOmniCrafter
             {
                 var modNames = OmniCrafterCache.AllModNames;
                 var options = new List<FloatMenuOption>();
-                options.Add(new FloatMenuOption("All Mods", () => { selectedModFilter = null; currentList = null; searchCache = null; }));
+                options.Add(new FloatMenuOption("All Mods", () =>
+                {
+                    selectedModFilter = null;
+                    currentList = null;
+                    searchCache = null;
+                }));
                 foreach (string mod in modNames)
                 {
                     string captured = mod;
-                    options.Add(new FloatMenuOption(captured, () => { selectedModFilter = captured; currentList = null; searchCache = null; }));
+                    options.Add(new FloatMenuOption(captured, () =>
+                    {
+                        selectedModFilter = captured;
+                        currentList = null;
+                        searchCache = null;
+                    }));
                 }
+
                 Find.WindowStack.Add(new FloatMenu(options));
             }
         }
@@ -711,7 +844,11 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (sortMode == sm) GUI.color = Color.cyan;
                 if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 72f, 24f), sm.ToString()))
-                { sortMode = sm; currentList = null; }
+                {
+                    sortMode = sm;
+                    currentList = null;
+                }
+
                 GUI.color = Color.white;
                 x += 74f;
             }
@@ -742,28 +879,39 @@ namespace FullyAutomaticOmniCrafter
 
             // Icon + Name + Favorite
             Rect ir = new Rect(rect.x, y, 64f, 64f);
-            try { Widgets.ThingIcon(ir, selectedDef, selectedStuff); }
-            catch { Widgets.DrawBox(ir); }
+            try
+            {
+                Widgets.ThingIcon(ir, selectedDef, selectedStuff);
+            }
+            catch
+            {
+                Widgets.DrawBox(ir);
+            }
+
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x + 70f, y, w - 70f, 32f), selectedDef.LabelCap);
             Text.Font = GameFont.Small;
             bool isFav = building.favorites.Contains(selectedDef.defName);
             if (Widgets.ButtonText(new Rect(rect.x + 70f, y + 34f, 120f, 24f),
-                isFav ? "★ Unfavorite" : "☆ Favorite"))
+                    isFav ? "★ Unfavorite" : "☆ Favorite"))
             {
                 if (isFav) building.favorites.Remove(selectedDef.defName);
                 else building.favorites.Add(selectedDef.defName);
             }
+
             y += 70f;
 
             if (!selectedDef.description.NullOrEmpty())
             {
-                string desc = selectedDef.description.Length > 160 ? selectedDef.description.Substring(0, 157) + "..." : selectedDef.description;
+                string desc = selectedDef.description.Length > 160
+                    ? selectedDef.description.Substring(0, 157) + "..."
+                    : selectedDef.description;
                 Widgets.Label(new Rect(rect.x, y, w, 56f), desc);
                 y += 60f;
             }
 
-            Widgets.DrawLineHorizontal(rect.x, y, w); y += 6f;
+            Widgets.DrawLineHorizontal(rect.x, y, w);
+            y += 6f;
 
             // Stuff
             if (validStuffs != null && validStuffs.Count > 0)
@@ -779,8 +927,10 @@ namespace FullyAutomaticOmniCrafter
                         selectedStuff = validStuffs[i];
                     GUI.color = Color.white;
                 }
+
                 y += Mathf.CeilToInt((float)validStuffs.Count / stuffCols) * 26f + 4f;
-                Widgets.DrawLineHorizontal(rect.x, y, w); y += 6f;
+                Widgets.DrawLineHorizontal(rect.x, y, w);
+                y += 6f;
             }
 
             // Quality
@@ -798,16 +948,20 @@ namespace FullyAutomaticOmniCrafter
                     if (Widgets.ButtonText(qr, quals[i].GetLabel())) selectedQuality = quals[i];
                     GUI.color = Color.white;
                 }
+
                 y += Mathf.CeilToInt((float)quals.Length / qCols) * 26f + 4f;
-                Widgets.DrawLineHorizontal(rect.x, y, w); y += 6f;
+                Widgets.DrawLineHorizontal(rect.x, y, w);
+                y += 6f;
             }
 
             // Production mode
             Widgets.Label(new Rect(rect.x, y, w, 20f), "Mode:");
             y += 22f;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w / 2f - 2f, 24f), "Fixed Count", productionMode == ProductionMode.FixedCount))
+            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w / 2f - 2f, 24f), "Fixed Count",
+                    productionMode == ProductionMode.FixedCount))
                 productionMode = ProductionMode.FixedCount;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x + w / 2f, y, w / 2f - 2f, 24f), "Maintain Stock", productionMode == ProductionMode.MaintainStock))
+            if (Widgets.RadioButtonLabeled(new Rect(rect.x + w / 2f, y, w / 2f - 2f, 24f), "Maintain Stock",
+                    productionMode == ProductionMode.MaintainStock))
                 productionMode = ProductionMode.MaintainStock;
             y += 28f;
 
@@ -827,6 +981,7 @@ namespace FullyAutomaticOmniCrafter
                 if (Widgets.ButtonText(new Rect(rect.x + 160f, y, 24f, 24f), "+")) maintainCount++;
                 if (maintainCount > 1 && Widgets.ButtonText(new Rect(rect.x + 186f, y, 24f, 24f), "-")) maintainCount--;
             }
+
             y += 28f;
 
             // Output mode
@@ -835,11 +990,13 @@ namespace FullyAutomaticOmniCrafter
             if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w, 24f), "Drop Near", outputMode == OutputMode.DropNear))
                 outputMode = OutputMode.DropNear;
             y += 26f;
-            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w, 24f), "Send To Storage", outputMode == OutputMode.SendToStorage))
+            if (Widgets.RadioButtonLabeled(new Rect(rect.x, y, w, 24f), "Send To Storage",
+                    outputMode == OutputMode.SendToStorage))
                 outputMode = OutputMode.SendToStorage;
             y += 30f;
 
-            Widgets.DrawLineHorizontal(rect.x, y, w); y += 6f;
+            Widgets.DrawLineHorizontal(rect.x, y, w);
+            y += 6f;
 
             // Current stock
             int currentStock = OmniCrafterCache.CountOnMap(selectedDef, building.Map);
@@ -893,8 +1050,10 @@ namespace FullyAutomaticOmniCrafter
                         SoundDefOf.ExecuteTrade.PlayOneShotOnCamera();
                     }
                     else
-                        Messages.Message("OmniCrafter_NotEnoughPower".Translate(), building, MessageTypeDefOf.RejectInput, false);
+                        Messages.Message("OmniCrafter_NotEnoughPower".Translate(), building,
+                            MessageTypeDefOf.RejectInput, false);
                 }
+
                 GUI.color = Color.white;
                 y += 36f;
             }
@@ -918,13 +1077,15 @@ namespace FullyAutomaticOmniCrafter
                         building.AddRecent(selectedDef);
                     }
                 }
+
                 y += 36f;
             }
 
             // Auto order list
             if (building.autoOrders.Count > 0)
             {
-                Widgets.DrawLineHorizontal(rect.x, y, w); y += 4f;
+                Widgets.DrawLineHorizontal(rect.x, y, w);
+                y += 4f;
                 Widgets.Label(new Rect(rect.x, y, w, 20f), $"Auto Orders ({building.autoOrders.Count}):");
                 y += 22f;
                 float listH = rect.yMax - y;
@@ -939,12 +1100,17 @@ namespace FullyAutomaticOmniCrafter
                         int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
                         bool full = onMap >= ao.targetCount;
                         GUI.color = full ? Color.green : Color.white;
-                        string lbl = (ao.thingDef?.LabelCap ?? "?") + $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
+                        string lbl = (ao.thingDef?.LabelCap ?? "?") +
+                                     $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
                         Widgets.Label(new Rect(0f, i * 22f, lv.width - 24f, 20f), lbl);
                         GUI.color = Color.white;
                         if (Widgets.ButtonText(new Rect(lv.width - 22f, i * 22f, 22f, 20f), "X"))
-                        { building.autoOrders.RemoveAt(i); break; }
+                        {
+                            building.autoOrders.RemoveAt(i);
+                            break;
+                        }
                     }
+
                     Widgets.EndScrollView();
                 }
             }
