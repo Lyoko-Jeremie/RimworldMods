@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OmniCrafter_OpenUI>打开万能制造机</OmniCrafter_OpenUI>
+  <OmniCrafter_OpenUIDesc>打开万能制造机界面，合成任意物品。</OmniCrafter_OpenUIDesc>
+  <OmniCrafter_Title>万能制造机</OmniCrafter_Title>
+  <OmniCrafter_Favorites>收藏夹</OmniCrafter_Favorites>
+  <OmniCrafter_Recent>最近生产</OmniCrafter_Recent>
+  <OmniCrafter_SelectItem>从左侧列表选择物品以开始生产。</OmniCrafter_SelectItem>
+  <OmniCrafter_NotEnoughPower>电网储能不足！</OmniCrafter_NotEnoughPower>
+</LanguageData>

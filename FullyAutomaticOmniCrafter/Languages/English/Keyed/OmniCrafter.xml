@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OmniCrafter_OpenUI>Open OmniCrafter</OmniCrafter_OpenUI>
+  <OmniCrafter_OpenUIDesc>Open the OmniCrafter interface to produce any item.</OmniCrafter_OpenUIDesc>
+  <OmniCrafter_Title>Omni Crafter</OmniCrafter_Title>
+  <OmniCrafter_Favorites>Favorites</OmniCrafter_Favorites>
+  <OmniCrafter_Recent>Recent</OmniCrafter_Recent>
+  <OmniCrafter_SelectItem>Select an item from the list to get started.</OmniCrafter_SelectItem>
+  <OmniCrafter_NotEnoughPower>Not enough stored power in the grid!</OmniCrafter_NotEnoughPower>
+</LanguageData>
