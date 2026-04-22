@@ -313,9 +313,6 @@ namespace FullyAutomaticOmniCrafter
 
         private int rareTickCounter = 0;
 
-        // TickRare = every 250 ticks; we want ~every 1000 ticks (4 rare ticks)
-        private const int RareTicksPerCheck = 4;
-
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
@@ -336,12 +333,7 @@ namespace FullyAutomaticOmniCrafter
         public override void TickRare()
         {
             base.TickRare();
-            rareTickCounter++;
-            if (rareTickCounter >= RareTicksPerCheck)
-            {
-                rareTickCounter = 0;
-                ProcessAutoOrders();
-            }
+            ProcessAutoOrders();
         }
 
         private void ProcessAutoOrders()
