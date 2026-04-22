@@ -19,6 +19,7 @@
     <OmniCrafter_ModAll>All</OmniCrafter_ModAll>
     <OmniCrafter_AllMods>All Mods</OmniCrafter_AllMods>
     <!-- Right panel - item detail -->
+    <OmniCrafter_FromMod>From Mod: {0}</OmniCrafter_FromMod>
     <OmniCrafter_Unfavorite>★ Unfavorite</OmniCrafter_Unfavorite>
     <OmniCrafter_Favorite>☆ Favorite</OmniCrafter_Favorite>
     <OmniCrafter_Material>Material:</OmniCrafter_Material>

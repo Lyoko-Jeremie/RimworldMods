@@ -19,6 +19,7 @@
     <OmniCrafter_ModAll>全部</OmniCrafter_ModAll>
     <OmniCrafter_AllMods>全部Mod</OmniCrafter_AllMods>
     <!-- 右侧面板 - 物品详情 -->
+    <OmniCrafter_FromMod>来自Mod：{0}</OmniCrafter_FromMod>
     <OmniCrafter_Unfavorite>★ 取消收藏</OmniCrafter_Unfavorite>
     <OmniCrafter_Favorite>☆ 收藏</OmniCrafter_Favorite>
     <OmniCrafter_Material>材料：</OmniCrafter_Material>

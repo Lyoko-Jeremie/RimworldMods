@@ -1129,7 +1129,7 @@ namespace FullyAutomaticOmniCrafter
             float viewW = w - 16f;
 
             // Estimate content height for the virtual scroll view
-            float contentH = 70f; // icon + name + fav
+            float contentH = 70f + 22f; // icon + name + fav + mod source
             if (!selectedDef.description.NullOrEmpty()) contentH += 60f;
             contentH += 6f + 6f; // separators
             if (validStuffs != null && validStuffs.Count > 0) contentH += 22f + 28f + 12f;
@@ -1165,6 +1165,13 @@ namespace FullyAutomaticOmniCrafter
             }
 
             y += 70f;
+
+            // Mod source
+            string modName = OmniCrafterCache.GetModName(selectedDef);
+            GUI.color = new Color(0.7f, 0.85f, 1f);
+            Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_FromMod".Translate(modName));
+            GUI.color = Color.white;
+            y += 22f;
 
             if (!selectedDef.description.NullOrEmpty())
             {
