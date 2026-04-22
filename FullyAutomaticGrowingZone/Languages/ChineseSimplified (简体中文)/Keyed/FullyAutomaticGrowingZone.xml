@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- Use in dll -->
 <LanguageData>
     <FullyAutomaticGrowingZone_autoSow>自动播种</FullyAutomaticGrowingZone_autoSow>
@@ -9,4 +9,8 @@
     <FullyAutomaticGrowingZone_autoStoreDesc>开启后，收获的作物将自动搬运到仓库。关闭则直接掉落在田地上。</FullyAutomaticGrowingZone_autoStoreDesc>
     <FullyAutomaticGrowingZone_flushVirtualBuffer>刷新虚拟仓库</FullyAutomaticGrowingZone_flushVirtualBuffer>
     <FullyAutomaticGrowingZone_flushVirtualBufferDesc>立即将虚拟仓库中暂存的所有物资刷出到仓库或田地上。</FullyAutomaticGrowingZone_flushVirtualBufferDesc>
+    <FullyAutomaticGrowingZone_harvestAll>立即全部收获/割除</FullyAutomaticGrowingZone_harvestAll>
+    <FullyAutomaticGrowingZone_harvestAllDesc>立即收获本区域内所有成熟植物。尚未成熟的植物将被直接销毁。</FullyAutomaticGrowingZone_harvestAllDesc>
+    <FullyAutomaticGrowingZone_harvestBlighted>立即收获/割除枯萎病植物</FullyAutomaticGrowingZone_harvestBlighted>
+    <FullyAutomaticGrowingZone_harvestBlightedDesc>立即收获或销毁本区域内所有患有枯萎病的植物。</FullyAutomaticGrowingZone_harvestBlightedDesc>
 </LanguageData>

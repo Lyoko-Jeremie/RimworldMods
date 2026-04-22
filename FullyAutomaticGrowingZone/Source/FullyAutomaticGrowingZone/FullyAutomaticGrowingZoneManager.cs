@@ -546,6 +546,12 @@ namespace FullyAutomaticGrowingZone
 
         public static readonly Texture2D IconFlushBuffer =
             ContentFinder<Texture2D>.Get("UI/Commands/flushVirtualBufferGrowingZone", true) ?? BaseContent.WhiteTex;
+        
+        public static readonly Texture2D IconHarvest =
+            ContentFinder<Texture2D>.Get("UI/Commands/Harvest", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconCutAllBlightedPlants =
+            ContentFinder<Texture2D>.Get("UI/Commands/CutAllBlightedPlants", true) ?? BaseContent.WhiteTex;
     }
 
     [HarmonyPatch(typeof(Zone_Growing), "GetGizmos")]
@@ -640,6 +646,59 @@ namespace FullyAutomaticGrowingZone
                     action = () => { comp.FlushVirtualBuffer(); }
                 };
             }
+
+            // 立即全部收获/割除：对区域内所有植物执行收获（可收获则收获，否则直接销毁）
+            yield return new Command_Action
+            {
+                defaultLabel = "FullyAutomaticGrowingZone_harvestAll".Translate(),
+                defaultDesc = "FullyAutomaticGrowingZone_harvestAllDesc".Translate(),
+                icon = FullyAutomaticGrowingZoneTex.IconHarvest,
+                action = () =>
+                {
+                    foreach (IntVec3 cell in __instance.Cells)
+                    {
+                        Plant plant = cell.GetPlant(__instance.Map);
+                        if (plant == null || plant.Destroyed) continue;
+                        if (plant.HarvestableNow)
+                        {
+                            comp.ExecuteHarvest(plant);
+                        }
+                        else
+                        {
+                            bool isPerennial = !plant.def.plant.HarvestDestroys;
+                            plant.Destroy(DestroyMode.Vanish);
+                            if (!isPerennial && comp.IsAutoSow(cell))
+                                comp.pendingCellsToSow.Add(cell);
+                        }
+                    }
+                }
+            };
+
+            // 立即收获/割除枯萎病植物：仅对患有枯萎病的植物执行收获或销毁
+            yield return new Command_Action
+            {
+                defaultLabel = "FullyAutomaticGrowingZone_harvestBlighted".Translate(),
+                defaultDesc = "FullyAutomaticGrowingZone_harvestBlightedDesc".Translate(),
+                icon = FullyAutomaticGrowingZoneTex.IconCutAllBlightedPlants,
+                action = () =>
+                {
+                    foreach (IntVec3 cell in __instance.Cells)
+                    {
+                        Plant plant = cell.GetPlant(__instance.Map);
+                        if (plant == null || plant.Destroyed || !plant.Blighted) continue;
+                        if (plant.HarvestableNow)
+                        {
+                            comp.ExecuteHarvest(plant);
+                        }
+                        else
+                        {
+                            plant.Destroy(DestroyMode.Vanish);
+                            if (comp.IsAutoSow(cell))
+                                comp.pendingCellsToSow.Add(cell);
+                        }
+                    }
+                }
+            };
 
             // Debug: instantly mature all plants in this zone
             if (DebugSettings.godMode)

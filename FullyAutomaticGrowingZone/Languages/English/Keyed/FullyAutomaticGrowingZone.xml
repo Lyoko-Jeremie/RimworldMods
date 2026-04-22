@@ -9,4 +9,8 @@
     <FullyAutomaticGrowingZone_autoStoreDesc>When enabled, harvested crops will be hauled to storage automatically. When disabled, they will drop directly on the field.</FullyAutomaticGrowingZone_autoStoreDesc>
     <FullyAutomaticGrowingZone_flushVirtualBuffer>Flush Virtual Storage</FullyAutomaticGrowingZone_flushVirtualBuffer>
     <FullyAutomaticGrowingZone_flushVirtualBufferDesc>Immediately flush all items temporarily stored in virtual storage to storage or onto the field.</FullyAutomaticGrowingZone_flushVirtualBufferDesc>
+    <FullyAutomaticGrowingZone_harvestAll>Harvest / Cut All</FullyAutomaticGrowingZone_harvestAll>
+    <FullyAutomaticGrowingZone_harvestAllDesc>Immediately harvest all mature plants in this zone. Plants that are not yet harvestable will be destroyed.</FullyAutomaticGrowingZone_harvestAllDesc>
+    <FullyAutomaticGrowingZone_harvestBlighted>Harvest / Cut Blighted</FullyAutomaticGrowingZone_harvestBlighted>
+    <FullyAutomaticGrowingZone_harvestBlightedDesc>Immediately harvest or destroy all blighted plants in this zone.</FullyAutomaticGrowingZone_harvestBlightedDesc>
 </LanguageData>
