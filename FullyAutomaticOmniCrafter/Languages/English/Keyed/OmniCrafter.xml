@@ -1,11 +1,40 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <OmniCrafter_OpenUI>Open OmniCrafter</OmniCrafter_OpenUI>
-  <OmniCrafter_OpenUIDesc>Open the OmniCrafter interface to produce any item.</OmniCrafter_OpenUIDesc>
-  <OmniCrafter_Title>Omni Crafter</OmniCrafter_Title>
-  <OmniCrafter_All>All</OmniCrafter_All>
-  <OmniCrafter_Favorites>Favorites</OmniCrafter_Favorites>
-  <OmniCrafter_Recent>Recent</OmniCrafter_Recent>
-  <OmniCrafter_SelectItem>Select an item from the list to get started.</OmniCrafter_SelectItem>
-  <OmniCrafter_NotEnoughPower>Not enough stored power in the grid!</OmniCrafter_NotEnoughPower>
+    <OmniCrafter_OpenUI>Open OmniCrafter</OmniCrafter_OpenUI>
+    <OmniCrafter_OpenUIDesc>Open the OmniCrafter interface to produce any item.</OmniCrafter_OpenUIDesc>
+    <OmniCrafter_Title>Omni Crafter</OmniCrafter_Title>
+    <OmniCrafter_All>All</OmniCrafter_All>
+    <OmniCrafter_Favorites>Favorites</OmniCrafter_Favorites>
+    <OmniCrafter_Recent>Recent</OmniCrafter_Recent>
+    <OmniCrafter_SelectItem>Select an item from the list to get started.</OmniCrafter_SelectItem>
+    <OmniCrafter_NotEnoughPower>Not enough stored power in the grid!</OmniCrafter_NotEnoughPower>
+    <!-- Top bar -->
+    <OmniCrafter_Search>Search:</OmniCrafter_Search>
+    <!-- Middle panel - sort & mod filter -->
+    <OmniCrafter_Sort>Sort:</OmniCrafter_Sort>
+    <OmniCrafter_Mod>Mod:</OmniCrafter_Mod>
+    <OmniCrafter_ModAll>All</OmniCrafter_ModAll>
+    <OmniCrafter_AllMods>All Mods</OmniCrafter_AllMods>
+    <!-- Right panel - item detail -->
+    <OmniCrafter_Unfavorite>★ Unfavorite</OmniCrafter_Unfavorite>
+    <OmniCrafter_Favorite>☆ Favorite</OmniCrafter_Favorite>
+    <OmniCrafter_Material>Material:</OmniCrafter_Material>
+    <OmniCrafter_Quality>Quality:</OmniCrafter_Quality>
+    <OmniCrafter_Mode>Mode:</OmniCrafter_Mode>
+    <OmniCrafter_FixedCount>Fixed Count</OmniCrafter_FixedCount>
+    <OmniCrafter_MaintainStock>Maintain Stock</OmniCrafter_MaintainStock>
+    <OmniCrafter_Count>Count:</OmniCrafter_Count>
+    <OmniCrafter_TargetStock>Target Stock:</OmniCrafter_TargetStock>
+    <OmniCrafter_Output>Output:</OmniCrafter_Output>
+    <OmniCrafter_DropNear>Drop Near</OmniCrafter_DropNear>
+    <OmniCrafter_SendToStorage>Send To Storage</OmniCrafter_SendToStorage>
+    <OmniCrafter_OnMap>On Map: {0}</OmniCrafter_OnMap>
+    <OmniCrafter_StockFull>✔ Stock full ({0}/{1})\nStored: {2} Wd</OmniCrafter_StockFull>
+    <OmniCrafter_PowerCostLabel>Power Cost: {0} Wd / Stored: {1} Wd</OmniCrafter_PowerCostLabel>
+    <OmniCrafter_InsufficientPowerWarning>\n⚠ Insufficient power!</OmniCrafter_InsufficientPowerWarning>
+    <OmniCrafter_BuildingOneAtATime>⚠ Buildings craft 1 at a time (minified)</OmniCrafter_BuildingOneAtATime>
+    <OmniCrafter_CraftX>Craft x{0}</OmniCrafter_CraftX>
+    <OmniCrafter_AddAutoOrder>Add Auto Order</OmniCrafter_AddAutoOrder>
+    <OmniCrafter_RemoveAutoOrder>Remove Auto Order</OmniCrafter_RemoveAutoOrder>
+    <OmniCrafter_AutoOrdersHeader>Auto Orders ({0}):</OmniCrafter_AutoOrdersHeader>
 </LanguageData>

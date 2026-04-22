@@ -566,7 +566,7 @@ namespace FullyAutomaticOmniCrafter
             Text.Font = GameFont.Small;
 
             float sx = rect.x + 230f;
-            Widgets.Label(new Rect(sx, rect.y + 4f, 50f, 26f), "Search:");
+            Widgets.Label(new Rect(sx, rect.y + 4f, 50f, 26f), "OmniCrafter_Search".Translate());
             string ns = Widgets.TextField(new Rect(sx + 52f, rect.y + 4f, 280f, 26f), searchText);
             if (ns != searchText)
             {
@@ -948,12 +948,12 @@ namespace FullyAutomaticOmniCrafter
         private void DrawModFilterBar(Rect rect)
         {
             float x = rect.x + 4f;
-            Widgets.Label(new Rect(x, rect.y + 2f, 44f, 24f), "Mod:");
+            Widgets.Label(new Rect(x, rect.y + 2f, 44f, 24f), "OmniCrafter_Mod".Translate());
             x += 46f;
 
             // "All" button
             if (selectedModFilter == null) GUI.color = Color.cyan;
-            if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 48f, 24f), "All"))
+            if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 48f, 24f), "OmniCrafter_ModAll".Translate()))
             {
                 selectedModFilter = null;
                 currentList = null;
@@ -964,13 +964,13 @@ namespace FullyAutomaticOmniCrafter
             x += 50f;
 
             // Show current filter name button (opens FloatMenu to pick a mod)
-            string currentLabel = selectedModFilter ?? "All";
+            string currentLabel = selectedModFilter ?? "OmniCrafter_ModAll".Translate();
             string btnLabel = currentLabel.Length > 20 ? currentLabel.Substring(0, 18) + "…" : currentLabel;
             if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 180f, 24f), $"▼ {btnLabel}"))
             {
                 var modNames = OmniCrafterCache.AllModNames;
                 var options = new List<FloatMenuOption>();
-                options.Add(new FloatMenuOption("All Mods", () =>
+                options.Add(new FloatMenuOption("OmniCrafter_AllMods".Translate(), () =>
                 {
                     selectedModFilter = null;
                     currentList = null;
@@ -994,7 +994,7 @@ namespace FullyAutomaticOmniCrafter
         private void DrawSortButtons(Rect rect)
         {
             float x = rect.x + 4f;
-            Widgets.Label(new Rect(x, rect.y + 2f, 36f, 24f), "Sort:");
+            Widgets.Label(new Rect(x, rect.y + 2f, 36f, 24f), "OmniCrafter_Sort".Translate());
             x += 38f;
             foreach (SortMode sm in Enum.GetValues(typeof(SortMode)))
             {
@@ -1063,7 +1063,8 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(70f, y, viewW - 70f, 32f), selectedDef.LabelCap);
             Text.Font = GameFont.Small;
             bool isFav = building.favorites.Contains(selectedDef.defName);
-            if (Widgets.ButtonText(new Rect(70f, y + 34f, 120f, 24f), isFav ? "★ Unfavorite" : "☆ Favorite"))
+            if (Widgets.ButtonText(new Rect(70f, y + 34f, 120f, 24f),
+                    isFav ? "OmniCrafter_Unfavorite".Translate() : "OmniCrafter_Favorite".Translate()))
             {
                 if (isFav) building.favorites.Remove(selectedDef.defName);
                 else building.favorites.Add(selectedDef.defName);
@@ -1086,7 +1087,7 @@ namespace FullyAutomaticOmniCrafter
             // Stuff — dropdown
             if (validStuffs != null && validStuffs.Count > 0)
             {
-                Widgets.Label(new Rect(0f, y, 80f, 22f), "Material:");
+                Widgets.Label(new Rect(0f, y, 80f, 22f), "OmniCrafter_Material".Translate());
                 string stuffLabel = selectedStuff != null
                     ? (selectedStuff.label ?? selectedStuff.defName).CapitalizeFirst()
                     : "None";
@@ -1112,7 +1113,7 @@ namespace FullyAutomaticOmniCrafter
             // Quality — dropdown
             if (selectedDef.HasComp(typeof(CompQuality)))
             {
-                Widgets.Label(new Rect(0f, y, 80f, 22f), "Quality:");
+                Widgets.Label(new Rect(0f, y, 80f, 22f), "OmniCrafter_Quality".Translate());
                 if (Widgets.ButtonText(new Rect(84f, y, viewW - 84f, 24f), $"▼ {selectedQuality.GetLabel()}"))
                 {
                     var qualOptions = new List<FloatMenuOption>();
@@ -1133,19 +1134,20 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // Production mode
-            Widgets.Label(new Rect(0f, y, viewW, 20f), "Mode:");
+            Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_Mode".Translate());
             y += 22f;
-            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW / 2f - 2f, 24f), "Fixed Count",
+            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW / 2f - 2f, 24f), "OmniCrafter_FixedCount".Translate(),
                     productionMode == ProductionMode.FixedCount))
                 productionMode = ProductionMode.FixedCount;
-            if (Widgets.RadioButtonLabeled(new Rect(viewW / 2f, y, viewW / 2f - 2f, 24f), "Maintain Stock",
+            if (Widgets.RadioButtonLabeled(new Rect(viewW / 2f, y, viewW / 2f - 2f, 24f),
+                    "OmniCrafter_MaintainStock".Translate(),
                     productionMode == ProductionMode.MaintainStock))
                 productionMode = ProductionMode.MaintainStock;
             y += 28f;
 
             if (productionMode == ProductionMode.FixedCount)
             {
-                Widgets.Label(new Rect(0f, y, 60f, 24f), "Count:");
+                Widgets.Label(new Rect(0f, y, 60f, 24f), "OmniCrafter_Count".Translate());
                 string cs = Widgets.TextField(new Rect(62f, y, 55f, 24f), craftCount.ToString());
                 if (int.TryParse(cs, out int cp) && cp > 0) craftCount = cp;
                 if (Widgets.ButtonText(new Rect(120f, y, 24f, 24f), "+")) craftCount++;
@@ -1153,7 +1155,7 @@ namespace FullyAutomaticOmniCrafter
             }
             else
             {
-                Widgets.Label(new Rect(0f, y, 100f, 24f), "Target Stock:");
+                Widgets.Label(new Rect(0f, y, 100f, 24f), "OmniCrafter_TargetStock".Translate());
                 string ms = Widgets.TextField(new Rect(102f, y, 55f, 24f), maintainCount.ToString());
                 if (int.TryParse(ms, out int mp) && mp > 0) maintainCount = mp;
                 if (Widgets.ButtonText(new Rect(160f, y, 24f, 24f), "+")) maintainCount++;
@@ -1163,12 +1165,13 @@ namespace FullyAutomaticOmniCrafter
             y += 28f;
 
             // Output mode
-            Widgets.Label(new Rect(0f, y, viewW, 20f), "Output:");
+            Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_Output".Translate());
             y += 22f;
-            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "Drop Near", outputMode == OutputMode.DropNear))
+            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "OmniCrafter_DropNear".Translate(),
+                    outputMode == OutputMode.DropNear))
                 outputMode = OutputMode.DropNear;
             y += 26f;
-            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "Send To Storage",
+            if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "OmniCrafter_SendToStorage".Translate(),
                     outputMode == OutputMode.SendToStorage))
                 outputMode = OutputMode.SendToStorage;
             y += 30f;
@@ -1178,7 +1181,7 @@ namespace FullyAutomaticOmniCrafter
 
             // Current stock
             int currentStock = OmniCrafterCache.CountOnMap(selectedDef, building.Map);
-            Widgets.Label(new Rect(0f, y, viewW, 20f), $"On Map: {currentStock}");
+            Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_OnMap".Translate(currentStock));
             y += 22f;
 
             // Power cost
@@ -1196,9 +1199,9 @@ namespace FullyAutomaticOmniCrafter
 
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
-                ? $"✔ Stock full ({currentStock}/{maintainCount})\nStored: {stored:F0} Wd"
-                : $"Power Cost: {cost:F0} Wd  /  Stored: {stored:F0} Wd";
-            if (!canAfford) costLabel += "\n⚠ Insufficient power!";
+                ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, stored.ToString("F0"))
+                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("F0"), stored.ToString("F0"));
+            if (!canAfford) costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
             Widgets.Label(new Rect(0f, y, viewW, 44f), costLabel);
             GUI.color = Color.white;
             y += 48f;
@@ -1207,7 +1210,7 @@ namespace FullyAutomaticOmniCrafter
             if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
             {
                 GUI.color = new Color(1f, 0.85f, 0.2f);
-                Widgets.Label(new Rect(0f, y, viewW, 20f), "⚠ Buildings craft 1 at a time (minified)");
+                Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_BuildingOneAtATime".Translate());
                 GUI.color = Color.white;
                 y += 22f;
             }
@@ -1216,7 +1219,7 @@ namespace FullyAutomaticOmniCrafter
             if (productionMode == ProductionMode.FixedCount)
             {
                 GUI.color = canAfford ? Color.white : new Color(0.5f, 0.5f, 0.5f);
-                if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), $"Craft x{craftCount}"))
+                if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_CraftX".Translate(craftCount)))
                 {
                     if (canAfford)
                     {
@@ -1238,12 +1241,12 @@ namespace FullyAutomaticOmniCrafter
                 bool hasOrder = building.autoOrders.Any(o => o.thingDef == selectedDef);
                 if (hasOrder)
                 {
-                    if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "Remove Auto Order"))
+                    if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_RemoveAutoOrder".Translate()))
                         building.autoOrders.RemoveAll(o => o.thingDef == selectedDef);
                 }
                 else
                 {
-                    if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "Add Auto Order"))
+                    if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_AddAutoOrder".Translate()))
                     {
                         building.autoOrders.Add(new AutoOrder
                         {
@@ -1262,7 +1265,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 Widgets.DrawLineHorizontal(0f, y, viewW);
                 y += 4f;
-                Widgets.Label(new Rect(0f, y, viewW, 20f), $"Auto Orders ({building.autoOrders.Count}):");
+                Widgets.Label(new Rect(0f, y, viewW, 20f),
+                    "OmniCrafter_AutoOrdersHeader".Translate(building.autoOrders.Count));
                 y += 22f;
                 for (int i = 0; i < building.autoOrders.Count; i++)
                 {

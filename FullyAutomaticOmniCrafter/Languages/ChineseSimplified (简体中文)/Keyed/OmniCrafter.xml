@@ -1,11 +1,40 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <OmniCrafter_OpenUI>打开万能制造机</OmniCrafter_OpenUI>
-  <OmniCrafter_OpenUIDesc>打开万能制造机界面，合成任意物品。</OmniCrafter_OpenUIDesc>
-  <OmniCrafter_Title>万能制造机</OmniCrafter_Title>
-  <OmniCrafter_All>全部</OmniCrafter_All>
-  <OmniCrafter_Favorites>收藏夹</OmniCrafter_Favorites>
-  <OmniCrafter_Recent>最近生产</OmniCrafter_Recent>
-  <OmniCrafter_SelectItem>从左侧列表选择物品以开始生产。</OmniCrafter_SelectItem>
-  <OmniCrafter_NotEnoughPower>电网储能不足！</OmniCrafter_NotEnoughPower>
+    <OmniCrafter_OpenUI>打开万能制造机</OmniCrafter_OpenUI>
+    <OmniCrafter_OpenUIDesc>打开万能制造机界面，合成任意物品。</OmniCrafter_OpenUIDesc>
+    <OmniCrafter_Title>万能制造机</OmniCrafter_Title>
+    <OmniCrafter_All>全部</OmniCrafter_All>
+    <OmniCrafter_Favorites>收藏夹</OmniCrafter_Favorites>
+    <OmniCrafter_Recent>最近生产</OmniCrafter_Recent>
+    <OmniCrafter_SelectItem>从左侧列表选择物品以开始生产。</OmniCrafter_SelectItem>
+    <OmniCrafter_NotEnoughPower>电网储能不足！</OmniCrafter_NotEnoughPower>
+    <!-- 顶部工具栏 -->
+    <OmniCrafter_Search>搜索：</OmniCrafter_Search>
+    <!-- 中栏 - 排序和Mod筛选 -->
+    <OmniCrafter_Sort>排序：</OmniCrafter_Sort>
+    <OmniCrafter_Mod>Mod：</OmniCrafter_Mod>
+    <OmniCrafter_ModAll>全部</OmniCrafter_ModAll>
+    <OmniCrafter_AllMods>全部Mod</OmniCrafter_AllMods>
+    <!-- 右侧面板 - 物品详情 -->
+    <OmniCrafter_Unfavorite>★ 取消收藏</OmniCrafter_Unfavorite>
+    <OmniCrafter_Favorite>☆ 收藏</OmniCrafter_Favorite>
+    <OmniCrafter_Material>材料：</OmniCrafter_Material>
+    <OmniCrafter_Quality>品质：</OmniCrafter_Quality>
+    <OmniCrafter_Mode>模式：</OmniCrafter_Mode>
+    <OmniCrafter_FixedCount>固定数量</OmniCrafter_FixedCount>
+    <OmniCrafter_MaintainStock>维持库存</OmniCrafter_MaintainStock>
+    <OmniCrafter_Count>数量：</OmniCrafter_Count>
+    <OmniCrafter_TargetStock>目标库存：</OmniCrafter_TargetStock>
+    <OmniCrafter_Output>输出：</OmniCrafter_Output>
+    <OmniCrafter_DropNear>就近丢弃</OmniCrafter_DropNear>
+    <OmniCrafter_SendToStorage>送入仓储</OmniCrafter_SendToStorage>
+    <OmniCrafter_OnMap>地图上：{0}</OmniCrafter_OnMap>
+    <OmniCrafter_StockFull>✔ 库存已满 ({0}/{1})\n已储能：{2} Wd</OmniCrafter_StockFull>
+    <OmniCrafter_PowerCostLabel>所需电能：{0} Wd / 已储能：{1} Wd</OmniCrafter_PowerCostLabel>
+    <OmniCrafter_InsufficientPowerWarning>\n⚠ 储能不足！</OmniCrafter_InsufficientPowerWarning>
+    <OmniCrafter_BuildingOneAtATime>⚠ 建筑每次只能生产1个（打包形式）</OmniCrafter_BuildingOneAtATime>
+    <OmniCrafter_CraftX>制造 x{0}</OmniCrafter_CraftX>
+    <OmniCrafter_AddAutoOrder>添加自动订单</OmniCrafter_AddAutoOrder>
+    <OmniCrafter_RemoveAutoOrder>移除自动订单</OmniCrafter_RemoveAutoOrder>
+    <OmniCrafter_AutoOrdersHeader>自动订单 ({0})：</OmniCrafter_AutoOrdersHeader>
 </LanguageData>
