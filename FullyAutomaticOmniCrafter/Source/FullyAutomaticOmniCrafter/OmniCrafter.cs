@@ -387,21 +387,33 @@ namespace FullyAutomaticOmniCrafter
 
                 if (mode == OutputMode.SendToStorage)
                 {
-                    IntVec3 storeCell;
-                    IHaulDestination dest;
-                    if (StoreUtility.TryFindBestBetterStorageFor(thing, null, Map, StoragePriority.Unstored,
-                            Faction.OfPlayer, out storeCell, out dest))
+                    // 先生成到建筑附近
+                    GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
+                    // 若 thing 已成功生成，再尝试移动到最优存储位置
+                    if (thing.Spawned)
                     {
-                        if (storeCell.IsValid)
-                            GenSpawn.Spawn(thing, storeCell, Map);
-                        else
-                            GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
+                        try
+                        {
+                            IntVec3 storeCell;
+                            IHaulDestination dest;
+                            if (StoreUtility.TryFindBestBetterStorageFor(thing, null, Map, StoragePriority.Unstored,
+                                    Faction.OfPlayer, out storeCell, out dest) && storeCell.IsValid)
+                            {
+                                thing.DeSpawn();
+                                GenSpawn.Spawn(thing, storeCell, Map);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(
+                                $"[FullyAutomaticOmniCrafter] TryFindBestBetterStorageFor failed, item left near crafter: {ex.Message}");
+                        }
                     }
-                    else
-                        GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
                 }
                 else
+                {
                     GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
+                }
 
                 remaining -= stackSize;
             }
