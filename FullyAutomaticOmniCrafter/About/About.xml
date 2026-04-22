@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>全自动万能制造机 FullyAutomaticOmniCrafter</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>
+    <description>
+## 全自动万能制造机 FullyAutomaticHydroponics 
+
+无中生有！将能量转化为物质！
+全自动万能制造机 FullyAutomaticOmniCrafter 闪亮登场！
+超凡世界的科技结晶，能将能量转化为物质，满足你对资源的无限需求！
+无论是食物、药品还是建筑和材料，这台神奇的机器都能轻松制造出来！让你的殖民地焕发新生，迎接崭新的明天！
+超凡科技！小子！
+
+
+	</description>
+	<loadBefore>
+	</loadBefore>
+	<loadAfter>
+	</loadAfter>
+	<modDependencies>
+	</modDependencies>
+</ModMetaData>
