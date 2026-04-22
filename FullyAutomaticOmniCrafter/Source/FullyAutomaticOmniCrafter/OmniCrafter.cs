@@ -652,15 +652,27 @@ namespace FullyAutomaticOmniCrafter
 
             Widgets.DrawLineHorizontal(rect.x, y, w); y += 6f;
 
+            // Current stock
+            int currentStock = OmniCrafterCache.CountOnMap(selectedDef, building.Map);
+            Widgets.Label(new Rect(rect.x, y, w, 20f), $"On Map: {currentStock}");
+            y += 22f;
+
             // Power cost
             CompPowerTrader pwr = building.GetComp<CompPowerTrader>();
             float stored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
-            int countForCost = productionMode == ProductionMode.FixedCount ? craftCount : 1;
-            float cost = OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost);
-            bool canAfford = stored >= cost;
+            int countForCost;
+            if (productionMode == ProductionMode.FixedCount)
+                countForCost = craftCount;
+            else
+                countForCost = Mathf.Max(0, maintainCount - currentStock);
+            float cost = OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, Mathf.Max(1, countForCost));
+            bool canAfford = countForCost <= 0 || stored >= cost;
 
             GUI.color = canAfford ? Color.white : Color.red;
-            Widgets.Label(new Rect(rect.x, y, w, 36f), $"Power Cost: {cost:F0} Wd\nStored: {stored:F0} Wd");
+            string costLabel = countForCost <= 0
+                ? $"Stock full ({currentStock}/{maintainCount})\nStored: {stored:F0} Wd"
+                : $"Power Cost: {cost:F0} Wd\nStored: {stored:F0} Wd";
+            Widgets.Label(new Rect(rect.x, y, w, 36f), costLabel);
             GUI.color = Color.white;
             y += 40f;
 
@@ -722,8 +734,12 @@ namespace FullyAutomaticOmniCrafter
                     for (int i = 0; i < building.autoOrders.Count; i++)
                     {
                         AutoOrder ao = building.autoOrders[i];
-                        string lbl = (ao.thingDef?.LabelCap ?? "?") + $" x{ao.targetCount} [{ao.quality.GetLabel()}]";
+                        int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
+                        bool full = onMap >= ao.targetCount;
+                        GUI.color = full ? Color.green : Color.white;
+                        string lbl = (ao.thingDef?.LabelCap ?? "?") + $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
                         Widgets.Label(new Rect(0f, i * 22f, lv.width - 24f, 20f), lbl);
+                        GUI.color = Color.white;
                         if (Widgets.ButtonText(new Rect(lv.width - 22f, i * 22f, 22f, 20f), "X"))
                         { building.autoOrders.RemoveAt(i); break; }
                     }
