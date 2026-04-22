@@ -631,6 +631,9 @@ namespace FullyAutomaticOmniCrafter
 
         public override Vector2 InitialSize => new Vector2(1350f, 700f);
 
+        private bool _didPause;
+        private TimeSpeed _pausedSpeed;
+
         public Dialog_OmniCrafter(Building_OmniCrafter building)
         {
             this.building = building;
@@ -640,6 +643,37 @@ namespace FullyAutomaticOmniCrafter
             absorbInputAroundWindow = false;
             draggable = true;
             resizeable = true;
+        }
+
+        public override void PostOpen()
+        {
+            base.PostOpen();
+            if (Find.TickManager != null && !Find.TickManager.Paused)
+            {
+                _pausedSpeed = Find.TickManager.CurTimeSpeed;
+                Find.TickManager.Pause();
+                _didPause = true;
+            }
+        }
+
+        public override void PostClose()
+        {
+            base.PostClose();
+            if (_didPause && Find.TickManager != null)
+            {
+                Find.TickManager.CurTimeSpeed = _pausedSpeed;
+                _didPause = false;
+            }
+        }
+
+        /// <summary>当前选中的是一条自动订单时，将面板中的设置同步回该订单。</summary>
+        private void SyncSelectedAutoOrder()
+        {
+            if (selectedAutoOrder == null) return;
+            selectedAutoOrder.stuffDef = selectedStuff;
+            selectedAutoOrder.quality = selectedQuality;
+            selectedAutoOrder.targetCount = maintainCount;
+            selectedAutoOrder.outputMode = outputMode;
         }
 
         private List<ThingDef> CurrentList
@@ -1174,7 +1208,11 @@ namespace FullyAutomaticOmniCrafter
                         ThingDef captured = s;
                         stuffOptions.Add(new FloatMenuOption(
                             (captured.label ?? captured.defName).CapitalizeFirst(),
-                            () => { selectedStuff = captured; }));
+                            () =>
+                            {
+                                selectedStuff = captured;
+                                SyncSelectedAutoOrder();
+                            }));
                     }
 
                     Find.WindowStack.Add(new FloatMenu(stuffOptions));
@@ -1197,7 +1235,11 @@ namespace FullyAutomaticOmniCrafter
                         QualityCategory captured = q;
                         qualOptions.Add(new FloatMenuOption(
                             captured.GetLabel(),
-                            () => { selectedQuality = captured; }));
+                            () =>
+                            {
+                                selectedQuality = captured;
+                                SyncSelectedAutoOrder();
+                            }));
                     }
 
                     Find.WindowStack.Add(new FloatMenu(qualOptions));
@@ -1232,9 +1274,23 @@ namespace FullyAutomaticOmniCrafter
             {
                 Widgets.Label(new Rect(0f, y, 100f, 24f), "OmniCrafter_TargetStock".Translate());
                 string ms = Widgets.TextField(new Rect(102f, y, 55f, 24f), maintainCount.ToString());
-                if (int.TryParse(ms, out int mp) && mp > 0) maintainCount = mp;
-                if (Widgets.ButtonText(new Rect(160f, y, 24f, 24f), "+")) maintainCount++;
-                if (maintainCount > 1 && Widgets.ButtonText(new Rect(186f, y, 24f, 24f), "-")) maintainCount--;
+                if (int.TryParse(ms, out int mp) && mp > 0)
+                {
+                    maintainCount = mp;
+                    SyncSelectedAutoOrder();
+                }
+
+                if (Widgets.ButtonText(new Rect(160f, y, 24f, 24f), "+"))
+                {
+                    maintainCount++;
+                    SyncSelectedAutoOrder();
+                }
+
+                if (maintainCount > 1 && Widgets.ButtonText(new Rect(186f, y, 24f, 24f), "-"))
+                {
+                    maintainCount--;
+                    SyncSelectedAutoOrder();
+                }
             }
 
             y += 28f;
@@ -1244,11 +1300,19 @@ namespace FullyAutomaticOmniCrafter
             y += 22f;
             if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "OmniCrafter_DropNear".Translate(),
                     outputMode == OutputMode.DropNear))
+            {
                 outputMode = OutputMode.DropNear;
+                SyncSelectedAutoOrder();
+            }
+
             y += 26f;
             if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "OmniCrafter_SendToStorage".Translate(),
                     outputMode == OutputMode.SendToStorage))
+            {
                 outputMode = OutputMode.SendToStorage;
+                SyncSelectedAutoOrder();
+            }
+
             y += 30f;
 
             Widgets.DrawLineHorizontal(0f, y, viewW);
