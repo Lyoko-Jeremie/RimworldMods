@@ -378,6 +378,8 @@ namespace FullyAutomaticOmniCrafter
 
         private int rareTickCounter = 0;
 
+        /// <summary>[DEBUG] 仅在 God 模式下生效：跳过所有电力检查与消耗，直接生产。</summary>
+        public static bool debugNoPowerRequired = false;
 
         // TickRare = every 250 ticks; we want ~every 1000 ticks (4 rare ticks)
         private const int RareTicksPerCheck = 3;
@@ -426,9 +428,13 @@ namespace FullyAutomaticOmniCrafter
         private void ProcessAutoOrders()
         {
             // Log.Message($"[OmniCrafter] Processing {autoOrders.Count} auto orders...");
-            if (powerComp == null || !powerComp.PowerOn) return;
-            PowerNet net = powerComp.PowerNet;
-            if (net == null) return;
+            bool godDebug = debugNoPowerRequired && DebugSettings.godMode;
+            if (!godDebug)
+            {
+                if (powerComp == null || !powerComp.PowerOn) return;
+            }
+            PowerNet net = godDebug ? null : powerComp?.PowerNet;
+            if (!godDebug && net == null) return;
             foreach (AutoOrder order in autoOrders)
             {
                 // Log.Message($"[OmniCrafter] Processing auto order: {order?.thingDef?.defName} x {order?.targetCount}");
@@ -450,7 +456,7 @@ namespace FullyAutomaticOmniCrafter
                     float available = OmniPowerCost.TotalStoredEnergy(net);
 
                     int toCraft;
-                    if (unitCost <= 0f)
+                    if (godDebug || unitCost <= 0f)
                     {
                         toCraft = needed;
                     }
@@ -465,7 +471,7 @@ namespace FullyAutomaticOmniCrafter
                     if (toCraft <= 0) continue;
 
                     float totalCost = unitCost * toCraft;
-                    if (!OmniPowerCost.TryDrainPower(net, totalCost)) continue;
+                    if (!godDebug && !OmniPowerCost.TryDrainPower(net, totalCost)) continue;
                     // Log.Message(
                     //     $"[OmniCrafter] Attempting to craft {toCraft} {order.thingDef?.defName} with total cost {totalCost}");
                     SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
@@ -795,6 +801,28 @@ namespace FullyAutomaticOmniCrafter
                 searchText = ns;
                 searchCache = null;
                 currentList = null;
+            }
+
+            // Debug: free-craft switch (God mode only)
+            if (DebugSettings.godMode)
+            {
+                float dbX = sx + 52f + 280f + 16f;
+                bool dbFlag = Building_OmniCrafter.debugNoPowerRequired;
+                GUI.color = dbFlag ? new Color(1f, 0.5f, 0.2f) : new Color(0.6f, 0.6f, 0.6f);
+                Widgets.CheckboxLabeled(
+                    new Rect(dbX, rect.y + 4f, 200f, 26f),
+                    "⚡ " + "OmniCrafter_DebugNoPower".Translate(),
+                    ref dbFlag);
+                Building_OmniCrafter.debugNoPowerRequired = dbFlag;
+                GUI.color = Color.white;
+                TooltipHandler.TipRegion(
+                    new Rect(dbX, rect.y + 4f, 200f, 26f),
+                    "OmniCrafter_DebugNoPowerTip".Translate());
+            }
+            else
+            {
+                // 退出 God 模式时自动关闭
+                Building_OmniCrafter.debugNoPowerRequired = false;
             }
         }
 
@@ -1490,6 +1518,9 @@ namespace FullyAutomaticOmniCrafter
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
             bool canAfford = countForCost <= 0 || stored >= cost;
+            // Debug: God mode free-craft bypass
+            bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
+            if (godDebugUI) canAfford = true;
 
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
@@ -1517,7 +1548,8 @@ namespace FullyAutomaticOmniCrafter
                 {
                     if (canAfford)
                     {
-                        OmniPowerCost.TryDrainPower(pwr?.PowerNet, cost);
+                        if (!godDebugUI)
+                            OmniPowerCost.TryDrainPower(pwr?.PowerNet, cost);
                         building.SpawnItems(selectedDef, selectedStuff, selectedQuality, craftCount, outputMode);
                         building.AddRecent(selectedDef);
                         SoundDefOf.ExecuteTrade.PlayOneShotOnCamera();
