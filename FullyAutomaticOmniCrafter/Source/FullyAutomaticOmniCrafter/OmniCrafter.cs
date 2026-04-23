@@ -348,22 +348,22 @@ namespace FullyAutomaticOmniCrafter
 
         private void ProcessAutoOrders()
         {
-            Log.Message($"[OmniCrafter] Processing {autoOrders.Count} auto orders...");
+            // Log.Message($"[OmniCrafter] Processing {autoOrders.Count} auto orders...");
             if (powerComp == null || !powerComp.PowerOn) return;
             PowerNet net = powerComp.PowerNet;
             if (net == null) return;
             foreach (AutoOrder order in autoOrders)
             {
-                Log.Message($"[OmniCrafter] Processing auto order: {order?.thingDef?.defName} x {order?.targetCount}");
+                // Log.Message($"[OmniCrafter] Processing auto order: {order?.thingDef?.defName} x {order?.targetCount}");
                 try
                 {
                     if (order.thingDef == null) continue;
                     int current = OmniCrafterCache.CountOnMap(order.thingDef, Map);
-                    Log.Message($"[OmniCrafter] Current count of {order.thingDef.defName} on map: {current}");
+                    // Log.Message($"[OmniCrafter] Current count of {order.thingDef.defName} on map: {current}");
                     if (current >= order.targetCount) continue;
                     int needed = order.targetCount - current;
 
-                    Log.Message($"[OmniCrafter] Current count: {current}, Needed: {needed}");
+                    // Log.Message($"[OmniCrafter] Current count: {current}, Needed: {needed}");
 
                     // 计算单件电力消耗，按当前可用电量推算最多能制造的数量
                     // 避免「一次性要求全部电力，不足则跳过」导致自动订单永远无法执行
@@ -381,14 +381,14 @@ namespace FullyAutomaticOmniCrafter
                         toCraft = Mathf.Min(needed, canAfford);
                     }
 
-                    Log.Message($"[OmniCrafter] Unit cost: {unitCost}, Available: {available}, Craft: {toCraft}");
+                    // Log.Message($"[OmniCrafter] Unit cost: {unitCost}, Available: {available}, Craft: {toCraft}");
 
                     if (toCraft <= 0) continue;
 
                     float totalCost = unitCost * toCraft;
                     if (!OmniPowerCost.TryDrainPower(net, totalCost)) continue;
-                    Log.Message(
-                        $"[OmniCrafter] Attempting to craft {toCraft} {order.thingDef?.defName} with total cost {totalCost}");
+                    // Log.Message(
+                    //     $"[OmniCrafter] Attempting to craft {toCraft} {order.thingDef?.defName} with total cost {totalCost}");
                     SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
                 }
                 catch (Exception ex)
@@ -1331,7 +1331,7 @@ namespace FullyAutomaticOmniCrafter
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
                 ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, stored.ToString("F0"))
-                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("F0"), stored.ToString("F0"));
+                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), stored.ToString("N0"));
             if (!canAfford) costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
             Widgets.Label(new Rect(0f, y, viewW, 44f), costLabel);
             GUI.color = Color.white;
