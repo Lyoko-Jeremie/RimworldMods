@@ -53,16 +53,16 @@ namespace FullyAutomaticOmniCrafter
             {
                 this.isAbsorbing = true;
 
-                // 如果遇到极其变态的发电机，限制一回合吸收最多 100Wd 防止溢出
-                if (float.IsInfinity(surplusWdPerTick) || float.IsNaN(surplusWdPerTick) || surplusWdPerTick > 100f)
+                // 如果遇到极其变态的发电机，赋予极大的充电量，不再限制 100Wd
+                if (float.IsInfinity(surplusWdPerTick) || float.IsNaN(surplusWdPerTick))
                 {
-                    surplusWdPerTick = 100f;
+                    surplusWdPerTick = 1000000000f; // 一瞬间充满极大的数值 (10亿 Wd)
                 }
 
                 // 【完美100%机制】：精准计算出下个 PowerNetTick 将要塞进来的盈余电量。
                 // 提前把我们的容量上限撑开正好这么大的缝隙，原版电网就会原封不动全塞进来，达成100%满载状态！
                 // 修正：确保不会因为浮点精度问题导致没能撑开足够的容量，额外加一点点缓冲容差
-                float potentialNewEnergy = this.StoredEnergy + surplusWdPerTick + 0.001f;
+                float potentialNewEnergy = this.StoredEnergy + surplusWdPerTick + 1f;
                 ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, potentialNewEnergy);
             }
             else
