@@ -31,6 +31,7 @@
         </thingCategories>
         <statBases>
             <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
         </statBases>
         <tickerType>Rare</tickerType>
         <building>
