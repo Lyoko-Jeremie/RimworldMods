@@ -355,22 +355,23 @@ namespace FullyAutomaticOmniCrafter
             {
                 return float.PositiveInfinity;
             }
+
             return net.CurrentStoredEnergy();
         }
 
         public static bool TryDrainPower(PowerNet net, float amountWd)
         {
             if (net == null) return false;
-            
+
             if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
             {
                 return true;
             }
 
             if (net.CurrentStoredEnergy() < amountWd) return false;
-            
+
             float remaining = amountWd;
-            
+
             // First deduct from Smart Infinite Batteries
             foreach (CompPowerBattery bat in net.batteryComps)
             {
@@ -410,7 +411,8 @@ namespace FullyAutomaticOmniCrafter
         public List<string> recentCrafted = new List<string>();
         public List<AutoOrder> autoOrders = new List<AutoOrder>();
 
-        private CompPowerTrader powerComp;
+        private CompPower powerComp;
+        private CompFlickable flickComp;
 
         private int rareTickCounter = 0;
         private bool _pendingSettingsWrite = false;
@@ -424,7 +426,8 @@ namespace FullyAutomaticOmniCrafter
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
-            powerComp = GetComp<CompPowerTrader>();
+            powerComp = GetComp<CompPower>();
+            flickComp = GetComp<CompFlickable>();
             if (_pendingSettingsWrite)
             {
                 _pendingSettingsWrite = false;
@@ -473,7 +476,8 @@ namespace FullyAutomaticOmniCrafter
             bool godDebug = debugNoPowerRequired && DebugSettings.godMode;
             if (!godDebug)
             {
-                if (powerComp == null || !powerComp.PowerOn) return;
+                bool isOn = (flickComp == null || flickComp.SwitchIsOn) && powerComp != null;
+                if (!isOn) return;
             }
 
             PowerNet net = godDebug ? null : powerComp?.PowerNet;
@@ -1550,7 +1554,7 @@ namespace FullyAutomaticOmniCrafter
             y += 22f;
 
             // Power cost
-            CompPowerTrader pwr = building.GetComp<CompPowerTrader>();
+            CompPower pwr = building.GetComp<CompPower>();
             float stored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
             int countForCost;
             if (productionMode == ProductionMode.FixedCount)
@@ -1702,4 +1706,3 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 }
-
