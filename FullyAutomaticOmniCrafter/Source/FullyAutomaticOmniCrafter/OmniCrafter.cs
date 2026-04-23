@@ -365,35 +365,40 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+
             return energy;
         }
 
         public static float ExternalStoredEnergy(PowerNet net)
         {
             if (net == null) return 0f;
-            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
+            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()) ||
+                net.CurrentEnergyGainRate() >= 1000000f)
             {
                 return float.PositiveInfinity;
             }
-            
+
             float internalActive = 0f;
             if (net.batteryComps != null)
             {
                 foreach (CompPowerBattery bat in net.batteryComps)
                 {
-                    if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery && FlickUtility.WantsToBeOn(smartBattery.parent))
+                    if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery &&
+                        FlickUtility.WantsToBeOn(smartBattery.parent))
                     {
                         internalActive += Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
                     }
                 }
             }
+
             return Mathf.Max(0f, net.CurrentStoredEnergy() - internalActive);
         }
 
         public static float TotalStoredEnergy(PowerNet net)
         {
             if (net == null) return 0f;
-            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
+            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()) ||
+                net.CurrentEnergyGainRate() >= 1000000f)
             {
                 return float.PositiveInfinity;
             }
@@ -401,13 +406,25 @@ namespace FullyAutomaticOmniCrafter
             return ExternalStoredEnergy(net) + InternalStoredEnergy(net);
         }
 
+        public static float SurplusPowerW(PowerNet net)
+        {
+            if (net == null) return 0f;
+            return net.CurrentEnergyGainRate() * 60000f; // Wd/tick 转换为 瓦特(W)
+        }
+
         public static bool TryDrainPower(PowerNet net, float amountWd)
         {
             if (net == null) return false;
 
-            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
+            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()) ||
+                net.CurrentEnergyGainRate() >= 1000000f)
             {
                 return true;
+            }
+
+            if (SurplusPowerW(net) >= amountWd)
+            {
+                return true; // 实时盈余功率大于所需，直接返回 true，不扣除电量
             }
 
             if (TotalStoredEnergy(net) < amountWd) return false;
@@ -422,7 +439,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
                     float draw = Mathf.Min(realStored, remaining);
-                    if (draw > 0f) 
+                    if (draw > 0f)
                     {
                         bat.DrawPower(draw);
                         remaining -= draw;
@@ -549,10 +566,19 @@ namespace FullyAutomaticOmniCrafter
                     float unitCost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, 1);
                     float available = OmniPowerCost.TotalStoredEnergy(net);
 
+                    float surplusW = OmniPowerCost.SurplusPowerW(net);
+
                     int toCraft;
                     if (godDebug || unitCost <= 0f || float.IsInfinity(available) || float.IsNaN(available))
                     {
                         toCraft = needed;
+                    }
+                    else if (surplusW >= unitCost)
+                    {
+                        // 如果有盈余能量足够单件制造
+                        int canAfford = Mathf.Max(Mathf.FloorToInt(surplusW / unitCost),
+                            Mathf.FloorToInt(available / unitCost));
+                        toCraft = Mathf.Min(needed, canAfford);
                     }
                     else
                     {
@@ -1602,15 +1628,18 @@ namespace FullyAutomaticOmniCrafter
 
             // Power cost
             CompPower pwr = building.GetComp<CompPower>();
-            
+
             float totalStored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
             float extStored = OmniPowerCost.ExternalStoredEnergy(pwr?.PowerNet);
             float intStored = OmniPowerCost.InternalStoredEnergy(pwr?.PowerNet);
-            
+
             string customStoredStr;
-            if (float.IsInfinity(totalStored)) {
+            if (float.IsInfinity(totalStored))
+            {
                 customStoredStr = "∞";
-            } else {
+            }
+            else
+            {
                 customStoredStr = $"{totalStored:N0}Wd ({extStored:N0}Wd + {intStored:N0}Wd)";
             }
 
@@ -1622,7 +1651,8 @@ namespace FullyAutomaticOmniCrafter
             float cost = countForCost > 0
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
-            bool canAfford = countForCost <= 0 || totalStored >= cost;
+            bool canAfford = countForCost <= 0 || totalStored >= cost ||
+                             OmniPowerCost.SurplusPowerW(pwr?.PowerNet) >= cost;
             // Debug: God mode free-craft bypass
             bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
             if (godDebugUI) canAfford = true;
