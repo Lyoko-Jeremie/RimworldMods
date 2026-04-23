@@ -110,6 +110,7 @@ fabric.properties
 !FullyAutomaticOmniCrafter/**/*
 !.gitignore
 
+!readme.md
 
 */**/*.zstd
 *.zstd
