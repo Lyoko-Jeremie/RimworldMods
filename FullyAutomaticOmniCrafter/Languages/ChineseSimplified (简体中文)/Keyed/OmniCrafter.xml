@@ -42,6 +42,7 @@
     <OmniCrafter_CraftX>制造 x{0}</OmniCrafter_CraftX>
     <OmniCrafter_AddAutoOrder>添加自动订单</OmniCrafter_AddAutoOrder>
     <OmniCrafter_RemoveAutoOrder>移除自动订单</OmniCrafter_RemoveAutoOrder>
+    <OmniCrafter_NoAutoOrders>没有自动订单</OmniCrafter_NoAutoOrders>
     <OmniCrafter_AutoOrdersHeader>自动订单 ({0})：</OmniCrafter_AutoOrdersHeader>
     <!-- 收藏夹中缺失物品的占位符 -->
     <OmniCrafter_MissingDef>[缺失] {0}（所属Mod未加载，点击取消收藏）</OmniCrafter_MissingDef>
