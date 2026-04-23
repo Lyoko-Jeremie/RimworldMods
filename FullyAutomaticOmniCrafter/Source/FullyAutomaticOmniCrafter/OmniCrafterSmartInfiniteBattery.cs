@@ -14,6 +14,9 @@ namespace FullyAutomaticOmniCrafter
         // 维持UI美观的基础容量下限
         private const float BaseCapacity = 1000f;
 
+        // 是否正在吸收溢出电量
+        private bool isAbsorbing = false;
+
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
@@ -44,10 +47,14 @@ namespace FullyAutomaticOmniCrafter
             {
                 this.trader.transNet = this.PowerNet;
             }
-            float trueSurplus = this.PowerNet.CurrentEnergyGainRate() - this.trader.PowerOutput;
+            
+            // CurrentEnergyGainRate 返回的是每日瓦特(Wd/tick)，必须乘以60000转换回瓦特(Watts)
+            float netGainWatts = this.PowerNet.CurrentEnergyGainRate() * 60000f;
+            float trueSurplus = netGainWatts - this.trader.PowerOutput;
 
-            if (trueSurplus > 0)
+            if (trueSurplus > 1f)
             {
+                this.isAbsorbing = true;
                 // 【适配无穷大发电机】
                 if (float.IsInfinity(trueSurplus) || float.IsNaN(trueSurplus) || trueSurplus > 10000000f)
                 {
@@ -80,6 +87,7 @@ namespace FullyAutomaticOmniCrafter
                 // 电网平衡或缺电时，停止主动吸收
                 // 【放电悖论处理 / 棘轮机制】
                 // 当电池正在放电，电量下降时，不再缩小 storedEnergyMax。
+                this.isAbsorbing = false;
                 this.trader.PowerOutput = 0f;
             }
         }
@@ -87,12 +95,14 @@ namespace FullyAutomaticOmniCrafter
         // UI 文本优化：超过百万电量时显示无穷大，防止文字重叠
         public override string CompInspectStringExtra()
         {
+            string status = this.isAbsorbing ? "[自适应膨胀核心: 运行中]" : "[自适应膨胀核心: 待机]";
+            
             if (this.StoredEnergy > 1000000f)
             {
-                return "电网储能: 已饱和 (∞) \n[自适应膨胀核心: 运行中]";
+                return "电网储能: 已饱和 (∞) \n" + status;
             }
 
-            return base.CompInspectStringExtra() + "\n[自适应膨胀核心: 运行中]";
+            return base.CompInspectStringExtra() + "\n" + status;
         }
     }
 
