@@ -1694,7 +1694,7 @@ namespace FullyAutomaticOmniCrafter
                 GUI.color = Color.white;
 
                 // Pause button
-                string pauseLbl = ao.paused ? "▶" : "⏸";
+                string pauseLbl = ao.paused ? "P" : "▶";
                 if (Widgets.ButtonText(new Rect(viewW - 48f, y + 2f, 22f, 20f), pauseLbl))
                 {
                     ao.paused = !ao.paused;
