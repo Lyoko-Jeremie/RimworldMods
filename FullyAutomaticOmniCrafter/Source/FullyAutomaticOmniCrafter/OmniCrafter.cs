@@ -8,6 +8,31 @@ using UnityEngine;
 
 namespace FullyAutomaticOmniCrafter
 {
+    // ─── Global Settings (cross-save favorites) ───────────────────────────────
+    public class OmniCrafterSettings : ModSettings
+    {
+        public List<string> globalFavorites = new List<string>();
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Collections.Look(ref globalFavorites, "globalFavorites", LookMode.Value);
+            if (globalFavorites == null) globalFavorites = new List<string>();
+        }
+    }
+
+    public class OmniCrafterMod : Mod
+    {
+        public static OmniCrafterSettings Settings;
+
+        public OmniCrafterMod(ModContentPack content) : base(content)
+        {
+            Settings = GetSettings<OmniCrafterSettings>();
+        }
+
+        public override string SettingsCategory() => "FullyAutomaticOmniCrafter";
+    }
+
     // ─── Enums & Data ─────────────────────────────────────────────────────────
     public enum OutputMode
     {
@@ -344,7 +369,8 @@ namespace FullyAutomaticOmniCrafter
     // ─── Building ─────────────────────────────────────────────────────────────
     public class Building_OmniCrafter : Building
     {
-        public List<string> favorites = new List<string>();
+        // Legacy per-building favorites kept only for one-time migration to global settings.
+        private List<string> _legacyFavorites = new List<string>();
         public List<string> recentCrafted = new List<string>();
         public List<AutoOrder> autoOrders = new List<AutoOrder>();
 
@@ -365,12 +391,24 @@ namespace FullyAutomaticOmniCrafter
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Collections.Look(ref favorites, "favorites", LookMode.Value);
+            // Load legacy per-building favorites for one-time migration
+            Scribe_Collections.Look(ref _legacyFavorites, "favorites", LookMode.Value);
             Scribe_Collections.Look(ref recentCrafted, "recentCrafted", LookMode.Value);
             Scribe_Collections.Look(ref autoOrders, "autoOrders", LookMode.Deep);
-            if (favorites == null) favorites = new List<string>();
+            if (_legacyFavorites == null) _legacyFavorites = new List<string>();
             if (recentCrafted == null) recentCrafted = new List<string>();
             if (autoOrders == null) autoOrders = new List<AutoOrder>();
+
+            // One-time migration: move old per-building favorites into global settings
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && _legacyFavorites.Count > 0)
+            {
+                var global = OmniCrafterMod.Settings.globalFavorites;
+                foreach (string fav in _legacyFavorites)
+                    if (!global.Contains(fav))
+                        global.Add(fav);
+                _legacyFavorites.Clear();
+                OmniCrafterMod.Settings.Write();
+            }
         }
 
         public override void TickRare()
@@ -649,6 +687,9 @@ namespace FullyAutomaticOmniCrafter
         private List<ThingDef> searchCache;
         private string lastSearch = "";
 
+        // Favorites that reference defNames which no longer exist in the current game
+        private List<string> orphanedFavorites = new List<string>();
+
         private Vector2 middleScroll;
         private Vector2 leftScroll;
         private Vector2 rightPanelScroll;
@@ -881,10 +922,18 @@ namespace FullyAutomaticOmniCrafter
 
         private List<ThingDef> BuildFilteredList()
         {
+            orphanedFavorites.Clear();
             List<ThingDef> source;
             if (showFavorites)
-                source = building.favorites.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
-                    .Where(d => d != null).ToList();
+            {
+                source = new List<ThingDef>();
+                foreach (string name in OmniCrafterMod.Settings.globalFavorites)
+                {
+                    ThingDef def = DefDatabase<ThingDef>.GetNamedSilentFail(name);
+                    if (def != null) source.Add(def);
+                    else orphanedFavorites.Add(name);
+                }
+            }
             else if (showRecent)
                 source = building.recentCrafted.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
                     .Where(d => d != null).ToList();
@@ -980,7 +1029,8 @@ namespace FullyAutomaticOmniCrafter
             float rowH = 36f;
             float iconSize = 30f;
             float infoBtnW = 26f;
-            float totalH = list.Count * rowH;
+            float orphanRowH = 30f;
+            float totalH = list.Count * rowH + orphanedFavorites.Count * orphanRowH;
 
             Rect view = new Rect(0f, 0f, listArea.width - 16f, totalH);
             Widgets.BeginScrollView(listArea, ref middleScroll, view);
@@ -1017,7 +1067,7 @@ namespace FullyAutomaticOmniCrafter
                 }
 
                 // Favorite star
-                if (building.favorites.Contains(def.defName))
+                if (OmniCrafterMod.Settings.globalFavorites.Contains(def.defName))
                 {
                     GUI.color = Color.yellow;
                     Widgets.Label(new Rect(iconX, iconY, 12f, 12f), "★");
@@ -1054,6 +1104,53 @@ namespace FullyAutomaticOmniCrafter
                 // Click row to select
                 Rect clickRect = new Rect(0f, y, viewW - infoBtnW - 2f, rowH);
                 if (Widgets.ButtonInvisible(clickRect)) SelectDef(def);
+            }
+
+            // ── Orphaned favorites (defName exists in favorites but ThingDef is missing) ──
+            if (showFavorites && orphanedFavorites.Count > 0)
+            {
+                float orphanY = list.Count * rowH;
+                for (int i = 0; i < orphanedFavorites.Count; i++)
+                {
+                    float y = orphanY + i * orphanRowH;
+                    if (y + orphanRowH < scrollY || y > scrollY + visH) continue;
+
+                    string defName = orphanedFavorites[i];
+                    Rect rowRect = new Rect(0f, y, viewW, orphanRowH);
+
+                    if (i % 2 == 0) Widgets.DrawBoxSolid(rowRect, new Color(1f, 0.3f, 0.3f, 0.08f));
+                    if (Mouse.IsOver(rowRect)) Widgets.DrawHighlightIfMouseover(rowRect);
+
+                    // Gray placeholder icon
+                    float iconX = 3f;
+                    float iconY2 = y + (orphanRowH - 20f) / 2f;
+                    GUI.color = new Color(0.5f, 0.5f, 0.5f, 0.7f);
+                    Widgets.DrawBox(new Rect(iconX, y + (orphanRowH - 20f) / 2f, 20f, 20f));
+                    GUI.color = Color.white;
+
+                    // Label (defName + missing hint)
+                    float labelX = iconX + 24f;
+                    float labelW = viewW - labelX - 60f;
+                    GUI.color = new Color(0.7f, 0.5f, 0.5f);
+                    Widgets.Label(new Rect(labelX, iconY2, labelW, 20f),
+                        $"[?] {defName}");
+                    GUI.color = Color.white;
+
+                    // Tooltip
+                    TooltipHandler.TipRegion(rowRect, "OmniCrafter_MissingDef".Translate(defName));
+
+                    // Unfavorite button
+                    float btnW = 54f;
+                    if (Widgets.ButtonText(new Rect(viewW - btnW, y + (orphanRowH - 22f) / 2f, btnW, 22f),
+                            "OmniCrafter_Unfavorite".Translate()))
+                    {
+                        OmniCrafterMod.Settings.globalFavorites.Remove(defName);
+                        OmniCrafterMod.Settings.Write();
+                        orphanedFavorites.RemoveAt(i);
+                        currentList = null;
+                        break;
+                    }
+                }
             }
 
             Widgets.EndScrollView();
@@ -1200,12 +1297,14 @@ namespace FullyAutomaticOmniCrafter
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(70f, y, viewW - 70f, 32f), selectedDef.LabelCap);
             Text.Font = GameFont.Small;
-            bool isFav = building.favorites.Contains(selectedDef.defName);
+            bool isFav = OmniCrafterMod.Settings.globalFavorites.Contains(selectedDef.defName);
             if (Widgets.ButtonText(new Rect(70f, y + 34f, 120f, 24f),
                     isFav ? "OmniCrafter_Unfavorite".Translate() : "OmniCrafter_Favorite".Translate()))
             {
-                if (isFav) building.favorites.Remove(selectedDef.defName);
-                else building.favorites.Add(selectedDef.defName);
+                if (isFav) OmniCrafterMod.Settings.globalFavorites.Remove(selectedDef.defName);
+                else OmniCrafterMod.Settings.globalFavorites.Add(selectedDef.defName);
+                OmniCrafterMod.Settings.Write();
+                currentList = null;
             }
 
             y += 70f;
