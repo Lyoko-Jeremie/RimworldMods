@@ -550,7 +550,7 @@ namespace FullyAutomaticOmniCrafter
                     float available = OmniPowerCost.TotalStoredEnergy(net);
 
                     int toCraft;
-                    if (godDebug || unitCost <= 0f)
+                    if (godDebug || unitCost <= 0f || float.IsInfinity(available) || float.IsNaN(available))
                     {
                         toCraft = needed;
                     }
