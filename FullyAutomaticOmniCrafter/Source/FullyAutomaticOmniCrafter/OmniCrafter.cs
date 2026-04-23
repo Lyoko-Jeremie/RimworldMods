@@ -57,6 +57,7 @@ namespace FullyAutomaticOmniCrafter
         public int targetCount = 10;
         public OutputMode outputMode = OutputMode.DropNear;
         public bool storageOnly = false; // 仅统计存储区中的物品
+        public bool paused = false;
 
         public void ExposeData()
         {
@@ -66,6 +67,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref targetCount, "targetCount", 10);
             Scribe_Values.Look(ref outputMode, "outputMode", OutputMode.DropNear);
             Scribe_Values.Look(ref storageOnly, "storageOnly", false);
+            Scribe_Values.Look(ref paused, "paused", false);
         }
     }
 
@@ -484,6 +486,7 @@ namespace FullyAutomaticOmniCrafter
             if (!godDebug && net == null) return;
             foreach (AutoOrder order in autoOrders)
             {
+                if (order.paused) continue;
                 // Log.Message($"[OmniCrafter] Processing auto order: {order?.thingDef?.defName} x {order?.targetCount}");
                 try
                 {
@@ -1643,25 +1646,29 @@ namespace FullyAutomaticOmniCrafter
 
         private void DrawFarRightPanel(Rect rect)
         {
-            Widgets.DrawBoxSolid(rect, new Color(0.10f, 0.12f, 0.10f, 0.6f));
+            Widgets.DrawBoxSolid(rect, new Color(0.14f, 0.14f, 0.14f, 0.6f));
             rect = rect.ContractedBy(6f);
 
-            float viewW = rect.width - 16f;
-            float rowH = 24f;
-            float headerH = 26f;
+            if (building.autoOrders.Count == 0)
+            {
+                Widgets.Label(rect, "OmniCrafter_NoAutoOrders".Translate());
+                return;
+            }
 
-            int count = building.autoOrders.Count;
-            float totalH = headerH + count * rowH + 4f;
+            float w = rect.width;
+            float viewW = w - 16f;
 
-            Rect viewRect = new Rect(0f, 0f, viewW, Mathf.Max(totalH, rect.height));
+            // Estimate content height for the virtual scroll view
+            float contentH = building.autoOrders.Count * 36f;
+
+            Rect viewRect = new Rect(0f, 0f, viewW, contentH);
             Widgets.BeginScrollView(rect, ref farRightScroll, viewRect);
 
             float y = 0f;
-            Widgets.Label(new Rect(0f, y, viewW, 22f),
-                "OmniCrafter_AutoOrdersHeader".Translate(count));
-            y += headerH;
 
-            for (int i = 0; i < count; i++)
+            float rowH = 36f;
+
+            for (int i = 0; i < building.autoOrders.Count; i++)
             {
                 AutoOrder ao = building.autoOrders[i];
                 int onMap = ao.storageOnly
@@ -1679,12 +1686,19 @@ namespace FullyAutomaticOmniCrafter
                 if (Mouse.IsOver(rowRect) && selectedAutoOrder != ao)
                     Widgets.DrawHighlightIfMouseover(rowRect);
 
-                GUI.color = full ? Color.green : Color.white;
+                GUI.color = ao.paused ? Color.gray : (full ? Color.green : Color.white);
                 string storageFlag = ao.storageOnly ? " 🏪" : "";
                 string lbl = (ao.thingDef?.LabelCap ?? "?") +
                              $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]{storageFlag}";
-                Widgets.Label(new Rect(0f, y, viewW - 26f, rowH), lbl);
+                Widgets.Label(new Rect(0f, y, viewW - 50f, rowH), lbl);
                 GUI.color = Color.white;
+
+                // Pause button
+                string pauseLbl = ao.paused ? "▶" : "⏸";
+                if (Widgets.ButtonText(new Rect(viewW - 48f, y + 2f, 22f, 20f), pauseLbl))
+                {
+                    ao.paused = !ao.paused;
+                }
 
                 // Delete button
                 if (Widgets.ButtonText(new Rect(viewW - 24f, y + 2f, 22f, 20f), "X"))
@@ -1695,7 +1709,7 @@ namespace FullyAutomaticOmniCrafter
                 }
 
                 // Click row → populate mid-right panel
-                Rect clickRect = new Rect(0f, y, viewW - 26f, rowH);
+                Rect clickRect = new Rect(0f, y, viewW - 50f, rowH);
                 if (Widgets.ButtonInvisible(clickRect))
                     SelectDefFromOrder(ao);
 
