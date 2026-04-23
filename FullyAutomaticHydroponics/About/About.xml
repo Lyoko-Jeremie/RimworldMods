@@ -43,6 +43,11 @@
 * **不支持：** 不支持 *Automatic Hydroponics* (自动水培舱)，因为该模组的水培盆本质上是类似发酵桶的自动工作台，而非真正的植物生长建筑。可以同时安装和使用，不互相影响。
 * 可以在游戏中途添加或删除
 
+### 不支持
+
+以下Mod已经加入黑名单，禁止其获得全自动功能，但可以与本模组同时使用。
+* High Density Hydroponics（高密度水栽培）(packageId: MapleApple.HighDensityHydroponics.Fixed.ZouHb.zades)以特殊的方式继承并完全重写了 Building_PlantGrower 的代码，导致本模组无法兼容。
+
 ### 信息：
 
 Mod 作者请参阅本模组目录下的 `for_modder.md` 文档，了解如何为特定物品手动添加此功能，或阻止特定物品获得此功能。
@@ -90,6 +95,11 @@ This mod uses C# to apply functionality to all buildings inheriting from `Buildi
 * **Linked Planters:** When using the *Linked Planters* mod, the auto-sow/harvest settings do not automatically propagate through the link. You will need to select the entire group of basins to toggle the settings, but this is a minor inconvenience.
 * **Unsupported:** Does **not** support the mod *Automatic Hydroponics*, as those "basins" are technically structured as automated workbenches (similar to fermenting barrels) rather than actual plant-growing buildings. You can have both mods installed and they will not effect each other.
 * Can be added to or removed from existing saves at any time.
+
+### Not Supported
+
+Follow Mods have been blacklisted and are prevented from receiving the full automation features, but can still be used alongside this mod.
+* High Density Hydroponics (packageId: MapleApple.HighDensityHydroponics.Fixed.ZouHb.zades) uses a special inheritance and completely rewrites the code of Building_PlantGrower, making it incompatible with this mod.
 
 ### Information:
 
