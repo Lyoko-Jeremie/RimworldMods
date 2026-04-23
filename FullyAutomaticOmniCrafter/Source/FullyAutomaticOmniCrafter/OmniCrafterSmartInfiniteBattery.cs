@@ -63,7 +63,7 @@ namespace FullyAutomaticOmniCrafter
                 // 提前把我们的容量上限撑开正好这么大的缝隙，原版电网就会原封不动全塞进来，达成100%满载状态！
                 // 修正：确保不会因为浮点精度问题导致没能撑开足够的容量，额外加一点点缓冲容差
                 float potentialNewEnergy = this.StoredEnergy + surplusWdPerTick + 1f;
-                float maxAllowedCapacity = int.MaxValue / 2f;
+                float maxAllowedCapacity = float.MaxValue / (2f * 2f * 2f);
                 potentialNewEnergy = Mathf.Min(potentialNewEnergy, maxAllowedCapacity);
                 ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, potentialNewEnergy);
             }
