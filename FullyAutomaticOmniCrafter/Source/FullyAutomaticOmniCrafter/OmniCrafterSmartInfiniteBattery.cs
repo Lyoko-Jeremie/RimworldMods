@@ -33,6 +33,17 @@ namespace FullyAutomaticOmniCrafter
         public override void CompTick()
         {
             base.CompTick();
+            UpdateCapacity();
+        }
+
+        public override void CompTickRare()
+        {
+            base.CompTickRare();
+            UpdateCapacity();
+        }
+
+        public void UpdateCapacity()
+        {
             if (this.PowerNet == null) return;
 
             // CurrentEnergyGainRate返回当tick产生或消耗的净能量 (Wd per tick)
@@ -50,7 +61,8 @@ namespace FullyAutomaticOmniCrafter
 
                 // 【完美100%机制】：精准计算出下个 PowerNetTick 将要塞进来的盈余电量。
                 // 提前把我们的容量上限撑开正好这么大的缝隙，原版电网就会原封不动全塞进来，达成100%满载状态！
-                float potentialNewEnergy = this.StoredEnergy + surplusWdPerTick;
+                // 修正：确保不会因为浮点精度问题导致没能撑开足够的容量，额外加一点点缓冲容差
+                float potentialNewEnergy = this.StoredEnergy + surplusWdPerTick + 0.001f;
                 ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, potentialNewEnergy);
             }
             else
@@ -75,6 +87,21 @@ namespace FullyAutomaticOmniCrafter
             }
 
             return base.CompInspectStringExtra() + "\n" + status;
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPowerBattery), "AmountCanAccept", MethodType.Getter)]
+    public static class Patch_SmartBattery_AmountCanAccept
+    {
+        [HarmonyPrefix]
+        public static void Prefix(CompPowerBattery __instance)
+        {
+            // 在原版查询容量之前，强制计算并撑开我们的自适应容量
+            // 解决 XML tickerType 未设置导致的 CompTick 不触发问题，以及浮点容差问题
+            if (__instance is CompOmniCrafterSmartInfiniteBattery smartBattery)
+            {
+                smartBattery.UpdateCapacity();
+            }
         }
     }
 
