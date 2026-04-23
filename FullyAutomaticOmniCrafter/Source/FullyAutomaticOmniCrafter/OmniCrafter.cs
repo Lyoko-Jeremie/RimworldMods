@@ -28,6 +28,9 @@ namespace FullyAutomaticOmniCrafter
         public OmniCrafterMod(ModContentPack content) : base(content)
         {
             Settings = GetSettings<OmniCrafterSettings>();
+
+            HarmonyLib.Harmony harmony = new HarmonyLib.Harmony("Jeremie.Fully.Automatic.OmniCrafter");
+            harmony.PatchAll();
         }
 
         public override string SettingsCategory() => "FullyAutomaticOmniCrafter";
@@ -439,6 +442,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (powerComp == null || !powerComp.PowerOn) return;
             }
+
             PowerNet net = godDebug ? null : powerComp?.PowerNet;
             if (!godDebug && net == null) return;
             foreach (AutoOrder order in autoOrders)

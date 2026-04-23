@@ -41,7 +41,7 @@
             <li Class="CompProperties_Flickable"/>
             <li Class="CompProperties_Breakdownable"/>
 
-            <!-- 1. 无限电池核心逻辑组建 -->
+            <!-- 无限电池核心逻辑组件 -->
             <li Class="CompProperties_Battery">
                 <!-- 重点：指定使用我们刚写的 C# 电池类 -->
                 <compClass>FullyAutomaticOmniCrafter.CompOmniCrafterSmartInfiniteBattery</compClass>
@@ -53,12 +53,6 @@
                 <transmitsPower>true</transmitsPower>
             </li>
 
-            <!-- 2. 伪装电网收发器 (必须存在！C# 会动态改变它的耗电量来吃掉所有盈余) -->
-            <li Class="CompProperties_Power">
-                <compClass>FullyAutomaticOmniCrafter.CompOmniCrafterPowerTrader_Quiet</compClass>
-                <basePowerConsumption>0</basePowerConsumption>
-                <transmitsPower>true</transmitsPower>
-            </li>
             <!--            <li Class="CompProperties_Power">-->
             <!--                <compClass>CompPowerTrader</compClass>-->
             <!--                <basePowerConsumption>1000</basePowerConsumption>-->
