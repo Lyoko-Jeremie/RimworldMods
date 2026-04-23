@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
 using RimWorld;
 using Verse;
 using Verse.Sound;
@@ -350,6 +351,45 @@ namespace FullyAutomaticOmniCrafter
             return baseValue * QualityMult[(int)quality] * count;
         }
 
+        public static float InternalStoredEnergy(PowerNet net)
+        {
+            if (net == null) return 0f;
+            float energy = 0f;
+            if (net.batteryComps != null)
+            {
+                foreach (CompPowerBattery bat in net.batteryComps)
+                {
+                    if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
+                    {
+                        energy += Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
+                    }
+                }
+            }
+            return energy;
+        }
+
+        public static float ExternalStoredEnergy(PowerNet net)
+        {
+            if (net == null) return 0f;
+            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
+            {
+                return float.PositiveInfinity;
+            }
+            
+            float internalActive = 0f;
+            if (net.batteryComps != null)
+            {
+                foreach (CompPowerBattery bat in net.batteryComps)
+                {
+                    if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery && FlickUtility.WantsToBeOn(smartBattery.parent))
+                    {
+                        internalActive += Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
+                    }
+                }
+            }
+            return Mathf.Max(0f, net.CurrentStoredEnergy() - internalActive);
+        }
+
         public static float TotalStoredEnergy(PowerNet net)
         {
             if (net == null) return 0f;
@@ -358,7 +398,7 @@ namespace FullyAutomaticOmniCrafter
                 return float.PositiveInfinity;
             }
 
-            return net.CurrentStoredEnergy();
+            return ExternalStoredEnergy(net) + InternalStoredEnergy(net);
         }
 
         public static bool TryDrainPower(PowerNet net, float amountWd)
@@ -370,7 +410,7 @@ namespace FullyAutomaticOmniCrafter
                 return true;
             }
 
-            if (net.CurrentStoredEnergy() < amountWd) return false;
+            if (TotalStoredEnergy(net) < amountWd) return false;
 
             float remaining = amountWd;
 
@@ -378,11 +418,15 @@ namespace FullyAutomaticOmniCrafter
             foreach (CompPowerBattery bat in net.batteryComps)
             {
                 if (remaining <= 0f) break;
-                if (bat is CompOmniCrafterSmartInfiniteBattery)
+                if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
                 {
-                    float draw = Mathf.Min(bat.StoredEnergy, remaining);
-                    bat.DrawPower(draw);
-                    remaining -= draw;
+                    float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
+                    float draw = Mathf.Min(realStored, remaining);
+                    if (draw > 0f) 
+                    {
+                        bat.DrawPower(draw);
+                        remaining -= draw;
+                    }
                 }
             }
 
@@ -1354,7 +1398,7 @@ namespace FullyAutomaticOmniCrafter
             if (validStuffs != null && validStuffs.Count > 0) contentH += 22f + 28f + 12f;
             if (selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f;
             contentH += 22f + 28f + 28f + 22f + 26f + 30f + 6f;
-            contentH += 22f + 48f + 22f + 36f;
+            contentH += 22f + 70f + 22f + 36f;
 
             Rect viewRect = new Rect(0f, 0f, viewW, contentH);
             Widgets.BeginScrollView(rect, ref rightPanelScroll, viewRect);
@@ -1558,7 +1602,18 @@ namespace FullyAutomaticOmniCrafter
 
             // Power cost
             CompPower pwr = building.GetComp<CompPower>();
-            float stored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
+            
+            float totalStored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
+            float extStored = OmniPowerCost.ExternalStoredEnergy(pwr?.PowerNet);
+            float intStored = OmniPowerCost.InternalStoredEnergy(pwr?.PowerNet);
+            
+            string customStoredStr;
+            if (float.IsInfinity(totalStored)) {
+                customStoredStr = "∞";
+            } else {
+                customStoredStr = $"{totalStored:N0}Wd ({extStored:N0}Wd + {intStored:N0}Wd)";
+            }
+
             int countForCost;
             if (productionMode == ProductionMode.FixedCount)
                 countForCost = craftCount;
@@ -1567,19 +1622,19 @@ namespace FullyAutomaticOmniCrafter
             float cost = countForCost > 0
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
-            bool canAfford = countForCost <= 0 || stored >= cost;
+            bool canAfford = countForCost <= 0 || totalStored >= cost;
             // Debug: God mode free-craft bypass
             bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
             if (godDebugUI) canAfford = true;
 
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
-                ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, stored.ToString("F0"))
-                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), stored.ToString("N0"));
+                ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, customStoredStr)
+                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), customStoredStr);
             if (!canAfford) costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
-            Widgets.Label(new Rect(0f, y, viewW, 44f), costLabel);
+            Widgets.Label(new Rect(0f, y, viewW, 66f), costLabel);
             GUI.color = Color.white;
-            y += 48f;
+            y += 70f;
 
             // Building 提示
             if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
