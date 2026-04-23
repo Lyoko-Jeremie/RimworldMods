@@ -362,6 +362,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="OmniCrafter.cs" />
+    <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -369,7 +370,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="doc.md" />
-    <Content Include="ThingDef_OmniCrafter.xml" />
+    <Content Include="SmartInfiniteBatteryDoc.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

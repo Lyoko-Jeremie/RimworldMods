@@ -38,13 +38,32 @@
             <paintable>true</paintable>
         </building>
         <comps>
-            <li Class="CompProperties_Power">
-                <compClass>CompPowerTrader</compClass>
-                <basePowerConsumption>1000</basePowerConsumption>
-                <shortCircuitInRain>false</shortCircuitInRain>
-            </li>
             <li Class="CompProperties_Flickable"/>
             <li Class="CompProperties_Breakdownable"/>
+
+            <!-- 1. 无限电池核心逻辑组建 -->
+            <li Class="CompProperties_Battery">
+                <!-- 重点：指定使用我们刚写的 C# 电池类 -->
+                <compClass>FullyAutomaticOmniCrafter.CompOmniCrafterSmartInfiniteBattery</compClass>
+                <!-- 基础最大容量，代码里设置的 BaseCapacity 是1000，这里最好匹配 -->
+                <storedEnergyMax>1000</storedEnergyMax>
+                <!-- 转化效率1.0 (100%) -->
+                <efficiency>1.0</efficiency>
+                <shortCircuitInRain>false</shortCircuitInRain>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+            <!-- 2. 伪装电网收发器 (必须存在！C# 会动态改变它的耗电量来吃掉所有盈余) -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>0</basePowerConsumption>
+                <transmitsPower>true</transmitsPower>
+            </li>
+            <!--            <li Class="CompProperties_Power">-->
+            <!--                <compClass>CompPowerTrader</compClass>-->
+            <!--                <basePowerConsumption>1000</basePowerConsumption>-->
+            <!--                <shortCircuitInRain>false</shortCircuitInRain>-->
+            <!--            </li>-->
         </comps>
         <!--        <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
         <!--        <hasInteractionCell>true</hasInteractionCell>-->
