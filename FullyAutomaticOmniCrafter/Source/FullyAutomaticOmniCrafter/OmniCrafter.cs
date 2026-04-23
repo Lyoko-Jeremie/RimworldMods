@@ -377,6 +377,7 @@ namespace FullyAutomaticOmniCrafter
         private CompPowerTrader powerComp;
 
         private int rareTickCounter = 0;
+        private bool _pendingSettingsWrite = false;
 
         /// <summary>[DEBUG] 仅在 God 模式下生效：跳过所有电力检查与消耗，直接生产。</summary>
         public static bool debugNoPowerRequired = false;
@@ -388,6 +389,11 @@ namespace FullyAutomaticOmniCrafter
         {
             base.SpawnSetup(map, respawningAfterLoad);
             powerComp = GetComp<CompPowerTrader>();
+            if (_pendingSettingsWrite)
+            {
+                _pendingSettingsWrite = false;
+                OmniCrafterMod.Settings.Write();
+            }
         }
 
         public override void ExposeData()
@@ -409,7 +415,7 @@ namespace FullyAutomaticOmniCrafter
                     if (!global.Contains(fav))
                         global.Add(fav);
                 _legacyFavorites.Clear();
-                OmniCrafterMod.Settings.Write();
+                _pendingSettingsWrite = true; // defer Write() until after PostLoadInit
             }
         }
 
