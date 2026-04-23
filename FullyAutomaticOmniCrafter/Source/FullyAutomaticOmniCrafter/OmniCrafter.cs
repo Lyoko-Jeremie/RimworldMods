@@ -11,13 +11,13 @@ namespace FullyAutomaticOmniCrafter
     // ─── Global Settings (cross-save favorites) ───────────────────────────────
     public class OmniCrafterSettings : ModSettings
     {
-        public List<string> globalFavorites = new List<string>();
+        public List<string> GlobalFavorites = new List<string>();
 
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Collections.Look(ref globalFavorites, "globalFavorites", LookMode.Value);
-            if (globalFavorites == null) globalFavorites = new List<string>();
+            Scribe_Collections.Look(ref GlobalFavorites, "globalFavorites", LookMode.Value);
+            if (GlobalFavorites == null) GlobalFavorites = new List<string>();
         }
     }
 
@@ -48,21 +48,21 @@ namespace FullyAutomaticOmniCrafter
 
     public class AutoOrder : IExposable
     {
-        public ThingDef thingDef;
-        public ThingDef stuffDef;
-        public QualityCategory quality = QualityCategory.Normal;
-        public int targetCount = 10;
-        public OutputMode outputMode = OutputMode.DropNear;
-        public bool storageOnly = false; // 仅统计存储区中的物品
+        public ThingDef ThingDef;
+        public ThingDef StuffDef;
+        public QualityCategory Quality = QualityCategory.Normal;
+        public int TargetCount = 10;
+        public OutputMode OutputMode = OutputMode.DropNear;
+        public bool StorageOnly = false; // 仅统计存储区中的物品
 
         public void ExposeData()
         {
-            Scribe_Defs.Look(ref thingDef, "thingDef");
-            Scribe_Defs.Look(ref stuffDef, "stuffDef");
-            Scribe_Values.Look(ref quality, "quality", QualityCategory.Normal);
-            Scribe_Values.Look(ref targetCount, "targetCount", 10);
-            Scribe_Values.Look(ref outputMode, "outputMode", OutputMode.DropNear);
-            Scribe_Values.Look(ref storageOnly, "storageOnly", false);
+            Scribe_Defs.Look(ref ThingDef, "thingDef");
+            Scribe_Defs.Look(ref StuffDef, "stuffDef");
+            Scribe_Values.Look(ref Quality, "quality", QualityCategory.Normal);
+            Scribe_Values.Look(ref TargetCount, "targetCount", 10);
+            Scribe_Values.Look(ref OutputMode, "outputMode", OutputMode.DropNear);
+            Scribe_Values.Look(ref StorageOnly, "storageOnly", false);
         }
     }
 
@@ -367,19 +367,19 @@ namespace FullyAutomaticOmniCrafter
     }
 
     // ─── Building ─────────────────────────────────────────────────────────────
-    public class Building_OmniCrafter : Building
+    public class BuildingOmniCrafter : Building
     {
         // Legacy per-building favorites kept only for one-time migration to global settings.
         private List<string> _legacyFavorites = new List<string>();
-        public List<string> recentCrafted = new List<string>();
-        public List<AutoOrder> autoOrders = new List<AutoOrder>();
+        public List<string> RecentCrafted = new List<string>();
+        public List<AutoOrder> AutoOrders = new List<AutoOrder>();
 
-        private CompPowerTrader powerComp;
+        private CompPowerTrader _powerComp;
 
-        private int rareTickCounter = 0;
+        private int _rareTickCounter = 0;
 
         /// <summary>[DEBUG] 仅在 God 模式下生效：跳过所有电力检查与消耗，直接生产。</summary>
-        public static bool debugNoPowerRequired = false;
+        public static bool DebugNoPowerRequired = false;
 
         // TickRare = every 250 ticks; we want ~every 1000 ticks (4 rare ticks)
         private const int RareTicksPerCheck = 3;
@@ -387,7 +387,7 @@ namespace FullyAutomaticOmniCrafter
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
-            powerComp = GetComp<CompPowerTrader>();
+            _powerComp = GetComp<CompPowerTrader>();
         }
 
         public override void ExposeData()
@@ -395,16 +395,16 @@ namespace FullyAutomaticOmniCrafter
             base.ExposeData();
             // Load legacy per-building favorites for one-time migration
             Scribe_Collections.Look(ref _legacyFavorites, "favorites", LookMode.Value);
-            Scribe_Collections.Look(ref recentCrafted, "recentCrafted", LookMode.Value);
-            Scribe_Collections.Look(ref autoOrders, "autoOrders", LookMode.Deep);
+            Scribe_Collections.Look(ref RecentCrafted, "recentCrafted", LookMode.Value);
+            Scribe_Collections.Look(ref AutoOrders, "autoOrders", LookMode.Deep);
             if (_legacyFavorites == null) _legacyFavorites = new List<string>();
-            if (recentCrafted == null) recentCrafted = new List<string>();
-            if (autoOrders == null) autoOrders = new List<AutoOrder>();
+            if (RecentCrafted == null) RecentCrafted = new List<string>();
+            if (AutoOrders == null) AutoOrders = new List<AutoOrder>();
 
             // One-time migration: move old per-building favorites into global settings
             if (Scribe.mode == LoadSaveMode.PostLoadInit && _legacyFavorites.Count > 0)
             {
-                var global = OmniCrafterMod.Settings.globalFavorites;
+                var global = OmniCrafterMod.Settings.GlobalFavorites;
                 foreach (string fav in _legacyFavorites)
                     if (!global.Contains(fav))
                         global.Add(fav);
@@ -416,10 +416,10 @@ namespace FullyAutomaticOmniCrafter
         public override void TickRare()
         {
             base.TickRare();
-            rareTickCounter++;
-            if (rareTickCounter >= RareTicksPerCheck)
+            _rareTickCounter++;
+            if (_rareTickCounter >= RareTicksPerCheck)
             {
-                rareTickCounter = 0;
+                _rareTickCounter = 0;
                 ProcessAutoOrders();
             }
             // ProcessAutoOrders();
@@ -428,31 +428,31 @@ namespace FullyAutomaticOmniCrafter
         private void ProcessAutoOrders()
         {
             // Log.Message($"[OmniCrafter] Processing {autoOrders.Count} auto orders...");
-            bool godDebug = debugNoPowerRequired && DebugSettings.godMode;
+            bool godDebug = DebugNoPowerRequired && DebugSettings.godMode;
             if (!godDebug)
             {
-                if (powerComp == null || !powerComp.PowerOn) return;
+                if (_powerComp == null || !_powerComp.PowerOn) return;
             }
-            PowerNet net = godDebug ? null : powerComp?.PowerNet;
+            PowerNet net = godDebug ? null : _powerComp?.PowerNet;
             if (!godDebug && net == null) return;
-            foreach (AutoOrder order in autoOrders)
+            foreach (AutoOrder order in AutoOrders)
             {
                 // Log.Message($"[OmniCrafter] Processing auto order: {order?.thingDef?.defName} x {order?.targetCount}");
                 try
                 {
-                    if (order.thingDef == null) continue;
-                    int current = order.storageOnly
-                        ? OmniCrafterCache.CountInStorage(order.thingDef, Map)
-                        : OmniCrafterCache.CountOnMap(order.thingDef, Map);
+                    if (order.ThingDef == null) continue;
+                    int current = order.StorageOnly
+                        ? OmniCrafterCache.CountInStorage(order.ThingDef, Map)
+                        : OmniCrafterCache.CountOnMap(order.ThingDef, Map);
                     // Log.Message($"[OmniCrafter] Current count of {order.thingDef.defName} on map: {current}");
-                    if (current >= order.targetCount) continue;
-                    int needed = order.targetCount - current;
+                    if (current >= order.TargetCount) continue;
+                    int needed = order.TargetCount - current;
 
                     // Log.Message($"[OmniCrafter] Current count: {current}, Needed: {needed}");
 
                     // 计算单件电力消耗，按当前可用电量推算最多能制造的数量
                     // 避免「一次性要求全部电力，不足则跳过」导致自动订单永远无法执行
-                    float unitCost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, 1);
+                    float unitCost = OmniPowerCost.CostWd(order.ThingDef, order.StuffDef, order.Quality, 1);
                     float available = OmniPowerCost.TotalStoredEnergy(net);
 
                     int toCraft;
@@ -474,12 +474,12 @@ namespace FullyAutomaticOmniCrafter
                     if (!godDebug && !OmniPowerCost.TryDrainPower(net, totalCost)) continue;
                     // Log.Message(
                     //     $"[OmniCrafter] Attempting to craft {toCraft} {order.thingDef?.defName} with total cost {totalCost}");
-                    SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
+                    SpawnItems(order.ThingDef, order.StuffDef, order.Quality, toCraft, order.OutputMode);
                 }
                 catch (Exception ex)
                 {
                     Log.Error(
-                        $"[OmniCrafter] ProcessAutoOrders failed for '{order?.thingDef?.defName}': {ex.Message}");
+                        $"[OmniCrafter] ProcessAutoOrders failed for '{order?.ThingDef?.defName}': {ex.Message}");
                     Log.Error(ex.StackTrace);
                 }
             }
@@ -487,9 +487,9 @@ namespace FullyAutomaticOmniCrafter
 
         public void AddRecent(ThingDef def)
         {
-            recentCrafted.Remove(def.defName);
-            recentCrafted.Insert(0, def.defName);
-            if (recentCrafted.Count > 10) recentCrafted.RemoveAt(recentCrafted.Count - 1);
+            RecentCrafted.Remove(def.defName);
+            RecentCrafted.Insert(0, def.defName);
+            if (RecentCrafted.Count > 10) RecentCrafted.RemoveAt(RecentCrafted.Count - 1);
         }
 
         public void SpawnItems(ThingDef def, ThingDef stuff, QualityCategory quality, int count, OutputMode mode)
@@ -603,7 +603,7 @@ namespace FullyAutomaticOmniCrafter
                 defaultLabel = "OmniCrafter_OpenUI".Translate(),
                 defaultDesc = "OmniCrafter_OpenUIDesc".Translate(),
                 icon = FullyAutomaticOmniCrafterTex.IconLaunchReport,
-                action = () => Find.WindowStack.Add(new Dialog_OmniCrafter(this))
+                action = () => Find.WindowStack.Add(new DialogOmniCrafter(this))
             };
         }
     }
@@ -620,14 +620,14 @@ namespace FullyAutomaticOmniCrafter
     /// 原版风格树状菜单，用于单选 ThingCategoryDef。
     /// 继承自游戏原版 Listing_Tree，复用其展开/折叠小部件与缩进逻辑。
     /// </summary>
-    public class Listing_TreeCategorySelect : Listing_Tree
+    public class ListingTreeCategorySelect : Listing_Tree
     {
         private readonly ThingCategoryDef _selected;
         private readonly Action<ThingCategoryDef> _onSelect;
         private readonly HashSet<ThingCategoryDef> _validCats;
         private Rect _visibleRect;
 
-        public Listing_TreeCategorySelect(
+        public ListingTreeCategorySelect(
             HashSet<ThingCategoryDef> validCats,
             ThingCategoryDef selected,
             Action<ThingCategoryDef> onSelect)
@@ -679,31 +679,31 @@ namespace FullyAutomaticOmniCrafter
     }
 
     // ─── Dialog ───────────────────────────────────────────────────────────────
-    public class Dialog_OmniCrafter : Window
+    public class DialogOmniCrafter : Window
     {
-        private readonly Building_OmniCrafter building;
+        private readonly BuildingOmniCrafter _building;
 
-        private ThingCategoryDef selectedCategory;
-        private bool showAll = true; // default: show all
-        private bool showFavorites;
-        private bool showRecent;
+        private ThingCategoryDef _selectedCategory;
+        private bool _showAll = true; // default: show all
+        private bool _showFavorites;
+        private bool _showRecent;
 
 
-        private string searchText = "";
-        private List<ThingDef> searchCache;
-        private string lastSearch = "";
+        private string _searchText = "";
+        private List<ThingDef> _searchCache;
+        private string _lastSearch = "";
 
         // Favorites that reference defNames which no longer exist in the current game
-        private List<string> orphanedFavorites = new List<string>();
+        private List<string> _orphanedFavorites = new List<string>();
 
-        private Vector2 middleScroll;
-        private Vector2 leftScroll;
-        private Vector2 rightPanelScroll;
-        private Vector2 farRightScroll;
+        private Vector2 _middleScroll;
+        private Vector2 _leftScroll;
+        private Vector2 _rightPanelScroll;
+        private Vector2 _farRightScroll;
 
-        private ThingDef selectedDef;
-        private AutoOrder selectedAutoOrder; // highlighted row in far-right panel
-        private List<ThingDef> currentList;
+        private ThingDef _selectedDef;
+        private AutoOrder _selectedAutoOrder; // highlighted row in far-right panel
+        private List<ThingDef> _currentList;
 
         private enum SortMode
         {
@@ -712,25 +712,25 @@ namespace FullyAutomaticOmniCrafter
             Weight
         }
 
-        private SortMode sortMode = SortMode.Name;
+        private SortMode _sortMode = SortMode.Name;
 
         // Mod Filter
-        private string selectedModFilter = null; // null = show all mods
+        private string _selectedModFilter = null; // null = show all mods
 
-        private ThingDef selectedStuff;
-        private QualityCategory selectedQuality = QualityCategory.Normal;
-        private int craftCount = 1;
-        private ProductionMode productionMode = ProductionMode.FixedCount;
-        private int maintainCount = 10;
-        private OutputMode outputMode = OutputMode.DropNear;
-        private bool storageOnly = false;
-        private List<ThingDef> validStuffs;
+        private ThingDef _selectedStuff;
+        private QualityCategory _selectedQuality = QualityCategory.Normal;
+        private int _craftCount = 1;
+        private ProductionMode _productionMode = ProductionMode.FixedCount;
+        private int _maintainCount = 10;
+        private OutputMode _outputMode = OutputMode.DropNear;
+        private bool _storageOnly = false;
+        private List<ThingDef> _validStuffs;
 
         public override Vector2 InitialSize => new Vector2(1350f, 700f);
 
-        public Dialog_OmniCrafter(Building_OmniCrafter building)
+        public DialogOmniCrafter(BuildingOmniCrafter building)
         {
-            this.building = building;
+            this._building = building;
             doCloseButton = true;
             doCloseX = true;
             forcePause = true;
@@ -743,20 +743,20 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>当前选中的是一条自动订单时，将面板中的设置同步回该订单。</summary>
         private void SyncSelectedAutoOrder()
         {
-            if (selectedAutoOrder == null) return;
-            selectedAutoOrder.stuffDef = selectedStuff;
-            selectedAutoOrder.quality = selectedQuality;
-            selectedAutoOrder.targetCount = maintainCount;
-            selectedAutoOrder.outputMode = outputMode;
-            selectedAutoOrder.storageOnly = storageOnly;
+            if (_selectedAutoOrder == null) return;
+            _selectedAutoOrder.StuffDef = _selectedStuff;
+            _selectedAutoOrder.Quality = _selectedQuality;
+            _selectedAutoOrder.TargetCount = _maintainCount;
+            _selectedAutoOrder.OutputMode = _outputMode;
+            _selectedAutoOrder.StorageOnly = _storageOnly;
         }
 
         private List<ThingDef> CurrentList
         {
             get
             {
-                if (currentList == null) currentList = BuildFilteredList();
-                return currentList;
+                if (_currentList == null) _currentList = BuildFilteredList();
+                return _currentList;
             }
         }
 
@@ -795,25 +795,25 @@ namespace FullyAutomaticOmniCrafter
 
             float sx = rect.x + 230f;
             Widgets.Label(new Rect(sx, rect.y + 4f, 50f, 26f), "OmniCrafter_Search".Translate());
-            string ns = Widgets.TextField(new Rect(sx + 52f, rect.y + 4f, 280f, 26f), searchText);
-            if (ns != searchText)
+            string ns = Widgets.TextField(new Rect(sx + 52f, rect.y + 4f, 280f, 26f), _searchText);
+            if (ns != _searchText)
             {
-                searchText = ns;
-                searchCache = null;
-                currentList = null;
+                _searchText = ns;
+                _searchCache = null;
+                _currentList = null;
             }
 
             // Debug: free-craft switch (God mode only)
             if (DebugSettings.godMode)
             {
                 float dbX = sx + 52f + 280f + 16f;
-                bool dbFlag = Building_OmniCrafter.debugNoPowerRequired;
+                bool dbFlag = BuildingOmniCrafter.DebugNoPowerRequired;
                 GUI.color = dbFlag ? new Color(1f, 0.5f, 0.2f) : new Color(0.6f, 0.6f, 0.6f);
                 Widgets.CheckboxLabeled(
                     new Rect(dbX, rect.y + 4f, 200f, 26f),
                     "⚡ " + "OmniCrafter_DebugNoPower".Translate(),
                     ref dbFlag);
-                Building_OmniCrafter.debugNoPowerRequired = dbFlag;
+                BuildingOmniCrafter.DebugNoPowerRequired = dbFlag;
                 GUI.color = Color.white;
                 TooltipHandler.TipRegion(
                     new Rect(dbX, rect.y + 4f, 200f, 26f),
@@ -822,7 +822,7 @@ namespace FullyAutomaticOmniCrafter
             else
             {
                 // 退出 God 模式时自动关闭
-                Building_OmniCrafter.debugNoPowerRequired = false;
+                BuildingOmniCrafter.DebugNoPowerRequired = false;
             }
         }
 
@@ -871,45 +871,45 @@ namespace FullyAutomaticOmniCrafter
             float totalH = (lh + 2f) * 3 + 6f + treeH;
 
             Rect view = new Rect(0f, 0f, rect.width - 16f, totalH);
-            Widgets.BeginScrollView(rect, ref leftScroll, view);
+            Widgets.BeginScrollView(rect, ref _leftScroll, view);
             float y = 0f;
 
             // 全部
             DrawNavItem(new Rect(0f, y, view.width, lh), "OmniCrafter_All".Translate(),
-                showAll, () =>
+                _showAll, () =>
                 {
-                    showAll = true;
-                    showFavorites = false;
-                    showRecent = false;
-                    selectedCategory = null;
-                    currentList = null;
-                    searchCache = null;
+                    _showAll = true;
+                    _showFavorites = false;
+                    _showRecent = false;
+                    _selectedCategory = null;
+                    _currentList = null;
+                    _searchCache = null;
                 });
             y += lh + 2f;
 
             // 收藏
             DrawNavItem(new Rect(0f, y, view.width, lh), "★ " + "OmniCrafter_Favorites".Translate(),
-                showFavorites, () =>
+                _showFavorites, () =>
                 {
-                    showFavorites = true;
-                    showRecent = false;
-                    showAll = false;
-                    selectedCategory = null;
-                    currentList = null;
-                    searchCache = null;
+                    _showFavorites = true;
+                    _showRecent = false;
+                    _showAll = false;
+                    _selectedCategory = null;
+                    _currentList = null;
+                    _searchCache = null;
                 });
             y += lh + 2f;
 
             // 最近
             DrawNavItem(new Rect(0f, y, view.width, lh), "⟳ " + "OmniCrafter_Recent".Translate(),
-                showRecent, () =>
+                _showRecent, () =>
                 {
-                    showRecent = true;
-                    showFavorites = false;
-                    showAll = false;
-                    selectedCategory = null;
-                    currentList = null;
-                    searchCache = null;
+                    _showRecent = true;
+                    _showFavorites = false;
+                    _showAll = false;
+                    _selectedCategory = null;
+                    _currentList = null;
+                    _searchCache = null;
                 });
             y += lh + 2f + 6f;
 
@@ -917,19 +917,19 @@ namespace FullyAutomaticOmniCrafter
             float treeAreaH = Mathf.Max(treeH, 1f);
             Rect treeRect = new Rect(0f, y, view.width, treeAreaH);
             // 可视区域（相对于树的局部坐标）
-            Rect visibleRect = new Rect(0f, leftScroll.y - y, view.width, rect.height);
+            Rect visibleRect = new Rect(0f, _leftScroll.y - y, view.width, rect.height);
 
-            var listing = new Listing_TreeCategorySelect(
+            var listing = new ListingTreeCategorySelect(
                 validCats,
-                selectedCategory,
+                _selectedCategory,
                 cat =>
                 {
-                    selectedCategory = cat;
-                    showFavorites = false;
-                    showRecent = false;
-                    showAll = false;
-                    currentList = null;
-                    searchCache = null;
+                    _selectedCategory = cat;
+                    _showFavorites = false;
+                    _showRecent = false;
+                    _showAll = false;
+                    _currentList = null;
+                    _searchCache = null;
                 });
             listing.SetVisibleRect(visibleRect);
             listing.Begin(treeRect);
@@ -950,41 +950,41 @@ namespace FullyAutomaticOmniCrafter
 
         private List<ThingDef> BuildFilteredList()
         {
-            orphanedFavorites.Clear();
+            _orphanedFavorites.Clear();
             List<ThingDef> source;
-            if (showFavorites)
+            if (_showFavorites)
             {
                 source = new List<ThingDef>();
-                foreach (string name in OmniCrafterMod.Settings.globalFavorites)
+                foreach (string name in OmniCrafterMod.Settings.GlobalFavorites)
                 {
                     ThingDef def = DefDatabase<ThingDef>.GetNamedSilentFail(name);
                     if (def != null) source.Add(def);
-                    else orphanedFavorites.Add(name);
+                    else _orphanedFavorites.Add(name);
                 }
             }
-            else if (showRecent)
-                source = building.recentCrafted.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
+            else if (_showRecent)
+                source = _building.RecentCrafted.Select(n => DefDatabase<ThingDef>.GetNamedSilentFail(n))
                     .Where(d => d != null).ToList();
-            else if (selectedCategory != null && !showAll)
+            else if (_selectedCategory != null && !_showAll)
             {
                 List<ThingDef> catList;
-                OmniCrafterCache.ByCategory.TryGetValue(selectedCategory, out catList);
+                OmniCrafterCache.ByCategory.TryGetValue(_selectedCategory, out catList);
                 source = catList ?? new List<ThingDef>();
             }
             else
                 source = OmniCrafterCache.AllCraftable;
 
             // Mod 筛选器
-            if (selectedModFilter != null)
-                source = source.Where(d => OmniCrafterCache.GetModName(d) == selectedModFilter).ToList();
+            if (_selectedModFilter != null)
+                source = source.Where(d => OmniCrafterCache.GetModName(d) == _selectedModFilter).ToList();
 
-            string q = searchText?.ToLower() ?? "";
+            string q = _searchText?.ToLower() ?? "";
             if (!q.NullOrEmpty())
             {
-                if (searchCache == null || lastSearch != q)
+                if (_searchCache == null || _lastSearch != q)
                 {
-                    lastSearch = q;
-                    searchCache = source.Where(d =>
+                    _lastSearch = q;
+                    _searchCache = source.Where(d =>
                     {
                         try
                         {
@@ -998,12 +998,12 @@ namespace FullyAutomaticOmniCrafter
                     }).ToList();
                 }
 
-                source = searchCache;
+                source = _searchCache;
             }
 
             try
             {
-                switch (sortMode)
+                switch (_sortMode)
                 {
                     case SortMode.Value:
                         return source.OrderByDescending(d =>
@@ -1058,11 +1058,11 @@ namespace FullyAutomaticOmniCrafter
             float iconSize = 30f;
             float infoBtnW = 26f;
             float orphanRowH = 30f;
-            float totalH = list.Count * rowH + orphanedFavorites.Count * orphanRowH;
+            float totalH = list.Count * rowH + _orphanedFavorites.Count * orphanRowH;
 
             Rect view = new Rect(0f, 0f, listArea.width - 16f, totalH);
-            Widgets.BeginScrollView(listArea, ref middleScroll, view);
-            float scrollY = middleScroll.y;
+            Widgets.BeginScrollView(listArea, ref _middleScroll, view);
+            float scrollY = _middleScroll.y;
             float visH = listArea.height;
             float viewW = view.width;
 
@@ -1075,9 +1075,9 @@ namespace FullyAutomaticOmniCrafter
                 Rect rowRect = new Rect(0f, y, viewW, rowH);
 
                 // Background highlight
-                if (selectedDef == def) Widgets.DrawHighlight(rowRect);
+                if (_selectedDef == def) Widgets.DrawHighlight(rowRect);
                 else if (i % 2 == 0) Widgets.DrawBoxSolid(rowRect, new Color(1f, 1f, 1f, 0.03f));
-                if (Mouse.IsOver(rowRect) && selectedDef != def) Widgets.DrawHighlightIfMouseover(rowRect);
+                if (Mouse.IsOver(rowRect) && _selectedDef != def) Widgets.DrawHighlightIfMouseover(rowRect);
 
                 // Icon
                 float iconX = 3f;
@@ -1095,7 +1095,7 @@ namespace FullyAutomaticOmniCrafter
                 }
 
                 // Favorite star
-                if (OmniCrafterMod.Settings.globalFavorites.Contains(def.defName))
+                if (OmniCrafterMod.Settings.GlobalFavorites.Contains(def.defName))
                 {
                     GUI.color = Color.yellow;
                     Widgets.Label(new Rect(iconX, iconY, 12f, 12f), "★");
@@ -1113,7 +1113,7 @@ namespace FullyAutomaticOmniCrafter
                 if (Widgets.ButtonText(infoRect, "i"))
                 {
                     ThingDef stuffForInfo = def.MadeFromStuff
-                        ? (selectedDef == def && selectedStuff != null ? selectedStuff : GenStuff.DefaultStuffFor(def))
+                        ? (_selectedDef == def && _selectedStuff != null ? _selectedStuff : GenStuff.DefaultStuffFor(def))
                         : null;
                     Find.WindowStack.Add(new Dialog_InfoCard(def, stuffForInfo));
                 }
@@ -1135,15 +1135,15 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // ── Orphaned favorites (defName exists in favorites but ThingDef is missing) ──
-            if (showFavorites && orphanedFavorites.Count > 0)
+            if (_showFavorites && _orphanedFavorites.Count > 0)
             {
                 float orphanY = list.Count * rowH;
-                for (int i = 0; i < orphanedFavorites.Count; i++)
+                for (int i = 0; i < _orphanedFavorites.Count; i++)
                 {
                     float y = orphanY + i * orphanRowH;
                     if (y + orphanRowH < scrollY || y > scrollY + visH) continue;
 
-                    string defName = orphanedFavorites[i];
+                    string defName = _orphanedFavorites[i];
                     Rect rowRect = new Rect(0f, y, viewW, orphanRowH);
 
                     if (i % 2 == 0) Widgets.DrawBoxSolid(rowRect, new Color(1f, 0.3f, 0.3f, 0.08f));
@@ -1172,10 +1172,10 @@ namespace FullyAutomaticOmniCrafter
                     if (Widgets.ButtonText(new Rect(viewW - btnW, y + (orphanRowH - 22f) / 2f, btnW, 22f),
                             "OmniCrafter_Unfavorite".Translate()))
                     {
-                        OmniCrafterMod.Settings.globalFavorites.Remove(defName);
+                        OmniCrafterMod.Settings.GlobalFavorites.Remove(defName);
                         OmniCrafterMod.Settings.Write();
-                        orphanedFavorites.RemoveAt(i);
-                        currentList = null;
+                        _orphanedFavorites.RemoveAt(i);
+                        _currentList = null;
                         break;
                     }
                 }
@@ -1191,19 +1191,19 @@ namespace FullyAutomaticOmniCrafter
             x += 46f;
 
             // "All" button
-            if (selectedModFilter == null) GUI.color = Color.cyan;
+            if (_selectedModFilter == null) GUI.color = Color.cyan;
             if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 48f, 24f), "OmniCrafter_ModAll".Translate()))
             {
-                selectedModFilter = null;
-                currentList = null;
-                searchCache = null;
+                _selectedModFilter = null;
+                _currentList = null;
+                _searchCache = null;
             }
 
             GUI.color = Color.white;
             x += 50f;
 
             // Show current filter name button (opens FloatMenu to pick a mod)
-            string currentLabel = selectedModFilter ?? "OmniCrafter_ModAll".Translate();
+            string currentLabel = _selectedModFilter ?? "OmniCrafter_ModAll".Translate();
             string btnLabel = currentLabel.Length > 20 ? currentLabel.Substring(0, 18) + "…" : currentLabel;
             if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 180f, 24f), $"▼ {btnLabel}"))
             {
@@ -1211,18 +1211,18 @@ namespace FullyAutomaticOmniCrafter
                 var options = new List<FloatMenuOption>();
                 options.Add(new FloatMenuOption("OmniCrafter_AllMods".Translate(), () =>
                 {
-                    selectedModFilter = null;
-                    currentList = null;
-                    searchCache = null;
+                    _selectedModFilter = null;
+                    _currentList = null;
+                    _searchCache = null;
                 }));
                 foreach (string mod in modNames)
                 {
                     string captured = mod;
                     options.Add(new FloatMenuOption(captured, () =>
                     {
-                        selectedModFilter = captured;
-                        currentList = null;
-                        searchCache = null;
+                        _selectedModFilter = captured;
+                        _currentList = null;
+                        _searchCache = null;
                     }));
                 }
 
@@ -1237,7 +1237,7 @@ namespace FullyAutomaticOmniCrafter
             x += 38f;
             foreach (SortMode sm in Enum.GetValues(typeof(SortMode)))
             {
-                if (sortMode == sm) GUI.color = Color.cyan;
+                if (_sortMode == sm) GUI.color = Color.cyan;
                 string smLabel;
                 switch (sm)
                 {
@@ -1248,8 +1248,8 @@ namespace FullyAutomaticOmniCrafter
 
                 if (Widgets.ButtonText(new Rect(x, rect.y + 2f, 72f, 24f), smLabel))
                 {
-                    sortMode = sm;
-                    currentList = null;
+                    _sortMode = sm;
+                    _currentList = null;
                 }
 
                 GUI.color = Color.white;
@@ -1259,28 +1259,28 @@ namespace FullyAutomaticOmniCrafter
 
         private void SelectDef(ThingDef def)
         {
-            selectedDef = def;
-            selectedAutoOrder = null;
-            validStuffs = def.MadeFromStuff ? OmniCrafterCache.GetValidStuffs(def) : null;
-            selectedStuff = validStuffs != null && validStuffs.Count > 0 ? validStuffs[0] : null;
-            selectedQuality = QualityCategory.Normal;
-            craftCount = 1;
+            _selectedDef = def;
+            _selectedAutoOrder = null;
+            _validStuffs = def.MadeFromStuff ? OmniCrafterCache.GetValidStuffs(def) : null;
+            _selectedStuff = _validStuffs != null && _validStuffs.Count > 0 ? _validStuffs[0] : null;
+            _selectedQuality = QualityCategory.Normal;
+            _craftCount = 1;
         }
 
         private void SelectDefFromOrder(AutoOrder ao)
         {
-            selectedAutoOrder = ao;
-            selectedDef = ao.thingDef;
-            validStuffs = selectedDef != null && selectedDef.MadeFromStuff
-                ? OmniCrafterCache.GetValidStuffs(selectedDef)
+            _selectedAutoOrder = ao;
+            _selectedDef = ao.ThingDef;
+            _validStuffs = _selectedDef != null && _selectedDef.MadeFromStuff
+                ? OmniCrafterCache.GetValidStuffs(_selectedDef)
                 : null;
-            selectedStuff = ao.stuffDef ?? (validStuffs != null && validStuffs.Count > 0 ? validStuffs[0] : null);
-            selectedQuality = ao.quality;
-            maintainCount = ao.targetCount;
-            outputMode = ao.outputMode;
-            storageOnly = ao.storageOnly;
-            productionMode = ProductionMode.MaintainStock;
-            craftCount = 1;
+            _selectedStuff = ao.StuffDef ?? (_validStuffs != null && _validStuffs.Count > 0 ? _validStuffs[0] : null);
+            _selectedQuality = ao.Quality;
+            _maintainCount = ao.TargetCount;
+            _outputMode = ao.OutputMode;
+            _storageOnly = ao.StorageOnly;
+            _productionMode = ProductionMode.MaintainStock;
+            _craftCount = 1;
         }
 
         private void DrawMidRightPanel(Rect rect)
@@ -1288,7 +1288,7 @@ namespace FullyAutomaticOmniCrafter
             Widgets.DrawBoxSolid(rect, new Color(0.12f, 0.12f, 0.12f, 0.6f));
             rect = rect.ContractedBy(6f);
 
-            if (selectedDef == null)
+            if (_selectedDef == null)
             {
                 Widgets.Label(rect, "OmniCrafter_SelectItem".Translate());
                 return;
@@ -1299,15 +1299,15 @@ namespace FullyAutomaticOmniCrafter
 
             // Estimate content height for the virtual scroll view
             float contentH = 70f + 22f; // icon + name + fav + mod source
-            if (!selectedDef.description.NullOrEmpty()) contentH += 60f;
+            if (!_selectedDef.description.NullOrEmpty()) contentH += 60f;
             contentH += 6f + 6f; // separators
-            if (validStuffs != null && validStuffs.Count > 0) contentH += 22f + 28f + 12f;
-            if (selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f;
+            if (_validStuffs != null && _validStuffs.Count > 0) contentH += 22f + 28f + 12f;
+            if (_selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f;
             contentH += 22f + 28f + 28f + 22f + 26f + 30f + 6f;
             contentH += 22f + 48f + 22f + 36f;
 
             Rect viewRect = new Rect(0f, 0f, viewW, contentH);
-            Widgets.BeginScrollView(rect, ref rightPanelScroll, viewRect);
+            Widgets.BeginScrollView(rect, ref _rightPanelScroll, viewRect);
 
             float y = 0f;
 
@@ -1315,7 +1315,7 @@ namespace FullyAutomaticOmniCrafter
             Rect ir = new Rect(0f, y, 64f, 64f);
             try
             {
-                Widgets.ThingIcon(ir, selectedDef, selectedStuff);
+                Widgets.ThingIcon(ir, _selectedDef, _selectedStuff);
             }
             catch
             {
@@ -1323,32 +1323,32 @@ namespace FullyAutomaticOmniCrafter
             }
 
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(70f, y, viewW - 70f, 32f), selectedDef.LabelCap);
+            Widgets.Label(new Rect(70f, y, viewW - 70f, 32f), _selectedDef.LabelCap);
             Text.Font = GameFont.Small;
-            bool isFav = OmniCrafterMod.Settings.globalFavorites.Contains(selectedDef.defName);
+            bool isFav = OmniCrafterMod.Settings.GlobalFavorites.Contains(_selectedDef.defName);
             if (Widgets.ButtonText(new Rect(70f, y + 34f, 120f, 24f),
                     isFav ? "OmniCrafter_Unfavorite".Translate() : "OmniCrafter_Favorite".Translate()))
             {
-                if (isFav) OmniCrafterMod.Settings.globalFavorites.Remove(selectedDef.defName);
-                else OmniCrafterMod.Settings.globalFavorites.Add(selectedDef.defName);
+                if (isFav) OmniCrafterMod.Settings.GlobalFavorites.Remove(_selectedDef.defName);
+                else OmniCrafterMod.Settings.GlobalFavorites.Add(_selectedDef.defName);
                 OmniCrafterMod.Settings.Write();
-                currentList = null;
+                _currentList = null;
             }
 
             y += 70f;
 
             // Mod source
-            string modName = OmniCrafterCache.GetModName(selectedDef);
+            string modName = OmniCrafterCache.GetModName(_selectedDef);
             GUI.color = new Color(0.7f, 0.85f, 1f);
             Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_FromMod".Translate(modName));
             GUI.color = Color.white;
             y += 22f;
 
-            if (!selectedDef.description.NullOrEmpty())
+            if (!_selectedDef.description.NullOrEmpty())
             {
-                string desc = selectedDef.description.Length > 160
-                    ? selectedDef.description.Substring(0, 157) + "..."
-                    : selectedDef.description;
+                string desc = _selectedDef.description.Length > 160
+                    ? _selectedDef.description.Substring(0, 157) + "..."
+                    : _selectedDef.description;
                 Widgets.Label(new Rect(0f, y, viewW, 56f), desc);
                 y += 60f;
             }
@@ -1357,23 +1357,23 @@ namespace FullyAutomaticOmniCrafter
             y += 6f;
 
             // Stuff — dropdown
-            if (validStuffs != null && validStuffs.Count > 0)
+            if (_validStuffs != null && _validStuffs.Count > 0)
             {
                 Widgets.Label(new Rect(0f, y, 80f, 22f), "OmniCrafter_Material".Translate());
-                string stuffLabel = selectedStuff != null
-                    ? (selectedStuff.label ?? selectedStuff.defName).CapitalizeFirst()
+                string stuffLabel = _selectedStuff != null
+                    ? (_selectedStuff.label ?? _selectedStuff.defName).CapitalizeFirst()
                     : "None";
                 if (Widgets.ButtonText(new Rect(84f, y, viewW - 84f, 24f), $"▼ {stuffLabel}"))
                 {
                     var stuffOptions = new List<FloatMenuOption>();
-                    foreach (ThingDef s in validStuffs)
+                    foreach (ThingDef s in _validStuffs)
                     {
                         ThingDef captured = s;
                         stuffOptions.Add(new FloatMenuOption(
                             (captured.label ?? captured.defName).CapitalizeFirst(),
                             () =>
                             {
-                                selectedStuff = captured;
+                                _selectedStuff = captured;
                                 SyncSelectedAutoOrder();
                             }));
                     }
@@ -1387,10 +1387,10 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // Quality — dropdown
-            if (selectedDef.HasComp(typeof(CompQuality)))
+            if (_selectedDef.HasComp(typeof(CompQuality)))
             {
                 Widgets.Label(new Rect(0f, y, 80f, 22f), "OmniCrafter_Quality".Translate());
-                if (Widgets.ButtonText(new Rect(84f, y, viewW - 84f, 24f), $"▼ {selectedQuality.GetLabel()}"))
+                if (Widgets.ButtonText(new Rect(84f, y, viewW - 84f, 24f), $"▼ {_selectedQuality.GetLabel()}"))
                 {
                     var qualOptions = new List<FloatMenuOption>();
                     foreach (QualityCategory q in (QualityCategory[])Enum.GetValues(typeof(QualityCategory)))
@@ -1400,7 +1400,7 @@ namespace FullyAutomaticOmniCrafter
                             captured.GetLabel(),
                             () =>
                             {
-                                selectedQuality = captured;
+                                _selectedQuality = captured;
                                 SyncSelectedAutoOrder();
                             }));
                     }
@@ -1417,41 +1417,41 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_Mode".Translate());
             y += 22f;
             if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW / 2f - 2f, 24f), "OmniCrafter_FixedCount".Translate(),
-                    productionMode == ProductionMode.FixedCount))
-                productionMode = ProductionMode.FixedCount;
+                    _productionMode == ProductionMode.FixedCount))
+                _productionMode = ProductionMode.FixedCount;
             if (Widgets.RadioButtonLabeled(new Rect(viewW / 2f, y, viewW / 2f - 2f, 24f),
                     "OmniCrafter_MaintainStock".Translate(),
-                    productionMode == ProductionMode.MaintainStock))
-                productionMode = ProductionMode.MaintainStock;
+                    _productionMode == ProductionMode.MaintainStock))
+                _productionMode = ProductionMode.MaintainStock;
             y += 28f;
 
-            if (productionMode == ProductionMode.FixedCount)
+            if (_productionMode == ProductionMode.FixedCount)
             {
                 Widgets.Label(new Rect(0f, y, 60f, 24f), "OmniCrafter_Count".Translate());
-                string cs = Widgets.TextField(new Rect(62f, y, 55f, 24f), craftCount.ToString());
-                if (int.TryParse(cs, out int cp) && cp > 0) craftCount = cp;
-                if (Widgets.ButtonText(new Rect(120f, y, 24f, 24f), "+")) craftCount++;
-                if (craftCount > 1 && Widgets.ButtonText(new Rect(146f, y, 24f, 24f), "-")) craftCount--;
+                string cs = Widgets.TextField(new Rect(62f, y, 55f, 24f), _craftCount.ToString());
+                if (int.TryParse(cs, out int cp) && cp > 0) _craftCount = cp;
+                if (Widgets.ButtonText(new Rect(120f, y, 24f, 24f), "+")) _craftCount++;
+                if (_craftCount > 1 && Widgets.ButtonText(new Rect(146f, y, 24f, 24f), "-")) _craftCount--;
             }
             else
             {
                 Widgets.Label(new Rect(0f, y, 100f, 24f), "OmniCrafter_TargetStock".Translate());
-                string ms = Widgets.TextField(new Rect(102f, y, 55f, 24f), maintainCount.ToString());
+                string ms = Widgets.TextField(new Rect(102f, y, 55f, 24f), _maintainCount.ToString());
                 if (int.TryParse(ms, out int mp) && mp > 0)
                 {
-                    maintainCount = mp;
+                    _maintainCount = mp;
                     SyncSelectedAutoOrder();
                 }
 
                 if (Widgets.ButtonText(new Rect(160f, y, 24f, 24f), "+"))
                 {
-                    maintainCount++;
+                    _maintainCount++;
                     SyncSelectedAutoOrder();
                 }
 
-                if (maintainCount > 1 && Widgets.ButtonText(new Rect(186f, y, 24f, 24f), "-"))
+                if (_maintainCount > 1 && Widgets.ButtonText(new Rect(186f, y, 24f, 24f), "-"))
                 {
-                    maintainCount--;
+                    _maintainCount--;
                     SyncSelectedAutoOrder();
                 }
             }
@@ -1462,31 +1462,31 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_Output".Translate());
             y += 22f;
             if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "OmniCrafter_DropNear".Translate(),
-                    outputMode == OutputMode.DropNear))
+                    _outputMode == OutputMode.DropNear))
             {
-                outputMode = OutputMode.DropNear;
+                _outputMode = OutputMode.DropNear;
                 SyncSelectedAutoOrder();
             }
 
             y += 26f;
             if (Widgets.RadioButtonLabeled(new Rect(0f, y, viewW, 24f), "OmniCrafter_SendToStorage".Translate(),
-                    outputMode == OutputMode.SendToStorage))
+                    _outputMode == OutputMode.SendToStorage))
             {
-                outputMode = OutputMode.SendToStorage;
+                _outputMode = OutputMode.SendToStorage;
                 SyncSelectedAutoOrder();
             }
 
             y += 30f;
 
             // Storage-only toggle（仅在维持库存模式下显示）
-            if (productionMode == ProductionMode.MaintainStock)
+            if (_productionMode == ProductionMode.MaintainStock)
             {
-                bool newStorageOnly = storageOnly;
+                bool newStorageOnly = _storageOnly;
                 Widgets.CheckboxLabeled(new Rect(0f, y, viewW, 24f),
                     "OmniCrafter_StorageOnly".Translate(), ref newStorageOnly);
-                if (newStorageOnly != storageOnly)
+                if (newStorageOnly != _storageOnly)
                 {
-                    storageOnly = newStorageOnly;
+                    _storageOnly = newStorageOnly;
                     SyncSelectedAutoOrder();
                 }
 
@@ -1497,34 +1497,34 @@ namespace FullyAutomaticOmniCrafter
             y += 6f;
 
             // Current stock
-            int currentStock = storageOnly && productionMode == ProductionMode.MaintainStock
-                ? OmniCrafterCache.CountInStorage(selectedDef, building.Map)
-                : OmniCrafterCache.CountOnMap(selectedDef, building.Map);
-            string onMapKey = storageOnly && productionMode == ProductionMode.MaintainStock
+            int currentStock = _storageOnly && _productionMode == ProductionMode.MaintainStock
+                ? OmniCrafterCache.CountInStorage(_selectedDef, _building.Map)
+                : OmniCrafterCache.CountOnMap(_selectedDef, _building.Map);
+            string onMapKey = _storageOnly && _productionMode == ProductionMode.MaintainStock
                 ? "OmniCrafter_InStorage"
                 : "OmniCrafter_OnMap";
             Widgets.Label(new Rect(0f, y, viewW, 20f), onMapKey.Translate(currentStock));
             y += 22f;
 
             // Power cost
-            CompPowerTrader pwr = building.GetComp<CompPowerTrader>();
+            CompPowerTrader pwr = _building.GetComp<CompPowerTrader>();
             float stored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
             int countForCost;
-            if (productionMode == ProductionMode.FixedCount)
-                countForCost = craftCount;
+            if (_productionMode == ProductionMode.FixedCount)
+                countForCost = _craftCount;
             else
-                countForCost = Mathf.Max(0, maintainCount - currentStock);
+                countForCost = Mathf.Max(0, _maintainCount - currentStock);
             float cost = countForCost > 0
-                ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
+                ? OmniPowerCost.CostWd(_selectedDef, _selectedStuff, _selectedQuality, countForCost)
                 : 0f;
             bool canAfford = countForCost <= 0 || stored >= cost;
             // Debug: God mode free-craft bypass
-            bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
+            bool godDebugUI = BuildingOmniCrafter.DebugNoPowerRequired && DebugSettings.godMode;
             if (godDebugUI) canAfford = true;
 
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
-                ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, stored.ToString("F0"))
+                ? "OmniCrafter_StockFull".Translate(currentStock, _maintainCount, stored.ToString("F0"))
                 : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), stored.ToString("N0"));
             if (!canAfford) costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
             Widgets.Label(new Rect(0f, y, viewW, 44f), costLabel);
@@ -1532,7 +1532,7 @@ namespace FullyAutomaticOmniCrafter
             y += 48f;
 
             // Building 提示
-            if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
+            if (_selectedDef.category == ThingCategory.Building && _selectedDef.Minifiable && countForCost > 1)
             {
                 GUI.color = new Color(1f, 0.85f, 0.2f);
                 Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_BuildingOneAtATime".Translate());
@@ -1541,21 +1541,21 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // Action button
-            if (productionMode == ProductionMode.FixedCount)
+            if (_productionMode == ProductionMode.FixedCount)
             {
                 GUI.color = canAfford ? Color.white : new Color(0.5f, 0.5f, 0.5f);
-                if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_CraftX".Translate(craftCount)))
+                if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_CraftX".Translate(_craftCount)))
                 {
                     if (canAfford)
                     {
                         if (!godDebugUI)
                             OmniPowerCost.TryDrainPower(pwr?.PowerNet, cost);
-                        building.SpawnItems(selectedDef, selectedStuff, selectedQuality, craftCount, outputMode);
-                        building.AddRecent(selectedDef);
+                        _building.SpawnItems(_selectedDef, _selectedStuff, _selectedQuality, _craftCount, _outputMode);
+                        _building.AddRecent(_selectedDef);
                         SoundDefOf.ExecuteTrade.PlayOneShotOnCamera();
                     }
                     else
-                        Messages.Message("OmniCrafter_NotEnoughPower".Translate(), building,
+                        Messages.Message("OmniCrafter_NotEnoughPower".Translate(), _building,
                             MessageTypeDefOf.RejectInput, false);
                 }
 
@@ -1564,27 +1564,27 @@ namespace FullyAutomaticOmniCrafter
             }
             else
             {
-                bool hasOrder = building.autoOrders.Any(o => o.thingDef == selectedDef);
+                bool hasOrder = _building.AutoOrders.Any(o => o.ThingDef == _selectedDef);
                 if (hasOrder)
                 {
                     if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_RemoveAutoOrder".Translate()))
                     {
-                        building.autoOrders.RemoveAll(o => o.thingDef == selectedDef);
-                        if (selectedAutoOrder != null && selectedAutoOrder.thingDef == selectedDef)
-                            selectedAutoOrder = null;
+                        _building.AutoOrders.RemoveAll(o => o.ThingDef == _selectedDef);
+                        if (_selectedAutoOrder != null && _selectedAutoOrder.ThingDef == _selectedDef)
+                            _selectedAutoOrder = null;
                     }
                 }
                 else
                 {
                     if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_AddAutoOrder".Translate()))
                     {
-                        building.autoOrders.Add(new AutoOrder
+                        _building.AutoOrders.Add(new AutoOrder
                         {
-                            thingDef = selectedDef, stuffDef = selectedStuff,
-                            quality = selectedQuality, targetCount = maintainCount,
-                            outputMode = outputMode, storageOnly = storageOnly
+                            ThingDef = _selectedDef, StuffDef = _selectedStuff,
+                            Quality = _selectedQuality, TargetCount = _maintainCount,
+                            OutputMode = _outputMode, StorageOnly = _storageOnly
                         });
-                        building.AddRecent(selectedDef);
+                        _building.AddRecent(_selectedDef);
                     }
                 }
 
@@ -1603,11 +1603,11 @@ namespace FullyAutomaticOmniCrafter
             float rowH = 24f;
             float headerH = 26f;
 
-            int count = building.autoOrders.Count;
+            int count = _building.AutoOrders.Count;
             float totalH = headerH + count * rowH + 4f;
 
             Rect viewRect = new Rect(0f, 0f, viewW, Mathf.Max(totalH, rect.height));
-            Widgets.BeginScrollView(rect, ref farRightScroll, viewRect);
+            Widgets.BeginScrollView(rect, ref _farRightScroll, viewRect);
 
             float y = 0f;
             Widgets.Label(new Rect(0f, y, viewW, 22f),
@@ -1616,34 +1616,34 @@ namespace FullyAutomaticOmniCrafter
 
             for (int i = 0; i < count; i++)
             {
-                AutoOrder ao = building.autoOrders[i];
-                int onMap = ao.storageOnly
-                    ? OmniCrafterCache.CountInStorage(ao.thingDef, building.Map)
-                    : OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
-                bool full = onMap >= ao.targetCount;
+                AutoOrder ao = _building.AutoOrders[i];
+                int onMap = ao.StorageOnly
+                    ? OmniCrafterCache.CountInStorage(ao.ThingDef, _building.Map)
+                    : OmniCrafterCache.CountOnMap(ao.ThingDef, _building.Map);
+                bool full = onMap >= ao.TargetCount;
 
                 Rect rowRect = new Rect(0f, y, viewW, rowH);
 
                 // Highlight selected
-                if (selectedAutoOrder == ao)
+                if (_selectedAutoOrder == ao)
                     Widgets.DrawHighlight(rowRect);
                 else if (i % 2 == 0)
                     Widgets.DrawBoxSolid(rowRect, new Color(1f, 1f, 1f, 0.03f));
-                if (Mouse.IsOver(rowRect) && selectedAutoOrder != ao)
+                if (Mouse.IsOver(rowRect) && _selectedAutoOrder != ao)
                     Widgets.DrawHighlightIfMouseover(rowRect);
 
                 GUI.color = full ? Color.green : Color.white;
-                string storageFlag = ao.storageOnly ? " 🏪" : "";
-                string lbl = (ao.thingDef?.LabelCap ?? "?") +
-                             $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]{storageFlag}";
+                string storageFlag = ao.StorageOnly ? " 🏪" : "";
+                string lbl = (ao.ThingDef?.LabelCap ?? "?") +
+                             $" {onMap}/{ao.TargetCount} [{ao.Quality.GetLabel()}]{storageFlag}";
                 Widgets.Label(new Rect(0f, y, viewW - 26f, rowH), lbl);
                 GUI.color = Color.white;
 
                 // Delete button
                 if (Widgets.ButtonText(new Rect(viewW - 24f, y + 2f, 22f, 20f), "X"))
                 {
-                    if (selectedAutoOrder == ao) selectedAutoOrder = null;
-                    building.autoOrders.RemoveAt(i);
+                    if (_selectedAutoOrder == ao) _selectedAutoOrder = null;
+                    _building.AutoOrders.RemoveAt(i);
                     break;
                 }
 
