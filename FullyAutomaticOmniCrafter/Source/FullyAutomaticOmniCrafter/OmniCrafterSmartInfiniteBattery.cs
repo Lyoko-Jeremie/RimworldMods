@@ -45,7 +45,7 @@ namespace FullyAutomaticOmniCrafter
         public void UpdateCapacity()
         {
             if (this.PowerNet == null) return;
-            
+
             // 如果开关关闭，停止一切自适应行为
             if (!FlickUtility.WantsToBeOn(this.parent))
             {
@@ -88,12 +88,14 @@ namespace FullyAutomaticOmniCrafter
         // UI 文本优化：超过百万电量时显示无穷大，防止文字重叠
         public override string CompInspectStringExtra()
         {
-            string status = this.isAbsorbing ? "[自适应膨胀核心: 运行中]" : "[自适应膨胀核心: 待机]";
-            
+            string status = this.isAbsorbing
+                ? "CompOmniCrafterSmartInfiniteBattery_AutoCoreRunning".Translate()
+                : "CompOmniCrafterSmartInfiniteBattery_AutoCoreReady".Translate();
+
             // 开关关闭时附加提示
             if (!FlickUtility.WantsToBeOn(this.parent))
             {
-                status = "[自适应膨胀核心: 已断开]";
+                status = "CompOmniCrafterSmartInfiniteBattery_AutoCoreDisconnect".Translate();
             }
 
             // 获取真实储电量，绕过Harmony补丁的隐藏效果
@@ -101,7 +103,9 @@ namespace FullyAutomaticOmniCrafter
 
             if (realStoredEnergy >= 1000000000f)
             {
-                return "电网储能: 已饱和 (∞) \n" + status;
+                return "CompOmniCrafterSmartInfiniteBattery_Fulfill".Translate() +
+                       realStoredEnergy.ToString("N0") + "Wd\n" +
+                       status;
             }
 
             return base.CompInspectStringExtra() + "\n" + status;
@@ -125,6 +129,7 @@ namespace FullyAutomaticOmniCrafter
 
                 smartBattery.UpdateCapacity();
             }
+
             return true;
         }
     }
@@ -144,6 +149,7 @@ namespace FullyAutomaticOmniCrafter
                     return false;
                 }
             }
+
             return true;
         }
     }
