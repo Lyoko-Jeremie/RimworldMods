@@ -81,7 +81,7 @@ namespace FullyAutomaticOmniCrafter
         {
             string status = this.isAbsorbing ? "[自适应膨胀核心: 运行中]" : "[自适应膨胀核心: 待机]";
 
-            if (this.StoredEnergy > 1000000f)
+            if (this.StoredEnergy >= 1000000000f)
             {
                 return "电网储能: 已饱和 (∞) \n" + status;
             }

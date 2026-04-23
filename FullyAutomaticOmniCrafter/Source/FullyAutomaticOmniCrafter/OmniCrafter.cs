@@ -350,19 +350,52 @@ namespace FullyAutomaticOmniCrafter
 
         public static float TotalStoredEnergy(PowerNet net)
         {
-            return net?.CurrentStoredEnergy() ?? 0f;
+            if (net == null) return 0f;
+            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
+            {
+                return float.PositiveInfinity;
+            }
+            return net.CurrentStoredEnergy();
         }
 
         public static bool TryDrainPower(PowerNet net, float amountWd)
         {
-            if (net == null || net.CurrentStoredEnergy() < amountWd) return false;
+            if (net == null) return false;
+            
+            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()))
+            {
+                return true;
+            }
+
+            if (net.CurrentStoredEnergy() < amountWd) return false;
+            
             float remaining = amountWd;
+            
+            // First deduct from Smart Infinite Batteries
             foreach (CompPowerBattery bat in net.batteryComps)
             {
                 if (remaining <= 0f) break;
-                float draw = Mathf.Min(bat.StoredEnergy, remaining);
-                bat.DrawPower(draw);
-                remaining -= draw;
+                if (bat is CompOmniCrafterSmartInfiniteBattery)
+                {
+                    float draw = Mathf.Min(bat.StoredEnergy, remaining);
+                    bat.DrawPower(draw);
+                    remaining -= draw;
+                }
+            }
+
+            // Then from normal batteries
+            if (remaining > 0f)
+            {
+                foreach (CompPowerBattery bat in net.batteryComps)
+                {
+                    if (remaining <= 0f) break;
+                    if (!(bat is CompOmniCrafterSmartInfiniteBattery))
+                    {
+                        float draw = Mathf.Min(bat.StoredEnergy, remaining);
+                        bat.DrawPower(draw);
+                        remaining -= draw;
+                    }
+                }
             }
 
             return true;
@@ -1669,3 +1702,4 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 }
+
