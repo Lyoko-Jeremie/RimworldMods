@@ -215,13 +215,20 @@ namespace FullyAutomaticOmniCrafter
             int count = 0;
             try
             {
-                foreach (Thing t in map.listerThings.ThingsOfDef(def))
-                    count += t.stackCount;
+                // 若该物品是可打包建筑，只统计打包（MinifiedThing）状态的数量，
+                // 忽略已展开放置在地图上的建筑实体，避免重复计入。
                 if (def.minifiedDef != null)
+                {
                     foreach (Thing t in map.listerThings.ThingsMatching(
                                  ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)))
                         if (t is MinifiedThing mt && mt.InnerThing?.def == def)
                             count += t.stackCount;
+                }
+                else
+                {
+                    foreach (Thing t in map.listerThings.ThingsOfDef(def))
+                        count += t.stackCount;
+                }
             }
             catch (Exception ex)
             {
