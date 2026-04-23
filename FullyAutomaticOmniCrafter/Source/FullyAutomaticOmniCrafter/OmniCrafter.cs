@@ -28,6 +28,7 @@ namespace FullyAutomaticOmniCrafter
         public QualityCategory quality = QualityCategory.Normal;
         public int targetCount = 10;
         public OutputMode outputMode = OutputMode.DropNear;
+        public bool storageOnly = false; // 仅统计存储区中的物品
 
         public void ExposeData()
         {
@@ -36,6 +37,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref quality, "quality", QualityCategory.Normal);
             Scribe_Values.Look(ref targetCount, "targetCount", 10);
             Scribe_Values.Look(ref outputMode, "outputMode", OutputMode.DropNear);
+            Scribe_Values.Look(ref storageOnly, "storageOnly", false);
         }
     }
 
@@ -238,6 +240,36 @@ namespace FullyAutomaticOmniCrafter
             return count;
         }
 
+        /// <summary>仅统计处于存储区（stockpile/仓储格）中的物品数量。</summary>
+        public static int CountInStorage(ThingDef def, Map map)
+        {
+            if (map == null || def == null) return 0;
+            int count = 0;
+            try
+            {
+                if (def.minifiedDef != null)
+                {
+                    foreach (Thing t in map.listerThings.ThingsMatching(
+                                 ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)))
+                        if (t is MinifiedThing mt && mt.InnerThing?.def == def
+                                                  && t.Position.GetSlotGroup(map) != null)
+                            count += t.stackCount;
+                }
+                else
+                {
+                    foreach (Thing t in map.listerThings.ThingsOfDef(def))
+                        if (t.Position.GetSlotGroup(map) != null)
+                            count += t.stackCount;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniCrafter] CountInStorage failed for '{def?.defName}': {ex.Message}");
+            }
+
+            return count;
+        }
+
         public static List<ThingDef> GetValidStuffs(ThingDef def)
         {
             try
@@ -365,7 +397,9 @@ namespace FullyAutomaticOmniCrafter
                 try
                 {
                     if (order.thingDef == null) continue;
-                    int current = OmniCrafterCache.CountOnMap(order.thingDef, Map);
+                    int current = order.storageOnly
+                        ? OmniCrafterCache.CountInStorage(order.thingDef, Map)
+                        : OmniCrafterCache.CountOnMap(order.thingDef, Map);
                     // Log.Message($"[OmniCrafter] Current count of {order.thingDef.defName} on map: {current}");
                     if (current >= order.targetCount) continue;
                     int needed = order.targetCount - current;
@@ -642,6 +676,7 @@ namespace FullyAutomaticOmniCrafter
         private ProductionMode productionMode = ProductionMode.FixedCount;
         private int maintainCount = 10;
         private OutputMode outputMode = OutputMode.DropNear;
+        private bool storageOnly = false;
         private List<ThingDef> validStuffs;
 
         public override Vector2 InitialSize => new Vector2(1350f, 700f);
@@ -666,6 +701,7 @@ namespace FullyAutomaticOmniCrafter
             selectedAutoOrder.quality = selectedQuality;
             selectedAutoOrder.targetCount = maintainCount;
             selectedAutoOrder.outputMode = outputMode;
+            selectedAutoOrder.storageOnly = storageOnly;
         }
 
         private List<ThingDef> CurrentList
@@ -1117,6 +1153,7 @@ namespace FullyAutomaticOmniCrafter
             selectedQuality = ao.quality;
             maintainCount = ao.targetCount;
             outputMode = ao.outputMode;
+            storageOnly = ao.storageOnly;
             productionMode = ProductionMode.MaintainStock;
             craftCount = 1;
         }
@@ -1314,12 +1351,32 @@ namespace FullyAutomaticOmniCrafter
 
             y += 30f;
 
+            // Storage-only toggle（仅在维持库存模式下显示）
+            if (productionMode == ProductionMode.MaintainStock)
+            {
+                bool newStorageOnly = storageOnly;
+                Widgets.CheckboxLabeled(new Rect(0f, y, viewW, 24f),
+                    "OmniCrafter_StorageOnly".Translate(), ref newStorageOnly);
+                if (newStorageOnly != storageOnly)
+                {
+                    storageOnly = newStorageOnly;
+                    SyncSelectedAutoOrder();
+                }
+
+                y += 28f;
+            }
+
             Widgets.DrawLineHorizontal(0f, y, viewW);
             y += 6f;
 
             // Current stock
-            int currentStock = OmniCrafterCache.CountOnMap(selectedDef, building.Map);
-            Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_OnMap".Translate(currentStock));
+            int currentStock = storageOnly && productionMode == ProductionMode.MaintainStock
+                ? OmniCrafterCache.CountInStorage(selectedDef, building.Map)
+                : OmniCrafterCache.CountOnMap(selectedDef, building.Map);
+            string onMapKey = storageOnly && productionMode == ProductionMode.MaintainStock
+                ? "OmniCrafter_InStorage"
+                : "OmniCrafter_OnMap";
+            Widgets.Label(new Rect(0f, y, viewW, 20f), onMapKey.Translate(currentStock));
             y += 22f;
 
             // Power cost
@@ -1393,7 +1450,8 @@ namespace FullyAutomaticOmniCrafter
                         building.autoOrders.Add(new AutoOrder
                         {
                             thingDef = selectedDef, stuffDef = selectedStuff,
-                            quality = selectedQuality, targetCount = maintainCount, outputMode = outputMode
+                            quality = selectedQuality, targetCount = maintainCount,
+                            outputMode = outputMode, storageOnly = storageOnly
                         });
                         building.AddRecent(selectedDef);
                     }
@@ -1428,7 +1486,9 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < count; i++)
             {
                 AutoOrder ao = building.autoOrders[i];
-                int onMap = OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
+                int onMap = ao.storageOnly
+                    ? OmniCrafterCache.CountInStorage(ao.thingDef, building.Map)
+                    : OmniCrafterCache.CountOnMap(ao.thingDef, building.Map);
                 bool full = onMap >= ao.targetCount;
 
                 Rect rowRect = new Rect(0f, y, viewW, rowH);
@@ -1442,8 +1502,9 @@ namespace FullyAutomaticOmniCrafter
                     Widgets.DrawHighlightIfMouseover(rowRect);
 
                 GUI.color = full ? Color.green : Color.white;
+                string storageFlag = ao.storageOnly ? " 🏪" : "";
                 string lbl = (ao.thingDef?.LabelCap ?? "?") +
-                             $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]";
+                             $" {onMap}/{ao.targetCount} [{ao.quality.GetLabel()}]{storageFlag}";
                 Widgets.Label(new Rect(0f, y, viewW - 26f, rowH), lbl);
                 GUI.color = Color.white;
 

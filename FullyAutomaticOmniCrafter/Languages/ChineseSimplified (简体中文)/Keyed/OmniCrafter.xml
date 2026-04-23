@@ -32,7 +32,9 @@
     <OmniCrafter_Output>输出：</OmniCrafter_Output>
     <OmniCrafter_DropNear>就近丢弃</OmniCrafter_DropNear>
     <OmniCrafter_SendToStorage>送入仓储</OmniCrafter_SendToStorage>
+    <OmniCrafter_StorageOnly>仅统计存储区中的物品</OmniCrafter_StorageOnly>
     <OmniCrafter_OnMap>地图上：{0}</OmniCrafter_OnMap>
+    <OmniCrafter_InStorage>存储区中：{0}</OmniCrafter_InStorage>
     <OmniCrafter_StockFull>✔ 库存已满 ({0}/{1})\n已储能：{2} Wd</OmniCrafter_StockFull>
     <OmniCrafter_PowerCostLabel>所需电能：{0} Wd / 已储能：{1} Wd</OmniCrafter_PowerCostLabel>
     <OmniCrafter_InsufficientPowerWarning>\n⚠ 储能不足！</OmniCrafter_InsufficientPowerWarning>
