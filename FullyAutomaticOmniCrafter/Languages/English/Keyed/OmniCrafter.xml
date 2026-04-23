@@ -43,4 +43,6 @@
     <OmniCrafter_AddAutoOrder>Add Auto Order</OmniCrafter_AddAutoOrder>
     <OmniCrafter_RemoveAutoOrder>Remove Auto Order</OmniCrafter_RemoveAutoOrder>
     <OmniCrafter_AutoOrdersHeader>Auto Orders ({0}):</OmniCrafter_AutoOrdersHeader>
+    <!-- Missing def placeholder in favorites -->
+    <OmniCrafter_MissingDef>[Missing] {0} (mod not loaded — click to unfavorite)</OmniCrafter_MissingDef>
 </LanguageData>
