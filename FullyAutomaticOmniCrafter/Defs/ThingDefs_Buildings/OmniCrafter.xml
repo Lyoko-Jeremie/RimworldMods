@@ -55,7 +55,7 @@
 
             <!-- 2. 伪装电网收发器 (必须存在！C# 会动态改变它的耗电量来吃掉所有盈余) -->
             <li Class="CompProperties_Power">
-                <compClass>CompPowerTrader</compClass>
+                <compClass>FullyAutomaticOmniCrafter.CompOmniCrafterPowerTrader_Quiet</compClass>
                 <basePowerConsumption>0</basePowerConsumption>
                 <transmitsPower>true</transmitsPower>
             </li>

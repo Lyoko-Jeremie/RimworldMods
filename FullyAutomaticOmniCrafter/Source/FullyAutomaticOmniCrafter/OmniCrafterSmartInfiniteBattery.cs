@@ -40,6 +40,10 @@ namespace FullyAutomaticOmniCrafter
 
             // 1. 计算“真实”的电网盈余
             // (必须减去我们 Trader 自己当前的输出，否则会算错)
+            if (this.trader.transNet != this.PowerNet)
+            {
+                this.trader.transNet = this.PowerNet;
+            }
             float trueSurplus = this.PowerNet.CurrentEnergyGainRate() - this.trader.PowerOutput;
 
             if (trueSurplus > 0)
@@ -56,14 +60,20 @@ namespace FullyAutomaticOmniCrafter
                 {
                     // 2. 让 Trader 变为耗电设备，吃干抹净所有的盈余
                     this.trader.PowerOutput = -trueSurplus;
+
+                    // 【核心修改】必须在添加电量之前扩大容量上限，否则 AddEnergy 会因为容量已满而拒收
+                    float potentialNewEnergy = this.StoredEnergy + (trueSurplus / 60000f);
+                    float newMax = Mathf.Max(BaseCapacity, potentialNewEnergy);
+                    ((CompProperties_Battery)this.props).storedEnergyMax = newMax;
+
                     // 3. 将吃掉的电量手动转化为 Wd 存入电池
                     this.AddEnergy(trueSurplus / 60000f);
                 }
 
                 // 4. 【核心：完美 100%】
                 // 将最大容量严格锁定为当前电量，并且保证最小容量为基础值
-                float newMax = Mathf.Max(BaseCapacity, this.StoredEnergy);
-                ((CompProperties_Battery)this.props).storedEnergyMax = newMax;
+                float finalMax = Mathf.Max(BaseCapacity, this.StoredEnergy);
+                ((CompProperties_Battery)this.props).storedEnergyMax = finalMax;
             }
             else
             {
@@ -125,8 +135,51 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    // public class OmniCrafterSmartInfiniteBattery : Building
-    // {
-    //     // 作为备用的自定义 Building 外壳，实际核心逻辑都在同前缀的 Comp 中实现
-    // }
+    // 静默处理 RimWorld 因为单一建筑挂载多个 PowerComp 而产生的红字报错
+    [HarmonyPatch(typeof(PowerNet), "RegisterAllComponentsOf")]
+    public static class Patch_RegisterAllComponentsOf_Quiet
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(PowerNet __instance, ThingWithComps parentThing)
+        {
+            // 只要包含了特殊的智能电池组件，就说明是我们双挂载的建筑
+            if (parentThing.GetComp<CompOmniCrafterSmartInfiniteBattery>() != null)
+            {
+                CompPowerTrader comp1 = parentThing.GetComp<CompPowerTrader>();
+                if (comp1 != null && !__instance.powerComps.Contains(comp1))
+                {
+                    __instance.powerComps.Add(comp1);
+                }
+                
+                CompPowerBattery comp2 = parentThing.GetComp<CompPowerBattery>();
+                if (comp2 != null && !__instance.batteryComps.Contains(comp2))
+                {
+                    __instance.batteryComps.Add(comp2);
+                }
+                return false; // Skip original error-throwing logic
+            }
+            return true;
+        }
+    }
+
+    // 为了防止UI面板因为双组件而显示两条电源信息（以及未接入电网的误报），我们创建一个隐藏的Trader供代码吸收电力
+    public class CompOmniCrafterPowerTrader_Quiet : CompPowerTrader
+    {
+        public override string CompInspectStringExtra()
+        {
+            // 不在面板上显示任何原版电源信息，全部由我们的 Battery 组件去显示
+            return null;
+        }
+
+        public override void PostSpawnSetup(bool respawningAfterLoad)
+        {
+            base.PostSpawnSetup(respawningAfterLoad);
+            // 在产生后，若我们没有被原版的电网创建器赋予 transNet，我们要主动获取，以免内部错误
+            var battery = this.parent.GetComp<CompOmniCrafterSmartInfiniteBattery>();
+            if (battery != null && battery.transNet != null)
+            {
+                this.transNet = battery.transNet;
+            }
+        }
+    }
 }
