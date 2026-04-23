@@ -50,18 +50,38 @@ namespace FullyAutomaticOmniCrafter
             
             // CurrentEnergyGainRate 返回的是每日瓦特(Wd/tick)，必须乘以60000转换回瓦特(Watts)
             float netGainWatts = this.PowerNet.CurrentEnergyGainRate() * 60000f;
-            float trueSurplus = netGainWatts - this.trader.PowerOutput;
+            
+            // 修复反馈循环Bug：如果Trader组件为关闭状态，电网并不会包括它的负输出。所以只在它开启时减去它的输出。
+            float currentTraderOutput = this.trader.PowerOn ? this.trader.PowerOutput : 0f;
+            float trueSurplus = netGainWatts - currentTraderOutput;
 
             if (trueSurplus > 1f)
             {
                 this.isAbsorbing = true;
+                
+                // 确保我们的Trader开启，以有效吸收电力
+                if (!this.trader.PowerOn)
+                {
+                    // 避免被损坏或手动关闭时疯狂产生红黄字报错
+                    if (this.parent.IsBrokenDown() || !FlickUtility.WantsToBeOn(this.parent))
+                    {
+                        this.trader.PowerOutput = 0f;
+                        this.isAbsorbing = false;
+                        return;
+                    }
+                    this.trader.PowerOn = true;
+                }
+
                 // 【适配无穷大发电机】
                 if (float.IsInfinity(trueSurplus) || float.IsNaN(trueSurplus) || trueSurplus > 10000000f)
                 {
-                    // 帮电网中和无限功率，防止游戏崩溃
                     this.trader.PowerOutput = float.NegativeInfinity;
-                    // 但电池内部只安全吸收一个巨大但合理的数值
-                    this.AddEnergy(10000f / 60000f);
+                    
+                    float safeEnergyAdd = 10000f / 60000f;
+                    float potentialNewEnergy = this.StoredEnergy + safeEnergyAdd;
+                    ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, potentialNewEnergy);
+                    
+                    this.AddEnergy(safeEnergyAdd);
                 }
                 else
                 {
