@@ -13,7 +13,7 @@
         </graphicData>
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
-        <pathCost>50</pathCost>
+        <pathCost>1</pathCost>
         <blockWind>true</blockWind>
         <castEdgeShadows>false</castEdgeShadows>
         <staticSunShadowHeight>0.0</staticSunShadowHeight>
