@@ -45,6 +45,13 @@ namespace FullyAutomaticOmniCrafter
         public void UpdateCapacity()
         {
             if (this.PowerNet == null) return;
+            
+            // 如果开关关闭，停止一切自适应行为
+            if (!FlickUtility.WantsToBeOn(this.parent))
+            {
+                this.isAbsorbing = false;
+                return;
+            }
 
             // CurrentEnergyGainRate返回当tick产生或消耗的净能量 (Wd per tick)
             float surplusWdPerTick = this.PowerNet.CurrentEnergyGainRate();
@@ -82,8 +89,17 @@ namespace FullyAutomaticOmniCrafter
         public override string CompInspectStringExtra()
         {
             string status = this.isAbsorbing ? "[自适应膨胀核心: 运行中]" : "[自适应膨胀核心: 待机]";
+            
+            // 开关关闭时附加提示
+            if (!FlickUtility.WantsToBeOn(this.parent))
+            {
+                status = "[自适应膨胀核心: 已断开]";
+            }
 
-            if (this.StoredEnergy >= 1000000000f)
+            // 获取真实储电量，绕过Harmony补丁的隐藏效果
+            float realStoredEnergy = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+
+            if (realStoredEnergy >= 1000000000f)
             {
                 return "电网储能: 已饱和 (∞) \n" + status;
             }
@@ -96,14 +112,39 @@ namespace FullyAutomaticOmniCrafter
     public static class Patch_SmartBattery_AmountCanAccept
     {
         [HarmonyPrefix]
-        public static void Prefix(CompPowerBattery __instance)
+        public static bool Prefix(CompPowerBattery __instance, ref float __result)
         {
-            // 在原版查询容量之前，强制计算并撑开我们的自适应容量
-            // 解决 XML tickerType 未设置导致的 CompTick 不触发问题，以及浮点容差问题
             if (__instance is CompOmniCrafterSmartInfiniteBattery smartBattery)
             {
+                // 如果开关关闭，阻止能量输入
+                if (!FlickUtility.WantsToBeOn(smartBattery.parent))
+                {
+                    __result = 0f;
+                    return false;
+                }
+
                 smartBattery.UpdateCapacity();
             }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPowerBattery), "StoredEnergy", MethodType.Getter)]
+    public static class Patch_SmartBattery_StoredEnergy
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(CompPowerBattery __instance, ref float __result)
+        {
+            if (__instance is CompOmniCrafterSmartInfiniteBattery smartBattery)
+            {
+                // 如果开关关闭，对外伪装电量为0，阻止能量输出
+                if (!FlickUtility.WantsToBeOn(smartBattery.parent))
+                {
+                    __result = 0f;
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
