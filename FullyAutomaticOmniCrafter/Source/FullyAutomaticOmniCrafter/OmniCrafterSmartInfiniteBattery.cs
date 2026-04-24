@@ -28,6 +28,34 @@ namespace FullyAutomaticOmniCrafter
                 shortCircuitInRain = false, // 关闭雨天短路
                 transmitsPower = originalProps.transmitsPower
             };
+
+            // 重新加载后，确保 storedEnergyMax 不低于已存储电量
+            // 防止 UpdateCapacity 在首次 Tick 前期间因容量上限过低而触发意外钳制
+            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            if (realStored > ((CompProperties_Battery)this.props).storedEnergyMax)
+            {
+                ((CompProperties_Battery)this.props).storedEnergyMax = realStored;
+            }
+        }
+
+        public override void PostExposeData()
+        {
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                // 在数据加载之前，先将props克隆并设置超大容量上限，
+                // 防止 CompPowerBattery.PostExposeData() 的末尾将 storedEnergy 钳制到原始XML容量
+                var originalProps = this.Props;
+                this.props = new CompProperties_Battery
+                {
+                    compClass = originalProps.compClass,
+                    storedEnergyMax = float.MaxValue / 8f,
+                    efficiency = 1.0f,
+                    shortCircuitInRain = false,
+                    transmitsPower = originalProps.transmitsPower
+                };
+            }
+
+            base.PostExposeData();
         }
 
         public override void CompTick()
