@@ -12,6 +12,8 @@
     <OmniCrafter_Search>搜索：</OmniCrafter_Search>
     <OmniCrafter_PinyinSearchOn>拼音搜索：开</OmniCrafter_PinyinSearchOn>
     <OmniCrafter_PinyinSearchOff>拼音搜索：关</OmniCrafter_PinyinSearchOff>
+    <OmniCrafter_RebuildPinyinIndex>重建拼音索引：强制重新构建拼音搜索缓存。当搜索结果不正确或新增Mod后可使用。</OmniCrafter_RebuildPinyinIndex>
+    <OmniCrafter_PinyinIndexRebuilt>拼音搜索缓存已重建完成。</OmniCrafter_PinyinIndexRebuilt>
     <!-- 中栏 - 排序和Mod筛选 -->
     <OmniCrafter_Sort>排序：</OmniCrafter_Sort>
     <OmniCrafter_SortName>名称</OmniCrafter_SortName>

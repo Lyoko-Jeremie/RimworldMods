@@ -12,6 +12,8 @@
     <OmniCrafter_Search>Search:</OmniCrafter_Search>
     <OmniCrafter_PinyinSearchOn>Pinyin Search: On</OmniCrafter_PinyinSearchOn>
     <OmniCrafter_PinyinSearchOff>Pinyin Search: Off</OmniCrafter_PinyinSearchOff>
+    <OmniCrafter_RebuildPinyinIndex>Rebuild Pinyin Index: Force rebuild the pinyin search cache. Use this if search results are incorrect or after adding new mods.</OmniCrafter_RebuildPinyinIndex>
+    <OmniCrafter_PinyinIndexRebuilt>Pinyin search cache has been rebuilt.</OmniCrafter_PinyinIndexRebuilt>
     <!-- Middle panel - sort & mod filter -->
     <OmniCrafter_Sort>Sort:</OmniCrafter_Sort>
     <OmniCrafter_SortName>Name</OmniCrafter_SortName>

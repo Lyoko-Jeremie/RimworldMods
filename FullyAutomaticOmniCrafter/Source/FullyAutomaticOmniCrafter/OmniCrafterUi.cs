@@ -224,12 +224,26 @@ namespace FullyAutomaticOmniCrafter
 
                 string tipKey = pe ? "OmniCrafter_PinyinSearchOn" : "OmniCrafter_PinyinSearchOff";
                 TooltipHandler.TipRegion(pinyinBtnRect, tipKey.Translate());
+
+                // ── 重建拼音缓存按钮（"⟳"）─────────────────────────────────────
+                float rebuildBtnX = pinyinBtnX + 36f + 4f;
+                Rect rebuildBtnRect = new Rect(rebuildBtnX, rect.y + 4f, 26f, 26f);
+                GUI.color = PinyinSearchEngine.IsReady ? Color.white : new Color(1f, 0.7f, 0.3f);
+                if (Widgets.ButtonText(rebuildBtnRect, "⟳"))
+                {
+                    PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
+                    searchCache = null;
+                    currentList = null;
+                    Messages.Message("OmniCrafter_PinyinIndexRebuilt".Translate(), MessageTypeDefOf.TaskCompletion, false);
+                }
+                GUI.color = Color.white;
+                TooltipHandler.TipRegion(rebuildBtnRect, "OmniCrafter_RebuildPinyinIndex".Translate());
             }
 
             // Debug: free-craft switch (God mode only)
             if (DebugSettings.godMode)
             {
-                float dbX = sx + 52f + 280f + 26f;
+                float dbX = sx + 52f + 280f + 66f;
                 bool dbFlag = Building_OmniCrafter.debugNoPowerRequired;
                 GUI.color = dbFlag ? new Color(1f, 0.5f, 0.2f) : new Color(0.6f, 0.6f, 0.6f);
                 Widgets.CheckboxLabeled(
