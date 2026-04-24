@@ -47,6 +47,9 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="ToolGood.Words, Version=3.0.3.3, Culture=neutral, PublicKeyToken=d330f4fd115e6143, processorArchitecture=MSIL">
+      <HintPath>packages\ToolGood.Words.3.0.3.3\lib\net40\ToolGood.Words.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.AI.Navigation">
       <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.AI.Navigation.dll</HintPath>
       <Private>False</Private>
@@ -366,6 +369,7 @@
     <Compile Include="OmniCrafterSettings.cs" />
     <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
     <Compile Include="OmniCrafterUi.cs" />
+    <Compile Include="PinyinSearchEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

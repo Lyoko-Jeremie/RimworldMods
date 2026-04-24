@@ -86,6 +86,8 @@ namespace FullyAutomaticOmniCrafter
         private string searchText = "";
         private List<ThingDef> searchCache;
         private string lastSearch = "";
+        // 上次构建 searchCache 时拼音搜索是否开启，用于检测设置变更后失效
+        private bool lastPinyinEnabled = false;
 
         // Favorites that reference defNames which no longer exist in the current game
         private List<string> orphanedFavorites = new List<string>();
@@ -195,6 +197,27 @@ namespace FullyAutomaticOmniCrafter
                 searchText = ns;
                 searchCache = null;
                 currentList = null;
+            }
+
+            // ── 拼音搜索切换按钮（"拼"）─────────────────────────────────────────
+            {
+                float pinyinBtnX = sx + 52f + 280f + 6f;
+                Rect pinyinBtnRect = new Rect(pinyinBtnX, rect.y + 4f, 36f, 26f);
+                bool pe = OmniCrafterMod.Settings.enablePinyinSearch;
+
+                GUI.color = pe ? Color.cyan : new Color(0.55f, 0.55f, 0.55f);
+                if (Widgets.ButtonText(pinyinBtnRect, "拼"))
+                {
+                    OmniCrafterMod.Settings.enablePinyinSearch = !pe;
+                    OmniCrafterMod.Settings.Write();
+                    // 切换后需重建搜索缓存
+                    searchCache = null;
+                    currentList = null;
+                }
+                GUI.color = Color.white;
+
+                string tipKey = pe ? "OmniCrafter_PinyinSearchOn" : "OmniCrafter_PinyinSearchOff";
+                TooltipHandler.TipRegion(pinyinBtnRect, tipKey.Translate());
             }
 
             // Debug: free-craft switch (God mode only)
@@ -375,15 +398,27 @@ namespace FullyAutomaticOmniCrafter
             string q = searchText?.ToLower() ?? "";
             if (!q.NullOrEmpty())
             {
-                if (searchCache == null || lastSearch != q)
+                bool pinyinEnabled = OmniCrafterMod.Settings.enablePinyinSearch && PinyinSearchEngine.IsReady;
+
+                if (searchCache == null || lastSearch != q || lastPinyinEnabled != pinyinEnabled)
                 {
                     lastSearch = q;
+                    lastPinyinEnabled = pinyinEnabled;
                     searchCache = source.Where(d =>
                     {
                         try
                         {
-                            return (d.label != null && d.label.ToLower().Contains(q)) ||
-                                   (d.defName != null && d.defName.ToLower().Contains(q));
+                            // 原有：label / defName 直接文本匹配（保持不变）
+                            bool normalMatch =
+                                (d.label != null && d.label.ToLower().Contains(q)) ||
+                                (d.defName != null && d.defName.ToLower().Contains(q));
+                            if (normalMatch) return true;
+
+                            // 可选：拼音匹配（全拼子串 或 首字母前缀）
+                            if (pinyinEnabled)
+                                return PinyinSearchEngine.MatchesPinyin(d, q);
+
+                            return false;
                         }
                         catch
                         {

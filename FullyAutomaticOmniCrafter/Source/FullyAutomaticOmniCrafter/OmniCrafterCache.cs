@@ -67,6 +67,7 @@ namespace FullyAutomaticOmniCrafter
             _byCategory = null;
             _allModNames = null;
             _cachedForGame = null;
+            PinyinSearchEngine.Invalidate();
         }
 
         private static void InvalidateIfNeeded()
@@ -77,6 +78,7 @@ namespace FullyAutomaticOmniCrafter
                 _byCategory = null;
                 _allModNames = null;
                 _cachedForGame = Current.Game;
+                PinyinSearchEngine.Invalidate();
             }
         }
 
@@ -149,6 +151,9 @@ namespace FullyAutomaticOmniCrafter
             }
 
             _allModNames = modSet.OrderBy(n => n).ToList();
+
+            // 拼音索引（在缓存构建完成后一并预处理）
+            PinyinSearchEngine.BuildIndex(_allCraftable);
         }
 
         private static bool IsValidCraftable(ThingDef def)
