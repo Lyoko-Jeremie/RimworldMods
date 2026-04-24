@@ -927,7 +927,7 @@ namespace FullyAutomaticOmniCrafter
                 : 0f;
             float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
             bool canAfford = countForCost <= 0 || float.IsInfinity(totalStored) || totalStored >= cost ||
-                             float.IsInfinity(surplusWdPerTick) || surplusWdPerTick >= cost;
+                             float.IsInfinity(surplusWdPerTick) || surplusWdPerTick * 60000f >= cost;
             // Debug: God mode free-craft bypass
             bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
             if (godDebugUI) canAfford = true;

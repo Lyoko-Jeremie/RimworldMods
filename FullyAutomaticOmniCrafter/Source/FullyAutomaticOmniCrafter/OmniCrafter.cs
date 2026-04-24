@@ -174,8 +174,9 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 3 外部电网功率充足（直接可以制造，不扣除任何电量）
-            // 如果 1 tick 的发电量 >= 总所需能量，那必然可以制造
-            if (surplusWdPerTick >= amountWd)
+            // 设计要求：供电功率W的数字，大于所需电量Wd的数字时，即可生产
+            // surplusWdPerTick * 60000f 得到的是功率 W
+            if (surplusWdPerTick * 60000f >= amountWd)
             {
                 return true;
             }
@@ -346,9 +347,10 @@ namespace FullyAutomaticOmniCrafter
                     {
                         toCraft = needed;
                     }
-                    else if (float.IsInfinity(surplusWdPerTick) || surplusWdPerTick >= unitCost)
+                    else if (float.IsInfinity(surplusWdPerTick) || surplusWdPerTick * 60000f >= unitCost)
                     {
                         // 如果盈余功率足够单件制造（直接制造，不扣电）
+                        // 设计要求：供电功率W的数字，大于所需电量Wd的数字时，即可生产
                         toCraft = needed;
                     }
                     else if (available >= unitCost)
