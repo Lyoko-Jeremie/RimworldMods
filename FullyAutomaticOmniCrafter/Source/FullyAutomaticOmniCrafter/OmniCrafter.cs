@@ -45,9 +45,41 @@ namespace FullyAutomaticOmniCrafter
     }
 
     // ─── Power Cost ───────────────────────────────────────────────────────────
+    // TODO 在以下几种情况下可以自动制造和手动制造：
+    //      1 本地电量足够（扣除本地电量）
+    //      2 本地电量+外部电网电量足够（优先扣除本地电量，不足的部分从外部电网扣除）
+    //      3 外部电网功率大于所需电量（直接可以制造，不扣除任何电量）
+    //      4 外部电网电量无限（直接可以制造，不扣除任何电量）
+    //      5 处于 God 模式（直接可以制造，不扣除任何电量）
+    
     public static class OmniPowerCost
     {
         private static readonly float[] QualityMult = { 0.5f, 0.8f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f };
+
+        // RimWorld's CurrentEnergyGainRate only counts PowerOn traders.
+        // On no-battery nets, some comps may be temporarily PowerOff while still wanting power,
+        // so we provide a conservative fallback based on desired PowerOutput.
+        private static float EffectiveEnergyGainRate(PowerNet net)
+        {
+            if (net == null) return 0f;
+
+            float gain = net.CurrentEnergyGainRate();
+            if (gain > 1e-6f || net.batteryComps == null || net.batteryComps.Count > 0)
+                return gain;
+
+            if (net.powerComps == null || net.powerComps.Count == 0)
+                return gain;
+
+            float fallback = 0f;
+            foreach (CompPowerTrader comp in net.powerComps)
+            {
+                if (comp == null || !FlickUtility.WantsToBeOn(comp.parent) || comp.parent.IsBrokenDown())
+                    continue;
+                fallback += comp.PowerOutput * CompPower.WattsToWattDaysPerTick;
+            }
+
+            return Mathf.Max(gain, fallback);
+        }
 
         public static float CostWd(ThingDef def, ThingDef stuff, QualityCategory quality, int count)
         {
@@ -78,8 +110,8 @@ namespace FullyAutomaticOmniCrafter
         public static float ExternalStoredEnergy(PowerNet net)
         {
             if (net == null) return 0f;
-            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()) ||
-                net.CurrentEnergyGainRate() >= 1000000f)
+            float gain = EffectiveEnergyGainRate(net);
+            if (float.IsInfinity(gain) || float.IsNaN(gain) || gain >= 1000000f)
             {
                 return float.PositiveInfinity;
             }
@@ -103,8 +135,8 @@ namespace FullyAutomaticOmniCrafter
         public static float TotalStoredEnergy(PowerNet net)
         {
             if (net == null) return 0f;
-            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()) ||
-                net.CurrentEnergyGainRate() >= 1000000f)
+            float gain = EffectiveEnergyGainRate(net);
+            if (float.IsInfinity(gain) || float.IsNaN(gain) || gain >= 1000000f)
             {
                 return float.PositiveInfinity;
             }
@@ -115,15 +147,15 @@ namespace FullyAutomaticOmniCrafter
         public static float SurplusPowerW(PowerNet net)
         {
             if (net == null) return 0f;
-            return net.CurrentEnergyGainRate() * 60000f; // Wd/tick 转换为 瓦特(W)
+            return Mathf.Max(0f, EffectiveEnergyGainRate(net) * 60000f); // Wd/tick 转换为 瓦特(W)
         }
 
         public static bool TryDrainPower(PowerNet net, float amountWd)
         {
             if (net == null) return false;
 
-            if (float.IsInfinity(net.CurrentEnergyGainRate()) || float.IsNaN(net.CurrentEnergyGainRate()) ||
-                net.CurrentEnergyGainRate() >= 1000000f)
+            float gain = EffectiveEnergyGainRate(net);
+            if (float.IsInfinity(gain) || float.IsNaN(gain) || gain >= 1000000f)
             {
                 return true;
             }
@@ -181,6 +213,7 @@ namespace FullyAutomaticOmniCrafter
         public List<AutoOrder> autoOrders = new List<AutoOrder>();
 
         private CompPower powerComp;
+        private CompPowerTrader powerTraderComp;
         private CompFlickable flickComp;
 
         private int rareTickCounter = 0;
@@ -195,13 +228,19 @@ namespace FullyAutomaticOmniCrafter
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
-            powerComp = GetComp<CompPower>();
+            powerTraderComp = GetComp<CompPowerTrader>();
+            powerComp = (CompPower)powerTraderComp ?? GetComp<CompPower>();
             flickComp = GetComp<CompFlickable>();
             if (_pendingSettingsWrite)
             {
                 _pendingSettingsWrite = false;
                 OmniCrafterMod.Settings.Write();
             }
+        }
+
+        public PowerNet GetWorkingPowerNet()
+        {
+            return powerTraderComp?.PowerNet ?? powerComp?.PowerNet;
         }
 
         public override void ExposeData()
@@ -245,11 +284,12 @@ namespace FullyAutomaticOmniCrafter
             bool godDebug = debugNoPowerRequired && DebugSettings.godMode;
             if (!godDebug)
             {
-                bool isOn = (flickComp == null || flickComp.SwitchIsOn) && powerComp != null;
+                bool isOn = (flickComp == null || flickComp.SwitchIsOn) &&
+                            (powerTraderComp != null || powerComp != null);
                 if (!isOn) return;
             }
 
-            PowerNet net = godDebug ? null : powerComp?.PowerNet;
+            PowerNet net = godDebug ? null : GetWorkingPowerNet();
             if (!godDebug && net == null) return;
             foreach (AutoOrder order in autoOrders)
             {
@@ -440,5 +480,4 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconLaunchReport =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_LaunchReport", true) ?? BaseContent.WhiteTex;
     }
-
 }

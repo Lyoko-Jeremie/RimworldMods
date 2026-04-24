@@ -901,11 +901,11 @@ namespace FullyAutomaticOmniCrafter
             y += 22f;
 
             // Power cost
-            CompPower pwr = building.GetComp<CompPower>();
+            PowerNet net = building.GetWorkingPowerNet();
 
-            float totalStored = OmniPowerCost.TotalStoredEnergy(pwr?.PowerNet);
-            float extStored = OmniPowerCost.ExternalStoredEnergy(pwr?.PowerNet);
-            float intStored = OmniPowerCost.InternalStoredEnergy(pwr?.PowerNet);
+            float totalStored = OmniPowerCost.TotalStoredEnergy(net);
+            float extStored = OmniPowerCost.ExternalStoredEnergy(net);
+            float intStored = OmniPowerCost.InternalStoredEnergy(net);
 
             string customStoredStr;
             if (float.IsInfinity(totalStored))
@@ -926,7 +926,7 @@ namespace FullyAutomaticOmniCrafter
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
             bool canAfford = countForCost <= 0 || totalStored >= cost ||
-                             OmniPowerCost.SurplusPowerW(pwr?.PowerNet) >= cost;
+                             OmniPowerCost.SurplusPowerW(net) >= cost;
             // Debug: God mode free-craft bypass
             bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
             if (godDebugUI) canAfford = true;
@@ -942,7 +942,7 @@ namespace FullyAutomaticOmniCrafter
             else
             {
                 // 当前供电量
-                string powerSupportNow = OmniPowerCost.SurplusPowerW(pwr?.PowerNet).ToString("N0");
+                string powerSupportNow = OmniPowerCost.SurplusPowerW(net).ToString("N0");
                 costLabel += "OmniCrafter_PowerCostLabelSupportNow".Translate(powerSupportNow);
             }
 
@@ -968,7 +968,7 @@ namespace FullyAutomaticOmniCrafter
                     if (canAfford)
                     {
                         if (!godDebugUI)
-                            OmniPowerCost.TryDrainPower(pwr?.PowerNet, cost);
+                            OmniPowerCost.TryDrainPower(net, cost);
                         building.SpawnItems(selectedDef, selectedStuff, selectedQuality, craftCount, outputMode);
                         building.AddRecent(selectedDef);
                         SoundDefOf.ExecuteTrade.PlayOneShotOnCamera();
