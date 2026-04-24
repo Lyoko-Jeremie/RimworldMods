@@ -147,7 +147,13 @@ namespace FullyAutomaticOmniCrafter
         public static float SurplusEnergyWdPerTick(PowerNet net)
         {
             if (net == null) return 0f;
-            return Mathf.Max(0f, EffectiveEnergyGainRate(net));
+            float gain = EffectiveEnergyGainRate(net);
+            if (float.IsInfinity(gain) || float.IsNaN(gain) || gain >= 1000000f)
+            {
+                return float.PositiveInfinity;
+            }
+
+            return Mathf.Max(0f, gain);
         }
 
         public static bool TryDrainPower(PowerNet net, float amountWd)
@@ -161,15 +167,15 @@ namespace FullyAutomaticOmniCrafter
             if (net == null) return false;
 
             // 4 外部电网电量无限（直接可以制造，不扣除任何电量）
-            float gain = EffectiveEnergyGainRate(net);
-            if (float.IsInfinity(gain) || float.IsNaN(gain) || gain >= 1000000f)
+            float surplusWdPerTick = SurplusEnergyWdPerTick(net);
+            if (float.IsInfinity(surplusWdPerTick))
             {
                 return true;
             }
 
             // 3 外部电网功率充足（直接可以制造，不扣除任何电量）
             // 如果 1 tick 的发电量 >= 总所需能量，那必然可以制造
-            if (gain >= amountWd)
+            if (surplusWdPerTick >= amountWd)
             {
                 return true;
             }
@@ -177,7 +183,7 @@ namespace FullyAutomaticOmniCrafter
             // 1 本地电量足够（扣除本地电量）
             // 2 本地电量+外部电网电量足够（优先扣除本地电量，不足的部分从外部电网扣除）
             float totalStored = TotalStoredEnergy(net);
-            if (totalStored >= amountWd)
+            if (float.IsInfinity(totalStored) || totalStored >= amountWd)
             {
                 // 扣除逻辑
                 float remaining = amountWd;
@@ -340,10 +346,9 @@ namespace FullyAutomaticOmniCrafter
                     {
                         toCraft = needed;
                     }
-                    else if (surplusWdPerTick >= unitCost)
+                    else if (float.IsInfinity(surplusWdPerTick) || surplusWdPerTick >= unitCost)
                     {
                         // 如果盈余功率足够单件制造（直接制造，不扣电）
-                        // 在这种情况下，我们其实不受 available 限制，但通常为了稳健性，我们可以设定一个较大的值
                         toCraft = needed;
                     }
                     else if (available >= unitCost)

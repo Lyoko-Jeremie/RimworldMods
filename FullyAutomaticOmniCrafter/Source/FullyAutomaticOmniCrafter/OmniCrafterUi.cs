@@ -925,8 +925,9 @@ namespace FullyAutomaticOmniCrafter
             float cost = countForCost > 0
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
-            bool canAfford = countForCost <= 0 || totalStored >= cost ||
-                             OmniPowerCost.SurplusEnergyWdPerTick(net) >= cost;
+            float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
+            bool canAfford = countForCost <= 0 || float.IsInfinity(totalStored) || totalStored >= cost ||
+                             float.IsInfinity(surplusWdPerTick) || surplusWdPerTick >= cost;
             // Debug: God mode free-craft bypass
             bool godDebugUI = Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode;
             if (godDebugUI) canAfford = true;
@@ -936,7 +937,16 @@ namespace FullyAutomaticOmniCrafter
                 ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, customStoredStr)
                 : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), customStoredStr);
             // 当前供电量
-            string powerSupportNow = (OmniPowerCost.SurplusEnergyWdPerTick(net) * 60000f).ToString("N0");
+            string powerSupportNow;
+            if (float.IsInfinity(surplusWdPerTick))
+            {
+                powerSupportNow = "∞";
+            }
+            else
+            {
+                powerSupportNow = (surplusWdPerTick * 60000f).ToString("N0");
+            }
+
             costLabel += "OmniCrafter_PowerCostLabelSupportNow".Translate(powerSupportNow);
             
             if (!canAfford)
