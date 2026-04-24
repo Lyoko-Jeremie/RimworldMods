@@ -362,8 +362,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="OmniCrafter.cs" />
+    <Compile Include="OmniCrafterCache.cs" />
     <Compile Include="OmniCrafterSettings.cs" />
     <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
+    <Compile Include="OmniCrafterUi.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
