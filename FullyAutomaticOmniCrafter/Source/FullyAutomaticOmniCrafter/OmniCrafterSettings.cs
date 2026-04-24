@@ -26,6 +26,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Collections.Look(ref globalFavorites, "globalFavorites", LookMode.Value);
             if (globalFavorites == null) globalFavorites = new List<string>();
             Scribe_Values.Look(ref enablePinyinSearch, "enablePinyinSearch", false);
+            if (Scribe.mode == LoadSaveMode.LoadingVars) enablePinyinSearch = false;
         }
     }
 
