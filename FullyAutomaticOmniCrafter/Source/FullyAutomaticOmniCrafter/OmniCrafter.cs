@@ -313,14 +313,14 @@ namespace FullyAutomaticOmniCrafter
 
         private void ProcessAutoOrders()
         {
-            Log.Message($"[OmniCrafter] 处理 {autoOrders.Count} 自动订单...");
+            // Log.Message($"[OmniCrafter] 处理 {autoOrders.Count} 自动订单...");
             bool godDebug = debugNoPowerRequired && DebugSettings.godMode;
             if (!godDebug)
             {
                 bool isOn = (powerTraderComp != null || powerComp != null);
-                Log.Message($"[OmniCrafter] 电力状态: {(isOn ? "ON" : "OFF")}, " +
-                            $"PowerComp: {(powerComp != null ? "Yes" : "No")}, " +
-                            $"PowerTraderComp: {(powerTraderComp != null ? "Yes" : "No")}");
+                // Log.Message($"[OmniCrafter] 电力状态: {(isOn ? "ON" : "OFF")}, " +
+                //             $"PowerComp: {(powerComp != null ? "Yes" : "No")}, " +
+                //             $"PowerTraderComp: {(powerTraderComp != null ? "Yes" : "No")}");
                 if (!isOn) return;
             }
 
@@ -329,50 +329,50 @@ namespace FullyAutomaticOmniCrafter
             foreach (AutoOrder order in autoOrders)
             {
                 if (order.paused) continue;
-                Log.Message($"[OmniCrafter] 处理自动订单: {order?.thingDef?.defName} x {order?.targetCount}");
+                // Log.Message($"[OmniCrafter] 处理自动订单: {order?.thingDef?.defName} x {order?.targetCount}");
                 try
                 {
                     if (order.thingDef == null) continue;
                     int current = order.storageOnly
                         ? OmniCrafterCache.CountInStorage(order.thingDef, Map)
                         : OmniCrafterCache.CountOnMap(order.thingDef, Map);
-                    Log.Message($"[OmniCrafter] 当前地图上 {order.thingDef.defName} 数量: {current}");
+                    // Log.Message($"[OmniCrafter] 当前地图上 {order.thingDef.defName} 数量: {current}");
                     if (current >= order.targetCount) continue;
                     int needed = order.targetCount - current;
 
-                    Log.Message($"[OmniCrafter] 已有: {current}, 需要: {needed}");
+                    // Log.Message($"[OmniCrafter] 已有: {current}, 需要: {needed}");
 
                     // 计算单件电力消耗，按当前可用电量推算最多能制造的数量
                     // 避免「一次性要求全部电力，不足则跳过」导致自动订单永远无法执行
                     float unitCost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, 1);
-                    Log.Message($"[OmniCrafter] 单件电力消耗: {order.thingDef.defName}: {unitCost} Wd");
+                    // Log.Message($"[OmniCrafter] 单件电力消耗: {order.thingDef.defName}: {unitCost} Wd");
                     float available = OmniPowerCost.TotalStoredEnergy(net);
-                    Log.Message($"[OmniCrafter] 总电量: {available} Wd");
+                    // Log.Message($"[OmniCrafter] 总电量: {available} Wd");
 
                     float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
-                    Log.Message($"[OmniCrafter] 剩余电量每秒: {surplusWdPerTick} Wd");
+                    // Log.Message($"[OmniCrafter] 剩余电量每秒: {surplusWdPerTick} Wd");
 
                     float toCraft = 0;
                     if (godDebug || unitCost <= 0f || float.IsInfinity(available) || float.IsNaN(available))
                     {
-                        Log.Message($"[OmniCrafter] 无电力消耗或无限电量，制造全部需求: {needed}");
+                        // Log.Message($"[OmniCrafter] 无电力消耗或无限电量，制造全部需求: {needed}");
                         toCraft = needed;
                     }
                     else if (float.IsInfinity(surplusWdPerTick) || surplusWdPerTick * 60000f >= unitCost)
                     {
                         // 功率充足模式：单件电量需求小于等于当前功率，可视为瞬时完成，不占储能
-                        Log.Message($"[OmniCrafter] 剩余电量充足，制造全部需求: {needed}");
+                        // Log.Message($"[OmniCrafter] 剩余电量充足，制造全部需求: {needed}");
                         toCraft = needed;
                     }
                     else if (available >= unitCost)
                     {
                         // 储能消耗模式：按现有储能计算最多可制造数量
-                        Log.Message($"[OmniCrafter] 总电量充足，制造 {toCraft} 个 {order.thingDef.defName} (需要: {needed})");
+                        // Log.Message($"[OmniCrafter] 总电量充足，制造 {toCraft} 个 {order.thingDef.defName} (需要: {needed})");
                         float canAfford = Mathf.Floor(available / unitCost);
                         toCraft = Mathf.Min(needed, canAfford);
                     }
 
-                    Log.Message($"[OmniCrafter] 计划制造数量: {toCraft}");
+                    // Log.Message($"[OmniCrafter] 计划制造数量: {toCraft}");
                     if (toCraft <= 0) continue;
 
                     // 再次检查总电量消耗是否能被支付（功率或储能）
@@ -380,14 +380,14 @@ namespace FullyAutomaticOmniCrafter
                     if (!godDebug && !OmniPowerCost.TryDrainPower(net, totalCost))
                     {
                         // 如果一次性扣除 totalCost 失败（例如储能不足以支付全部），尝试降级为单件生产
-                        Log.Message($"[OmniCrafter] 无法扣除 {totalCost} Wd，尝试单件生产...");
+                        // Log.Message($"[OmniCrafter] 无法扣除 {totalCost} Wd，尝试单件生产...");
                         if (toCraft > 1)
                         {
                             toCraft = 1;
                             totalCost = unitCost;
-                            Log.Message($"[OmniCrafter] 单件生产成本: {totalCost} Wd");
+                            // Log.Message($"[OmniCrafter] 单件生产成本: {totalCost} Wd");
                             if (!OmniPowerCost.TryDrainPower(net, totalCost)) continue;
-                            Log.Message($"[OmniCrafter] 单件生产成功，制造 1 个");
+                            // Log.Message($"[OmniCrafter] 单件生产成功，制造 1 个");
                         }
                         else
                         {
@@ -395,7 +395,7 @@ namespace FullyAutomaticOmniCrafter
                         }
                     }
 
-                    Log.Message($"[OmniCrafter] 计算制造数量: {toCraft} , 总成本: {totalCost} Wd");
+                    // Log.Message($"[OmniCrafter] 计算制造数量: {toCraft} , 总成本: {totalCost} Wd");
                     
                     int realToCraft;
                     // (float)int.MaxValue 的值是 2147483648f
@@ -413,7 +413,7 @@ namespace FullyAutomaticOmniCrafter
                         realToCraft = Mathf.FloorToInt(toCraft);
                     }
                     
-                    Log.Message($"[OmniCrafter] 真实制造数量: {realToCraft} , 总成本: {totalCost} Wd");
+                    // Log.Message($"[OmniCrafter] 真实制造数量: {realToCraft} , 总成本: {totalCost} Wd");
                     SpawnItems(order.thingDef, order.stuffDef, order.quality, realToCraft, order.outputMode);
                 }
                 catch (Exception ex)
