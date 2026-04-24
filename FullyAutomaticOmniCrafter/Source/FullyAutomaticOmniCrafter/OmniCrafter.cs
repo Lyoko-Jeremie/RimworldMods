@@ -141,6 +141,10 @@ namespace FullyAutomaticOmniCrafter
                 return float.PositiveInfinity;
             }
 
+            // Fix: In RimWorld, a net with 0 batteries will return 0 from CurrentStoredEnergy().
+            // But if EffectiveEnergyGainRate returns a positive gain, it means there's live power.
+            // For OmniCrafter logic, we treat it as having enough energy if the power net is live and strong enough.
+            // Here we just return the sum of batteries. The power-based bypass is handled in TryDrainPower.
             return ExternalStoredEnergy(net) + InternalStoredEnergy(net);
         }
 
@@ -342,33 +346,41 @@ namespace FullyAutomaticOmniCrafter
 
                     float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
 
-                    int toCraft;
+                    int toCraft = 0;
                     if (godDebug || unitCost <= 0f || float.IsInfinity(available) || float.IsNaN(available))
                     {
                         toCraft = needed;
                     }
                     else if (float.IsInfinity(surplusWdPerTick) || surplusWdPerTick * 60000f >= unitCost)
                     {
-                        // 如果盈余功率足够单件制造（直接制造，不扣电）
-                        // 设计要求：供电功率W的数字，大于所需电量Wd的数字时，即可生产
+                        // 功率充足模式：单件电量需求小于等于当前功率，可视为瞬时完成，不占储能
                         toCraft = needed;
                     }
                     else if (available >= unitCost)
                     {
+                        // 储能消耗模式：按现有储能计算最多可制造数量
                         int canAfford = Mathf.FloorToInt(available / unitCost);
                         toCraft = Mathf.Min(needed, canAfford);
                     }
-                    else
-                    {
-                        continue;
-                    }
-
-                    // Log.Message($"[OmniCrafter] Unit cost: {unitCost}, Available: {available}, Craft: {toCraft}");
 
                     if (toCraft <= 0) continue;
 
+                    // 再次检查总电量消耗是否能被支付（功率或储能）
                     float totalCost = unitCost * toCraft;
-                    if (!godDebug && !OmniPowerCost.TryDrainPower(net, totalCost)) continue;
+                    if (!godDebug && !OmniPowerCost.TryDrainPower(net, totalCost))
+                    {
+                        // 如果一次性扣除 totalCost 失败（例如储能不足以支付全部），尝试降级为单件生产
+                        if (toCraft > 1)
+                        {
+                            toCraft = 1;
+                            totalCost = unitCost;
+                            if (!OmniPowerCost.TryDrainPower(net, totalCost)) continue;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
                     // Log.Message(
                     //     $"[OmniCrafter] Attempting to craft {toCraft} {order.thingDef?.defName} with total cost {totalCost}");
                     SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
