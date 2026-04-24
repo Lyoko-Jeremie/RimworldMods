@@ -958,9 +958,9 @@ namespace FullyAutomaticOmniCrafter
 
             costLabel += "\n" + "OmniCrafter_PowerCostOne".Translate(costOne.ToString("N0"));
             
-            Widgets.Label(new Rect(0f, y, viewW, 66f), costLabel);
+            Widgets.Label(new Rect(0f, y, viewW, 96f), costLabel);
             GUI.color = Color.white;
-            y += 70f;
+            y += 90f;
 
             // Building 提示
             if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
