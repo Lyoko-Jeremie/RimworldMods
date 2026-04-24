@@ -36,6 +36,7 @@
     <OmniCrafter_OnMap>On Map: {0}</OmniCrafter_OnMap>
     <OmniCrafter_InStorage>In Storage: {0}</OmniCrafter_InStorage>
     <OmniCrafter_StockFull>✔ Stock full ({0}/{1})\nStored: {2} Wd</OmniCrafter_StockFull>
+    <OmniCrafter_PowerCostOne>Power Cost For One: {0} Wd</OmniCrafter_PowerCostOne>
     <OmniCrafter_PowerCostLabel>Power Cost: {0} Wd / Stored: {1}</OmniCrafter_PowerCostLabel>
     <OmniCrafter_PowerCostLabelSupportNow> / Support Now: {0} Wd</OmniCrafter_PowerCostLabelSupportNow>
     <OmniCrafter_InsufficientPowerWarning>\n⚠ Insufficient power!</OmniCrafter_InsufficientPowerWarning>

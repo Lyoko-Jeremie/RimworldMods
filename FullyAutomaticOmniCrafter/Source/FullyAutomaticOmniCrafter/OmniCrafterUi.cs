@@ -922,6 +922,7 @@ namespace FullyAutomaticOmniCrafter
                 countForCost = craftCount;
             else
                 countForCost = Mathf.Max(0, maintainCount - currentStock);
+            float costOne = OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, 1);
             float cost = countForCost > 0
                 ? OmniPowerCost.CostWd(selectedDef, selectedStuff, selectedQuality, countForCost)
                 : 0f;
@@ -936,6 +937,7 @@ namespace FullyAutomaticOmniCrafter
             string costLabel = countForCost <= 0
                 ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, customStoredStr)
                 : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), customStoredStr);
+
             // 当前供电量
             string powerSupportNow;
             if (float.IsInfinity(surplusWdPerTick))
@@ -954,6 +956,8 @@ namespace FullyAutomaticOmniCrafter
                 costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
             }
 
+            costLabel += "\n" + "OmniCrafter_PowerCostOne".Translate(costOne.ToString("N0"));
+            
             Widgets.Label(new Rect(0f, y, viewW, 66f), costLabel);
             GUI.color = Color.white;
             y += 70f;
