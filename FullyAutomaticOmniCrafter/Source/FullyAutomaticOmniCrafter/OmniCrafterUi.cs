@@ -203,16 +203,16 @@ namespace FullyAutomaticOmniCrafter
             {
                 float pinyinBtnX = sx + 52f + 280f + 6f;
                 Rect pinyinBtnRect = new Rect(pinyinBtnX, rect.y + 4f, 36f, 26f);
-                bool pe = lastPinyinEnabled;
+                bool pe = OmniCrafterMod.Settings.enablePinyinSearch;
 
                 GUI.color = pe ? Color.cyan : new Color(0.55f, 0.55f, 0.55f);
                 if (Widgets.ButtonText(pinyinBtnRect, "拼"))
                 {
                     bool newState = !pe;
-                    lastPinyinEnabled = newState;
+                    OmniCrafterMod.Settings.enablePinyinSearch = newState;
                     OmniCrafterMod.Settings.Write();
                     // 首次启用（或缓存失效后重新启用）时按需构建拼音索引
-                    if (!PinyinSearchEngine.IsReady)
+                    if (newState && !PinyinSearchEngine.IsReady)
                     {
                         PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
                     }
@@ -418,7 +418,7 @@ namespace FullyAutomaticOmniCrafter
             string q = searchText?.ToLower() ?? "";
             if (!q.NullOrEmpty())
             {
-                bool pinyinEnabled = PinyinSearchEngine.IsReady;
+                bool pinyinEnabled = OmniCrafterMod.Settings.enablePinyinSearch && PinyinSearchEngine.IsReady;
 
                 if (searchCache == null || lastSearch != q || lastPinyinEnabled != pinyinEnabled)
                 {
