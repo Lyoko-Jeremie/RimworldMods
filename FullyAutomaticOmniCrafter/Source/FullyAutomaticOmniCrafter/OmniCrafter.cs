@@ -411,7 +411,7 @@ namespace FullyAutomaticOmniCrafter
         {
             recentCrafted.Remove(def.defName);
             recentCrafted.Insert(0, def.defName);
-            if (recentCrafted.Count > 10) recentCrafted.RemoveAt(recentCrafted.Count - 1);
+            if (recentCrafted.Count > 20) recentCrafted.RemoveAt(recentCrafted.Count - 1);
         }
 
         public void SpawnItems(ThingDef def, ThingDef stuff, QualityCategory quality, int count, OutputMode mode)
