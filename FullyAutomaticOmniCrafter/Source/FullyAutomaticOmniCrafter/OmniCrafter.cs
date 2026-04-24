@@ -319,6 +319,10 @@ namespace FullyAutomaticOmniCrafter
             {
                 bool isOn = (flickComp == null || flickComp.SwitchIsOn) &&
                             (powerTraderComp != null || powerComp != null);
+                Log.Message($"[OmniCrafter] 电力状态: {(isOn ? "ON" : "OFF")}, " +
+                            $"Flickable: {(flickComp != null ? (flickComp.SwitchIsOn ? "ON" : "OFF") : "N/A")}, " +
+                            $"PowerComp: {(powerComp != null ? "Yes" : "No")}, " +
+                            $"PowerTraderComp: {(powerTraderComp != null ? "Yes" : "No")}");
                 if (!isOn) return;
             }
 
