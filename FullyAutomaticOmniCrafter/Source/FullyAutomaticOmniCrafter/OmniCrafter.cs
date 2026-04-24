@@ -51,7 +51,7 @@ namespace FullyAutomaticOmniCrafter
     //      3 外部电网功率大于所需电量（直接可以制造，不扣除任何电量）
     //      4 外部电网电量无限（直接可以制造，不扣除任何电量）
     //      5 处于 God 模式（直接可以制造，不扣除任何电量）
-    
+
     public static class OmniPowerCost
     {
         private static readonly float[] QualityMult = { 0.5f, 0.8f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f };
@@ -144,49 +144,69 @@ namespace FullyAutomaticOmniCrafter
             return ExternalStoredEnergy(net) + InternalStoredEnergy(net);
         }
 
-        public static float SurplusPowerW(PowerNet net)
+        public static float SurplusEnergyWdPerTick(PowerNet net)
         {
             if (net == null) return 0f;
-            return Mathf.Max(0f, EffectiveEnergyGainRate(net) * 60000f); // Wd/tick 转换为 瓦特(W)
+            return Mathf.Max(0f, EffectiveEnergyGainRate(net));
         }
 
         public static bool TryDrainPower(PowerNet net, float amountWd)
         {
+            // 5 处于 God 模式且打开debug开关（直接可以制造，不扣除任何电量）
+            if (Building_OmniCrafter.debugNoPowerRequired && DebugSettings.godMode)
+            {
+                return true;
+            }
+
             if (net == null) return false;
 
+            // 4 外部电网电量无限（直接可以制造，不扣除任何电量）
             float gain = EffectiveEnergyGainRate(net);
             if (float.IsInfinity(gain) || float.IsNaN(gain) || gain >= 1000000f)
             {
                 return true;
             }
 
-            if (SurplusPowerW(net) >= amountWd)
+            // 3 外部电网功率大于所需电量（直接可以制造，不扣除任何电量）
+            // 注意：这里我们假设单次 TickRare 检查周期内，如果盈余功率（Wd/tick）能覆盖总消耗（Wd），则视为功率足够
+            // 实际上 Wd = Watts * Days, 所以 1 Wd = 60000 Watts * 1 tick (if we consider energy per tick)
+            // EffectiveEnergyGainRate 已经是 Wd/tick。
+            if (gain >= amountWd)
             {
-                return true; // 实时盈余功率大于所需，直接返回 true，不扣除电量
+                return true;
             }
 
-            if (TotalStoredEnergy(net) < amountWd) return false;
+            // 检查总电量是否足够
+            float totalAvailable = TotalStoredEnergy(net);
+            if (totalAvailable < amountWd) return false;
 
+            // 扣除逻辑
             float remaining = amountWd;
 
-            // First deduct from Smart Infinite Batteries
-            foreach (CompPowerBattery bat in net.batteryComps)
+            // 1 本地电量足够（优先扣除本地电量）
+            // 2 本地电量+外部电网电量足够（不足的部分从外部电网扣除）
+
+            // First deduct from Smart Infinite Batteries (Internal)
+            if (net.batteryComps != null)
             {
-                if (remaining <= 0f) break;
-                if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
+                foreach (CompPowerBattery bat in net.batteryComps)
                 {
-                    float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
-                    float draw = Mathf.Min(realStored, remaining);
-                    if (draw > 0f)
+                    if (remaining <= 0f) break;
+                    if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
                     {
-                        bat.DrawPower(draw);
-                        remaining -= draw;
+                        float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
+                        float draw = Mathf.Min(realStored, remaining);
+                        if (draw > 1e-6f)
+                        {
+                            bat.DrawPower(draw);
+                            remaining -= draw;
+                        }
                     }
                 }
             }
 
-            // Then from normal batteries
-            if (remaining > 0f)
+            // Then from normal batteries (External)
+            if (remaining > 1e-6f && net.batteryComps != null)
             {
                 foreach (CompPowerBattery bat in net.batteryComps)
                 {
@@ -194,8 +214,11 @@ namespace FullyAutomaticOmniCrafter
                     if (!(bat is CompOmniCrafterSmartInfiniteBattery))
                     {
                         float draw = Mathf.Min(bat.StoredEnergy, remaining);
-                        bat.DrawPower(draw);
-                        remaining -= draw;
+                        if (draw > 1e-6f)
+                        {
+                            bat.DrawPower(draw);
+                            remaining -= draw;
+                        }
                     }
                 }
             }
@@ -312,24 +335,27 @@ namespace FullyAutomaticOmniCrafter
                     float unitCost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, 1);
                     float available = OmniPowerCost.TotalStoredEnergy(net);
 
-                    float surplusW = OmniPowerCost.SurplusPowerW(net);
+                    float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
 
                     int toCraft;
                     if (godDebug || unitCost <= 0f || float.IsInfinity(available) || float.IsNaN(available))
                     {
                         toCraft = needed;
                     }
-                    else if (surplusW >= unitCost)
+                    else if (surplusWdPerTick >= unitCost)
                     {
-                        // 如果有盈余能量足够单件制造
-                        int canAfford = Mathf.Max(Mathf.FloorToInt(surplusW / unitCost),
-                            Mathf.FloorToInt(available / unitCost));
+                        // 如果盈余功率足够单件制造（直接制造，不扣电）
+                        // 在这种情况下，我们其实不受 available 限制，但通常为了稳健性，我们可以设定一个较大的值
+                        toCraft = needed;
+                    }
+                    else if (available >= unitCost)
+                    {
+                        int canAfford = Mathf.FloorToInt(available / unitCost);
                         toCraft = Mathf.Min(needed, canAfford);
                     }
                     else
                     {
-                        int canAfford = Mathf.FloorToInt(available / unitCost);
-                        toCraft = Mathf.Min(needed, canAfford);
+                        continue;
                     }
 
                     // Log.Message($"[OmniCrafter] Unit cost: {unitCost}, Available: {available}, Craft: {toCraft}");
