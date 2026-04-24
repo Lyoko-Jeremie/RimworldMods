@@ -203,16 +203,16 @@ namespace FullyAutomaticOmniCrafter
             {
                 float pinyinBtnX = sx + 52f + 280f + 6f;
                 Rect pinyinBtnRect = new Rect(pinyinBtnX, rect.y + 4f, 36f, 26f);
-                bool pe = OmniCrafterMod.Settings.enablePinyinSearch;
+                bool pe = lastPinyinEnabled;
 
                 GUI.color = pe ? Color.cyan : new Color(0.55f, 0.55f, 0.55f);
                 if (Widgets.ButtonText(pinyinBtnRect, "拼"))
                 {
                     bool newState = !pe;
-                    OmniCrafterMod.Settings.enablePinyinSearch = newState;
+                    lastPinyinEnabled = newState;
                     OmniCrafterMod.Settings.Write();
                     // 首次启用（或缓存失效后重新启用）时按需构建拼音索引
-                    if (newState && !PinyinSearchEngine.IsReady)
+                    if (!PinyinSearchEngine.IsReady)
                     {
                         PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
                     }
@@ -229,7 +229,7 @@ namespace FullyAutomaticOmniCrafter
                 float rebuildBtnX = pinyinBtnX + 36f + 4f;
                 Rect rebuildBtnRect = new Rect(rebuildBtnX, rect.y + 4f, 26f, 26f);
                 GUI.color = PinyinSearchEngine.IsReady ? Color.white : new Color(1f, 0.7f, 0.3f);
-                if (Widgets.ButtonText(rebuildBtnRect, "⟳"))
+                if (Widgets.ButtonText(rebuildBtnRect, "R"))
                 {
                     PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
                     searchCache = null;
@@ -243,7 +243,7 @@ namespace FullyAutomaticOmniCrafter
             // Debug: free-craft switch (God mode only)
             if (DebugSettings.godMode)
             {
-                float dbX = sx + 52f + 280f + 66f;
+                float dbX = sx + 52f + 280f + 76f;
                 bool dbFlag = Building_OmniCrafter.debugNoPowerRequired;
                 GUI.color = dbFlag ? new Color(1f, 0.5f, 0.2f) : new Color(0.6f, 0.6f, 0.6f);
                 Widgets.CheckboxLabeled(
@@ -418,7 +418,7 @@ namespace FullyAutomaticOmniCrafter
             string q = searchText?.ToLower() ?? "";
             if (!q.NullOrEmpty())
             {
-                bool pinyinEnabled = OmniCrafterMod.Settings.enablePinyinSearch && PinyinSearchEngine.IsReady;
+                bool pinyinEnabled = PinyinSearchEngine.IsReady;
 
                 if (searchCache == null || lastSearch != q || lastPinyinEnabled != pinyinEnabled)
                 {
