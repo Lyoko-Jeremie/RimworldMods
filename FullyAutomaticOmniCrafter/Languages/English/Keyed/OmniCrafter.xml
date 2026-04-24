@@ -48,6 +48,9 @@
     <OmniCrafter_AutoOrdersHeader>Auto Orders ({0}):</OmniCrafter_AutoOrdersHeader>
     <!-- Missing def placeholder in favorites -->
     <OmniCrafter_MissingDef>[Missing] {0} (mod not loaded — click to unfavorite)</OmniCrafter_MissingDef>
+    <!-- One stack button -->
+    <OmniCrafter_OneStack>1 Stack</OmniCrafter_OneStack>
+    <OmniCrafter_OneStackTip>Set count to one full stack ({0})</OmniCrafter_OneStackTip>
     <!-- Debug (God mode only) -->
     <OmniCrafter_DebugNoPower>Free Craft (Debug)</OmniCrafter_DebugNoPower>
     <OmniCrafter_DebugNoPowerTip>[DEBUG] Bypass all power requirements and consumption. Only available in God Mode.</OmniCrafter_DebugNoPowerTip>

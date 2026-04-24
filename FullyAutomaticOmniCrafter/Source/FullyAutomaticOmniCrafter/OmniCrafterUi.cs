@@ -826,6 +826,11 @@ namespace FullyAutomaticOmniCrafter
                 if (int.TryParse(cs, out int cp) && cp > 0) craftCount = cp;
                 if (Widgets.ButtonText(new Rect(120f, y, 24f, 24f), "+")) craftCount++;
                 if (craftCount > 1 && Widgets.ButtonText(new Rect(146f, y, 24f, 24f), "-")) craftCount--;
+                int stackLimitFixed = selectedDef?.stackLimit ?? 1;
+                Rect oneStackBtnFixed = new Rect(172f, y, 48f, 24f);
+                if (Widgets.ButtonText(oneStackBtnFixed, "OmniCrafter_OneStack".Translate()))
+                    craftCount = stackLimitFixed;
+                TooltipHandler.TipRegion(oneStackBtnFixed, "OmniCrafter_OneStackTip".Translate(stackLimitFixed));
             }
             else
             {
@@ -848,6 +853,15 @@ namespace FullyAutomaticOmniCrafter
                     maintainCount--;
                     SyncSelectedAutoOrder();
                 }
+
+                int stackLimitMaintain = selectedDef?.stackLimit ?? 1;
+                Rect oneStackBtnMaintain = new Rect(212f, y, 48f, 24f);
+                if (Widgets.ButtonText(oneStackBtnMaintain, "OmniCrafter_OneStack".Translate()))
+                {
+                    maintainCount = stackLimitMaintain;
+                    SyncSelectedAutoOrder();
+                }
+                TooltipHandler.TipRegion(oneStackBtnMaintain, "OmniCrafter_OneStackTip".Translate(stackLimitMaintain));
             }
 
             y += 28f;
