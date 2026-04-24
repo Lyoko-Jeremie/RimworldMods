@@ -208,8 +208,14 @@ namespace FullyAutomaticOmniCrafter
                 GUI.color = pe ? Color.cyan : new Color(0.55f, 0.55f, 0.55f);
                 if (Widgets.ButtonText(pinyinBtnRect, "拼"))
                 {
-                    OmniCrafterMod.Settings.enablePinyinSearch = !pe;
+                    bool newState = !pe;
+                    OmniCrafterMod.Settings.enablePinyinSearch = newState;
                     OmniCrafterMod.Settings.Write();
+                    // 首次启用（或缓存失效后重新启用）时按需构建拼音索引
+                    if (newState && !PinyinSearchEngine.IsReady)
+                    {
+                        PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
+                    }
                     // 切换后需重建搜索缓存
                     searchCache = null;
                     currentList = null;

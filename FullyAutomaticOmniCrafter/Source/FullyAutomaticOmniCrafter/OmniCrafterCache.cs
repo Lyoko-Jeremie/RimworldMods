@@ -151,9 +151,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             _allModNames = modSet.OrderBy(n => n).ToList();
-
-            // 拼音索引（在缓存构建完成后一并预处理）
-            PinyinSearchEngine.BuildIndex(_allCraftable);
+            // 拼音索引不在此处构建，延迟到用户首次启用拼音搜索时按需构建
         }
 
         private static bool IsValidCraftable(ThingDef def)
