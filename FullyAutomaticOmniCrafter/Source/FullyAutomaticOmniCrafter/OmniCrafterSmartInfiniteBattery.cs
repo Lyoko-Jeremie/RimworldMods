@@ -113,6 +113,34 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        [StaticConstructorOnStartup]
+        public static class CompOmniCrafterSmartInfiniteBatteryTex
+        {
+            public static readonly Texture2D dischargeIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
+        }
+
+        // 放电按钮：一键将存储电量清零
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (Gizmo g in base.CompGetGizmosExtra())
+                yield return g;
+
+            Command_Action dischargeBtn = new Command_Action
+            {
+                defaultLabel = "CompOmniCrafterSmartInfiniteBattery_DischargeAll".Translate(),
+                defaultDesc = "CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc".Translate(),
+                icon = CompOmniCrafterSmartInfiniteBatteryTex.dischargeIcon,
+                action = () =>
+                {
+                    // 直接读取私有字段，绕过开关拦截补丁，确保无论开关状态都能清空
+                    float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+                    if (realStored > 0f)
+                        this.DrawPower(realStored);
+                }
+            };
+            yield return dischargeBtn;
+        }
+
         // UI 文本优化：超过百万电量时显示无穷大，防止文字重叠
         public override string CompInspectStringExtra()
         {

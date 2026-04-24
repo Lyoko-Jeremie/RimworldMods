@@ -1,7 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <CompOmniCrafterSmartInfiniteBattery_AutoCoreRunning>[自适应膨胀核心: 运行中]</CompOmniCrafterSmartInfiniteBattery_AutoCoreRunning>
     <CompOmniCrafterSmartInfiniteBattery_AutoCoreReady>[自适应膨胀核心: 待机]</CompOmniCrafterSmartInfiniteBattery_AutoCoreReady>
     <CompOmniCrafterSmartInfiniteBattery_AutoCoreDisconnect>[自适应膨胀核心: 已断开]</CompOmniCrafterSmartInfiniteBattery_AutoCoreDisconnect>
     <CompOmniCrafterSmartInfiniteBattery_Fulfill>电网储能: 已饱和 (∞) \n</CompOmniCrafterSmartInfiniteBattery_Fulfill>
+    <CompOmniCrafterSmartInfiniteBattery_DischargeAll>放电（清空）</CompOmniCrafterSmartInfiniteBattery_DischargeAll>
+    <CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>立即将所有存储的电量释放归零。</CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>
 </LanguageData>

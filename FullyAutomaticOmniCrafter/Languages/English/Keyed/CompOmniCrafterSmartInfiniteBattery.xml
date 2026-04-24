@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 <!--  [自适应膨胀核心: 运行中]  -->
     <CompOmniCrafterSmartInfiniteBattery_AutoCoreRunning>[AutoCore: Running]</CompOmniCrafterSmartInfiniteBattery_AutoCoreRunning>
@@ -8,4 +8,6 @@
     <CompOmniCrafterSmartInfiniteBattery_AutoCoreDisconnect>[AutoCore: Disconnect]</CompOmniCrafterSmartInfiniteBattery_AutoCoreDisconnect>
 <!--  电网储能: 已饱和 (∞) \n  -->
     <CompOmniCrafterSmartInfiniteBattery_Fulfill>Power Storage: Saturated (∞) \n</CompOmniCrafterSmartInfiniteBattery_Fulfill>
+    <CompOmniCrafterSmartInfiniteBattery_DischargeAll>Discharge All</CompOmniCrafterSmartInfiniteBattery_DischargeAll>
+    <CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>Immediately release all stored energy, resetting stored power to zero.</CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>
 </LanguageData>
