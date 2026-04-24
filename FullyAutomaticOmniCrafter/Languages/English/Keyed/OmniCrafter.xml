@@ -10,6 +10,8 @@
     <OmniCrafter_NotEnoughPower>Not enough stored power in the grid!</OmniCrafter_NotEnoughPower>
     <!-- Top bar -->
     <OmniCrafter_Search>Search:</OmniCrafter_Search>
+    <OmniCrafter_PinyinSearchOn>Pinyin Search: On</OmniCrafter_PinyinSearchOn>
+    <OmniCrafter_PinyinSearchOff>Pinyin Search: Off</OmniCrafter_PinyinSearchOff>
     <!-- Middle panel - sort & mod filter -->
     <OmniCrafter_Sort>Sort:</OmniCrafter_Sort>
     <OmniCrafter_SortName>Name</OmniCrafter_SortName>

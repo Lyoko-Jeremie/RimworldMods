@@ -10,6 +10,8 @@
     <OmniCrafter_NotEnoughPower>电网储能不足！</OmniCrafter_NotEnoughPower>
     <!-- 顶部工具栏 -->
     <OmniCrafter_Search>搜索：</OmniCrafter_Search>
+    <OmniCrafter_PinyinSearchOn>拼音搜索：开</OmniCrafter_PinyinSearchOn>
+    <OmniCrafter_PinyinSearchOff>拼音搜索：关</OmniCrafter_PinyinSearchOff>
     <!-- 中栏 - 排序和Mod筛选 -->
     <OmniCrafter_Sort>排序：</OmniCrafter_Sort>
     <OmniCrafter_SortName>名称</OmniCrafter_SortName>
