@@ -16,6 +16,22 @@
 无论是食物、药品还是建筑和材料，这台神奇的机器都能轻松制造出来！让你的殖民地焕发新生，迎接崭新的明天！
 超凡科技！小子！
 
+
+
+自带一个无限容量电池，可以存储无限多的电能。解决在制造超贵物品时需要制造大量电池的问题。
+
+在制造物品时，首先消耗内置电池的电量，再消耗电网电池的电量。
+但是！如果电网的供电能力超过了制造物品所需的能量，那么，不需要消耗任何存储的电能就能直接制造物品。没想到吧~！
+
+一般情况下像正常电池一样工作，可以存储电网的电量，也可以在电网电量不足时释放电能。
+如果不需要内置电池功能，只需要点击按钮关闭建筑的电源(按V)即可。
+
+雨淋不会短路，电路短路不会爆炸（暂未测试）
+
+另外，收藏夹会在存档间同步。
+
+现在需要依赖Harmony的拦截功能来实现电力相关的内容。
+
 [hr][/hr]
 
 Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticOmniCrafter
@@ -29,6 +45,21 @@ Fully Automatic OmniCrafter is here!
 The technological gem of the archotech world, capable of converting energy into matter, satisfying your infinite resource demands!
 Whether it's food, medicine, buildings, or materials, this magical machine can easily manufacture them all! Let your colony shine anew, ushering in a new era!
 Archotech technology! Boys!
+
+
+Comes with an infinite capacity battery that can store unlimited energy. Solves the problem of needing to manufacture a large number of batteries when crafting expensive items.
+
+When crafting items, it first consumes the energy from the built-in battery, then consumes energy from the grid batteries.
+BUT ! If the grid's power supply exceeds the energy required to craft the item, then you can craft the item directly without consuming any stored energy. Surprised, aren't you~!
+
+Under normal circumstances, it works like a regular battery, storing energy from the grid and releasing energy when the grid's supply is insufficient.
+If you don't need the built-in battery functionality, simply click the button to turn off the building's power (press V).
+
+Rain won't cause short circuits, and electrical short circuits won't cause explosions (not yet tested).
+
+Additionally, the favorites will sync across saves.
+
+Now relies on Harmony's interception capabilities to implement power-related features.
 
 [hr][/hr]
 
