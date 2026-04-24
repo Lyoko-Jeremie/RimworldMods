@@ -36,7 +36,8 @@
     <OmniCrafter_OnMap>On Map: {0}</OmniCrafter_OnMap>
     <OmniCrafter_InStorage>In Storage: {0}</OmniCrafter_InStorage>
     <OmniCrafter_StockFull>✔ Stock full ({0}/{1})\nStored: {2} Wd</OmniCrafter_StockFull>
-    <OmniCrafter_PowerCostLabel>Power Cost: {0} Wd / Stored: {1} Wd</OmniCrafter_PowerCostLabel>
+    <OmniCrafter_PowerCostLabel>Power Cost: {0} Wd / Stored: {1}</OmniCrafter_PowerCostLabel>
+    <OmniCrafter_PowerCostLabelSupportNow> / Support Now: {0} Wd</OmniCrafter_PowerCostLabelSupportNow>
     <OmniCrafter_InsufficientPowerWarning>\n⚠ Insufficient power!</OmniCrafter_InsufficientPowerWarning>
     <OmniCrafter_BuildingOneAtATime>⚠ Buildings craft 1 at a time (minified)</OmniCrafter_BuildingOneAtATime>
     <OmniCrafter_CraftX>Craft x{0}</OmniCrafter_CraftX>

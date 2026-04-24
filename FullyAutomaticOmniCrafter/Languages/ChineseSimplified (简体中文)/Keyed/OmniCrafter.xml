@@ -36,7 +36,8 @@
     <OmniCrafter_OnMap>地图上：{0}</OmniCrafter_OnMap>
     <OmniCrafter_InStorage>存储区中：{0}</OmniCrafter_InStorage>
     <OmniCrafter_StockFull>✔ 库存已满 ({0}/{1})\n已储能：{2} Wd</OmniCrafter_StockFull>
-    <OmniCrafter_PowerCostLabel>所需电能：{0} Wd / 已储能：{1} Wd</OmniCrafter_PowerCostLabel>
+    <OmniCrafter_PowerCostLabel>所需电能：{0} Wd / 已储能：{1}</OmniCrafter_PowerCostLabel>
+    <OmniCrafter_PowerCostLabelSupportNow> / 当前供电：{0} Wd</OmniCrafter_PowerCostLabelSupportNow>
     <OmniCrafter_InsufficientPowerWarning>\n⚠ 储能不足！</OmniCrafter_InsufficientPowerWarning>
     <OmniCrafter_BuildingOneAtATime>⚠ 建筑每次只能生产1个（打包形式）</OmniCrafter_BuildingOneAtATime>
     <OmniCrafter_CraftX>制造 x{0}</OmniCrafter_CraftX>

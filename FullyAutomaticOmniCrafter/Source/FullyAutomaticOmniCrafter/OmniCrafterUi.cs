@@ -935,7 +935,17 @@ namespace FullyAutomaticOmniCrafter
             string costLabel = countForCost <= 0
                 ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, customStoredStr)
                 : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), customStoredStr);
-            if (!canAfford) costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
+            if (!canAfford)
+            {
+                costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
+            }
+            else
+            {
+                // 当前供电量
+                string powerSupportNow = OmniPowerCost.SurplusPowerW(pwr?.PowerNet).ToString("N0");
+                costLabel += "OmniCrafter_PowerCostLabelSupportNow".Translate(powerSupportNow);
+            }
+
             Widgets.Label(new Rect(0f, y, viewW, 66f), costLabel);
             GUI.color = Color.white;
             y += 70f;
