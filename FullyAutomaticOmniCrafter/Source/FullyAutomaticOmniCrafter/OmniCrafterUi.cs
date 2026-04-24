@@ -229,7 +229,7 @@ namespace FullyAutomaticOmniCrafter
             // Debug: free-craft switch (God mode only)
             if (DebugSettings.godMode)
             {
-                float dbX = sx + 52f + 280f + 16f;
+                float dbX = sx + 52f + 280f + 26f;
                 bool dbFlag = Building_OmniCrafter.debugNoPowerRequired;
                 GUI.color = dbFlag ? new Color(1f, 0.5f, 0.2f) : new Color(0.6f, 0.6f, 0.6f);
                 Widgets.CheckboxLabeled(
