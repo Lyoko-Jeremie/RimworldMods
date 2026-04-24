@@ -167,63 +167,61 @@ namespace FullyAutomaticOmniCrafter
                 return true;
             }
 
-            // 3 外部电网功率大于所需电量（直接可以制造，不扣除任何电量）
-            // 注意：这里我们假设单次 TickRare 检查周期内，如果盈余功率（Wd/tick）能覆盖总消耗（Wd），则视为功率足够
-            // 实际上 Wd = Watts * Days, 所以 1 Wd = 60000 Watts * 1 tick (if we consider energy per tick)
-            // EffectiveEnergyGainRate 已经是 Wd/tick。
+            // 3 外部电网功率充足（直接可以制造，不扣除任何电量）
+            // 如果 1 tick 的发电量 >= 总所需能量，那必然可以制造
             if (gain >= amountWd)
             {
                 return true;
             }
 
-            // 检查总电量是否足够
-            float totalAvailable = TotalStoredEnergy(net);
-            if (totalAvailable < amountWd) return false;
-
-            // 扣除逻辑
-            float remaining = amountWd;
-
-            // 1 本地电量足够（优先扣除本地电量）
-            // 2 本地电量+外部电网电量足够（不足的部分从外部电网扣除）
-
-            // First deduct from Smart Infinite Batteries (Internal)
-            if (net.batteryComps != null)
+            // 1 本地电量足够（扣除本地电量）
+            // 2 本地电量+外部电网电量足够（优先扣除本地电量，不足的部分从外部电网扣除）
+            float totalStored = TotalStoredEnergy(net);
+            if (totalStored >= amountWd)
             {
-                foreach (CompPowerBattery bat in net.batteryComps)
+                // 扣除逻辑
+                float remaining = amountWd;
+                
+                // First deduct from Smart Infinite Batteries (Internal)
+                if (net.batteryComps != null)
                 {
-                    if (remaining <= 0f) break;
-                    if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
+                    foreach (CompPowerBattery bat in net.batteryComps)
                     {
-                        float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
-                        float draw = Mathf.Min(realStored, remaining);
-                        if (draw > 1e-6f)
+                        if (remaining <= 0f) break;
+                        if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
                         {
-                            bat.DrawPower(draw);
-                            remaining -= draw;
+                            float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
+                            float draw = Mathf.Min(realStored, remaining);
+                            if (draw > 1e-6f)
+                            {
+                                bat.DrawPower(draw);
+                                remaining -= draw;
+                            }
                         }
                     }
                 }
-            }
 
-            // Then from normal batteries (External)
-            if (remaining > 1e-6f && net.batteryComps != null)
-            {
-                foreach (CompPowerBattery bat in net.batteryComps)
+                // Then from normal batteries (External)
+                if (remaining > 1e-6f && net.batteryComps != null)
                 {
-                    if (remaining <= 0f) break;
-                    if (!(bat is CompOmniCrafterSmartInfiniteBattery))
+                    foreach (CompPowerBattery bat in net.batteryComps)
                     {
-                        float draw = Mathf.Min(bat.StoredEnergy, remaining);
-                        if (draw > 1e-6f)
+                        if (remaining <= 0f) break;
+                        if (!(bat is CompOmniCrafterSmartInfiniteBattery))
                         {
-                            bat.DrawPower(draw);
-                            remaining -= draw;
+                            float draw = Mathf.Min(bat.StoredEnergy, remaining);
+                            if (draw > 1e-6f)
+                            {
+                                bat.DrawPower(draw);
+                                remaining -= draw;
+                            }
                         }
                     }
                 }
+                return true;
             }
 
-            return true;
+            return false;
         }
     }
 
