@@ -352,7 +352,7 @@ namespace FullyAutomaticOmniCrafter
                     float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
                     Log.Message($"[OmniCrafter] 剩余电量每秒: {surplusWdPerTick} Wd");
 
-                    int toCraft = 0;
+                    float toCraft = 0;
                     if (godDebug || unitCost <= 0f || float.IsInfinity(available) || float.IsNaN(available))
                     {
                         Log.Message($"[OmniCrafter] 无电力消耗或无限电量，制造全部需求: {needed}");
@@ -368,7 +368,7 @@ namespace FullyAutomaticOmniCrafter
                     {
                         // 储能消耗模式：按现有储能计算最多可制造数量
                         Log.Message($"[OmniCrafter] 总电量充足，制造 {toCraft} 个 {order.thingDef.defName} (需要: {needed})");
-                        int canAfford = Mathf.FloorToInt(available / unitCost);
+                        float canAfford = Mathf.Floor(available / unitCost);
                         toCraft = Mathf.Min(needed, canAfford);
                     }
 
@@ -395,8 +395,26 @@ namespace FullyAutomaticOmniCrafter
                         }
                     }
 
-                    Log.Message($"[OmniCrafter] 制造数量: {toCraft} , 总成本: {totalCost} Wd");
-                    SpawnItems(order.thingDef, order.stuffDef, order.quality, toCraft, order.outputMode);
+                    Log.Message($"[OmniCrafter] 计算制造数量: {toCraft} , 总成本: {totalCost} Wd");
+                    
+                    int realToCraft;
+                    // (float)int.MaxValue 的值是 2147483648f
+                    if (toCraft >= (float)int.MaxValue)
+                    {
+                        realToCraft = int.MaxValue;
+                    }
+                    else if (toCraft <= (float)0)
+                    {
+                        realToCraft = 0;
+                        continue;
+                    }
+                    else
+                    {
+                        realToCraft = Mathf.FloorToInt(toCraft);
+                    }
+                    
+                    Log.Message($"[OmniCrafter] 真实制造数量: {realToCraft} , 总成本: {totalCost} Wd");
+                    SpawnItems(order.thingDef, order.stuffDef, order.quality, realToCraft, order.outputMode);
                 }
                 catch (Exception ex)
                 {
