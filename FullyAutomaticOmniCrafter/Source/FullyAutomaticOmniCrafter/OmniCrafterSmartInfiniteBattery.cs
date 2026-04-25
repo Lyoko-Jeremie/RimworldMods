@@ -116,7 +116,7 @@ namespace FullyAutomaticOmniCrafter
         [StaticConstructorOnStartup]
         public static class CompOmniCrafterSmartInfiniteBatteryTex
         {
-            public static readonly Texture2D dischargeIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
+            public static readonly Texture2D dischargeIcon = ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_BatteryDischarge");
         }
 
         // 放电按钮：一键将存储电量清零
