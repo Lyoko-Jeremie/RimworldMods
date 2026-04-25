@@ -70,7 +70,14 @@ Just not added to any workbenches for now, please search for `TemporalBarrierPro
 		<li>OskarPotocki.VanillaFactionsExpanded.Core</li>
 		<li>Ingendum.AnimalApparelFramework</li>
 		<li>ri.rimimmortal.core</li>
+		<li>Para0234.SNSAmbitionCosmic</li>
+		<li>para0234.snsambitioncosmicgen4addon</li>
 	</loadAfter>
+	
+	<incompatibleWith>
+		<li>Jeremie.SNS.AOPC.TPOC.Patch</li>
+		<li>glencoe2004.snsaotcce</li>
+	</incompatibleWith>
 	
 	<modDependencies>
 <!--	    <li>-->
