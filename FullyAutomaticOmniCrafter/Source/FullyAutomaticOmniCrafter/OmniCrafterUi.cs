@@ -85,7 +85,9 @@ namespace FullyAutomaticOmniCrafter
 
         private string searchText = "";
         private List<ThingDef> searchCache;
+
         private string lastSearch = "";
+
         // 上次构建 searchCache 时拼音搜索是否开启，用于检测设置变更后失效
         private bool lastPinyinEnabled = false;
 
@@ -216,10 +218,12 @@ namespace FullyAutomaticOmniCrafter
                     {
                         PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
                     }
+
                     // 切换后需重建搜索缓存
                     searchCache = null;
                     currentList = null;
                 }
+
                 GUI.color = Color.white;
 
                 string tipKey = pe ? "OmniCrafter_PinyinSearchOn" : "OmniCrafter_PinyinSearchOff";
@@ -234,8 +238,10 @@ namespace FullyAutomaticOmniCrafter
                     PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
                     searchCache = null;
                     currentList = null;
-                    Messages.Message("OmniCrafter_PinyinIndexRebuilt".Translate(), MessageTypeDefOf.TaskCompletion, false);
+                    Messages.Message("OmniCrafter_PinyinIndexRebuilt".Translate(), MessageTypeDefOf.TaskCompletion,
+                        false);
                 }
+
                 GUI.color = Color.white;
                 TooltipHandler.TipRegion(rebuildBtnRect, "OmniCrafter_RebuildPinyinIndex".Translate());
             }
@@ -920,6 +926,7 @@ namespace FullyAutomaticOmniCrafter
                     maintainCount = stackLimitMaintain;
                     SyncSelectedAutoOrder();
                 }
+
                 TooltipHandler.TipRegion(oneStackBtnMaintain, "OmniCrafter_OneStackTip".Translate(stackLimitMaintain));
             }
 
@@ -983,7 +990,7 @@ namespace FullyAutomaticOmniCrafter
             string customStoredStr;
             if (float.IsInfinity(totalStored))
             {
-                customStoredStr = "∞";
+                customStoredStr = $"∞ [{totalStored:N0}Wd ({extStored:N0}Wd + {intStored:N0}Wd)]";
             }
             else
             {
@@ -1008,8 +1015,10 @@ namespace FullyAutomaticOmniCrafter
 
             GUI.color = canAfford ? Color.white : Color.red;
             string costLabel = countForCost <= 0
-                ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount, customStoredStr)
-                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"), customStoredStr);
+                ? "OmniCrafter_StockFull".Translate(currentStock, maintainCount)
+                : "OmniCrafter_PowerCostLabel".Translate(cost.ToString("N0"));
+
+            costLabel += "\n" + "OmniCrafter_PowerStorage".Translate(customStoredStr);
 
             // 当前供电量
             string powerSupportNow;
@@ -1022,18 +1031,31 @@ namespace FullyAutomaticOmniCrafter
                 powerSupportNow = (surplusWdPerTick * 60000f).ToString("N0");
             }
 
-            costLabel += "OmniCrafter_PowerCostLabelSupportNow".Translate(powerSupportNow);
-            
+            costLabel += "\n" + "OmniCrafter_PowerCostLabelSupportNow".Translate(powerSupportNow);
+
             if (!canAfford)
             {
                 costLabel += "OmniCrafter_InsufficientPowerWarning".Translate();
             }
 
             costLabel += "\n" + "OmniCrafter_PowerCostOne".Translate(costOne.ToString("N0"));
-            
+
+            if (productionMode == ProductionMode.FixedCount)
+            {
+                // craftCount
+                costLabel += "\n" + "OmniCrafter_PowerCostMany".Translate(
+                    craftCount.ToString("N0"), (costOne * craftCount).ToString("N0"));
+            }
+            else
+            {
+                // maintainCount
+                costLabel += "\n" + "OmniCrafter_PowerCostMany".Translate(
+                    maintainCount.ToString("N0"), (costOne * maintainCount).ToString("N0"));
+            }
+
             Widgets.Label(new Rect(0f, y, viewW, 96f), costLabel);
             GUI.color = Color.white;
-            y += 90f;
+            y += 110f;
 
             // Building 提示
             if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
