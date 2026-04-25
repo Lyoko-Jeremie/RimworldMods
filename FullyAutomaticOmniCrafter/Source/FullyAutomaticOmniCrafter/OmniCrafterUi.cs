@@ -450,6 +450,10 @@ namespace FullyAutomaticOmniCrafter
                 source = searchCache;
             }
 
+            // 最近列表按生产时间倒序排列（最新在最上），跳过排序
+            if (showRecent)
+                return source;
+
             try
             {
                 switch (sortMode)
