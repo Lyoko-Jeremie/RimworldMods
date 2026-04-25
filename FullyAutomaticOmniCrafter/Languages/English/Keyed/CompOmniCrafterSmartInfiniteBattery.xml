@@ -10,4 +10,5 @@
     <CompOmniCrafterSmartInfiniteBattery_Fulfill>Power Storage: Saturated (∞) \n</CompOmniCrafterSmartInfiniteBattery_Fulfill>
     <CompOmniCrafterSmartInfiniteBattery_DischargeAll>Discharge All</CompOmniCrafterSmartInfiniteBattery_DischargeAll>
     <CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>Immediately release all stored energy, resetting stored power to zero.</CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>
+    <CompOmniCrafterSmartInfiniteBattery_DischargeAll_Confirm>Are you sure you want to discharge all stored energy? This action cannot be undone.</CompOmniCrafterSmartInfiniteBattery_DischargeAll_Confirm>
 </LanguageData>

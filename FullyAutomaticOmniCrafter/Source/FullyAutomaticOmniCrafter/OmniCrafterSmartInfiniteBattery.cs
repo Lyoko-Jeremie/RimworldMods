@@ -132,10 +132,16 @@ namespace FullyAutomaticOmniCrafter
                 icon = CompOmniCrafterSmartInfiniteBatteryTex.dischargeIcon,
                 action = () =>
                 {
-                    // 直接读取私有字段，绕过开关拦截补丁，确保无论开关状态都能清空
-                    float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
-                    if (realStored > 0f)
-                        this.DrawPower(realStored);
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "CompOmniCrafterSmartInfiniteBattery_DischargeAll_Confirm".Translate(),
+                        () =>
+                        {
+                            // 直接读取私有字段，绕过开关拦截补丁，确保无论开关状态都能清空
+                            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+                            if (realStored > 0f)
+                                this.DrawPower(realStored);
+                        }
+                    ));
                 }
             };
             yield return dischargeBtn;

@@ -6,4 +6,5 @@
     <CompOmniCrafterSmartInfiniteBattery_Fulfill>电网储能: 已饱和 (∞) \n</CompOmniCrafterSmartInfiniteBattery_Fulfill>
     <CompOmniCrafterSmartInfiniteBattery_DischargeAll>放电（清空）</CompOmniCrafterSmartInfiniteBattery_DischargeAll>
     <CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>立即将所有存储的电量释放归零。</CompOmniCrafterSmartInfiniteBattery_DischargeAll_Desc>
+    <CompOmniCrafterSmartInfiniteBattery_DischargeAll_Confirm>确定要清空所有存储的电量吗？此操作不可撤销。</CompOmniCrafterSmartInfiniteBattery_DischargeAll_Confirm>
 </LanguageData>
