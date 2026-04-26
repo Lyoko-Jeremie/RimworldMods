@@ -364,6 +364,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />
     <Compile Include="OmniCrafterCache.cs" />
     <Compile Include="OmniCrafterSettings.cs" />
@@ -374,6 +375,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="MEC.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
