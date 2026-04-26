@@ -372,6 +372,7 @@
     <Compile Include="OmniCrafterUi.cs" />
     <Compile Include="PinyinSearchEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Patch_ShortCircuitUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
