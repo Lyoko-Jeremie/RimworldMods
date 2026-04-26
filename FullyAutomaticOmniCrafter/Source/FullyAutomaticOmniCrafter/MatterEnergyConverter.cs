@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -12,13 +13,13 @@ namespace FullyAutomaticOmniCrafter
     {
         private static readonly float[] QualityMult =
         {
-            0.5f,  // Awful
-            0.8f,  // Poor
-            1.0f,  // Normal
-            1.2f,  // Good
-            1.5f,  // Excellent
-            2.0f,  // Masterwork
-            3.0f   // Legendary
+            0.5f, // Awful
+            0.8f, // Poor
+            1.0f, // Normal
+            1.2f, // Good
+            1.5f, // Excellent
+            2.0f, // Masterwork
+            3.0f // Legendary
         };
 
         /// <summary>
@@ -42,6 +43,149 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ─── 专属电池组件 ──────────────────────────────────────────────────────────
+    /// <summary>
+    /// 物质-能量转化仪专属电池：
+    ///   - 向电网正常放电（输出侧行为与标准电池一致）
+    ///   - AmountCanAccept 恒为 0，完全阻断电网充电
+    ///   - 容量自动扩张，永不因上限钳制损失电量
+    ///   - 只能通过 AddEnergyDirect() 充入，由物质转化逻辑调用
+    /// </summary>
+    public class CompMatterEnergyConverterBattery : CompPowerBattery
+    {
+        private const float BaseCapacity = 1000f;
+
+        // ── 初始化：克隆 props 防止污染全局 XML 配置 ─────────────────────────────
+        public override void PostSpawnSetup(bool respawningAfterLoad)
+        {
+            base.PostSpawnSetup(respawningAfterLoad);
+            CloneProps(this.Props.storedEnergyMax);
+
+            // 重载后确保容量不低于已存储电量
+            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            if (realStored > ((CompProperties_Battery)this.props).storedEnergyMax)
+                ((CompProperties_Battery)this.props).storedEnergyMax = realStored + 1f;
+        }
+
+        public override void PostExposeData()
+        {
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                // 加载前先撑开容量，防止 base 末尾将 storedEnergy 钳制到 XML 原始值
+                CloneProps(float.MaxValue / 8f);
+            }
+
+            base.PostExposeData();
+        }
+
+        private void CloneProps(float maxEnergy)
+        {
+            var orig = this.Props;
+            this.props = new CompProperties_Battery
+            {
+                compClass = orig.compClass,
+                storedEnergyMax = maxEnergy,
+                efficiency = 1.0f,
+                shortCircuitInRain = false,
+                transmitsPower = orig.transmitsPower
+            };
+        }
+
+        // ── Tick：棘轮维护（容量始终 ≥ 已存储量） ───────────────────────────────
+        public override void CompTick()
+        {
+            base.CompTick();
+            EnsureCapacity();
+        }
+
+        public override void CompTickRare()
+        {
+            base.CompTickRare();
+            EnsureCapacity();
+        }
+
+        private void EnsureCapacity()
+        {
+            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            float needed = Mathf.Max(BaseCapacity, realStored + 1f);
+            if (((CompProperties_Battery)this.props).storedEnergyMax < needed)
+                ((CompProperties_Battery)this.props).storedEnergyMax = needed;
+        }
+
+        // ── 物质转化专用注能接口 ─────────────────────────────────────────────────
+        /// <summary>
+        /// 绕过 AmountCanAccept 检查，直接将 energy (Wd) 充入本电池。
+        /// </summary>
+        public void AddEnergyDirect(float energy)
+        {
+            if (energy <= 0f) return;
+            // 先撑开容量，防止 AddEnergy 内部的钳制截断
+            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            ((CompProperties_Battery)this.props).storedEnergyMax =
+                Mathf.Max(BaseCapacity, realStored + energy + 1f);
+            AddEnergy(energy);
+        }
+
+        // // ── 信息栏 ───────────────────────────────────────────────────────────────
+        // public override string CompInspectStringExtra()
+        // {
+        //     float stored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+        //     string energyStr = stored >= 1_000_000_000f
+        //         ? stored.ToString("N0") + " Wd"
+        //         : base.CompInspectStringExtra()
+        //               .Replace(this.StoredEnergy.ToString("F0"), stored.ToString("F0")); // 修正显示
+        //     return energyStr;
+        // }
+    }
+
+    // ─── Harmony：阻断电网充电 ─────────────────────────────────────────────────
+    [HarmonyPatch(typeof(CompPowerBattery), "AmountCanAccept", MethodType.Getter)]
+    public static class Patch_MecBattery_AmountCanAccept
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(CompPowerBattery __instance, ref float __result)
+        {
+            if (__instance is CompMatterEnergyConverterBattery)
+            {
+                __result = 0f; // 完全阻断电网充电
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    // ─── Harmony：短路防护（防核弹级爆炸） ────────────────────────────────────
+    [HarmonyPatch(typeof(ShortCircuitUtility), "DoShortCircuit")]
+    public static class Patch_DoShortCircuit_Mec
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Building culprit, out Dictionary<CompPowerBattery, float> __state)
+        {
+            __state = new Dictionary<CompPowerBattery, float>();
+            PowerNet net = culprit.PowerComp?.PowerNet;
+            if (net == null) return;
+
+            foreach (CompPowerBattery battery in net.batteryComps)
+            {
+                if (battery is CompMatterEnergyConverterBattery mecBat)
+                {
+                    float current = Traverse.Create(mecBat).Field("storedEnergy").GetValue<float>();
+                    __state.Add(mecBat, current);
+                    mecBat.DrawPower(current); // 先清空，欺骗爆炸计算
+                }
+            }
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(Dictionary<CompPowerBattery, float> __state)
+        {
+            if (__state == null || __state.Count == 0) return;
+            foreach (var kvp in __state)
+                kvp.Key.AddEnergy(kvp.Value); // 爆炸结算后原额归还
+        }
+    }
+
     // ─── 主建筑类 ──────────────────────────────────────────────────────────────
     /// <summary>
     /// 物质-能量转化仪：将物品分解为电能，注入已连接的无限电容（CompOmniCrafterSmartInfiniteBattery）。
@@ -55,6 +199,7 @@ namespace FullyAutomaticOmniCrafter
         // ── 内部状态 ──────────────────────────────────────────────────────────
         private CompPowerTrader powerComp;
         private CompTransporter transporterComp;
+        private CompMatterEnergyConverterBattery mecBattery;
 
         // ── 常量 ──────────────────────────────────────────────────────────────
         private static readonly SoundDef ConvertSound = SoundDefOf.EnergyShield_AbsorbDamage;
@@ -65,6 +210,7 @@ namespace FullyAutomaticOmniCrafter
             base.SpawnSetup(map, respawningAfterLoad);
             powerComp = GetComp<CompPowerTrader>();
             transporterComp = GetComp<CompTransporter>();
+            mecBattery = GetComp<CompMatterEnergyConverterBattery>();
         }
 
         // ── 核心：将物品转为电能 ───────────────────────────────────────────────
@@ -101,16 +247,23 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 将电能注入本建筑所在电网中的 CompOmniCrafterSmartInfiniteBattery，
-        /// 若不存在则注入普通电池，最后才直接充给 self（若有 CompPowerBattery）。
+        /// 将电能直接充入本建筑的专属电池组件。
+        /// 绕过 AmountCanAccept，不依赖电网中的其他电池。
         /// </summary>
         private void InjectEnergy(float energyWd)
         {
+            if (mecBattery != null)
+            {
+                mecBattery.AddEnergyDirect(energyWd);
+                return;
+            }
+
+            // 回退：若 XML 未配置本 mod 电池，则尝试注入电网中的无限电池或普通电池
             PowerNet net = powerComp?.PowerNet;
             if (net == null) return;
 
             float remaining = energyWd;
-            // 优先本 mod 的无限电池
+            // 优先本电池
             if (net.batteryComps != null)
             {
                 foreach (CompPowerBattery bat in net.batteryComps)
@@ -123,6 +276,7 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+
             // 然后普通电池
             if (remaining > 0f && net.batteryComps != null)
             {
@@ -130,8 +284,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     if (remaining <= 0f) break;
                     if (bat is CompOmniCrafterSmartInfiniteBattery) continue;
-                    float canAccept = bat.AmountCanAccept;
-                    float toAdd = Mathf.Min(canAccept, remaining);
+                    float toAdd = Mathf.Min(bat.AmountCanAccept, remaining);
                     if (toAdd > 0f)
                     {
                         bat.AddEnergy(toAdd);
@@ -148,12 +301,9 @@ namespace FullyAutomaticOmniCrafter
             List<Thing> toConvert = new List<Thing>();
             foreach (IntVec3 cell in AllSlotCells())
             {
-                List<Thing> things = Map.thingGrid.ThingsListAt(cell);
-                // 复制列表防止迭代中修改
-                foreach (Thing t in things.ToList())
+                foreach (Thing t in Map.thingGrid.ThingsListAt(cell).ToList())
                 {
-                    if (t == this) continue;
-                    if (t is Pawn) continue;
+                    if (t == this || t is Pawn) continue;
                     if (t.def.category == ThingCategory.Item || t.def.category == ThingCategory.Building)
                         toConvert.Add(t);
                 }
@@ -174,7 +324,7 @@ namespace FullyAutomaticOmniCrafter
                 MessageTypeDefOf.PositiveEvent, false);
         }
 
-        // ── 方式 A：载入模式 — 将 CompTransporter 容器中已载入的物品全部转化 ──────
+        // ── 方式 A：将 CompTransporter 容器中已载入的物品全部转化 ──────────────
         private void ConvertLoadedItems()
         {
             if (transporterComp == null) return;
@@ -213,7 +363,7 @@ namespace FullyAutomaticOmniCrafter
         {
             TargetingParameters parms = new TargetingParameters
             {
-                canTargetPawns = false,      // 安全黑名单：不允许选中 Pawn
+                canTargetPawns = false, // 安全黑名单：不允许选中 Pawn
                 canTargetItems = true,
                 canTargetBuildings = true,
                 canTargetAnimals = false,
@@ -222,9 +372,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     if (!targ.HasThing) return false;
                     Thing t = targ.Thing;
-                    if (t == this) return false;
-                    if (t is Pawn) return false;
-                    // 禁止拆除不可摧毁建筑（PlayerCannotDestroy = true）
+                    if (t == this || t is Pawn) return false;
                     if (t.def.category == ThingCategory.Building && !t.def.destroyable) return false;
                     return t.def.category == ThingCategory.Item
                            || t.def.category == ThingCategory.Building;
