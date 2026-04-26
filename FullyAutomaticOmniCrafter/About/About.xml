@@ -34,6 +34,14 @@
 
 [hr][/hr]
 
+[h3]建议配合使用的mod[/h3]
+
+[list]
+ [*] MinifyEverything 让所有建筑都支持打包（支持打包的建筑才能被成功生产出来） https://steamcommunity.com/sharedfiles/filedetails/?id=872762753
+[/list]
+
+[hr][/hr]
+
 Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticOmniCrafter
 
 ---
@@ -60,6 +68,14 @@ Rain won't cause short circuits, and electrical short circuits won't cause explo
 Additionally, the favorites will sync across saves.
 
 Now relies on Harmony's interception capabilities to implement power-related features.
+		
+[hr][/hr]
+
+[h3]Recommended mods to use with Fully Automatic OmniCrafter[/h3]
+
+[list]
+[*] MinifyEverything Allows all buildings to be minified (only buildings that can be minified can be successfully produced) https://steamcommunity.com/sharedfiles/filedetails/?id=872762753
+[/list]
 
 [hr][/hr]
 
