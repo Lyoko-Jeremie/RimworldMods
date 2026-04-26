@@ -382,10 +382,12 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (target.HasThing)
                 {
-                    float e = RecycleThing(target.Thing);
+                    Thing t = target.Thing;
+                    string label = t.LabelShort;
+                    float e = RecycleThing(t);
                     if (e > 0f)
                         Messages.Message(
-                            "MEC_DirectConverted".Translate(target.Thing.LabelShort, e.ToString("N1")),
+                            "MEC_DirectConverted".Translate(label, e.ToString("N1")),
                             MessageTypeDefOf.PositiveEvent, false);
                 }
             });
