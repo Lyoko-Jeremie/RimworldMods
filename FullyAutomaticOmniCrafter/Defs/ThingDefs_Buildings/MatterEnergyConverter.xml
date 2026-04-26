@@ -96,13 +96,15 @@
               defaultStorageSettings：默认优先级 Low，防止殖民者
               自动将全营地物资搬来销毁。玩家可手动调整。
             -->
+            <!--
+              defaultStorageSettings：默认优先级 Low，过滤器设为空白，
+              避免首次建造时殖民者自动搬运任何物品进来意外销毁。
+              玩家可在存储选项卡中手动启用所需类别。
+            -->
             <defaultStorageSettings>
                 <priority>Low</priority>
                 <filter>
-                    <categories>
-                        <li>ResourcesRaw</li>
-                        <li>Manufactured</li>
-                    </categories>
+                    <allowedDefs />
                 </filter>
             </defaultStorageSettings>
         </building>
