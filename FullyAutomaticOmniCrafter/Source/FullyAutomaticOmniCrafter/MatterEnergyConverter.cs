@@ -59,12 +59,18 @@ namespace FullyAutomaticOmniCrafter
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
-            CloneProps(this.Props.storedEnergyMax);
+            
+            // 安全获取初始最大能量
+            float initialMax = BaseCapacity;
+            if (this.props is CompProperties_Battery bProps)
+                initialMax = bProps.storedEnergyMax;
+
+            CloneProps(initialMax);
 
             // 重载后确保容量不低于已存储电量
             float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
-            if (realStored > ((CompProperties_Battery)this.props).storedEnergyMax)
-                ((CompProperties_Battery)this.props).storedEnergyMax = realStored + 1f;
+            if (this.props is CompProperties_Battery currentProps && realStored > currentProps.storedEnergyMax)
+                currentProps.storedEnergyMax = realStored;
         }
 
         public override void PostExposeData()
@@ -80,7 +86,8 @@ namespace FullyAutomaticOmniCrafter
 
         private void CloneProps(float maxEnergy)
         {
-            var orig = this.Props;
+            if (!(this.props is CompProperties_Power orig)) return;
+
             this.props = new CompProperties_Battery
             {
                 compClass = orig.compClass,

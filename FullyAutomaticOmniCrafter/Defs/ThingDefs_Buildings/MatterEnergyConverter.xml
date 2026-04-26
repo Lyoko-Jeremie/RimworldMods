@@ -126,9 +126,10 @@
               转化仪接入电网，维持运转消耗 500 W。
               C# 代码通过此 comp 的 PowerNet 向电网中的电池注入电能。
             -->
-            <li Class="CompProperties_Power">
+            <li Class="CompProperties_Battery">
                 <compClass>FullyAutomaticOmniCrafter.CompMatterEnergyConverterBattery</compClass>
-                <!--        <basePowerConsumption>100</basePowerConsumption>-->
+                <!-- 基础最大容量，代码里设置的 BaseCapacity 是1000，这里最好匹配 -->
+                <storedEnergyMax>1000</storedEnergyMax>
                 <shortCircuitInRain>false</shortCircuitInRain>
                 <transmitsPower>true</transmitsPower>
             </li>
