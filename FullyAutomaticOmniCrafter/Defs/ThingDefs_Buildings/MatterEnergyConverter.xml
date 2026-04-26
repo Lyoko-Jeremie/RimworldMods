@@ -1,156 +1,156 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-  <!--
-    ══════════════════════════════════════════════════════════════════════
-    物质-能量转化仪 / Matter-Energy Converter
-    thingClass : FullyAutomaticOmniCrafter.Building_MatterEnergyConverter
-    继承        : Building_Storage（带存储过滤器 + ITab_Storage）
-    功能        :
-      A – 载入模式（CompTransporter 货舱 → 转化）
-      B – 存储区批量模式（放在建筑格上 → 一键转化）
-      C – 光标定点模式（直接点选地图上任意目标 → 即刻转化）
-    ══════════════════════════════════════════════════════════════════════
-  -->
+    <!--
+      ══════════════════════════════════════════════════════════════════════
+      物质-能量转化仪 / Matter-Energy Converter
+      thingClass : FullyAutomaticOmniCrafter.Building_MatterEnergyConverter
+      继承        : Building_Storage（带存储过滤器 + ITab_Storage）
+      功能        :
+        A – 载入模式（CompTransporter 货舱 → 转化）
+        B – 存储区批量模式（放在建筑格上 → 一键转化）
+        C – 光标定点模式（直接点选地图上任意目标 → 即刻转化）
+      ══════════════════════════════════════════════════════════════════════
+    -->
 
-  <ThingDef ParentName="BuildingBase">
+    <ThingDef ParentName="BuildingBase">
 
-    <!-- ── 基础标识 ────────────────────────────────────────────────── -->
-    <defName>MatterEnergyConverter</defName>
-    <label>Matter-Energy Converter</label>
-    <description>description</description>
-    <thingClass>FullyAutomaticOmniCrafter.Building_MatterEnergyConverter</thingClass>
+        <!-- ── 基础标识 ────────────────────────────────────────────────── -->
+        <defName>MatterEnergyConverter</defName>
+        <label>Matter-Energy Converter</label>
+        <description>description</description>
+        <thingClass>FullyAutomaticOmniCrafter.Building_MatterEnergyConverter</thingClass>
 
-    <!-- ── 贴图（暂用 OmniCrafter 贴图占位，建议替换为专用贴图） ─── -->
-    <graphicData>
-      <texPath>Things/Building/Production/OmniCrafter</texPath>
-      <graphicClass>Graphic_Single</graphicClass>
-      <drawSize>(3,3)</drawSize>
-      <shaderType>CutoutComplex</shaderType>
-    </graphicData>
-    <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
+        <!-- ── 贴图（暂用 OmniCrafter 贴图占位，建议替换为专用贴图） ─── -->
+        <graphicData>
+            <texPath>Things/Building/Production/OmniCrafter</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(3,3)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
 
-    <!-- ── 布局 ───────────────────────────────────────────────────── -->
-    <size>(3,3)</size>
-    <altitudeLayer>Building</altitudeLayer>
-    <passability>PassThroughOnly</passability>
-    <pathCost>50</pathCost>
-    <fillPercent>0.5</fillPercent>
-    <blockWind>true</blockWind>
-    <castEdgeShadows>true</castEdgeShadows>
-    <staticSunShadowHeight>0.2</staticSunShadowHeight>
-    <canOverlapZones>false</canOverlapZones>
-    <rotatable>false</rotatable>
+        <!-- ── 布局 ───────────────────────────────────────────────────── -->
+        <size>(3,3)</size>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>50</pathCost>
+        <fillPercent>0.5</fillPercent>
+        <blockWind>true</blockWind>
+        <castEdgeShadows>true</castEdgeShadows>
+        <staticSunShadowHeight>0.2</staticSunShadowHeight>
+        <canOverlapZones>false</canOverlapZones>
+        <rotatable>false</rotatable>
 
-    <!-- ── 表面类型（允许堆放物品供回收） ───────────────────────── -->
-    <surfaceType>Item</surfaceType>
+        <!-- ── 表面类型（允许堆放物品供回收） ───────────────────────── -->
+        <surfaceType>Item</surfaceType>
 
-    <!-- ── 互动格 ─────────────────────────────────────────────────── -->
-    <hasInteractionCell>true</hasInteractionCell>
-    <interactionCellOffset>(0,0,-2)</interactionCellOffset>
+        <!-- ── 互动格 ─────────────────────────────────────────────────── -->
+        <hasInteractionCell>true</hasInteractionCell>
+        <interactionCellOffset>(0,0,-2)</interactionCellOffset>
 
-    <!-- ── 属性基础值 ─────────────────────────────────────────────── -->
-    <statBases>
-      <MaxHitPoints>500</MaxHitPoints>
-      <WorkToBuild>18000</WorkToBuild>
-      <Mass>150</Mass>
-      <Flammability>0.5</Flammability>
-      <Beauty>-15</Beauty>
-    </statBases>
+        <!-- ── 属性基础值 ─────────────────────────────────────────────── -->
+        <statBases>
+            <MaxHitPoints>500</MaxHitPoints>
+            <WorkToBuild>18000</WorkToBuild>
+            <Mass>150</Mass>
+            <Flammability>0.5</Flammability>
+            <Beauty>-15</Beauty>
+        </statBases>
 
-    <!-- ── 建造成本 ───────────────────────────────────────────────── -->
-    <costList>
-      <Steel>300</Steel>
-      <Plasteel>150</Plasteel>
-      <ComponentSpacer>8</ComponentSpacer>
-      <Gold>20</Gold>
-    </costList>
+        <!-- ── 建造成本 ───────────────────────────────────────────────── -->
+        <costList>
+            <Steel>300</Steel>
+            <Plasteel>150</Plasteel>
+            <ComponentSpacer>8</ComponentSpacer>
+            <Gold>20</Gold>
+        </costList>
 
-    <!-- ── 可打包为小物件带走 ─────────────────────────────────────── -->
-    <minifiedDef>MinifiedThing</minifiedDef>
-    <thingCategories>
-      <li>BuildingsProduction</li>
-    </thingCategories>
+        <!-- ── 可打包为小物件带走 ─────────────────────────────────────── -->
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
 
-    <!-- ── Tick 类型 ──────────────────────────────────────────────── -->
-    <tickerType>Normal</tickerType>
+        <!-- ── Tick 类型 ──────────────────────────────────────────────── -->
+        <tickerType>Normal</tickerType>
 
-    <!-- ── 建筑属性 ───────────────────────────────────────────────── -->
-    <building>
-      <paintable>true</paintable>
-      <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+        <!-- ── 建筑属性 ───────────────────────────────────────────────── -->
+        <building>
+            <paintable>true</paintable>
+            <destroySound>BuildingDestroyed_Metal_Big</destroySound>
 
-      <!--
-        fixedStorageSettings：允许玩家将任意可存储物品放置于此。
-        玩家可在 "存储" 选项卡中自行缩小范围。
-      -->
-      <fixedStorageSettings>
-        <filter>
-          <categories>
-            <li>Root</li>
-          </categories>
-        </filter>
-      </fixedStorageSettings>
+            <!--
+              fixedStorageSettings：允许玩家将任意可存储物品放置于此。
+              玩家可在 "存储" 选项卡中自行缩小范围。
+            -->
+            <fixedStorageSettings>
+                <filter>
+                    <categories>
+                        <li>Root</li>
+                    </categories>
+                </filter>
+            </fixedStorageSettings>
 
-      <!--
-        defaultStorageSettings：默认优先级 Low，防止殖民者
-        自动将全营地物资搬来销毁。玩家可手动调整。
-      -->
-      <defaultStorageSettings>
-        <priority>Low</priority>
-        <filter>
-          <categories>
-            <li>ResourcesRaw</li>
-            <li>Manufactured</li>
-          </categories>
-        </filter>
-      </defaultStorageSettings>
-    </building>
+            <!--
+              defaultStorageSettings：默认优先级 Low，防止殖民者
+              自动将全营地物资搬来销毁。玩家可手动调整。
+            -->
+            <defaultStorageSettings>
+                <priority>Low</priority>
+                <filter>
+                    <categories>
+                        <li>ResourcesRaw</li>
+                        <li>Manufactured</li>
+                    </categories>
+                </filter>
+            </defaultStorageSettings>
+        </building>
 
-    <!-- ── 存储选项卡（来自 Building_Storage） ───────────────────── -->
-    <inspectorTabs>
-      <li>ITab_Storage</li>
-    </inspectorTabs>
+        <!-- ── 存储选项卡（来自 Building_Storage） ───────────────────── -->
+        <inspectorTabs>
+            <li>ITab_Storage</li>
+        </inspectorTabs>
 
-    <!-- ── 组件 ───────────────────────────────────────────────────── -->
-    <comps>
+        <!-- ── 组件 ───────────────────────────────────────────────────── -->
+        <comps>
 
-      <!-- 开关控制，允许玩家手动断开 -->
-      <li Class="CompProperties_Flickable"/>
+            <!-- 开关控制，允许玩家手动断开 -->
+            <li Class="CompProperties_Flickable"/>
 
-      <!-- 机械故障 -->
-      <li Class="CompProperties_Breakdownable"/>
+            <!-- 机械故障 -->
+            <li Class="CompProperties_Breakdownable"/>
 
-      <!--
-        电力接入组件：
-        转化仪接入电网，维持运转消耗 500 W。
-        C# 代码通过此 comp 的 PowerNet 向电网中的电池注入电能。
-      -->
-      <li Class="CompProperties_Power">
-        <compClass>FullyAutomaticOmniCrafter.CompMatterEnergyConverterBattery</compClass>
-<!--        <basePowerConsumption>100</basePowerConsumption>-->
-        <shortCircuitInRain>false</shortCircuitInRain>
-        <transmitsPower>true</transmitsPower>
-      </li>
+            <!--
+              电力接入组件：
+              转化仪接入电网，维持运转消耗 500 W。
+              C# 代码通过此 comp 的 PowerNet 向电网中的电池注入电能。
+            -->
+            <li Class="CompProperties_Power">
+                <compClass>FullyAutomaticOmniCrafter.CompMatterEnergyConverterBattery</compClass>
+                <!--        <basePowerConsumption>100</basePowerConsumption>-->
+                <shortCircuitInRain>false</shortCircuitInRain>
+                <transmitsPower>true</transmitsPower>
+            </li>
 
-    </comps>
+        </comps>
 
-    <!-- ── 地形要求 ───────────────────────────────────────────────── -->
-    <terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
+        <!-- ── 地形要求 ───────────────────────────────────────────────── -->
+        <terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
 
-    <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
-    <designationCategory>Production</designationCategory>
+        <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
+        <designationCategory>Production</designationCategory>
 
-    <!-- ── 研究前提 ───────────────────────────────────────────────── -->
-    <researchPrerequisites>
-      <li>Spaceflight</li>
-    </researchPrerequisites>
+        <!-- ── 研究前提 ───────────────────────────────────────────────── -->
+        <!--    <researchPrerequisites>-->
+        <!--      <li>Spaceflight</li>-->
+        <!--    </researchPrerequisites>-->
 
-    <!-- ── 建造 / 修理音效 ────────────────────────────────────────── -->
-    <constructEffect>ConstructMetal</constructEffect>
-    <repairEffect>Repair</repairEffect>
+        <!-- ── 建造 / 修理音效 ────────────────────────────────────────── -->
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
 
-  </ThingDef>
+    </ThingDef>
 
 </Defs>
 
