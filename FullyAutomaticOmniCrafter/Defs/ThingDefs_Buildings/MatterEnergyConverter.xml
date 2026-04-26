@@ -127,8 +127,8 @@
         C# 代码通过此 comp 的 PowerNet 向电网中的电池注入电能。
       -->
       <li Class="CompProperties_Power">
-        <compClass>CompPowerTrader</compClass>
-        <basePowerConsumption>500</basePowerConsumption>
+        <compClass>FullyAutomaticOmniCrafter.CompMatterEnergyConverterBattery</compClass>
+<!--        <basePowerConsumption>100</basePowerConsumption>-->
         <shortCircuitInRain>false</shortCircuitInRain>
         <transmitsPower>true</transmitsPower>
       </li>
