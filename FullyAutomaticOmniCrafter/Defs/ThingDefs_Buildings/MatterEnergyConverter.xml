@@ -17,8 +17,8 @@
 
     <!-- ── 基础标识 ────────────────────────────────────────────────── -->
     <defName>MatterEnergyConverter</defName>
-    <label>matter-energy converter</label>
-    <description>A pinnacle of archotech engineering that annihilates matter at the subatomic level, converting the mass-energy equivalence of physical objects directly into pure electrical power. Supports three conversion modes: batch-process items resting on its surface, convert cargo loaded into its internal transporter bay, or enter a direct targeting mode to instantly disintegrate any item or structure in view.\n\nEnergy yield is proportional to the market value, mass, maximum durability, and quality tier of each item processed.\n\nItems placed here will be destroyed — configure the storage filter carefully.</description>
+    <label>Matter-Energy Converter</label>
+    <description>description</description>
     <thingClass>FullyAutomaticOmniCrafter.Building_MatterEnergyConverter</thingClass>
 
     <!-- ── 贴图（暂用 OmniCrafter 贴图占位，建议替换为专用贴图） ─── -->
