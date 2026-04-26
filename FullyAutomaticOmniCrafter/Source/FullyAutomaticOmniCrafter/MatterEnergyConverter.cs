@@ -176,35 +176,7 @@ namespace FullyAutomaticOmniCrafter
     }
 
     // ─── Harmony：短路防护（防核弹级爆炸） ────────────────────────────────────
-    [HarmonyPatch(typeof(ShortCircuitUtility), "DoShortCircuit")]
-    public static class Patch_DoShortCircuit_Mec
-    {
-        [HarmonyPrefix]
-        public static void Prefix(Building culprit, out Dictionary<CompPowerBattery, float> __state)
-        {
-            __state = new Dictionary<CompPowerBattery, float>();
-            PowerNet net = culprit.PowerComp?.PowerNet;
-            if (net == null) return;
-
-            foreach (CompPowerBattery battery in net.batteryComps)
-            {
-                if (battery is CompMatterEnergyConverterBattery mecBat)
-                {
-                    float current = Traverse.Create(mecBat).Field("storedEnergy").GetValue<float>();
-                    __state.Add(mecBat, current);
-                    mecBat.DrawPower(current); // 先清空，欺骗爆炸计算
-                }
-            }
-        }
-
-        [HarmonyPostfix]
-        public static void Postfix(Dictionary<CompPowerBattery, float> __state)
-        {
-            if (__state == null || __state.Count == 0) return;
-            foreach (var kvp in __state)
-                kvp.Key.AddEnergy(kvp.Value); // 爆炸结算后原额归还
-        }
-    }
+    // 已将逻辑整合到 OmniCrafterSmartInfiniteBattery.cs 中的 Patch_DoShortCircuit_Unified
 
     // ─── 主建筑类 ──────────────────────────────────────────────────────────────
     /// <summary>
