@@ -110,6 +110,7 @@
         <!-- ── 存储选项卡（来自 Building_Storage） ───────────────────── -->
         <inspectorTabs>
             <li>ITab_Storage</li>
+            <li>ITab_ContentsTransporter</li>
         </inspectorTabs>
 
         <!-- ── 组件 ───────────────────────────────────────────────────── -->
@@ -132,6 +133,16 @@
                 <storedEnergyMax>1000</storedEnergyMax>
                 <shortCircuitInRain>false</shortCircuitInRain>
                 <transmitsPower>true</transmitsPower>
+            </li>
+
+            <!--
+              载具组件（方式 A）：
+              允许玩家手动装载物品到货舱，再通过 Gizmo 一键转化。
+              canChangeAssignedThingsAfterStarting=true 允许在任意时刻追加物品。
+            -->
+            <li Class="CompProperties_Transporter">
+                <restEffectiveness>0</restEffectiveness>
+                <canChangeAssignedThingsAfterStarting>true</canChangeAssignedThingsAfterStarting>
             </li>
 
         </comps>
