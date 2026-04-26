@@ -155,6 +155,26 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    [HarmonyPatch(typeof(CompPowerBattery), "StoredEnergy", MethodType.Getter)]
+    public static class Patch_MecBattery_StoredEnergy
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(CompPowerBattery __instance, ref float __result)
+        {
+            if (__instance is CompMatterEnergyConverterBattery smartBattery)
+            {
+                // 如果开关关闭，对外伪装电量为0，阻止能量输出
+                if (!FlickUtility.WantsToBeOn(smartBattery.parent))
+                {
+                    __result = 0f;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
     // ─── Harmony：短路防护（防核弹级爆炸） ────────────────────────────────────
     [HarmonyPatch(typeof(ShortCircuitUtility), "DoShortCircuit")]
     public static class Patch_DoShortCircuit_Mec
