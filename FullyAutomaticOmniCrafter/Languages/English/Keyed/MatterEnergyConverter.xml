@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ── Gizmo Buttons ──────────────────────────────────────────────── -->
+
+  <!-- Mode B: Batch convert all items in storage zone -->
+  <MEC_BatchConvert>Convert Storage</MEC_BatchConvert>
+  <MEC_BatchConvert_Desc>Instantly disintegrate all items currently stored on this building and convert them into electrical energy injected into the power grid.</MEC_BatchConvert_Desc>
+
+  <!-- Mode A: Convert items already loaded into CompTransporter -->
+  <MEC_ConvertLoaded>Convert Loaded</MEC_ConvertLoaded>
+  <MEC_ConvertLoaded_Desc>Disintegrate all items loaded into this converter's cargo container and convert them into electrical energy.</MEC_ConvertLoaded_Desc>
+
+  <!-- Mode C: Cursor targeting – click any item or building to disintegrate it -->
+  <MEC_DirectConvert>Direct Convert</MEC_DirectConvert>
+  <MEC_DirectConvert_Desc>Enter targeting mode. Click any item or building on the map to instantly disintegrate it and convert the matter into electrical energy. Pawns cannot be targeted.</MEC_DirectConvert_Desc>
+
+  <!-- ── Messages ───────────────────────────────────────────────────── -->
+
+  <!-- Shown when the storage zone or container is empty -->
+  <MEC_NothingToConvert>Nothing to convert – the storage area is empty.</MEC_NothingToConvert>
+
+  <!-- Shown after a batch or loaded conversion. {0} = item count, {1} = energy in Wd -->
+  <MEC_BatchConverted>Converted {0} item(s) into {1} Wd of electrical energy.</MEC_BatchConverted>
+
+  <!-- Shown after a direct single-target conversion. {0} = item label, {1} = energy in Wd -->
+  <MEC_DirectConverted>{0} disintegrated – {1} Wd generated.</MEC_DirectConverted>
+
+  <!-- ── Inspect String ─────────────────────────────────────────────── -->
+
+  <!-- Shown in building info panel. {0} = item count, {1} = potential energy in Wd -->
+  <MEC_PotentialEnergy>Stored: {0} item(s) · Potential energy: {1} Wd</MEC_PotentialEnergy>
+
+</LanguageData>

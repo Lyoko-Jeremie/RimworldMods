@@ -170,7 +170,7 @@ namespace FullyAutomaticOmniCrafter
                 totalEnergy += RecycleThing(t);
 
             Messages.Message(
-                "MEC_BatchConverted".Translate(toConvert.Count, totalEnergy.ToString("F1")),
+                "MEC_BatchConverted".Translate(toConvert.Count, totalEnergy.ToString("N1")),
                 MessageTypeDefOf.PositiveEvent, false);
         }
 
@@ -204,7 +204,7 @@ namespace FullyAutomaticOmniCrafter
                 ConvertSound?.PlayOneShot(new TargetInfo(Position, Map));
 
             Messages.Message(
-                "MEC_BatchConverted".Translate(items.Count, totalEnergy.ToString("F1")),
+                "MEC_BatchConverted".Translate(items.Count, totalEnergy.ToString("N1")),
                 MessageTypeDefOf.PositiveEvent, false);
         }
 
@@ -238,7 +238,7 @@ namespace FullyAutomaticOmniCrafter
                     float e = RecycleThing(target.Thing);
                     if (e > 0f)
                         Messages.Message(
-                            "MEC_DirectConverted".Translate(target.Thing.LabelShort, e.ToString("F1")),
+                            "MEC_DirectConverted".Translate(target.Thing.LabelShort, e.ToString("N1")),
                             MessageTypeDefOf.PositiveEvent, false);
                 }
             });
@@ -307,7 +307,7 @@ namespace FullyAutomaticOmniCrafter
             if (itemCount > 0)
             {
                 if (!s.NullOrEmpty()) s += "\n";
-                s += "MEC_PotentialEnergy".Translate(itemCount, potentialEnergy.ToString("F1"));
+                s += "MEC_PotentialEnergy".Translate(itemCount, potentialEnergy.ToString("N1"));
             }
 
             return s;

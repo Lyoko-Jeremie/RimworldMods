@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ── 指令按钮 ────────────────────────────────────────────────────── -->
+
+  <!-- 方式 B：批量转化存储区内所有物品 -->
+  <MEC_BatchConvert>转化储存物</MEC_BatchConvert>
+  <MEC_BatchConvert_Desc>将当前存储在本建筑上的所有物品立即分解，并将物质转化为电能注入电网。</MEC_BatchConvert_Desc>
+
+  <!-- 方式 A：转化已载入 CompTransporter 的物品 -->
+  <MEC_ConvertLoaded>转化已载入物</MEC_ConvertLoaded>
+  <MEC_ConvertLoaded_Desc>将已装入本转化仪货舱的所有物品分解，并转化为电能。</MEC_ConvertLoaded_Desc>
+
+  <!-- 方式 C：光标瞄准模式，点击任意物品或建筑即刻分解 -->
+  <MEC_DirectConvert>定点转化</MEC_DirectConvert>
+  <MEC_DirectConvert_Desc>进入瞄准模式。在地图上点击任意物品或建筑，将其立即分解并将物质转化为电能。无法以小人或动物为目标。</MEC_DirectConvert_Desc>
+
+  <!-- ── 提示消息 ────────────────────────────────────────────────────── -->
+
+  <!-- 存储区或容器为空时显示 -->
+  <MEC_NothingToConvert>无物可转化——存储区为空。</MEC_NothingToConvert>
+
+  <!-- 批量/载入转化完成后显示。{0} = 物品数量，{1} = 能量（Wd） -->
+  <MEC_BatchConverted>已将 {0} 件物品转化为 {1} Wd 电能。</MEC_BatchConverted>
+
+  <!-- 单件定点转化完成后显示。{0} = 物品名称，{1} = 能量（Wd） -->
+  <MEC_DirectConverted>{0} 已被分解——产生 {1} Wd 电能。</MEC_DirectConverted>
+
+  <!-- ── 信息栏 ──────────────────────────────────────────────────────── -->
+
+  <!-- 建筑信息栏显示。{0} = 物品数量，{1} = 潜在能量（Wd） -->
+  <MEC_PotentialEnergy>储存：{0} 件物品 · 潜在能量：{1} Wd</MEC_PotentialEnergy>
+
+</LanguageData>
