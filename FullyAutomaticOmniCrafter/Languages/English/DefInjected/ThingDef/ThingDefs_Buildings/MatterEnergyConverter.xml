@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <MatterEnergyConverter.label>Matter-Energy Converter</MatterEnergyConverter.label>
+    <MatterEnergyConverter.description>A pinnacle of archotech engineering that annihilates matter at the subatomic level, converting the mass-energy equivalence of physical objects directly into pure electrical power. Supports three conversion modes: batch-process items resting on its surface, convert cargo loaded into its internal transporter bay, or enter a direct targeting mode to instantly disintegrate any item or structure in view.\n\nEnergy yield is proportional to the market value, mass, maximum durability, and quality tier of each item processed.\n\nItems placed here will be destroyed — configure the storage filter carefully.</MatterEnergyConverter.description>
+
+</LanguageData>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <MatterEnergyConverter.label>物质-能量转化仪</MatterEnergyConverter.label>
+    <MatterEnergyConverter.description>这是超凡科技工程的巅峰之作，可在亚原子水平上湮灭物质，将物理物体的质能等价直接转换为能量。\n\n支持三种转换模式：批处理放置在其表面的物品，转换装载到其内部运输舱的货物，或进入直接瞄准模式以立即分解视野中的任何物品或结构。\n\n能量产量与处理的每个物品的市场价值、质量、最大耐用性和质量等级成正比。\n\n放置在这里的物品将被销毁 - 请仔细配置存储过滤器。</MatterEnergyConverter.description>
+
+</LanguageData>
