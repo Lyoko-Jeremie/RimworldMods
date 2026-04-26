@@ -25,13 +25,13 @@
         <graphicData>
             <texPath>Things/Building/Production/OmniCrafter</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(3,3)</drawSize>
+            <drawSize>(5,5)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
 
         <!-- ── 布局 ───────────────────────────────────────────────────── -->
-        <size>(3,3)</size>
+        <size>(5,5)</size>
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>50</pathCost>
@@ -144,6 +144,7 @@
             -->
             <li Class="CompProperties_Transporter">
                 <restEffectiveness>0</restEffectiveness>
+                <massCapacity>999999</massCapacity>
                 <canChangeAssignedThingsAfterStarting>true</canChangeAssignedThingsAfterStarting>
             </li>
 
