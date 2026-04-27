@@ -13,7 +13,7 @@
 
   <!-- 方式 C：光标瞄准模式，点击任意物品或建筑即刻分解 -->
   <MEC_DirectConvert>定点转化</MEC_DirectConvert>
-  <MEC_DirectConvert_Desc>进入瞄准模式。在地图上点击任意物品或建筑，将其立即分解并将物质转化为电能。无法以小人或动物为目标。</MEC_DirectConvert_Desc>
+  <MEC_DirectConvert_Desc>进入瞄准模式。在地图上点击任意物品或建筑，将其立即分解并将物质转化为电能。</MEC_DirectConvert_Desc>
 
   <!-- ── 提示消息 ────────────────────────────────────────────────────── -->
 

@@ -467,8 +467,24 @@ namespace FullyAutomaticOmniCrafter
         // ── Gizmos ─────────────────────────────────────────────────────────────
         public override IEnumerable<Gizmo> GetGizmos()
         {
+            bool convertLoadedInserted = false;
             foreach (Gizmo g in base.GetGizmos())
+            {
                 yield return g;
+
+                // 方式 A：转化已载入物品——紧跟在原版"装载"按钮之后
+                if (!convertLoadedInserted && transporterComp != null && g is Command_LoadToTransporter)
+                {
+                    convertLoadedInserted = true;
+                    yield return new Command_Action
+                    {
+                        defaultLabel = "MEC_ConvertLoaded".Translate(),
+                        defaultDesc = "MEC_ConvertLoaded_Desc".Translate(),
+                        icon = MatterEnergyConverterTex.IconDrop,
+                        action = ConvertLoadedItems
+                    };
+                }
+            }
 
             // 方式 B：批量转化存储区
             yield return new Command_Action
@@ -479,8 +495,8 @@ namespace FullyAutomaticOmniCrafter
                 action = BatchConvertStoredItems
             };
 
-            // 方式 A：转化已载入物品（仅当有 CompTransporter 时显示）
-            if (transporterComp != null)
+            // 方式 A 降级：若 base.GetGizmos() 中未出现 Command_LoadToTransporter，则在此兜底显示
+            if (!convertLoadedInserted && transporterComp != null)
             {
                 yield return new Command_Action
                 {

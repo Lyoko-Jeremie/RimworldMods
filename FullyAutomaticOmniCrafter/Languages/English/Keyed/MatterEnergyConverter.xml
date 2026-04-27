@@ -13,7 +13,7 @@
 
   <!-- Mode C: Cursor targeting – click any item or building to disintegrate it -->
   <MEC_DirectConvert>Direct Convert</MEC_DirectConvert>
-  <MEC_DirectConvert_Desc>Enter targeting mode. Click any item or building on the map to instantly disintegrate it and convert the matter into electrical energy. Pawns cannot be targeted.</MEC_DirectConvert_Desc>
+  <MEC_DirectConvert_Desc>Enter targeting mode. Click any item or building on the map to instantly disintegrate it and convert the matter into electrical energy.</MEC_DirectConvert_Desc>
 
   <!-- ── Messages ───────────────────────────────────────────────────── -->
 
