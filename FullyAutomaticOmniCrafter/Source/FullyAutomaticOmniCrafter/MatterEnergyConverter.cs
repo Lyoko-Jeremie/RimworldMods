@@ -371,6 +371,9 @@ namespace FullyAutomaticOmniCrafter
                 canTargetBuildings = true,
                 canTargetAnimals = true,
                 canTargetPlants = true,
+                canTargetMechs = true,
+                canTargetSubhumans = true,
+                canTargetEntities = true,
                 mapObjectTargetsMustBeAutoAttackable = false,
                 validator = targ =>
                 {
