@@ -223,8 +223,8 @@ namespace FullyAutomaticOmniCrafter
         public float RecycleThing(Thing thing)
         {
             if (thing == null || thing.Destroyed) return 0f;
-            // 安全黑名单：禁止直接转化Pawn
-            if (thing is Pawn) return 0f;
+            // 安全黑名单：禁止转化殖民者
+            if (thing is Pawn p && p.RaceProps.Humanlike && p.Faction == Faction.OfPlayer) return 0f;
 
             float energy = MecEnergyCalc.CalcEnergy(thing);
 
@@ -366,22 +366,24 @@ namespace FullyAutomaticOmniCrafter
         {
             TargetingParameters parms = new TargetingParameters
             {
-                canTargetPawns = false, // 安全黑名单：不允许选中 Pawn
+                canTargetPawns = true,
                 canTargetItems = true,
                 canTargetBuildings = true,
-                canTargetAnimals = false,
+                canTargetAnimals = true,
                 canTargetPlants = true,
                 mapObjectTargetsMustBeAutoAttackable = false,
                 validator = targ =>
                 {
                     if (!targ.HasThing) return false;
                     Thing t = targ.Thing;
-                    if (t == this || t is Pawn) return false;
-                    // // 不可摧毁的建筑（如地板、地图边界等）不允许选中
-                    // if (t.def.category == ThingCategory.Building && !t.def.destroyable) return false;
+                    if (t == this) return false;
+                    // 殖民者（玩家派系的人型Pawn）不允许选中
+                    if (t is Pawn pawn && pawn.RaceProps.Humanlike && pawn.Faction == Faction.OfPlayer)
+                        return false;
                     return t.def.category == ThingCategory.Item
                            || t.def.category == ThingCategory.Building
-                           || t.def.category == ThingCategory.Plant;
+                           || t.def.category == ThingCategory.Plant
+                           || t.def.category == ThingCategory.Pawn;
                 }
             };
 
