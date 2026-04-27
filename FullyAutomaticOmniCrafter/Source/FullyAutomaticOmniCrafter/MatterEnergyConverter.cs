@@ -394,6 +394,8 @@ namespace FullyAutomaticOmniCrafter
                             "MEC_DirectConverted".Translate(label, e.ToString("N1")),
                             MessageTypeDefOf.PositiveEvent, false);
                 }
+                // 转化完毕后自动重新进入瞄准模式，实现连续点选
+                BeginDirectTargeting();
             });
         }
 
