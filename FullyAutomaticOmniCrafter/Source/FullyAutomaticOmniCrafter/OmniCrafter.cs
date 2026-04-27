@@ -103,12 +103,20 @@ namespace FullyAutomaticOmniCrafter
                 if (hp > 0f) x += hp;
             }
 
-            // Y = a + b*X + c*X^2 + d*X^3
+            // Y = a + b*X + c*X^2 + d*X^3 + e*X^4 + g*log10(X) + n*ln(X)
             float a = s?.powerCostA ?? 0f;
             float b = s?.powerCostB ?? 1f;
             float c = s?.powerCostC ?? 0f;
             float d = s?.powerCostD ?? 0f;
-            float y = a + b * x + c * x * x + d * x * x * x;
+            float e = s?.powerCostE ?? 0f;
+            float g = s?.powerCostG ?? 0f;
+            float n = s?.powerCostN ?? 0f;
+            float x2 = x * x;
+            float x3 = x2 * x;
+            float x4 = x3 * x;
+            float log10x = (float)Math.Log10(x);
+            float lnx    = (float)Math.Log(x);
+            float y = a + b * x + c * x2 + d * x3 + e * x4 + g * log10x + n * lnx;
             if (y < 0f) y = 0f;
 
             return y * QualityMult[(int)quality] * count;

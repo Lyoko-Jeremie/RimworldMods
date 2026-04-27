@@ -22,12 +22,15 @@ namespace FullyAutomaticOmniCrafter
 
         // ─── Power cost polynomial coefficients ───────────────────────────
         // X = marketValue [+ mass if xIncludeMass] [+ maxHP if xIncludeHitPoints]
-        // Y = a + b*X + c*X^2 + d*X^3
+        // Y = a + b*X + c*X^2 + d*X^3 + e*X^4 + g*log10(X) + n*ln(X)
         // Final cost = Y * qualityMultiplier * count
         public float powerCostA = 0f;
         public float powerCostB = 1f;
         public float powerCostC = 0f;
         public float powerCostD = 0f;
+        public float powerCostE = 0f;
+        public float powerCostG = 0f;
+        public float powerCostN = 0f;
 
         /// <summary>是否将物品重量（Mass）加入 X 的计算。</summary>
         public bool xIncludeMass = false;
@@ -45,6 +48,9 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref powerCostB, "powerCostB", 1f);
             Scribe_Values.Look(ref powerCostC, "powerCostC", 0f);
             Scribe_Values.Look(ref powerCostD, "powerCostD", 0f);
+            Scribe_Values.Look(ref powerCostE, "powerCostE", 0f);
+            Scribe_Values.Look(ref powerCostG, "powerCostG", 0f);
+            Scribe_Values.Look(ref powerCostN, "powerCostN", 0f);
             Scribe_Values.Look(ref xIncludeMass, "xIncludeMass", false);
             Scribe_Values.Look(ref xIncludeHitPoints, "xIncludeHitPoints", false);
         }
@@ -119,6 +125,9 @@ namespace FullyAutomaticOmniCrafter
             CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, -10f, 10f);
             CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, -1f, 1f);
             CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, -0.01f, 0.01f);
+            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, -0.0001f, 0.0001f);
+            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, -100f, 100f);
+            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, -100f, 100f);
 
             listing.Gap();
             if (listing.ButtonText("OmniCrafter_PowerCostReset".Translate()))
@@ -127,6 +136,9 @@ namespace FullyAutomaticOmniCrafter
                 Settings.powerCostB = 1f;
                 Settings.powerCostC = 0f;
                 Settings.powerCostD = 0f;
+                Settings.powerCostE = 0f;
+                Settings.powerCostG = 0f;
+                Settings.powerCostN = 0f;
                 Settings.xIncludeMass = false;
                 Settings.xIncludeHitPoints = false;
             }

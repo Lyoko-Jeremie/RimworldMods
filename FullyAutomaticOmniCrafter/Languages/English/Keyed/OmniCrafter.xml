@@ -61,15 +61,18 @@
     <OmniCrafter_DebugNoPowerTip>[DEBUG] Bypass all power requirements and consumption. Only available in God Mode.</OmniCrafter_DebugNoPowerTip>
     <!-- Mod settings - power cost polynomial -->
     <OmniCrafter_EnablePinyinSearch>Enable Pinyin Search</OmniCrafter_EnablePinyinSearch>
-    <OmniCrafter_PowerCostFormula>Power Cost Formula: Y = a + b·X + c·X² + d·X³</OmniCrafter_PowerCostFormula>
+    <OmniCrafter_PowerCostFormula>Power Cost Formula: Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)</OmniCrafter_PowerCostFormula>
     <OmniCrafter_PowerCostFormulaDesc>X = item base market value (plus optional components below). Final cost = Y × quality multiplier × count.</OmniCrafter_PowerCostFormulaDesc>
     <OmniCrafter_XIncludeMass>Include item mass in X</OmniCrafter_XIncludeMass>
-    <OmniCrafter_XIncludeMassDesc>When enabled, the item's mass (kg) is added to X before computing the power cost polynomial.</OmniCrafter_XIncludeMassDesc>
+    <OmniCrafter_XIncludeMassDesc>When enabled, the item's mass (kg) is added to X before computing the power cost formula.</OmniCrafter_XIncludeMassDesc>
     <OmniCrafter_XIncludeHitPoints>Include item max hit points in X</OmniCrafter_XIncludeHitPoints>
-    <OmniCrafter_XIncludeHitPointsDesc>When enabled, the item's max hit points (durability) is added to X before computing the power cost polynomial.</OmniCrafter_XIncludeHitPointsDesc>
+    <OmniCrafter_XIncludeHitPointsDesc>When enabled, the item's max hit points (durability) is added to X before computing the power cost formula.</OmniCrafter_XIncludeHitPointsDesc>
     <OmniCrafter_PowerCostA>a =</OmniCrafter_PowerCostA>
     <OmniCrafter_PowerCostB>b =</OmniCrafter_PowerCostB>
     <OmniCrafter_PowerCostC>c =</OmniCrafter_PowerCostC>
     <OmniCrafter_PowerCostD>d =</OmniCrafter_PowerCostD>
-    <OmniCrafter_PowerCostReset>Reset to Default (b=1, a=c=d=0)</OmniCrafter_PowerCostReset>
+    <OmniCrafter_PowerCostE>e =</OmniCrafter_PowerCostE>
+    <OmniCrafter_PowerCostG>g (log₁₀) =</OmniCrafter_PowerCostG>
+    <OmniCrafter_PowerCostN>n (ln) =</OmniCrafter_PowerCostN>
+    <OmniCrafter_PowerCostReset>Reset to Default (b=1, others=0)</OmniCrafter_PowerCostReset>
 </LanguageData>

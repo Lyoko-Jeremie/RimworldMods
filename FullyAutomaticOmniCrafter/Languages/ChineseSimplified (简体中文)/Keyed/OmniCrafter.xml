@@ -62,7 +62,7 @@
     <OmniCrafter_DebugNoPowerTip>[调试] 跳过所有电力检查与消耗，直接生产。仅在神模式下可用。</OmniCrafter_DebugNoPowerTip>
     <!-- Mod设置 - 耗电多项式 -->
     <OmniCrafter_EnablePinyinSearch>启用拼音搜索</OmniCrafter_EnablePinyinSearch>
-    <OmniCrafter_PowerCostFormula>耗电公式：Y = a + b·X + c·X² + d·X³</OmniCrafter_PowerCostFormula>
+    <OmniCrafter_PowerCostFormula>耗电公式：Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)</OmniCrafter_PowerCostFormula>
     <OmniCrafter_PowerCostFormulaDesc>X = 物品基础市场价值（可叠加下方可选项）。最终耗电 = Y × 品质系数 × 数量。</OmniCrafter_PowerCostFormulaDesc>
     <OmniCrafter_XIncludeMass>将物品重量加入 X</OmniCrafter_XIncludeMass>
     <OmniCrafter_XIncludeMassDesc>启用后，物品的重量（千克）将被加入 X，再代入耗电公式计算。</OmniCrafter_XIncludeMassDesc>
@@ -72,5 +72,8 @@
     <OmniCrafter_PowerCostB>b =</OmniCrafter_PowerCostB>
     <OmniCrafter_PowerCostC>c =</OmniCrafter_PowerCostC>
     <OmniCrafter_PowerCostD>d =</OmniCrafter_PowerCostD>
-    <OmniCrafter_PowerCostReset>恢复默认（b=1，a=c=d=0）</OmniCrafter_PowerCostReset>
+    <OmniCrafter_PowerCostE>e =</OmniCrafter_PowerCostE>
+    <OmniCrafter_PowerCostG>g（log₁₀）=</OmniCrafter_PowerCostG>
+    <OmniCrafter_PowerCostN>n（ln）=</OmniCrafter_PowerCostN>
+    <OmniCrafter_PowerCostReset>恢复默认（b=1，其余=0）</OmniCrafter_PowerCostReset>
 </LanguageData>
