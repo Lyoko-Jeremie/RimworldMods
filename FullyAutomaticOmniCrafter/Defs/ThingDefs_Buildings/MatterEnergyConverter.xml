@@ -81,6 +81,13 @@
             <destroySound>BuildingDestroyed_Metal_Big</destroySound>
 
             <!--
+              必须指定 blueprintClass = Blueprint_Storage，否则默认使用 Blueprint_Build，
+              导致 Frame 的 storageSettings 为 null，Frame.CompleteConstruction 时
+              调用 storageSettings.CopyFrom(null) 引发 NullReferenceException。
+            -->
+            <blueprintClass>Blueprint_Storage</blueprintClass>
+
+            <!--
               fixedStorageSettings：允许玩家将任意可存储物品放置于此。
               玩家可在 "存储" 选项卡中自行缩小范围。
             -->
