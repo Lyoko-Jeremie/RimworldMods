@@ -94,13 +94,13 @@ namespace FullyAutomaticOmniCrafter
                 "OmniCrafter_XIncludeHitPoints".Translate(),
                 ref Settings.xIncludeHitPoints,
                 "OmniCrafter_XIncludeHitPointsDesc".Translate());
-            listing.Gap(4f);
+            listing.Gap(14f);
 
             // Helper to draw a coefficient row: label + text field + slider
             void CoeffRow(string labelKey, ref float val, float min, float max)
             {
                 Rect rowRect = listing.GetRect(28f);
-                float labelWidth = 40f;
+                float labelWidth = 70f;
                 float fieldWidth = 70f;
                 float gap = 6f;
 
@@ -121,13 +121,13 @@ namespace FullyAutomaticOmniCrafter
                 val = Mathf.Clamp(val, min, max);
             }
 
-            CoeffRow("OmniCrafter_PowerCostA", ref Settings.powerCostA, -100f, 100f);
-            CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, -10f, 10f);
-            CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, -1f, 1f);
-            CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, -0.01f, 0.01f);
-            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, -0.0001f, 0.0001f);
-            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, -100f, 100f);
-            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, -100f, 100f);
+            CoeffRow("OmniCrafter_PowerCostA", ref Settings.powerCostA, -10000f, 10000f);
+            CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, -0f, 100f);
+            CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, -0f, 100f);
+            CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, -0f, 10f);
+            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, -0f, 10f);
+            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, -0f, 100f);
+            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, -0f, 100f);
 
             listing.Gap();
             if (listing.ButtonText("OmniCrafter_PowerCostReset".Translate()))
