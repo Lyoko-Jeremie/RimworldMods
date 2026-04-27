@@ -237,7 +237,7 @@ namespace FullyAutomaticOmniCrafter
                     float heldEnergy = MecEnergyCalc.CalcEnergy(heldPawn);
                     FleckMaker.ThrowLightningGlow(holdingPlatform.DrawPos, Map, 1.5f);
                     FleckMaker.ThrowSmoke(holdingPlatform.DrawPos, Map, 1.0f);
-                    heldPawn.Destroy(DestroyMode.Vanish);
+                    KillAndVanishPawn(heldPawn);
                     if (heldEnergy > 0f) InjectEnergy(heldEnergy);
                     if (Spawned) ConvertSound?.PlayOneShot(new TargetInfo(Position, Map));
                     return heldEnergy;
@@ -254,8 +254,21 @@ namespace FullyAutomaticOmniCrafter
                 FleckMaker.ThrowSmoke(thing.DrawPos, Map, 1.0f);
             }
 
-            // 销毁物品
-            thing.Destroy(DestroyMode.Vanish);
+            // 销毁：Pawn/尸体走 Kill→销毁尸体 路径以正确触发社交关系清理和悲伤情绪；
+            // 普通物品直接 Vanish。
+            if (thing is Pawn pawnThing)
+            {
+                KillAndVanishPawn(pawnThing);
+            }
+            else if (thing is Corpse corpse)
+            {
+                // 尸体：先确保内部 Pawn 走过了死亡通知，再销毁尸体本体
+                corpse.Destroy(DestroyMode.Vanish);
+            }
+            else
+            {
+                thing.Destroy(DestroyMode.Vanish);
+            }
 
             // 注入电能
             if (energy > 0f)
@@ -266,6 +279,27 @@ namespace FullyAutomaticOmniCrafter
                 ConvertSound?.PlayOneShot(new TargetInfo(Position, Map));
 
             return energy;
+        }
+
+        /// <summary>
+        /// 正确销毁一个 Pawn：
+        ///   1. 若尚未死亡，先 Kill()（触发 Notify_PawnKilled → 悲伤情绪、羁绊动物反应、
+        ///      配偶 Thought 清理、removeOnDeath 关系移除）。
+        ///   2. 再销毁尸体实体（跳过产出尸体堆）。
+        /// 使用 Vanish 直接 Destroy 会跳过 Notify_PawnKilled，导致社交关系不完整处理。
+        /// </summary>
+        private static void KillAndVanishPawn(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            if (!pawn.Dead)
+                pawn.Kill(null); // 触发完整的死亡社交通知；会在原位生成尸体
+            // Kill() 会生成一个 Corpse Thing，我们直接销毁它
+            if (!pawn.Destroyed)
+                pawn.Destroy(DestroyMode.Vanish);
+            // 若 Kill() 产生了尸体，则销毁尸体
+            Corpse corpse = pawn.Corpse;
+            if (corpse != null && !corpse.Destroyed)
+                corpse.Destroy(DestroyMode.Vanish);
         }
 
         /// <summary>
