@@ -226,6 +226,23 @@ namespace FullyAutomaticOmniCrafter
             // 安全黑名单：禁止转化玩家派系的Pawn（殖民者、宠物等）
             if (thing is Pawn p && p.Faction == Faction.OfPlayer) return 0f;
 
+            // 特殊处理：囚禁台——转化其中囚禁的实体，而非建筑本身
+            if (thing is Building_HoldingPlatform holdingPlatform)
+            {
+                Pawn heldPawn = holdingPlatform.HeldPawn;
+                if (heldPawn == null || heldPawn.Destroyed) return 0f;
+                if (heldPawn.Faction == Faction.OfPlayer) return 0f;
+
+                float heldEnergy = MecEnergyCalc.CalcEnergy(heldPawn);
+                FleckMaker.ThrowLightningGlow(holdingPlatform.DrawPos, Map, 1.5f);
+                FleckMaker.ThrowSmoke(holdingPlatform.DrawPos, Map, 1.0f);
+                // 销毁实体（自动触发囚禁台的清理回调）
+                heldPawn.Destroy(DestroyMode.Vanish);
+                if (heldEnergy > 0f) InjectEnergy(heldEnergy);
+                if (Spawned) ConvertSound?.PlayOneShot(new TargetInfo(Position, Map));
+                return heldEnergy;
+            }
+
             float energy = MecEnergyCalc.CalcEnergy(thing);
 
             // 特效
@@ -383,6 +400,9 @@ namespace FullyAutomaticOmniCrafter
                     // 玩家派系的Pawn（殖民者、宠物等）不允许选中
                     if (t is Pawn pawn && pawn.Faction == Faction.OfPlayer)
                         return false;
+                    // 囚禁台：仅当持有非玩家派系的实体时才允许选中
+                    if (t is Building_HoldingPlatform hp)
+                        return hp.HeldPawn != null && hp.HeldPawn.Faction != Faction.OfPlayer;
                     return t.def.category == ThingCategory.Item
                            || t.def.category == ThingCategory.Building
                            || t.def.category == ThingCategory.Plant
