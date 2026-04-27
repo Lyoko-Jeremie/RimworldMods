@@ -475,7 +475,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "MEC_BatchConvert".Translate(),
                 defaultDesc = "MEC_BatchConvert_Desc".Translate(),
-                icon = TexButton.ReorderUp,
+                icon = MatterEnergyConverterTex.IconStorage,
                 action = BatchConvertStoredItems
             };
 
@@ -486,7 +486,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = "MEC_ConvertLoaded".Translate(),
                     defaultDesc = "MEC_ConvertLoaded_Desc".Translate(),
-                    icon = TexButton.Drop,
+                    icon = MatterEnergyConverterTex.IconDrop,
                     action = ConvertLoadedItems
                 };
             }
@@ -496,7 +496,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "MEC_DirectConvert".Translate(),
                 defaultDesc = "MEC_DirectConvert_Desc".Translate(),
-                icon = TexButton.OpenStatsReport,
+                icon = MatterEnergyConverterTex.IconPicker,
                 action = BeginDirectTargeting
             };
         }
@@ -533,4 +533,16 @@ namespace FullyAutomaticOmniCrafter
             return s;
         }
     }
+    
+    [StaticConstructorOnStartup]
+    public static class MatterEnergyConverterTex
+    {
+        public static readonly Texture2D IconDrop =
+            ContentFinder<Texture2D>.Get("UI/Commands/MatterEnergyConverter_Loader", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconPicker =
+            ContentFinder<Texture2D>.Get("UI/Commands/MatterEnergyConverter_Picker", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconStorage =
+            ContentFinder<Texture2D>.Get("UI/Commands/MatterEnergyConverter_Storage", true) ?? BaseContent.WhiteTex;
+    }
+    
 }
