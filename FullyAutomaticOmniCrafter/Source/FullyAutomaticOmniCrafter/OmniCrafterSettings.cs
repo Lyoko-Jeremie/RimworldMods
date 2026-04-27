@@ -21,12 +21,18 @@ namespace FullyAutomaticOmniCrafter
         public bool enablePinyinSearch = false;
 
         // ─── Power cost polynomial coefficients ───────────────────────────
-        // Y = a + b*X + c*X^2 + d*X^3   (X = base market value)
+        // X = marketValue [+ mass if xIncludeMass] [+ maxHP if xIncludeHitPoints]
+        // Y = a + b*X + c*X^2 + d*X^3
         // Final cost = Y * qualityMultiplier * count
         public float powerCostA = 0f;
         public float powerCostB = 1f;
         public float powerCostC = 0f;
         public float powerCostD = 0f;
+
+        /// <summary>是否将物品重量（Mass）加入 X 的计算。</summary>
+        public bool xIncludeMass = false;
+        /// <summary>是否将物品最大耐久（MaxHitPoints）加入 X 的计算。</summary>
+        public bool xIncludeHitPoints = false;
 
         public override void ExposeData()
         {
@@ -39,6 +45,8 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref powerCostB, "powerCostB", 1f);
             Scribe_Values.Look(ref powerCostC, "powerCostC", 0f);
             Scribe_Values.Look(ref powerCostD, "powerCostD", 0f);
+            Scribe_Values.Look(ref xIncludeMass, "xIncludeMass", false);
+            Scribe_Values.Look(ref xIncludeHitPoints, "xIncludeHitPoints", false);
         }
     }
 
@@ -69,6 +77,17 @@ namespace FullyAutomaticOmniCrafter
             listing.Gap();
             listing.Label("OmniCrafter_PowerCostFormula".Translate());
             listing.Label("OmniCrafter_PowerCostFormulaDesc".Translate());
+            listing.Gap(4f);
+
+            // ── X composition toggles ─────────────────────────────────────
+            listing.CheckboxLabeled(
+                "OmniCrafter_XIncludeMass".Translate(),
+                ref Settings.xIncludeMass,
+                "OmniCrafter_XIncludeMassDesc".Translate());
+            listing.CheckboxLabeled(
+                "OmniCrafter_XIncludeHitPoints".Translate(),
+                ref Settings.xIncludeHitPoints,
+                "OmniCrafter_XIncludeHitPointsDesc".Translate());
             listing.Gap(4f);
 
             // Helper to draw a coefficient row: label + text field + slider
@@ -108,6 +127,8 @@ namespace FullyAutomaticOmniCrafter
                 Settings.powerCostB = 1f;
                 Settings.powerCostC = 0f;
                 Settings.powerCostD = 0f;
+                Settings.xIncludeMass = false;
+                Settings.xIncludeHitPoints = false;
             }
 
             listing.End();

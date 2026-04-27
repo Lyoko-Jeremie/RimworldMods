@@ -84,11 +84,26 @@ namespace FullyAutomaticOmniCrafter
         public static float CostWd(ThingDef def, ThingDef stuff, QualityCategory quality, int count)
         {
             if (def == null) return 0f;
+
+            OmniCrafterSettings s = OmniCrafterMod.Settings;
+
+            // Compose X from market value, optionally adding mass and/or max hit points
             float x = def.GetStatValueAbstract(StatDefOf.MarketValue, stuff);
             if (x < 1f) x = 1f;
 
+            if (s?.xIncludeMass == true)
+            {
+                float mass = def.GetStatValueAbstract(StatDefOf.Mass, stuff);
+                if (mass > 0f) x += mass;
+            }
+
+            if (s?.xIncludeHitPoints == true)
+            {
+                float hp = def.BaseMaxHitPoints;
+                if (hp > 0f) x += hp;
+            }
+
             // Y = a + b*X + c*X^2 + d*X^3
-            OmniCrafterSettings s = OmniCrafterMod.Settings;
             float a = s?.powerCostA ?? 0f;
             float b = s?.powerCostB ?? 1f;
             float c = s?.powerCostC ?? 0f;
