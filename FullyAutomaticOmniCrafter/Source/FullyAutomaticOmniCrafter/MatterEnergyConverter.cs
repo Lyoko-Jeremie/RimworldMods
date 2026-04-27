@@ -223,8 +223,8 @@ namespace FullyAutomaticOmniCrafter
         public float RecycleThing(Thing thing)
         {
             if (thing == null || thing.Destroyed) return 0f;
-            // 安全黑名单：禁止转化殖民者
-            if (thing is Pawn p && p.RaceProps.Humanlike && p.Faction == Faction.OfPlayer) return 0f;
+            // 安全黑名单：禁止转化玩家派系的Pawn（殖民者、宠物等）
+            if (thing is Pawn p && p.Faction == Faction.OfPlayer) return 0f;
 
             float energy = MecEnergyCalc.CalcEnergy(thing);
 
@@ -377,8 +377,8 @@ namespace FullyAutomaticOmniCrafter
                     if (!targ.HasThing) return false;
                     Thing t = targ.Thing;
                     if (t == this) return false;
-                    // 殖民者（玩家派系的人型Pawn）不允许选中
-                    if (t is Pawn pawn && pawn.RaceProps.Humanlike && pawn.Faction == Faction.OfPlayer)
+                    // 玩家派系的Pawn（殖民者、宠物等）不允许选中
+                    if (t is Pawn pawn && pawn.Faction == Faction.OfPlayer)
                         return false;
                     return t.def.category == ThingCategory.Item
                            || t.def.category == ThingCategory.Building
