@@ -121,18 +121,20 @@ namespace FullyAutomaticOmniCrafter
         // ── 物质转化专用注能接口 ─────────────────────────────────────────────────
         /// <summary>
         /// 绕过 AmountCanAccept 检查，直接将 energy (Wd) 充入本电池。
-        /// 充入后同时扩展容量，使容量 = 充入后的储量（始终满电）。
+        /// 注意：不能调用 AddEnergy()，因为其内部会读取 AmountCanAccept，
+        /// 而我们的 Harmony Patch 已将其强制为 0，会导致能量被钳制归零。
+        /// 因此直接通过 Traverse 写 storedEnergy 字段。
         /// </summary>
         public void AddEnergyDirect(float energy)
         {
             if (energy <= 0f) return;
-            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
-            // 先将容量精确扩展到充入后的总量，防止 AddEnergy 内部钳制截断
-            ((CompProperties_Battery)this.props).storedEnergyMax =
-                Mathf.Max(BaseCapacity, realStored + energy);
-            AddEnergy(energy);
-            // 充入后再同步一次，确保容量 == 储存量（无多余空间）
-            EnsureCapacity();
+            var storedField = Traverse.Create(this).Field("storedEnergy");
+            float realStored = storedField.GetValue<float>();
+            float newStored = realStored + energy;
+            // 同步扩展容量，使容量 == 新储量（始终满电）
+            ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, newStored);
+            // 直接写字段，绕过 AmountCanAccept 钳制
+            storedField.SetValue(newStored);
         }
 
         // // ── 信息栏 ───────────────────────────────────────────────────────────────
