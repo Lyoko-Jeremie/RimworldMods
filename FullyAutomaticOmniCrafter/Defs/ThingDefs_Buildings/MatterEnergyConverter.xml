@@ -33,11 +33,11 @@
         <!-- ── 布局 ───────────────────────────────────────────────────── -->
         <size>(5,5)</size>
         <altitudeLayer>Building</altitudeLayer>
-        <passability>PassThroughOnly</passability>
-        <pathCost>50</pathCost>
+        <passability>Standable</passability>
+        <pathCost>1</pathCost>
         <fillPercent>0.5</fillPercent>
-        <blockWind>true</blockWind>
-        <castEdgeShadows>true</castEdgeShadows>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
         <staticSunShadowHeight>0.2</staticSunShadowHeight>
         <canOverlapZones>false</canOverlapZones>
         <rotatable>false</rotatable>
@@ -46,24 +46,24 @@
         <surfaceType>Item</surfaceType>
 
         <!-- ── 互动格 ─────────────────────────────────────────────────── -->
-        <hasInteractionCell>true</hasInteractionCell>
-        <interactionCellOffset>(0,0,-2)</interactionCellOffset>
+        <hasInteractionCell>false</hasInteractionCell>
+<!--        <interactionCellOffset>(0,0,-2)</interactionCellOffset>-->
 
         <!-- ── 属性基础值 ─────────────────────────────────────────────── -->
         <statBases>
-            <MaxHitPoints>500</MaxHitPoints>
-            <WorkToBuild>18000</WorkToBuild>
-            <Mass>150</Mass>
-            <Flammability>0.5</Flammability>
-            <Beauty>-15</Beauty>
+            <MaxHitPoints>999999999</MaxHitPoints>
+<!--            <WorkToBuild>1800</WorkToBuild>-->
+            <Mass>50</Mass>
+<!--            <Flammability>0.5</Flammability>-->
+<!--            <Beauty>-15</Beauty>-->
         </statBases>
 
         <!-- ── 建造成本 ───────────────────────────────────────────────── -->
         <costList>
-            <Steel>300</Steel>
-            <Plasteel>150</Plasteel>
-            <ComponentSpacer>8</ComponentSpacer>
-            <Gold>20</Gold>
+            <Steel>50</Steel>
+<!--            <Plasteel>150</Plasteel>-->
+<!--            <ComponentSpacer>8</ComponentSpacer>-->
+<!--            <Gold>20</Gold>-->
         </costList>
 
         <!-- ── 可打包为小物件带走 ─────────────────────────────────────── -->
