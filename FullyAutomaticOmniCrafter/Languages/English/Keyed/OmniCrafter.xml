@@ -59,4 +59,13 @@
     <!-- Debug (God mode only) -->
     <OmniCrafter_DebugNoPower>Free Craft (Debug)</OmniCrafter_DebugNoPower>
     <OmniCrafter_DebugNoPowerTip>[DEBUG] Bypass all power requirements and consumption. Only available in God Mode.</OmniCrafter_DebugNoPowerTip>
+    <!-- Mod settings - power cost polynomial -->
+    <OmniCrafter_EnablePinyinSearch>Enable Pinyin Search</OmniCrafter_EnablePinyinSearch>
+    <OmniCrafter_PowerCostFormula>Power Cost Formula: Y = a + b·X + c·X² + d·X³</OmniCrafter_PowerCostFormula>
+    <OmniCrafter_PowerCostFormulaDesc>X = item base market value. Final cost = Y × quality multiplier × count.</OmniCrafter_PowerCostFormulaDesc>
+    <OmniCrafter_PowerCostA>a =</OmniCrafter_PowerCostA>
+    <OmniCrafter_PowerCostB>b =</OmniCrafter_PowerCostB>
+    <OmniCrafter_PowerCostC>c =</OmniCrafter_PowerCostC>
+    <OmniCrafter_PowerCostD>d =</OmniCrafter_PowerCostD>
+    <OmniCrafter_PowerCostReset>Reset to Default (b=1, a=c=d=0)</OmniCrafter_PowerCostReset>
 </LanguageData>

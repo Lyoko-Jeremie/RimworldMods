@@ -84,9 +84,19 @@ namespace FullyAutomaticOmniCrafter
         public static float CostWd(ThingDef def, ThingDef stuff, QualityCategory quality, int count)
         {
             if (def == null) return 0f;
-            float baseValue = def.GetStatValueAbstract(StatDefOf.MarketValue, stuff);
-            if (baseValue < 1f) baseValue = 1f;
-            return baseValue * QualityMult[(int)quality] * count;
+            float x = def.GetStatValueAbstract(StatDefOf.MarketValue, stuff);
+            if (x < 1f) x = 1f;
+
+            // Y = a + b*X + c*X^2 + d*X^3
+            OmniCrafterSettings s = OmniCrafterMod.Settings;
+            float a = s?.powerCostA ?? 0f;
+            float b = s?.powerCostB ?? 1f;
+            float c = s?.powerCostC ?? 0f;
+            float d = s?.powerCostD ?? 0f;
+            float y = a + b * x + c * x * x + d * x * x * x;
+            if (y < 0f) y = 0f;
+
+            return y * QualityMult[(int)quality] * count;
         }
 
         public static float InternalStoredEnergy(PowerNet net)

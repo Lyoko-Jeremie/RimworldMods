@@ -60,4 +60,13 @@
     <!-- 调试开关（仅限神模式） -->
     <OmniCrafter_DebugNoPower>免费制造（调试）</OmniCrafter_DebugNoPower>
     <OmniCrafter_DebugNoPowerTip>[调试] 跳过所有电力检查与消耗，直接生产。仅在神模式下可用。</OmniCrafter_DebugNoPowerTip>
+    <!-- Mod设置 - 耗电多项式 -->
+    <OmniCrafter_EnablePinyinSearch>启用拼音搜索</OmniCrafter_EnablePinyinSearch>
+    <OmniCrafter_PowerCostFormula>耗电公式：Y = a + b·X + c·X² + d·X³</OmniCrafter_PowerCostFormula>
+    <OmniCrafter_PowerCostFormulaDesc>X = 物品基础市场价值。最终耗电 = Y × 品质系数 × 数量。</OmniCrafter_PowerCostFormulaDesc>
+    <OmniCrafter_PowerCostA>a =</OmniCrafter_PowerCostA>
+    <OmniCrafter_PowerCostB>b =</OmniCrafter_PowerCostB>
+    <OmniCrafter_PowerCostC>c =</OmniCrafter_PowerCostC>
+    <OmniCrafter_PowerCostD>d =</OmniCrafter_PowerCostD>
+    <OmniCrafter_PowerCostReset>恢复默认（b=1，a=c=d=0）</OmniCrafter_PowerCostReset>
 </LanguageData>
