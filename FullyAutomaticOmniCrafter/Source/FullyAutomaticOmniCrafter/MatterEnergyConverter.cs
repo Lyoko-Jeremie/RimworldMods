@@ -370,15 +370,18 @@ namespace FullyAutomaticOmniCrafter
                 canTargetItems = true,
                 canTargetBuildings = true,
                 canTargetAnimals = false,
+                canTargetPlants = true,
                 mapObjectTargetsMustBeAutoAttackable = false,
                 validator = targ =>
                 {
                     if (!targ.HasThing) return false;
                     Thing t = targ.Thing;
                     if (t == this || t is Pawn) return false;
-                    if (t.def.category == ThingCategory.Building && !t.def.destroyable) return false;
+                    // // 不可摧毁的建筑（如地板、地图边界等）不允许选中
+                    // if (t.def.category == ThingCategory.Building && !t.def.destroyable) return false;
                     return t.def.category == ThingCategory.Item
-                           || t.def.category == ThingCategory.Building;
+                           || t.def.category == ThingCategory.Building
+                           || t.def.category == ThingCategory.Plant;
                 }
             };
 
