@@ -76,4 +76,19 @@
     <OmniCrafter_PowerCostG>g（log₁₀）=</OmniCrafter_PowerCostG>
     <OmniCrafter_PowerCostN>n（ln）=</OmniCrafter_PowerCostN>
     <OmniCrafter_PowerCostReset>恢复默认（b=1，其余=0）</OmniCrafter_PowerCostReset>
+    <!-- Mod设置 - MEC产能多项式 -->
+    <OmniCrafter_MecEnergyFormula>MEC 产能公式：Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)</OmniCrafter_MecEnergyFormula>
+    <OmniCrafter_MecEnergyFormulaDesc>X = 物品市场价值（可叠加下方可选项）。产生电能 = Y × 品质系数 × 叠放数量。</OmniCrafter_MecEnergyFormulaDesc>
+    <OmniCrafter_MecXIncludeMass>将物品重量加入 X（MEC）</OmniCrafter_MecXIncludeMass>
+    <OmniCrafter_MecXIncludeMassDesc>启用后，物品的重量（千克）将被加入 X，再代入 MEC 产能公式计算。</OmniCrafter_MecXIncludeMassDesc>
+    <OmniCrafter_MecXIncludeHitPoints>将物品耐久值加入 X（MEC）</OmniCrafter_MecXIncludeHitPoints>
+    <OmniCrafter_MecXIncludeHitPointsDesc>启用后，物品的最大生命值（耐久）将被加入 X，再代入 MEC 产能公式计算。</OmniCrafter_MecXIncludeHitPointsDesc>
+    <OmniCrafter_MecEnergyA>a =</OmniCrafter_MecEnergyA>
+    <OmniCrafter_MecEnergyB>b =</OmniCrafter_MecEnergyB>
+    <OmniCrafter_MecEnergyC>c =</OmniCrafter_MecEnergyC>
+    <OmniCrafter_MecEnergyD>d =</OmniCrafter_MecEnergyD>
+    <OmniCrafter_MecEnergyE>e =</OmniCrafter_MecEnergyE>
+    <OmniCrafter_MecEnergyG>g（log₁₀）=</OmniCrafter_MecEnergyG>
+    <OmniCrafter_MecEnergyN>n（ln）=</OmniCrafter_MecEnergyN>
+    <OmniCrafter_MecEnergyReset>恢复 MEC 默认（b=1，含重量+耐久）</OmniCrafter_MecEnergyReset>
 </LanguageData>

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using RimWorld;
@@ -19,27 +20,55 @@ namespace FullyAutomaticOmniCrafter
             1.2f, // Good
             1.5f, // Excellent
             2.0f, // Masterwork
-            3.0f // Legendary
+            3.0f  // Legendary
         };
 
         /// <summary>
         /// 计算一件物品转化产生的能量（Wd）。
-        /// E = (MarketValue + Mass + MaxHitPoints) × QualityMultiplier
+        /// 使用多项式公式：Y = a + b*X + c*X^2 + d*X^3 + e*X^4 + g*log10(X) + n*ln(X)
+        /// X 由市场价值，以及可选的重量和最大耐久组成（由 Mod 设置控制）。
+        /// Energy = Y * QualityMultiplier * stackCount
         /// </summary>
         public static float CalcEnergy(Thing thing)
         {
             if (thing == null) return 0f;
 
-            float marketValue = thing.GetStatValue(StatDefOf.MarketValue);
-            float mass = thing.GetStatValue(StatDefOf.Mass);
-            float maxHp = thing.MaxHitPoints;
+            OmniCrafterSettings s = OmniCrafterMod.Settings;
+
+            // Compose X
+            float x = thing.GetStatValue(StatDefOf.MarketValue);
+            if (s?.mecXIncludeMass == true)
+            {
+                float mass = thing.GetStatValue(StatDefOf.Mass);
+                if (mass > 0f) x += mass;
+            }
+            if (s?.mecXIncludeHitPoints == true)
+            {
+                float hp = thing.MaxHitPoints;
+                if (hp > 0f) x += hp;
+            }
+            if (x < 1f) x = 1f;
+
+            // Y = a + b*X + c*X^2 + d*X^3 + e*X^4 + g*log10(X) + n*ln(X)
+            float a  = s?.mecEnergyA ?? 0f;
+            float b  = s?.mecEnergyB ?? 1f;
+            float c  = s?.mecEnergyC ?? 0f;
+            float d  = s?.mecEnergyD ?? 0f;
+            float e  = s?.mecEnergyE ?? 0f;
+            float g  = s?.mecEnergyG ?? 0f;
+            float n  = s?.mecEnergyN ?? 0f;
+            float x2 = x * x;
+            float x3 = x2 * x;
+            float x4 = x3 * x;
+            float y  = a + b * x + c * x2 + d * x3 + e * x4
+                       + g * (float)Math.Log10(x) + n * (float)Math.Log(x);
+            if (y < 0f) y = 0f;
 
             float qualMult = 1.0f;
             if (thing.TryGetQuality(out QualityCategory qc))
                 qualMult = QualityMult[(int)qc];
 
-            float perItem = (marketValue + mass + maxHp) * qualMult;
-            return perItem * thing.stackCount;
+            return y * qualMult * thing.stackCount;
         }
     }
 

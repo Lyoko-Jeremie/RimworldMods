@@ -75,4 +75,19 @@
     <OmniCrafter_PowerCostG>g (log₁₀) =</OmniCrafter_PowerCostG>
     <OmniCrafter_PowerCostN>n (ln) =</OmniCrafter_PowerCostN>
     <OmniCrafter_PowerCostReset>Reset to Default (b=1, others=0)</OmniCrafter_PowerCostReset>
+    <!-- Mod settings - MEC energy polynomial -->
+    <OmniCrafter_MecEnergyFormula>MEC Energy Formula: Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)</OmniCrafter_MecEnergyFormula>
+    <OmniCrafter_MecEnergyFormulaDesc>X = item market value (plus optional components below). Energy generated = Y × quality multiplier × stack count.</OmniCrafter_MecEnergyFormulaDesc>
+    <OmniCrafter_MecXIncludeMass>Include item mass in X (MEC)</OmniCrafter_MecXIncludeMass>
+    <OmniCrafter_MecXIncludeMassDesc>When enabled, the item's mass (kg) is added to X before computing the MEC energy formula.</OmniCrafter_MecXIncludeMassDesc>
+    <OmniCrafter_MecXIncludeHitPoints>Include item max hit points in X (MEC)</OmniCrafter_MecXIncludeHitPoints>
+    <OmniCrafter_MecXIncludeHitPointsDesc>When enabled, the item's max hit points (durability) is added to X before computing the MEC energy formula.</OmniCrafter_MecXIncludeHitPointsDesc>
+    <OmniCrafter_MecEnergyA>a =</OmniCrafter_MecEnergyA>
+    <OmniCrafter_MecEnergyB>b =</OmniCrafter_MecEnergyB>
+    <OmniCrafter_MecEnergyC>c =</OmniCrafter_MecEnergyC>
+    <OmniCrafter_MecEnergyD>d =</OmniCrafter_MecEnergyD>
+    <OmniCrafter_MecEnergyE>e =</OmniCrafter_MecEnergyE>
+    <OmniCrafter_MecEnergyG>g (log₁₀) =</OmniCrafter_MecEnergyG>
+    <OmniCrafter_MecEnergyN>n (ln) =</OmniCrafter_MecEnergyN>
+    <OmniCrafter_MecEnergyReset>Reset MEC to Default (b=1, mass+HP included)</OmniCrafter_MecEnergyReset>
 </LanguageData>
