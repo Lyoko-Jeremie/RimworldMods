@@ -91,7 +91,9 @@
     <OmniCrafter_MecEnergyG>g（log₁₀）=</OmniCrafter_MecEnergyG>
     <OmniCrafter_MecEnergyN>n（ln）=</OmniCrafter_MecEnergyN>
     <OmniCrafter_MecEnergyReset>恢复 MEC 默认（b=1，含重量+耐久）</OmniCrafter_MecEnergyReset>
+    <OmniCrafter_GraphXMin>预览 X 轴最小值 =</OmniCrafter_GraphXMin>
     <OmniCrafter_GraphXMax>预览 X 轴最大值 =</OmniCrafter_GraphXMax>
+    <OmniCrafter_GraphYMin>预览 Y 轴最小值 =</OmniCrafter_GraphYMin>
     <OmniCrafter_GraphYMax>预览 Y 轴最大值 =</OmniCrafter_GraphYMax>
     <OmniCrafter_GraphLogX>X 轴对数缩放</OmniCrafter_GraphLogX>
     <OmniCrafter_GraphLogXDesc>以 log10 对数刻度显示 X 轴。</OmniCrafter_GraphLogXDesc>

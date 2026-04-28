@@ -88,12 +88,16 @@ namespace FullyAutomaticOmniCrafter
         private Vector2 _scrollPos = Vector2.zero;
 
         // Graph display range / scale options
+        private float _powerGraphXMin = 0f;
         private float _powerGraphXMax = 500f;
+        private float _powerGraphYMin = 0f;
         private float _powerGraphYMax = 500f;
         private bool  _powerLogX      = false;
         private bool  _powerLogY      = false;
 
+        private float _mecGraphXMin = 0f;
         private float _mecGraphXMax = 500f;
+        private float _mecGraphYMin = 0f;
         private float _mecGraphYMax = 500f;
         private bool  _mecLogX      = false;
         private bool  _mecLogY      = false;
@@ -116,16 +120,18 @@ namespace FullyAutomaticOmniCrafter
 
         // ── Graph drawing ─────────────────────────────────────────────────────
         /// <summary>
-        /// Draws a first-quadrant preview of the polynomial.
-        /// Supports optional log10 scaling on both axes.
+        /// Draws a preview of the polynomial over [xMin,xMax] × [yMin,yMax].
+        /// Supports optional log10 scaling (only when the respective min > 0).
+        /// Draws the X-axis (y=0) and Y-axis (x=0) when they fall within the range,
+        /// enabling display of all four quadrants.
         /// </summary>
         private static void DrawFormulaGraph(
             Rect rect,
             float a, float b, float c, float d, float e, float g, float n,
-            float xMax, float yMax, bool logX, bool logY)
+            float xMin, float xMax, float yMin, float yMax, bool logX, bool logY)
         {
             const int   samples = 300;
-            const float padL    = 52f;
+            const float padL    = 56f;
             const float padB    = 22f;
             const float padR    = 8f;
             const float padT    = 8f;
@@ -136,87 +142,108 @@ namespace FullyAutomaticOmniCrafter
             float plotH = rect.height - padT - padB;
             if (plotW <= 0f || plotH <= 0f) return;
 
-            // Log-scale domain bounds (avoid log(0))
-            float xOrigin = logX ? Mathf.Max(xMax / 10000f, 0.001f) : 0f;
-            float yOrigin = logY ? Mathf.Max(yMax / 10000f, 0.001f) : 0f;
+            // Log scale is only valid when the entire range is positive
+            bool useLogX = logX && xMin > 0f && xMax > 0f;
+            bool useLogY = logY && yMin > 0f && yMax > 0f;
 
-            float lxMin = logX ? Mathf.Log10(xOrigin) : 0f;
-            float lxMax = logX ? Mathf.Log10(xMax)    : 1f;
-            float lyMin = logY ? Mathf.Log10(yOrigin) : 0f;
-            float lyMax = logY ? Mathf.Log10(yMax)    : 1f;
+            float lxLo = useLogX ? Mathf.Log10(Mathf.Max(xMin, 1e-6f)) : 0f;
+            float lxHi = useLogX ? Mathf.Log10(xMax) : 0f;
+            float lyLo = useLogY ? Mathf.Log10(Mathf.Max(yMin, 1e-6f)) : 0f;
+            float lyHi = useLogY ? Mathf.Log10(yMax) : 0f;
 
-            // Normalised [0,1] mapping
+            // Normalised [0,1] mapping (0 = min edge, 1 = max edge)
             float NormX(float x)
             {
-                if (logX) return x <= 0f ? 0f : (Mathf.Log10(x) - lxMin) / (lxMax - lxMin);
-                return x / xMax;
+                if (useLogX) return x <= 0f ? 0f : (Mathf.Log10(x) - lxLo) / (lxHi - lxLo);
+                return (xMax != xMin) ? (x - xMin) / (xMax - xMin) : 0f;
             }
             float NormY(float y)
             {
-                if (logY) return y <= 0f ? -1f : (Mathf.Log10(y) - lyMin) / (lyMax - lyMin);
-                return y / yMax;
+                if (useLogY) return y <= 0f ? -1f : (Mathf.Log10(y) - lyLo) / (lyHi - lyLo);
+                return (yMax != yMin) ? (y - yMin) / (yMax - yMin) : 0f;
             }
 
-            Vector2 ToScreen(float x, float y) => new Vector2(
-                rect.x + padL + Mathf.Clamp01(NormX(x)) * plotW,
-                rect.y + padT + plotH - Mathf.Clamp(NormY(y), 0f, 1f) * plotH
-            );
-
-            // Sample positions uniform in linear / log space
+            // Sample X-values uniformly in linear or log space
             float SampleX(int i)
             {
                 float t = (float)i / samples;
-                return logX ? Mathf.Pow(10f, lxMin + (lxMax - lxMin) * t) : xMax * t;
+                if (useLogX) return Mathf.Pow(10f, lxLo + (lxHi - lxLo) * t);
+                return xMin + (xMax - xMin) * t;
             }
+
+            // Screen-space helpers (no clamping, let clip handle it)
+            float Sx(float nx) => rect.x + padL + nx * plotW;
+            float Sy(float ny) => rect.y + padT + plotH - ny * plotH;
 
             // ── Grid lines ────────────────────────────────────────────────
             Color gridColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
             for (int gi = 1; gi <= 4; gi++)
             {
                 float t  = gi / 4f;
-                float gx = logX ? Mathf.Pow(10f, lxMin + (lxMax - lxMin) * t) : xMax * t;
-                float gy = logY ? Mathf.Pow(10f, lyMin + (lyMax - lyMin) * t) : yMax * t;
+                float gx = useLogX ? Mathf.Pow(10f, lxLo + (lxHi - lxLo) * t) : xMin + (xMax - xMin) * t;
+                float gy = useLogY ? Mathf.Pow(10f, lyLo + (lyHi - lyLo) * t) : yMin + (yMax - yMin) * t;
 
-                Vector2 gxB = ToScreen(gx, yOrigin);
-                Widgets.DrawLine(gxB, new Vector2(gxB.x, rect.y + padT), gridColor, 1f);
+                float sx = Sx(NormX(gx));
+                Widgets.DrawLine(new Vector2(sx, rect.y + padT),
+                                 new Vector2(sx, rect.y + padT + plotH), gridColor, 1f);
 
-                Vector2 gyL = ToScreen(xOrigin, gy);
-                Widgets.DrawLine(gyL, new Vector2(rect.x + padL + plotW, gyL.y), gridColor, 1f);
+                float sy = Sy(NormY(gy));
+                Widgets.DrawLine(new Vector2(rect.x + padL, sy),
+                                 new Vector2(rect.x + padL + plotW, sy), gridColor, 1f);
             }
 
-            // ── Axes ──────────────────────────────────────────────────────
-            Color axisColor = new Color(0.7f, 0.7f, 0.7f, 1f);
-            Vector2 origin = ToScreen(xOrigin, yOrigin);
-            Widgets.DrawLine(origin, ToScreen(xMax, yOrigin), axisColor, 1.5f);
-            Widgets.DrawLine(origin, new Vector2(origin.x, rect.y + padT), axisColor, 1.5f);
+            // ── Border ────────────────────────────────────────────────────
+            Color borderColor = new Color(0.5f, 0.5f, 0.5f, 0.8f);
+            float bL = rect.x + padL, bR = rect.x + padL + plotW;
+            float bT = rect.y + padT, bB = rect.y + padT + plotH;
+            Widgets.DrawLine(new Vector2(bL, bT), new Vector2(bR, bT), borderColor, 1f);
+            Widgets.DrawLine(new Vector2(bL, bB), new Vector2(bR, bB), borderColor, 1f);
+            Widgets.DrawLine(new Vector2(bL, bT), new Vector2(bL, bB), borderColor, 1f);
+            Widgets.DrawLine(new Vector2(bR, bT), new Vector2(bR, bB), borderColor, 1f);
+
+            // ── Axes (drawn at x=0 / y=0 when within the visible range) ──
+            Color axisColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            // Horizontal axis (y = 0)
+            if (yMin <= 0f && yMax >= 0f)
+            {
+                float sy = Sy(NormY(0f));
+                Widgets.DrawLine(new Vector2(bL, sy), new Vector2(bR, sy), axisColor, 1.5f);
+            }
+            // Vertical axis (x = 0)
+            if (xMin <= 0f && xMax >= 0f)
+            {
+                float sx = Sx(NormX(0f));
+                Widgets.DrawLine(new Vector2(sx, bT), new Vector2(sx, bB), axisColor, 1.5f);
+            }
 
             // ── Tick labels ───────────────────────────────────────────────
             GUI.color = new Color(0.8f, 0.8f, 0.8f);
             for (int ti = 0; ti <= 4; ti++)
             {
                 float t  = ti / 4f;
-                float tx = logX ? Mathf.Pow(10f, lxMin + (lxMax - lxMin) * t) : xMax * t;
-                Vector2 tp = ToScreen(tx, yOrigin);
-                Widgets.Label(new Rect(tp.x - 18f, tp.y + 2f, 36f, 16f), tx.ToString("G3"));
+                float tx = useLogX ? Mathf.Pow(10f, lxLo + (lxHi - lxLo) * t) : xMin + (xMax - xMin) * t;
+                float sx = Sx(NormX(tx));
+                Widgets.Label(new Rect(sx - 18f, bB + 2f, 36f, 16f), tx.ToString("G3"));
             }
-            for (int ti = 1; ti <= 4; ti++)
+            for (int ti = 0; ti <= 4; ti++)
             {
                 float t  = ti / 4f;
-                float ty = logY ? Mathf.Pow(10f, lyMin + (lyMax - lyMin) * t) : yMax * t;
-                Vector2 tp = ToScreen(xOrigin, ty);
-                Widgets.Label(new Rect(rect.x, tp.y - 8f, padL - 2f, 16f), ty.ToString("G3"));
+                float ty = useLogY ? Mathf.Pow(10f, lyLo + (lyHi - lyLo) * t) : yMin + (yMax - yMin) * t;
+                float sy = Sy(NormY(ty));
+                Widgets.Label(new Rect(rect.x, sy - 8f, padL - 4f, 16f), ty.ToString("G3"));
             }
             GUI.color = Color.white;
 
             // ── Curve (clipped to plot area) ──────────────────────────────
-            GUI.BeginClip(new Rect(rect.x + padL, rect.y + padT, plotW, plotH));
+            GUI.BeginClip(new Rect(bL, bT, plotW, plotH));
             Vector2? prev = null;
             for (int i = 0; i <= samples; i++)
             {
                 float x  = SampleX(i);
                 float y  = EvalPoly(a, b, c, d, e, g, n, x);
                 float ny = NormY(y);
-                if (ny < 0f) { prev = null; continue; }
+                // Discard points far outside the visible band to keep GL clean
+                if (ny < -0.1f || ny > 1.1f) { prev = null; continue; }
                 Vector2 cur = new Vector2(
                     Mathf.Clamp01(NormX(x)) * plotW,
                     plotH - Mathf.Clamp(ny, 0f, 1f) * plotH
@@ -232,22 +259,23 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            // Estimate total content height so the scroll view is big enough
+            // Graph is square: height == available listing width
+            float graphH = inRect.width - 20f;
+
             const float lineH  = 28f;
             const float checkH = 30f;
-            const float graphH = 160f;
-            float contentH =
-                checkH + 12f                           // pinyin
-                + 48f + 4f                             // OmniCrafter section headers
-                + checkH * 2 + 4f                      // X toggles
-                + lineH * 7 + 4f                       // 7 coeff rows
-                + graphH + 4f + lineH * 2 + checkH * 2 // graph + xMax + yMax sliders + logX/logY
-                + 12f + 30f + 16f                      // gap + reset btn + separator line
-                + 48f + 4f                             // MEC section headers
-                + checkH * 2 + 4f                      // MEC X toggles
-                + lineH * 7 + 4f                       // 7 MEC coeff rows
-                + graphH + 4f + lineH * 2 + checkH * 2 // MEC graph + xMax + yMax sliders + logX/logY
-                + 12f + 30f;                           // gap + MEC reset btn
+
+            // Estimate total scrollable content height
+            float sectionH =
+                48f + 4f                  // 2 section header labels + gap
+                + checkH * 2 + 4f         // 2 X-composition toggles + gap
+                + lineH * 7 + 4f          // 7 coefficient rows + gap
+                + 4f + graphH             // inner gap + square graph
+                + lineH * 4               // xMin, xMax, yMin, yMax range rows
+                + checkH * 2              // logX + logY toggles
+                + 12f + 30f;              // gap + reset button
+
+            float contentH = checkH + 12f + sectionH + 16f + sectionH;
 
             Rect viewRect = new Rect(0f, 0f, inRect.width - 20f, contentH);
             Widgets.BeginScrollView(inRect, ref _scrollPos, viewRect);
@@ -260,87 +288,77 @@ namespace FullyAutomaticOmniCrafter
                 "OmniCrafter_EnablePinyinSearch".Translate(),
                 ref Settings.enablePinyinSearch);
 
+            // ── Helper: coefficient row (label + text field + slider) ────
+            void CoeffRow(string labelKey, ref float val, float min, float max)
+            {
+                Rect rowRect = listing.GetRect(lineH);
+                const float lw = 100f, fw = 70f, gap = 6f;
+                Widgets.Label(new Rect(rowRect.x, rowRect.y, lw, rowRect.height), labelKey.Translate());
+                string valStr = val.ToString("G4");
+                string edited = Widgets.TextField(new Rect(rowRect.x + lw + gap, rowRect.y, fw, rowRect.height), valStr);
+                if (edited != valStr && float.TryParse(edited, out float parsed))
+                    val = Mathf.Clamp(parsed, min, max);
+                val = Widgets.HorizontalSlider(
+                    new Rect(rowRect.x + lw + fw + gap * 2f, rowRect.y, rowRect.width - lw - fw - gap * 2f, rowRect.height),
+                    val, min, max, middleAlignment: false, label: null,
+                    leftAlignedLabel: min.ToString("G3"), rightAlignedLabel: max.ToString("G3"));
+                val = Mathf.Clamp(val, min, max);
+            }
+
+            // ── Helper: range slider row (label + text field + slider) ───
+            void RangeRow(string labelKey, ref float val, float minBound, float maxBound)
+            {
+                Rect rowRect = listing.GetRect(lineH);
+                const float lw = 120f, fw = 80f, gap = 6f;
+                Widgets.Label(new Rect(rowRect.x, rowRect.y, lw, rowRect.height), labelKey.Translate());
+                string valStr = val.ToString("G5");
+                string edited = Widgets.TextField(new Rect(rowRect.x + lw + gap, rowRect.y, fw, rowRect.height), valStr);
+                if (edited != valStr && float.TryParse(edited, out float parsed))
+                    val = Mathf.Clamp(parsed, minBound, maxBound);
+                val = Widgets.HorizontalSlider(
+                    new Rect(rowRect.x + lw + fw + gap * 2f, rowRect.y, rowRect.width - lw - fw - gap * 2f, rowRect.height),
+                    val, minBound, maxBound, middleAlignment: false, label: null,
+                    leftAlignedLabel: minBound.ToString("G3"), rightAlignedLabel: maxBound.ToString("G3"));
+                val = Mathf.Clamp(val, minBound, maxBound);
+            }
+
+            // ════════════════════════════════════════════════════════════
+            // OmniCrafter power-cost formula section
+            // ════════════════════════════════════════════════════════════
             listing.Gap();
             listing.Label("OmniCrafter_PowerCostFormula".Translate());
             listing.Label("OmniCrafter_PowerCostFormulaDesc".Translate());
             listing.Gap(4f);
 
-            // ── X composition toggles ─────────────────────────────────────
-            listing.CheckboxLabeled(
-                "OmniCrafter_XIncludeMass".Translate(),
-                ref Settings.xIncludeMass,
-                "OmniCrafter_XIncludeMassDesc".Translate());
-            listing.CheckboxLabeled(
-                "OmniCrafter_XIncludeHitPoints".Translate(),
-                ref Settings.xIncludeHitPoints,
-                "OmniCrafter_XIncludeHitPointsDesc".Translate());
+            listing.CheckboxLabeled("OmniCrafter_XIncludeMass".Translate(),
+                ref Settings.xIncludeMass, "OmniCrafter_XIncludeMassDesc".Translate());
+            listing.CheckboxLabeled("OmniCrafter_XIncludeHitPoints".Translate(),
+                ref Settings.xIncludeHitPoints, "OmniCrafter_XIncludeHitPointsDesc".Translate());
             listing.Gap(4f);
 
-            // Helper to draw a coefficient row: label + text field + slider
-            void CoeffRow(string labelKey, ref float val, float min, float max)
-            {
-                Rect rowRect = listing.GetRect(lineH);
-                float labelWidth = 100f;
-                float fieldWidth = 70f;
-                float gap = 6f;
-
-                Rect labelRect  = new Rect(rowRect.x, rowRect.y, labelWidth, rowRect.height);
-                Rect fieldRect  = new Rect(labelRect.xMax + gap, rowRect.y, fieldWidth, rowRect.height);
-                Rect sliderRect = new Rect(fieldRect.xMax + gap, rowRect.y,
-                    rowRect.width - labelWidth - fieldWidth - gap * 2f, rowRect.height);
-
-                Widgets.Label(labelRect, labelKey.Translate());
-
-                string valStr = val.ToString("G4");
-                string edited = Widgets.TextField(fieldRect, valStr);
-                if (edited != valStr && float.TryParse(edited, out float parsed))
-                    val = Mathf.Clamp(parsed, min, max);
-
-                val = Widgets.HorizontalSlider(sliderRect, val, min, max, middleAlignment: false,
-                    label: null, leftAlignedLabel: min.ToString("G3"), rightAlignedLabel: max.ToString("G3"));
-                val = Mathf.Clamp(val, min, max);
-            }
-
             CoeffRow("OmniCrafter_PowerCostA", ref Settings.powerCostA, -1000000f, 1000000f);
-            CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, -100f, 100f);
-            CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, -100f, 100f);
-            CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, -100f, 10f);
-            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, -100f, 10f);
-            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, -1000f, 1000f);
-            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, -1000f, 1000f);
+            CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, -100f,     100f);
+            CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, -100f,     100f);
+            CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, -100f,     10f);
+            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, -100f,     10f);
+            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, -1000f,    1000f);
+            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, -1000f,    1000f);
 
-            // ── Power formula graph ───────────────────────────────────────
+            // ── Power formula graph (1:1 square) ─────────────────────────
             listing.Gap(4f);
             DrawFormulaGraph(listing.GetRect(graphH),
                 Settings.powerCostA, Settings.powerCostB, Settings.powerCostC,
                 Settings.powerCostD, Settings.powerCostE, Settings.powerCostG,
-                Settings.powerCostN, _powerGraphXMax, _powerGraphYMax, _powerLogX, _powerLogY);
+                Settings.powerCostN,
+                _powerGraphXMin, _powerGraphXMax,
+                _powerGraphYMin, _powerGraphYMax,
+                _powerLogX, _powerLogY);
 
-            // X-axis range slider
-            {
-                Rect row = listing.GetRect(lineH);
-                float lw = 120f, gap = 6f;
-                Widgets.Label(new Rect(row.x, row.y, lw, row.height),
-                    "OmniCrafter_GraphXMax".Translate());
-                _powerGraphXMax = Widgets.HorizontalSlider(
-                    new Rect(row.x + lw + gap, row.y, row.width - lw - gap, row.height),
-                    _powerGraphXMax, 1f, 10000f, middleAlignment: false,
-                    label: _powerGraphXMax.ToString("G4"),
-                    leftAlignedLabel: "1", rightAlignedLabel: "10000");
-            }
-            // Y-axis range slider
-            {
-                Rect row = listing.GetRect(lineH);
-                float lw = 120f, gap = 6f;
-                Widgets.Label(new Rect(row.x, row.y, lw, row.height),
-                    "OmniCrafter_GraphYMax".Translate());
-                _powerGraphYMax = Widgets.HorizontalSlider(
-                    new Rect(row.x + lw + gap, row.y, row.width - lw - gap, row.height),
-                    _powerGraphYMax, 1f, 1000000f, middleAlignment: false,
-                    label: _powerGraphYMax.ToString("G4"),
-                    leftAlignedLabel: "1", rightAlignedLabel: "1E6");
-            }
-            // Log-scale toggles
+            RangeRow("OmniCrafter_GraphXMin", ref _powerGraphXMin, -10000f,  0f);
+            RangeRow("OmniCrafter_GraphXMax", ref _powerGraphXMax,  1f,  10000f);
+            RangeRow("OmniCrafter_GraphYMin", ref _powerGraphYMin, -1000000f, 0f);
+            RangeRow("OmniCrafter_GraphYMax", ref _powerGraphYMax,  1f,  1000000f);
+
             listing.CheckboxLabeled("OmniCrafter_GraphLogX".Translate(), ref _powerLogX,
                 "OmniCrafter_GraphLogXDesc".Translate());
             listing.CheckboxLabeled("OmniCrafter_GraphLogY".Translate(), ref _powerLogY,
@@ -349,73 +367,50 @@ namespace FullyAutomaticOmniCrafter
             listing.Gap();
             if (listing.ButtonText("OmniCrafter_PowerCostReset".Translate()))
             {
-                Settings.powerCostA = 0f;
-                Settings.powerCostB = 1f;
-                Settings.powerCostC = 0f;
-                Settings.powerCostD = 0f;
-                Settings.powerCostE = 0f;
-                Settings.powerCostG = 0f;
+                Settings.powerCostA = 0f; Settings.powerCostB = 1f;
+                Settings.powerCostC = 0f; Settings.powerCostD = 0f;
+                Settings.powerCostE = 0f; Settings.powerCostG = 0f;
                 Settings.powerCostN = 0f;
-                Settings.xIncludeMass = false;
-                Settings.xIncludeHitPoints = false;
+                Settings.xIncludeMass = false; Settings.xIncludeHitPoints = false;
             }
 
-            // ── MEC energy formula ────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            // MEC energy formula section
+            // ════════════════════════════════════════════════════════════
             listing.GapLine(16f);
             listing.Label("OmniCrafter_MecEnergyFormula".Translate());
             listing.Label("OmniCrafter_MecEnergyFormulaDesc".Translate());
             listing.Gap(4f);
 
-            listing.CheckboxLabeled(
-                "OmniCrafter_MecXIncludeMass".Translate(),
-                ref Settings.mecXIncludeMass,
-                "OmniCrafter_MecXIncludeMassDesc".Translate());
-            listing.CheckboxLabeled(
-                "OmniCrafter_MecXIncludeHitPoints".Translate(),
-                ref Settings.mecXIncludeHitPoints,
-                "OmniCrafter_MecXIncludeHitPointsDesc".Translate());
+            listing.CheckboxLabeled("OmniCrafter_MecXIncludeMass".Translate(),
+                ref Settings.mecXIncludeMass, "OmniCrafter_MecXIncludeMassDesc".Translate());
+            listing.CheckboxLabeled("OmniCrafter_MecXIncludeHitPoints".Translate(),
+                ref Settings.mecXIncludeHitPoints, "OmniCrafter_MecXIncludeHitPointsDesc".Translate());
             listing.Gap(4f);
 
             CoeffRow("OmniCrafter_MecEnergyA", ref Settings.mecEnergyA, -10000f, 10000f);
-            CoeffRow("OmniCrafter_MecEnergyB", ref Settings.mecEnergyB, 0f, 100f);
-            CoeffRow("OmniCrafter_MecEnergyC", ref Settings.mecEnergyC, 0f, 100f);
-            CoeffRow("OmniCrafter_MecEnergyD", ref Settings.mecEnergyD, 0f, 10f);
-            CoeffRow("OmniCrafter_MecEnergyE", ref Settings.mecEnergyE, 0f, 10f);
-            CoeffRow("OmniCrafter_MecEnergyG", ref Settings.mecEnergyG, 0f, 100f);
-            CoeffRow("OmniCrafter_MecEnergyN", ref Settings.mecEnergyN, 0f, 100f);
+            CoeffRow("OmniCrafter_MecEnergyB", ref Settings.mecEnergyB, 0f,      100f);
+            CoeffRow("OmniCrafter_MecEnergyC", ref Settings.mecEnergyC, 0f,      100f);
+            CoeffRow("OmniCrafter_MecEnergyD", ref Settings.mecEnergyD, 0f,      10f);
+            CoeffRow("OmniCrafter_MecEnergyE", ref Settings.mecEnergyE, 0f,      10f);
+            CoeffRow("OmniCrafter_MecEnergyG", ref Settings.mecEnergyG, 0f,      100f);
+            CoeffRow("OmniCrafter_MecEnergyN", ref Settings.mecEnergyN, 0f,      100f);
 
-            // ── MEC formula graph ─────────────────────────────────────────
+            // ── MEC formula graph (1:1 square) ────────────────────────────
             listing.Gap(4f);
             DrawFormulaGraph(listing.GetRect(graphH),
                 Settings.mecEnergyA, Settings.mecEnergyB, Settings.mecEnergyC,
                 Settings.mecEnergyD, Settings.mecEnergyE, Settings.mecEnergyG,
-                Settings.mecEnergyN, _mecGraphXMax, _mecGraphYMax, _mecLogX, _mecLogY);
+                Settings.mecEnergyN,
+                _mecGraphXMin, _mecGraphXMax,
+                _mecGraphYMin, _mecGraphYMax,
+                _mecLogX, _mecLogY);
 
-            // X-axis range slider
-            {
-                Rect row = listing.GetRect(lineH);
-                float lw = 120f, gap = 6f;
-                Widgets.Label(new Rect(row.x, row.y, lw, row.height),
-                    "OmniCrafter_GraphXMax".Translate());
-                _mecGraphXMax = Widgets.HorizontalSlider(
-                    new Rect(row.x + lw + gap, row.y, row.width - lw - gap, row.height),
-                    _mecGraphXMax, 1f, 10000f, middleAlignment: false,
-                    label: _mecGraphXMax.ToString("G4"),
-                    leftAlignedLabel: "1", rightAlignedLabel: "10000");
-            }
-            // Y-axis range slider
-            {
-                Rect row = listing.GetRect(lineH);
-                float lw = 120f, gap = 6f;
-                Widgets.Label(new Rect(row.x, row.y, lw, row.height),
-                    "OmniCrafter_GraphYMax".Translate());
-                _mecGraphYMax = Widgets.HorizontalSlider(
-                    new Rect(row.x + lw + gap, row.y, row.width - lw - gap, row.height),
-                    _mecGraphYMax, 1f, 1000000f, middleAlignment: false,
-                    label: _mecGraphYMax.ToString("G4"),
-                    leftAlignedLabel: "1", rightAlignedLabel: "1E6");
-            }
-            // Log-scale toggles
+            RangeRow("OmniCrafter_GraphXMin", ref _mecGraphXMin, -10000f,  0f);
+            RangeRow("OmniCrafter_GraphXMax", ref _mecGraphXMax,  1f,  10000f);
+            RangeRow("OmniCrafter_GraphYMin", ref _mecGraphYMin, -1000000f, 0f);
+            RangeRow("OmniCrafter_GraphYMax", ref _mecGraphYMax,  1f,  1000000f);
+
             listing.CheckboxLabeled("OmniCrafter_GraphLogX".Translate(), ref _mecLogX,
                 "OmniCrafter_GraphLogXDesc".Translate());
             listing.CheckboxLabeled("OmniCrafter_GraphLogY".Translate(), ref _mecLogY,
@@ -424,15 +419,11 @@ namespace FullyAutomaticOmniCrafter
             listing.Gap();
             if (listing.ButtonText("OmniCrafter_MecEnergyReset".Translate()))
             {
-                Settings.mecEnergyA = 0f;
-                Settings.mecEnergyB = 1f;
-                Settings.mecEnergyC = 0f;
-                Settings.mecEnergyD = 0f;
-                Settings.mecEnergyE = 0f;
-                Settings.mecEnergyG = 0f;
+                Settings.mecEnergyA = 0f; Settings.mecEnergyB = 1f;
+                Settings.mecEnergyC = 0f; Settings.mecEnergyD = 0f;
+                Settings.mecEnergyE = 0f; Settings.mecEnergyG = 0f;
                 Settings.mecEnergyN = 0f;
-                Settings.mecXIncludeMass = true;
-                Settings.mecXIncludeHitPoints = true;
+                Settings.mecXIncludeMass = true; Settings.mecXIncludeHitPoints = true;
             }
 
             listing.End();
