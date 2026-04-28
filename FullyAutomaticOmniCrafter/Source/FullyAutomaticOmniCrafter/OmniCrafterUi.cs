@@ -1053,9 +1053,9 @@ namespace FullyAutomaticOmniCrafter
                     maintainCount.ToString("N0"), (costOne * maintainCount).ToString("N0"));
             }
 
-            Widgets.Label(new Rect(0f, y, viewW, 96f), costLabel);
+            Widgets.Label(new Rect(0f, y, viewW, 120f), costLabel);
             GUI.color = Color.white;
-            y += 110f;
+            y += 150f;
 
             // Building 提示
             if (selectedDef.category == ThingCategory.Building && selectedDef.Minifiable && countForCost > 1)
