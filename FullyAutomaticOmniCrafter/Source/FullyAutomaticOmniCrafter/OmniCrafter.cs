@@ -132,7 +132,11 @@ namespace FullyAutomaticOmniCrafter
                 {
                     if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
                     {
-                        energy += Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
+                        // 包含溢出桶中的电量
+                        float total = smartBattery.TotalFloatStoredEnergy;
+                        if (total >= float.MaxValue / 2f) return float.PositiveInfinity;
+                        energy += total;
+                        if (energy < 0f || float.IsInfinity(energy)) return float.PositiveInfinity;
                     }
                 }
             }
@@ -179,6 +183,7 @@ namespace FullyAutomaticOmniCrafter
                     if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery &&
                         FlickUtility.WantsToBeOn(smartBattery.parent))
                     {
+                        // 只计入 storedEnergy（电网可见部分），溢出桶不在电网 CurrentStoredEnergy 内
                         internalActive += Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
                     }
                 }
@@ -256,8 +261,9 @@ namespace FullyAutomaticOmniCrafter
                         if (remaining <= 0f) break;
                         if (bat is CompOmniCrafterSmartInfiniteBattery smartBattery)
                         {
-                            float realStored = Traverse.Create(smartBattery).Field("storedEnergy").GetValue<float>();
-                            float draw = Mathf.Min(realStored, remaining);
+                            // 使用 TotalFloatStoredEnergy 包含溢出桶，DrawPower Patch 会正确从桶中扣除
+                            float totalAvailable = smartBattery.TotalFloatStoredEnergy;
+                            float draw = Mathf.Min(totalAvailable, remaining);
                             if (draw > 1e-6f)
                             {
                                 bat.DrawPower(draw);
