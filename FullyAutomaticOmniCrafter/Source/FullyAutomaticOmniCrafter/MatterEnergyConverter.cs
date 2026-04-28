@@ -18,9 +18,9 @@ namespace FullyAutomaticOmniCrafter
             0.8f, // Poor
             1.0f, // Normal
             1.2f, // Good
-            1.5f, // Excellent
-            2.0f, // Masterwork
-            3.0f  // Legendary
+            4.5f, // Excellent
+            8.0f, // Masterwork
+            16.0f  // Legendary
         };
 
         /// <summary>
