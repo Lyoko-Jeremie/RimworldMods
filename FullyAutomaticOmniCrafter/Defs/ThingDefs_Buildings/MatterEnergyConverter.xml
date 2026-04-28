@@ -23,12 +23,12 @@
 
         <!-- ── 贴图（暂用 OmniCrafter 贴图占位，建议替换为专用贴图） ─── -->
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter</texPath>
+            <texPath>Things/Building/Production/MatterEnergyConverter</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(5,5)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
-        <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
+        <uiIconPath>Things/Building/Production/MatterEnergyConverter</uiIconPath>
 
         <!-- ── 布局 ───────────────────────────────────────────────────── -->
         <size>(5,5)</size>
