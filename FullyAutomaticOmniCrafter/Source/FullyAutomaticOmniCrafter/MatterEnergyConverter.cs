@@ -226,7 +226,7 @@ namespace FullyAutomaticOmniCrafter
     ///   B - 存储区批量模式（建筑作为存储区，一键转化）
     ///   C - 光标直接点选模式（瞄准并即刻转化目标）
     /// </summary>
-    public class Building_MatterEnergyConverter : Building_Storage
+    public class Building_MatterEnergyConverter : Building_Storage, ISlotGroupParent
     {
         // ── 内部状态 ──────────────────────────────────────────────────────────
         private CompPowerTrader powerComp;
@@ -236,6 +236,28 @@ namespace FullyAutomaticOmniCrafter
         // ── 常量 ──────────────────────────────────────────────────────────────
         private static readonly SoundDef ConvertSound = SoundDefOf.EnergyShield_AbsorbDamage;
 
+        // ── 静态缓存：各地图中所有 MEC 占用的存储格集合（O(1) 查询） ────────────
+        // Key = Map.uniqueID；Value = 该地图上所有 MEC 存储格的 HashSet
+        private static readonly Dictionary<int, HashSet<IntVec3>> _storageCellsByMapId
+            = new Dictionary<int, HashSet<IntVec3>>();
+
+        private static HashSet<IntVec3> GetOrCreateCache(int mapId)
+        {
+            if (!_storageCellsByMapId.TryGetValue(mapId, out var set))
+                _storageCellsByMapId[mapId] = set = new HashSet<IntVec3>();
+            return set;
+        }
+
+        /// <summary>O(1) 判断某地图格子是否位于任意 MEC 的存储区内。</summary>
+        public static bool IsInMecStorage(IntVec3 cell, Map map)
+            => map != null
+               && _storageCellsByMapId.TryGetValue(map.uniqueID, out var s)
+               && s.Contains(cell);
+
+        // ── 美观度：存储区内的物品不计入美观统计（不产生负面美观） ─────────────
+        // Building_Storage.IgnoreStoredThingsBeauty 不是 virtual，使用显式接口重实现来遮蔽它
+        bool ISlotGroupParent.IgnoreStoredThingsBeauty => true;
+
         // ── 初始化 ────────────────────────────────────────────────────────────
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
@@ -243,6 +265,27 @@ namespace FullyAutomaticOmniCrafter
             powerComp = GetComp<CompPowerTrader>();
             transporterComp = GetComp<CompTransporter>();
             mecBattery = GetComp<CompMatterEnergyConverterBattery>();
+
+            // 老化保护：令本建筑作为 edifice 保护其上物品（protectedByEdificeFactor = 0，完全免疫）
+            // 只需设一次（def 是全局共享的，同类型所有实例生效）
+            if (!def.building.preventDeteriorationOnTop)
+                def.building.preventDeteriorationOnTop = true;
+
+            // 注册存储格到缓存（温度腐烂 Patch 使用）
+            var cache = GetOrCreateCache(map.uniqueID);
+            foreach (IntVec3 c in AllSlotCells())
+                cache.Add(c);
+        }
+
+        public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        {
+            // 必须在 base.DeSpawn() 前操作，因为 base 会将 Spawned 设为 false，
+            // 导致 AllSlotCells() 返回空集合
+            if (Spawned && _storageCellsByMapId.TryGetValue(Map.uniqueID, out var cache))
+                foreach (IntVec3 c in AllSlotCells())
+                    cache.Remove(c);
+
+            base.DeSpawn(mode);
         }
 
         // ── 核心：将物品转为电能 ───────────────────────────────────────────────
@@ -602,6 +645,24 @@ namespace FullyAutomaticOmniCrafter
         }
     }
     
+    // ─── Harmony：阻止温度腐烂 ────────────────────────────────────────────────
+    /// <summary>
+    /// 当物品位于 MEC 的存储区时，跳过 CompTemperatureRuinable.CompTick，
+    /// 防止因温度过高/过低造成的腐坏进度推进。
+    /// CompTickRare() 内部直接调用 CompTick()，因此只需 Patch CompTick 即可覆盖两者。
+    /// 查询使用静态 HashSet O(1) 缓存，性能开销极低。
+    /// </summary>
+    [HarmonyPatch(typeof(CompTemperatureRuinable), "CompTick")]
+    public static class Patch_MEC_NoTemperatureRuinable
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(CompTemperatureRuinable __instance)
+        {
+            Thing t = __instance.parent;
+            return t?.Map == null || !Building_MatterEnergyConverter.IsInMecStorage(t.Position, t.Map);
+        }
+    }
+
     [StaticConstructorOnStartup]
     public static class MatterEnergyConverterTex
     {
