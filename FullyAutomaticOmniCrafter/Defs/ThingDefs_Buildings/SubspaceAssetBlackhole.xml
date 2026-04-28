@@ -18,10 +18,7 @@
         <!-- ── 基础标识 ────────────────────────────────────────────────── -->
         <defName>SubspaceAssetBlackhole</defName>
         <label>Subspace Asset Blackhole Generator</label>
-        <description>A mysterious device that folds colony assets into subspace, making them invisible to threat
-            assessment algorithms. While powered, it reduces the colony's apparent wealth, thereby lowering raid
-            difficulty. Adjust the suppression amount via the control panel.
-        </description>
+        <description>description</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_SubspaceAssetBlackHole</thingClass>
 
         <!-- ── 贴图（使用 OmniCrafter 图标占位，建议替换为专用贴图） ─── -->
