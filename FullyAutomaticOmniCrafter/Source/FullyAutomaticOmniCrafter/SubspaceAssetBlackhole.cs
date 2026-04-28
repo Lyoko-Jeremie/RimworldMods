@@ -20,7 +20,7 @@ namespace FullyAutomaticOmniCrafter
         private float _wealthReduction = 10000f;
 
         public const float MinReduction = 0f;
-        public const float MaxReduction = 10_000_000f;
+        public const float MaxReduction = 100_000_000_000f;
 
         private CompPowerTrader _powerComp;
 
