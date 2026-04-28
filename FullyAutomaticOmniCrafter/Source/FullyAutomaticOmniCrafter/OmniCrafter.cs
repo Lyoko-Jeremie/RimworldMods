@@ -140,6 +140,28 @@ namespace FullyAutomaticOmniCrafter
             return energy;
         }
 
+        /// <summary>
+        /// 返回所有开启状态的 MEC 专属电池（CompMatterEnergyConverterBattery）的储能总量（Wd）。
+        /// 注意：直接读取底层字段，与 bat.StoredEnergy 通过 Harmony Patch 遮蔽关闭状态一致。
+        /// </summary>
+        public static float MecStoredEnergy(PowerNet net)
+        {
+            if (net == null) return 0f;
+            float energy = 0f;
+            if (net.batteryComps != null)
+            {
+                foreach (CompPowerBattery bat in net.batteryComps)
+                {
+                    if (bat is CompMatterEnergyConverterBattery mecBat)
+                    {
+                        // bat.StoredEnergy 已通过 Patch_MecBattery_StoredEnergy 处理关闭遮蔽，直接使用即可
+                        energy += bat.StoredEnergy;
+                    }
+                }
+            }
+            return energy;
+        }
+
         public static float ExternalStoredEnergy(PowerNet net)
         {
             if (net == null) return 0f;
@@ -226,7 +248,7 @@ namespace FullyAutomaticOmniCrafter
                 // 扣除逻辑
                 float remaining = amountWd;
 
-                // First deduct from Smart Infinite Batteries (Internal)
+                // 第一步：优先从 Smart Infinite Batteries（内部电池）扣除
                 if (net.batteryComps != null)
                 {
                     foreach (CompPowerBattery bat in net.batteryComps)
@@ -245,13 +267,33 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
 
-                // Then from normal batteries (External)
+                // 第二步：从 MEC 专属电池（CompMatterEnergyConverterBattery）扣除
+                // bat.StoredEnergy 已通过 Patch_MecBattery_StoredEnergy 处理：关闭时为 0，开启时为真实储量
                 if (remaining > 1e-6f && net.batteryComps != null)
                 {
                     foreach (CompPowerBattery bat in net.batteryComps)
                     {
                         if (remaining <= 0f) break;
-                        if (!(bat is CompOmniCrafterSmartInfiniteBattery))
+                        if (bat is CompMatterEnergyConverterBattery)
+                        {
+                            float draw = Mathf.Min(bat.StoredEnergy, remaining);
+                            if (draw > 1e-6f)
+                            {
+                                bat.DrawPower(draw);
+                                remaining -= draw;
+                            }
+                        }
+                    }
+                }
+
+                // 第三步：最后从普通电池扣除
+                if (remaining > 1e-6f && net.batteryComps != null)
+                {
+                    foreach (CompPowerBattery bat in net.batteryComps)
+                    {
+                        if (remaining <= 0f) break;
+                        if (!(bat is CompOmniCrafterSmartInfiniteBattery) &&
+                            !(bat is CompMatterEnergyConverterBattery))
                         {
                             float draw = Mathf.Min(bat.StoredEnergy, remaining);
                             if (draw > 1e-6f)
@@ -377,10 +419,12 @@ namespace FullyAutomaticOmniCrafter
 
                     // 计算单件电力消耗，按当前可用电量推算最多能制造的数量
                     // 避免「一次性要求全部电力，不足则跳过」导致自动订单永远无法执行
+                    // 扣电优先级：内部电池(SmartInfiniteBattery) > MEC电池 > 普通电池
                     float unitCost = OmniPowerCost.CostWd(order.thingDef, order.stuffDef, order.quality, 1);
                     // Log.Message($"[OmniCrafter] 单件电力消耗: {order.thingDef.defName}: {unitCost} Wd");
+                    // TotalStoredEnergy = 内部电池 + MEC电池(开启时) + 普通电池
                     float available = OmniPowerCost.TotalStoredEnergy(net);
-                    // Log.Message($"[OmniCrafter] 总电量: {available} Wd");
+                    // Log.Message($"[OmniCrafter] 总电量(内+MEC+普通): {available} Wd");
 
                     float surplusWdPerTick = OmniPowerCost.SurplusEnergyWdPerTick(net);
                     // Log.Message($"[OmniCrafter] 剩余电量每秒: {surplusWdPerTick} Wd");
