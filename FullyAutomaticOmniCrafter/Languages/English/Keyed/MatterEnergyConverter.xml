@@ -31,4 +31,9 @@
   <!-- Shown in building info panel. {0} = item count, {1} = potential energy in Wd -->
   <MEC_PotentialEnergy>Stored: {0} item(s) · Potential energy: {1} Wd</MEC_PotentialEnergy>
 
+  <!-- Discharge all stored energy back into the power grid -->
+  <MEC_DischargeAll>Discharge All</MEC_DischargeAll>
+  <MEC_DischargeAll_Desc>Release all electrical energy stored in this converter's dedicated battery back into the power grid immediately.</MEC_DischargeAll_Desc>
+  <MEC_DischargeAll_Confirm>Release all stored energy into the power grid? This cannot be undone.</MEC_DischargeAll_Confirm>
+
 </LanguageData>

@@ -544,6 +544,29 @@ namespace FullyAutomaticOmniCrafter
                 icon = MatterEnergyConverterTex.IconPicker,
                 action = BeginDirectTargeting
             };
+
+            // 放电按钮：将专属电池中所有电量通过 DrawPower 释放回电网
+            if (mecBattery != null)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "MEC_DischargeAll".Translate(),
+                    defaultDesc = "MEC_DischargeAll_Desc".Translate(),
+                    icon = MatterEnergyConverterTex.IconDischarge,
+                    action = () =>
+                    {
+                        Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                            "MEC_DischargeAll_Confirm".Translate(),
+                            () =>
+                            {
+                                float realStored = Traverse.Create(mecBattery).Field("storedEnergy").GetValue<float>();
+                                if (realStored > 0f)
+                                    mecBattery.DrawPower(realStored);
+                            }
+                        ));
+                    }
+                };
+            }
         }
 
         // ── 信息栏显示 ──────────────────────────────────────────────────────────
@@ -588,6 +611,8 @@ namespace FullyAutomaticOmniCrafter
             ContentFinder<Texture2D>.Get("UI/Commands/MatterEnergyConverter_Picker", true) ?? BaseContent.WhiteTex;
         public static readonly Texture2D IconStorage =
             ContentFinder<Texture2D>.Get("UI/Commands/MatterEnergyConverter_Storage", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconDischarge =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_BatteryDischarge", true) ?? BaseContent.WhiteTex;
     }
     
 }

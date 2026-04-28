@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
   <!-- ── 指令按钮 ────────────────────────────────────────────────────── -->
@@ -31,4 +31,8 @@
   <!-- 建筑信息栏显示。{0} = 物品数量，{1} = 潜在能量（Wd） -->
   <MEC_PotentialEnergy>储存：{0} 件物品 · 潜在能量：{1} Wd</MEC_PotentialEnergy>
 
+  <!-- 将专属电池中所有电量释放回电网 -->
+  <MEC_DischargeAll>全部放电</MEC_DischargeAll>
+  <MEC_DischargeAll_Desc>将本转化仪专属电池中储存的所有电能立即释放回电网。</MEC_DischargeAll_Desc>
+  <MEC_DischargeAll_Confirm>将所有储存电能释放至电网？此操作不可撤销。</MEC_DischargeAll_Confirm>
 </LanguageData>
