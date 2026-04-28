@@ -38,9 +38,17 @@
 
 将物质分解成夸克粒子，转化为弦场，随后将其抽取为能量！资源回收好帮手！
 物质能量转化仪 MatterEnergyConverter 堂堂登场！
+
 超凡世界的又一科技结晶，能将物质分解成夸克粒子，转化为弦场，随后将其抽取为能量！
 无论是食物、药品还是建筑和材料，这台神奇的机器都能轻松分解！殖民地再也不会缺乏能源！
 超凡科技说，要有光！
+
+[h2] 有三种回收方法 [/h2]
+[list]
+ [*] 设置存储区设置，像存储建筑一样小人会自动搬运进去，再点转化存储物按钮，建筑上的所有物品就会被分解转化了。
+ [*] 用空投仓的装载按钮像装载空投仓那样装载物品，再点转化装载物按钮，货舱里的物品就会被分解转化了。
+ [*] 直接点定点转化按钮，随后用十字光标点需要转化的物品或建筑，就会立即被分解转化了。
+[/list]
 
 提示：物质能量转化仪的存储区不会老化、腐烂度会不断重置，因此可以作为特殊仓库暂存物品。
 
@@ -98,9 +106,17 @@ Now relies on Harmony's interception capabilities to implement power-related fea
 
 Decompose matter into quark particles, convert them into string fields, and then extract them as energy! A great helper for resource recycling!
 The Matter-Energy Converter is here!
+
 Another technological gem of the archotech world, capable of decomposing matter into quark particles, converting them into string fields, and then extracting them as energy!
 Whether it's food, medicine, buildings, or materials, this magical machine can easily decompose them all! Your colony will never lack energy again!
 Archotech technology says, let there be light!
+
+[h2] Three conversion methods [/h2]
+[list]
+ [*] Set up a storage area, and colonists will automatically haul items onto it. Then click the "Convert Stored Items" button, and all items on the building will be decomposed and converted.
+ [*] Use the loading button of the drop pod to load items as if loading a drop pod, then click the "Convert Loaded Items" button, and the items in the cargo hold will be decomposed and converted.
+ [*] Directly click the "Targeted Conversion" button, then use the crosshair cursor to click on any target on the map that you want to convert, and it will be immediately decomposed and converted.
+[/list]
 
 Note: The storage area of the Matter-Energy Converter does not age, and the rot will constantly reset, so it can be used as a special warehouse for temporarily storing items.
 
