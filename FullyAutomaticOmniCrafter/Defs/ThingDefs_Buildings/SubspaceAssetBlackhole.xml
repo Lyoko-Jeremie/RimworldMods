@@ -38,10 +38,10 @@
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
-        <fillPercent>0.5</fillPercent>
         <blockWind>false</blockWind>
-        <castEdgeShadows>true</castEdgeShadows>
-        <staticSunShadowHeight>0.2</staticSunShadowHeight>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
         <rotatable>false</rotatable>
 
