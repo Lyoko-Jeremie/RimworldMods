@@ -11,7 +11,7 @@ namespace FullyAutomaticOmniCrafter
     {
         // ── 精度安全常量 ──────────────────────────────────────────────────────────
         // float 在 2^23 以内时 ULP=0.5，加减数个Wd不会被吞噬
-        public const float SafeMaxFloatEnergy = 1 << 23; // 8,388,608 Wd
+        public const float SafeMaxFloatEnergy = 8_000_000f; // 8,388,608 Wd = 1 << 23
 
         // 维持UI美观的基础容量下限
         private const float BaseCapacity = 1000f;
@@ -191,12 +191,10 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 双桶显示：活跃层 + 储备层
                 double totalWd = (double)overflowEnergy + realStoredEnergy;
-                string totalStr = totalWd >= 1e15
-                    ? totalWd.ToString("E3")
-                    : totalWd.ToString("N0");
+                string totalStr = totalWd.ToString("N0");
                 return "CompOmniCrafterSmartInfiniteBattery_Fulfill".Translate() +
                        totalStr + " Wd" +
-                       $"\n  ({realStoredEnergy:N0} Wd + {overflowEnergy:N0} Wd)\n" +
+                       $"\n= ({realStoredEnergy:N0} Wd + {overflowEnergy:N0} Wd)\n" +
                        status;
             }
 
