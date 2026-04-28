@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ── Gizmo buttons ─────────────────────────────────────────────── -->
+
+  <SAB_DecreaseBy10k>Decrease -10,000</SAB_DecreaseBy10k>
+  <SAB_DecreaseBy10k_Desc>Reduce the wealth suppression amount by 10,000 silver.</SAB_DecreaseBy10k_Desc>
+
+  <SAB_Configure>Set Suppression</SAB_Configure>
+  <SAB_Configure_Desc>Open the configuration panel to set the wealth suppression amount precisely (current: {0} silver).</SAB_Configure_Desc>
+
+  <SAB_IncreaseBy10k>Increase +10,000</SAB_IncreaseBy10k>
+  <SAB_IncreaseBy10k_Desc>Increase the wealth suppression amount by 10,000 silver.</SAB_IncreaseBy10k_Desc>
+
+  <!-- ── Configuration dialog ──────────────────────────────────────── -->
+
+  <SAB_DialogTitle>Subspace Asset Blackhole — Wealth Suppression Settings</SAB_DialogTitle>
+  <SAB_ExactInput>Exact value:</SAB_ExactInput>
+  <SAB_Confirm>Confirm</SAB_Confirm>
+
+  <!-- ── Inspect string ────────────────────────────────────────────── -->
+
+  <!-- Shown when powered. {0} = active suppression amount -->
+  <SAB_Inspect_Active>Subspace field active: suppressing {0} silver of wealth</SAB_Inspect_Active>
+
+  <!-- Shown when unpowered. {0} = configured amount (not active) -->
+  <SAB_Inspect_Unpowered>Subspace field offline (configured: {0} silver, currently inactive)</SAB_Inspect_Unpowered>
+
+</LanguageData>
+

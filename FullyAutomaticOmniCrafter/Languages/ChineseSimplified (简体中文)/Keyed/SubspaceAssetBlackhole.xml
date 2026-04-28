@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ── 指令按钮 ────────────────────────────────────────────────────── -->
+
+  <!-- 快速减少财富扣减量 -->
+  <SAB_DecreaseBy10k>减少 -10,000</SAB_DecreaseBy10k>
+  <SAB_DecreaseBy10k_Desc>将财富扣减量减少 10,000 银币。</SAB_DecreaseBy10k_Desc>
+
+  <!-- 打开精确调节界面 -->
+  <SAB_Configure>调节扣减量</SAB_Configure>
+  <SAB_Configure_Desc>打开设置界面，精确调节亚空间黑洞的财富扣减量（当前：{0} 银币）。</SAB_Configure_Desc>
+
+  <!-- 快速增加财富扣减量 -->
+  <SAB_IncreaseBy10k>增加 +10,000</SAB_IncreaseBy10k>
+  <SAB_IncreaseBy10k_Desc>将财富扣减量增加 10,000 银币。</SAB_IncreaseBy10k_Desc>
+
+  <!-- ── 调节对话框 ─────────────────────────────────────────────────── -->
+
+  <SAB_DialogTitle>亚空间资产黑洞 — 财富扣减设置</SAB_DialogTitle>
+  <SAB_ExactInput>精确输入：</SAB_ExactInput>
+  <SAB_Confirm>确认</SAB_Confirm>
+
+  <!-- ── 信息栏 ──────────────────────────────────────────────────────── -->
+
+  <!-- 通电时显示。{0} = 当前生效的财富扣减量 -->
+  <SAB_Inspect_Active>亚空间扭曲：已抹除 {0} 银币财富</SAB_Inspect_Active>
+
+  <!-- 断电时显示。{0} = 原始设定的扣减量（暂未生效） -->
+  <SAB_Inspect_Unpowered>亚空间扭曲：已断电（设定值 {0} 银币，暂未生效）</SAB_Inspect_Unpowered>
+
+</LanguageData>
+

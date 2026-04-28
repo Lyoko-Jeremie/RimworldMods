@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <!--
+      ══════════════════════════════════════════════════════════════════════
+      亚空间资产黑洞 / Subspace Asset Blackhole
+      thingClass : FullyAutomaticOmniCrafter.Building_SubspaceAssetBlackHole
+      功能 :
+        · 通电后，在 WealthWatcher.WealthTotal 中扣除玩家设定的财富值，
+          降低殖民地总财富，从而减小袭击规模。
+        · 通过 Gizmo 按钮或弹出对话框调节扣减量（0 – 10,000,000）。
+        · 断电时扣减暂停，不影响实际储存数据。
+      ══════════════════════════════════════════════════════════════════════
+    -->
+
+    <ThingDef ParentName="BuildingBase">
+
+        <!-- ── 基础标识 ────────────────────────────────────────────────── -->
+        <defName>SubspaceAssetBlackhole</defName>
+        <label>Subspace Asset Blackhole</label>
+        <description>A mysterious device that folds colony assets into subspace, making them invisible to threat
+            assessment algorithms. While powered, it reduces the colony's apparent wealth, thereby lowering raid
+            difficulty. Adjust the suppression amount via the control panel.
+        </description>
+        <thingClass>FullyAutomaticOmniCrafter.Building_SubspaceAssetBlackHole</thingClass>
+
+        <!-- ── 贴图（使用 OmniCrafter 图标占位，建议替换为专用贴图） ─── -->
+        <graphicData>
+            <texPath>Things/Building/Production/SubspaceAssetBlackhole</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(3,3)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <uiIconPath>Things/Building/Production/SubspaceAssetBlackhole</uiIconPath>
+
+        <!-- ── 布局 ───────────────────────────────────────────────────── -->
+        <size>(3,3)</size>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>Standable</passability>
+        <pathCost>1</pathCost>
+        <fillPercent>0.5</fillPercent>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>true</castEdgeShadows>
+        <staticSunShadowHeight>0.2</staticSunShadowHeight>
+        <canOverlapZones>false</canOverlapZones>
+        <rotatable>false</rotatable>
+
+        <!-- ── 属性基础值 ─────────────────────────────────────────────── -->
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+        </statBases>
+
+        <!-- ── 建造成本 ───────────────────────────────────────────────── -->
+        <costList>
+            <Steel>150</Steel>
+        </costList>
+
+        <!-- ── 可打包为小物件带走 ─────────────────────────────────────── -->
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <!-- ── Tick 类型（Normal 以支持 CompPowerTrader） ─────────────── -->
+        <tickerType>Normal</tickerType>
+
+        <!-- ── 建筑属性 ───────────────────────────────────────────────── -->
+        <building>
+            <paintable>true</paintable>
+            <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+        </building>
+
+        <!-- ── 组件 ───────────────────────────────────────────────────── -->
+        <comps>
+
+            <!-- 开关控制 -->
+            <li Class="CompProperties_Flickable"/>
+
+            <!-- 机械故障 -->
+            <li Class="CompProperties_Breakdownable"/>
+
+            <!-- 电力消耗：维持亚空间扭曲场需要持续电力 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>500</basePowerConsumption>
+                <shortCircuitInRain>false</shortCircuitInRain>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+        </comps>
+
+        <!-- ── 地形要求 ───────────────────────────────────────────────── -->
+        <terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
+
+        <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
+        <designationCategory>Production</designationCategory>
+
+        <!-- ── 研究前提（建议取消注释并指定合适的研究项） ────────────── -->
+        <!--
+        <researchPrerequisites>
+            <li>Spaceflight</li>
+        </researchPrerequisites>
+        -->
+
+        <!-- ── 建造 / 修理音效 ────────────────────────────────────────── -->
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+
+    </ThingDef>
+
+</Defs>
+

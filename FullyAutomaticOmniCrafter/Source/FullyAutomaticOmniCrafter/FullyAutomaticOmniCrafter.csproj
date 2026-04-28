@@ -373,6 +373,7 @@
     <Compile Include="PinyinSearchEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Patch_ShortCircuitUtility.cs" />
+    <Compile Include="SubspaceAssetBlackhole.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
