@@ -36,7 +36,7 @@
         <!-- ── 布局 ───────────────────────────────────────────────────── -->
         <size>(3,3)</size>
         <altitudeLayer>Building</altitudeLayer>
-        <passability>Standable</passability>
+        <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
         <fillPercent>0.5</fillPercent>
         <blockWind>false</blockWind>
