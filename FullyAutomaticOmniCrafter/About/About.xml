@@ -34,11 +34,33 @@
 
 [hr][/hr]
 
+[h2] 物质-能量转化仪 MatterEnergyConverter [/h2]
+
+将物质分解成夸克粒子，转化为弦场，随后将其抽取为能量！资源回收好帮手！
+物质能量转化仪 MatterEnergyConverter 堂堂登场！
+超凡世界的又一科技结晶，能将物质分解成夸克粒子，转化为弦场，随后将其抽取为能量！
+无论是食物、药品还是建筑和材料，这台神奇的机器都能轻松分解！殖民地再也不会缺乏能源！
+超凡科技说，要有光！
+
+
+[hr][/hr]
+
 [h3]建议配合使用的mod[/h3]
 
 [list]
  [*] MinifyEverything 让所有建筑都支持打包（支持打包的建筑才能被成功生产出来） https://steamcommunity.com/sharedfiles/filedetails/?id=872762753
 [/list]
+
+[hr][/hr]
+
+可在Mod设置中调整能量转化公式。
+Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)
+X = 物品的市场价值 + [ 物品重量 ] + [ 物品耐久 ]
+能量 = Y [ * 品质乘数 ] * 数量
+品质乘数：极差=0.5, 较差=0.8, 一般=1.0, 良好=2.0, 极佳=4.0, 大师=8.0, 传奇=16.0
+默认 b=1，其他系数为0，即默认能量转化公式为 Y=X，线性关系。
+
+
 
 [hr][/hr]
 
@@ -71,11 +93,31 @@ Now relies on Harmony's interception capabilities to implement power-related fea
 		
 [hr][/hr]
 
+[h2] Matter-Energy Converter [/h2]
+
+Decompose matter into quark particles, convert them into string fields, and then extract them as energy! A great helper for resource recycling!
+The Matter-Energy Converter is here!
+Another technological gem of the archotech world, capable of decomposing matter into quark particles, converting them into string fields, and then extracting them as energy!
+Whether it's food, medicine, buildings, or materials, this magical machine can easily decompose them all! Your colony will never lack energy again!
+Archotech technology says, let there be light!
+
+[hr][/hr]
+
 [h3]Recommended mods to use with Fully Automatic OmniCrafter[/h3]
 
 [list]
 [*] MinifyEverything Allows all buildings to be minified (only buildings that can be minified can be successfully produced) https://steamcommunity.com/sharedfiles/filedetails/?id=872762753
 [/list]
+
+[hr][/hr]
+
+You can adjust the energy conversion formula in the mod settings.
+Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)
+X = Market Value of the item + [ Weight of the item ] + [ Durability of the item ]
+Energy = Y [ * Quality Multiplier ] * Quantity
+Quality Multiplier: Awful=0.5, Poor=0.8, Normal=1.0, Good=2.0, Excellent=4.0, Masterwork=8.0, Legendary=16.0
+By default, b=1 and other coefficients are 0, so the default energy conversion formula is Y=X, a linear relationship.
+
 
 [hr][/hr]
 
