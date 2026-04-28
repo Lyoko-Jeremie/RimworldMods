@@ -91,4 +91,9 @@
     <OmniCrafter_MecEnergyN>n (ln) =</OmniCrafter_MecEnergyN>
     <OmniCrafter_MecEnergyReset>Reset MEC to Default (b=1, mass+HP included)</OmniCrafter_MecEnergyReset>
     <OmniCrafter_GraphXMax>Preview X max =</OmniCrafter_GraphXMax>
+    <OmniCrafter_GraphYMax>Preview Y max =</OmniCrafter_GraphYMax>
+    <OmniCrafter_GraphLogX>Log scale X axis</OmniCrafter_GraphLogX>
+    <OmniCrafter_GraphLogXDesc>Display the X axis in log10 scale.</OmniCrafter_GraphLogXDesc>
+    <OmniCrafter_GraphLogY>Log scale Y axis</OmniCrafter_GraphLogY>
+    <OmniCrafter_GraphLogYDesc>Display the Y axis in log10 scale.</OmniCrafter_GraphLogYDesc>
 </LanguageData>
