@@ -68,13 +68,13 @@
     <OmniCrafter_XIncludeMassDesc>启用后，物品的重量（千克）将被加入 X，再代入耗电公式计算。</OmniCrafter_XIncludeMassDesc>
     <OmniCrafter_XIncludeHitPoints>将物品耐久值加入 X</OmniCrafter_XIncludeHitPoints>
     <OmniCrafter_XIncludeHitPointsDesc>启用后，物品的最大生命值（耐久）将被加入 X，再代入耗电公式计算。</OmniCrafter_XIncludeHitPointsDesc>
-    <OmniCrafter_PowerCostA>a =</OmniCrafter_PowerCostA>
-    <OmniCrafter_PowerCostB>b =</OmniCrafter_PowerCostB>
-    <OmniCrafter_PowerCostC>c =</OmniCrafter_PowerCostC>
-    <OmniCrafter_PowerCostD>d =</OmniCrafter_PowerCostD>
-    <OmniCrafter_PowerCostE>e =</OmniCrafter_PowerCostE>
-    <OmniCrafter_PowerCostG>g（log₁₀）=</OmniCrafter_PowerCostG>
-    <OmniCrafter_PowerCostN>n（ln）=</OmniCrafter_PowerCostN>
+    <OmniCrafter_PowerCostA>a       =</OmniCrafter_PowerCostA>
+    <OmniCrafter_PowerCostB>b·X     =</OmniCrafter_PowerCostB>
+    <OmniCrafter_PowerCostC>c·X²    =</OmniCrafter_PowerCostC>
+    <OmniCrafter_PowerCostD>d·X³    =</OmniCrafter_PowerCostD>
+    <OmniCrafter_PowerCostE>e·X⁴    =</OmniCrafter_PowerCostE>
+    <OmniCrafter_PowerCostG>g·log₁₀ =</OmniCrafter_PowerCostG>
+    <OmniCrafter_PowerCostN>n·ln    =</OmniCrafter_PowerCostN>
     <OmniCrafter_PowerCostReset>恢复默认（b=1，其余=0）</OmniCrafter_PowerCostReset>
     <!-- Mod设置 - MEC产能多项式 -->
     <OmniCrafter_MecEnergyFormula>MEC 产能公式：Y = a + b·X + c·X² + d·X³ + e·X⁴ + g·log₁₀(X) + n·ln(X)</OmniCrafter_MecEnergyFormula>
@@ -83,13 +83,13 @@
     <OmniCrafter_MecXIncludeMassDesc>启用后，物品的重量（千克）将被加入 X，再代入 MEC 产能公式计算。</OmniCrafter_MecXIncludeMassDesc>
     <OmniCrafter_MecXIncludeHitPoints>将物品耐久值加入 X（MEC）</OmniCrafter_MecXIncludeHitPoints>
     <OmniCrafter_MecXIncludeHitPointsDesc>启用后，物品的最大生命值（耐久）将被加入 X，再代入 MEC 产能公式计算。</OmniCrafter_MecXIncludeHitPointsDesc>
-    <OmniCrafter_MecEnergyA>a =</OmniCrafter_MecEnergyA>
-    <OmniCrafter_MecEnergyB>b =</OmniCrafter_MecEnergyB>
-    <OmniCrafter_MecEnergyC>c =</OmniCrafter_MecEnergyC>
-    <OmniCrafter_MecEnergyD>d =</OmniCrafter_MecEnergyD>
-    <OmniCrafter_MecEnergyE>e =</OmniCrafter_MecEnergyE>
-    <OmniCrafter_MecEnergyG>g（log₁₀）=</OmniCrafter_MecEnergyG>
-    <OmniCrafter_MecEnergyN>n（ln）=</OmniCrafter_MecEnergyN>
+    <OmniCrafter_MecEnergyA>a       =</OmniCrafter_MecEnergyA>
+    <OmniCrafter_MecEnergyB>b·X     =</OmniCrafter_MecEnergyB>
+    <OmniCrafter_MecEnergyC>c·X²    =</OmniCrafter_MecEnergyC>
+    <OmniCrafter_MecEnergyD>d·X³    =</OmniCrafter_MecEnergyD>
+    <OmniCrafter_MecEnergyE>e·X⁴    =</OmniCrafter_MecEnergyE>
+    <OmniCrafter_MecEnergyG>g·log₁₀ =</OmniCrafter_MecEnergyG>
+    <OmniCrafter_MecEnergyN>n·ln    =</OmniCrafter_MecEnergyN>
     <OmniCrafter_MecEnergyReset>恢复 MEC 默认（b=1，含重量+耐久）</OmniCrafter_MecEnergyReset>
     <OmniCrafter_GraphXMin>预览 X 轴最小值 =</OmniCrafter_GraphXMin>
     <OmniCrafter_GraphXMax>预览 X 轴最大值 =</OmniCrafter_GraphXMax>

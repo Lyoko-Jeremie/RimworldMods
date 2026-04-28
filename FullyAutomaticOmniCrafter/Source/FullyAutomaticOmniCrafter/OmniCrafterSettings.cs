@@ -292,7 +292,7 @@ namespace FullyAutomaticOmniCrafter
             void CoeffRow(string labelKey, ref float val, float min, float max)
             {
                 Rect rowRect = listing.GetRect(lineH);
-                const float lw = 100f, fw = 70f, gap = 6f;
+                const float lw = 110f, fw = 70f, gap = 6f;
                 Widgets.Label(new Rect(rowRect.x, rowRect.y, lw, rowRect.height), labelKey.Translate());
                 string valStr = val.ToString("G4");
                 string edited = Widgets.TextField(new Rect(rowRect.x + lw + gap, rowRect.y, fw, rowRect.height), valStr);
