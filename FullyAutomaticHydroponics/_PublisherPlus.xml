@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Excluded>
+    <exclude>Source\AutoHydroponicsThingComp\.vs\AutoHydroponicsThingComp\copilot-chat</exclude>
+    <exclude>Source\AutoHydroponicsThingComp\.vs\AutoHydroponicsThingComp\CopilotIndices</exclude>
+    <exclude>Source\AutoHydroponicsThingComp\.vs\AutoHydroponicsThingComp\FileContentIndex</exclude>
+    <exclude>Source\AutoHydroponicsThingComp\obj</exclude>
+    <exclude>Source\AutoHydroponicsThingComp\packages</exclude>
+    <exclude>Textures\UI\Commands\autoHarvest.dds.zstd</exclude>
+    <exclude>Textures\UI\Commands\autoSow.dds.zstd</exclude>
+    <exclude>Textures\UI\Commands\autoStore.dds.zstd</exclude>
+  </Excluded>
+</Configuration>

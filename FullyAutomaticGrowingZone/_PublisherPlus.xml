@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Excluded>
+    <exclude>Source\FullyAutomaticGrowingZone\.vs\FullyAutomaticGrowingZone\CopilotIndices</exclude>
+    <exclude>Source\FullyAutomaticGrowingZone\.vs\FullyAutomaticGrowingZone\FileContentIndex</exclude>
+    <exclude>Source\FullyAutomaticGrowingZone\obj</exclude>
+    <exclude>Source\FullyAutomaticGrowingZone\packages</exclude>
+    <exclude>Textures\UI\Commands\autoHarvestGrowingZone.dds.zstd</exclude>
+    <exclude>Textures\UI\Commands\autoSowGrowingZone.dds.zstd</exclude>
+    <exclude>Textures\UI\Commands\autoStoreGrowingZone.dds.zstd</exclude>
+    <exclude>Textures\UI\Commands\flushVirtualBufferGrowingZone.dds.zstd</exclude>
+  </Excluded>
+</Configuration>

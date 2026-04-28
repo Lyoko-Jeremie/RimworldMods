@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Excluded>
+    <exclude>Source\FullyAutomaticOmniCrafter\.vs\FullyAutomaticOmniCrafter\CopilotIndices</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\.vs\FullyAutomaticOmniCrafter\FileContentIndex</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\obj</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\packages</exclude>
+  </Excluded>
+</Configuration>
