@@ -101,7 +101,7 @@ namespace FullyAutomaticOmniCrafter
         {
             // Estimate total content height so the scroll view is big enough
             const float lineH = 28f;
-            const float checkH = 24f;
+            const float checkH = 30f;
             float contentH =
                 checkH + 12f        // pinyin
                 + 48f + 4f          // OmniCrafter section headers
@@ -144,7 +144,7 @@ namespace FullyAutomaticOmniCrafter
             void CoeffRow(string labelKey, ref float val, float min, float max)
             {
                 Rect rowRect = listing.GetRect(lineH);
-                float labelWidth = 70f;
+                float labelWidth = 100f;
                 float fieldWidth = 70f;
                 float gap = 6f;
 
@@ -165,13 +165,13 @@ namespace FullyAutomaticOmniCrafter
                 val = Mathf.Clamp(val, min, max);
             }
 
-            CoeffRow("OmniCrafter_PowerCostA", ref Settings.powerCostA, -10000f, 10000f);
-            CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, 0f, 100f);
-            CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, 0f, 100f);
-            CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, 0f, 10f);
-            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, 0f, 10f);
-            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, 0f, 100f);
-            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, 0f, 100f);
+            CoeffRow("OmniCrafter_PowerCostA", ref Settings.powerCostA, -1000000f, 1000000f);
+            CoeffRow("OmniCrafter_PowerCostB", ref Settings.powerCostB, -100f, 100f);
+            CoeffRow("OmniCrafter_PowerCostC", ref Settings.powerCostC, -100f, 100f);
+            CoeffRow("OmniCrafter_PowerCostD", ref Settings.powerCostD, -100f, 10f);
+            CoeffRow("OmniCrafter_PowerCostE", ref Settings.powerCostE, -100f, 10f);
+            CoeffRow("OmniCrafter_PowerCostG", ref Settings.powerCostG, -1000f, 1000f);
+            CoeffRow("OmniCrafter_PowerCostN", ref Settings.powerCostN, -1000f, 1000f);
 
             listing.Gap();
             if (listing.ButtonText("OmniCrafter_PowerCostReset".Translate()))
