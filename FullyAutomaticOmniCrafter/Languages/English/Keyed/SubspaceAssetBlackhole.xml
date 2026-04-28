@@ -14,7 +14,7 @@
 
   <!-- ── Configuration dialog ──────────────────────────────────────── -->
 
-  <SAB_DialogTitle>Subspace Asset Blackhole — Wealth Suppression Settings</SAB_DialogTitle>
+  <SAB_DialogTitle>Subspace Asset Blackhole Generator — Wealth Suppression Settings</SAB_DialogTitle>
   <SAB_ExactInput>Exact value:</SAB_ExactInput>
   <SAB_Confirm>Confirm</SAB_Confirm>
 

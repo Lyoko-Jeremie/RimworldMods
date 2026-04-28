@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <SubspaceAssetBlackhole.label>亚空间资产黑洞</SubspaceAssetBlackhole.label>
+  <SubspaceAssetBlackhole.label>亚空间资产黑洞发生器</SubspaceAssetBlackhole.label>
   <SubspaceAssetBlackhole.description>一台神秘装置，能将殖民地的资产折叠进亚空间，使其对威胁评估算法不可见。通电后，它将降低殖民地的"表观财富"，从而减少袭击规模。可通过控制面板调节财富扣减量（0 ~ 10,000,000 银币）。断电时效果暂停，但设定值会被保留。</SubspaceAssetBlackhole.description>
 </LanguageData>
 

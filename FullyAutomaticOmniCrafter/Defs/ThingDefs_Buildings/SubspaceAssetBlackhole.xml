@@ -3,7 +3,7 @@
 
     <!--
       ══════════════════════════════════════════════════════════════════════
-      亚空间资产黑洞 / Subspace Asset Blackhole
+      亚空间资产黑洞发生器 / Subspace Asset Blackhole
       thingClass : FullyAutomaticOmniCrafter.Building_SubspaceAssetBlackHole
       功能 :
         · 通电后，在 WealthWatcher.WealthTotal 中扣除玩家设定的财富值，
@@ -17,7 +17,7 @@
 
         <!-- ── 基础标识 ────────────────────────────────────────────────── -->
         <defName>SubspaceAssetBlackhole</defName>
-        <label>Subspace Asset Blackhole</label>
+        <label>Subspace Asset Blackhole Generator</label>
         <description>A mysterious device that folds colony assets into subspace, making them invisible to threat
             assessment algorithms. While powered, it reduces the colony's apparent wealth, thereby lowering raid
             difficulty. Adjust the suppression amount via the control panel.
