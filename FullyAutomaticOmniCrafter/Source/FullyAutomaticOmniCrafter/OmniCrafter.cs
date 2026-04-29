@@ -555,19 +555,29 @@ namespace FullyAutomaticOmniCrafter
                             // 第三步：找到目标仓库，先将其从地面"捡起"（脱离物理地面）
                             placedThing.DeSpawn();
 
-                            // 检查目标格子上是否已有同类物品，有则尝试合堆
+                            // 检查目标格子上是否已有同类物品且可以合堆（需 def 与 Stuff 均匹配）
+                            // 注意：GetFirstThing 只按 ThingDef 匹配，不检查 Stuff；
+                            //       若 existingStack 材质不同，CanStackWith 返回 false，
+                            //       TryAbsorbStack 会静默失败，直接跳过进入后续生成逻辑。
                             Thing existingStack = storeCell.GetFirstThing(Map, placedThing.def);
-                            if (existingStack != null)
+                            if (existingStack != null && existingStack.CanStackWith(placedThing))
                             {
                                 existingStack.TryAbsorbStack(placedThing, true);
                             }
-                            else
+
+                            // 第四步：若物品仍未入库（合堆跳过/失败/部分吸收后格子有余量），
+                            //         直接在目标格生成。
+                            //         仅当格子确实还有空位时才调用 GenSpawn，
+                            //         避免把刚填满的 existingStack 顶走。
+                            if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
                             {
-                                // 格子为空，直接生成到目标格
-                                GenSpawn.Spawn(placedThing, storeCell, Map);
+                                if (storeCell.GetItemCount(Map) < storeCell.GetMaxItemsAllowedInCell(Map))
+                                {
+                                    GenSpawn.Spawn(placedThing, storeCell, Map);
+                                }
                             }
 
-                            // 第四步：处理合堆后未被吸收的剩余物品，扔回建筑旁边
+                            // 最终兜底：若仍未入库（如格子已满溢出），扔回建筑旁边
                             if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
                             {
                                 GenPlace.TryPlaceThing(placedThing, Position, Map, ThingPlaceMode.Near);
