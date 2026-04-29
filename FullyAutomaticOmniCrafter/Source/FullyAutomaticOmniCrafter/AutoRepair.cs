@@ -1,154 +1,264 @@
-﻿using Verse;
-using RimWorld;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using RimWorld;
 using UnityEngine;
+using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
-    public class Building_AutoRepair : Building
+    // ─── UltimateAutoRepair Building ──────────────────────────────────────────────────
+    public class Building_UltimateAutoRepair : Building
     {
-        public Area targetArea;
+        private CompPowerTrader _powerComp;
 
-        // 你的修复逻辑 (TickRare)
+        public override void SpawnSetup(Map map, bool respawningAfterLoad)
+        {
+            base.SpawnSetup(map, respawningAfterLoad);
+            _powerComp = GetComp<CompPowerTrader>();
+        }
+
+        public bool IsPowered => _powerComp == null || _powerComp.PowerOn;
+
         public override void TickRare()
         {
             base.TickRare();
-
-            // 1. 检查是否有电
-            var powerComp = this.GetComp<CompPowerTrader>();
-            if (powerComp != null && !powerComp.PowerOn) return; // 没电直接跳过
-
-            // 2. 检查是否有设定区域
-            if (targetArea == null) return;
-
-            // ... (在此处执行你的寻找损坏物品和增加 HitPoints 的逻辑) ...
-
-            // 假设你找到了一个物品并修复了它
-            // int repairAmount = 10;
-            // thing.HitPoints += repairAmount;
-
-            // 3. 向全图大脑汇报数据！
-            var tracker = this.Map.GetComponent<RepairTrackerMapComponent>();
-            if (tracker != null)
-            {
-                // 替换为实际修复的物品和血量
-                tracker.RecordRepair(thing.def.label, repairAmount); 
-            }
+            if (!IsPowered) return;
+            Map.GetComponent<RepairTrackerMapComponent>()?.TryDoRepair(Map);
         }
 
-        // 添加底部按钮 (Gizmo)
         public override IEnumerable<Gizmo> GetGizmos()
         {
-            // 返回原版自带的按钮（比如电源开关）
-            foreach (Gizmo c in base.GetGizmos())
-            {
-                yield return c;
-            }
+            foreach (Gizmo g in base.GetGizmos())
+                yield return g;
 
-            // ... (这里放你选择活动区的 Gizmo) ...
+            var tracker = Map?.GetComponent<RepairTrackerMapComponent>();
+            if (tracker == null) yield break;
 
-            // 添加打开统计面板的按钮
+            // ── Gizmo 1: select target area ──────────────────────────────────
+            string currentAreaLabel = tracker.SharedTargetArea?.Label ?? "UltimateAutoRepair_AnyArea".Translate();
             yield return new Command_Action
             {
-                defaultLabel = "查看修复统计",
-                defaultDesc = "打开全图共享的修复统计面板，查看所有机器的劳动成果。",
-                // 如果你有自己的图标，用 ContentFinder<Texture2D>.Get("路径")
-                icon = ContentFinder<Texture2D>.Get("UI/Icons/Medical/HealthOverview", true), 
+                defaultLabel = "UltimateAutoRepair_SelectArea".Translate(),
+                defaultDesc = "UltimateAutoRepair_SelectAreaDesc".Translate(currentAreaLabel),
+                icon = UltimateAutoRepairTex.IconSelectArea,
                 action = delegate
                 {
-                    // 点击按钮时，把我们写的 Window 塞进游戏的窗口栈中显示出来
-                    Find.WindowStack.Add(new Window_RepairStats(this.Map));
+                    AreaUtility.MakeAllowedAreaListFloatMenu(
+                        area => tracker.SharedTargetArea = area,
+                        addNullAreaOption: true,
+                        addManageOption: true,
+                        map: Map);
                 }
+            };
+
+            // ── Gizmo 2: view repair stats ────────────────────────────────────
+            yield return new Command_Action
+            {
+                defaultLabel = "UltimateAutoRepair_ViewStats".Translate(),
+                defaultDesc = "UltimateAutoRepair_ViewStatsDesc".Translate(),
+                icon = UltimateAutoRepairTex.IconViewStats,
+                action = () => Find.WindowStack.Add(new Window_RepairStats(Map))
             };
         }
     }
-    public class Window_RepairStats : Window
+
+    // ─── Texture cache ────────────────────────────────────────────────────────
+    [StaticConstructorOnStartup]
+    public static class UltimateAutoRepairTex
     {
-        private Map map;
-        private Vector2 scrollPosition = Vector2.zero;
+        public static readonly Texture2D IconSelectArea =
+            ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_SelectArea", false)
+            ?? BaseContent.WhiteTex;
 
-        // 构造函数
-        public Window_RepairStats(Map map)
-        {
-            this.map = map;
-            this.doCloseX = true; // 窗口右上角显示关闭 X 按钮
-            this.forcePause = false; // 弹出时是否强制暂停游戏
-            this.absorbInputAroundWindow = false; // 是否允许点击窗口外的区域
-        }
-
-        // 定义窗口大小
-        public override Vector2 InitialSize => new Vector2(400f, 500f);
-
-        // 绘制窗口内容
-        public override void DoWindowContents(Rect inRect)
-        {
-            // 标题
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0, 0, inRect.width, 35f), "全区修复统计面板");
-            Text.Font = GameFont.Small;
-
-            // 获取地图组件中的数据
-            var tracker = map.GetComponent<RepairTrackerMapComponent>();
-            if (tracker == null || tracker.sharedRepairStats.Count == 0)
-            {
-                Widgets.Label(new Rect(0, 40f, inRect.width, 30f), "暂无修复记录。");
-                return;
-            }
-
-            // 设置滚动视图
-            Rect outRect = new Rect(0, 40f, inRect.width, inRect.height - 40f);
-            // 计算列表总高度 (每行24像素)
-            Rect viewRect = new Rect(0, 0, inRect.width - 16f, tracker.sharedRepairStats.Count * 24f);
-
-            Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
-            
-            float yPos = 0;
-            foreach (var kvp in tracker.sharedRepairStats)
-            {
-                Rect rowRect = new Rect(0, yPos, viewRect.width, 24f);
-                Widgets.Label(rowRect, $"{kvp.Key}: 累计恢复 {kvp.Value} HP");
-                yPos += 24f;
-            }
-
-            Widgets.EndScrollView();
-        }
+        public static readonly Texture2D IconViewStats =
+            ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_ViewStats", false)
+            ?? BaseContent.WhiteTex;
     }
-    
+
+    // ─── Map Component: shared state for all UltimateAutoRepair buildings ─────────────
     public class RepairTrackerMapComponent : MapComponent
     {
-        // 存储全图共享的修复数据
-        public Dictionary<string, int> sharedRepairStats = new Dictionary<string, int>();
+        // Shared across all Building_UltimateAutoRepair instances on this map
+        private Area _sharedTargetArea;
+        public Dictionary<string, int> SharedRepairStats = new Dictionary<string, int>();
+
+        // HP restored per damaged thing per TickRare execution
+        private const int RepairPerTickRare = 5;
+
+        // Minimum ticks between two repair passes (matches vanilla TickRare = 250)
+        private const int TickRareInterval = 250;
+        private int _lastRepairTick = -9999;
+
+        public Area SharedTargetArea
+        {
+            get => _sharedTargetArea;
+            set => _sharedTargetArea = value;
+        }
 
         public RepairTrackerMapComponent(Map map) : base(map)
         {
         }
 
-        // 供建筑调用的记录方法
-        public void RecordRepair(string itemName, int amount)
+        /// <summary>
+        /// Called by each powered Building_UltimateAutoRepair every TickRare.
+        /// Deduplicated so repair actually runs at most once per TickRare interval,
+        /// even when multiple buildings are powered.
+        /// </summary>
+        public void TryDoRepair(Map map)
         {
-            if (sharedRepairStats.ContainsKey(itemName))
+            int now = Find.TickManager.TicksGame;
+            if (now - _lastRepairTick < TickRareInterval)
+                return;
+            _lastRepairTick = now;
+            DoRepair(map);
+        }
+
+        private void DoRepair(Map map)
+        {
+            // ── Repair colony buildings ───────────────────────────────────────
+            // Take a snapshot count – we must NOT iterate a live list that could
+            // change under us, but allBuildingsColonist is read-only during TickRare.
+            var buildings = map.listerBuildings.allBuildingsColonist;
+            int bCount = buildings.Count;
+            for (int i = 0; i < bCount; i++)
             {
-                sharedRepairStats[itemName] += amount;
+                Building b = buildings[i];
+                if (b == null || b.Destroyed || !b.Spawned) continue;
+                if (!b.def.useHitPoints) continue;
+                if (b.HitPoints >= b.MaxHitPoints) continue;
+                if (_sharedTargetArea != null && !_sharedTargetArea[b.Position]) continue;
+
+                int repaired = RepairThing(b);
+                if (repaired > 0) RecordRepair(b.def.LabelCap, repaired);
             }
-            else
+
+            // ── Repair haulable items ─────────────────────────────────────────
+            List<Thing> things = map.listerThings.ThingsInGroup(ThingRequestGroup.HaulableAlways);
+            int tCount = things.Count;
+            for (int i = 0; i < tCount; i++)
             {
-                sharedRepairStats.Add(itemName, amount);
+                Thing t = things[i];
+                if (t == null || t.Destroyed || !t.Spawned) continue;
+                if (!t.def.useHitPoints) continue;
+                if (t.HitPoints >= t.MaxHitPoints) continue;
+                if (_sharedTargetArea != null && !_sharedTargetArea[t.Position]) continue;
+
+                int repaired = RepairThing(t);
+                if (repaired > 0) RecordRepair(t.def.LabelCap, repaired);
             }
         }
 
-        // 处理存档与读档
+        private static int RepairThing(Thing thing)
+        {
+            int before = thing.HitPoints;
+            thing.HitPoints = Math.Min(before + RepairPerTickRare, thing.MaxHitPoints);
+            return thing.HitPoints - before;
+        }
+
+        public void RecordRepair(string label, int amount)
+        {
+            if (SharedRepairStats.TryGetValue(label, out int current))
+                SharedRepairStats[label] = current + amount;
+            else
+                SharedRepairStats[label] = amount;
+        }
+
         public override void ExposeData()
         {
             base.ExposeData();
-            // 保存字典数据
-            Scribe_Collections.Look(ref sharedRepairStats, "sharedRepairStats", LookMode.Value, LookMode.Value);
-            
-            // 防御性编程：如果读档后字典为空（比如首次加载Mod），初始化它
-            if (sharedRepairStats == null)
-            {
-                sharedRepairStats = new Dictionary<string, int>();
-            }
+            Scribe_References.Look(ref _sharedTargetArea, "sharedTargetArea");
+            Scribe_Collections.Look(ref SharedRepairStats, "sharedRepairStats",
+                LookMode.Value, LookMode.Value);
+            if (SharedRepairStats == null)
+                SharedRepairStats = new Dictionary<string, int>();
         }
     }
-    
+
+    // ─── Stats window ─────────────────────────────────────────────────────────
+    public class Window_RepairStats : Window
+    {
+        private readonly Map _map;
+        private Vector2 _scroll = Vector2.zero;
+
+        public Window_RepairStats(Map map)
+        {
+            _map = map;
+            doCloseX = true;
+            forcePause = false;
+            absorbInputAroundWindow = false;
+        }
+
+        public override Vector2 InitialSize => new Vector2(480f, 560f);
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            float y = 0f;
+            const float lineH = 26f;
+
+            // Title
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, y, inRect.width, 36f), "UltimateAutoRepair_StatsTitle".Translate());
+            y += 38f;
+            Text.Font = GameFont.Small;
+
+            var tracker = _map.GetComponent<RepairTrackerMapComponent>();
+            string areaName = tracker?.SharedTargetArea?.Label
+                              ?? "UltimateAutoRepair_AnyArea".Translate();
+            Widgets.Label(new Rect(0f, y, inRect.width, lineH),
+                "UltimateAutoRepair_CurrentArea".Translate() + ": " + areaName);
+
+            // Reset button (top-right of the area row)
+            Rect resetBtn = new Rect(inRect.width - 110f, y, 110f, lineH - 2f);
+            if (tracker != null && Widgets.ButtonText(resetBtn, "UltimateAutoRepair_ResetStats".Translate()))
+            {
+                tracker.SharedRepairStats.Clear();
+                return;
+            }
+
+            y += lineH + 4f;
+
+            if (tracker == null || tracker.SharedRepairStats.Count == 0)
+            {
+                Widgets.Label(new Rect(0f, y, inRect.width, lineH), "UltimateAutoRepair_NoRecords".Translate());
+                return;
+            }
+
+            // Column headers
+            Widgets.DrawLineHorizontal(0f, y, inRect.width);
+            y += 2f;
+            float col1W = inRect.width * 0.68f;
+            GUI.color = new Color(0.8f, 0.8f, 0.8f);
+            Widgets.Label(new Rect(0f, y, col1W, lineH), "UltimateAutoRepair_HeaderItem".Translate());
+            Widgets.Label(new Rect(col1W, y, inRect.width - col1W, lineH), "UltimateAutoRepair_HeaderHP".Translate());
+            GUI.color = Color.white;
+            y += lineH;
+            Widgets.DrawLineHorizontal(0f, y, inRect.width);
+            y += 2f;
+
+            // Scrollable rows
+            var sorted = tracker.SharedRepairStats
+                .OrderByDescending(kvp => kvp.Value)
+                .ToList();
+            Rect outRect = new Rect(0f, y, inRect.width, inRect.height - y);
+            Rect viewRect = new Rect(0f, 0f, inRect.width - 16f, sorted.Count * (lineH + 2f));
+
+            Widgets.BeginScrollView(outRect, ref _scroll, viewRect);
+            float ry = 0f;
+            bool alt = false;
+            foreach (var kvp in sorted)
+            {
+                Rect row = new Rect(0f, ry, viewRect.width, lineH);
+                if (alt) Widgets.DrawLightHighlight(row);
+                alt = !alt;
+                Widgets.Label(new Rect(0f, ry, col1W, lineH), kvp.Key);
+                Widgets.Label(new Rect(col1W, ry, viewRect.width - col1W, lineH),
+                    "UltimateAutoRepair_HpRestored".Translate(kvp.Value));
+                ry += lineH + 2f;
+            }
+
+            Widgets.EndScrollView();
+        }
+    }
+
 }

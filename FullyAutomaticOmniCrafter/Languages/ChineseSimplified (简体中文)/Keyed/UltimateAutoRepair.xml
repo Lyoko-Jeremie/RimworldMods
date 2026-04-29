@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <!-- UltimateAutoRepair Gizmos -->
+    <UltimateAutoRepair_SelectArea>选择修复区域</UltimateAutoRepair_SelectArea>
+    <UltimateAutoRepair_SelectAreaDesc>点击选择此机器监控并修复的活动区范围（当前：{0}）。同一地图上所有自动修复站共用此设置。</UltimateAutoRepair_SelectAreaDesc>
+    <UltimateAutoRepair_AnyArea>全图</UltimateAutoRepair_AnyArea>
+    <UltimateAutoRepair_ViewStats>查看修复统计</UltimateAutoRepair_ViewStats>
+    <UltimateAutoRepair_ViewStatsDesc>打开全图共享的修复统计面板，查看所有自动修复站累计恢复了哪些建筑/物品及对应血量。</UltimateAutoRepair_ViewStatsDesc>
+    <!-- UltimateAutoRepair Stats Window -->
+    <UltimateAutoRepair_StatsTitle>自动修复站 · 修复统计</UltimateAutoRepair_StatsTitle>
+    <UltimateAutoRepair_CurrentArea>当前修复区域</UltimateAutoRepair_CurrentArea>
+    <UltimateAutoRepair_NoRecords>暂无修复记录。请确保机器通电，并且区域内存在已损坏的建筑或物品。</UltimateAutoRepair_NoRecords>
+    <UltimateAutoRepair_ResetStats>清空全部记录</UltimateAutoRepair_ResetStats>
+    <UltimateAutoRepair_HeaderItem>物品 / 建筑</UltimateAutoRepair_HeaderItem>
+    <UltimateAutoRepair_HeaderHP>累计恢复血量</UltimateAutoRepair_HeaderHP>
+    <UltimateAutoRepair_HpRestored>{0} HP</UltimateAutoRepair_HpRestored>
+</LanguageData>
+

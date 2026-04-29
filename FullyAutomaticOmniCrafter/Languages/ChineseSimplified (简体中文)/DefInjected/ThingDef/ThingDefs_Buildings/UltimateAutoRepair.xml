@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <UltimateAutoRepair.label>自动修复站</UltimateAutoRepair.label>
+    <UltimateAutoRepair.description>一台自动修复站，持续恢复指定活动区内所有建筑和物品的耐久。同一张地图上的所有自动修复站共用修复区域和统计记录——只要任意一台通电，整个系统就能正常运作。</UltimateAutoRepair.description>
+</LanguageData>
+

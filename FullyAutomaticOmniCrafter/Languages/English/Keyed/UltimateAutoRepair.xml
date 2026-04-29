@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <!-- UltimateAutoRepair Gizmos -->
+    <UltimateAutoRepair_SelectArea>Select Repair Area</UltimateAutoRepair_SelectArea>
+    <UltimateAutoRepair_SelectAreaDesc>Click to choose which allowed area this station monitors for repairs (current: {0}). All Auto Repair Stations on the same map share this setting.</UltimateAutoRepair_SelectAreaDesc>
+    <UltimateAutoRepair_AnyArea>Entire Map</UltimateAutoRepair_AnyArea>
+    <UltimateAutoRepair_ViewStats>View Repair Stats</UltimateAutoRepair_ViewStats>
+    <UltimateAutoRepair_ViewStatsDesc>Open the shared repair statistics panel to see all cumulative repairs performed by every station on this map.</UltimateAutoRepair_ViewStatsDesc>
+    <!-- UltimateAutoRepair Stats Window -->
+    <UltimateAutoRepair_StatsTitle>Auto Repair Station · Statistics</UltimateAutoRepair_StatsTitle>
+    <UltimateAutoRepair_CurrentArea>Current repair area</UltimateAutoRepair_CurrentArea>
+    <UltimateAutoRepair_NoRecords>No repair records yet. Make sure a station is powered and there are damaged buildings or items in the target area.</UltimateAutoRepair_NoRecords>
+    <UltimateAutoRepair_ResetStats>Clear All Records</UltimateAutoRepair_ResetStats>
+    <UltimateAutoRepair_HeaderItem>Item / Building</UltimateAutoRepair_HeaderItem>
+    <UltimateAutoRepair_HeaderHP>Total HP Restored</UltimateAutoRepair_HeaderHP>
+    <UltimateAutoRepair_HpRestored>{0} HP</UltimateAutoRepair_HpRestored>
+</LanguageData>
+
