@@ -226,7 +226,7 @@ namespace FullyAutomaticOmniCrafter
     ///   B - 存储区批量模式（建筑作为存储区，一键转化）
     ///   C - 光标直接点选模式（瞄准并即刻转化目标）
     /// </summary>
-    public class Building_MatterEnergyConverter : Building_Storage, ISlotGroupParent
+    public class Building_MatterEnergyConverter : Building_Storage, ISlotGroupParent, IHaulEnroute
     {
         // ── 内部状态 ──────────────────────────────────────────────────────────
         private CompPowerTrader powerComp;
@@ -257,6 +257,20 @@ namespace FullyAutomaticOmniCrafter
         // ── 美观度：存储区内的物品不计入美观统计（不产生负面美观） ─────────────
         // Building_Storage.IgnoreStoredThingsBeauty 不是 virtual，使用显式接口重实现来遮蔽它
         bool ISlotGroupParent.IgnoreStoredThingsBeauty => true;
+
+        // ── IHaulEnroute：修正 SpaceRemainingFor 以防止 HaulToTransporter 任务立即失败 ─
+        // 根因分析：
+        //   Building_Storage 实现 IHaulEnroute.SpaceRemainingFor，其返回值基于
+        //   maxItemsInCell * Area - HeldThingsCount。
+        //   由于 XML 中未设置 maxItemsInCell（默认 0），该值始终 ≤ 0。
+        //   JobDriver_HaulToContainer.MakeNewToils 中有一个 FailOn 条件：
+        //   "容器是 IHaulEnroute 且 SpaceRemainingWithEnroute ≤ 0" → 任务立即失败，
+        //   而 HasJobOnTransporter 不检查此条件，导致 10-jobs-in-one-tick 死循环。
+        //
+        //   修复：MEC 的物品通过 CompTransporter.innerContainer（质量上限 999999）
+        //   装载，而非占用存储地板格，因此覆盖此方法返回极大值，
+        //   表示 MEC 作为装载目标时始终有"空间"。
+        int IHaulEnroute.SpaceRemainingFor(ThingDef _) => int.MaxValue / 2;
 
         // ── 初始化 ────────────────────────────────────────────────────────────
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
