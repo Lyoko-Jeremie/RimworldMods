@@ -80,6 +80,8 @@
             <paintable>true</paintable>
             <destroySound>BuildingDestroyed_Metal_Big</destroySound>
 
+            <maxItemsInCell>1</maxItemsInCell>
+            
             <!--
               必须指定 blueprintClass = Blueprint_Storage，否则默认使用 Blueprint_Build，
               导致 Frame 的 storageSettings 为 null，Frame.CompleteConstruction 时

@@ -258,20 +258,6 @@ namespace FullyAutomaticOmniCrafter
         // Building_Storage.IgnoreStoredThingsBeauty 不是 virtual，使用显式接口重实现来遮蔽它
         bool ISlotGroupParent.IgnoreStoredThingsBeauty => true;
 
-        // ── IHaulEnroute：修正 SpaceRemainingFor 以防止 HaulToTransporter 任务立即失败 ─
-        // 根因分析：
-        //   Building_Storage 实现 IHaulEnroute.SpaceRemainingFor，其返回值基于
-        //   maxItemsInCell * Area - HeldThingsCount。
-        //   由于 XML 中未设置 maxItemsInCell（默认 0），该值始终 ≤ 0。
-        //   JobDriver_HaulToContainer.MakeNewToils 中有一个 FailOn 条件：
-        //   "容器是 IHaulEnroute 且 SpaceRemainingWithEnroute ≤ 0" → 任务立即失败，
-        //   而 HasJobOnTransporter 不检查此条件，导致 10-jobs-in-one-tick 死循环。
-        //
-        //   修复：MEC 的物品通过 CompTransporter.innerContainer（质量上限 999999）
-        //   装载，而非占用存储地板格，因此覆盖此方法返回极大值，
-        //   表示 MEC 作为装载目标时始终有"空间"。
-        int IHaulEnroute.SpaceRemainingFor(ThingDef _) => int.MaxValue / 2;
-
         // ── 初始化 ────────────────────────────────────────────────────────────
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
@@ -677,6 +663,66 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ─── Harmony：修正 MEC 作为 CompTransporter 装载目标时的容量判断 ───────────────
+    /// <summary>
+    /// 修复方式 A 装载物品时，小人反复开始 HaulToTransporter 并立即失败的问题。
+    ///
+    /// 原因：
+    /// Building_MatterEnergyConverter 继承自 Building_Storage，而 Building_Storage 实现了
+    /// IHaulEnroute.SpaceRemainingFor()。原版 HaulToTransporter/HaulToContainer 任务会检查
+    /// 目标容器是否还有空间。
+    ///
+    /// 但 MEC 的方式 A 实际装入的是 CompTransporter.innerContainer，
+    /// 不应该受 Building_Storage 的地面存储容量限制。
+    ///
+    /// 如果原版 SpaceRemainingFor() 返回 0 或负数，HaulToTransporter 会立即失败，
+    /// JobGiver 又会马上重新派同一个任务，最终触发 started 10 jobs in one tick。
+    /// </summary>
+    [HarmonyPatch(typeof(Building_Storage), nameof(Building_Storage.SpaceRemainingFor))]
+    public static class Patch_MEC_SpaceRemainingFor
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Building_Storage __instance, ref int __result)
+        {
+            if (__instance is Building_MatterEnergyConverter)
+            {
+                __result = int.MaxValue / 2;
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    // ─── Harmony：修正 MEC 装载任务的 enroute 容量判断 ───────────────────────────
+    /// <summary>
+    /// 修复方式 A 装载物品时 HaulToTransporter 任务刚开始就失败，
+    /// 导致小人在同一个 tick 内反复接取同一个装载任务的问题。
+    ///
+    /// 原版 HaulToTransporter 继承自 HaulToContainer，执行过程中会通过
+    /// EnrouteUtility.GetSpaceRemainingWithEnroute() 检查目标容器剩余空间。
+    ///
+    /// MEC 继承自 Building_Storage，因此也被视为 IHaulEnroute。
+    /// 但方式 A 实际装入的是 CompTransporter.innerContainer，
+    /// 不应该受 Building_Storage 地面存储容量限制。
+    /// </summary>
+    [HarmonyPatch(typeof(Verse.AI.EnrouteUtility), nameof(Verse.AI.EnrouteUtility.GetSpaceRemainingWithEnroute))]
+    public static class Patch_MEC_GetSpaceRemainingWithEnroute
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(IHaulEnroute enroute, ThingDef stuff, Pawn excludeEnrouteFor, ref int __result)
+        {
+            if (enroute is Building_MatterEnergyConverter mec && mec.GetComp<CompTransporter>() != null)
+            {
+                __result = int.MaxValue / 2;
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    
     [StaticConstructorOnStartup]
     public static class MatterEnergyConverterTex
     {
