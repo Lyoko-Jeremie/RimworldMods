@@ -117,7 +117,7 @@ namespace FullyAutomaticOmniCrafter
         private float  _items,     _buildings,     _pawns;
         private string _bufItems,  _bufBuildings,  _bufPawns;
 
-        public override Vector2 InitialSize => new Vector2(600f, 380f);
+        public override Vector2 InitialSize => new Vector2(600f, 640f);
 
         public Dialog_SAB_Configure(Building_SubspaceAssetBlackHole building)
         {
@@ -139,8 +139,8 @@ namespace FullyAutomaticOmniCrafter
             const float labelH  = 28f;
             const float sliderH = 26f;
             const float fieldH  = 28f;
-            const float gap     = 8f;
-            const float secGap  = 16f;
+            const float gap     = 16f;
+            const float secGap  = 32f;
             const float btnH    = 36f;
             const float btnW    = 120f;
             const float inputLabelW = 140f;
