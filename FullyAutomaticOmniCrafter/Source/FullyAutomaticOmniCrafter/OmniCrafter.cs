@@ -329,11 +329,15 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>[DEBUG] 仅在 God 模式下生效：跳过所有电力检查与消耗，直接生产。</summary>
         public static bool debugNoPowerRequired = false;
 
-        // 分帧处理：每次 TickRare（250 ticks）最多处理 OrdersPerRareTick 条订单，
-        // 通过 _processOrderIndex 记录上次处理到的位置，下次从该位置继续，
-        // 这样大量订单不会集中在单帧执行，避免卡顿。
+        // 分帧处理：通过 _processOrderIndex 记录上次处理到的位置，下次从该位置继续滚动，
+        // 避免大量订单集中在单帧执行。
+        // TargetCycleRareTicks 控制"完整轮询所有订单一次"所期望消耗的 TickRare 次数。
+        // 每次 TickRare 的批量大小 = ceil(订单数 / TargetCycleRareTicks)，随订单数自动伸缩：
+        //   - 订单少时每次只处理 1 条，减少不必要开销；
+        //   - 订单多时自动增大批量，保证仍能在目标时间内完成一轮。
+        // TargetCycleRareTicks = 10  →  完整一轮约 10 × 250 = 2500 ticks ≈ 41 秒（正常游戏速度）
         private int _processOrderIndex = 0;
-        private const int OrdersPerRareTick = 5;
+        private const int TargetCycleRareTicks = 10;
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
@@ -401,7 +405,9 @@ namespace FullyAutomaticOmniCrafter
             if (_processOrderIndex >= autoOrders.Count)
                 _processOrderIndex = 0;
 
-            int batchEnd = Mathf.Min(_processOrderIndex + OrdersPerRareTick, autoOrders.Count);
+            // 自动计算本次批量大小：ceil(订单数 / TargetCycleRareTicks)，至少为 1
+            int batchSize = Mathf.Max(1, Mathf.CeilToInt((float)autoOrders.Count / TargetCycleRareTicks));
+            int batchEnd = Mathf.Min(_processOrderIndex + batchSize, autoOrders.Count);
 
             for (int i = _processOrderIndex; i < batchEnd; i++)
             {
