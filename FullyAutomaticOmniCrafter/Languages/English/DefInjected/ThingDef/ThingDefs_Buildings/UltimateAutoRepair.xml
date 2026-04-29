@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-    <UltimateAutoRepair.label>Auto Repair Station</UltimateAutoRepair.label>
+    <UltimateAutoRepair.label>Ultimate Auto Repair Station</UltimateAutoRepair.label>
     <UltimateAutoRepair.description>An archotech automated repair station that continuously restores the durability of buildings and items within a designated area. All stations on the same map share their work area and repair logs — any single station with power keeps the whole system running.</UltimateAutoRepair.description>
 </LanguageData>
 
