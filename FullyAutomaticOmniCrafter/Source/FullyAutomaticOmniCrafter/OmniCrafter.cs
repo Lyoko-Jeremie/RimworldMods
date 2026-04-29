@@ -338,6 +338,9 @@ namespace FullyAutomaticOmniCrafter
         // TargetCycleRareTicks = 10  →  完整一轮约 10 × 250 = 2500 ticks ≈ 41 秒（正常游戏速度）
         private int _processOrderIndex = 0;
         private const int TargetCycleRareTicks = 10;
+        // 单次最小处理数量：即使订单数很少，每次 TickRare 也至少处理这么多条，
+        // 避免批量过小导致轮询响应太慢。
+        private const int MinBatchSize = 5;
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
@@ -405,8 +408,8 @@ namespace FullyAutomaticOmniCrafter
             if (_processOrderIndex >= autoOrders.Count)
                 _processOrderIndex = 0;
 
-            // 自动计算本次批量大小：ceil(订单数 / TargetCycleRareTicks)，至少为 1
-            int batchSize = Mathf.Max(1, Mathf.CeilToInt((float)autoOrders.Count / TargetCycleRareTicks));
+            // 自动计算本次批量大小：ceil(订单数 / TargetCycleRareTicks)，但不低于 MinBatchSize
+            int batchSize = Mathf.Max(MinBatchSize, Mathf.CeilToInt((float)autoOrders.Count / TargetCycleRareTicks));
             int batchEnd = Mathf.Min(_processOrderIndex + batchSize, autoOrders.Count);
 
             for (int i = _processOrderIndex; i < batchEnd; i++)
