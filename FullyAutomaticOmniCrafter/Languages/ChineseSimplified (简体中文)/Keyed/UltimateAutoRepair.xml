@@ -4,6 +4,7 @@
     <UltimateAutoRepair_SelectArea>选择修复区域</UltimateAutoRepair_SelectArea>
     <UltimateAutoRepair_SelectAreaDesc>点击选择此机器监控并修复的活动区范围（当前：{0}）。同一地图上所有自动修复站共用此设置。</UltimateAutoRepair_SelectAreaDesc>
     <UltimateAutoRepair_AnyArea>全图</UltimateAutoRepair_AnyArea>
+    <UltimateAutoRepair_None>无（已禁用）</UltimateAutoRepair_None>
     <UltimateAutoRepair_ViewStats>查看修复统计</UltimateAutoRepair_ViewStats>
     <UltimateAutoRepair_ViewStatsDesc>打开全图共享的修复统计面板，查看所有自动修复站累计恢复了哪些建筑/物品及对应血量。</UltimateAutoRepair_ViewStatsDesc>
     <!-- UltimateAutoRepair Stats Window -->

@@ -4,6 +4,7 @@
     <UltimateAutoRepair_SelectArea>Select Repair Area</UltimateAutoRepair_SelectArea>
     <UltimateAutoRepair_SelectAreaDesc>Click to choose which allowed area this station monitors for repairs (current: {0}). All Auto Repair Stations on the same map share this setting.</UltimateAutoRepair_SelectAreaDesc>
     <UltimateAutoRepair_AnyArea>Entire Map</UltimateAutoRepair_AnyArea>
+    <UltimateAutoRepair_None>None (Disabled)</UltimateAutoRepair_None>
     <UltimateAutoRepair_ViewStats>View Repair Stats</UltimateAutoRepair_ViewStats>
     <UltimateAutoRepair_ViewStatsDesc>Open the shared repair statistics panel to see all cumulative repairs performed by every station on this map.</UltimateAutoRepair_ViewStatsDesc>
     <!-- UltimateAutoRepair Stats Window -->

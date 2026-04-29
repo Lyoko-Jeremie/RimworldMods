@@ -36,7 +36,9 @@ namespace FullyAutomaticOmniCrafter
             if (tracker == null) yield break;
 
             // ── Gizmo 1: select target area ──────────────────────────────────
-            string currentAreaLabel = tracker.SharedTargetArea?.Label ?? "UltimateAutoRepair_AnyArea".Translate();
+            string currentAreaLabel = tracker.RepairEnabled
+                ? (tracker.SharedTargetArea?.Label ?? (string)"UltimateAutoRepair_AnyArea".Translate())
+                : (string)"UltimateAutoRepair_None".Translate();
             yield return new Command_Action
             {
                 defaultLabel = "UltimateAutoRepair_SelectArea".Translate(),
@@ -44,11 +46,31 @@ namespace FullyAutomaticOmniCrafter
                 icon = UltimateAutoRepairTex.IconSelectArea,
                 action = delegate
                 {
-                    AreaUtility.MakeAllowedAreaListFloatMenu(
-                        area => tracker.SharedTargetArea = area,
-                        addNullAreaOption: true,
-                        addManageOption: true,
-                        map: Map);
+                    var options = new List<FloatMenuOption>();
+                    // "None" option – disable repair entirely
+                    options.Add(new FloatMenuOption("UltimateAutoRepair_None".Translate(), () =>
+                    {
+                        tracker.RepairEnabled = false;
+                        tracker.SharedTargetArea = null;
+                    }));
+                    // "Entire Map" option
+                    options.Add(new FloatMenuOption("UltimateAutoRepair_AnyArea".Translate(), () =>
+                    {
+                        tracker.RepairEnabled = true;
+                        tracker.SharedTargetArea = null;
+                    }));
+                    // Individual areas
+                    foreach (Area area in Map.areaManager.AllAreas)
+                    {
+                        Area capturedArea = area;
+                        options.Add(new FloatMenuOption(area.Label, () =>
+                        {
+                            tracker.RepairEnabled = true;
+                            tracker.SharedTargetArea = capturedArea;
+                        }));
+                    }
+
+                    Find.WindowStack.Add(new FloatMenu(options));
                 }
             };
 
@@ -81,6 +103,7 @@ namespace FullyAutomaticOmniCrafter
     {
         // Shared across all Building_UltimateAutoRepair instances on this map
         private Area _sharedTargetArea;
+        private bool _repairEnabled = false; // default: do not repair any area
         public Dictionary<string, int> SharedRepairStats = new Dictionary<string, int>();
 
         // HP restored per damaged thing per TickRare execution
@@ -94,6 +117,12 @@ namespace FullyAutomaticOmniCrafter
         {
             get => _sharedTargetArea;
             set => _sharedTargetArea = value;
+        }
+
+        public bool RepairEnabled
+        {
+            get => _repairEnabled;
+            set => _repairEnabled = value;
         }
 
         public RepairTrackerMapComponent(Map map) : base(map)
@@ -116,6 +145,8 @@ namespace FullyAutomaticOmniCrafter
 
         private void DoRepair(Map map)
         {
+            if (!_repairEnabled) return;
+
             // ── Repair colony buildings ───────────────────────────────────────
             // Take a snapshot count – we must NOT iterate a live list that could
             // change under us, but allBuildingsColonist is read-only during TickRare.
@@ -168,6 +199,7 @@ namespace FullyAutomaticOmniCrafter
         {
             base.ExposeData();
             Scribe_References.Look(ref _sharedTargetArea, "sharedTargetArea");
+            Scribe_Values.Look(ref _repairEnabled, "repairEnabled", false);
             Scribe_Collections.Look(ref SharedRepairStats, "sharedRepairStats",
                 LookMode.Value, LookMode.Value);
             if (SharedRepairStats == null)
@@ -203,8 +235,9 @@ namespace FullyAutomaticOmniCrafter
             Text.Font = GameFont.Small;
 
             var tracker = _map.GetComponent<RepairTrackerMapComponent>();
-            string areaName = tracker?.SharedTargetArea?.Label
-                              ?? "UltimateAutoRepair_AnyArea".Translate();
+            string areaName = tracker == null ? (string)"UltimateAutoRepair_None".Translate()
+                : !tracker.RepairEnabled ? (string)"UltimateAutoRepair_None".Translate()
+                : tracker.SharedTargetArea?.Label ?? (string)"UltimateAutoRepair_AnyArea".Translate();
             Widgets.Label(new Rect(0f, y, inRect.width, lineH),
                 "UltimateAutoRepair_CurrentArea".Translate() + ": " + areaName);
 
@@ -260,5 +293,4 @@ namespace FullyAutomaticOmniCrafter
             Widgets.EndScrollView();
         }
     }
-
 }
