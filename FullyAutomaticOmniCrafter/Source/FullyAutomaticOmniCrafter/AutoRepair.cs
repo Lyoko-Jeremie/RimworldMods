@@ -60,7 +60,9 @@ namespace FullyAutomaticOmniCrafter
                         tracker.SharedTargetArea = null;
                     }));
                     // Individual areas (only user-visible Area_Allowed areas)
-                    foreach (Area area in Map.areaManager.AllAreas.Where(a => a is Area_Allowed))
+                    // foreach (Area area in Map.areaManager.AllAreas.Where(a => a is Area_Allowed))
+                    // Individual areas
+                    foreach (Area area in Map.areaManager.AllAreas)
                     {
                         Area capturedArea = area;
                         options.Add(new FloatMenuOption(area.Label, () =>
