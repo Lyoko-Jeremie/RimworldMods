@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
+
   <SubspaceAssetBlackhole.label>亚空间资产黑洞发生器</SubspaceAssetBlackhole.label>
   <SubspaceAssetBlackhole.description>超凡世界地下黑市流传的神秘装置，能将殖民地的资产折叠进亚空间，隐藏殖民地的存在性，使敌人低估殖民地的财富，从而减少袭击规模！让你的殖民地成为敌人眼中的隐形基地！</SubspaceAssetBlackhole.description>
+
+  <SubspaceAssetBlackhole_mini.label>亚空间资产黑洞发生器 便携型</SubspaceAssetBlackhole_mini.label>
+  <SubspaceAssetBlackhole_mini.description>超凡世界地下黑市流传的神秘装置，能将殖民地的资产折叠进亚空间，隐藏殖民地的存在性，使敌人低估殖民地的财富，从而减少袭击规模！让你的殖民地成为敌人眼中的隐形基地！</SubspaceAssetBlackhole_mini.description>
+
 </LanguageData>
 
