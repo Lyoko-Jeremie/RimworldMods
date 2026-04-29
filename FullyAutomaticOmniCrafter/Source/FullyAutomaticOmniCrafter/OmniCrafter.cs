@@ -324,14 +324,16 @@ namespace FullyAutomaticOmniCrafter
         private CompPowerTrader powerTraderComp;
         private CompFlickable flickComp;
 
-        private int rareTickCounter = 0;
         private bool _pendingSettingsWrite = false;
 
         /// <summary>[DEBUG] 仅在 God 模式下生效：跳过所有电力检查与消耗，直接生产。</summary>
         public static bool debugNoPowerRequired = false;
 
-        // TickRare = every 250 ticks; we want ~every 1000 ticks (4 rare ticks)
-        private const int RareTicksPerCheck = 3;
+        // 分帧处理：每次 TickRare（250 ticks）最多处理 OrdersPerRareTick 条订单，
+        // 通过 _processOrderIndex 记录上次处理到的位置，下次从该位置继续，
+        // 这样大量订单不会集中在单帧执行，避免卡顿。
+        private int _processOrderIndex = 0;
+        private const int OrdersPerRareTick = 5;
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
@@ -377,32 +379,33 @@ namespace FullyAutomaticOmniCrafter
         public override void TickRare()
         {
             base.TickRare();
-            rareTickCounter++;
-            if (rareTickCounter >= RareTicksPerCheck)
-            {
-                rareTickCounter = 0;
-                ProcessAutoOrders();
-            }
-            // ProcessAutoOrders();
+            ProcessAutoOrders();
         }
 
         private void ProcessAutoOrders()
         {
+            if (autoOrders.Count == 0) return;
+
             // Log.Message($"[OmniCrafter] 处理 {autoOrders.Count} 自动订单...");
             bool godDebug = debugNoPowerRequired && DebugSettings.godMode;
             if (!godDebug)
             {
                 bool isOn = (powerTraderComp != null || powerComp != null);
-                // Log.Message($"[OmniCrafter] 电力状态: {(isOn ? "ON" : "OFF")}, " +
-                //             $"PowerComp: {(powerComp != null ? "Yes" : "No")}, " +
-                //             $"PowerTraderComp: {(powerTraderComp != null ? "Yes" : "No")}");
                 if (!isOn) return;
             }
 
             PowerNet net = godDebug ? null : GetWorkingPowerNet();
             if (!godDebug && net == null) return;
-            foreach (AutoOrder order in autoOrders)
+
+            // 防止订单被删除后索引越界，回绕到头部
+            if (_processOrderIndex >= autoOrders.Count)
+                _processOrderIndex = 0;
+
+            int batchEnd = Mathf.Min(_processOrderIndex + OrdersPerRareTick, autoOrders.Count);
+
+            for (int i = _processOrderIndex; i < batchEnd; i++)
             {
+                AutoOrder order = autoOrders[i];
                 if (order.paused) continue;
                 // Log.Message($"[OmniCrafter] 处理自动订单: {order?.thingDef?.defName} x {order?.targetCount}");
                 try
@@ -500,6 +503,9 @@ namespace FullyAutomaticOmniCrafter
                     Log.Error(ex.StackTrace);
                 }
             }
+
+            // 推进索引：下次 TickRare 从 batchEnd 继续；到达末尾则回绕到 0
+            _processOrderIndex = (batchEnd >= autoOrders.Count) ? 0 : batchEnd;
         }
 
         public void AddRecent(ThingDef def)
