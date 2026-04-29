@@ -299,6 +299,31 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ─── Harmony Patch：从 WealthWatcher.WealthTotal 中扣除黑洞影响 ─────────────
+    [HarmonyPatch(typeof(WealthWatcher), "WealthTotal", MethodType.Getter)]
+    public static class Patch_WealthWatcher_Total
+    {
+        private static readonly FieldInfo MapField =
+            typeof(WealthWatcher).GetField("map",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+        [HarmonyPostfix]
+        public static void Postfix(WealthWatcher __instance, ref float __result)
+        {
+            Map map = MapField?.GetValue(__instance) as Map;
+            if (map == null) return;
+
+            float totalSink = 0f;
+            List<Building> all = map.listerBuildings.allBuildingsColonist;
+            for (int i = 0; i < all.Count; i++)
+                if (all[i] is Building_SubspaceAssetBlackHole sink)
+                    totalSink += sink.ItemsReduction + sink.BuildingsReduction + sink.PawnsReduction;
+
+            if (totalSink > 0f)
+                __result = Mathf.Max(0f, __result - totalSink);
+        }
+    }
+
     // ─── 纹理资源（启动时静态加载） ─────────────────────────────────────────────
     [StaticConstructorOnStartup]
     public static class SubspaceAssetBlackHoleTex
