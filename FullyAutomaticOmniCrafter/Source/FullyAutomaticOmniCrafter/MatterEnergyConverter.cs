@@ -5,6 +5,7 @@ using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter
@@ -722,6 +723,269 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ─── Harmony：让 MEC 的 CompTransporter.innerContainer 成为可交互装载容器 ───────
+    /// <summary>
+    /// 修复方式 A 中 HaulToTransporter 找不到正确内部容器，
+    /// 或没有把 MEC 的 CompTransporter.innerContainer 识别为可交互 ThingOwner 的问题。
+    ///
+    /// 原版 HaulToTransporter/HaulToContainer 在搬运和放入物品时会调用：
+    /// ThingOwnerUtility.TryGetInnerInteractableThingOwner(thing)
+    ///
+    /// 对 MEC 来说，真正应该接收物品的是 CompTransporter.innerContainer，
+    /// 而不是 Building_Storage 的地面存储逻辑。
+    /// </summary>
+    [HarmonyPatch(typeof(ThingOwnerUtility), nameof(ThingOwnerUtility.TryGetInnerInteractableThingOwner))]
+    public static class Patch_MEC_TryGetInnerInteractableThingOwner
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Thing thing, ref ThingOwner __result)
+        {
+            if (thing is Building_MatterEnergyConverter mec)
+            {
+                CompTransporter transporter = mec.GetComp<CompTransporter>();
+                if (transporter?.innerContainer != null)
+                {
+                    __result = transporter.innerContainer;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+    
+    // // ─── 临时诊断：观察 MEC 的 HaulToTransporter 启动时是否成功找到 targetA ──────
+    // [HarmonyPatch(typeof(JobDriver_HaulToTransporter), nameof(JobDriver_HaulToTransporter.Notify_Starting))]
+    // public static class Patch_MEC_Debug_HaulToTransporterNotifyStarting
+    // {
+    //     [HarmonyPostfix]
+    //     public static void Postfix(JobDriver_HaulToTransporter __instance)
+    //     {
+    //         Thing container = __instance.Container;
+    //         if (!(container is Building_MatterEnergyConverter)) return;
+    //
+    //         Job job = __instance.job;
+    //         Pawn pawn = __instance.pawn;
+    //
+    //         Log.Message(
+    //             "[MEC Debug] HaulToTransporter Notify_Starting: " +
+    //             "pawn=" + pawn?.LabelShort +
+    //             ", targetA=" + job?.targetA.Thing +
+    //             ", count=" + job?.count +
+    //             ", targetB=" + job?.targetB.Thing
+    //         );
+    //     }
+    // }
+
+    // // ─── Harmony：强制 MEC 的 HaulToTransporter Deposit 阶段写入 CompTransporter ───
+    // /// <summary>
+    // /// 修复方式 A 中 HaulToTransporter 任务反复瞬间结束的问题。
+    // ///
+    // /// 前面的诊断确认：
+    // /// - Notify_Starting 能找到 targetA；
+    // /// - job.count 正常；
+    // /// - targetB 是 MEC。
+    // ///
+    // /// 因此问题集中在 DepositHauledThingInContainer 阶段：
+    // /// 原版逻辑会通过目标 Thing 的可交互 ThingOwner 来放入物品，
+    // /// 但 MEC 同时是 Building_Storage，又带 CompTransporter，
+    // /// 原版路径容易走到不适合 MEC 的存储/容器判断。
+    // ///
+    // /// 这里在生成 Deposit toil 后替换 initAction：
+    // /// 当目标是 Building_MatterEnergyConverter 时，直接把小人携带物转入
+    // /// CompTransporter.innerContainer。
+    // /// </summary>
+    // [HarmonyPatch(typeof(Toils_Haul), nameof(Toils_Haul.DepositHauledThingInContainer))]
+    // public static class Patch_MEC_DepositHauledThingInContainer
+    // {
+    //     [HarmonyPostfix]
+    //     public static void Postfix(Toil __result, TargetIndex containerInd, TargetIndex reserveForContainerInd, Action onDeposited)
+    //     {
+    //         Action originalInitAction = __result.initAction;
+    //
+    //         __result.initAction = delegate
+    //         {
+    //             Pawn actor = __result.actor;
+    //             Job curJob = actor?.jobs?.curJob;
+    //             Thing containerThing = curJob?.GetTarget(containerInd).Thing;
+    //
+    //             if (containerThing is Building_MatterEnergyConverter mec)
+    //             {
+    //                 CompTransporter transporter = mec.GetComp<CompTransporter>();
+    //                 ThingOwner innerContainer = transporter?.innerContainer;
+    //                 Thing carriedThing = actor?.carryTracker?.CarriedThing;
+    //
+    //                 if (innerContainer == null)
+    //                 {
+    //                     Log.Error("[MEC] Cannot deposit hauled thing: CompTransporter.innerContainer is null.");
+    //                     return;
+    //                 }
+    //
+    //                 if (carriedThing == null)
+    //                 {
+    //                     Log.Error("[MEC] Cannot deposit hauled thing: pawn is not carrying anything.");
+    //                     return;
+    //                 }
+    //
+    //                 int countToTransfer = carriedThing.stackCount;
+    //                 if (curJob != null && curJob.count > 0)
+    //                     countToTransfer = Mathf.Min(countToTransfer, curJob.count);
+    //
+    //                 int transferred = actor.carryTracker.innerContainer.TryTransferToContainer(
+    //                     carriedThing,
+    //                     innerContainer,
+    //                     countToTransfer
+    //                 );
+    //
+    //                 if (transferred <= 0)
+    //                 {
+    //                     Log.Warning(
+    //                         "[MEC] Failed to transfer hauled thing into MEC transporter. " +
+    //                         "thing=" + carriedThing +
+    //                         ", countToTransfer=" + countToTransfer +
+    //                         ", container=" + mec
+    //                     );
+    //                     return;
+    //                 }
+    //
+    //                 if (mec is IHaulEnroute enroute)
+    //                     mec.Map.enrouteManager.ReleaseFor(enroute, actor);
+    //
+    //                 onDeposited?.Invoke();
+    //
+    //                 return;
+    //             }
+    //
+    //             originalInitAction?.Invoke();
+    //         };
+    //     }
+    // }
+    
+    // ─── Harmony：为 MEC 替换 HaulToTransporter 的 Toil 流程 ──────────────────────
+    /// <summary>
+    /// 修复方式 A 装载时 HaulToTransporter 在原版 JobDriver_HaulToContainer.MakeNewToils()
+    /// 的失败条件中瞬间结束，导致同 tick 反复接取任务的问题。
+    ///
+    /// 该 patch 只对目标容器为 Building_MatterEnergyConverter 的 HaulToTransporter 生效。
+    /// 它绕过原版 HaulToContainer 的通用容器/存储区判断，直接执行：
+    /// 1. 前往待装载物；
+    /// 2. 拿起物品；
+    /// 3. 前往 MEC；
+    /// 4. 放入 CompTransporter.innerContainer。
+    /// </summary>
+    [HarmonyPatch]
+    public static class Patch_MEC_HaulToTransporter_MakeNewToils
+    {
+        private static System.Reflection.MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(JobDriver_HaulToTransporter), "MakeNewToils");
+        }
+
+        [HarmonyPrefix]
+        public static bool Prefix(JobDriver_HaulToTransporter __instance, ref IEnumerable<Toil> __result)
+        {
+            Thing container = __instance.Container;
+            if (!(container is Building_MatterEnergyConverter))
+                return true;
+
+            __result = MakeMecHaulToTransporterToils(__instance);
+            return false;
+        }
+
+        private static IEnumerable<Toil> MakeMecHaulToTransporterToils(JobDriver_HaulToTransporter driver)
+        {
+            // 基础安全失败条件：只保留真正必要的，避免原版 HaulToContainer 的存储/容器判断误伤 MEC
+            driver.FailOnDestroyedOrNull(TargetIndex.A);
+            driver.FailOnDestroyedOrNull(TargetIndex.B);
+
+            // 1. 前往待搬运物
+            Toil gotoItem = Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.ClosestTouch)
+                .FailOnForbidden(TargetIndex.A)
+                .FailOnSomeonePhysicallyInteracting(TargetIndex.A)
+                .FailOnSelfAndParentsDespawnedOrNull(TargetIndex.A);
+
+            yield return gotoItem;
+
+            // 2. 拿起物品
+            yield return Toils_Haul.StartCarryThing(
+                TargetIndex.A,
+                subtractNumTakenFromJobCount: true,
+                canTakeFromInventory: true
+            );
+
+            // 3. 前往 MEC
+            Toil gotoMec = Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.Touch)
+                .FailOnDestroyedOrNull(TargetIndex.B);
+
+            yield return gotoMec;
+
+            // 4. 直接放入 MEC 的 CompTransporter.innerContainer
+            Toil deposit = ToilMaker.MakeToil("MEC_DepositIntoTransporter");
+            deposit.initAction = delegate
+            {
+                Pawn actor = deposit.actor;
+                Job job = actor?.jobs?.curJob;
+                Thing containerThing = job?.GetTarget(TargetIndex.B).Thing;
+
+                Building_MatterEnergyConverter mec = containerThing as Building_MatterEnergyConverter;
+                if (mec == null)
+                {
+                    Log.Error("[MEC] HaulToTransporter deposit failed: targetB is not MEC.");
+                    actor?.jobs?.EndCurrentJob(JobCondition.Incompletable);
+                    return;
+                }
+
+                CompTransporter transporter = mec.GetComp<CompTransporter>();
+                ThingOwner innerContainer = transporter?.innerContainer;
+                if (innerContainer == null)
+                {
+                    Log.Error("[MEC] HaulToTransporter deposit failed: CompTransporter.innerContainer is null.");
+                    actor.jobs.EndCurrentJob(JobCondition.Incompletable);
+                    return;
+                }
+
+                Thing carriedThing = actor.carryTracker.CarriedThing;
+                if (carriedThing == null)
+                {
+                    Log.Error("[MEC] HaulToTransporter deposit failed: pawn is not carrying anything.");
+                    actor.jobs.EndCurrentJob(JobCondition.Incompletable);
+                    return;
+                }
+
+                int countToTransfer = carriedThing.stackCount;
+                if (job != null && job.count > 0)
+                    countToTransfer = Mathf.Min(countToTransfer, job.count);
+
+                int transferred = actor.carryTracker.innerContainer.TryTransferToContainer(
+                    carriedThing,
+                    innerContainer,
+                    countToTransfer
+                );
+
+                if (transferred <= 0)
+                {
+                    Log.Warning(
+                        "[MEC] HaulToTransporter deposit transferred 0. " +
+                        "thing=" + carriedThing +
+                        ", countToTransfer=" + countToTransfer +
+                        ", mec=" + mec
+                    );
+
+                    actor.jobs.EndCurrentJob(JobCondition.Incompletable);
+                    return;
+                }
+
+                // 确保装载列表刷新。通常 ThingOwner 会通知 parent，这里额外保险一次。
+                transporter.Notify_ThingAdded(carriedThing);
+
+                if (mec is IHaulEnroute enroute && mec.Map != null)
+                    mec.Map.enrouteManager.ReleaseFor(enroute, actor);
+            };
+
+            deposit.defaultCompleteMode = ToilCompleteMode.Instant;
+            yield return deposit;
+        }
+    }
     
     [StaticConstructorOnStartup]
     public static class MatterEnergyConverterTex
