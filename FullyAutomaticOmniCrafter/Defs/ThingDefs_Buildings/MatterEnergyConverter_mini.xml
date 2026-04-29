@@ -38,7 +38,7 @@
         <fillPercent>0.5</fillPercent>
         <blockWind>false</blockWind>
         <castEdgeShadows>false</castEdgeShadows>
-        <staticSunShadowHeight>0.2</staticSunShadowHeight>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <canOverlapZones>false</canOverlapZones>
         <rotatable>false</rotatable>
 
