@@ -139,7 +139,6 @@ namespace FullyAutomaticOmniCrafter
                     && !frame.Destroyed
                     && frame.Spawned
                     && frame.Faction == Faction.OfPlayer
-                    && !frame.IsCompleted()
                     && (_targetArea == null || _targetArea[frame.Position]))
                 {
                     result.Add(frame);
