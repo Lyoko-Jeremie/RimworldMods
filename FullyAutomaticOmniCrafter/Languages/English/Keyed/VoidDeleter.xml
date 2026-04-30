@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <!-- VoidDeleter Gizmos -->
+    <VoidDeleter_Toggle>Toggle Void Deleter</VoidDeleter_Toggle>
+    <VoidDeleter_ToggleDesc>Enable or disable the Void Deleter. When disabled it will not process any designations even if powered.</VoidDeleter_ToggleDesc>
+
+    <VoidDeleter_SelectArea>Select Active Area</VoidDeleter_SelectArea>
+    <VoidDeleter_SelectAreaDesc>Choose which area this Void Deleter monitors for deconstruction and mining designations (current: {0}).</VoidDeleter_SelectAreaDesc>
+
+    <VoidDeleter_OutputMode>Output: {0}</VoidDeleter_OutputMode>
+    <VoidDeleter_OutputModeDesc>Toggle where products are placed after deconstruction or mining. Current mode: {0}. Click to switch.</VoidDeleter_OutputModeDesc>
+
+    <VoidDeleter_DropNear>Drop Near</VoidDeleter_DropNear>
+    <VoidDeleter_SendToStorage>Send to Storage</VoidDeleter_SendToStorage>
+
+    <VoidDeleter_AnyArea>Entire Map</VoidDeleter_AnyArea>
+    <VoidDeleter_Disabled>Disabled</VoidDeleter_Disabled>
+</LanguageData>
+
