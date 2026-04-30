@@ -17,6 +17,7 @@
               <comps>
                 <li Class="CompProperties_CauseHediff_Apparel">
                   <hediff>SNS_TemporalBarrier_RadClear</hediff>
+                  <hediffSeverity>1.0</hediffSeverity>
                 </li>
               </comps>
             </value>
@@ -27,27 +28,28 @@
             <value>
               <li Class="CompProperties_CauseHediff_Apparel">
                 <hediff>SNS_TemporalBarrier_RadClear</hediff>
+                <hediffSeverity>1.0</hediffSeverity>
               </li>
             </value>
           </match>
         </li>
 
         <li Class="PatchOperationConditional">
-          <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/equippedStatOffsets</xpath>
+          <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/statBases</xpath>
 
           <nomatch Class="PatchOperationAdd">
             <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]</xpath>
             <value>
-              <equippedStatOffsets>
-                <Radiation>-1.0</Radiation>
-              </equippedStatOffsets>
+              <statBases>
+                <Radiation>0.0</Radiation>
+              </statBases>
             </value>
           </nomatch>
 
           <match Class="PatchOperationAdd">
-            <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/equippedStatOffsets</xpath>
+            <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/statBases</xpath>
             <value>
-              <Radiation>-1.0</Radiation>
+              <Radiation>0.0</Radiation>
             </value>
           </match>
         </li>

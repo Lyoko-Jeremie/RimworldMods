@@ -11,7 +11,7 @@
         <comps>
             <li Class="HediffCompProperties_SeverityPerDay">
                 <compClass>Rimatomics.HediffComp_HealHediff</compClass>
-                <severityPerDay>-1.0</severityPerDay>
+                <severityPerDay>0</severityPerDay>
             </li>
         </comps>
     </HediffDef>
