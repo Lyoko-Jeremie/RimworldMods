@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+
+  <Operation Class="PatchOperationFindMod">
+    <mods>
+      <li>Rimatomics</li>
+    </mods>
+    <match Class="PatchOperationSequence">
+      <operations>
+
+        <li Class="PatchOperationConditional">
+          <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/comps</xpath>
+
+          <nomatch Class="PatchOperationAdd">
+            <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]</xpath>
+            <value>
+              <comps>
+                <li Class="CompProperties_CauseHediff_Apparel">
+                  <hediff>SNS_TemporalBarrier_RadClear</hediff>
+                </li>
+              </comps>
+            </value>
+          </nomatch>
+
+          <match Class="PatchOperationAdd">
+            <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/comps</xpath>
+            <value>
+              <li Class="CompProperties_CauseHediff_Apparel">
+                <hediff>SNS_TemporalBarrier_RadClear</hediff>
+              </li>
+            </value>
+          </match>
+        </li>
+
+        <li Class="PatchOperationConditional">
+          <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/equippedStatOffsets</xpath>
+
+          <nomatch Class="PatchOperationAdd">
+            <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]</xpath>
+            <value>
+              <equippedStatOffsets>
+                <Radiation>-1.0</Radiation>
+              </equippedStatOffsets>
+            </value>
+          </nomatch>
+
+          <match Class="PatchOperationAdd">
+            <xpath>Defs/ThingDef[defName="SNS_CE_TemporalBarrierProjector"]/equippedStatOffsets</xpath>
+            <value>
+              <Radiation>-1.0</Radiation>
+            </value>
+          </match>
+        </li>
+
+      </operations>
+    </match>
+  </Operation>
+
+</Patch>

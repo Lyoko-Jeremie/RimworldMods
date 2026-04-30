@@ -95,6 +95,9 @@
             <!-- 能量护盾属性 -->
             <EnergyShieldRechargeRate>100000</EnergyShieldRechargeRate> <!-- 充能极快，瞬间回满 -->
             <EnergyShieldEnergyMax>1500000</EnergyShieldEnergyMax> <!-- 护盾容量极巨化 -->
+
+            <!-- 边缘核能 辐射敏感度 -->
+            <!--            <Radiation>0.0</Radiation>-->
         </statBases>
 
         <comps>
@@ -107,6 +110,12 @@
             <li Class="CompProperties_CauseHediff_Apparel" MayRequire="rabiosus.autoblink">
                 <hediff>SNS_TemporalBarrier_AutoBlink_Hediff</hediff>
             </li>
+
+            <!-- 边缘核能 消除累计的辐射 -->
+            <!--            <li Class="HediffCompProperties_SeverityPerDay" MayRequire="Dubwise.Rimatomics">-->
+            <!--                <compClass>Rimatomics.HediffComp_HealHediff</compClass>-->
+            <!--                <severityPerDay>-0.5</severityPerDay>-->
+            <!--            </li>-->
         </comps>
 
         <equippedStatOffsets>
