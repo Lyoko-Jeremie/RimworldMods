@@ -69,6 +69,11 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!Spawned) return;
 
+            // 快速退出：自上次处理以来地图上没有新蓝图/施工框出现
+            if (!BlueprintFrameTracker.IsDirty(Map)) return;
+            // 消费脏标记（后续若有新蓝图/Frame 出现，Patch 会重新置位）
+            BlueprintFrameTracker.ClearDirty(Map);
+
             // 收集区域内的所有蓝图（Blueprint_Build）
             List<Blueprint_Build> blueprints = CollectBlueprints();
             // 收集区域内所有未完工的施工框（Frame）
