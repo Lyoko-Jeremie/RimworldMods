@@ -219,6 +219,46 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
 
+        // ── 检查格子是否存在蓝图或施工框 ─────────────────────────────────────────
+        private static bool HasBlueprintOrFrame(IntVec3 cell, Map map)
+        {
+            List<Thing> things = map.thingGrid.ThingsListAtFast(cell);
+            for (int i = 0; i < things.Count; i++)
+            {
+                if (things[i] is Blueprint || things[i] is Frame)
+                    return true;
+            }
+            return false;
+        }
+
+        // ── 将阻挡物移动到附近无蓝图/框架的空闲格子 ─────────────────────────────
+        private static bool TryMoveBlockingThing(Thing blocker, Map map)
+        {
+            IntVec3 originalPos = blocker.Position;
+
+            IntVec3 targetCell = IntVec3.Invalid;
+            for (int radius = 1; radius <= 15; radius++)
+            {
+                foreach (IntVec3 cell in GenRadial.RadialCellsAround(originalPos, radius, false))
+                {
+                    if (cell == originalPos) continue;
+                    if (!cell.InBounds(map)) continue;
+                    if (!cell.Walkable(map)) continue;
+                    if (HasBlueprintOrFrame(cell, map)) continue;
+                    targetCell = cell;
+                    break;
+                }
+                if (targetCell.IsValid) break;
+            }
+
+            if (!targetCell.IsValid) return false;
+
+            blocker.DeSpawn();
+            if (GenPlace.TryPlaceThing(blocker, targetCell, map, ThingPlaceMode.Direct))
+                return true;
+            return GenPlace.TryPlaceThing(blocker, targetCell, map, ThingPlaceMode.Near);
+        }
+
         // ── 具现单个蓝图（Blueprint_Build → 建筑/地形） ────────────────────────
         private bool RealizeBlueprint(Blueprint_Build bp)
         {
@@ -228,8 +268,13 @@ namespace FullyAutomaticOmniCrafter
                 Rot4 rot = bp.Rotation;
                 Map map = bp.Map;
 
-                // 检查是否有无法移走的障碍物（可拾取物品）
-                if (bp.BlockingHaulableOnTop() != null) return false;
+                // 检查是否有无法移走的障碍物（可拾取物品），尝试将其移动到附近空闲位置
+                Thing blocker = bp.BlockingHaulableOnTop();
+                if (blocker != null)
+                {
+                    if (!TryMoveBlockingThing(blocker, map))
+                        return false;
+                }
 
                 ThingDef buildDef = bp.def.entityDefToBuild as ThingDef;
 
