@@ -112,6 +112,9 @@ namespace FullyAutomaticOmniCrafter
         // ── 收集区域内的蓝图 ───────────────────────────────────────────────────
         private List<Blueprint_Build> CollectBlueprints()
         {
+            Faction playerFaction = Faction.OfPlayerSilentFail;
+            if (playerFaction == null) return new List<Blueprint_Build>();
+
             List<Thing> all = Map.listerThings.ThingsInGroup(ThingRequestGroup.Blueprint);
             var result = new List<Blueprint_Build>(all.Count);
             for (int i = 0; i < all.Count; i++)
@@ -119,7 +122,7 @@ namespace FullyAutomaticOmniCrafter
                 if (all[i] is Blueprint_Build bp
                     && !bp.Destroyed
                     && bp.Spawned
-                    && bp.Faction == Faction.OfPlayer
+                    && bp.Faction == playerFaction
                     && (_targetArea == null || _targetArea[bp.Position]))
                 {
                     result.Add(bp);
@@ -131,6 +134,9 @@ namespace FullyAutomaticOmniCrafter
         // ── 收集区域内的施工框 ─────────────────────────────────────────────────
         private List<Frame> CollectFrames()
         {
+            Faction playerFaction = Faction.OfPlayerSilentFail;
+            if (playerFaction == null) return new List<Frame>();
+
             List<Thing> all = Map.listerThings.ThingsInGroup(ThingRequestGroup.BuildingFrame);
             var result = new List<Frame>(all.Count);
             for (int i = 0; i < all.Count; i++)
@@ -138,7 +144,7 @@ namespace FullyAutomaticOmniCrafter
                 if (all[i] is Frame frame
                     && !frame.Destroyed
                     && frame.Spawned
-                    && frame.Faction == Faction.OfPlayer
+                    && frame.Faction == playerFaction
                     && (_targetArea == null || _targetArea[frame.Position]))
                 {
                     result.Add(frame);
@@ -264,6 +270,10 @@ namespace FullyAutomaticOmniCrafter
         {
             try
             {
+                // 二次防护：仅处理属于己方阵营的蓝图
+                Faction playerFaction = Faction.OfPlayerSilentFail;
+                if (playerFaction == null || bp.Faction != playerFaction) return false;
+
                 IntVec3 pos = bp.Position;
                 Rot4 rot = bp.Rotation;
                 Map map = bp.Map;
@@ -337,6 +347,10 @@ namespace FullyAutomaticOmniCrafter
         {
             try
             {
+                // 二次防护：仅处理属于己方阵营的施工框
+                Faction playerFaction = Faction.OfPlayerSilentFail;
+                if (playerFaction == null || frame.Faction != playerFaction) return false;
+
                 IntVec3 pos = frame.Position;
                 Rot4 rot = frame.Rotation;
                 Map map = frame.Map;
@@ -459,11 +473,13 @@ namespace FullyAutomaticOmniCrafter
             int bpCount = 0, frameCount = 0;
             float totalWork = 0f;
 
+            Faction playerFaction = Faction.OfPlayerSilentFail;
+
             List<Thing> bpList = Map.listerThings.ThingsInGroup(ThingRequestGroup.Blueprint);
             for (int i = 0; i < bpList.Count; i++)
             {
                 if (bpList[i] is Blueprint_Build bp
-                    && bp.Faction == Faction.OfPlayer
+                    && bp.Faction == playerFaction
                     && (_targetArea == null || _targetArea[bp.Position]))
                 {
                     bpCount++;
@@ -475,7 +491,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < frameList.Count; i++)
             {
                 if (frameList[i] is Frame frame
-                    && frame.Faction == Faction.OfPlayer
+                    && frame.Faction == playerFaction
                     && !frame.IsCompleted()
                     && (_targetArea == null || _targetArea[frame.Position]))
                 {
