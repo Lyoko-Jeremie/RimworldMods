@@ -365,7 +365,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRepair.cs" />
-    <Compile Include="BlueprintRealizer.cs" />
+    <Compile Include="RealityWeaver.cs" />
     <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />
     <Compile Include="OmniCrafterCache.cs" />
@@ -375,6 +375,7 @@
     <Compile Include="PinyinSearchEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Patch_ShortCircuitUtility.cs" />
+    <Compile Include="RealityWeaver.cs" />
     <Compile Include="SubspaceAssetBlackhole.cs" />
   </ItemGroup>
   <ItemGroup>

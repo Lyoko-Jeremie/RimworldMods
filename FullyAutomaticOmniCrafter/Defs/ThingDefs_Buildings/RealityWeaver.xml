@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <!--
+      ══════════════════════════════════════════════════════════════════════
+      现实编织器 / Reality Weaver
+      thingClass : FullyAutomaticOmniCrafter.Building_RealityWeaver
+      功能 :
+        - 扫描指定活动区内所有待建蓝图（Blueprint_Build）和施工框（Frame）
+        - 消耗电量（按 WorkToBuild 折算）后立即建造，类似开发者 God Mode
+        - 优先从 CompMatterEnergyConverterBattery 扣除电量
+        - 断电时完全停止，零性能开销
+      ══════════════════════════════════════════════════════════════════════
+    -->
+
+    <ThingDef ParentName="BuildingBase">
+
+        <!-- ── 基础标识 ────────────────────────────────────────────────── -->
+        <defName>RealityWeaver</defName>
+        <label>Reality Weaver</label>
+        <description>description</description>
+        <thingClass>FullyAutomaticOmniCrafter.Building_RealityWeaver</thingClass>
+
+        <!-- ── 贴图 ───────────────────────────────────────────────────── -->
+        <graphicData>
+            <texPath>Things/Building/Production/RealityWeaver</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(3,3)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <uiIconPath>Things/Building/Production/RealityWeaver</uiIconPath>
+
+        <!-- ── 布局 ───────────────────────────────────────────────────── -->
+        <size>(3,3)</size>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>14</pathCost>
+        <fillPercent>0.5</fillPercent>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>true</castEdgeShadows>
+        <staticSunShadowHeight>0.2</staticSunShadowHeight>
+        <canOverlapZones>false</canOverlapZones>
+        <rotatable>false</rotatable>
+
+        <!-- ── 属性基础值 ─────────────────────────────────────────────── -->
+        <statBases>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>3000</WorkToBuild>
+            <Mass>120</Mass>
+            <Flammability>0.5</Flammability>
+            <Beauty>-5</Beauty>
+        </statBases>
+
+        <!-- ── 建造成本 ───────────────────────────────────────────────── -->
+        <costList>
+            <Steel>100</Steel>
+<!--            <ComponentIndustrial>8</ComponentIndustrial>-->
+        </costList>
+
+        <!-- ── 可打包带走 ─────────────────────────────────────────────── -->
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <!-- ── Tick 类型 ──────────────────────────────────────────────── -->
+        <tickerType>Rare</tickerType>
+
+        <!-- ── 建筑属性 ───────────────────────────────────────────────── -->
+        <building>
+            <paintable>true</paintable>
+            <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+        </building>
+
+        <!-- ── 组件 ───────────────────────────────────────────────────── -->
+        <comps>
+
+            <!-- 开关控制 -->
+            <li Class="CompProperties_Flickable"/>
+
+            <!-- 机械故障 -->
+            <li Class="CompProperties_Breakdownable"/>
+
+            <!--
+              电力消耗：
+              编织器维持运转消耗 500 W（待机），
+              实际扣电在 C# 代码中按工作量从电池扣除。
+            -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>500</basePowerConsumption>
+                <shortCircuitInRain>false</shortCircuitInRain>
+            </li>
+
+        </comps>
+
+        <!-- ── 地形要求 ───────────────────────────────────────────────── -->
+        <terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
+
+        <!-- ── 建造分类 ───────────────────────────────────────────────── -->
+        <designationCategory>Production</designationCategory>
+
+        <!-- ── 研究前提（可根据需要启用） ────────────────────────────── -->
+        <!--
+        <researchPrerequisites>
+            <li>MultiAnalyzer</li>
+        </researchPrerequisites>
+        -->
+
+        <!-- ── 建造 / 修理音效 ────────────────────────────────────────── -->
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+
+    </ThingDef>
+
+</Defs>
+

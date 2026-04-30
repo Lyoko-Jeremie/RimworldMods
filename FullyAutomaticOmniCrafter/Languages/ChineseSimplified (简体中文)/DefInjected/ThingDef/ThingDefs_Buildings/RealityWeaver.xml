@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <RealityWeaver.label>现实编织器</RealityWeaver.label>
+    <RealityWeaver.description>一台超凡科技建造装置，可将指定区域内所有待建蓝图和施工框立即具现为建筑。消耗的电量与每座建筑所需工作量成正比（每单位工作量消耗 1 Wd）。优先从物质-能量转化仪专属电池扣除，其次是全自动万能合成仪无限电池，最后是普通电池。断电或禁用时零性能开销。</RealityWeaver.description>
+</LanguageData>

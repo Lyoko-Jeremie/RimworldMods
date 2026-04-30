@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+    <!-- ══ RealityWeaver · Gizmos ══════════════════════════════════════ -->
+
+    <!-- 开关按钮 -->
+    <RealityWeaver_Toggle>现实编织器</RealityWeaver_Toggle>
+    <RealityWeaver_ToggleDesc>开启或关闭现实编织器。启用后，每次 TickRare 将立即建造目标区域内所有待建蓝图和施工框，并消耗等同于其总工作量的电量（Wd）。</RealityWeaver_ToggleDesc>
+
+    <!-- 选择区域 -->
+    <RealityWeaver_SelectArea>选择目标区域</RealityWeaver_SelectArea>
+    <RealityWeaver_SelectAreaDesc>选择编织器扫描待建蓝图和施工框的活动区范围（当前：{0}）。</RealityWeaver_SelectAreaDesc>
+    <RealityWeaver_EntireMap>全图</RealityWeaver_EntireMap>
+
+    <!-- ══ RealityWeaver · Inspect String ══════════════════════════════ -->
+
+    <RealityWeaver_Disabled>现实编织器：已禁用（点击开关按钮以启用）。</RealityWeaver_Disabled>
+    <RealityWeaver_NoPower>现实编织器：无电力供应。</RealityWeaver_NoPower>
+    <!-- 参数：{0}=待建数量, {1}=电量消耗(Wd), {2}=区域名称 -->
+    <RealityWeaver_Status>待具现：{0} 个蓝图/施工框 · 所需电量：{1} Wd · 范围：{2}</RealityWeaver_Status>
+
+</LanguageData>

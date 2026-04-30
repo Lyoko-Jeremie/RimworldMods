@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
@@ -7,12 +7,12 @@ using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter
 {
-    // 蓝图具现器 (Blueprint Realizer)
+    // 现实编织器 (Reality Weaver)
     // 将指定活动区内的待建造的建筑蓝图立即建造成建筑
     // 以工作量消耗电力，优先扣除CompMatterEnergyConverterBattery的能量
     // 断电时停止工作，停止工作时无任何性能影响
     // 用类似于开发者模式（God Mode）的逻辑
-    public class Building_BlueprintRealizer : Building
+    public class Building_RealityWeaver : Building
     {
         // ── 内部状态 ──────────────────────────────────────────────────────────
         private CompPowerTrader _powerComp;
@@ -26,9 +26,9 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>每单位工作量消耗的电量（Wd），可由 XML def 中的自定义 Stat 覆盖。默认 1 Wd / 1 Work</summary>
         private const float DefaultWorkToEnergyFactor = 1f;
 
-        // ── TickRare 分帧防抖：同一地图上所有具现器共用同一个全局时间戳 ─────────
+        // ── TickRare 分帧防抖：同一地图上所有编织器共用同一个全局时间戳 ─────────
         private const int TickRareInterval = 250;
-        private int _lastRealizeTickGame = -9999;
+        private int _lastWeaveTickGame = -9999;
 
         // ── 初始化 ────────────────────────────────────────────────────────────
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
@@ -45,7 +45,7 @@ namespace FullyAutomaticOmniCrafter
         {
             base.ExposeData();
             Scribe_References.Look(ref _targetArea, "targetArea");
-            Scribe_Values.Look(ref _enabled, "blueprintRealizerEnabled", false);
+            Scribe_Values.Look(ref _enabled, "realityWeaverEnabled", false);
         }
 
         // ── Tick ──────────────────────────────────────────────────────────────
@@ -56,16 +56,16 @@ namespace FullyAutomaticOmniCrafter
             // 断电或未启用：直接返回，无任何性能开销
             if (!_enabled || !IsPowered) return;
 
-            // 防抖：每 TickRare 只执行一次（即使地图上有多个具现器）
+            // 防抖：每 TickRare 只执行一次（即使地图上有多个编织器）
             int now = Find.TickManager.TicksGame;
-            if (now - _lastRealizeTickGame < TickRareInterval) return;
-            _lastRealizeTickGame = now;
+            if (now - _lastWeaveTickGame < TickRareInterval) return;
+            _lastWeaveTickGame = now;
 
-            TryRealizeAll();
+            TryWeaveAll();
         }
 
         // ── 核心逻辑 ──────────────────────────────────────────────────────────
-        private void TryRealizeAll()
+        private void TryWeaveAll()
         {
             if (!Spawned) return;
 
@@ -87,7 +87,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 尝试扣除电量
             PowerNet net = _powerComp?.PowerNet;
-            if (!TryDrainPowerForRealizer(net, energyCost)) return;
+            if (!TryDrainPowerForWeaver(net, energyCost)) return;
 
             // 具现：先处理蓝图（Blueprint → 建筑），再处理施工框（Frame → 建筑）
             int count = 0;
@@ -156,7 +156,7 @@ namespace FullyAutomaticOmniCrafter
         }
 
         // ── 电量扣除：优先 MEC 专属电池 ────────────────────────────────────────
-        private static bool TryDrainPowerForRealizer(PowerNet net, float amountWd)
+        private static bool TryDrainPowerForWeaver(PowerNet net, float amountWd)
         {
             if (amountWd <= 0f) return true;
             if (net == null) return false;
@@ -283,7 +283,7 @@ namespace FullyAutomaticOmniCrafter
             }
             catch (Exception ex)
             {
-                Log.Error($"[BlueprintRealizer] RealizeBlueprint failed for '{bp?.def?.defName}': {ex.Message}");
+                Log.Error($"[RealityWeaver] RealizeBlueprint failed for '{bp?.def?.defName}': {ex.Message}");
                 return false;
             }
         }
@@ -348,7 +348,7 @@ namespace FullyAutomaticOmniCrafter
             }
             catch (Exception ex)
             {
-                Log.Error($"[BlueprintRealizer] CompleteFrame failed for '{frame?.def?.defName}': {ex.Message}");
+                Log.Error($"[RealityWeaver] CompleteFrame failed for '{frame?.def?.defName}': {ex.Message}");
                 return false;
             }
         }
@@ -362,24 +362,24 @@ namespace FullyAutomaticOmniCrafter
             // 开关按钮
             yield return new Command_Toggle
             {
-                defaultLabel = "BlueprintRealizer_Toggle".Translate(),
-                defaultDesc = "BlueprintRealizer_ToggleDesc".Translate(),
-                icon = BlueprintRealizerTex.IconToggle,
+                defaultLabel = "RealityWeaver_Toggle".Translate(),
+                defaultDesc = "RealityWeaver_ToggleDesc".Translate(),
+                icon = RealityWeaverTex.IconToggle,
                 isActive = () => _enabled,
                 toggleAction = () => _enabled = !_enabled
             };
 
             // 选择激活区域
-            string areaLabel = _targetArea?.Label ?? (string)"BlueprintRealizer_EntireMap".Translate();
+            string areaLabel = _targetArea?.Label ?? (string)"RealityWeaver_EntireMap".Translate();
             yield return new Command_Action
             {
-                defaultLabel = "BlueprintRealizer_SelectArea".Translate(),
-                defaultDesc = "BlueprintRealizer_SelectAreaDesc".Translate(areaLabel),
-                icon = BlueprintRealizerTex.IconSelectArea,
+                defaultLabel = "RealityWeaver_SelectArea".Translate(),
+                defaultDesc = "RealityWeaver_SelectAreaDesc".Translate(areaLabel),
+                icon = RealityWeaverTex.IconSelectArea,
                 action = () =>
                 {
                     var options = new List<FloatMenuOption>();
-                    options.Add(new FloatMenuOption("BlueprintRealizer_EntireMap".Translate(), () =>
+                    options.Add(new FloatMenuOption("RealityWeaver_EntireMap".Translate(), () =>
                         _targetArea = null));
                     foreach (Area area in Map.areaManager.AllAreas)
                     {
@@ -400,14 +400,14 @@ namespace FullyAutomaticOmniCrafter
             if (!_enabled)
             {
                 if (!s.NullOrEmpty()) s += "\n";
-                s += "BlueprintRealizer_Disabled".Translate();
+                s += "RealityWeaver_Disabled".Translate();
                 return s;
             }
 
             if (!IsPowered)
             {
                 if (!s.NullOrEmpty()) s += "\n";
-                s += "BlueprintRealizer_NoPower".Translate();
+                s += "RealityWeaver_NoPower".Translate();
                 return s;
             }
 
@@ -441,10 +441,10 @@ namespace FullyAutomaticOmniCrafter
             }
 
             if (!s.NullOrEmpty()) s += "\n";
-            s += "BlueprintRealizer_Status".Translate(
+            s += "RealityWeaver_Status".Translate(
                 bpCount + frameCount,
                 (totalWork * DefaultWorkToEnergyFactor).ToString("N1"),
-                _targetArea?.Label ?? (string)"BlueprintRealizer_EntireMap".Translate());
+                _targetArea?.Label ?? (string)"RealityWeaver_EntireMap".Translate());
 
             return s;
         }
@@ -452,16 +452,17 @@ namespace FullyAutomaticOmniCrafter
 
     // ── 材质缓存 ──────────────────────────────────────────────────────────────
     [StaticConstructorOnStartup]
-    public static class BlueprintRealizerTex
+    public static class RealityWeaverTex
     {
         public static readonly Texture2D IconToggle =
-            ContentFinder<Texture2D>.Get("UI/Commands/BlueprintRealizer_Toggle", false)
+            ContentFinder<Texture2D>.Get("UI/Commands/RealityWeaver_Toggle", false)
             ?? ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_LaunchReport", false)
             ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconSelectArea =
-            ContentFinder<Texture2D>.Get("UI/Commands/BlueprintRealizer_SelectArea", false)
+            ContentFinder<Texture2D>.Get("UI/Commands/RealityWeaver_SelectArea", false)
             ?? ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_SelectArea", false)
             ?? BaseContent.WhiteTex;
     }
 }
+

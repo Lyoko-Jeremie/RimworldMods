@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+    <!-- ══ RealityWeaver · Gizmos ══════════════════════════════════════ -->
+
+    <!-- Toggle button -->
+    <RealityWeaver_Toggle>Reality Weaver</RealityWeaver_Toggle>
+    <RealityWeaver_ToggleDesc>Toggle the Reality Weaver on or off. When active, every Rare Tick it will instantly construct all building blueprints and construction frames within the target area, consuming power equal to their total work amount.</RealityWeaver_ToggleDesc>
+
+    <!-- Area selection -->
+    <RealityWeaver_SelectArea>Select Target Area</RealityWeaver_SelectArea>
+    <RealityWeaver_SelectAreaDesc>Choose which allowed area the weaver monitors for pending blueprints and construction frames (current: {0}).</RealityWeaver_SelectAreaDesc>
+    <RealityWeaver_EntireMap>Entire Map</RealityWeaver_EntireMap>
+
+    <!-- ══ RealityWeaver · Inspect String ══════════════════════════════ -->
+
+    <RealityWeaver_Disabled>Reality Weaver: disabled (toggle on to activate).</RealityWeaver_Disabled>
+    <RealityWeaver_NoPower>Reality Weaver: no power.</RealityWeaver_NoPower>
+    <!-- Args: {0}=pending count, {1}=energy cost (Wd), {2}=area label -->
+    <RealityWeaver_Status>Pending: {0} blueprint(s) / frame(s) · Cost: {1} Wd · Area: {2}</RealityWeaver_Status>
+
+</LanguageData>
+
