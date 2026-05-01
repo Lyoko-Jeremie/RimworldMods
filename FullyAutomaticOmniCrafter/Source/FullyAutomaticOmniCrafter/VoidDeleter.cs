@@ -136,7 +136,7 @@ namespace FullyAutomaticOmniCrafter
         /// Handles both normal buildings (using resourcesFractionWhenDeconstructed) and frames
         /// (full refund of invested materials).
         /// </summary>
-        private static List<(ThingDef def, int count)> ComputeDeconstructLeavings(Thing thing)
+        internal static List<(ThingDef def, int count)> ComputeDeconstructLeavings(Thing thing)
         {
             var result = new List<(ThingDef, int)>();
             if (!(thing is Building)) return result;

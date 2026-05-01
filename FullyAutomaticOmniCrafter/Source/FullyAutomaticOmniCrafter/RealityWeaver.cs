@@ -265,6 +265,70 @@ namespace FullyAutomaticOmniCrafter
             return GenPlace.TryPlaceThing(blocker, targetCell, map, ThingPlaceMode.Near);
         }
 
+        // ── 联动 VoidDeleter：拆除占位建筑并就地返还材料 ──────────────────────
+        /// <summary>
+        /// 遍历新建筑占地格，找出所有会被 SpawningWipes 擦除的现存建筑，
+        /// 调用 VoidDeleter 的拆除返还计算将其静默销毁，并把材料掉落在编织器旁。
+        /// 蓝图 / 施工框 等临时物体直接静默销毁，不产生任何返还。
+        /// </summary>
+        private void DemolishAndLootBlockers(IntVec3 pos, Rot4 rot, BuildableDef newDef, Map map)
+        {
+            foreach (IntVec3 cell in GenAdj.CellsOccupiedBy(pos, rot, newDef.Size))
+            {
+                // 使用内部列表引用，倒序遍历，Destroy 从列表末尾移除时不影响前面的索引
+                List<Thing> thingsAt = map.thingGrid.ThingsListAtFast(cell);
+                for (int i = thingsAt.Count - 1; i >= 0; i--)
+                {
+                    Thing thing = thingsAt[i];
+                    if (thing == null || thing.Destroyed) continue;
+                    if (!GenSpawn.SpawningWipes(newDef, thing.def)) continue;
+
+                    // 蓝图 / 施工框：静默销毁，不返还（材料尚未投入或已处理）
+                    if (thing is Blueprint || thing is Frame)
+                    {
+                        if (!thing.Destroyed) thing.Destroy(DestroyMode.Vanish);
+                        continue;
+                    }
+
+                    // 普通建筑：通过 VoidDeleter 计算拆除材料返还并在编织器处掉落
+                    if (thing is Building)
+                    {
+                        var products = Building_VoidDeleter.ComputeDeconstructLeavings(thing);
+                        if (!thing.Destroyed) thing.Destroy(DestroyMode.Vanish);
+                        DropProductsNear(products, Position, map);
+                        SoundDefOf.Building_Deconstructed.PlayOneShot(new TargetInfo(cell, map));
+                        continue;
+                    }
+
+                    // 植物、物品等：静默移除
+                    if (!thing.Destroyed) thing.Destroy(DestroyMode.Vanish);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 将拆除产物就近掉落在 <paramref name="dropPos"/> 附近。
+        /// </summary>
+        private static void DropProductsNear(
+            List<(ThingDef def, int count)> products,
+            IntVec3 dropPos,
+            Map map)
+        {
+            foreach (var (def, total) in products)
+            {
+                int remaining = total;
+                while (remaining > 0)
+                {
+                    int stackMax  = def.stackLimit > 0 ? def.stackLimit : 1;
+                    int stackSize = Mathf.Min(remaining, stackMax);
+                    Thing item = ThingMaker.MakeThing(def);
+                    item.stackCount = stackSize;
+                    GenPlace.TryPlaceThing(item, dropPos, map, ThingPlaceMode.Near);
+                    remaining -= stackSize;
+                }
+            }
+        }
+
         // ── 具现单个蓝图（Blueprint_Build → 建筑/地形） ────────────────────────
         private bool RealizeBlueprint(Blueprint_Build bp)
         {
@@ -293,8 +357,8 @@ namespace FullyAutomaticOmniCrafter
                     // ── 建筑类型 ──────────────────────────────────────────────
                     ThingDef stuffToUse = bp.stuffToUse;
 
-                    // 清除障碍建筑（使用 FullRefund 以免产生废料提示）
-                    GenSpawn.WipeExistingThings(pos, rot, bp.def.entityDefToBuild, map, DestroyMode.Deconstruct);
+                    // 拆除占位建筑（联动 VoidDeleter 计算返还材料，然后静默移除）
+                    DemolishAndLootBlockers(pos, rot, buildDef, map);
 
                     // 销毁蓝图
                     if (!bp.Destroyed) bp.Destroy(DestroyMode.Vanish);
@@ -315,7 +379,8 @@ namespace FullyAutomaticOmniCrafter
                     if (bp.StyleDef != null && bp.StyleSourcePrecept == null)
                         thing.StyleDef = bp.StyleDef;
 
-                    GenSpawn.Spawn(thing, pos, map, rot, WipeMode.FullRefund);
+                    // 占位物已由 DemolishAndLootBlockers 清理，直接静默生成
+                    GenSpawn.Spawn(thing, pos, map, rot, WipeMode.Vanish);
                     return true;
                 }
                 else
@@ -359,6 +424,9 @@ namespace FullyAutomaticOmniCrafter
 
                 if (buildDef != null)
                 {
+                    // 缓存 Stuff（在 Destroy 前读取）
+                    ThingDef stuffDef = frame.Stuff;
+
                     // 清理框架内的材料容器
                     frame.resourceContainer?.ClearAndDestroyContents();
                     map = frame.Map; // 再次读取，防止意外
@@ -366,7 +434,10 @@ namespace FullyAutomaticOmniCrafter
 
                     frame.Destroy(DestroyMode.Vanish);
 
-                    Thing thing = ThingMaker.MakeThing(buildDef, frame.Stuff);
+                    // 拆除框架占位之外、仍阻挡生成的其他建筑（联动 VoidDeleter）
+                    DemolishAndLootBlockers(pos, rot, buildDef, map);
+
+                    Thing thing = ThingMaker.MakeThing(buildDef, stuffDef);
                     thing.SetFactionDirect(Faction.OfPlayer);
 
                     thing.TryGetComp<CompQuality>()?.SetQuality(QualityCategory.Normal, ArtGenerationContext.Colony);
@@ -380,7 +451,7 @@ namespace FullyAutomaticOmniCrafter
 
                     thing.HitPoints = thing.MaxHitPoints;
 
-                    Thing spawned = GenSpawn.Spawn(thing, pos, map, rot, WipeMode.FullRefund);
+                    Thing spawned = GenSpawn.Spawn(thing, pos, map, rot, WipeMode.Vanish);
 
                     if (wasSelected && spawned != null)
                         Find.Selector.Select(spawned, false, false);
