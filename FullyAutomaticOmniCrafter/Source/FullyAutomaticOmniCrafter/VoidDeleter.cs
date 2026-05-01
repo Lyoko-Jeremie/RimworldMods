@@ -39,6 +39,15 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref _outputMode, "outputMode", OutputMode.DropNear);
         }
 
+        // ── 范围显示 ────────────────────────────────────────────────────────────
+        public override void DrawExtraSelectionOverlays()
+        {
+            base.DrawExtraSelectionOverlays();
+            if (!_enabled) return;
+            if (_targetArea != null)
+                _targetArea.MarkForDraw();
+        }
+
         // ── Tick ───────────────────────────────────────────────────────────────
         public override void TickRare()
         {
@@ -221,6 +230,59 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        // ── 信息栏 ─────────────────────────────────────────────────────────────
+        public override string GetInspectString()
+        {
+            string s = base.GetInspectString();
+
+            if (!_enabled)
+            {
+                if (!s.NullOrEmpty()) s += "\n";
+                s += "VoidDeleter_Disabled".Translate();
+                return s;
+            }
+
+            if (!IsPowered)
+            {
+                if (!s.NullOrEmpty()) s += "\n";
+                s += "VoidDeleter_NoPower".Translate();
+                return s;
+            }
+
+            // 统计待处理数量
+            var dm = Map.designationManager;
+            int deconstructCount = 0;
+            int mineCount = 0;
+
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.Deconstruct))
+            {
+                Thing t = des.target.Thing;
+                if (t != null && !t.Destroyed && t.Spawned
+                    && (_targetArea == null || _targetArea[t.Position]))
+                    deconstructCount++;
+            }
+
+            var mineCells = new System.Collections.Generic.HashSet<IntVec3>();
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.Mine))
+            {
+                IntVec3 cell = des.target.Cell;
+                if (_targetArea == null || _targetArea[cell]) mineCells.Add(cell);
+            }
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.MineVein))
+            {
+                IntVec3 cell = des.target.Cell;
+                if (_targetArea == null || _targetArea[cell]) mineCells.Add(cell);
+            }
+            mineCount = mineCells.Count;
+
+            string areaLabel = _targetArea?.Label ?? (string)"VoidDeleter_AnyArea".Translate();
+
+            if (!s.NullOrEmpty()) s += "\n";
+            s += "VoidDeleter_Status".Translate(deconstructCount, mineCount, areaLabel);
+
+            return s;
+        }
+
         // ── Gizmos ─────────────────────────────────────────────────────────────
         public override IEnumerable<Gizmo> GetGizmos()
         {
@@ -243,7 +305,7 @@ namespace FullyAutomaticOmniCrafter
 
             yield return new Command_Action
             {
-                defaultLabel = "VoidDeleter_SelectArea".Translate(),
+                defaultLabel = "VoidDeleter_SelectArea".Translate() + ": " + curAreaLabel,
                 defaultDesc  = "VoidDeleter_SelectAreaDesc".Translate(curAreaLabel),
                 icon         = VoidDeleterTex.IconSelectArea,
                 action       = () =>

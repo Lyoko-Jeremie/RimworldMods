@@ -48,6 +48,15 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref _enabled, "realityWeaverEnabled", false);
         }
 
+        // ── 范围显示 ──────────────────────────────────────────────────────────
+        public override void DrawExtraSelectionOverlays()
+        {
+            base.DrawExtraSelectionOverlays();
+            if (!_enabled) return;
+            if (_targetArea != null)
+                _targetArea.MarkForDraw();
+        }
+
         // ── Tick ──────────────────────────────────────────────────────────────
         public override void TickRare()
         {
@@ -502,7 +511,7 @@ namespace FullyAutomaticOmniCrafter
             string areaLabel = _targetArea?.Label ?? (string)"RealityWeaver_EntireMap".Translate();
             yield return new Command_Action
             {
-                defaultLabel = "RealityWeaver_SelectArea".Translate(),
+                defaultLabel = "RealityWeaver_SelectArea".Translate() + ": " + areaLabel,
                 defaultDesc = "RealityWeaver_SelectAreaDesc".Translate(areaLabel),
                 icon = RealityWeaverTex.IconSelectArea,
                 action = () =>

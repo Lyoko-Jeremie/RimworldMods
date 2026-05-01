@@ -15,5 +15,7 @@
 
     <VoidDeleter_AnyArea>Entire Map</VoidDeleter_AnyArea>
     <VoidDeleter_Disabled>Disabled</VoidDeleter_Disabled>
+    <VoidDeleter_NoPower>No power</VoidDeleter_NoPower>
+    <VoidDeleter_Status>Pending: {0} deconstructions, {1} mining targets | Area: {2}</VoidDeleter_Status>
 </LanguageData>
 

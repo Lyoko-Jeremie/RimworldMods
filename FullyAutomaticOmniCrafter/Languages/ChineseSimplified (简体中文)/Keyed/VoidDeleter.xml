@@ -15,5 +15,7 @@
 
     <VoidDeleter_AnyArea>全图</VoidDeleter_AnyArea>
     <VoidDeleter_Disabled>已禁用</VoidDeleter_Disabled>
+    <VoidDeleter_NoPower>无电力</VoidDeleter_NoPower>
+    <VoidDeleter_Status>待处理：{0} 个拆除，{1} 个挖掘目标 | 区域：{2}</VoidDeleter_Status>
 </LanguageData>
 
