@@ -118,8 +118,6 @@ namespace FullyAutomaticOmniCrafter
         private bool _repairEnabled = false; // default: do not repair any area
         public Dictionary<string, int> SharedRepairStats = new Dictionary<string, int>();
 
-        // HP restored per damaged thing per TickRare execution
-        private const int RepairPerTickRare = 5;
 
         // Minimum ticks between two repair passes (matches vanilla TickRare = 250)
         private const int TickRareInterval = 250;
@@ -195,7 +193,7 @@ namespace FullyAutomaticOmniCrafter
         private static int RepairThing(Thing thing)
         {
             int before = thing.HitPoints;
-            thing.HitPoints = Math.Min(before + RepairPerTickRare, thing.MaxHitPoints);
+            thing.HitPoints = thing.MaxHitPoints;
             return thing.HitPoints - before;
         }
 
