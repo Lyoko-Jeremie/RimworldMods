@@ -27,6 +27,26 @@ namespace FullyAutomaticOmniCrafter
             Map.GetComponent<RepairTrackerMapComponent>()?.TryDoRepair(Map);
         }
 
+        public override string GetInspectString()
+        {
+            var sb = new System.Text.StringBuilder();
+            string baseStr = base.GetInspectString();
+            if (!baseStr.NullOrEmpty()) sb.Append(baseStr);
+            var tracker = Map?.GetComponent<RepairTrackerMapComponent>();
+            if (tracker != null)
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                if (!tracker.RepairEnabled)
+                    sb.Append("UltimateAutoRepair_InspectDisabled".Translate());
+                else
+                {
+                    string areaName = tracker.SharedTargetArea?.Label ?? (string)"UltimateAutoRepair_AnyArea".Translate();
+                    sb.Append("UltimateAutoRepair_InspectEnabled".Translate(areaName));
+                }
+            }
+            return sb.ToString();
+        }
+
         public override void DrawExtraSelectionOverlays()
         {
             base.DrawExtraSelectionOverlays();
@@ -45,13 +65,23 @@ namespace FullyAutomaticOmniCrafter
             var tracker = Map?.GetComponent<RepairTrackerMapComponent>();
             if (tracker == null) yield break;
 
+            // ── Gizmo 0: toggle repair enabled ───────────────────────────────────
+            yield return new Command_Toggle
+            {
+                defaultLabel = "UltimateAutoRepair_Toggle".Translate(),
+                defaultDesc = "UltimateAutoRepair_ToggleDesc".Translate(),
+                icon = UltimateAutoRepairTex.IconToggle,
+                isActive = () => tracker.RepairEnabled,
+                toggleAction = () => tracker.RepairEnabled = !tracker.RepairEnabled
+            };
+
             // ── Gizmo 1: select target area ──────────────────────────────────
             string currentAreaLabel = tracker.RepairEnabled
                 ? (tracker.SharedTargetArea?.Label ?? (string)"UltimateAutoRepair_AnyArea".Translate())
                 : (string)"UltimateAutoRepair_None".Translate();
             yield return new Command_Action
             {
-                defaultLabel = "UltimateAutoRepair_SelectArea".Translate(),
+                defaultLabel = "UltimateAutoRepair_SelectArea".Translate() + ": " + currentAreaLabel,
                 defaultDesc = "UltimateAutoRepair_SelectAreaDesc".Translate(currentAreaLabel),
                 icon = UltimateAutoRepairTex.IconSelectArea,
                 action = delegate
@@ -103,6 +133,10 @@ namespace FullyAutomaticOmniCrafter
     {
         public static readonly Texture2D IconSelectArea =
             ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_SelectArea", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconToggle =
+            ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_Toggle", false)
             ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconViewStats =

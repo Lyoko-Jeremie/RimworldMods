@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <!-- UltimateAutoRepair Gizmos -->
+    <UltimateAutoRepair_Toggle>Auto Repair</UltimateAutoRepair_Toggle>
+    <UltimateAutoRepair_ToggleDesc>Enable or disable automatic repair for all stations on this map.</UltimateAutoRepair_ToggleDesc>
+    <UltimateAutoRepair_InspectEnabled>Auto repair: ON ({0})</UltimateAutoRepair_InspectEnabled>
+    <UltimateAutoRepair_InspectDisabled>Auto repair: OFF</UltimateAutoRepair_InspectDisabled>
     <UltimateAutoRepair_SelectArea>Select Repair Area</UltimateAutoRepair_SelectArea>
     <UltimateAutoRepair_SelectAreaDesc>Click to choose which allowed area this station monitors for repairs (current: {0}). All Auto Repair Stations on the same map share this setting.</UltimateAutoRepair_SelectAreaDesc>
     <UltimateAutoRepair_AnyArea>Entire Map</UltimateAutoRepair_AnyArea>

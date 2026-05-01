@@ -1,6 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <!-- UltimateAutoRepair Gizmos -->
+    <!-- UltimateAutoRepair Toggle / Inspect -->
+    <UltimateAutoRepair_Toggle>自动修复</UltimateAutoRepair_Toggle>
+    <UltimateAutoRepair_ToggleDesc>启用或禁用此地图上所有自动修复站的自动修复功能。</UltimateAutoRepair_ToggleDesc>
+    <UltimateAutoRepair_InspectEnabled>自动修复：开启（{0}）</UltimateAutoRepair_InspectEnabled>
+    <UltimateAutoRepair_InspectDisabled>自动修复：关闭</UltimateAutoRepair_InspectDisabled>
     <UltimateAutoRepair_SelectArea>选择修复区域</UltimateAutoRepair_SelectArea>
     <UltimateAutoRepair_SelectAreaDesc>点击选择此机器监控并修复的活动区范围（当前：{0}）。同一地图上所有自动修复站共用此设置。</UltimateAutoRepair_SelectAreaDesc>
     <UltimateAutoRepair_AnyArea>全图</UltimateAutoRepair_AnyArea>
