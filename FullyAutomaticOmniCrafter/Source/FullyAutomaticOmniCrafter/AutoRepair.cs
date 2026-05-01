@@ -27,6 +27,16 @@ namespace FullyAutomaticOmniCrafter
             Map.GetComponent<RepairTrackerMapComponent>()?.TryDoRepair(Map);
         }
 
+        public override void DrawExtraSelectionOverlays()
+        {
+            base.DrawExtraSelectionOverlays();
+            var tracker = Map?.GetComponent<RepairTrackerMapComponent>();
+            if (tracker == null || !tracker.RepairEnabled) return;
+
+            // 若设定了目标区域，则高亮显示该区域
+            tracker.SharedTargetArea?.MarkForDraw();
+        }
+
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (Gizmo g in base.GetGizmos())
