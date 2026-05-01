@@ -3,7 +3,8 @@
 
   <Operation Class="PatchOperationFindMod">
     <mods>
-      <li>Rimatomics</li>
+<!--      <name>Dubs Rimatomics</name>-->
+      <li>Dubs Rimatomics</li>
     </mods>
     <match Class="PatchOperationSequence">
       <operations>
