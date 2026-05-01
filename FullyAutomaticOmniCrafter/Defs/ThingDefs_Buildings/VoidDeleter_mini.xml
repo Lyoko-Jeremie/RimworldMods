@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
     <ThingDef ParentName="BuildingBase">
-        <defName>UltimateAutoRepair</defName>
-        <label>Ultimate Auto Repair Station</label>
+        <defName>VoidDeleter_mini</defName>
+        <label>Void Deleter mini</label>
         <description>description</description>
-        <thingClass>FullyAutomaticOmniCrafter.Building_UltimateAutoRepair</thingClass>
+        <thingClass>FullyAutomaticOmniCrafter.Building_VoidDeleter</thingClass>
         <graphicData>
-            <texPath>Things/Building/Production/UltimateAutoRepair</texPath>
+            <texPath>Things/Building/Production/VoidDeleter</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(3,3)</drawSize>
+            <drawSize>(1,1)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <altitudeLayer>Building</altitudeLayer>
@@ -19,9 +19,10 @@
         <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
-        <size>(3,3)</size>
+        <size>(1,1)</size>
         <costList>
-            <Steel>150</Steel>
+            <Steel>200</Steel>
+<!--            <ComponentSpacer>4</ComponentSpacer>-->
         </costList>
         <minifiedDef>MinifiedThing</minifiedDef>
         <thingCategories>
@@ -29,7 +30,7 @@
         </thingCategories>
         <statBases>
             <Mass>50</Mass>
-            <MaxHitPoints>999999999</MaxHitPoints>
+            <MaxHitPoints>1</MaxHitPoints>
         </statBases>
         <tickerType>Rare</tickerType>
         <building>
@@ -39,7 +40,7 @@
             <li Class="CompProperties_Flickable"/>
             <li Class="CompProperties_Power">
                 <compClass>CompPowerTrader</compClass>
-                <basePowerConsumption>200</basePowerConsumption>
+                <basePowerConsumption>500</basePowerConsumption>
                 <shortCircuitInRain>false</shortCircuitInRain>
             </li>
             <li Class="CompProperties_Breakdownable"/>
@@ -49,7 +50,10 @@
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
         <rotatable>false</rotatable>
-        <uiIconPath>Things/Building/Production/UltimateAutoRepair</uiIconPath>
+        <uiIconPath>Things/Building/Production/VoidDeleter</uiIconPath>
+<!--        <researchPrerequisites>-->
+<!--            <li>Spacer</li>-->
+<!--        </researchPrerequisites>-->
     </ThingDef>
 </Defs>
 

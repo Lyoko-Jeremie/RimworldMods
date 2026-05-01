@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
+    
     <VoidDeleter.label>虚空删除器</VoidDeleter.label>
     <VoidDeleter.description>一台超凡科技级空间拆解装置。激活后，可立即拆除指定区域内所有被标记要拆除的建筑和物体，并以100%产出率挖掘所有被标记要挖掘的矿产。拆除与挖掘产物将由本机收集，并就近放置在地面或直接送入最近的合适存储区。</VoidDeleter.description>
+    
+    <VoidDeleter_mini.label>虚空删除器 便携型</VoidDeleter_mini.label>
+    <VoidDeleter_mini.description>一台超凡科技级空间拆解装置。激活后，可立即拆除指定区域内所有被标记要拆除的建筑和物体，并以100%产出率挖掘所有被标记要挖掘的矿产。拆除与挖掘产物将由本机收集，并就近放置在地面或直接送入最近的合适存储区。</VoidDeleter_mini.description>
+    
 </LanguageData>
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    
+    <VoidDeleter.label>Void Deleter</VoidDeleter.label>
+    <VoidDeleter.description>An archotech-grade spatial disassembler. When active, it instantly demolishes all buildings and objects marked for deconstruction within the selected area, and mines all ores marked for extraction — achieving 100% resource yield. Products are collected by the device and deposited either nearby or directly into the nearest suitable storage zone.</VoidDeleter.description>
+    
+    <VoidDeleter_mini.label>Void Deleter (Portable)</VoidDeleter_mini.label>
+    <VoidDeleter_mini.description>An archotech-grade spatial disassembler. When active, it instantly demolishes all buildings and objects marked for deconstruction within the selected area, and mines all ores marked for extraction — achieving 100% resource yield. Products are collected by the device and deposited either nearby or directly into the nearest suitable storage zone.</VoidDeleter_mini.description>
+    
+</LanguageData>
+

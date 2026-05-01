@@ -16,8 +16,8 @@
     <ThingDef ParentName="BuildingBase">
 
         <!-- ── 基础标识 ────────────────────────────────────────────────── -->
-        <defName>RealityWeaver</defName>
-        <label>Reality Weaver</label>
+        <defName>RealityWeaver_mini</defName>
+        <label>Reality Weaver mini</label>
         <description>description</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_RealityWeaver</thingClass>
 
@@ -25,13 +25,13 @@
         <graphicData>
             <texPath>Things/Building/Production/RealityWeaver</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(3,3)</drawSize>
+            <drawSize>(1,1)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <uiIconPath>Things/Building/Production/RealityWeaver</uiIconPath>
 
         <!-- ── 布局 ───────────────────────────────────────────────────── -->
-        <size>(3,3)</size>
+        <size>(1,1)</size>
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>14</pathCost>
@@ -44,7 +44,7 @@
 
         <!-- ── 属性基础值 ─────────────────────────────────────────────── -->
         <statBases>
-            <MaxHitPoints>999999999</MaxHitPoints>
+            <MaxHitPoints>1</MaxHitPoints>
             <Mass>50</Mass>
         </statBases>
 

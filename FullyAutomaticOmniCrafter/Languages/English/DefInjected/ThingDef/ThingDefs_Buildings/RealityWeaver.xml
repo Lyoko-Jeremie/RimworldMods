@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
+    
     <RealityWeaver.label>Reality Weaver</RealityWeaver.label>
     <RealityWeaver.description>An archotech construction device that instantly materializes building blueprints and construction frames within a designated area. It consumes power proportional to the total work required to build each structure (1 Wd per 1 work unit). Energy is drained from Matter-Energy Converter batteries first, then Omni Crafter infinite batteries, and finally standard batteries. Has zero performance impact when unpowered or disabled.</RealityWeaver.description>
+    
+    <RealityWeaver.label>Reality Weaver (Protable)</RealityWeaver.label>
+    <RealityWeaver.description>An archotech construction device that instantly materializes building blueprints and construction frames within a designated area. It consumes power proportional to the total work required to build each structure (1 Wd per 1 work unit). Energy is drained from Matter-Energy Converter batteries first, then Omni Crafter infinite batteries, and finally standard batteries. Has zero performance impact when unpowered or disabled.</RealityWeaver.description>
+    
 </LanguageData>
