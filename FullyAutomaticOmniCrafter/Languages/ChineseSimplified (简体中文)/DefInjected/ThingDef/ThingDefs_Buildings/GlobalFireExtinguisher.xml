@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    
+    <GlobalFireExtinguisher.label>全域火焰抑制器</GlobalFireExtinguisher.label>
+    <GlobalFireExtinguisher.description>一台超凡科技灭火装置。利用空间折叠技术，将灭火剂瞬间传送到地图上的所有起火点。</GlobalFireExtinguisher.description>
+    
+    <GlobalFireExtinguisher_mini.label>全域火焰抑制器 便携型</GlobalFireExtinguisher_mini.label>
+    <GlobalFireExtinguisher_mini.description>一台超凡科技灭火装置，将灭火剂瞬间传送到地图上的所有起火点。</GlobalFireExtinguisher_mini.description>
+    
+</LanguageData>
+

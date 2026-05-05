@@ -365,6 +365,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRepair.cs" />
+    <Compile Include="GlobalFireExtinguisher.cs" />
     <Compile Include="RealityWeaver.cs" />
     <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />

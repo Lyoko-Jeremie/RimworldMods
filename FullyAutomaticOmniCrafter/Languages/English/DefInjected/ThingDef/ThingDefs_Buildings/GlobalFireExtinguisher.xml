@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    
+    <GlobalFireExtinguisher.label>Global Fire Extinguisher</GlobalFireExtinguisher.label>
+    <GlobalFireExtinguisher.description>A global fire extinguisher that uses space folding technology to instantly transport fire extinguishing agents to all fire points on the map.</GlobalFireExtinguisher.description>
+    
+    <GlobalFireExtinguisher_mini.label>Global Fire Extinguisher (Portable)</GlobalFireExtinguisher_mini.label>
+    <GlobalFireExtinguisher_mini.description>A portable global fire extinguisher that uses space folding technology to instantly transport fire extinguishing agents to all fire points on the map.</GlobalFireExtinguisher_mini.description>
+    
+</LanguageData>
+
