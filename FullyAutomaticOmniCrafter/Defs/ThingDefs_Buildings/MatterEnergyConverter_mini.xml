@@ -158,7 +158,7 @@
         </comps>
 
         <!-- ── 地形要求 ───────────────────────────────────────────────── -->
-        <terrainAffordanceNeeded>Heavy</terrainAffordanceNeeded>
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
 
         <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
         <designationCategory>Production</designationCategory>
