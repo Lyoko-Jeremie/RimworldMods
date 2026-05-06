@@ -70,9 +70,27 @@ namespace FullyAutomaticOmniCrafter
             }
 
             AssetBundle bundle = null;
+            bool bundleWasPreloaded = false;
             try
             {
-                bundle = AssetBundle.LoadFromFile(bundlePath);
+                // 优先检查 Unity 是否已预加载了该 AssetBundle（RimWorld 会在启动时加载 AssetBundles 文件夹中的内容）
+                string bundleNameWithoutExt = Path.GetFileNameWithoutExtension(BundleFileName);
+                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                {
+                    if (loaded != null && string.Equals(loaded.name, bundleNameWithoutExt, StringComparison.OrdinalIgnoreCase))
+                    {
+                        bundle = loaded;
+                        bundleWasPreloaded = true;
+                        break;
+                    }
+                }
+
+                // 若未找到预加载版本，则从文件加载
+                if (bundle == null)
+                {
+                    bundle = AssetBundle.LoadFromFile(bundlePath);
+                }
+
                 if (bundle == null)
                 {
                     if (!bundleLoadFailedLogged)
@@ -115,7 +133,8 @@ namespace FullyAutomaticOmniCrafter
             }
             finally
             {
-                if (bundle != null)
+                // 只卸载由我们自己加载的 bundle；预加载的 bundle 由 RimWorld 统一管理，不能卸载
+                if (bundle != null && !bundleWasPreloaded)
                 {
                     bundle.Unload(false);
                 }
