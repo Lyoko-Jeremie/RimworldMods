@@ -6,7 +6,7 @@
         <description>Get Anything From Nothing! \n\n Archotech Technology! Boys!</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniCrafter</thingClass>
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter</texPath>
+            <texPath>Things/Building/Production/OmniCrafter2</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(5,5)</drawSize>
             <shaderType>CutoutComplex</shaderType>
@@ -58,6 +58,14 @@
             <!--                <basePowerConsumption>1000</basePowerConsumption>-->
             <!--                <shortCircuitInRain>false</shortCircuitInRain>-->
             <!--            </li>-->
+
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_BreathingLight">
+                <texPath>Things/Building/Production/OmniCrafter2l</texPath>
+                <color>(105.65, 225.9, 243.25)</color>
+                <speed>5.0</speed>
+                <minAlpha>0.1</minAlpha>
+                <maxAlpha>1.0</maxAlpha>
+            </li>
         </comps>
         <!--        <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
         <!--        <hasInteractionCell>true</hasInteractionCell>-->
@@ -69,6 +77,6 @@
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
         <rotatable>false</rotatable>
-        <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
+        <uiIconPath>Things/Building/Production/OmniCrafter2</uiIconPath>
     </ThingDef>
 </Defs>
