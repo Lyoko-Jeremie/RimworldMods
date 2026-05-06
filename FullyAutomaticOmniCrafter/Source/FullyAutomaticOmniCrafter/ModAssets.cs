@@ -1,52 +1,140 @@
 ﻿using UnityEngine;
 using Verse;
+using System;
 using System.IO;
 
 namespace FullyAutomaticOmniCrafter
 {
-    public class ModAssets
+    public static class ModAssets
     {
-        // 全局静态变量，用于存放你的Shader
-        public static Shader BreathingLightShader;
+        private const string PackageId = "Jeremie.Fully.Automatic.OmniCrafter";
+        private const string BundleFileName = "rim_world_breathing_light_overlay.assetbundle";
+        private const string ShaderAssetName = "Custom/RimWorldBreathingLightOverlay";
 
-        static ModAssets()
+        private static Shader breathingLightShader;
+        private static bool loadAttempted;
+        private static bool missingModLogged;
+        private static bool missingBundleLogged;
+        private static bool bundleLoadFailedLogged;
+        private static bool missingShaderLogged;
+
+        // 全局静态属性，用于按需加载 Shader
+        public static Shader BreathingLightShader
         {
-            // 1. 找到当前Mod的根目录 (替换 "YourName.YourMod" 为你 About.xml 里的 packageId)
-            ModContentPack myMod =
-                LoadedModManager.RunningModsListForReading.FirstOrDefault(m =>
-                    m.PackageId == "Jeremie.Fully.Automatic.OmniCrafter");
-
-            if (myMod != null)
+            get
             {
-                // 2. 拼接AssetBundle的绝对路径
-                string bundlePath = Path.Combine(myMod.RootDir, "AssetBundles", "rim_world_breathing_light_overlay.assetbundle");
+                EnsureLoaded();
+                return breathingLightShader;
+            }
+        }
 
-                // 3. 读取AssetBundle
-                AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
-                if (bundle != null)
+        private static void EnsureLoaded()
+        {
+            if (loadAttempted)
+            {
+                return;
+            }
+
+            loadAttempted = true;
+
+            ModContentPack myMod = ResolveCurrentMod();
+            if (myMod == null)
+            {
+                if (!missingModLogged)
                 {
-                    // 4. 从Bundle中提取Shader
-                    // 注意：这里的名字必须是你在ShaderLab代码首行写的名字，比如 "Custom/RimWorldBreathingLight"
-                    BreathingLightShader = bundle.LoadAsset<Shader>("Custom/RimWorldBreathingLightOverlay");
+                    missingModLogged = true;
+                    Log.Warning("[FullyAutomaticOmniCrafter] Could not resolve the mod content pack for breathing-light assets. Falling back to ShaderDatabase.Transparent.");
+                }
 
-                    // 5. 卸载Bundle以释放内存，参数传false表示保留已经加载出的Shader对象
-                    bundle.Unload(false);
+                return;
+            }
 
-                    if (BreathingLightShader == null)
+            string bundlePath = Path.Combine(myMod.RootDir, "AssetBundles", BundleFileName);
+            if (!File.Exists(bundlePath))
+            {
+                if (!missingBundleLogged)
+                {
+                    missingBundleLogged = true;
+                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found: " + bundlePath);
+                }
+
+                return;
+            }
+
+            AssetBundle bundle = null;
+            try
+            {
+                bundle = AssetBundle.LoadFromFile(bundlePath);
+                if (bundle == null)
+                {
+                    if (!bundleLoadFailedLogged)
                     {
-                        Log.Error(
-                            "[FullyAutomaticOmniCrafter] Bundle loaded, but failed to find Shader 'Custom/RimWorldBreathingLightOverlay'!");
+                        bundleLoadFailedLogged = true;
+                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load AssetBundle from: " + bundlePath);
+                    }
+
+                    return;
+                }
+
+                // 从 Bundle 中提取 Shader；若命名发生变化，则退回到第一个可用 Shader。
+                breathingLightShader = bundle.LoadAsset<Shader>(ShaderAssetName);
+                if (breathingLightShader == null)
+                {
+                    Shader[] shaders = bundle.LoadAllAssets<Shader>();
+                    if (shaders != null && shaders.Length > 0)
+                    {
+                        breathingLightShader = shaders[0];
                     }
                 }
-                else
+
+                if (breathingLightShader == null && !missingShaderLogged)
                 {
-                    Log.Error("[FullyAutomaticOmniCrafter] Failed to load AssetBundle from: " + bundlePath);
+                    missingShaderLogged = true;
+                    Log.Warning("[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" + bundlePath + "'. Falling back to ShaderDatabase.Transparent.");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Log.Error("[FullyAutomaticOmniCrafter] Mod not found!");
+                if (!bundleLoadFailedLogged)
+                {
+                    bundleLoadFailedLogged = true;
+                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets: " + ex);
+                }
             }
+            finally
+            {
+                if (bundle != null)
+                {
+                    bundle.Unload(false);
+                }
+            }
+        }
+
+        private static ModContentPack ResolveCurrentMod()
+        {
+            OmniCrafterMod modInstance = OmniCrafterMod.Instance;
+            if (modInstance != null && modInstance.Content != null)
+            {
+                return modInstance.Content;
+            }
+
+            string normalizedPackageId = PackageId.ToLowerInvariant();
+            foreach (ModContentPack mod in LoadedModManager.RunningModsListForReading)
+            {
+                if (mod == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(mod.PackageId, normalizedPackageId, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(mod.PackageIdPlayerFacing, PackageId, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(mod.FolderName, "FullyAutomaticOmniCrafter", StringComparison.OrdinalIgnoreCase))
+                {
+                    return mod;
+                }
+            }
+
+            return null;
         }
     }
 }
