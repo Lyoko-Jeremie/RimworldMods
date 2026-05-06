@@ -14,6 +14,7 @@ namespace FullyAutomaticOmniCrafter
         private const string ShaderAssetName = "Custom/RimWorldBreathingLightOverlay";
 
         private static Shader breathingLightShader;
+
         // Keep the runtime-compiled Material alive so Unity doesn't destroy the shader it owns.
         private static Material runtimeShaderMaterial;
         private static bool loadAttempted;
@@ -49,7 +50,8 @@ namespace FullyAutomaticOmniCrafter
                 if (!missingModLogged)
                 {
                     missingModLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Could not resolve the mod content pack for breathing-light assets. Trying shader source file.");
+                    Log.Warning(
+                        "[FullyAutomaticOmniCrafter] Could not resolve the mod content pack for breathing-light assets. Trying shader source file.");
                 }
 
                 TryLoadShaderFromSourceFile(null);
@@ -62,7 +64,10 @@ namespace FullyAutomaticOmniCrafter
                 if (!missingBundleLogged)
                 {
                     missingBundleLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found. RootDir='" + myMod.RootDir + "'. Checked: " + string.Join(", ", GetCandidateBundlePaths(myMod.RootDir).ToArray()) + ". Trying shader source file.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found. RootDir='" +
+                                myMod.RootDir + "'. Checked: " +
+                                string.Join(", ", GetCandidateBundlePaths(myMod.RootDir).ToArray()) +
+                                ". Trying shader source file.");
                 }
 
                 TryLoadShaderFromSourceFile(myMod.RootDir);
@@ -73,22 +78,45 @@ namespace FullyAutomaticOmniCrafter
             bool bundleWasPreloaded = false;
             try
             {
+                Log.Message("[FullyAutomaticOmniCrafter] lookup breathing-light AssetBundle from AllLoadedAssetBundles.");
                 // 优先检查 Unity 是否已预加载了该 AssetBundle（RimWorld 会在启动时加载 AssetBundles 文件夹中的内容）
                 string bundleNameWithoutExt = Path.GetFileNameWithoutExtension(BundleFileName);
+                string s = "AllLoadedAssetBundles:\n";
                 foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
                 {
-                    if (loaded != null && string.Equals(loaded.name, bundleNameWithoutExt, StringComparison.OrdinalIgnoreCase))
+                    s += loaded.name + "\n";
+                    if (loaded != null
+                        && (
+                            string.Equals(loaded.name, bundleNameWithoutExt, StringComparison.OrdinalIgnoreCase)
+                            ||
+                            string.Equals(loaded.name, BundleFileName, StringComparison.OrdinalIgnoreCase)
+                        )
+                       )
                     {
                         bundle = loaded;
                         bundleWasPreloaded = true;
+                        Log.Message("[FullyAutomaticOmniCrafter] Found preloaded AssetBundle '" + bundleNameWithoutExt +
+                                    "'.");
                         break;
                     }
                 }
+                Log.Message(s);
 
                 // 若未找到预加载版本，则从文件加载
                 if (bundle == null)
                 {
+                    Log.Message("[FullyAutomaticOmniCrafter] Loading AssetBundle from file '" + bundlePath + "'.");
                     bundle = AssetBundle.LoadFromFile(bundlePath);
+                    if (bundle != null)
+                    {
+                        Log.Message("[FullyAutomaticOmniCrafter] Loaded AssetBundle '" + bundleNameWithoutExt +
+                                    "' from file '" + bundlePath + "'.");
+                    }
+                    else
+                    {
+                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load AssetBundle from file '" + bundlePath +
+                                    "'.");
+                    }
                 }
 
                 if (bundle == null)
@@ -96,7 +124,9 @@ namespace FullyAutomaticOmniCrafter
                     if (!bundleLoadFailedLogged)
                     {
                         bundleLoadFailedLogged = true;
-                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load breathing-light AssetBundle from '" + bundlePath + "'. The file exists but Unity refused to load it (likely Unity-version/platform/compression mismatch). Trying shader source file.");
+                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load breathing-light AssetBundle from '" +
+                                    bundlePath +
+                                    "'. The file exists but Unity refused to load it (likely Unity-version/platform/compression mismatch). Trying shader source file.");
                     }
 
                     TryLoadShaderFromSourceFile(myMod.RootDir);
@@ -117,7 +147,10 @@ namespace FullyAutomaticOmniCrafter
                 if (breathingLightShader == null && !missingShaderLogged)
                 {
                     missingShaderLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" + bundlePath + "'. Asset names: " + string.Join(", ", bundle.GetAllAssetNames()) + ". Trying shader source file.");
+                    Log.Warning(
+                        "[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" +
+                        bundlePath + "'. Asset names: " + string.Join(", ", bundle.GetAllAssetNames()) +
+                        ". Trying shader source file.");
                     TryLoadShaderFromSourceFile(myMod.RootDir);
                 }
             }
@@ -126,7 +159,8 @@ namespace FullyAutomaticOmniCrafter
                 if (!bundleLoadFailedLogged)
                 {
                     bundleLoadFailedLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets from '" + bundlePath + "': " + ex + " Trying shader source file.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets from '" +
+                                bundlePath + "': " + ex + " Trying shader source file.");
                 }
 
                 TryLoadShaderFromSourceFile(myMod.RootDir);
@@ -175,7 +209,8 @@ namespace FullyAutomaticOmniCrafter
                     string searched = rootDir != null
                         ? string.Join(", ", GetCandidateShaderSourcePaths(rootDir).ToArray())
                         : "<rootDir unknown>";
-                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light shader source file not found. Searched: " + searched + ". Falling back to code-driven transparent overlay animation.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light shader source file not found. Searched: " +
+                                searched + ". Falling back to code-driven transparent overlay animation.");
                 }
 
                 return;
@@ -191,7 +226,9 @@ namespace FullyAutomaticOmniCrafter
                 if (!embeddedShaderFailedLogged)
                 {
                     embeddedShaderFailedLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to read breathing-light shader source from '" + shaderFilePath + "': " + ex.Message + ". Falling back to code-driven transparent overlay animation.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to read breathing-light shader source from '" +
+                                shaderFilePath + "': " + ex.Message +
+                                ". Falling back to code-driven transparent overlay animation.");
                 }
 
                 return;
@@ -211,14 +248,16 @@ namespace FullyAutomaticOmniCrafter
                     // destroy the Material (and the shader it owns) during scene transitions.
                     runtimeShaderMaterial = mat;
                     UnityEngine.Object.DontDestroyOnLoad(runtimeShaderMaterial);
-                    Log.Message("[FullyAutomaticOmniCrafter] Breathing-light shader compiled from source file '" + shaderFilePath + "'.");
+                    Log.Message("[FullyAutomaticOmniCrafter] Breathing-light shader compiled from source file '" +
+                                shaderFilePath + "'.");
                 }
                 else
                 {
                     if (!embeddedShaderFailedLogged)
                     {
                         embeddedShaderFailedLogged = true;
-                        Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light shader from '" + shaderFilePath + "' is not supported on this platform. Falling back to code-driven transparent overlay animation.");
+                        Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light shader from '" + shaderFilePath +
+                                    "' is not supported on this platform. Falling back to code-driven transparent overlay animation.");
                     }
                 }
             }
@@ -227,7 +266,9 @@ namespace FullyAutomaticOmniCrafter
                 if (!embeddedShaderFailedLogged)
                 {
                     embeddedShaderFailedLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to compile breathing-light shader from '" + shaderFilePath + "': " + ex.Message + ". Falling back to code-driven transparent overlay animation.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to compile breathing-light shader from '" +
+                                shaderFilePath + "': " + ex.Message +
+                                ". Falling back to code-driven transparent overlay animation.");
                 }
             }
         }
@@ -261,7 +302,10 @@ namespace FullyAutomaticOmniCrafter
                     AddCandidate(current?.FullName);
                 }
             }
-            catch { /* best-effort path enumeration */ }
+            catch
+            {
+                /* best-effort path enumeration */
+            }
 
             return result;
         }
@@ -312,7 +356,9 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (!missingBundleLogged)
                 {
-                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to enumerate breathing-light AssetBundle search paths from RootDir='" + rootDir + "': " + ex);
+                    Log.Warning(
+                        "[FullyAutomaticOmniCrafter] Failed to enumerate breathing-light AssetBundle search paths from RootDir='" +
+                        rootDir + "': " + ex);
                 }
             }
 
@@ -347,4 +393,3 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 }
-
