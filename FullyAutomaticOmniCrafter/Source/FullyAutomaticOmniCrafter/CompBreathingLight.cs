@@ -35,11 +35,17 @@ namespace FullyAutomaticOmniCrafter
     // ========================================================
     public class CompBreathingLight : ThingComp
     {
+        private static readonly int SpeedPropertyId = Shader.PropertyToID("_Speed");
+        private static readonly int MinAlphaPropertyId = Shader.PropertyToID("_MinAlpha");
+        private static readonly int MaxAlphaPropertyId = Shader.PropertyToID("_MaxAlpha");
+        private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
+
         // 方便获取关联的 XML 属性
         public CompProperties_BreathingLight Props => (CompProperties_BreathingLight)props;
 
         // 缓存贴图数据
         private Graphic overlayGraphic;
+        private bool useShaderDrivenAnimation;
 
         // 核心性能优化：全局唯一的属性块，避免每帧产生 GC 垃圾
         private static MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
@@ -57,9 +63,11 @@ namespace FullyAutomaticOmniCrafter
                     return;
                 }
 
-                // 获取我们加载的 Shader（如果没加载成功，为了防崩溃退回到普通透明材质）
-                // 前提是你之前写了 ModAssets.BreathingLightShader 的静态加载类
-                Shader shader = ModAssets.BreathingLightShader ?? ShaderDatabase.Transparent;
+                // 优先使用 AssetBundle 中的自定义 Shader；若加载失败，则退回到普通透明材质，
+                // 并在 PostDraw 中通过代码驱动透明度实现呼吸灯效果。
+                Shader customShader = ModAssets.BreathingLightShader;
+                useShaderDrivenAnimation = customShader != null;
+                Shader shader = customShader ?? ShaderDatabase.Transparent;
 
                 // 初始化图层 Graphic
                 overlayGraphic = GraphicDatabase.Get<Graphic_Single>(
@@ -85,9 +93,16 @@ namespace FullyAutomaticOmniCrafter
             matPropertyBlock.Clear();
 
             // 这里的字符串 "_Speed" 必须与你 ShaderLab 里的 Properties 名字一模一样
-            matPropertyBlock.SetFloat("_Speed", Props.speed);
-            matPropertyBlock.SetFloat("_MinAlpha", Props.minAlpha);
-            matPropertyBlock.SetFloat("_MaxAlpha", Props.maxAlpha);
+            matPropertyBlock.SetFloat(SpeedPropertyId, Props.speed);
+            matPropertyBlock.SetFloat(MinAlphaPropertyId, Props.minAlpha);
+            matPropertyBlock.SetFloat(MaxAlphaPropertyId, Props.maxAlpha);
+
+            if (!useShaderDrivenAnimation)
+            {
+                Color color = Props.color;
+                color.a *= GetFallbackAlpha();
+                matPropertyBlock.SetColor(ColorPropertyId, color);
+            }
 
             // 3. 构造旋转和缩放矩阵 (跟随建筑本体的旋转和大小)
             Matrix4x4 matrix = Matrix4x4.TRS(
@@ -106,6 +121,33 @@ namespace FullyAutomaticOmniCrafter
                 0,
                 matPropertyBlock
             );
+        }
+
+        private float GetFallbackAlpha()
+        {
+            float minAlpha = Mathf.Clamp01(Props.minAlpha);
+            float maxAlpha = Mathf.Clamp01(Props.maxAlpha);
+            if (maxAlpha < minAlpha)
+            {
+                float temp = minAlpha;
+                minAlpha = maxAlpha;
+                maxAlpha = temp;
+            }
+
+            if (Mathf.Approximately(minAlpha, maxAlpha))
+            {
+                return minAlpha;
+            }
+
+            float speed = Mathf.Max(Props.speed, 0f);
+            if (speed <= 0.0001f)
+            {
+                return maxAlpha;
+            }
+
+            float phaseOffset = parent != null ? parent.thingIDNumber * 0.137f : 0f;
+            float wave = (Mathf.Sin((Time.realtimeSinceStartup * speed) + phaseOffset) + 1f) * 0.5f;
+            return Mathf.Lerp(minAlpha, maxAlpha, wave);
         }
     }
 }

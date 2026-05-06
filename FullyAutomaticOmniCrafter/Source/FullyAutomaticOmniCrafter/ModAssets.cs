@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using Verse;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace FullyAutomaticOmniCrafter
@@ -49,13 +50,13 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            string bundlePath = Path.Combine(myMod.RootDir, "AssetBundles", BundleFileName);
-            if (!File.Exists(bundlePath))
+            string bundlePath = ResolveBundlePath(myMod);
+            if (string.IsNullOrEmpty(bundlePath))
             {
                 if (!missingBundleLogged)
                 {
                     missingBundleLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found: " + bundlePath);
+                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found. RootDir='" + myMod.RootDir + "'. Checked: " + string.Join(", ", GetCandidateBundlePaths(myMod.RootDir).ToArray()) + ". Falling back to code-driven transparent overlay animation.");
                 }
 
                 return;
@@ -70,7 +71,7 @@ namespace FullyAutomaticOmniCrafter
                     if (!bundleLoadFailedLogged)
                     {
                         bundleLoadFailedLogged = true;
-                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load AssetBundle from: " + bundlePath);
+                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load breathing-light AssetBundle from '" + bundlePath + "'. The file exists but Unity refused to load it (likely Unity-version/platform/compression mismatch). Falling back to code-driven transparent overlay animation.");
                     }
 
                     return;
@@ -90,7 +91,7 @@ namespace FullyAutomaticOmniCrafter
                 if (breathingLightShader == null && !missingShaderLogged)
                 {
                     missingShaderLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" + bundlePath + "'. Falling back to ShaderDatabase.Transparent.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" + bundlePath + "'. Asset names: " + string.Join(", ", bundle.GetAllAssetNames()) + ". Falling back to code-driven transparent overlay animation.");
                 }
             }
             catch (Exception ex)
@@ -98,7 +99,7 @@ namespace FullyAutomaticOmniCrafter
                 if (!bundleLoadFailedLogged)
                 {
                     bundleLoadFailedLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets: " + ex);
+                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets from '" + bundlePath + "': " + ex + " Falling back to code-driven transparent overlay animation.");
                 }
             }
             finally
@@ -108,6 +109,59 @@ namespace FullyAutomaticOmniCrafter
                     bundle.Unload(false);
                 }
             }
+        }
+
+        private static string ResolveBundlePath(ModContentPack myMod)
+        {
+            foreach (string candidatePath in GetCandidateBundlePaths(myMod.RootDir))
+            {
+                if (File.Exists(candidatePath))
+                {
+                    return candidatePath;
+                }
+            }
+
+            return null;
+        }
+
+        private static List<string> GetCandidateBundlePaths(string rootDir)
+        {
+            List<string> result = new List<string>();
+
+            void AddCandidate(string baseDir)
+            {
+                if (string.IsNullOrEmpty(baseDir))
+                {
+                    return;
+                }
+
+                string candidatePath = Path.Combine(baseDir, "AssetBundles", BundleFileName);
+                if (!result.Contains(candidatePath))
+                {
+                    result.Add(candidatePath);
+                }
+            }
+
+            AddCandidate(rootDir);
+
+            try
+            {
+                DirectoryInfo current = string.IsNullOrEmpty(rootDir) ? null : new DirectoryInfo(rootDir);
+                for (int i = 0; i < 2 && current != null; i++)
+                {
+                    current = current.Parent;
+                    AddCandidate(current?.FullName);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!missingBundleLogged)
+                {
+                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to enumerate breathing-light AssetBundle search paths from RootDir='" + rootDir + "': " + ex);
+                }
+            }
+
+            return result;
         }
 
         private static ModContentPack ResolveCurrentMod()
