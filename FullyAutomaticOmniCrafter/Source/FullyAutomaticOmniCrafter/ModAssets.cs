@@ -115,7 +115,29 @@ namespace FullyAutomaticOmniCrafter
                     else
                     {
                         Log.Warning("[FullyAutomaticOmniCrafter] Failed to load AssetBundle from file '" + bundlePath +
-                                    "'.");
+                                    "'. Trying LoadFromMemory as fallback.");
+
+                        // 备选加载方法：先将文件读入内存，再通过 LoadFromMemory 加载
+                        try
+                        {
+                            byte[] data = File.ReadAllBytes(bundlePath);
+                            Log.Message("[FullyAutomaticOmniCrafter] 读取到字节长度: " + data.Length);
+                            bundle = AssetBundle.LoadFromMemory(data);
+                            if (bundle != null)
+                            {
+                                Log.Message("[FullyAutomaticOmniCrafter] Loaded AssetBundle '" + bundleNameWithoutExt +
+                                            "' from memory (fallback).");
+                            }
+                            else
+                            {
+                                Log.Warning("[FullyAutomaticOmniCrafter] LoadFromMemory also failed for '" + bundlePath + "'.");
+                            }
+                        }
+                        catch (Exception exMem)
+                        {
+                            Log.Warning("[FullyAutomaticOmniCrafter] Exception during LoadFromMemory fallback for '" +
+                                        bundlePath + "': " + exMem.Message);
+                        }
                     }
                 }
 
