@@ -41,7 +41,19 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!_validCats.Contains(node.catDef)) return;
 
-            bool hasChildren = node.catDef.childCategories.Any(c => _validCats.Contains(c));
+            bool hasChildren = false;
+            List<ThingCategoryDef> childCategories = node.catDef.childCategories;
+            if (childCategories != null)
+            {
+                for (int i = 0; i < childCategories.Count; i++)
+                {
+                    if (_validCats.Contains(childCategories[i]))
+                    {
+                        hasChildren = true;
+                        break;
+                    }
+                }
+            }
             bool onScreen = curY + lineHeight >= _visibleRect.yMin && curY <= _visibleRect.yMax;
 
             if (onScreen)
@@ -1090,7 +1102,15 @@ namespace FullyAutomaticOmniCrafter
             }
             else
             {
-                bool hasOrder = building.autoOrders.Any(o => o.thingDef == selectedDef);
+                bool hasOrder = false;
+                for (int i = 0; i < building.autoOrders.Count; i++)
+                {
+                    if (building.autoOrders[i].thingDef == selectedDef)
+                    {
+                        hasOrder = true;
+                        break;
+                    }
+                }
                 if (hasOrder)
                 {
                     if (Widgets.ButtonText(new Rect(0f, y, viewW, 32f), "OmniCrafter_RemoveAutoOrder".Translate()))

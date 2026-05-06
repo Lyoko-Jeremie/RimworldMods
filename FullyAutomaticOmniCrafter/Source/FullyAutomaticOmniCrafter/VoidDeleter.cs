@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -16,6 +15,10 @@ namespace FullyAutomaticOmniCrafter
     public class Building_VoidDeleter : Building
     {
         private CompPowerTrader _powerComp;
+
+        // Reused snapshots to avoid per-tick list allocations from LINQ ToList().
+        private readonly List<Designation> _deconstructSnapshot = new List<Designation>();
+        private readonly List<Designation> _mineSnapshot = new List<Designation>();
 
         // Per-building state
         private Area    _targetArea  = null;
@@ -61,10 +64,9 @@ namespace FullyAutomaticOmniCrafter
         private void ProcessDeconstructions()
         {
             var dm = Map.designationManager;
-            // Snapshot to avoid modifying-while-iterating
-            var desigs = dm.SpawnedDesignationsOfDef(DesignationDefOf.Deconstruct).ToList();
+            SnapshotDesignations(dm, DesignationDefOf.Deconstruct, _deconstructSnapshot);
 
-            foreach (Designation des in desigs)
+            foreach (Designation des in _deconstructSnapshot)
             {
                 try
                 {
@@ -95,13 +97,15 @@ namespace FullyAutomaticOmniCrafter
         {
             var dm = Map.designationManager;
 
-            var mineDesigs = new List<Designation>();
-            mineDesigs.AddRange(dm.SpawnedDesignationsOfDef(DesignationDefOf.Mine).ToList());
-            mineDesigs.AddRange(dm.SpawnedDesignationsOfDef(DesignationDefOf.MineVein).ToList());
+            _mineSnapshot.Clear();
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.Mine))
+                _mineSnapshot.Add(des);
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.MineVein))
+                _mineSnapshot.Add(des);
 
             var processed = new HashSet<IntVec3>();
 
-            foreach (Designation des in mineDesigs)
+            foreach (Designation des in _mineSnapshot)
             {
                 try
                 {
@@ -139,6 +143,13 @@ namespace FullyAutomaticOmniCrafter
         }
 
         // ── Helpers ────────────────────────────────────────────────────────────
+
+        private static void SnapshotDesignations(DesignationManager dm, DesignationDef def, List<Designation> buffer)
+        {
+            buffer.Clear();
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(def))
+                buffer.Add(des);
+        }
 
         /// <summary>
         /// Computes the items that would be returned by deconstructing <paramref name="thing"/>.
