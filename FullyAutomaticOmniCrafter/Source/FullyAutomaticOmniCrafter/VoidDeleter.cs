@@ -21,8 +21,8 @@ namespace FullyAutomaticOmniCrafter
         private readonly List<Designation> _mineSnapshot = new List<Designation>();
 
         // Per-building state
-        private Area    _targetArea  = null;
-        private bool    _enabled     = false;
+        private Area _targetArea = null;
+        private bool _enabled = false;
         private OutputMode _outputMode = OutputMode.DropNear;
 
         public bool IsPowered => _powerComp == null || _powerComp.PowerOn;
@@ -38,7 +38,7 @@ namespace FullyAutomaticOmniCrafter
         {
             base.ExposeData();
             Scribe_References.Look(ref _targetArea, "targetArea");
-            Scribe_Values.Look(ref _enabled,    "enabled",    false);
+            Scribe_Values.Look(ref _enabled, "enabled", false);
             Scribe_Values.Look(ref _outputMode, "outputMode", OutputMode.DropNear);
         }
 
@@ -72,7 +72,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     Thing target = des.target.Thing;
                     if (target == null || target.Destroyed || !target.Spawned) continue;
-                    if (_targetArea != null && !_targetArea[target.Position])  continue;
+                    if (_targetArea != null && !_targetArea[target.Position]) continue;
 
                     // Compute what will be returned before destroying
                     List<(ThingDef def, int count)> products = ComputeDeconstructLeavings(target);
@@ -170,6 +170,7 @@ namespace FullyAutomaticOmniCrafter
                     if (res != null && res.stackCount > 0)
                         result.Add((res.def, res.stackCount));
                 }
+
                 return result;
             }
 
@@ -187,6 +188,7 @@ namespace FullyAutomaticOmniCrafter
                 if (count > 0)
                     result.Add((cost.thingDef, count));
             }
+
             return result;
         }
 
@@ -202,7 +204,7 @@ namespace FullyAutomaticOmniCrafter
                 int remaining = total;
                 while (remaining > 0)
                 {
-                    int stackMax  = def.stackLimit > 0 ? def.stackLimit : 1;
+                    int stackMax = def.stackLimit > 0 ? def.stackLimit : 1;
                     int stackSize = Mathf.Min(remaining, stackMax);
 
                     Thing item = ThingMaker.MakeThing(def);
@@ -279,11 +281,13 @@ namespace FullyAutomaticOmniCrafter
                 IntVec3 cell = des.target.Cell;
                 if (_targetArea == null || _targetArea[cell]) mineCells.Add(cell);
             }
+
             foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.MineVein))
             {
                 IntVec3 cell = des.target.Cell;
                 if (_targetArea == null || _targetArea[cell]) mineCells.Add(cell);
             }
+
             mineCount = mineCells.Count;
 
             string areaLabel = _targetArea?.Label ?? (string)"VoidDeleter_AnyArea".Translate();
@@ -303,9 +307,9 @@ namespace FullyAutomaticOmniCrafter
             yield return new Command_Toggle
             {
                 defaultLabel = "VoidDeleter_Toggle".Translate(),
-                defaultDesc  = "VoidDeleter_ToggleDesc".Translate(),
-                icon         = VoidDeleterTex.IconToggle,
-                isActive     = () => _enabled,
+                defaultDesc = "VoidDeleter_ToggleDesc".Translate(),
+                icon = VoidDeleterTex.IconToggle,
+                isActive = () => _enabled,
                 toggleAction = () => _enabled = !_enabled
             };
 
@@ -317,20 +321,20 @@ namespace FullyAutomaticOmniCrafter
             yield return new Command_Action
             {
                 defaultLabel = "VoidDeleter_SelectArea".Translate() + ": " + curAreaLabel,
-                defaultDesc  = "VoidDeleter_SelectAreaDesc".Translate(curAreaLabel),
-                icon         = VoidDeleterTex.IconSelectArea,
-                action       = () =>
+                defaultDesc = "VoidDeleter_SelectAreaDesc".Translate(curAreaLabel),
+                icon = VoidDeleterTex.IconSelectArea,
+                action = () =>
                 {
                     var opts = new List<FloatMenuOption>();
 
                     opts.Add(new FloatMenuOption("VoidDeleter_Disabled".Translate(), () =>
                     {
-                        _enabled    = false;
+                        _enabled = false;
                         _targetArea = null;
                     }));
                     opts.Add(new FloatMenuOption("VoidDeleter_AnyArea".Translate(), () =>
                     {
-                        _enabled    = true;
+                        _enabled = true;
                         _targetArea = null;
                     }));
 
@@ -339,7 +343,7 @@ namespace FullyAutomaticOmniCrafter
                         Area captured = area;
                         opts.Add(new FloatMenuOption(area.Label, () =>
                         {
-                            _enabled    = true;
+                            _enabled = true;
                             _targetArea = captured;
                         }));
                     }
@@ -356,9 +360,11 @@ namespace FullyAutomaticOmniCrafter
             yield return new Command_Action
             {
                 defaultLabel = "VoidDeleter_OutputMode".Translate(modeName),
-                defaultDesc  = "VoidDeleter_OutputModeDesc".Translate(modeName),
-                icon         = VoidDeleterTex.IconOutputMode,
-                action       = () =>
+                defaultDesc = "VoidDeleter_OutputModeDesc".Translate(modeName),
+                icon = _outputMode == OutputMode.DropNear
+                    ? VoidDeleterTex.IconOutputModeNearly
+                    : VoidDeleterTex.IconOutputModeStorage,
+                action = () =>
                 {
                     _outputMode = _outputMode == OutputMode.DropNear
                         ? OutputMode.SendToStorage
@@ -381,8 +387,12 @@ namespace FullyAutomaticOmniCrafter
             ?? ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_SelectArea", false)
             ?? BaseContent.WhiteTex;
 
-        public static readonly Texture2D IconOutputMode =
-            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_OutputMode", false)
+        public static readonly Texture2D IconOutputModeNearly =
+            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_OutputMode_Nearly", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconOutputModeStorage =
+            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_OutputMode_Storage", false)
             ?? BaseContent.WhiteTex;
     }
 }
