@@ -10,62 +10,8 @@ namespace FullyAutomaticOmniCrafter
     {
         private const string PackageId = "Jeremie.Fully.Automatic.OmniCrafter";
         private const string BundleFileName = "rim_world_breathing_light_overlay.assetbundle";
+        private const string ShaderSourceFileName = "RimWorldBreathingLightOverlay.shader";
         private const string ShaderAssetName = "Custom/RimWorldBreathingLightOverlay";
-
-        // Embedded ShaderLab source compiled at runtime when the AssetBundle cannot be loaded
-        // (e.g. Unity-version / compression mismatch). This avoids any AssetBundle dependency.
-        private const string EmbeddedShaderSource = @"
-Shader ""Custom/RimWorldBreathingLightOverlay"" {
-    SubShader {
-        Tags { ""Queue""=""Transparent"" ""RenderType""=""Transparent"" ""IgnoreProjector""=""True"" }
-        ZWrite Off
-        Blend SrcAlpha OneMinusSrcAlpha
-
-        Pass {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma exclude_renderers gles gles3 d3d11_9x
-            #pragma target 3.0
-
-            #include ""UnityCG.cginc""
-
-            struct appdata_t {
-                float4 vertex : POSITION;
-                float2 texcoord : TEXCOORD0;
-            };
-
-            struct v2f {
-                float4 vertex : SV_POSITION;
-                float2 texcoord : TEXCOORD0;
-            };
-
-            sampler2D _MainTex;
-            float4 _Color;
-            float _Speed;
-            float _MinAlpha;
-            float _MaxAlpha;
-
-            v2f vert(appdata_t v) {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.texcoord = v.texcoord;
-                return o;
-            }
-
-            float4 frag(v2f i) : SV_Target {
-                float4 texColor = tex2D(_MainTex, i.texcoord);
-                float breathFactor = (sin(_Time.y * _Speed) + 1.0) * 0.5;
-                float currentAlpha = lerp(_MinAlpha, _MaxAlpha, breathFactor);
-                float4 finalColor = texColor * _Color;
-                finalColor.a *= currentAlpha;
-                return finalColor;
-            }
-            ENDCG
-        }
-    }
-}
-";
 
         private static Shader breathingLightShader;
         // Keep the runtime-compiled Material alive so Unity doesn't destroy the shader it owns.
@@ -75,6 +21,7 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
         private static bool missingBundleLogged;
         private static bool bundleLoadFailedLogged;
         private static bool missingShaderLogged;
+        private static bool shaderSourceNotFoundLogged;
         private static bool embeddedShaderFailedLogged;
 
         // 全局静态属性，用于按需加载 Shader
@@ -102,10 +49,10 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                 if (!missingModLogged)
                 {
                     missingModLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Could not resolve the mod content pack for breathing-light assets. Trying embedded shader source.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Could not resolve the mod content pack for breathing-light assets. Trying shader source file.");
                 }
 
-                TryLoadShaderFromEmbeddedSource();
+                TryLoadShaderFromSourceFile(null);
                 return;
             }
 
@@ -115,10 +62,10 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                 if (!missingBundleLogged)
                 {
                     missingBundleLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found. RootDir='" + myMod.RootDir + "'. Checked: " + string.Join(", ", GetCandidateBundlePaths(myMod.RootDir).ToArray()) + ". Trying embedded shader source.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light AssetBundle not found. RootDir='" + myMod.RootDir + "'. Checked: " + string.Join(", ", GetCandidateBundlePaths(myMod.RootDir).ToArray()) + ". Trying shader source file.");
                 }
 
-                TryLoadShaderFromEmbeddedSource();
+                TryLoadShaderFromSourceFile(myMod.RootDir);
                 return;
             }
 
@@ -131,10 +78,10 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                     if (!bundleLoadFailedLogged)
                     {
                         bundleLoadFailedLogged = true;
-                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load breathing-light AssetBundle from '" + bundlePath + "'. The file exists but Unity refused to load it (likely Unity-version/platform/compression mismatch). Trying embedded shader source.");
+                        Log.Warning("[FullyAutomaticOmniCrafter] Failed to load breathing-light AssetBundle from '" + bundlePath + "'. The file exists but Unity refused to load it (likely Unity-version/platform/compression mismatch). Trying shader source file.");
                     }
 
-                    TryLoadShaderFromEmbeddedSource();
+                    TryLoadShaderFromSourceFile(myMod.RootDir);
                     return;
                 }
 
@@ -152,8 +99,8 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                 if (breathingLightShader == null && !missingShaderLogged)
                 {
                     missingShaderLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" + bundlePath + "'. Asset names: " + string.Join(", ", bundle.GetAllAssetNames()) + ". Trying embedded shader source.");
-                    TryLoadShaderFromEmbeddedSource();
+                    Log.Warning("[FullyAutomaticOmniCrafter] AssetBundle loaded, but no shader could be resolved from '" + bundlePath + "'. Asset names: " + string.Join(", ", bundle.GetAllAssetNames()) + ". Trying shader source file.");
+                    TryLoadShaderFromSourceFile(myMod.RootDir);
                 }
             }
             catch (Exception ex)
@@ -161,10 +108,10 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                 if (!bundleLoadFailedLogged)
                 {
                     bundleLoadFailedLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets from '" + bundlePath + "': " + ex + " Trying embedded shader source.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Exception while loading breathing-light assets from '" + bundlePath + "': " + ex + " Trying shader source file.");
                 }
 
-                TryLoadShaderFromEmbeddedSource();
+                TryLoadShaderFromSourceFile(myMod.RootDir);
             }
             finally
             {
@@ -175,10 +122,59 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
             }
         }
 
-        private static void TryLoadShaderFromEmbeddedSource()
+        /// <summary>
+        /// Reads the ShaderLab source from <c>AssetBundles/RimWorldBreathingLightOverlay.shader</c>
+        /// beside the mod root and compiles it into a runtime Material/Shader.
+        /// Falls back to the CPU-driven animation when the file is missing or compilation fails.
+        /// </summary>
+        private static void TryLoadShaderFromSourceFile(string rootDir)
         {
             if (breathingLightShader != null)
             {
+                return;
+            }
+
+            // Locate the .shader text file using the same search roots as the AssetBundle.
+            string shaderFilePath = null;
+            if (!string.IsNullOrEmpty(rootDir))
+            {
+                foreach (string candidateDir in GetCandidateShaderSourcePaths(rootDir))
+                {
+                    if (File.Exists(candidateDir))
+                    {
+                        shaderFilePath = candidateDir;
+                        break;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(shaderFilePath))
+            {
+                if (!shaderSourceNotFoundLogged)
+                {
+                    shaderSourceNotFoundLogged = true;
+                    string searched = rootDir != null
+                        ? string.Join(", ", GetCandidateShaderSourcePaths(rootDir).ToArray())
+                        : "<rootDir unknown>";
+                    Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light shader source file not found. Searched: " + searched + ". Falling back to code-driven transparent overlay animation.");
+                }
+
+                return;
+            }
+
+            string shaderSource;
+            try
+            {
+                shaderSource = File.ReadAllText(shaderFilePath, System.Text.Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                if (!embeddedShaderFailedLogged)
+                {
+                    embeddedShaderFailedLogged = true;
+                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to read breathing-light shader source from '" + shaderFilePath + "': " + ex.Message + ". Falling back to code-driven transparent overlay animation.");
+                }
+
                 return;
             }
 
@@ -187,7 +183,7 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                 // CS0618: Material(string) is marked obsolete in Unity 2021.2+ but still functional
                 // in Unity 2022.3 (RimWorld's engine). We suppress the warning intentionally.
 #pragma warning disable 618
-                Material mat = new Material(EmbeddedShaderSource);
+                Material mat = new Material(shaderSource);
 #pragma warning restore 618
                 if (mat != null && mat.shader != null && mat.shader.isSupported)
                 {
@@ -196,14 +192,14 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                     // destroy the Material (and the shader it owns) during scene transitions.
                     runtimeShaderMaterial = mat;
                     UnityEngine.Object.DontDestroyOnLoad(runtimeShaderMaterial);
-                    Log.Message("[FullyAutomaticOmniCrafter] Breathing-light shader compiled from embedded source.");
+                    Log.Message("[FullyAutomaticOmniCrafter] Breathing-light shader compiled from source file '" + shaderFilePath + "'.");
                 }
                 else
                 {
                     if (!embeddedShaderFailedLogged)
                     {
                         embeddedShaderFailedLogged = true;
-                        Log.Warning("[FullyAutomaticOmniCrafter] Embedded breathing-light shader is not supported on this platform. Falling back to code-driven transparent overlay animation.");
+                        Log.Warning("[FullyAutomaticOmniCrafter] Breathing-light shader from '" + shaderFilePath + "' is not supported on this platform. Falling back to code-driven transparent overlay animation.");
                     }
                 }
             }
@@ -212,9 +208,43 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
                 if (!embeddedShaderFailedLogged)
                 {
                     embeddedShaderFailedLogged = true;
-                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to compile embedded breathing-light shader: " + ex.Message + ". Falling back to code-driven transparent overlay animation.");
+                    Log.Warning("[FullyAutomaticOmniCrafter] Failed to compile breathing-light shader from '" + shaderFilePath + "': " + ex.Message + ". Falling back to code-driven transparent overlay animation.");
                 }
             }
+        }
+
+        private static List<string> GetCandidateShaderSourcePaths(string rootDir)
+        {
+            List<string> result = new List<string>();
+
+            void AddCandidate(string baseDir)
+            {
+                if (string.IsNullOrEmpty(baseDir))
+                {
+                    return;
+                }
+
+                string candidatePath = Path.Combine(baseDir, "AssetBundles", ShaderSourceFileName);
+                if (!result.Contains(candidatePath))
+                {
+                    result.Add(candidatePath);
+                }
+            }
+
+            AddCandidate(rootDir);
+
+            try
+            {
+                DirectoryInfo current = string.IsNullOrEmpty(rootDir) ? null : new DirectoryInfo(rootDir);
+                for (int i = 0; i < 2 && current != null; i++)
+                {
+                    current = current.Parent;
+                    AddCandidate(current?.FullName);
+                }
+            }
+            catch { /* best-effort path enumeration */ }
+
+            return result;
         }
 
         private static string ResolveBundlePath(ModContentPack myMod)
@@ -298,3 +328,4 @@ Shader ""Custom/RimWorldBreathingLightOverlay"" {
         }
     }
 }
+
