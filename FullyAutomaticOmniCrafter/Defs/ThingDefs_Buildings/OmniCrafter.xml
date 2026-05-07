@@ -59,13 +59,13 @@
             <!--                <shortCircuitInRain>false</shortCircuitInRain>-->
             <!--            </li>-->
 
-            <li Class="FullyAutomaticOmniCrafter.CompProperties_BreathingLight">
-                <texPath>Things/Building/Production/OmniCrafter2l</texPath>
-                <color>(105.65, 225.9, 243.25)</color>
-                <speed>5.0</speed>
-                <minAlpha>0.1</minAlpha>
-                <maxAlpha>1.0</maxAlpha>
-            </li>
+<!--            <li Class="FullyAutomaticOmniCrafter.CompProperties_BreathingLight">-->
+<!--                <texPath>Things/Building/Production/OmniCrafter2l</texPath>-->
+<!--                <color>(105.65, 225.9, 243.25)</color>-->
+<!--                <speed>5.0</speed>-->
+<!--                <minAlpha>0.1</minAlpha>-->
+<!--                <maxAlpha>1.0</maxAlpha>-->
+<!--            </li>-->
         </comps>
         <!--        <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
         <!--        <hasInteractionCell>true</hasInteractionCell>-->
