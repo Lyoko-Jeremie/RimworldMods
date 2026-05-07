@@ -132,6 +132,7 @@ namespace FullyAutomaticOmniCrafter
                     && !bp.Destroyed
                     && bp.Spawned
                     && bp.Faction == playerFaction
+                    && !bp.IsForbidden(playerFaction)
                     && (_targetArea == null || _targetArea[bp.Position]))
                 {
                     result.Add(bp);
@@ -154,6 +155,7 @@ namespace FullyAutomaticOmniCrafter
                     && !frame.Destroyed
                     && frame.Spawned
                     && frame.Faction == playerFaction
+                    && !frame.IsForbidden(playerFaction)
                     && (_targetArea == null || _targetArea[frame.Position]))
                 {
                     result.Add(frame);
@@ -560,6 +562,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (bpList[i] is Blueprint_Build bp
                     && bp.Faction == playerFaction
+                    && !bp.IsForbidden(playerFaction)
                     && (_targetArea == null || _targetArea[bp.Position]))
                 {
                     bpCount++;
@@ -572,6 +575,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (frameList[i] is Frame frame
                     && frame.Faction == playerFaction
+                    && !frame.IsForbidden(playerFaction)
                     && !frame.IsCompleted()
                     && (_targetArea == null || _targetArea[frame.Position]))
                 {
