@@ -43,7 +43,7 @@
                 <basePowerConsumption>500</basePowerConsumption>
                 <shortCircuitInRain>false</shortCircuitInRain>
             </li>
-            <li Class="CompProperties_Breakdownable"/>
+<!--            <li Class="CompProperties_Breakdownable"/>-->
         </comps>
         <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
         <designationCategory>Production</designationCategory>

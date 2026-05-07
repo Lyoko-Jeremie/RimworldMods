@@ -39,7 +39,7 @@
         </building>
         <comps>
             <li Class="CompProperties_Flickable"/>
-            <li Class="CompProperties_Breakdownable"/>
+<!--            <li Class="CompProperties_Breakdownable"/>-->
 
             <!-- 无限电池核心逻辑组件 -->
             <li Class="CompProperties_Battery">

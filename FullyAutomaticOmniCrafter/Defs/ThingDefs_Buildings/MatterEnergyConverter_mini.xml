@@ -129,7 +129,7 @@
             <li Class="CompProperties_Flickable"/>
 
             <!-- 机械故障 -->
-            <li Class="CompProperties_Breakdownable"/>
+<!--            <li Class="CompProperties_Breakdownable"/>-->
 
             <!--
               电力接入组件：
