@@ -378,12 +378,14 @@ namespace FullyAutomaticOmniCrafter
                     Thing thing = ThingMaker.MakeThing(buildDef, buildDef.MadeFromStuff ? stuffToUse : null);
                     thing.SetFactionDirect(Faction.OfPlayer);
 
-                    // 品质：默认 Normal
-                    thing.TryGetComp<CompQuality>()?.SetQuality(QualityCategory.Normal, ArtGenerationContext.Colony);
+                    // 品质：传奇
+                    CompQuality qualityComp = thing.TryGetComp<CompQuality>();
+                    if (qualityComp != null)
+                        qualityComp.SetQuality(QualityCategory.Legendary, ArtGenerationContext.Colony);
 
-                    // 艺术初始化（Normal 级通常不需要，但保留接口）
+                    // 艺术初始化：传奇品质建筑（如雕塑、家具等）需要艺术描述
                     CompArt art = thing.TryGetComp<CompArt>();
-                    if (art != null && !art.Active && thing.TryGetComp<CompQuality>() == null)
+                    if (art != null && !art.Active)
                         art.InitializeArt(ArtGenerationContext.Colony);
 
                     // 继承样式（保留蓝图的风格定义）
@@ -451,10 +453,14 @@ namespace FullyAutomaticOmniCrafter
                     Thing thing = ThingMaker.MakeThing(buildDef, stuffDef);
                     thing.SetFactionDirect(Faction.OfPlayer);
 
-                    thing.TryGetComp<CompQuality>()?.SetQuality(QualityCategory.Normal, ArtGenerationContext.Colony);
+                    // 品质：传奇
+                    CompQuality compQuality2 = thing.TryGetComp<CompQuality>();
+                    if (compQuality2 != null)
+                        compQuality2.SetQuality(QualityCategory.Legendary, ArtGenerationContext.Colony);
 
+                    // 艺术初始化：传奇品质建筑需要艺术描述
                     CompArt art2 = thing.TryGetComp<CompArt>();
-                    if (art2 != null && !art2.Active && thing.TryGetComp<CompQuality>() == null)
+                    if (art2 != null && !art2.Active)
                         art2.InitializeArt(ArtGenerationContext.Colony);
 
                     if (frame.StyleDef != null)
