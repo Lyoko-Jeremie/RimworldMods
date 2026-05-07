@@ -157,7 +157,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (def == null) return false;
                 if (def.IsBlueprint || def.IsFrame) return false;
-                if (def.destroyable == false) return false;
+                // if (def.destroyable == false) return false;
                 if (def.category == ThingCategory.Mote) return false;
                 if (def.category == ThingCategory.Ethereal) return false;
                 if (def.category == ThingCategory.Projectile) return false;
