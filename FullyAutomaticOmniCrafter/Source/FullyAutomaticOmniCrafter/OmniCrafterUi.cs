@@ -766,6 +766,8 @@ namespace FullyAutomaticOmniCrafter
 
             float w = rect.width;
             float viewW = w - 16f;
+            bool showNonDestroyableBuildingWarning =
+                selectedDef.category == ThingCategory.Building && !selectedDef.destroyable;
 
             // Estimate content height for the virtual scroll view
             float contentH = 70f + 22f; // icon + name + fav + mod source
@@ -775,6 +777,7 @@ namespace FullyAutomaticOmniCrafter
             if (selectedDef.HasComp(typeof(CompQuality))) contentH += 22f + 28f + 12f;
             contentH += 22f + 28f + 28f + 22f + 26f + 30f + 6f;
             contentH += 22f + 70f + 22f + 36f;
+            if (showNonDestroyableBuildingWarning) contentH += 22f;
 
             Rect viewRect = new Rect(0f, 0f, viewW, contentH);
             Widgets.BeginScrollView(rect, ref rightPanelScroll, viewRect);
@@ -1073,6 +1076,15 @@ namespace FullyAutomaticOmniCrafter
             {
                 GUI.color = new Color(1f, 0.85f, 0.2f);
                 Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_BuildingOneAtATime".Translate());
+                GUI.color = Color.white;
+                y += 22f;
+            }
+
+            // Warning for special non-destroyable buildings.
+            if (showNonDestroyableBuildingWarning)
+            {
+                GUI.color = Color.red;
+                Widgets.Label(new Rect(0f, y, viewW, 20f), "OmniCrafter_NonDestroyableBuildingWarning".Translate() );
                 GUI.color = Color.white;
                 y += 22f;
             }

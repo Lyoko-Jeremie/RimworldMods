@@ -52,6 +52,7 @@
     <OmniCrafter_RemoveAutoOrder>移除自动订单</OmniCrafter_RemoveAutoOrder>
     <OmniCrafter_NoAutoOrders>没有自动订单</OmniCrafter_NoAutoOrders>
     <OmniCrafter_AutoOrdersHeader>自动订单 ({0})：</OmniCrafter_AutoOrdersHeader>
+    <OmniCrafter_NonDestroyableBuildingWarning>警告：该建筑为不可摧毁类型（destroyable=false），生成后可能异常。</OmniCrafter_NonDestroyableBuildingWarning>
     <!-- 收藏夹中缺失物品的占位符 -->
     <OmniCrafter_MissingDef>[缺失] {0}（所属Mod未加载，点击取消收藏）</OmniCrafter_MissingDef>
     <!-- 一组按钮 -->

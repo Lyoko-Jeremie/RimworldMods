@@ -51,6 +51,7 @@
     <OmniCrafter_RemoveAutoOrder>Remove Auto Order</OmniCrafter_RemoveAutoOrder>
     <OmniCrafter_NoAutoOrders>No Auto Order</OmniCrafter_NoAutoOrders>
     <OmniCrafter_AutoOrdersHeader>Auto Orders ({0}):</OmniCrafter_AutoOrdersHeader>
+    <OmniCrafter_NonDestroyableBuildingWarning>Warning: This building is non-destroyable, may behave abnormally after crafting.</OmniCrafter_NonDestroyableBuildingWarning>
     <!-- Missing def placeholder in favorites -->
     <OmniCrafter_MissingDef>[Missing] {0} (mod not loaded — click to unfavorite)</OmniCrafter_MissingDef>
     <!-- One stack button -->
