@@ -24,7 +24,7 @@
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
-        <blockWind>true</blockWind>
+        <blockWind>false</blockWind>
         <castEdgeShadows>false</castEdgeShadows>
         <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <fillPercent>0.5</fillPercent>
