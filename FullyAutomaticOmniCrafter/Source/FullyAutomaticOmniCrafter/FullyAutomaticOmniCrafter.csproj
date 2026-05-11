@@ -365,6 +365,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRepair.cs" />
+    <Compile Include="CompAutoPainter.cs" />
     <Compile Include="CompAutoRoofer.cs" />
     <Compile Include="CompAutoSmoother.cs" />
     <Compile Include="CompBreathingLight.cs" />

@@ -99,6 +99,7 @@
 
             <li Class="FullyAutomaticOmniCrafter.CompProperties_AutoRoofer"/>
             <li Class="FullyAutomaticOmniCrafter.CompProperties_AutoSmoother"/>
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_AutoPainter"/>
 
         </comps>
 
