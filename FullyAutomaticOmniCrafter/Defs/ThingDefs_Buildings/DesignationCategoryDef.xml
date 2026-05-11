@@ -1,0 +1,15 @@
+<Defs>
+    <DesignationCategoryDef>
+        <!-- 这是代码内部使用的 ID，必须唯一 -->
+        <defName>OmniCrafter_Category</defName>
+
+        <!-- 这是在游戏底部建筑菜单（Architect Menu）中显示的汉字/文字 -->
+        <label>label</label>
+
+        <!-- 鼠标悬停时的文字说明（可选） -->
+        <description>description</description>
+
+        <!-- 核心机制：控制这个菜单栏在游戏底部的排列顺序 -->
+        <order>750</order>
+    </DesignationCategoryDef>
+</Defs>

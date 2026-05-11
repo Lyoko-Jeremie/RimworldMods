@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
-    <ThingDef ParentName="BuildingBase">
+    <Defs>
+        <DesignatorDropdownGroupDef>
+            <defName>GlobalFireExtinguisher_DropdownGroup</defName>
+            <!-- 这里不需要加 <label>，因为游戏会自动使用你选中的那个建筑的名称 -->
+        </DesignatorDropdownGroupDef>
+    </Defs>
+
+    <ThingDef Name="GlobalFireExtinguisher" ParentName="BuildingBase">
         <defName>GlobalFireExtinguisher</defName>
         <label>GlobalFireExtinguisher</label>
         <description>description</description>
 
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>GlobalFireExtinguisher_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
         <graphicData>
-            <texPath>Things/Building/Production/GlobalFireExtinguisher</texPath> 
+            <texPath>Things/Building/Production/GlobalFireExtinguisher</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
@@ -30,7 +41,7 @@
         <thingCategories>
             <li>BuildingsProduction</li>
         </thingCategories>
-        
+
         <statBases>
             <Mass>50</Mass>
             <MaxHitPoints>999999999</MaxHitPoints>
@@ -46,13 +57,47 @@
             </li>
 
             <li Class="FullyAutomaticOmniCrafter.CompProperties_GlobalFireExtinguisher">
-                <checkIntervalTicks>60</checkIntervalTicks> </li>
+                <checkIntervalTicks>60</checkIntervalTicks>
+            </li>
         </comps>
         <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
-        <designationCategory>Production</designationCategory>
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
         <rotatable>false</rotatable>
         <uiIconPath>Things/Building/Production/GlobalFireExtinguisher</uiIconPath>
     </ThingDef>
+
+    <ThingDef ParentName="GlobalFireExtinguisher">
+        <defName>GlobalFireExtinguisher_mini</defName>
+        <label>GlobalFireExtinguisher Portable</label>
+        <description>description</description>
+        <size>(1,1)</size>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+    </ThingDef>
+
+<!--    <ThingDef ParentName="GlobalFireExtinguisher">-->
+<!--        <defName>GlobalFireExtinguisher_1x1</defName>-->
+
+<!--        <size>(1,1)</size>-->
+<!--&lt;!&ndash;        <uiOrder>2300</uiOrder>&ndash;&gt;-->
+
+<!--        <graphicData>-->
+<!--            <drawSize>(1,1)</drawSize>-->
+<!--        </graphicData>-->
+<!--        -->
+<!--    </ThingDef>-->
+
+<!--    <ThingDef ParentName="GlobalFireExtinguisher">-->
+<!--        <defName>GlobalFireExtinguisher_3x3</defName>-->
+
+<!--        <size>(3,3)</size>-->
+<!--&lt;!&ndash;        <uiOrder>2300</uiOrder>&ndash;&gt;-->
+
+<!--        <graphicData>-->
+<!--            <drawSize>(3,3)</drawSize>-->
+<!--        </graphicData>-->
+<!--        -->
+<!--    </ThingDef>-->
 </Defs>

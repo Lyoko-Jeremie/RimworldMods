@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
+    <Defs>
+        <DesignatorDropdownGroupDef>
+            <defName>SubspaceAssetBlackhole_DropdownGroup</defName>
+            <!-- 这里不需要加 <label>，因为游戏会自动使用你选中的那个建筑的名称 -->
+        </DesignatorDropdownGroupDef>
+    </Defs>
+
     <!--
       ══════════════════════════════════════════════════════════════════════
       亚空间资产黑洞发生器 / Subspace Asset Blackhole
@@ -13,13 +20,18 @@
       ══════════════════════════════════════════════════════════════════════
     -->
 
-    <ThingDef ParentName="BuildingBase">
+    <ThingDef Name="SubspaceAssetBlackhole" ParentName="BuildingBase">
 
         <!-- ── 基础标识 ────────────────────────────────────────────────── -->
         <defName>SubspaceAssetBlackhole</defName>
         <label>Subspace Asset Blackhole Generator</label>
         <description>description</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_SubspaceAssetBlackHole</thingClass>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>SubspaceAssetBlackhole_DropdownGroup</designatorDropdown>
+        <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <!-- ── 贴图（使用 OmniCrafter 图标占位，建议替换为专用贴图） ─── -->
         <graphicData>
@@ -90,9 +102,6 @@
         <!-- ── 地形要求 ───────────────────────────────────────────────── -->
         <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
 
-        <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
-        <designationCategory>Production</designationCategory>
-
         <!-- ── 研究前提（建议取消注释并指定合适的研究项） ────────────── -->
         <!--
         <researchPrerequisites>
@@ -105,6 +114,32 @@
         <repairEffect>Repair</repairEffect>
 
     </ThingDef>
+
+    <ThingDef ParentName="SubspaceAssetBlackhole">
+        <defName>SubspaceAssetBlackhole_mini</defName>
+        <label>Subspace Asset Blackhole Generator mini</label>
+        <description>description</description>
+        <size>(1,1)</size>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+    </ThingDef>
+
+<!--    <ThingDef ParentName="SubspaceAssetBlackhole">-->
+<!--        <defName>SubspaceAssetBlackhole_1x1</defName>-->
+<!--        <size>(1,1)</size>-->
+<!--        <graphicData>-->
+<!--            <drawSize>(1,1)</drawSize>-->
+<!--        </graphicData>-->
+<!--    </ThingDef>-->
+
+<!--    <ThingDef ParentName="SubspaceAssetBlackhole">-->
+<!--        <defName>SubspaceAssetBlackhole_3x3</defName>-->
+<!--        <size>(3,3)</size>-->
+<!--        <graphicData>-->
+<!--            <drawSize>(3,3)</drawSize>-->
+<!--        </graphicData>-->
+<!--    </ThingDef>-->
 
 </Defs>
 

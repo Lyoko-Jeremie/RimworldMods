@@ -1,10 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <Defs>
-    <ThingDef ParentName="BuildingBase">
+
+    <Defs>
+        <DesignatorDropdownGroupDef>
+            <defName>OmniCrafter_DropdownGroup</defName>
+            <!-- 这里不需要加 <label>，因为游戏会自动使用你选中的那个建筑的名称 -->
+        </DesignatorDropdownGroupDef>
+    </Defs>
+    
+    <ThingDef Name="OmniCrafter" ParentName="BuildingBase">
         <defName>OmniCrafter</defName>
         <label>Omni Crafter</label>
         <description>Get Anything From Nothing! \n\n Archotech Technology! Boys!</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniCrafter</thingClass>
+        
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>OmniCrafter_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
         <graphicData>
             <texPath>Things/Building/Production/OmniCrafter2</texPath>
             <graphicClass>Graphic_Single</graphicClass>
@@ -70,7 +83,6 @@
         <!--        <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
         <!--        <hasInteractionCell>true</hasInteractionCell>-->
         <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
-        <designationCategory>Production</designationCategory>
         <!--    <researchPrerequisites>-->
         <!--      <li>Fabrication</li>-->
         <!--    </researchPrerequisites>-->
@@ -79,4 +91,31 @@
         <rotatable>false</rotatable>
         <uiIconPath>Things/Building/Production/OmniCrafter2</uiIconPath>
     </ThingDef>
+
+    <ThingDef ParentName="OmniCrafter">
+        <defName>OmniCrafter_mini</defName>
+        <label>Omni Crafter mini</label>
+        <description>Get Anything From Nothing! \n\n Archotech Technology! Boys!</description>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+        <size>(1,1)</size>
+    </ThingDef>
+
+<!--    <ThingDef ParentName="OmniCrafter">-->
+<!--        <defName>OmniCrafter_1x1</defName>-->
+<!--        <size>(1,1)</size>-->
+<!--        <graphicData>-->
+<!--            <drawSize>(1,1)</drawSize>-->
+<!--        </graphicData>-->
+<!--    </ThingDef>-->
+
+    <ThingDef ParentName="OmniCrafter">
+        <defName>OmniCrafter_home</defName>
+        <size>(3,3)</size>
+        <graphicData>
+            <drawSize>(3,3)</drawSize>
+        </graphicData>
+    </ThingDef>
+
 </Defs>

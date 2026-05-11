@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
+    <Defs>
+        <DesignatorDropdownGroupDef>
+            <defName>MatterEnergyConverter_DropdownGroup</defName>
+            <!-- 这里不需要加 <label>，因为游戏会自动使用你选中的那个建筑的名称 -->
+        </DesignatorDropdownGroupDef>
+    </Defs>
+    
     <!--
       ══════════════════════════════════════════════════════════════════════
       物质-能量转化仪 / Matter-Energy Converter
@@ -13,13 +20,17 @@
       ══════════════════════════════════════════════════════════════════════
     -->
 
-    <ThingDef ParentName="BuildingBase">
+    <ThingDef Name="MatterEnergyConverter" ParentName="BuildingBase">
 
         <!-- ── 基础标识 ────────────────────────────────────────────────── -->
         <defName>MatterEnergyConverter</defName>
         <label>Matter-Energy Converter</label>
         <description>description</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_MatterEnergyConverter</thingClass>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>RealityWeaver_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <!-- ── 贴图（暂用 OmniCrafter 贴图占位，建议替换为专用贴图） ─── -->
         <graphicData>
@@ -162,9 +173,6 @@
         <!-- ── 地形要求 ───────────────────────────────────────────────── -->
         <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
 
-        <!-- ── 建造分类（生产标签页） ───────────────────────────────── -->
-        <designationCategory>Production</designationCategory>
-
         <!-- ── 研究前提 ───────────────────────────────────────────────── -->
         <!--    <researchPrerequisites>-->
         <!--      <li>Spaceflight</li>-->
@@ -174,6 +182,32 @@
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
 
+    </ThingDef>
+
+    <ThingDef ParentName="MatterEnergyConverter">
+        <defName>MatterEnergyConverter_mini</defName>
+        <label>Matter-Energy Converter mini</label>
+        <description>description</description>
+        <size>(1,1)</size>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+    </ThingDef>
+
+<!--    <ThingDef ParentName="MatterEnergyConverter">-->
+<!--        <defName>MatterEnergyConverter_1x1</defName>-->
+<!--        <size>(1,1)</size>-->
+<!--        <graphicData>-->
+<!--            <drawSize>(1,1)</drawSize>-->
+<!--        </graphicData>-->
+<!--    </ThingDef>-->
+
+    <ThingDef ParentName="MatterEnergyConverter">
+        <defName>MatterEnergyConverter_home</defName>
+        <size>(3,3)</size>
+        <graphicData>
+            <drawSize>(3,3)</drawSize>
+        </graphicData>
     </ThingDef>
 
 </Defs>
