@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-    <Defs>
-        <DesignatorDropdownGroupDef>
-            <defName>MatterEnergyConverter_DropdownGroup</defName>
-            <!-- 这里不需要加 <label>，因为游戏会自动使用你选中的那个建筑的名称 -->
-        </DesignatorDropdownGroupDef>
-    </Defs>
+    <DesignatorDropdownGroupDef>
+        <defName>MatterEnergyConverter_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
     
     <!--
       ══════════════════════════════════════════════════════════════════════
