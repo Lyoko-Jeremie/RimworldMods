@@ -103,4 +103,7 @@
     <!-- 解锁可用研究 -->
     <OmniCrafter_UnlockAvailableResearch>解锁可用研究</OmniCrafter_UnlockAvailableResearch>
     <OmniCrafter_UnlockAvailableResearchDesc>瞬间解锁当前所有前置条件已满足的研究项目</OmniCrafter_UnlockAvailableResearchDesc>
+    <!-- 执行屋顶工程 -->
+    <OmniCrafter_AutoRoofer>执行屋顶工程</OmniCrafter_AutoRoofer>
+    <OmniCrafter_AutoRooferDesc>瞬间按照当前的建造屋顶区/移除屋顶区划设置，在全图范围内建造或拆除屋顶</OmniCrafter_AutoRooferDesc>
 </LanguageData>
