@@ -19,5 +19,16 @@
     <!-- Args: {0}=pending count, {1}=energy cost (Wd), {2}=area label -->
     <RealityWeaver_Status>Pending: {0} blueprint(s) / frame(s) · Cost: {1} Wd · Area: {2}</RealityWeaver_Status>
 
+    <RealityWeaver_SmoothSurface>Auto Smooth</RealityWeaver_SmoothSurface>
+    <!-- 一键自动完成当前地图上所有已规划的打磨地面和打磨墙壁的任务 -->
+    <RealityWeaver_SmoothSurfaceDesc>Automatically complete all planned floor and wall smoothing tasks on the current map</RealityWeaver_SmoothSurfaceDesc>
+    <RealityWeaver_NoSmoothSurface>No smoothing area found</RealityWeaver_NoSmoothSurface>
+    <RealityWeaver_OkSmoothSurface>Auto smoothing completed! Processed {0} areas in a flash</RealityWeaver_OkSmoothSurface>
+
+    <!-- Execute Roofing Project -->
+    <RealityWeaver_AutoRoofer>Execute Roofing Project</RealityWeaver_AutoRoofer>
+    <RealityWeaver_AutoRooferDesc>Instantly build or remove roofs according to the current roofing zone settings across the entire map</RealityWeaver_AutoRooferDesc>
+    <RealityWeaver_AutoRooferOk>Roofing completed: Built {0} roofs, Removed {1} roofs</RealityWeaver_AutoRooferOk>
+    
 </LanguageData>
 

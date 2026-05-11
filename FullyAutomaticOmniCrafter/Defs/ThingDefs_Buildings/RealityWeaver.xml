@@ -97,6 +97,9 @@
                 <shortCircuitInRain>false</shortCircuitInRain>
             </li>
 
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_AutoRoofer"/>
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_AutoSmoother"/>
+
         </comps>
 
         <!-- ── 地形要求 ───────────────────────────────────────────────── -->

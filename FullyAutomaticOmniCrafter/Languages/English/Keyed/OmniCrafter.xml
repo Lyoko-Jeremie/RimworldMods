@@ -102,7 +102,7 @@
     <!-- Unlock Available Research -->
     <OmniCrafter_UnlockAvailableResearch>Unlock Available Research</OmniCrafter_UnlockAvailableResearch>
     <OmniCrafter_UnlockAvailableResearchDesc>Instantly unlock all research projects with satisfied prerequisites</OmniCrafter_UnlockAvailableResearchDesc>
-    <!-- Execute Roofing Project -->
-    <OmniCrafter_AutoRoofer>Execute Roofing Project</OmniCrafter_AutoRoofer>
-    <OmniCrafter_AutoRooferDesc>Instantly build or remove roofs according to the current roofing zone settings across the entire map</OmniCrafter_AutoRooferDesc>
+    <OmniCrafter_NoUnlockAvailableResearch>No research to unlock</OmniCrafter_NoUnlockAvailableResearch>
+    <OmniCrafter_OkUnlockAvailableResearch>Research unlocked! {0} research projects unlocked</OmniCrafter_OkUnlockAvailableResearch>
+
 </LanguageData>

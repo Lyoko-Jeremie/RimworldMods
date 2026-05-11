@@ -83,11 +83,11 @@ namespace FullyAutomaticOmniCrafter
             // 发送提示
             if (unlockCount > 0)
             {
-                Messages.Message($"瞬间解锁完成！共解锁了 {unlockCount} 项研究。", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message("OmniCrafter_OkUnlockAvailableResearch".Translate(unlockCount), MessageTypeDefOf.PositiveEvent, false);
             }
             else
             {
-                Messages.Message("当前没有可以解锁的研究。", MessageTypeDefOf.RejectInput, false);
+                Messages.Message("OmniCrafter_NoUnlockAvailableResearch".Translate(), MessageTypeDefOf.RejectInput, false);
             }
         }
     }

@@ -18,7 +18,7 @@ namespace FullyAutomaticOmniCrafter
     public static class CompAutoRooferTex
     {
         public static readonly Texture2D IconBuildRoof =
-            ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_BuildRoof", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/RealityWeaver_BuildRoof", true) ?? BaseContent.WhiteTex;
     }
 
     // 2. 逻辑类：继承自ThingComp，处理按钮UI和实际建造逻辑
@@ -39,8 +39,8 @@ namespace FullyAutomaticOmniCrafter
             Command_Action action = new Command_Action
             {
                 action = ExecuteRoofing,
-                defaultLabel = "OmniCrafter_AutoRoofer".Translate(),
-                defaultDesc = "OmniCrafter_AutoRooferDesc".Translate(),
+                defaultLabel = "RealityWeaver_AutoRoofer".Translate(),
+                defaultDesc = "RealityWeaver_AutoRooferDesc".Translate(),
                 // 使用原版“建造屋顶”的图标
                 icon = CompAutoRooferTex.IconBuildRoof,
             };
@@ -100,7 +100,7 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            Messages.Message($"屋顶工程完毕：共建造 {builtCount} 个屋顶，拆除 {removedCount} 个屋顶。",
+            Messages.Message("RealityWeaver_AutoRooferOk".Translate(builtCount, removedCount),
                 this.parent, MessageTypeDefOf.PositiveEvent);
         }
     }
