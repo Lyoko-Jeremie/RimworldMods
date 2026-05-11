@@ -26,7 +26,7 @@
         <thingClass>FullyAutomaticOmniCrafter.Building_MatterEnergyConverter</thingClass>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
-        <designatorDropdown>RealityWeaver_DropdownGroup</designatorDropdown>
+        <designatorDropdown>MatterEnergyConverter_DropdownGroup</designatorDropdown>
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <!-- ── 贴图（暂用 OmniCrafter 贴图占位，建议替换为专用贴图） ─── -->
