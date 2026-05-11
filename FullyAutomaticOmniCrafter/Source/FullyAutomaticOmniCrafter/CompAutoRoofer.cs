@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -11,7 +10,6 @@ namespace FullyAutomaticOmniCrafter
     {
         public CompProperties_AutoRoofer()
         {
-            // 绑定对应的执行类
             this.compClass = typeof(CompAutoRoofer);
         }
     }
@@ -56,52 +54,54 @@ namespace FullyAutomaticOmniCrafter
             Map map = this.parent.Map;
             if (map == null) return;
 
-            // 获取原版的建造屋顶区和移除屋顶区
             Area buildRoofArea = map.areaManager.BuildRoof;
             Area noRoofArea = map.areaManager.NoRoof;
 
             int builtCount = 0;
             int removedCount = 0;
 
-            // 遍历地图上的所有格子
+            // 软依赖：检查 ExpandedRoofing 的厚屋顶移除研究是否完成。
+            // 若 ExpandedRoofing 未加载，GetNamed 返回 null，视为无限制。
+            ResearchProjectDef thickRoofRemovalResearch =
+                DefDatabase<ResearchProjectDef>.GetNamed("ThickStoneRoofRemoval", false);
+            bool canRemoveThickRoof = thickRoofRemovalResearch == null || thickRoofRemovalResearch.IsFinished;
+
             foreach (IntVec3 cell in map.AllCells)
             {
                 // ====================
-                // 1. 处理建造屋顶区
+                // 1. 处理建造屋顶区（原版人造屋顶）
                 // ====================
-                if (buildRoofArea != null && buildRoofArea[cell])
+                if (buildRoofArea != null && buildRoofArea[cell] && !map.roofGrid.Roofed(cell))
                 {
-                    // 如果该格子还没有屋顶
-                    if (!map.roofGrid.Roofed(cell))
-                    {
-                        // 强制生成原版的人造屋顶
-                        map.roofGrid.SetRoof(cell, RoofDefOf.RoofConstructed);
-                        builtCount++;
-                    }
+                    map.roofGrid.SetRoof(cell, RoofDefOf.RoofConstructed);
+                    builtCount++;
                 }
 
                 // ====================
                 // 2. 处理移除屋顶区
+                //    - 天然岩顶（isThickRoof && isNatural）：永不移除
+                //    - ExpandedRoofing 玩家建厚屋顶（isThickRoof && !isNatural）：
+                //        需要 ThickStoneRoofRemoval 研究完成才可移除
+                //    - 普通屋顶 / ER 透明 / ER Solar：直接移除
                 // ====================
-                if (noRoofArea != null && noRoofArea[cell])
+                if (noRoofArea != null && noRoofArea[cell] && map.roofGrid.Roofed(cell))
                 {
-                    // 如果该格子有屋顶
-                    if (map.roofGrid.Roofed(cell))
-                    {
-                        RoofDef roof = map.roofGrid.RoofAt(cell);
-                        // 关键检查：不要移除厚岩顶（山脉），否则会导致逻辑错误或游戏报错
-                        if (roof != null && !roof.isThickRoof)
-                        {
-                            map.roofGrid.SetRoof(cell, null);
-                            removedCount++;
-                        }
-                    }
+                    RoofDef roof = map.roofGrid.RoofAt(cell);
+                    if (roof == null) continue;
+
+                    if (roof.isThickRoof && roof.isNatural)
+                        continue; // 天然岩顶，永不触碰
+
+                    if (roof.isThickRoof && !roof.isNatural && !canRemoveThickRoof)
+                        continue; // ExpandedRoofing 玩家建造的厚屋顶，研究未完成则跳过
+
+                    map.roofGrid.SetRoof(cell, null);
+                    removedCount++;
                 }
             }
 
-            // 在左上角发送一条消息反馈结果
-            Messages.Message($"屋顶工程完毕：共建造 {builtCount} 个屋顶，拆除 {removedCount} 个屋顶。", this.parent,
-                MessageTypeDefOf.PositiveEvent);
+            Messages.Message($"屋顶工程完毕：共建造 {builtCount} 个屋顶，拆除 {removedCount} 个屋顶。",
+                this.parent, MessageTypeDefOf.PositiveEvent);
         }
     }
 }
