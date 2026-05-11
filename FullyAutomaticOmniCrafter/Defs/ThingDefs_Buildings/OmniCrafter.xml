@@ -76,6 +76,9 @@
 <!--                <minAlpha>0.1</minAlpha>-->
 <!--                <maxAlpha>1.0</maxAlpha>-->
 <!--            </li>-->
+
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_InstantResearch"/>
+
         </comps>
         <!--        <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
         <!--        <hasInteractionCell>true</hasInteractionCell>-->

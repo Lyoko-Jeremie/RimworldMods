@@ -99,4 +99,7 @@
     <OmniCrafter_GraphLogXDesc>Display the X axis in log10 scale.</OmniCrafter_GraphLogXDesc>
     <OmniCrafter_GraphLogY>Log scale Y axis</OmniCrafter_GraphLogY>
     <OmniCrafter_GraphLogYDesc>Display the Y axis in log10 scale.</OmniCrafter_GraphLogYDesc>
+    <!-- Unlock Available Research -->
+    <OmniCrafter_UnlockAvailableResearch>Unlock Available Research</OmniCrafter_UnlockAvailableResearch>
+    <OmniCrafter_UnlockAvailableResearchDesc>Instantly unlock all research projects with satisfied prerequisites</OmniCrafter_UnlockAvailableResearchDesc>
 </LanguageData>
