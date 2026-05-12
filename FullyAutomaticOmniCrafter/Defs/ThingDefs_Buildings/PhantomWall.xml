@@ -35,6 +35,26 @@
         </graphicData>
         <uiIconPath>Things/Building/Linked/WallSmooth_MenuIcon</uiIconPath>
 
+        <!-- 声明可接受的材质分类 -->
+        <stuffCategories>
+            <li>Metallic</li>   <!-- 钢铁、钛金等金属 -->
+            <li>Woody</li>      <!-- 木材 -->
+            <li>Stony</li>      <!-- 各类石材 -->
+        </stuffCategories>
+        <!-- 建造消耗的材质数量 -->
+        <costStuffCount>1</costStuffCount>
+        <!-- 根据材质决定地形需求（可选，墙一般要加） -->
+        <!-- 不开启 useStuffTerrainAffordance，同时也不设 terrainAffordanceNeeded -->
+        <!-- 这样任意地形都能建造，符合"幻影"的科幻设定 -->
+        <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+
+        <!-- ↓ 半透明三件套 -->
+        <shaderType>Transparent</shaderType>          <!-- 开启 Alpha 混合 -->
+        <color>(1, 0.6, 1, 0.3)</color>         <!-- 略带蓝紫色调，30% 不透明度 -->
+        <allowAtlasing>false</allowAtlasing>           <!-- 禁止图集替换，保留 alpha -->
+
+
         <!-- 欺骗引擎：将其设为可通行，使其不会打断原版的寻路网格和区域连接 -->
         <passability>Standable</passability>
 
@@ -45,9 +65,6 @@
         <fillPercent>1</fillPercent> <!-- 100% 阻挡视线和提供掩体 -->
         <coversFloor>true</coversFloor>
 
-        <costList>
-            <!--            <Steel>1</Steel>-->
-        </costList>
 
         <!-- 2. 欺骗AI的属性 -->
         <statBases>
@@ -59,14 +76,17 @@
 
         <building>
             <!-- 进一步告诉普通AI不要闲着没事砸它 -->
-            <ai_neverTrashThis>true</ai_neverTrashThis> 
-            
+            <ai_neverTrashThis>true</ai_neverTrashThis>
+
             <!-- 标记该建筑是否为"主体建筑"（地基级建筑），即占据地图格子的"正式"建筑。只有 Edifice 才能支撑屋顶 -->
             <!-- 一个格子同时只能有一个 Edifice。如果新建筑是 Edifice，会替换并摧毁该格已有的 Edifice -->
             <isEdifice>true</isEdifice>
             <isWall>true</isWall>
             <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
             <isInert>true</isInert>
+            <!-- 允许选材质后涂色 -->
+            <paintable>true</paintable>
+            <isStuffableAirtight>true</isStuffableAirtight>
         </building>
         <rotatable>false</rotatable>
 
