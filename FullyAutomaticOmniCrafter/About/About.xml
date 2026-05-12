@@ -17,6 +17,9 @@
 超凡科技！小子！
 
 
+添加立即完成当前可完成的科技按钮，点击后会立即完成当前科技树上所有满足条件的科技研究，直到没有可完成的科技为止。让你的科技树瞬间满级，直接进入后期游戏！
+
+
 
 自带一个无限容量电池，可以存储无限多的电能。解决在制造超贵物品时需要制造大量电池的问题。
 
@@ -94,6 +97,14 @@
 优先使用物质-能量转化仪能量，其次是全自动万能合成仪无限电池，最后是普通电池。断电或禁用时零性能开销。
 
 
+添加立即按照屋顶区域规划完成屋顶的安装和拆除的按钮，点击后会按照当前的建造屋顶区/移除屋顶区划设置，在全图范围内建造或拆除屋顶。
+支持 扩展屋顶 (ExpandedRoofing) 的 无厚屋顶规划 。
+扩展屋顶 (ExpandedRoofing) 的建设规划会被正常的自动建造模式完成（因为它实际上实现为了一种特殊的建筑蓝图框架）。
+
+添加立即打磨地板和岩壁按钮，点击后会自动完成当前地图上所有已规划的打磨地面和打磨墙壁的任务。
+添加立即完成地板粉饰和移除地板粉饰按钮，点击后会自动完成全图所有已规划的粉饰地板和移除地板涂料任务（免耗材）。
+
+
 [hr][/hr]
 
 [h2] 全域火焰抑制器 GlobalFireExtinguisher [/h2]
@@ -135,6 +146,7 @@ The technological gem of the archotech world, capable of converting energy into 
 Whether it's food, medicine, buildings, or materials, this magical machine can easily manufacture them all! Let your colony shine anew, ushering in a new era!
 Archotech technology! Boys!
 
+Adds a button to immediately complete all currently completable techs in the tech tree, until there are no more completable techs. Instantly max out your tech tree and jump straight into late game!
 
 Comes with an infinite capacity battery that can store unlimited energy. Solves the problem of needing to manufacture a large number of batteries when crafting expensive items.
 
@@ -209,6 +221,15 @@ Superior world home and travel front-line construction essential device, capable
 The energy consumption is proportional to the work required for each building (1 Wd per unit of work required). 
 Prioritize the use of energy conversion device energy, then the unlimited battery of the fully automatic universal synthesizer, and finally the ordinary battery. 
 Zero performance consumption when power is off or disabled.
+
+
+Adds a button to immediately complete the installation and removal of roofs according to the roof area planning. After clicking, it will build or remove roofs across the entire map according to the current roof construction/removal zone settings.
+Supports the "No Thick Roof Planning" of ExpandedRoofing.
+the roof building of ExpandedRoofing will be completed by the normal automatic construction mode (since it is actually implemented as a special building blueprint frame).
+
+Adds a button to immediately complete the floor polishing and wall polishing tasks according to the floor polishing area planning. After clicking, it will automatically complete all floor polishing and wall polishing tasks across the entire map.
+Adds a button to immediately complete the floor painting and remove floor painting tasks according to the floor painting area planning. After clicking, it will automatically complete all floor painting and remove floor painting tasks across the entire map (without consuming materials).
+
 
 [hr][/hr]
 
