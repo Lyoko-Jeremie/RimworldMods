@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    
+    <ThingDef ParentName="BuildingBase">
+        <defName>OmniPhantomWall</defName>
+        <label>幻影隔离墙</label>
+        <description>一种采用了相控阵空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。</description>
+        
+        <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall</thingClass>
+        <tickerType>Never</tickerType> <!-- 关键：绝对不刷新，零 CPU 损耗 -->
+        
+        <!-- 1. 视觉属性：完全照搬原版的墙 -->
+        <graphicData>
+            <texPath>Things/Building/Linked/Wall</texPath> <!-- 使用原版墙的贴图 -->
+            <graphicClass>Graphic_Linked</graphicClass> <!-- 连体材质，能互相连接 -->
+<!--            <linkType>CornerFiller</linkType>-->
+            <linkFlags>
+                <li>Wall</li> <!-- 关键：让它能和原版的普通墙壁无缝对接 -->
+            </linkFlags>
+<!--            <damageData>-->
+<!--                <cornerTL>Damage/Corner</cornerTL>-->
+<!--                <cornerTR>Damage/Corner</cornerTR>-->
+<!--                <cornerBL>Damage/Corner</cornerBL>-->
+<!--                <cornerBR>Damage/Corner</cornerBR>-->
+<!--                <edgeTop>Damage/Edge</edgeTop>-->
+<!--                <edgeBot>Damage/Edge</edgeBot>-->
+<!--                <edgeLeft>Damage/Edge</edgeLeft>-->
+<!--                <edgeRight>Damage/Edge</edgeRight>-->
+<!--            </damageData>-->
+        </graphicData>
+        
+        <!-- 欺骗引擎：将其设为可通行，使其不会打断原版的寻路网格和区域连接 -->
+        <passability>Standable</passability>
+        
+        <holdsRoof>true</holdsRoof> <!-- 可以支撑屋顶 -->
+        <altitudeLayer>Building</altitudeLayer>
+        <blockLight>true</blockLight> <!-- 像墙一样挡光 -->
+        <castEdgeShadows>true</castEdgeShadows>
+        <fillPercent>1</fillPercent> <!-- 100% 阻挡视线和提供掩体 -->
+        <coversFloor>true</coversFloor>
+
+        <!-- 2. 欺骗AI的属性 -->
+        <statBases>
+            <!-- 极高的血量，让破墙AI计算后认为破坏它极其不划算，从而绕路 -->
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+        </statBases>
+
+        <building>
+            <ai_neverTrashThis>true</ai_neverTrashThis> <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+            <isEdifice>true</isEdifice>
+        </building>
+
+    </ThingDef>
+    
+</Defs>
