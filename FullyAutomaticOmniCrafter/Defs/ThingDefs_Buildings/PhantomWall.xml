@@ -15,23 +15,25 @@
 
         <!-- 1. 视觉属性：完全照搬原版的墙 -->
         <graphicData>
-            <texPath>Things/Building/Linked/Wall</texPath> <!-- 使用原版墙的贴图 -->
-            <graphicClass>Graphic_Linked</graphicClass> <!-- 连体材质，能互相连接 -->
-            <!--            <linkType>CornerFiller</linkType>-->
+            <texPath>Things/Building/Linked/Wall</texPath>
+            <graphicClass>Graphic_Appearances</graphicClass>
+            <linkType>CornerFiller</linkType>
             <linkFlags>
-                <li>Wall</li> <!-- 关键：让它能和原版的普通墙壁无缝对接 -->
+                <li>Wall</li>
+                <li>Rock</li>
             </linkFlags>
-            <!--            <damageData>-->
-            <!--                <cornerTL>Damage/Corner</cornerTL>-->
-            <!--                <cornerTR>Damage/Corner</cornerTR>-->
-            <!--                <cornerBL>Damage/Corner</cornerBL>-->
-            <!--                <cornerBR>Damage/Corner</cornerBR>-->
-            <!--                <edgeTop>Damage/Edge</edgeTop>-->
-            <!--                <edgeBot>Damage/Edge</edgeBot>-->
-            <!--                <edgeLeft>Damage/Edge</edgeLeft>-->
-            <!--                <edgeRight>Damage/Edge</edgeRight>-->
-            <!--            </damageData>-->
+            <damageData>
+                <cornerTL>Damage/Corner</cornerTL>
+                <cornerTR>Damage/Corner</cornerTR>
+                <cornerBL>Damage/Corner</cornerBL>
+                <cornerBR>Damage/Corner</cornerBR>
+                <edgeTop>Damage/Edge</edgeTop>
+                <edgeBot>Damage/Edge</edgeBot>
+                <edgeLeft>Damage/Edge</edgeLeft>
+                <edgeRight>Damage/Edge</edgeRight>
+            </damageData>
         </graphicData>
+        <uiIconPath>Things/Building/Linked/WallSmooth_MenuIcon</uiIconPath>
 
         <!-- 欺骗引擎：将其设为可通行，使其不会打断原版的寻路网格和区域连接 -->
         <passability>Standable</passability>
