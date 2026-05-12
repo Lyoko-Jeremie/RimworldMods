@@ -26,14 +26,14 @@
     <RealityWeaver_OkSmoothSurface>Auto smoothing completed! Processed {0} areas in a flash</RealityWeaver_OkSmoothSurface>
 
     <!-- Execute Roofing Project -->
-    <RealityWeaver_AutoRoofer>Execute Roofing Project</RealityWeaver_AutoRoofer>
+    <RealityWeaver_AutoRoofer>Instantly Execute Roofing</RealityWeaver_AutoRoofer>
     <RealityWeaver_AutoRooferDesc>Instantly build or remove roofs according to the current roofing zone settings across the entire map</RealityWeaver_AutoRooferDesc>
     <RealityWeaver_AutoRooferOk>Roofing completed: Built {0} roofs, Removed {1} roofs</RealityWeaver_AutoRooferOk>
 
     <!-- 执行地板粉饰工程 -->
-    <RealityWeaver_Paint>Automated Floor Painting</RealityWeaver_Paint>
+    <RealityWeaver_Paint>Instantly Floor Painting</RealityWeaver_Paint>
     <RealityWeaver_PaintDesc>Instantly complete all planned floor painting tasks on the current map (no materials required)</RealityWeaver_PaintDesc>
-    <RealityWeaver_RemovePaint>Automated Floor Paint Removal</RealityWeaver_RemovePaint>
+    <RealityWeaver_RemovePaint>Instantly Floor Paint Removal</RealityWeaver_RemovePaint>
     <RealityWeaver_RemovePaintDesc>Instantly complete all planned floor paint removal tasks on the current map</RealityWeaver_RemovePaintDesc>
     <RealityWeaver_PaintOk>Automatically completed {0} floor painting tasks</RealityWeaver_PaintOk>
     <RealityWeaver_RemovePaintOk>Automatically completed {0} floor paint removal tasks</RealityWeaver_RemovePaintOk>

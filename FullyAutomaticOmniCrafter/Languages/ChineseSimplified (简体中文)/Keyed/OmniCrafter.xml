@@ -101,7 +101,7 @@
     <OmniCrafter_GraphLogY>Y 轴对数缩放</OmniCrafter_GraphLogY>
     <OmniCrafter_GraphLogYDesc>以 log10 对数刻度显示 Y 轴。</OmniCrafter_GraphLogYDesc>
     <!-- 解锁可用研究 -->
-    <OmniCrafter_UnlockAvailableResearch>解锁可用研究</OmniCrafter_UnlockAvailableResearch>
+    <OmniCrafter_UnlockAvailableResearch>立即解锁可用研究</OmniCrafter_UnlockAvailableResearch>
     <OmniCrafter_UnlockAvailableResearchDesc>瞬间解锁当前所有前置条件已满足的研究项目</OmniCrafter_UnlockAvailableResearchDesc>
     <OmniCrafter_NoUnlockAvailableResearch>当前没有可以解锁的研究</OmniCrafter_NoUnlockAvailableResearch>
     <OmniCrafter_OkUnlockAvailableResearch>解锁完成！共解锁了 {0} 项研究</OmniCrafter_OkUnlockAvailableResearch>

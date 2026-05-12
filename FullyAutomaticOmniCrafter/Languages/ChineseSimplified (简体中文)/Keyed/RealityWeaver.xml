@@ -19,20 +19,20 @@
     <!-- 参数：{0}=待建数量, {1}=电量消耗(Wd), {2}=区域名称 -->
     <RealityWeaver_Status>待具现：{0} 个蓝图/施工框 · 所需电量：{1} Wd · 范围：{2}</RealityWeaver_Status>
     
-    <RealityWeaver_SmoothSurface>自动打磨</RealityWeaver_SmoothSurface>
+    <RealityWeaver_SmoothSurface>立即打磨</RealityWeaver_SmoothSurface>
     <RealityWeaver_SmoothSurfaceDesc>一键自动完成当前地图上所有已规划的打磨地面和打磨墙壁的任务</RealityWeaver_SmoothSurfaceDesc>
     <RealityWeaver_NoSmoothSurface>没有找到需要打磨的规划区域</RealityWeaver_NoSmoothSurface>
     <RealityWeaver_OkSmoothSurface>自动打磨完成！共瞬间处理了 {0} 个地块</RealityWeaver_OkSmoothSurface>
     
     <!-- 执行屋顶工程 -->
-    <RealityWeaver_AutoRoofer>执行屋顶工程</RealityWeaver_AutoRoofer>
+    <RealityWeaver_AutoRoofer>立即完成屋顶工程</RealityWeaver_AutoRoofer>
     <RealityWeaver_AutoRooferDesc>瞬间按照当前的建造屋顶区/移除屋顶区划设置，在全图范围内建造或拆除屋顶</RealityWeaver_AutoRooferDesc>
     <RealityWeaver_AutoRooferOk>屋顶工程完毕：共建造 {0} 个屋顶，拆除 {1} 个屋顶</RealityWeaver_AutoRooferOk>
     
     <!-- 执行地板粉饰工程 -->
-    <RealityWeaver_Paint>自动粉饰地板</RealityWeaver_Paint>
+    <RealityWeaver_Paint>立即粉饰地板</RealityWeaver_Paint>
     <RealityWeaver_PaintDesc>瞬间完成全图所有已规划的粉饰地板任务 (免耗材)</RealityWeaver_PaintDesc>
-    <RealityWeaver_RemovePaint>自动移除涂料</RealityWeaver_RemovePaint>
+    <RealityWeaver_RemovePaint>立即移除涂料</RealityWeaver_RemovePaint>
     <RealityWeaver_RemovePaintDesc>瞬间完成全图所有已规划的移除地板涂料任务</RealityWeaver_RemovePaintDesc>
     <RealityWeaver_PaintOk>已自动完成 {0} 个粉饰地板任务</RealityWeaver_PaintOk>
     <RealityWeaver_RemovePaintOk>已自动完成 {0} 个移除地板涂料任务</RealityWeaver_RemovePaintOk>
