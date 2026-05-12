@@ -58,9 +58,17 @@
         </statBases>
 
         <building>
-            <ai_neverTrashThis>true</ai_neverTrashThis> <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+            <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+            <ai_neverTrashThis>true</ai_neverTrashThis> 
+            
+            <!-- 标记该建筑是否为"主体建筑"（地基级建筑），即占据地图格子的"正式"建筑。只有 Edifice 才能支撑屋顶 -->
+            <!-- 一个格子同时只能有一个 Edifice。如果新建筑是 Edifice，会替换并摧毁该格已有的 Edifice -->
             <isEdifice>true</isEdifice>
+            <isWall>true</isWall>
+            <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
+            <isInert>true</isInert>
         </building>
+        <rotatable>false</rotatable>
 
     </ThingDef>
 
