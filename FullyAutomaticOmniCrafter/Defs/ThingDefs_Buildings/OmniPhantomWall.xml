@@ -91,6 +91,8 @@
             <isPowerConduit>true</isPowerConduit>
         </building>
         <rotatable>false</rotatable>
+        
+        <drawStyleCategory>Walls</drawStyleCategory>
 
         <comps>
             <!-- 电力传导 -->
@@ -101,7 +103,7 @@
 
             <!-- 自发光 -->
             <li Class="CompProperties_Glower">
-                <glowRadius>3</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
+                <glowRadius>25</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
                 <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
             </li>
         </comps>
