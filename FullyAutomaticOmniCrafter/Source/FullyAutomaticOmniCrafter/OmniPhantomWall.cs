@@ -1,89 +1,91 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection.Emit;
-using HarmonyLib;
+﻿using HarmonyLib;
 using RimWorld;
 using Verse;
-using Verse.Sound;
-using UnityEngine;
 
 namespace FullyAutomaticOmniCrafter
 {
-    // 1. 建筑基础类：仅保留无敌判定
-    public class Building_OmniPhantomWall : Building
+    /// <summary>
+    /// 幻影墙建筑类。
+    ///
+    /// 寻路机制说明（RimWorld 1.6 Unity Jobs 架构）：
+    ///
+    /// 寻路管线分三阶段：
+    ///   ① PathGridJob.CostForCell  [BurstCompile, IJobParallelFor]
+    ///      — 预计算与小人无关的基础代价网格 grid[]
+    ///      — 此阶段由 ThingDef.passability 决定：需设为 Standable，
+    ///        否则 grid[index] = 10000，对所有人封路。
+    ///
+    ///   ② PathGridDoorsBlockedJob.Execute  [普通托管 IJob]
+    ///      — 遍历地图上所有 IPathFindCostProvider，调用 PathFindCostFor(pawn)
+    ///      — 结果存入 providerCost[index]（每个小人独立计算）
+    ///
+    ///   ③ PathFinderJob.IndexCost(index)  [BurstCompile, IJob，A* 主循环]
+    ///      — providerCost[index] == ushort.MaxValue → 返回 10000（不可通行）
+    ///      — 否则: max(grid[index], providerCost[index])
+    ///
+    /// 因此本类实现 IPathFindCostProvider：
+    ///   玩家方小人 → PathFindCostFor = 0      → A* 视为正常地面（可通行）
+    ///   非玩家小人 → PathFindCostFor = ushort.MaxValue → A* 视为不可通行（10000）
+    ///
+    /// ThingDef XML 中必须设置：
+    ///   &lt;passability&gt;Standable&lt;/passability&gt;
+    ///   &lt;pathCost&gt;0&lt;/pathCost&gt;
+    /// </summary>
+    public class Building_OmniPhantomWall : Building, IPathFindCostProvider
     {
+        // ── 无敌判定 ──────────────────────────────────────────────────
         public override void PreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
             absorbed = true; // 绝对无敌
         }
-    }
 
-    // 2. Harmony 补丁：拦截寻路核心
-    [HarmonyPatch(typeof(PathFinder), "FindPath")]
-    // 注意：FindPath 方法有很多重载，实际开发中需要精确指定参数类型数组 (Type[])
-    public static class PathFinder_FindPath_Patch
-    {
-        // 这是一个我们将通过 Transpiler 注入到 A* 寻路循环中的辅助方法
-        public static int ModifyPathCost(int originalCost, Pawn pathingPawn, IntVec3 cell, Map map)
+        // ── IPathFindCostProvider ─────────────────────────────────────
+        /// <summary>
+        /// 玩家（含盟友/俘虏）返回 0；敌人/野生动物返回 ushort.MaxValue。
+        /// PathFinderJob.IndexCost 会将 ushort.MaxValue 直接映射为 10000（不可通行）。
+        /// </summary>
+        public ushort PathFindCostFor(Pawn pawn)
         {
-            // 获取该格子上的建筑物
-            Building edifice = map.edificeGrid[cell];
+            if (pawn == null) return ushort.MaxValue;
 
-            if (edifice != null && edifice is Building_OmniPhantomWall)
-            {
-                // 如果是玩家派系（或者是玩家的动物/机甲），原价通行（代价为0）
-                if (pathingPawn.Faction == Faction.OfPlayer || pathingPawn.HostFaction == Faction.OfPlayer)
-                {
-                    return originalCost;
-                }
+            // 本方小人（殖民者、机甲、动物等）可以自由穿行
+            if (pawn.Faction == Faction.OfPlayer)
+                return 0;
 
-                // 如果是敌人/野生动物，返回一个极高的惩罚代价（10000）
-                // 这样敌人的寻路大脑会认为这里是绝对不可逾越的死胡同
-                return originalCost + 10000;
-            }
+            // 玩家的俘虏/客人也算友方
+            if (pawn.HostFaction == Faction.OfPlayer)
+                return 0;
 
-            return originalCost;
+            // 其余所有单位（敌人、野生动物、中立派系）——视为墙壁（不可通行）
+            return ushort.MaxValue;
         }
 
-        // Transpiler 逻辑（概念示范）
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions,
-            ILGenerator generator)
-        {
-            /*
-             * 在这里，你使用 Harmony 的 IL 操控技术，寻找 PathFinder 中计算
-             * "cost += pathGrid[index]" 的代码段。
-             * 然后插入对上述 ModifyPathCost() 方法的调用。
-             *
-             * 这样，底层 A* 算法读取到的这堵墙的代价：
-             * 对你的小人 = 0
-             * 对敌人 = 10000 -> 敌人自动绕路去砸你的死亡通道
-             */
-
-            // 具体的 IL 注入代码视 RimWorld 1.4/1.5 版本而定
-            return instructions;
-        }
+        public CellRect GetOccupiedRect() => this.OccupiedRect();
     }
 
+    // ── 子弹穿透补丁 ──────────────────────────────────────────────────
+    /// <summary>
+    /// 让玩家发射的子弹穿过幻影墙，敌人发射的子弹被挡住。
+    /// </summary>
     [HarmonyPatch(typeof(Projectile), "CanHit")]
     public static class Projectile_CanHit_Patch
     {
         public static void Postfix(Projectile __instance, Thing thing, ref bool __result)
         {
-            // 如果子弹即将击中的是我们的幻影墙
-            if (thing is Building_OmniPhantomWall)
+            if (!(thing is Building_OmniPhantomWall))
+                return;
+
+            // Launcher 属性返回发射者 Thing（武器持有者/建筑炮台）
+            Thing launcher = __instance.Launcher;
+            if (launcher != null && launcher.Faction == Faction.OfPlayer)
             {
-                // 检查开枪者的派系
-                Thing launcher = __instance.EquipmentDef != null ? __instance.Launcher : null;
-                if (launcher != null && launcher.Faction == Faction.OfPlayer)
-                {
-                    // 玩家发射的子弹？穿过去！（不触发击中判定）
-                    __result = false;
-                }
-                else
-                {
-                    // 敌人发射的子弹？原版逻辑（被这堵墙挡住并吸收）
-                    __result = true;
-                }
+                // 玩家发射的子弹穿透幻影墙
+                __result = false;
+            }
+            else
+            {
+                // 敌人发射的子弹被幻影墙拦截
+                __result = true;
             }
         }
     }
