@@ -89,6 +89,8 @@
             <isStuffableAirtight>true</isStuffableAirtight>
             <!-- 声明此建筑是电力导体 -->
             <isPowerConduit>true</isPowerConduit>
+            <!-- ↓ 加这一行，允许在此建筑上挂壁灯等附件 -->
+            <supportsWallAttachments>true</supportsWallAttachments>
         </building>
         <rotatable>false</rotatable>
         
