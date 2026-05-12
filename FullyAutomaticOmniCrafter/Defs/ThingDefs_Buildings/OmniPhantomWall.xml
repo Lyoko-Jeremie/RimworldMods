@@ -3,10 +3,8 @@
 
     <ThingDef ParentName="BuildingBase">
         <defName>OmniPhantomWall</defName>
-        <label>幻影隔离墙</label>
-        <description>
-            一种采用了相控阵空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。
-        </description>
+        <label>OmniPhantomWall</label>
+        <description>description</description>
 
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall</thingClass>
         <tickerType>Never</tickerType> <!-- 关键：绝对不刷新，零 CPU 损耗 -->
@@ -32,6 +30,11 @@
                 <edgeLeft>Damage/Edge</edgeLeft>
                 <edgeRight>Damage/Edge</edgeRight>
             </damageData>
+            
+            <!-- ↓ 半透明三件套 -->
+            <shaderType>Transparent</shaderType>          <!-- 开启 Alpha 混合 -->
+            <color>(1, 0.6, 1, 0.3)</color>         <!-- 略带蓝紫色调，30% 不透明度 -->
+            <allowAtlasing>false</allowAtlasing>           <!-- 禁止图集替换，保留 alpha -->
         </graphicData>
         <uiIconPath>Things/Building/Linked/WallSmooth_MenuIcon</uiIconPath>
 
@@ -49,10 +52,6 @@
         <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
         <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
 
-        <!-- ↓ 半透明三件套 -->
-        <shaderType>Transparent</shaderType>          <!-- 开启 Alpha 混合 -->
-        <color>(1, 0.6, 1, 0.3)</color>         <!-- 略带蓝紫色调，30% 不透明度 -->
-        <allowAtlasing>false</allowAtlasing>           <!-- 禁止图集替换，保留 alpha -->
 
 
         <!-- 欺骗引擎：将其设为可通行，使其不会打断原版的寻路网格和区域连接 -->
@@ -61,7 +60,8 @@
         <holdsRoof>true</holdsRoof> <!-- 可以支撑屋顶 -->
         <altitudeLayer>Building</altitudeLayer>
         <blockLight>true</blockLight> <!-- 像墙一样挡光 -->
-        <castEdgeShadows>true</castEdgeShadows>
+        <!-- 幻影效果配套：去掉边缘阴影更干净 -->
+        <castEdgeShadows>false</castEdgeShadows>
         <fillPercent>1</fillPercent> <!-- 100% 阻挡视线和提供掩体 -->
         <coversFloor>true</coversFloor>
 

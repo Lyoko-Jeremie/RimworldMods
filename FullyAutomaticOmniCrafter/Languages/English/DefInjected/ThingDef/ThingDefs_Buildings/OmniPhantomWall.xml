@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <!-- 幻影隔离墙 -->
+    <OmniPhantomWall.label>Phantom Wall</OmniPhantomWall.label>
+    <!-- 一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。 -->
+    <OmniPhantomWall.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.</OmniPhantomWall.description>
+
+</LanguageData>
