@@ -69,7 +69,7 @@
         <!-- 2. 欺骗AI的属性 -->
         <statBases>
             <!-- 极高的血量，让破墙AI计算后认为破坏它极其不划算，从而绕路 -->
-            <MaxHitPoints>999999999</MaxHitPoints>
+            <MaxHitPoints>999999</MaxHitPoints>
             <WorkToBuild>1</WorkToBuild>
             <Flammability>0</Flammability> <!-- 不可燃 -->
         </statBases>
