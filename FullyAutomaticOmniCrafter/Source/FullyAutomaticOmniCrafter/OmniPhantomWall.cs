@@ -113,6 +113,27 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ── AffectsRegions 补丁：使 SpawnSetup/DeSpawn 正确触发区域 dirty ─────────
+    /// <summary>
+    /// ThingDef.AffectsRegions 默认只对 Impassable/IsDoor/IsFence 返回 true。
+    /// 幻影墙 passability=Standable，导致 Thing.SpawnSetup 和 Thing.DeSpawn 均不会调用
+    /// Notify_ThingAffectingRegionsSpawned / Notify_ThingAffectingRegionsDespawned，
+    /// 区域永远不 dirty，GetExpectedRegionType 补丁无法生效，围墙无法形成独立房间。
+    ///
+    /// 此补丁让 OmniPhantomWall 的 ThingDef 返回 AffectsRegions=true，
+    /// 使 Thing.SpawnSetup/DeSpawn 走正常的区域 dirty 流程。
+    /// </summary>
+    [HarmonyPatch(typeof(ThingDef), "AffectsRegions", MethodType.Getter)]
+    public static class ThingDef_AffectsRegions_Patch
+    {
+        public static void Postfix(ThingDef __instance, ref bool __result)
+        {
+            if (__result) return; // already true
+            if (__instance.defName == "OmniPhantomWall")
+                __result = true;
+        }
+    }
+
     // ── 可达性补丁：敌方小人在 BFS 层无法穿越幻影墙区域 ─────────────────────
     /// <summary>
     /// 敌方小人不应在可达性 BFS（Region.Allows）层面穿越幻影墙区域。
