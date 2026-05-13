@@ -164,6 +164,44 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ── 房间合并补丁：让幻影墙形成独立的房间区域 ───────────────────────────
+    /// <summary>
+    /// 修正幻影墙无法产生房间的问题。
+    ///
+    /// RimWorld 原逻辑中，只有 Normal/ImpassableFreeAirExchange/Fence 才能属于一个 Room。
+    /// 此补丁允许 PhantomWallRegionType 区域互相合并进入同一个 Room，
+    /// 但阻止它们与 Normal 等其他区域合并，从而在物理上和逻辑上切断内外连接，形成独立房间。
+    /// </summary>
+    [HarmonyPatch(typeof(RegionAndRoomUpdater), "ShouldBeInTheSameRoom")]
+    public static class RegionAndRoomUpdater_ShouldBeInTheSameRoom_Patch
+    {
+        public static bool Prefix(District a, District b, ref bool __result)
+        {
+            RegionType typeA = a.RegionType;
+            RegionType typeB = b.RegionType;
+
+            bool isPhantomA = typeA == Building_OmniPhantomWall.PhantomWallRegionType;
+            bool isPhantomB = typeB == Building_OmniPhantomWall.PhantomWallRegionType;
+
+            // 如果两个都是幻影墙，它们属于同一个房间（连成一圈）
+            if (isPhantomA && isPhantomB)
+            {
+                __result = true;
+                return false;
+            }
+
+            // 如果其中一个是幻影墙（另一个必然不是），它们绝不属于同一个房间（隔离内外）
+            if (isPhantomA || isPhantomB)
+            {
+                __result = false;
+                return false;
+            }
+
+            // 其余情况执行原版逻辑
+            return true;
+        }
+    }
+
     // ── 子弹穿透补丁 ──────────────────────────────────────────────────
     /// <summary>
     /// 让玩家发射的子弹穿过幻影墙，敌人发射的子弹被挡住。
