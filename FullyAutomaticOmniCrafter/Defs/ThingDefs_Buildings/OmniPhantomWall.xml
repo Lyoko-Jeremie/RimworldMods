@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-    <ThingDef ParentName="BuildingBase">
-        <defName>OmniPhantomWall</defName>
-        <label>OmniPhantomWall</label>
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+        <defName>OmniPhantomWallBase</defName>
+        <label>OmniPhantomWallBase</label>
         <description>description</description>
 
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall</thingClass>
@@ -69,9 +69,10 @@
         <!-- 2. 欺骗AI的属性 -->
         <statBases>
             <!-- 极高的血量，让破墙AI计算后认为破坏它极其不划算，从而绕路 -->
-            <MaxHitPoints>999999</MaxHitPoints>
+            <MaxHitPoints>999</MaxHitPoints>
             <WorkToBuild>1</WorkToBuild>
             <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
         </statBases>
 
         <building>
@@ -88,7 +89,7 @@
             <paintable>true</paintable>
             <isStuffableAirtight>true</isStuffableAirtight>
             <!-- 声明此建筑是电力导体 -->
-            <isPowerConduit>true</isPowerConduit>
+<!--            <isPowerConduit>true</isPowerConduit>-->
             <!-- ↓ 加这一行，允许在此建筑上挂壁灯等附件 -->
             <supportsWallAttachments>true</supportsWallAttachments>
         </building>
@@ -96,6 +97,67 @@
         
         <drawStyleCategory>Walls</drawStyleCategory>
 
+        <comps>
+            <!-- 电力传导 -->
+<!--            <li Class="CompProperties_Power">-->
+<!--                <compClass>CompPowerTransmitter</compClass>-->
+<!--                <transmitsPower>true</transmitsPower>-->
+<!--            </li>-->
+
+            <!-- 自发光 -->
+<!--            <li Class="CompProperties_Glower">-->
+<!--                <glowRadius>25</glowRadius>              &lt;!&ndash; 发光半径，单位=格，最大40 &ndash;&gt;-->
+<!--                <glowColor>(255,255,255,0)</glowColor>  &lt;!&ndash; RGB 0~255，第4位固定写0 &ndash;&gt;-->
+<!--            </li>-->
+        </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <allowPrisoner>false</allowPrisoner>
+                <allowGuest>false</allowGuest>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+        <defName>OmniPhantomWall_Power</defName>
+        <label>OmniPhantomWall_Power</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+        </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <allowPrisoner>false</allowPrisoner>
+                <allowGuest>false</allowGuest>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+        <defName>OmniPhantomWall_PowerLight</defName>
+        <label>OmniPhantomWall_PowerLight</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
         <comps>
             <!-- 电力传导 -->
             <li Class="CompProperties_Power">
@@ -112,8 +174,8 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>true</allowPrisoner>
-                <allowGuest>true</allowGuest>
+                <allowPrisoner>false</allowPrisoner>
+                <allowGuest>false</allowGuest>
             </li>
         </modExtensions>
         
