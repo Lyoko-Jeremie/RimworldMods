@@ -109,6 +109,13 @@
                 <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
             </li>
         </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <allowPrisoner>true</allowPrisoner>
+                <allowGuest>true</allowGuest>
+            </li>
+        </modExtensions>
         
     </ThingDef>
 
