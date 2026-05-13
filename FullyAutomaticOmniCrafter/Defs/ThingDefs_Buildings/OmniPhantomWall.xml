@@ -181,4 +181,81 @@
         
     </ThingDef>
 
+    <!--  ===============================================================================================  -->
+
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+        <defName>OmniPhantomWall_all_</defName>
+        <label>OmniPhantomWall_all_Power</label>
+        <description>description</description>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <allowPrisoner>true</allowPrisoner>
+                <allowGuest>true</allowGuest>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+    
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+        <defName>OmniPhantomWall_all_Power</defName>
+        <label>OmniPhantomWall_all_Power</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+        </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <allowPrisoner>true</allowPrisoner>
+                <allowGuest>true</allowGuest>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+        <defName>OmniPhantomWall_all_PowerLight</defName>
+        <label>OmniPhantomWall_all_PowerLight</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+            <!-- 自发光 -->
+            <li Class="CompProperties_Glower">
+                <glowRadius>25</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
+                <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
+            </li>
+        </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <allowPrisoner>true</allowPrisoner>
+                <allowGuest>true</allowGuest>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+
 </Defs>

@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
-    <OmniPhantomWall.label>幻影隔离墙</OmniPhantomWall.label>
-    <OmniPhantomWall.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。</OmniPhantomWall.description>
+    <OmniPhantomWallBase.label>幻影隔离墙（居家）</OmniPhantomWallBase.label>
+    <OmniPhantomWallBase.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人、来访者、囚犯。</OmniPhantomWallBase.description>
+
+    <OmniPhantomWall_Power.label>幻影隔离墙（居家）（带电缆）</OmniPhantomWall_Power.label>
+    <OmniPhantomWall_Power.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人、来访者、囚犯。\n\n自带电缆。</OmniPhantomWall_Power.description>
+
+    <OmniPhantomWall_PowerLight.label>幻影隔离墙（居家）（自发光自带电缆）</OmniPhantomWall_PowerLight.label>
+    <OmniPhantomWall_PowerLight.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人、来访者、囚犯。\n\n自发光自带电缆。</OmniPhantomWall_PowerLight.description>
+
+    <OmniPhantomWall_all_.label>幻影隔离墙（户外）</OmniPhantomWall_all_.label>
+    <OmniPhantomWall_all_.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人，不阻止来访者、囚犯。</OmniPhantomWall_all_.description>
+
+    <OmniPhantomWall_all_Power.label>幻影隔离墙（户外）（带电缆）</OmniPhantomWall_all_Power.label>
+    <OmniPhantomWall_all_Power.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人，不阻止来访者、囚犯。\n\n自带电缆。</OmniPhantomWall_all_Power.description>
+
+    <OmniPhantomWall_all_PowerLight.label>幻影隔离墙（户外）（自发光自带电缆）</OmniPhantomWall_all_PowerLight.label>
+    <OmniPhantomWall_all_PowerLight.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人，不阻止来访者、囚犯。\n\n自发光自带电缆。</OmniPhantomWall_all_PowerLight.description>
 
 </LanguageData>
