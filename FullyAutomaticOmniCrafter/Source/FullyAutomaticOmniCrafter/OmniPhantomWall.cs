@@ -332,70 +332,40 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    // ── 性能优化：地图组件统一管理幻影墙区域温度 ───────────────────────────
+    // ── 性能优化：Harmony Patch 统一管理幻影墙区域温度 ───────────────────────────
     /// <summary>
-    /// 当幻影墙数量巨大（如上万个）时，逐个建筑的 TickRare 会导致严重的性能掉帧。
-    /// 该组件每 250 Ticks 遍历一次地图房间，将所有属于幻影墙区域的房间强制设为恒温。
-    /// 房间数量通常远小于建筑数量，且直接设置温度比搜索相邻格高效得多。
+    /// 当幻影墙数量巨大（如上万个）时，MapComponent 定时遍历房间虽然比逐个建筑 Tick 高效，
+    /// 但仍存在不必要的开销。通过 Patch Room.Temperature 的 Getter，可以在不产生任何
+    /// 定时计算开销的情况下，让幻影墙区域始终表现为恒温。
     /// </summary>
-    public class MapComponent_OmniPhantomWallTempManager : MapComponent
+    [HarmonyPatch(typeof(Room), "get_Temperature")]
+    public static class Room_Temperature_Getter_Patch
     {
-        public MapComponent_OmniPhantomWallTempManager(Map map) : base(map) { }
-
-        public override void MapComponentTick()
+        public static void Postfix(Room __instance, ref float __result)
         {
-            // 每 250 ticks (约 4 秒) 处理一次
-            if (Find.TickManager.TicksGame % 250 != 0) return;
-
-            var rooms = map.regionGrid.AllRooms;
-            if (rooms == null) return;
-
-            // 缓存配置信息，避免在循环中重复获取
-            // 这里我们假设所有幻影墙使用相同的配置，如果存在不同配置，取默认值即可
-            float targetTemp = 21f;
-            bool configLoaded = false;
-
-            int roomCount = rooms.Count;
-            for (int i = 0; i < roomCount; i++)
+            // 只有当房间属于幻影墙区域时才拦截
+            if (__instance.FirstRegion != null && __instance.FirstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
             {
-                Room room = rooms[i];
-                if (room == null || room.Dereferenced) continue;
-
-                // 检查该房间是否属于幻影墙区域
-                // 由于我们在 ShouldBeInTheSameRoom 补丁中保证了幻影墙区域不与其他区域合并
-                // 只要检查房间的第一个 Region 的 RegionType 即可
-                if (room.FirstRegion != null && room.FirstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
-                {
-                    // 仅在发现幻影墙房间时才尝试获取一次配置（从房间内的建筑动态获取）
-                    if (!configLoaded)
-                    {
-                        // 取房间内任意一个格子，获取其上的建筑
-                        Building building = room.FirstRegion.AnyCell.GetEdifice(map);
-                        var ext = building?.def.GetModExtension<PhantomWallExtension>();
-                        if (ext != null)
-                        {
-                            targetTemp = ext.targetTemperature;
-                        }
-                        else
-                        {
-                            // 如果没找到扩展，尝试回退到默认 Def 查找（以防万一）
-                            var wallDef = ThingDef.Named("Building_OmniPhantomWall");
-                            var fallbackExt = wallDef?.GetModExtension<PhantomWallExtension>();
-                            if (fallbackExt != null)
-                            {
-                                targetTemp = fallbackExt.targetTemperature;
-                            }
-                        }
-                        configLoaded = true;
-                    }
-
-                    // 强制恒温逻辑：直接设置温度，不再渐进修改
-                    if (Mathf.Abs(targetTemp - room.Temperature) > 0.01f)
-                    {
-                        room.Temperature = targetTemp;
-                    }
-                }
+                // 获取配置，如果没找到则使用默认值 21f
+                // 这里为了极致性能，我们可以通过 AnyCell 快速定位建筑
+                Building building = __instance.FirstRegion.AnyCell.GetEdifice(__instance.Map);
+                var ext = building?.def.GetModExtension<PhantomWallExtension>();
+                __result = ext?.targetTemperature ?? 21f;
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(Room), "set_Temperature")]
+    public static class Room_Temperature_Setter_Patch
+    {
+        public static bool Prefix(Room __instance, ref float value)
+        {
+            // 如果是幻影墙房间，阻止任何温度修改，使其永远保持在 getter 返回的值
+            if (__instance.FirstRegion != null && __instance.FirstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
+            {
+                return false;
+            }
+            return true;
         }
     }
 }
