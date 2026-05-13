@@ -32,9 +32,9 @@ namespace FullyAutomaticOmniCrafter
     ///      — 房间边界由 Region 系统决定：passability=Standable 会被
     ///        RegionTypeUtility.GetExpectedRegionType 判定为 RegionType.Normal，
     ///        不形成房间边界，两侧合并成同一房间——真空无法隔离。
-    ///      — 修复：Harmony patch 将幻影墙格返回 RegionType.Portal，
-    ///        使其成为单格 Portal 区域（与关闭的门完全一致），从而形成真正的
-    ///        房间边界，两侧成为独立房间。
+    ///      — 修复：Harmony patch 将幻影墙格返回自定义 RegionType(18)，
+    ///        连续幻影墙合并为一个多格区域，室内/室外各成独立房间，
+    ///        不产生大量无用 Portal 单格房间。
     ///   B) 单格层 (VacuumUtility.EverInVacuum)：
     ///      — 检查单个格子是否暴露于真空。
     ///      — 需要 IsAirtight=true → ExchangeVacuum=false，才会返回 false
@@ -86,23 +86,22 @@ namespace FullyAutomaticOmniCrafter
         }
 
         public CellRect GetOccupiedRect() => this.OccupiedRect();
+
+        // ── 自定义区域类型常量 ─────────────────────────────────────────────
+        /// <summary>
+        /// 幻影墙专用 RegionType，值 = 18 = 0b10010 = Normal(2) | 高位标志(0x10)。
+        ///
+        /// 关键特性（RegionTypeUtility 中无逐 bit 处理，均为精确值比较）：
+        ///   • (18 & Set_Passable=0xE) = 2 ≠ 0 → Passable()=true：BFS 可达性可穿越 ✓
+        ///   • 18 ≠ Portal(4) → IsOneCellRegion()=false：洪水填充，连续幻影墙 = 一个区域 ✓
+        ///   • 18 ≠ Normal(2)/ImpassableFreeAirExchange(1)/Fence(8)：
+        ///     ShouldBeInTheSameRoom 返回 false → 不与 Normal 房间合并 ✓
+        ///   • 幻影墙区域 door=null → IsDoorway=false → 真空隔离走 ExchangeVacuum=false ✓
+        /// </summary>
+        internal const RegionType PhantomWallRegionType = (RegionType)18;
     }
 
-    // ── 区域类型补丁：让幻影墙形成真正的房间边界 ─────────────────────────
-    /// <summary>
-    /// 将幻影墙格的 RegionType 从 Normal 改为 Portal。
-    ///
-    /// 原因：
-    ///   passability=Standable → WalkableByNormal()=true
-    ///   → GetExpectedRegionType 返回 RegionType.Normal
-    ///   → 不形成房间边界，两侧房间合并 → 真空无法隔离。
-    ///
-    /// Portal 类型与关闭的门相同：
-    ///   • 单格独立区域 (IsOneCellRegion=true)，形成房间边界
-    ///   • 包含在 RegionType.Set_Passable，寻路/可达性 BFS 仍可穿越
-    ///   • VacuumComponent 将其视为 IsDoorway 房间，检查
-    ///     GetDoor(map)—null for phantom wall—不建立真空交流通道
-    /// </summary>
+    // ── 区域类型补丁：让幻影墙形成真正的房间边界（不产生无用单格房间）───────
     [HarmonyPatch(typeof(RegionTypeUtility), nameof(RegionTypeUtility.GetExpectedRegionType))]
     public static class RegionTypeUtility_GetExpectedRegionType_Patch
     {
@@ -110,7 +109,36 @@ namespace FullyAutomaticOmniCrafter
         {
             // 只有当结果本来是 Normal（Standable 地块）才需要覆写
             if (__result == RegionType.Normal && c.GetEdifice(map) is Building_OmniPhantomWall)
-                __result = RegionType.Portal;
+                __result = Building_OmniPhantomWall.PhantomWallRegionType;
+        }
+    }
+
+    // ── 可达性补丁：敌方小人在 BFS 层无法穿越幻影墙区域 ─────────────────────
+    /// <summary>
+    /// 敌方小人不应在可达性 BFS（Region.Allows）层面穿越幻影墙区域。
+    ///
+    /// 否则敌人会"认为"能到达幻影墙内部，反复尝试寻路，产生无效 AI 行为。
+    /// 友方小人（pawn=null 或 Faction=OfPlayer/HostFaction=OfPlayer）正常穿越。
+    /// </summary>
+    [HarmonyPatch(typeof(Region), nameof(Region.Allows))]
+    public static class Region_Allows_PhantomWall_Patch
+    {
+        public static void Postfix(Region __instance, TraverseParms tp, ref bool __result)
+        {
+            if (__instance.type != Building_OmniPhantomWall.PhantomWallRegionType)
+                return;
+
+            if (tp.pawn == null)
+                return; // 无特定小人时不限制（保持 true）
+
+            // 友方/俘虏可穿越
+            if (tp.pawn.Faction == Faction.OfPlayer)
+                return;
+            if (tp.pawn.HostFaction == Faction.OfPlayer)
+                return;
+
+            // 其余所有单位（敌人、野生动物、中立）→ BFS 层面封路
+            __result = false;
         }
     }
 
