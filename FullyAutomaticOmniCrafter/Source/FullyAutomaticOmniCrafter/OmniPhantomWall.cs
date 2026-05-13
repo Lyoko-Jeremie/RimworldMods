@@ -66,9 +66,59 @@ namespace FullyAutomaticOmniCrafter
     public class Building_OmniPhantomWall : Building, IPathFindCostProvider
     {
         // ── 无敌判定 ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// 始终视为满血，不显示血条损耗。
+        /// Thing.HitPoints 是 virtual property，覆写 getter 后游戏 UI 和逻辑
+        /// 均读取此值，血条永远满格，彻底隐去"耐久"概念。
+        /// setter 维持原始存储（不影响序列化等内部流程）。
+        /// </summary>
+        public override int HitPoints
+        {
+            get => MaxHitPoints;
+            set { /* 忽略任何写入，维持无耐久状态 */ }
+        }
+
+        /// <summary>
+        /// 吸收所有伤害，作为双重保险（防止绕过 HitPoints 直接调用 TakeDamage 的情况）。
+        /// </summary>
         public override void PreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
             absorbed = true; // 绝对无敌
+        }
+
+        /// <summary>
+        /// 合法销毁途径：
+        ///   • DestroyMode.Deconstruct  — 玩家主动下达拆除指令（唯一正常移除方式）
+        ///   • allowDestroyNonDestroyable — 系统级强制销毁（地图卸载等内部流程）
+        ///
+        /// 阻断途径（静默忽略）：
+        ///   • Vanish / KillFinalize / KillFinalizeLeavingsOnly — 战斗/脚本销毁
+        ///   • WillReplace — 玩家通过"在上面直接建造"
+        ///   • Cancel / Refund / FailConstruction — 仅作用于蓝图/框架阶段，
+        ///     对已建成建筑实际上不会触发，阻断无害，统一处理以防万一
+        /// </summary>
+        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
+        {
+            // 玩家主动拆除指令
+            if (mode == DestroyMode.Deconstruct)
+            {
+                base.Destroy(mode);
+                return;
+            }
+            // 在上面替换建造其他建筑导致的销毁
+            if (mode == DestroyMode.WillReplace)
+            {
+                base.Destroy(mode);
+                return;
+            }
+            // 系统级强制销毁（地图卸载、开发者 allowDestroyNonDestroyable）
+            if (Thing.allowDestroyNonDestroyable)
+            {
+                base.Destroy(mode);
+                return;
+            }
+            // 其余所有途径静默阻断
         }
 
         // ── 真空隔离 ──────────────────────────────────────────────────
