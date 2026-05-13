@@ -5,6 +5,28 @@ using Verse;
 namespace FullyAutomaticOmniCrafter
 {
     /// <summary>
+    /// 幻影墙 XML 扩展参数。
+    /// 在 ThingDef 的 &lt;modExtensions&gt; 节点中添加：
+    /// <code>
+    /// &lt;modExtensions&gt;
+    ///   &lt;li Class="FullyAutomaticOmniCrafter.PhantomWallExtension"&gt;
+    ///     &lt;allowPrisoner&gt;false&lt;/allowPrisoner&gt;
+    ///     &lt;allowGuest&gt;false&lt;/allowGuest&gt;
+    ///   &lt;/li&gt;
+    /// &lt;/modExtensions&gt;
+    /// </code>
+    /// allowPrisoner（默认 true）：玩家的俘虏是否可穿越幻影墙。
+    /// allowGuest（默认 true）：玩家的客人/访客是否可穿越幻影墙。
+    /// </summary>
+    public class PhantomWallExtension : DefModExtension
+    {
+        /// <summary>玩家的俘虏是否可以穿越幻影墙。默认 true。</summary>
+        public bool allowPrisoner = true;
+        /// <summary>玩家的客人/访客是否可以穿越幻影墙。默认 true。</summary>
+        public bool allowGuest = true;
+    }
+
+    /// <summary>
     /// 幻影墙建筑类。
     ///
     /// 寻路机制说明（RimWorld 1.6 Unity Jobs 架构）：
@@ -77,9 +99,15 @@ namespace FullyAutomaticOmniCrafter
             if (pawn.Faction == Faction.OfPlayer)
                 return 0;
 
-            // 玩家的俘虏/客人也算友方
-            if (pawn.HostFaction == Faction.OfPlayer)
-                return 0;
+            var ext = def.GetModExtension<PhantomWallExtension>();
+
+            // 玩家的俘虏：由 XML 参数 allowPrisoner 决定（默认允许）
+            if (pawn.IsPrisonerOfColony)
+                return (ext == null || ext.allowPrisoner) ? (ushort)0 : ushort.MaxValue;
+
+            // 玩家的客人/访客：由 XML 参数 allowGuest 决定（默认允许）
+            if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner)
+                return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
 
             // 其余所有单位（敌人、野生动物、中立派系）——视为墙壁（不可通行）
             return ushort.MaxValue;
@@ -153,11 +181,29 @@ namespace FullyAutomaticOmniCrafter
             if (tp.pawn == null)
                 return; // 无特定小人时不限制（保持 true）
 
-            // 友方/俘虏可穿越
+            // 友方可穿越
             if (tp.pawn.Faction == Faction.OfPlayer)
                 return;
-            if (tp.pawn.HostFaction == Faction.OfPlayer)
+
+            // 从该区域的任意幻影墙 Thing 上读取扩展参数
+            Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
+            var ext = wall?.def.GetModExtension<PhantomWallExtension>();
+
+            // 俘虏：由 allowPrisoner 决定
+            if (tp.pawn.IsPrisonerOfColony)
+            {
+                if (ext == null || ext.allowPrisoner) return;
+                __result = false;
                 return;
+            }
+
+            // 客人/访客：由 allowGuest 决定
+            if (tp.pawn.HostFaction == Faction.OfPlayer && !tp.pawn.IsPrisoner)
+            {
+                if (ext == null || ext.allowGuest) return;
+                __result = false;
+                return;
+            }
 
             // 其余所有单位（敌人、野生动物、中立）→ BFS 层面封路
             __result = false;
