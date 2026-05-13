@@ -129,7 +129,8 @@ namespace FullyAutomaticOmniCrafter
         public static void Postfix(ThingDef __instance, ref bool __result)
         {
             if (__result) return; // already true
-            if (__instance.defName == "OmniPhantomWall")
+            // 支持子类，如果将来有继承自 Building_OmniPhantomWall 的子类，也会自动生效。
+            if (typeof(Building_OmniPhantomWall).IsAssignableFrom(__instance.thingClass))
                 __result = true;
         }
     }
