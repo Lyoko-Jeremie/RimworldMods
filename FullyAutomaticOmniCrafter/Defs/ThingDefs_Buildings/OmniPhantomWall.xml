@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
+<!--    <DesignatorDropdownGroupDef>-->
+<!--        <defName>OmniPhantomWall_DropdownGroup</defName>-->
+<!--    </DesignatorDropdownGroupDef>-->
+
     <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
         <defName>OmniPhantomWallBase</defName>
         <label>OmniPhantomWallBase</label>
@@ -9,6 +13,8 @@
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall</thingClass>
         <tickerType>Never</tickerType> <!-- 关键：绝对不刷新，零 CPU 损耗 -->
 
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+<!--        <designatorDropdown>OmniPhantomWall_DropdownGroup</designatorDropdown>-->
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <!-- 1. 视觉属性：完全照搬原版的墙 -->
@@ -120,7 +126,7 @@
         
     </ThingDef>
 
-    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+    <ThingDef ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_Power</defName>
         <label>OmniPhantomWall_Power</label>
         <description>description</description>
@@ -148,7 +154,7 @@
         
     </ThingDef>
 
-    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+    <ThingDef ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_PowerLight</defName>
         <label>OmniPhantomWall_PowerLight</label>
         <description>description</description>
@@ -183,7 +189,7 @@
 
     <!--  ===============================================================================================  -->
 
-    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+    <ThingDef ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_all_</defName>
         <label>OmniPhantomWall_all_Power</label>
         <description>description</description>
@@ -197,7 +203,7 @@
         
     </ThingDef>
     
-    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+    <ThingDef ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_all_Power</defName>
         <label>OmniPhantomWall_all_Power</label>
         <description>description</description>
@@ -225,7 +231,7 @@
         
     </ThingDef>
 
-    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+    <ThingDef ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_all_PowerLight</defName>
         <label>OmniPhantomWall_all_PowerLight</label>
         <description>description</description>
