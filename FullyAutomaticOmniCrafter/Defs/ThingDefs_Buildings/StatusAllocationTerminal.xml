@@ -15,11 +15,13 @@
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter2</texPath>
+            <texPath>Things/Building/Production/OmniCrafter</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
+        <size>(3,3)</size>
+        <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
@@ -28,7 +30,6 @@
         <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
-        <size>(3,3)</size>
         <costList>
             <Steel>1</Steel>
         </costList>
@@ -57,7 +58,6 @@
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
         <rotatable>false</rotatable>
-        <uiIconPath>Things/Building/Production/OmniCrafter2</uiIconPath>
     </ThingDef>
 
     <ThingDef ParentName="StatusAllocationTerminal">
