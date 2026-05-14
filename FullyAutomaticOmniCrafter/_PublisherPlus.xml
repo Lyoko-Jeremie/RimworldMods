@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration>
   <Excluded>
+    <exclude>Tools</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\.idea</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\.vs</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\obj</exclude>
