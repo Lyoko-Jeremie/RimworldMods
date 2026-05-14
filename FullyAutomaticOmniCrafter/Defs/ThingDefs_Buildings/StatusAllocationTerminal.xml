@@ -15,13 +15,13 @@
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter</texPath>
+            <texPath>Things/Building/Production/StatusAllocationTerminal</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <size>(3,3)</size>
-        <uiIconPath>Things/Building/Production/OmniCrafter</uiIconPath>
+        <uiIconPath>Things/Building/Production/StatusAllocationTerminal</uiIconPath>
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
