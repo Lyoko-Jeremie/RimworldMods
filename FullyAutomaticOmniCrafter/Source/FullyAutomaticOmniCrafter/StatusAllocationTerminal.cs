@@ -20,8 +20,10 @@ namespace FullyAutomaticOmniCrafter
     [StaticConstructorOnStartup]
     public static class StatusAllocationTerminalTex
     {
-        public static readonly Texture2D IconOpenDialog =
-            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_OpenDialog", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconAutoDialog =
+            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_AutoDialog", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconManualDialog =
+            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ManualDialog", true) ?? BaseContent.WhiteTex;
     }
     
     /// <summary>
@@ -56,13 +58,24 @@ namespace FullyAutomaticOmniCrafter
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "管理人员状态",
-                    defaultDesc = "打开终端面板，为我方人员分配或移除状态。",
-                    icon = StatusAllocationTerminalTex.IconOpenDialog,
+                    defaultLabel = "光环设置",
+                    defaultDesc = "打开终端面板，设置光环模板。",
+                    icon = StatusAllocationTerminalTex.IconAutoDialog,
                     action = delegate ()
                     {
                         // 点击按钮后，打开我们自定义的 UI 窗口
-                        Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map));
+                        // Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map));
+                    }
+                };
+                yield return new Command_Action
+                {
+                    defaultLabel = "手动设置",
+                    defaultDesc = "打开终端面板，为我方人员分配或移除状态。",
+                    icon = StatusAllocationTerminalTex.IconManualDialog,
+                    action = delegate ()
+                    {
+                        // 点击按钮后，打开我们自定义的 UI 窗口
+                        // Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map));
                     }
                 };
             }
