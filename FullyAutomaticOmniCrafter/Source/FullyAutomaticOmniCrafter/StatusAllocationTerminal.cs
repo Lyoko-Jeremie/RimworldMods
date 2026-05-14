@@ -22,7 +22,9 @@ namespace FullyAutomaticOmniCrafter
         public HediffDef hediffDef;
         public BodyPartRecord bodyPart;
 
-        public HediffAssignment() { }
+        public HediffAssignment()
+        {
+        }
 
         public HediffAssignment(HediffDef hediffDef, BodyPartRecord bodyPart)
         {
@@ -42,6 +44,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 return other.hediffDef == hediffDef && other.bodyPart == bodyPart;
             }
+
             return false;
         }
 
@@ -57,11 +60,14 @@ namespace FullyAutomaticOmniCrafter
     public static class StatusAllocationTerminalTex
     {
         public static readonly Texture2D IconAutoDialog =
-            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_AutoDialog", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_AutoDialog", true) ??
+            BaseContent.WhiteTex;
+
         public static readonly Texture2D IconManualDialog =
-            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ManualDialog", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ManualDialog", true) ??
+            BaseContent.WhiteTex;
     }
-    
+
     /// <summary>
     /// 一个可以手动为我方殖民者调整hediff的建筑
     /// 有两个功能模式：
@@ -149,7 +155,7 @@ namespace FullyAutomaticOmniCrafter
                     defaultLabel = "光环设置",
                     defaultDesc = "打开终端面板，设置光环模板。",
                     icon = StatusAllocationTerminalTex.IconAutoDialog,
-                    action = delegate ()
+                    action = delegate()
                     {
                         Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map, this, true));
                     }
@@ -159,7 +165,7 @@ namespace FullyAutomaticOmniCrafter
                     defaultLabel = "手动设置",
                     defaultDesc = "打开终端面板，为我方人员分配或移除状态。",
                     icon = StatusAllocationTerminalTex.IconManualDialog,
-                    action = delegate ()
+                    action = delegate()
                     {
                         Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map, this, false));
                     }
@@ -167,7 +173,7 @@ namespace FullyAutomaticOmniCrafter
             }
         }
     }
-    
+
     // 3. 自定义 UI 窗口类 (绘制人员列表)
     public class Dialog_StatusAllocationTerminal : Window
     {
@@ -199,10 +205,11 @@ namespace FullyAutomaticOmniCrafter
             if (cachedAllHediffs == null)
             {
                 cachedAllHediffs = DefDatabase<HediffDef>.AllDefs
-                    .Where(d => !typeof(Hediff_Injury).IsAssignableFrom(d.hediffClass) && !typeof(Hediff_MissingPart).IsAssignableFrom(d.hediffClass))
+                    .Where(d => !typeof(Hediff_Injury).IsAssignableFrom(d.hediffClass) &&
+                                !typeof(Hediff_MissingPart).IsAssignableFrom(d.hediffClass))
                     .OrderBy(d => d.label)
                     .ToList();
-                
+
                 // 初始化 Hediff 的拼音索引（如果 PinyinSearchEngine 尚未就绪）
                 if (!PinyinSearchEngine.IsReady)
                 {
@@ -283,6 +290,7 @@ namespace FullyAutomaticOmniCrafter
                 Widgets.Label(new Rect(40f, y + 5f, viewRect.width - 40f, 30f), pawn.LabelShort);
                 y += 40f;
             }
+
             Widgets.EndScrollView();
         }
 
@@ -305,8 +313,10 @@ namespace FullyAutomaticOmniCrafter
                 {
                     selectedPawn.health.RemoveHediff(h);
                 }
+
                 y += 30f;
             }
+
             Widgets.EndScrollView();
         }
 
@@ -327,8 +337,10 @@ namespace FullyAutomaticOmniCrafter
                     manualTemplates.RemoveAt(i);
                     i--;
                 }
+
                 y += 30f;
             }
+
             if (selectedPawn != null && manualTemplates.Count > 0)
             {
                 if (Widgets.ButtonText(new Rect(0f, y, viewRect.width, 30f), "应用于选中人员"))
@@ -340,6 +352,7 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+
             Widgets.EndScrollView();
         }
 
@@ -356,7 +369,7 @@ namespace FullyAutomaticOmniCrafter
                 if (string.IsNullOrEmpty(query)) return true;
                 if (d.label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
                 if (usePinyin && PinyinSearchEngine.MatchesPinyin(d, query)) return true;
-                return false; 
+                return false;
             }).ToList();
 
             Rect viewRect = new Rect(0f, 0f, rect.width - 16f, filtered.Count * 35f);
@@ -366,7 +379,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
                 Widgets.Label(new Rect(0f, y + 5f, viewRect.width - 65f, 25f), def.LabelCap);
-                
+
                 float btnX = viewRect.width - 30f;
                 if (onRemove != null)
                 {
@@ -377,8 +390,10 @@ namespace FullyAutomaticOmniCrafter
                 {
                     if (Widgets.ButtonText(new Rect(btnX, y, 25f, 25f), "+")) onAdd(def);
                 }
+
                 y += 35f;
             }
+
             Widgets.EndScrollView();
         }
 
@@ -398,8 +413,10 @@ namespace FullyAutomaticOmniCrafter
                     comp.autoTemplates.RemoveAt(i);
                     i--;
                 }
+
                 y += 30f;
             }
+
             Widgets.EndScrollView();
         }
 
@@ -419,21 +436,22 @@ namespace FullyAutomaticOmniCrafter
                     comp.autoRemovals.RemoveAt(i);
                     i--;
                 }
+
                 y += 30f;
             }
+
             Widgets.EndScrollView();
         }
 
         private void AddToManualTemplate(HediffDef def)
         {
-            ShowPartPicker(def, (part) => {
-                manualTemplates.Add(new HediffAssignment(def, part));
-            });
+            ShowPartPicker(def, (part) => { manualTemplates.Add(new HediffAssignment(def, part)); });
         }
 
         private void AddToAutoTemplate(HediffDef def)
         {
-            ShowPartPicker(def, (part) => {
+            ShowPartPicker(def, (part) =>
+            {
                 if (!comp.autoTemplates.Any(a => a.hediffDef == def && a.bodyPart == part))
                     comp.autoTemplates.Add(new HediffAssignment(def, part));
             });
@@ -466,6 +484,7 @@ namespace FullyAutomaticOmniCrafter
                     list.Add(new FloatMenuOption(part.LabelCap, () => onSelected(part)));
                 }
             }
+
             Find.WindowStack.Add(new FloatMenu(list));
         }
     }
