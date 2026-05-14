@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-<!--    <DesignatorDropdownGroupDef>-->
-<!--        <defName>OmniPhantomWall_DropdownGroup</defName>-->
-<!--    </DesignatorDropdownGroupDef>-->
+    <DesignatorDropdownGroupDef>
+        <defName>OmniPhantomWall_DropdownGroup</defName>
+        <label>OmniPhantomWall</label>
+        <description>description</description>
+    </DesignatorDropdownGroupDef>
 
     <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
         <defName>OmniPhantomWallBase</defName>
@@ -14,7 +16,7 @@
         <tickerType>Never</tickerType> <!-- 关键：绝对不刷新，零 CPU 损耗 -->
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
-<!--        <designatorDropdown>OmniPhantomWall_DropdownGroup</designatorDropdown>-->
+        <designatorDropdown>OmniPhantomWall_DropdownGroup</designatorDropdown>
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <!-- 1. 视觉属性：完全照搬原版的墙 -->
