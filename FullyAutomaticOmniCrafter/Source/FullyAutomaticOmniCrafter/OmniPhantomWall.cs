@@ -382,13 +382,18 @@ namespace FullyAutomaticOmniCrafter
             if (map == null)
                 return;
 
-            // 使用 Cells 枚举代替 AnyCell（AnyCell 内部会访问 DirectGrid）
-            // 确保在迭代时区域拥有有效格子。
+            // 仿 AnyCell 逻辑，但使用 GetRegionAt_NoRebuild_InvalidAllowed（不触发重建）
+            // 而非 DirectGrid（会调用 TryRebuildDirtyRegionsAndRooms，导致递归重建崩溃）。
+            // 同时避免 Cells（yield return 生成器，存在 IEnumerator 堆分配开销）。
             IntVec3 cell = IntVec3.Invalid;
-            foreach (IntVec3 c in firstRegion.Cells)
+            RegionGrid regionGrid = map.regionGrid;
+            foreach (IntVec3 c in firstRegion.extentsClose)
             {
-                cell = c;
-                break;
+                if (regionGrid.GetRegionAt_NoRebuild_InvalidAllowed(c) == firstRegion)
+                {
+                    cell = c;
+                    break;
+                }
             }
             if (!cell.IsValid)
                 return;
