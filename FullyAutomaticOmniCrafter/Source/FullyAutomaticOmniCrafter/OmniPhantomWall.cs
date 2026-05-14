@@ -29,6 +29,8 @@ namespace FullyAutomaticOmniCrafter
         public bool allowPrisoner = true;
         /// <summary>玩家的客人/访客是否可以穿越幻影墙。默认 true。</summary>
         public bool allowGuest = true;
+        /// <summary>中立或盟友派系的商队是否可以穿越幻影墙。默认 true。</summary>
+        public bool allowTrader = true;
         /// <summary>幻影墙尝试维持的房间温度。默认 21。</summary>
         public float targetTemperature = 21f;
     }
@@ -187,10 +189,16 @@ namespace FullyAutomaticOmniCrafter
                 return (ext == null || ext.allowPrisoner) ? (ushort)0 : ushort.MaxValue;
 
             // 玩家的客人/访客：由 XML 参数 allowGuest 决定（默认允许）
+            // 判定逻辑：HostFaction 是玩家（访客、外交使团、寻求帮助的难民等）
             if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner)
                 return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
 
-            // 其余所有单位（敌人、野生动物、中立派系）——视为墙壁（不可通行）
+            // 中立或盟友派系的商队：由 XML 参数 allowTrader 决定（默认允许）
+            // 判定逻辑：属于中立或盟友派系，且具有交易属性（商队商人、护卫、驼兽）
+            if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer) && (pawn.trader != null || (pawn.kindDef != null && pawn.kindDef.trader)))
+                return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
+
+            // 其余所有单位（敌人、野生动物、敌对派系）——视为墙壁（不可通行）
             return ushort.MaxValue;
         }
 
@@ -282,6 +290,14 @@ namespace FullyAutomaticOmniCrafter
             if (tp.pawn.HostFaction == Faction.OfPlayer && !tp.pawn.IsPrisoner)
             {
                 if (ext == null || ext.allowGuest) return;
+                __result = false;
+                return;
+            }
+
+            // 商队：由 allowTrader 决定
+            if (tp.pawn.Faction != null && !tp.pawn.Faction.HostileTo(Faction.OfPlayer) && (tp.pawn.trader != null || (tp.pawn.kindDef != null && tp.pawn.kindDef.trader)))
+            {
+                if (ext == null || ext.allowTrader) return;
                 __result = false;
                 return;
             }
