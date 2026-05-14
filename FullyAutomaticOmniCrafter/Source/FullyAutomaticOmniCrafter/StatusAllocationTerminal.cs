@@ -209,12 +209,6 @@ namespace FullyAutomaticOmniCrafter
                                 !typeof(Hediff_MissingPart).IsAssignableFrom(d.hediffClass))
                     .OrderBy(d => d.label)
                     .ToList();
-
-                // 初始化 Hediff 的拼音索引（如果 PinyinSearchEngine 尚未就绪）
-                if (!PinyinSearchEngine.IsReady)
-                {
-                    PinyinSearchEngine.BuildIndex(cachedAllHediffs);
-                }
             }
         }
 
@@ -224,8 +218,42 @@ namespace FullyAutomaticOmniCrafter
         {
             Text.Font = GameFont.Medium;
             string title = autoMode ? "状态光环管理" : "状态人员管理";
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), title);
+            Rect titleRect = new Rect(0f, 0f, 250f, 35f);
+            Widgets.Label(titleRect, title);
             Text.Font = GameFont.Small;
+
+            // ── 拼音搜索切换按钮 (参照 Dialog_OmniCrafter) ──
+            float pinyinBtnX = titleRect.xMax + 10f;
+            Rect pinyinBtnRect = new Rect(pinyinBtnX, 4f, 36f, 26f);
+            bool pe = OmniCrafterMod.Settings.enablePinyinSearch;
+
+            GUI.color = pe ? Color.cyan : new Color(0.55f, 0.55f, 0.55f);
+            if (Widgets.ButtonText(pinyinBtnRect, "拼"))
+            {
+                pe = !pe;
+                OmniCrafterMod.Settings.enablePinyinSearch = pe;
+                OmniCrafterMod.Settings.Write();
+                if (pe && !PinyinSearchEngine.IsReady)
+                {
+                    PinyinSearchEngine.BuildIndex(cachedAllHediffs);
+                }
+            }
+
+            GUI.color = Color.white;
+            TooltipHandler.TipRegion(pinyinBtnRect, pe ? "拼音搜索已开启" : "拼音搜索已关闭");
+
+            // ── 重建拼音缓存按钮 ──
+            float rebuildBtnX = pinyinBtnRect.xMax + 4f;
+            Rect rebuildBtnRect = new Rect(rebuildBtnX, 4f, 26f, 26f);
+            GUI.color = PinyinSearchEngine.IsReady ? Color.white : new Color(1f, 0.7f, 0.3f);
+            if (Widgets.ButtonText(rebuildBtnRect, "R"))
+            {
+                PinyinSearchEngine.BuildIndex(cachedAllHediffs);
+                Messages.Message("拼音索引已重建", MessageTypeDefOf.TaskCompletion, false);
+            }
+
+            GUI.color = Color.white;
+            TooltipHandler.TipRegion(rebuildBtnRect, "重建拼音索引");
 
             Rect mainRect = new Rect(0f, 40f, inRect.width, inRect.height - 100f);
             if (autoMode)
@@ -364,7 +392,7 @@ namespace FullyAutomaticOmniCrafter
             Widgets.DrawMenuSection(rect);
 
             string query = searchFilter.ToLower();
-            bool usePinyin = !string.IsNullOrEmpty(query) && PinyinSearchEngine.IsReady;
+            bool usePinyin = !string.IsNullOrEmpty(query) && OmniCrafterMod.Settings.enablePinyinSearch && PinyinSearchEngine.IsReady;
 
             var filtered = cachedAllHediffs.Where(d =>
             {
