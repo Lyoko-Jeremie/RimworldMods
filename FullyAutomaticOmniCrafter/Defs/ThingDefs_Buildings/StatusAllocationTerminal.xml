@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>StatusAllocationTerminal_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef Name="StatusAllocationTerminal" ParentName="BuildingBase">
+        <defName>StatusAllocationTerminal</defName>
+        <label>Status Allocation Terminal</label>
+        <description>description</description>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>StatusAllocationTerminal_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniCrafter2</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(3,3)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+        <size>(3,3)</size>
+        <costList>
+            <Steel>1</Steel>
+        </costList>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+        </statBases>
+<!--        <tickerType>Rare</tickerType>-->
+        <building>
+<!--            <paintable>true</paintable>-->
+        </building>
+        <comps>
+            
+            <!-- 绑定用于弹出窗口的 C# 组件 -->
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_StatusAllocationTerminal">
+            </li>
+            
+        </comps>
+        <!--        <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
+        <!--        <hasInteractionCell>true</hasInteractionCell>-->
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+        <rotatable>false</rotatable>
+        <uiIconPath>Things/Building/Production/OmniCrafter2</uiIconPath>
+    </ThingDef>
+
+    <ThingDef ParentName="StatusAllocationTerminal">
+        <defName>StatusAllocationTerminal_mini</defName>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+        <size>(1,1)</size>
+    </ThingDef>
+
+<!--    <ThingDef ParentName="StatusAllocationTerminal">-->
+<!--        <defName>StatusAllocationTerminal_home</defName>-->
+<!--        <size>(3,3)</size>-->
+<!--        <graphicData>-->
+<!--            <drawSize>(3,3)</drawSize>-->
+<!--        </graphicData>-->
+<!--    </ThingDef>-->
+
+</Defs>
