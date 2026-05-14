@@ -368,14 +368,34 @@ namespace FullyAutomaticOmniCrafter
         public static void Postfix(Room __instance, ref float __result)
         {
             // 只有当房间属于幻影墙区域时才拦截
-            if (__instance.FirstRegion != null && __instance.FirstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
+            Region firstRegion = __instance.FirstRegion;
+            if (firstRegion == null || firstRegion.type != Building_OmniPhantomWall.PhantomWallRegionType)
+                return;
+
+            // 防止在区域系统重建中途（invalid 或尚无 cells）访问 AnyCell，
+            // 否则 Region.AnyCell → RegionGrid.DirectGrid 会触发递归重建，
+            // 导致 "Could not register region" / "Couldn't find any cell in region" 错误。
+            if (!firstRegion.valid)
+                return;
+
+            Map map = __instance.Map;
+            if (map == null)
+                return;
+
+            // 使用 Cells 枚举代替 AnyCell（AnyCell 内部会访问 DirectGrid）
+            // 确保在迭代时区域拥有有效格子。
+            IntVec3 cell = IntVec3.Invalid;
+            foreach (IntVec3 c in firstRegion.Cells)
             {
-                // 获取配置，如果没找到则使用默认值 21f
-                // 这里为了极致性能，我们可以通过 AnyCell 快速定位建筑
-                Building building = __instance.FirstRegion.AnyCell.GetEdifice(__instance.Map);
-                var ext = building?.def.GetModExtension<PhantomWallExtension>();
-                __result = ext?.targetTemperature ?? 21f;
+                cell = c;
+                break;
             }
+            if (!cell.IsValid)
+                return;
+
+            Building building = cell.GetEdifice(map);
+            var ext = building?.def.GetModExtension<PhantomWallExtension>();
+            __result = ext?.targetTemperature ?? 21f;
         }
     }
 
@@ -385,7 +405,8 @@ namespace FullyAutomaticOmniCrafter
         public static bool Prefix(Room __instance, ref float value)
         {
             // 如果是幻影墙房间，阻止任何温度修改，使其永远保持在 getter 返回的值
-            if (__instance.FirstRegion != null && __instance.FirstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
+            Region firstRegion = __instance.FirstRegion;
+            if (firstRegion != null && firstRegion.valid && firstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
             {
                 return false;
             }
