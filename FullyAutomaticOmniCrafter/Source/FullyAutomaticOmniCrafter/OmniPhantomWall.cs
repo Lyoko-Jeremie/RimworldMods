@@ -113,6 +113,12 @@ namespace FullyAutomaticOmniCrafter
                 base.Destroy(mode);
                 return;
             }
+            // mod脚本拆除
+            if (mode == DestroyMode.Vanish)
+            {
+                base.Destroy(mode);
+                return;
+            }
             // 在上面替换建造其他建筑导致的销毁
             if (mode == DestroyMode.WillReplace)
             {
