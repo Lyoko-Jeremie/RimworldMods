@@ -16,7 +16,43 @@ namespace FullyAutomaticOmniCrafter
             this.compClass = typeof(StatusAllocationTerminal);
         }
     }
-    
+
+    public class HediffAssignment : IExposable
+    {
+        public HediffDef hediffDef;
+        public BodyPartRecord bodyPart;
+
+        public HediffAssignment() { }
+
+        public HediffAssignment(HediffDef hediffDef, BodyPartRecord bodyPart)
+        {
+            this.hediffDef = hediffDef;
+            this.bodyPart = bodyPart;
+        }
+
+        public void ExposeData()
+        {
+            Scribe_Defs.Look(ref hediffDef, "hediffDef");
+            Scribe_BodyParts.Look(ref bodyPart, "bodyPart");
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is HediffAssignment other)
+            {
+                return other.hediffDef == hediffDef && other.bodyPart == bodyPart;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return (hediffDef?.GetHashCode() ?? 0) ^ (bodyPart?.GetHashCode() ?? 0);
+        }
+
+        public string Label => hediffDef.LabelCap + (bodyPart != null ? $" ({bodyPart.LabelCap})" : "");
+    }
+
     [StaticConstructorOnStartup]
     public static class StatusAllocationTerminalTex
     {
@@ -47,6 +83,58 @@ namespace FullyAutomaticOmniCrafter
     {
         public CompProperties_StatusAllocationTerminal Props => (CompProperties_StatusAllocationTerminal)this.props;
 
+        public List<HediffAssignment> autoTemplates = new List<HediffAssignment>();
+        public List<HediffDef> autoRemovals = new List<HediffDef>();
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Collections.Look(ref autoTemplates, "autoTemplates", LookMode.Deep);
+            Scribe_Collections.Look(ref autoRemovals, "autoRemovals", LookMode.Def);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                if (autoTemplates == null) autoTemplates = new List<HediffAssignment>();
+                if (autoRemovals == null) autoRemovals = new List<HediffDef>();
+            }
+        }
+
+        public override void CompTickRare()
+        {
+            base.CompTickRare();
+            if (parent.Faction != Faction.OfPlayer || !parent.Spawned) return;
+
+            Map map = parent.Map;
+            IReadOnlyList<Pawn> pawns = map.mapPawns.AllPawnsSpawned;
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn.Faction != Faction.OfPlayer || pawn.Dead) continue;
+
+                // 自动赋予
+                foreach (var template in autoTemplates)
+                {
+                    if (template.hediffDef == null) continue;
+                    if (!pawn.health.hediffSet.HasHediff(template.hediffDef, template.bodyPart))
+                    {
+                        pawn.health.AddHediff(template.hediffDef, template.bodyPart);
+                    }
+                }
+
+                // 自动移除
+                if (autoRemovals.Count > 0)
+                {
+                    var hediffs = pawn.health.hediffSet.hediffs;
+                    for (int j = hediffs.Count - 1; j >= 0; j--)
+                    {
+                        if (autoRemovals.Contains(hediffs[j].def))
+                        {
+                            pawn.health.RemoveHediff(hediffs[j]);
+                        }
+                    }
+                }
+            }
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             foreach (Gizmo g in base.CompGetGizmosExtra())
@@ -63,8 +151,7 @@ namespace FullyAutomaticOmniCrafter
                     icon = StatusAllocationTerminalTex.IconAutoDialog,
                     action = delegate ()
                     {
-                        // 点击按钮后，打开我们自定义的 UI 窗口
-                        // Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map));
+                        Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map, this, true));
                     }
                 };
                 yield return new Command_Action
@@ -74,8 +161,7 @@ namespace FullyAutomaticOmniCrafter
                     icon = StatusAllocationTerminalTex.IconManualDialog,
                     action = delegate ()
                     {
-                        // 点击按钮后，打开我们自定义的 UI 窗口
-                        // Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map));
+                        Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map, this, false));
                     }
                 };
             }
@@ -86,93 +172,301 @@ namespace FullyAutomaticOmniCrafter
     public class Dialog_StatusAllocationTerminal : Window
     {
         private Map map;
-        private Vector2 scrollPosition = Vector2.zero;
+        private StatusAllocationTerminal comp;
+        private bool autoMode;
 
-        // 窗口初始化设置
-        public Dialog_StatusAllocationTerminal(Map map)
+        private Vector2 scrollPosA = Vector2.zero;
+        private Vector2 scrollPosB = Vector2.zero;
+        private Vector2 scrollPosC = Vector2.zero;
+        private Vector2 scrollPosD = Vector2.zero;
+
+        private string searchFilter = "";
+        private Pawn selectedPawn;
+        private List<HediffAssignment> manualTemplates = new List<HediffAssignment>();
+
+        private static List<HediffDef> cachedAllHediffs;
+
+        public Dialog_StatusAllocationTerminal(Map map, StatusAllocationTerminal comp, bool autoMode)
         {
             this.map = map;
-            this.doCloseX = true;           // 右上角关闭按钮
-            this.doCloseButton = true;      // 底部关闭按钮
-            this.forcePause = true;         // 打开时暂停游戏
+            this.comp = comp;
+            this.autoMode = autoMode;
+            this.doCloseX = true;
+            this.doCloseButton = true;
+            this.forcePause = true;
             this.absorbInputAroundWindow = true;
+
+            if (cachedAllHediffs == null)
+            {
+                cachedAllHediffs = DefDatabase<HediffDef>.AllDefs
+                    .Where(d => !typeof(Hediff_Injury).IsAssignableFrom(d.hediffClass) && !typeof(Hediff_MissingPart).IsAssignableFrom(d.hediffClass))
+                    .OrderBy(d => d.label)
+                    .ToList();
+                
+                // 初始化 Hediff 的拼音索引（如果 PinyinSearchEngine 尚未就绪）
+                if (!PinyinSearchEngine.IsReady)
+                {
+                    PinyinSearchEngine.BuildIndex(cachedAllHediffs);
+                }
+            }
         }
 
-        // 定义窗口大小
-        public override Vector2 InitialSize => new Vector2(500f, 600f);
+        public override Vector2 InitialSize => new Vector2(1000f, 700f);
 
-        // 核心：绘制窗口内容
         public override void DoWindowContents(Rect inRect)
         {
-            // 标题
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), "状态人员管理");
+            string title = autoMode ? "状态光环管理" : "状态人员管理";
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), title);
             Text.Font = GameFont.Small;
 
-            // 获取地图上所有我方 Pawn (包括小人、机器人、动物等)
-            List<Pawn> playerPawns = map.mapPawns.AllPawnsSpawned
-                .Where(p => p.Faction == Faction.OfPlayer && !p.Dead)
-                .ToList();
-
-            if (playerPawns.NullOrEmpty())
+            Rect mainRect = new Rect(0f, 40f, inRect.width, inRect.height - 100f);
+            if (autoMode)
             {
-                Widgets.Label(new Rect(0f, 40f, inRect.width, 30f), "未找到我方单位。");
-                return;
+                DoAutoMode(mainRect);
             }
+            else
+            {
+                DoManualMode(mainRect);
+            }
+        }
 
-            // 设置滚动视图区域
-            Rect outRect = new Rect(0f, 40f, inRect.width, inRect.height - 100f);
-            Rect viewRect = new Rect(0f, 0f, inRect.width - 16f, playerPawns.Count * 40f);
+        private void DoManualMode(Rect rect)
+        {
+            float colWidth = rect.width / 4f;
+            Rect rectA = new Rect(rect.x, rect.y, colWidth - 5f, rect.height);
+            Rect rectB = new Rect(rectA.xMax + 5f, rect.y, colWidth - 5f, rect.height);
+            Rect rectC = new Rect(rectB.xMax + 5f, rect.y, colWidth - 5f, rect.height);
+            Rect rectD = new Rect(rectC.xMax + 5f, rect.y, colWidth - 5f, rect.height);
 
-            Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
+            // A: Pawn 列表
+            DrawPawnList(rectA);
+            // B: 选中 Pawn 的状态
+            DrawPawnHediffs(rectB);
+            // C: 状态模板
+            DrawManualTemplates(rectC);
+            // D: 可用状态
+            DrawAvailableHediffs(rectD, (def) => AddToManualTemplate(def));
+        }
 
+        private void DoAutoMode(Rect rect)
+        {
+            float colWidth = rect.width / 3f;
+            Rect rectA = new Rect(rect.x, rect.y, colWidth - 5f, rect.height);
+            Rect rectB = new Rect(rectA.xMax + 5f, rect.y, colWidth - 5f, rect.height);
+            Rect rectC = new Rect(rectB.xMax + 5f, rect.y, colWidth - 5f, rect.height);
+
+            // A: 自动赋予模板
+            DrawAutoTemplates(rectA);
+            // B: 自动移除列表
+            DrawAutoRemovals(rectB);
+            // C: 可选状态
+            DrawAvailableHediffs(rectC, (def) => AddToAutoTemplate(def), (def) => AddToAutoRemoval(def));
+        }
+
+        private void DrawPawnList(Rect rect)
+        {
+            Widgets.DrawMenuSection(rect);
+            var pawns = map.mapPawns.AllPawnsSpawned.Where(p => p.Faction == Faction.OfPlayer && !p.Dead).ToList();
+            Rect viewRect = new Rect(0f, 0f, rect.width - 16f, pawns.Count * 40f);
+            Widgets.BeginScrollView(rect, ref scrollPosA, viewRect);
             float y = 0f;
-            foreach (Pawn pawn in playerPawns)
+            foreach (var pawn in pawns)
             {
                 Rect rowRect = new Rect(0f, y, viewRect.width, 35f);
-                
-                // 画背景交替色增加可读性
-                if (playerPawns.IndexOf(pawn) % 2 == 0)
+                if (selectedPawn == pawn) Widgets.DrawHighlightSelected(rowRect);
+                else if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
+
+                if (Widgets.ButtonInvisible(rowRect)) selectedPawn = pawn;
+
+                GUI.DrawTexture(new Rect(0f, y, 35f, 35f), PortraitsCache.Get(pawn, new Vector2(35f, 35f), Rot4.South));
+                Widgets.Label(new Rect(40f, y + 5f, viewRect.width - 40f, 30f), pawn.LabelShort);
+                y += 40f;
+            }
+            Widgets.EndScrollView();
+        }
+
+        private void DrawPawnHediffs(Rect rect)
+        {
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "当前状态 (部位分组)");
+            Widgets.DrawMenuSection(rect);
+            if (selectedPawn == null) return;
+
+            var hediffs = selectedPawn.health.hediffSet.hediffs.OrderBy(h => h.Part?.Index ?? -1).ToList();
+            Rect viewRect = new Rect(0f, 0f, rect.width - 16f, hediffs.Count * 30f);
+            Widgets.BeginScrollView(rect, ref scrollPosB, viewRect);
+            float y = 0f;
+            foreach (var h in hediffs)
+            {
+                Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
+                string label = (h.Part != null ? "[" + h.Part.LabelCap + "] " : "") + h.LabelCap;
+                Widgets.Label(rowRect, label);
+                if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
                 {
-                    Widgets.DrawAltRect(rowRect);
+                    selectedPawn.health.RemoveHediff(h);
                 }
+                y += 30f;
+            }
+            Widgets.EndScrollView();
+        }
 
-                // 画头像
-                Rect portraitRect = new Rect(0f, y, 35f, 35f);
-                GUI.DrawTexture(portraitRect, PortraitsCache.Get(pawn, new Vector2(35f, 35f), Rot4.South));
-
-                // 画名字
-                Rect nameRect = new Rect(45f, y + 5f, 200f, 30f);
-                Widgets.Label(nameRect, pawn.Name?.ToStringShort ?? pawn.LabelShort);
-
-                // 检查是否已经拥有该 Hediff
-                Hediff existingHediff = pawn.health.hediffSet.GetFirstHediffOfDef(hediffDef);
-                bool hasBuff = existingHediff != null;
-
-                // 画操作按钮
-                Rect buttonRect = new Rect(viewRect.width - 100f, y + 5f, 90f, 25f);
-                if (hasBuff)
+        private void DrawManualTemplates(Rect rect)
+        {
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "手动模板 (双击移除)");
+            Widgets.DrawMenuSection(rect);
+            Rect viewRect = new Rect(0f, 0f, rect.width - 16f, manualTemplates.Count * 30f + 40f);
+            Widgets.BeginScrollView(rect, ref scrollPosC, viewRect);
+            float y = 0f;
+            for (int i = 0; i < manualTemplates.Count; i++)
+            {
+                var template = manualTemplates[i];
+                Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
+                Widgets.Label(rowRect, template.Label);
+                if (Widgets.ButtonInvisible(rowRect, true) && Event.current.clickCount == 2)
                 {
-                    if (Widgets.ButtonText(buttonRect, "移除状态"))
+                    manualTemplates.RemoveAt(i);
+                    i--;
+                }
+                y += 30f;
+            }
+            if (selectedPawn != null && manualTemplates.Count > 0)
+            {
+                if (Widgets.ButtonText(new Rect(0f, y, viewRect.width, 30f), "应用于选中人员"))
+                {
+                    foreach (var t in manualTemplates)
                     {
-                        pawn.health.RemoveHediff(existingHediff);
-                        SoundDefOf.Tick_Low.PlayOneShotOnCamera(); // 播放UI音效
+                        if (!selectedPawn.health.hediffSet.HasHediff(t.hediffDef, t.bodyPart))
+                            selectedPawn.health.AddHediff(t.hediffDef, t.bodyPart);
                     }
+                }
+            }
+            Widgets.EndScrollView();
+        }
+
+        private void DrawAvailableHediffs(Rect rect, Action<HediffDef> onAdd, Action<HediffDef> onRemove = null)
+        {
+            searchFilter = Widgets.TextField(new Rect(rect.x, rect.y - 30f, rect.width, 25f), searchFilter);
+            Widgets.DrawMenuSection(rect);
+
+            string query = searchFilter.ToLower();
+            bool usePinyin = !string.IsNullOrEmpty(query) && PinyinSearchEngine.IsReady;
+
+            var filtered = cachedAllHediffs.Where(d =>
+            {
+                if (string.IsNullOrEmpty(query)) return true;
+                if (d.label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (usePinyin && PinyinSearchEngine.MatchesPinyin(d, query)) return true;
+                return false; 
+            }).ToList();
+
+            Rect viewRect = new Rect(0f, 0f, rect.width - 16f, filtered.Count * 35f);
+            Widgets.BeginScrollView(rect, ref scrollPosD, viewRect);
+            float y = 0f;
+            foreach (var def in filtered)
+            {
+                Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
+                Widgets.Label(new Rect(0f, y + 5f, viewRect.width - 65f, 25f), def.LabelCap);
+                
+                float btnX = viewRect.width - 30f;
+                if (onRemove != null)
+                {
+                    if (Widgets.ButtonText(new Rect(btnX - 30f, y, 25f, 25f), "+")) onAdd(def);
+                    if (Widgets.ButtonText(new Rect(btnX, y, 25f, 25f), "-")) onRemove(def);
                 }
                 else
                 {
-                    if (Widgets.ButtonText(buttonRect, "添加状态"))
-                    {
-                        Hediff newHediff = HediffMaker.MakeHediff(hediffDef, pawn, null);
-                        pawn.health.AddHediff(newHediff, null, null, null);
-                        SoundDefOf.Tick_High.PlayOneShotOnCamera();
-                    }
+                    if (Widgets.ButtonText(new Rect(btnX, y, 25f, 25f), "+")) onAdd(def);
                 }
-
-                y += 40f;
+                y += 35f;
             }
-
             Widgets.EndScrollView();
+        }
+
+        private void DrawAutoTemplates(Rect rect)
+        {
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "自动赋予列表");
+            Widgets.DrawMenuSection(rect);
+            Rect viewRect = new Rect(0f, 0f, rect.width - 16f, comp.autoTemplates.Count * 30f);
+            Widgets.BeginScrollView(rect, ref scrollPosA, viewRect);
+            float y = 0f;
+            for (int i = 0; i < comp.autoTemplates.Count; i++)
+            {
+                Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
+                Widgets.Label(rowRect, comp.autoTemplates[i].Label);
+                if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
+                {
+                    comp.autoTemplates.RemoveAt(i);
+                    i--;
+                }
+                y += 30f;
+            }
+            Widgets.EndScrollView();
+        }
+
+        private void DrawAutoRemovals(Rect rect)
+        {
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "自动移除列表");
+            Widgets.DrawMenuSection(rect);
+            Rect viewRect = new Rect(0f, 0f, rect.width - 16f, comp.autoRemovals.Count * 30f);
+            Widgets.BeginScrollView(rect, ref scrollPosB, viewRect);
+            float y = 0f;
+            for (int i = 0; i < comp.autoRemovals.Count; i++)
+            {
+                Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
+                Widgets.Label(rowRect, comp.autoRemovals[i].LabelCap);
+                if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
+                {
+                    comp.autoRemovals.RemoveAt(i);
+                    i--;
+                }
+                y += 30f;
+            }
+            Widgets.EndScrollView();
+        }
+
+        private void AddToManualTemplate(HediffDef def)
+        {
+            ShowPartPicker(def, (part) => {
+                manualTemplates.Add(new HediffAssignment(def, part));
+            });
+        }
+
+        private void AddToAutoTemplate(HediffDef def)
+        {
+            ShowPartPicker(def, (part) => {
+                if (!comp.autoTemplates.Any(a => a.hediffDef == def && a.bodyPart == part))
+                    comp.autoTemplates.Add(new HediffAssignment(def, part));
+            });
+        }
+
+        private void AddToAutoRemoval(HediffDef def)
+        {
+            if (!comp.autoRemovals.Contains(def))
+                comp.autoRemovals.Add(def);
+        }
+
+        private void ShowPartPicker(HediffDef def, Action<BodyPartRecord> onSelected)
+        {
+            List<FloatMenuOption> list = new List<FloatMenuOption>();
+            list.Add(new FloatMenuOption("全身 (null)", () => onSelected(null)));
+
+            if (selectedPawn != null)
+            {
+                foreach (var part in selectedPawn.RaceProps.body.AllParts)
+                {
+                    list.Add(new FloatMenuOption(part.LabelCap, () => onSelected(part)));
+                }
+            }
+            else
+            {
+                // 如果没选 Pawn，提供基础人类的部位作为参考（RimWorld 默认逻辑通常如此）
+                BodyDef humanBody = BodyDefOf.Human;
+                foreach (var part in humanBody.AllParts)
+                {
+                    list.Add(new FloatMenuOption(part.LabelCap, () => onSelected(part)));
+                }
+            }
+            Find.WindowStack.Add(new FloatMenu(list));
         }
     }
 }

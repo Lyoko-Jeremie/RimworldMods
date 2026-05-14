@@ -40,7 +40,7 @@
             <Mass>50</Mass>
             <MaxHitPoints>999999999</MaxHitPoints>
         </statBases>
-<!--        <tickerType>Rare</tickerType>-->
+        <tickerType>Rare</tickerType>
         <building>
 <!--            <paintable>true</paintable>-->
         </building>

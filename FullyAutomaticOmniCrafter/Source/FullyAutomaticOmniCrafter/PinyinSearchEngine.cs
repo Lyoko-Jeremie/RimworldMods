@@ -30,8 +30,8 @@ namespace FullyAutomaticOmniCrafter
 
         // 使用 ThingDef 引用作 key——比 string key 少一次哈希计算
         // 初始容量预留 4096，游戏内通常几千到数万条目
-        private static readonly Dictionary<ThingDef, PinyinEntry> _index =
-            new Dictionary<ThingDef, PinyinEntry>(4096);
+        private static readonly Dictionary<Def, PinyinEntry> _index =
+            new Dictionary<Def, PinyinEntry>(4096);
 
         private static bool _isReady;
 
@@ -44,7 +44,7 @@ namespace FullyAutomaticOmniCrafter
         /// 重建拼音索引。在 OmniCrafterCache.BuildCache 结束后调用。
         /// 此方法在游戏加载时执行一次，允许产生较多 GC，搜索阶段不再分配。
         /// </summary>
-        public static void BuildIndex(List<ThingDef> defs)
+        public static void BuildIndex<T>(List<T> defs) where T : Def
         {
             _index.Clear();
             _isReady = false;
@@ -53,7 +53,7 @@ namespace FullyAutomaticOmniCrafter
 
             for (int i = 0; i < defs.Count; i++)
             {
-                ThingDef def = defs[i];
+                T def = defs[i];
                 if (def == null) continue;
 
                 string rawLabel = def.label ?? def.defName ?? "";
@@ -104,7 +104,7 @@ namespace FullyAutomaticOmniCrafter
         /// <param name="keyword">已转小写的搜索关键词</param>
         /// 调用前应确认 IsReady == true。
         /// </summary>
-        public static bool MatchesPinyin(ThingDef def, string keyword)
+        public static bool MatchesPinyin(Def def, string keyword)
         {
             if (def == null || string.IsNullOrEmpty(keyword)) return false;
 
