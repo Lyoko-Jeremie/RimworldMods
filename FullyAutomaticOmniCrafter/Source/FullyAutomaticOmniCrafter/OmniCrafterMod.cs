@@ -32,7 +32,7 @@ namespace FullyAutomaticOmniCrafter
             Instance = this;
             Settings = GetSettings<OmniCrafterSettings>();
             
-            HarmonyLib.Harmony.DEBUG = true;
+            // HarmonyLib.Harmony.DEBUG = true;
 
             HarmonyLib.Harmony harmony = new HarmonyLib.Harmony("Jeremie.Fully.Automatic.OmniCrafter");
             harmony.PatchAll();
