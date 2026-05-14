@@ -4,6 +4,7 @@ using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI.Group;
 
 namespace FullyAutomaticOmniCrafter
 {
@@ -193,10 +194,22 @@ namespace FullyAutomaticOmniCrafter
             if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner)
                 return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
 
-            // 中立或盟友派系的商队：由 XML 参数 allowTrader 决定（默认允许）
-            // 判定逻辑：属于中立或盟友派系，且具有交易属性（商队商人、护卫、驼兽）
-            if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer) && (pawn.trader != null || (pawn.kindDef != null && pawn.kindDef.trader)))
-                return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
+            // 判定逻辑：属于中立或盟友派系，且属于商队（商人、护卫、驼兽等）
+            if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer))
+            {
+                // 1. 显式商人组件
+                if (pawn.trader != null)
+                    return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
+
+                // 2. 属于商队 LordJob (涵盖了正在离开的商队)
+                var lord = pawn.GetLord();
+                if (lord != null && lord.LordJob is LordJob_TradeWithColony)
+                    return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
+
+                // 3. 备选：根据 PawnKind 判定
+                if (pawn.kindDef != null && pawn.kindDef.trader)
+                    return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
+            }
 
             // 其余所有单位（敌人、野生动物、敌对派系）——视为墙壁（不可通行）
             return ushort.MaxValue;
@@ -295,11 +308,22 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 商队：由 allowTrader 决定
-            if (tp.pawn.Faction != null && !tp.pawn.Faction.HostileTo(Faction.OfPlayer) && (tp.pawn.trader != null || (tp.pawn.kindDef != null && tp.pawn.kindDef.trader)))
+            if (tp.pawn.Faction != null && !tp.pawn.Faction.HostileTo(Faction.OfPlayer))
             {
-                if (ext == null || ext.allowTrader) return;
-                __result = false;
-                return;
+                bool isTrader = tp.pawn.trader != null || (tp.pawn.kindDef != null && tp.pawn.kindDef.trader);
+                if (!isTrader)
+                {
+                    var lord = tp.pawn.GetLord();
+                    if (lord != null && lord.LordJob is LordJob_TradeWithColony)
+                        isTrader = true;
+                }
+
+                if (isTrader)
+                {
+                    if (ext == null || ext.allowTrader) return;
+                    __result = false;
+                    return;
+                }
             }
 
             // 其余所有单位（敌人、野生动物、中立）→ BFS 层面封路
