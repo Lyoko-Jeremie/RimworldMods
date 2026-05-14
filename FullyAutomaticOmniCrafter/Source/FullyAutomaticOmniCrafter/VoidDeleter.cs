@@ -80,7 +80,25 @@ namespace FullyAutomaticOmniCrafter
                     // Remove designation, then erase silently
                     dm.RemoveDesignation(des);
                     SoundDefOf.Building_Deconstructed.PlayOneShot(new TargetInfo(target.Position, Map));
-                    target.Destroy(DestroyMode.Vanish);
+                    
+                    // 对于 Building_OmniPhantomWall ，需要特殊标记来进行销毁
+                    if (target is Building_OmniPhantomWall phantomWall)
+                    {
+                        Building_OmniPhantomWall._authorizedVanish = true;
+                        try
+                        {
+                            phantomWall.Destroy(DestroyMode.Vanish);
+                        }
+                        finally
+                        {
+                            Building_OmniPhantomWall._authorizedVanish = false;
+                        }
+                        // phantomWall.DestroyByScript(DestroyMode.Vanish);
+                    }
+                    else
+                    {
+                        target.Destroy(DestroyMode.Vanish);
+                    }
 
                     // Spawn products near the VoidDeleter
                     SpawnProducts(products, Position);

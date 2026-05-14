@@ -95,6 +95,13 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
+        /// VoidDeleter 等外部系统设置此标志后，
+        /// 下一次 Destroy(Vanish) 调用将被放行（且自动清除标志）。
+        /// </summary>
+        [ThreadStatic]
+        internal static bool _authorizedVanish = false;
+        
+        /// <summary>
         /// 合法销毁途径：
         ///   • DestroyMode.Deconstruct  — 玩家主动下达拆除指令（唯一正常移除方式）
         ///   • allowDestroyNonDestroyable — 系统级强制销毁（地图卸载等内部流程）
@@ -116,6 +123,12 @@ namespace FullyAutomaticOmniCrafter
             // mod脚本拆除
             if (mode == DestroyMode.Vanish)
             {
+                if (!_authorizedVanish)
+                {
+                    Log.Message($"[OmniPhantomWall] 阻止销毁：{this}，DestroyMode={mode}");
+                    return;
+                }
+                _authorizedVanish = false;
                 base.Destroy(mode);
                 return;
             }
@@ -132,6 +145,11 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
             // 其余所有途径静默阻断
+        }
+
+        public void DestroyByScript(DestroyMode mode = DestroyMode.Vanish)
+        {
+            base.Destroy(mode);
         }
 
         // ── 真空隔离 ──────────────────────────────────────────────────
