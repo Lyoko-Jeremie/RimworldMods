@@ -309,6 +309,7 @@ namespace FullyAutomaticOmniCrafter
                 Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
                 string label = (h.Part != null ? "[" + h.Part.LabelCap + "] " : "") + h.LabelCap;
                 Widgets.Label(rowRect, label);
+                TooltipHandler.TipRegion(rowRect, new TipSignal(() => h.GetTooltip(selectedPawn, false), h.GetHashCode()));
                 if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
                 {
                     selectedPawn.health.RemoveHediff(h);
@@ -332,6 +333,7 @@ namespace FullyAutomaticOmniCrafter
                 var template = manualTemplates[i];
                 Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
                 Widgets.Label(rowRect, template.Label);
+                TooltipHandler.TipRegion(rowRect, template.hediffDef.description);
                 if (Widgets.ButtonInvisible(rowRect, true) && Event.current.clickCount == 2)
                 {
                     manualTemplates.RemoveAt(i);
@@ -379,6 +381,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
                 Widgets.Label(new Rect(0f, y + 5f, viewRect.width - 65f, 25f), def.LabelCap);
+                TooltipHandler.TipRegion(rowRect, def.description);
 
                 float btnX = viewRect.width - 30f;
                 if (onRemove != null)
@@ -408,6 +411,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
                 Widgets.Label(rowRect, comp.autoTemplates[i].Label);
+                TooltipHandler.TipRegion(rowRect, comp.autoTemplates[i].hediffDef.description);
                 if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
                 {
                     comp.autoTemplates.RemoveAt(i);
@@ -431,6 +435,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
                 Widgets.Label(rowRect, comp.autoRemovals[i].LabelCap);
+                TooltipHandler.TipRegion(rowRect, comp.autoRemovals[i].description);
                 if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
                 {
                     comp.autoRemovals.RemoveAt(i);
