@@ -194,21 +194,23 @@ namespace FullyAutomaticOmniCrafter
             if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner)
                 return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
 
-            // 判定逻辑：属于中立或盟友派系，且属于商队（商人、护卫、驼兽等）
+            // 商队/访客：由 allowTrader 和 allowGuest 决定
             if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer))
             {
-                // 1. 显式商人组件
-                if (pawn.trader != null)
-                    return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
-
-                // 2. 属于商队 LordJob (涵盖了正在离开的商队)
                 var lord = pawn.GetLord();
-                if (lord != null && lord.LordJob is LordJob_TradeWithColony)
+                var lordJob = lord?.LordJob;
+
+                // 1. 商队判定 (显式商人、商队任务、或是商队Kind)
+                bool isTrader = pawn.trader != null 
+                             || lordJob is LordJob_TradeWithColony 
+                             || (pawn.kindDef != null && pawn.kindDef.trader);
+
+                if (isTrader)
                     return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
 
-                // 3. 备选：根据 PawnKind 判定
-                if (pawn.kindDef != null && pawn.kindDef.trader)
-                    return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
+                // 2. 访客/旅行者判定 (LordJob_VisitColony, LordJob_TravelAndExit 等)
+                if (lordJob is LordJob_VisitColony || lordJob is LordJob_TravelAndExit)
+                    return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
             }
 
             // 其余所有单位（敌人、野生动物、敌对派系）——视为墙壁（不可通行）
@@ -307,20 +309,28 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            // 商队：由 allowTrader 决定
+            // 商队/访客：由 allowTrader 和 allowGuest 决定
             if (tp.pawn.Faction != null && !tp.pawn.Faction.HostileTo(Faction.OfPlayer))
             {
-                bool isTrader = tp.pawn.trader != null || (tp.pawn.kindDef != null && tp.pawn.kindDef.trader);
-                if (!isTrader)
-                {
-                    var lord = tp.pawn.GetLord();
-                    if (lord != null && lord.LordJob is LordJob_TradeWithColony)
-                        isTrader = true;
-                }
+                var lord = tp.pawn.GetLord();
+                var lordJob = lord?.LordJob;
+
+                // 1. 商队判定
+                bool isTrader = tp.pawn.trader != null 
+                             || lordJob is LordJob_TradeWithColony 
+                             || (tp.pawn.kindDef != null && tp.pawn.kindDef.trader);
 
                 if (isTrader)
                 {
                     if (ext == null || ext.allowTrader) return;
+                    __result = false;
+                    return;
+                }
+
+                // 2. 访客/旅行者判定
+                if (lordJob is LordJob_VisitColony || lordJob is LordJob_TravelAndExit)
+                {
+                    if (ext == null || ext.allowGuest) return;
                     __result = false;
                     return;
                 }
