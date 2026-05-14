@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <StatusAllocationTerminal.label>状态分配终端</StatusAllocationTerminal.label>
+    <StatusAllocationTerminal.description>一种源自超凡科技的状态分配终端，手动或自动赋予殖民者状态光环。</StatusAllocationTerminal.description>
+
+    <StatusAllocationTerminal_mini.label>状态分配终端 便携型</StatusAllocationTerminal_mini.label>
+    <StatusAllocationTerminal_mini.description>一种源自超凡科技的状态分配终端，手动或自动赋予殖民者状态光环。</StatusAllocationTerminal_mini.description>
+
+</LanguageData>

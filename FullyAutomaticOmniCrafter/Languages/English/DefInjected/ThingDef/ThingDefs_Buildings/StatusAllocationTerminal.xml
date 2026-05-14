@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <StatusAllocationTerminal.label>Status Allocation Terminal</StatusAllocationTerminal.label>
+    <StatusAllocationTerminal.description>A status allocation terminal from the advanced technology of the Omniversal Corporation, capable of manually or automatically granting status effects to colonists.</StatusAllocationTerminal.description>
+
+    <StatusAllocationTerminal_mini.label>Status Allocation Terminal (Portable)</StatusAllocationTerminal_mini.label>
+    <StatusAllocationTerminal_mini.description>A status allocation terminal from the advanced technology of the Omniversal Corporation, capable of manually or automatically granting status effects to colonists.</StatusAllocationTerminal_mini.description>
+
+</LanguageData>
