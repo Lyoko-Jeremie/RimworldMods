@@ -32,6 +32,8 @@ namespace FullyAutomaticOmniCrafter
         public bool allowGuest = true;
         /// <summary>中立或盟友派系的商队是否可以穿越幻影墙。默认 true。</summary>
         public bool allowTrader = true;
+        /// <summary>家养动物是否可以穿越幻影墙。默认 true。</summary>
+        public bool allowPet = true;
         /// <summary>幻影墙尝试维持的房间温度。默认 21。</summary>
         public float targetTemperature = 21f;
     }
@@ -179,11 +181,18 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null) return ushort.MaxValue;
 
-            // 本方小人（殖民者、机甲、动物等）可以自由穿行
-            if (pawn.Faction == Faction.OfPlayer)
-                return 0;
-
             var ext = def.GetModExtension<PhantomWallExtension>();
+
+            // 本方小人（殖民者、机甲、动物等）
+            if (pawn.Faction == Faction.OfPlayer)
+            {
+                // 如果是玩家的动物，根据 allowPet 决定
+                if (pawn.RaceProps.Animal)
+                    return (ext == null || ext.allowPet) ? (ushort)0 : ushort.MaxValue;
+                
+                // 殖民者、机甲等其他本方单位可以自由穿行
+                return 0;
+            }
 
             // 玩家的俘虏：由 XML 参数 allowPrisoner 决定（默认允许）
             if (pawn.IsPrisonerOfColony)
@@ -285,13 +294,22 @@ namespace FullyAutomaticOmniCrafter
             if (tp.pawn == null)
                 return; // 无特定小人时不限制（保持 true）
 
-            // 友方可穿越
-            if (tp.pawn.Faction == Faction.OfPlayer)
-                return;
-
             // 从该区域的任意幻影墙 Thing 上读取扩展参数
             Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
             var ext = wall?.def.GetModExtension<PhantomWallExtension>();
+
+            // 友方可穿越
+            if (tp.pawn.Faction == Faction.OfPlayer)
+            {
+                // 如果是玩家的动物，根据 allowPet 决定
+                if (tp.pawn.RaceProps.Animal)
+                {
+                    if (ext == null || ext.allowPet) return;
+                    __result = false;
+                    return;
+                }
+                return;
+            }
 
             // 俘虏：由 allowPrisoner 决定
             if (tp.pawn.IsPrisonerOfColony)
