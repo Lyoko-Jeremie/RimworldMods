@@ -1,0 +1,389 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RimWorld Mod 物品介绍图片生成器</title>
+    <!-- 引入 Tailwind CSS 用于快速布局和样式设计 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 html2canvas 库，用于将 HTML 渲染为图片 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 自定义样式：定义 RimWorld 风格的颜色和字体 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #1e1e24; /* 深色背景 */
+            color: #d1d5db; /* 浅灰色文字 */
+        }
+
+        /* 预览区域的容器样式，模拟 RimWorld 的信息面板 */
+        .rimworld-panel {
+            background-color: rgba(30, 30, 36, 0.95);
+            border: 2px solid #5a5a66;
+            outline: 1px solid #374151; /* 装饰性内边框 */
+            outline-offset: -6px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        /* 装饰性分割线 */
+        .decorative-line {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #4b5563, transparent);
+            margin: 1rem 0;
+        }
+
+        /* 图片装饰框 */
+        .image-frame {
+            border: 2px solid #4b5563;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        /* 图片边角的科幻装饰角 */
+        .image-frame::before, .image-frame::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid #9ca3af;
+        }
+        .image-frame::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .image-frame::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+        /* 物品名称标题样式 */
+        .rimworld-title {
+            color: #e5e7eb;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* 简要介绍的标签和数值样式 */
+        .stat-label { color: #9ca3af; }
+        .stat-value { color: #f3f4f6; font-weight: 500; }
+
+        /* 详细介绍文本样式 */
+        .rimworld-description {
+            color: #d1d5db;
+            line-height: 1.6;
+        }
+
+        /* 隐藏用于导出的真实图片渲染区域 */
+        #export-container {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+        }
+        
+        /* 确保输入框在深色主题下可见 */
+        input, textarea {
+            background-color: #374151;
+            color: white;
+            border-color: #4b5563;
+        }
+        input:focus, textarea:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="w-full max-w-[1800px] mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        <!-- 左侧：编辑表单区 -->
+        <div class="xl:col-span-1 bg-gray-800 p-6 rounded-lg shadow-xl border border-gray-700 h-fit">
+            <h2 class="text-2xl font-bold mb-6 text-white border-b border-gray-600 pb-2">物品数据配置</h2>
+
+            <!-- 图片上传 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-300 mb-2">物品图片 (建议透明背景 PNG)</label>
+                <input type="file" id="imageInput" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+
+            <!-- 物品名称 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-300 mb-2">物品名称</label>
+                <input type="text" id="itemNameInput" placeholder="例如：电荷步枪" class="w-full rounded-md border p-2 focus:ring focus:ring-opacity-50">
+            </div>
+
+            <!-- 简要介绍 (多行文本) -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-300 mb-2">简要介绍 (如：伤害、护甲等)</label>
+                <textarea id="briefInput" rows="4" placeholder="伤害: 15&#10;护甲穿透: 35%&#10;射速: 0.15s" class="w-full rounded-md border p-2 focus:ring focus:ring-opacity-50"></textarea>
+            </div>
+
+            <!-- 详细介绍 -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-300 mb-2">详细介绍</label>
+                <textarea id="descriptionInput" rows="6" placeholder="输入物品的详细描述、故事背景等..." class="w-full rounded-md border p-2 focus:ring focus:ring-opacity-50"></textarea>
+            </div>
+
+            <!-- 操作按钮群 -->
+            <div class="flex flex-wrap gap-3 pt-4 border-t border-gray-600">
+                <button id="updatePreviewBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors flex-1">
+                    刷新预览
+                </button>
+                <button id="exportImageBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors flex-1">
+                    导出图片
+                </button>
+                <div class="w-full flex gap-3 mt-2">
+                    <button id="exportConfigBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors flex-1">
+                        导出配置 (JSON)
+                    </button>
+                    <label class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors flex-1 text-center cursor-pointer">
+                        导入配置
+                        <input type="file" id="importConfigInput" accept=".json" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：实时预览区 -->
+        <div class="xl:col-span-2 flex flex-col min-w-0">
+            <h2 class="text-2xl font-bold mb-4 text-white">效果预览</h2>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex-grow overflow-auto flex items-start justify-center" id="exportContainerView">
+                <!-- 预览卡片容器：宽度翻倍至 1200px -->
+                <div id="previewCard" class="rimworld-panel w-[1200px] p-8 flex flex-col gap-6 relative">
+                    <!-- 上半部分：图片和简要属性 -->
+                    <div class="flex gap-8 relative z-10">
+                        <!-- 左侧图片框 -->
+                        <div class="w-1/3 bg-black/40 image-frame rounded flex items-center justify-center p-4 min-h-[300px]">
+                            <img id="previewImage" src="https://placehold.co/200x200/2d3748/cbd5e1?text=Image+Here" alt="Item Image" class="max-w-full max-h-[400px] object-contain">
+                        </div>
+                        <!-- 右侧简要属性 -->
+                        <div class="w-2/3 flex flex-col min-w-0">
+                            <h3 id="previewTitle" class="text-4xl font-bold rimworld-title break-words px-3 pt-3 pb-1">物品名称</h3>
+                            <!-- 独立的标题分割线 -->
+                            <div class="h-[2px] bg-[#4b5563] w-full my-2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]"></div>
+                            <div id="previewBrief" class="mt-2 text-lg text-gray-200 whitespace-pre-wrap break-words leading-relaxed font-medium px-3">示例简要介绍:
+伤害: 100
+射速: 极快</div>
+                        </div>
+                    </div>
+                    <!-- 装饰性分割线 -->
+                    <div class="decorative-line"></div>
+                    <!-- 下半部分：详细介绍 -->
+                    <div class="mt-0 min-w-0">
+                        <div id="previewDescription" class="rimworld-description whitespace-pre-wrap break-words text-xl relative z-10">这里是详细介绍文本区域。高度会根据内容自动撑开。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏的容器，用于真正生成图片的 DOM。这样可以避免截图时受到屏幕缩放或滚动条影响 -->
+    <div id="export-container">
+        <!-- 结构与预览区完全一致，宽度翻倍至 1600px -->
+        <div id="exportCard" class="rimworld-panel w-[1600px] p-12 flex flex-col gap-10" style="background-color: #1e1e24; position: relative; border: 2px solid #5a5a66; outline: 2px solid #374151; outline-offset: -8px;">
+            <div class="flex gap-12 relative z-10">
+                <div class="w-1/3 bg-black/40 image-frame rounded flex items-center justify-center p-6 min-h-[400px]" style="border: 2px solid #4b5563; box-shadow: inset 0 0 15px rgba(0,0,0,0.8); position: relative;">
+                    <!-- 行内样式补齐伪元素的边角装饰效果给 html2canvas 以防渲染丢失 -->
+                    <div style="position: absolute; top:-2px; left:-2px; width:12px; height:12px; border-top:2px solid #9ca3af; border-left:2px solid #9ca3af;"></div>
+                    <div style="position: absolute; bottom:-2px; right:-2px; width:12px; height:12px; border-bottom:2px solid #9ca3af; border-right:2px solid #9ca3af;"></div>
+                    
+                    <img id="exportImage" src="" alt="" class="max-w-full max-h-[500px] object-contain">
+                </div>
+                <div class="w-2/3 flex flex-col min-w-0">
+                    <h3 id="exportTitle" class="text-6xl font-bold rimworld-title break-words" style="color: #e5e7eb; text-shadow: 1px 1px 2px #000; overflow-wrap: break-word;"></h3>
+                    <!-- 独立的标题分割线 -->
+                    <div style="height: 4px; background-color: #4b5563; width: 100%; margin: 1rem 0; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>
+                    <div id="exportBrief" class="mt-2 text-3xl whitespace-pre-wrap break-words leading-relaxed" style="color: #e5e7eb; font-weight: 500; overflow-wrap: break-word;"></div>
+                </div>
+            </div>
+            <!-- 分割线 -->
+            <div style="height: 2px; background: linear-gradient(90deg, transparent, #4b5563, transparent); margin: 2rem 0;"></div>
+            <div class="mt-0 relative z-10 min-w-0">
+                <div id="exportDescription" class="rimworld-description whitespace-pre-wrap break-words text-4xl" style="color: #d1d5db; line-height: 1.6; overflow-wrap: break-word;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM 元素获取
+        const elements = {
+            imageInput: document.getElementById('imageInput'),
+            itemNameInput: document.getElementById('itemNameInput'),
+            briefInput: document.getElementById('briefInput'),
+            descriptionInput: document.getElementById('descriptionInput'),
+            
+            updatePreviewBtn: document.getElementById('updatePreviewBtn'),
+            exportImageBtn: document.getElementById('exportImageBtn'),
+            exportConfigBtn: document.getElementById('exportConfigBtn'),
+            importConfigInput: document.getElementById('importConfigInput'),
+
+            previewImage: document.getElementById('previewImage'),
+            previewTitle: document.getElementById('previewTitle'),
+            previewBrief: document.getElementById('previewBrief'),
+            previewDescription: document.getElementById('previewDescription'),
+
+            exportContainerView: document.getElementById('exportContainerView'),
+            exportContainer: document.getElementById('export-container'),
+            exportCard: document.getElementById('exportCard'),
+            exportImage: document.getElementById('exportImage'),
+            exportTitle: document.getElementById('exportTitle'),
+            exportBrief: document.getElementById('exportBrief'),
+            exportDescription: document.getElementById('exportDescription')
+        };
+
+        // 全局状态：保存当前加载的图片 DataURL
+        let currentImageDataUrl = 'https://placehold.co/200x200/2d3748/cbd5e1?text=Image+Here';
+
+        // 初始化
+        function init() {
+            bindEvents();
+            updatePreview(); // 初始渲染一次
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 处理图片上传并转为 Base64 DataURL
+            elements.imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        currentImageDataUrl = event.target.result;
+                        elements.previewImage.src = currentImageDataUrl;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // 手动刷新预览
+            elements.updatePreviewBtn.addEventListener('click', updatePreview);
+
+            // 监听输入框变化实时更新预览
+            elements.itemNameInput.addEventListener('keyup', updatePreview);
+            elements.briefInput.addEventListener('keyup', updatePreview);
+            elements.descriptionInput.addEventListener('keyup', updatePreview);
+
+            // 导出功能
+            elements.exportImageBtn.addEventListener('click', exportToImage);
+            elements.exportConfigBtn.addEventListener('click', exportConfig);
+            elements.importConfigInput.addEventListener('change', importConfig);
+        }
+
+        // 收集当前表单数据
+        function collectData() {
+            const title = elements.itemNameInput.value || '未命名物品';
+            const brief = elements.briefInput.value || '暂无简要介绍。';
+            const description = elements.descriptionInput.value || '暂无详细介绍。';
+
+            return { title, brief, description, imageData: currentImageDataUrl };
+        }
+
+        // 根据数据更新 UI（预览区和隐藏的导出区）
+        function updateUI(data, isExport = false) {
+            const titleEl = isExport ? elements.exportTitle : elements.previewTitle;
+            const descEl = isExport ? elements.exportDescription : elements.previewDescription;
+            const briefEl = isExport ? elements.exportBrief : elements.previewBrief;
+            const imgEl = isExport ? elements.exportImage : elements.previewImage;
+
+            titleEl.textContent = data.title;
+            descEl.textContent = data.description;
+            briefEl.textContent = data.brief;
+            imgEl.src = data.imageData;
+        }
+
+        // 刷新预览
+        function updatePreview() {
+            const data = collectData();
+            updateUI(data, false);
+        }
+
+        // 导出为图片 (使用 html2canvas)
+        async function exportToImage() {
+            const data = collectData();
+            // 先更新隐藏容器的数据
+            updateUI(data, true);
+            
+            const exportBtn = elements.exportImageBtn;
+            const originalText = exportBtn.innerText;
+            exportBtn.innerText = '正在生成...';
+            exportBtn.disabled = true;
+
+            try {
+                // 等待一下确保 DOM 更新完成，图片加载完成
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                const canvas = await html2canvas(elements.exportContainerView, {
+                    backgroundColor: '#1e1e24', // 确保背景色
+                    scale: 2, // 提高导出图片的清晰度
+                    useCORS: true, // 尝试处理跨域图片
+                    logging: false
+                });
+
+                // 创建下载链接
+                const link = document.createElement('a');
+                link.download = `RimWorld_Mod_${data.title}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                console.error("生成图片失败:", error);
+                alert("生成图片时发生错误，请查看控制台。");
+            } finally {
+                exportBtn.innerText = originalText;
+                exportBtn.disabled = false;
+            }
+        }
+
+        // 导出配置 JSON
+        function exportConfig() {
+            const data = collectData();
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${data.title}_config.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 导入配置 JSON
+        function importConfig(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    applyDataToForm(data);
+                    updatePreview();
+                    // 清空 file input，以便可以重复导入同一个文件
+                    e.target.value = '';
+                } catch (error) {
+                    alert("解析配置文件失败，请确保它是有效的 JSON 文件。");
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 将读取到的数据填充回表单
+        function applyDataToForm(data) {
+            if (data.title) elements.itemNameInput.value = data.title;
+            if (data.description) elements.descriptionInput.value = data.description;
+            
+            // 兼容旧版基于数组的 stats 数据
+            if (data.brief) {
+                elements.briefInput.value = data.brief;
+            } else if (data.stats && Array.isArray(data.stats)) {
+                elements.briefInput.value = data.stats.map(s => `${s.key}: ${s.val}`).join('\n');
+            }
+
+            if (data.imageData) {
+                currentImageDataUrl = data.imageData;
+                elements.previewImage.src = currentImageDataUrl;
+            }
+        }
+
+        // 启动应用
+        window.onload = init;
+    </script>
+</body>
+</html>
