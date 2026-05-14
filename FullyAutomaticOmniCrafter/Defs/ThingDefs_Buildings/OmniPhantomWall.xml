@@ -123,6 +123,7 @@
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <allowPrisoner>false</allowPrisoner>
                 <allowGuest>false</allowGuest>
+                <allowTrader>false</allowTrader>
             </li>
         </modExtensions>
         
@@ -151,6 +152,7 @@
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <allowPrisoner>false</allowPrisoner>
                 <allowGuest>false</allowGuest>
+                <allowTrader>false</allowTrader>
             </li>
         </modExtensions>
         
@@ -184,6 +186,7 @@
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <allowPrisoner>false</allowPrisoner>
                 <allowGuest>false</allowGuest>
+                <allowTrader>false</allowTrader>
             </li>
         </modExtensions>
         
@@ -200,6 +203,7 @@
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <allowPrisoner>true</allowPrisoner>
                 <allowGuest>true</allowGuest>
+                <allowTrader>true</allowTrader>
             </li>
         </modExtensions>
         
@@ -228,6 +232,7 @@
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <allowPrisoner>true</allowPrisoner>
                 <allowGuest>true</allowGuest>
+                <allowTrader>true</allowTrader>
             </li>
         </modExtensions>
         
@@ -261,6 +266,7 @@
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <allowPrisoner>true</allowPrisoner>
                 <allowGuest>true</allowGuest>
+                <allowTrader>true</allowTrader>
             </li>
         </modExtensions>
         
