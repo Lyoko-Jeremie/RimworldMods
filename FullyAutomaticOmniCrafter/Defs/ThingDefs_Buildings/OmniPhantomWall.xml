@@ -124,6 +124,7 @@
                 <allowPrisoner>false</allowPrisoner>
                 <allowGuest>false</allowGuest>
                 <allowTrader>false</allowTrader>
+                <allowPet>true</allowPet>
             </li>
         </modExtensions>
         
@@ -153,6 +154,7 @@
                 <allowPrisoner>false</allowPrisoner>
                 <allowGuest>false</allowGuest>
                 <allowTrader>false</allowTrader>
+                <allowPet>true</allowPet>
             </li>
         </modExtensions>
         
@@ -187,6 +189,7 @@
                 <allowPrisoner>false</allowPrisoner>
                 <allowGuest>false</allowGuest>
                 <allowTrader>false</allowTrader>
+                <allowPet>true</allowPet>
             </li>
         </modExtensions>
         
@@ -204,6 +207,7 @@
                 <allowPrisoner>true</allowPrisoner>
                 <allowGuest>true</allowGuest>
                 <allowTrader>true</allowTrader>
+                <allowPet>true</allowPet>
             </li>
         </modExtensions>
         
@@ -233,6 +237,7 @@
                 <allowPrisoner>true</allowPrisoner>
                 <allowGuest>true</allowGuest>
                 <allowTrader>true</allowTrader>
+                <allowPet>true</allowPet>
             </li>
         </modExtensions>
         
@@ -267,6 +272,7 @@
                 <allowPrisoner>true</allowPrisoner>
                 <allowGuest>true</allowGuest>
                 <allowTrader>true</allowTrader>
+                <allowPet>true</allowPet>
             </li>
         </modExtensions>
         
