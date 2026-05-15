@@ -121,10 +121,12 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>false</allowPrisoner>
-                <allowGuest>false</allowGuest>
-                <allowTrader>false</allowTrader>
-                <allowPet>true</allowPet>
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <passMode>PlayerAndPets</passMode>
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
             </li>
         </modExtensions>
         
@@ -151,10 +153,12 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>false</allowPrisoner>
-                <allowGuest>false</allowGuest>
-                <allowTrader>false</allowTrader>
-                <allowPet>true</allowPet>
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <passMode>PlayerAndPets</passMode>
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
             </li>
         </modExtensions>
         
@@ -186,10 +190,12 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>false</allowPrisoner>
-                <allowGuest>false</allowGuest>
-                <allowTrader>false</allowTrader>
-                <allowPet>true</allowPet>
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <passMode>PlayerAndPets</passMode>
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
             </li>
         </modExtensions>
         
@@ -204,10 +210,12 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>true</allowPrisoner>
-                <allowGuest>true</allowGuest>
-                <allowTrader>true</allowTrader>
-                <allowPet>true</allowPet>
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <passMode>PlayerPetsAndAllies</passMode>
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
             </li>
         </modExtensions>
         
@@ -234,10 +242,12 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>true</allowPrisoner>
-                <allowGuest>true</allowGuest>
-                <allowTrader>true</allowTrader>
-                <allowPet>true</allowPet>
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <passMode>PlayerPetsAndAllies</passMode>
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
             </li>
         </modExtensions>
         
@@ -269,10 +279,12 @@
 
         <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-                <allowPrisoner>true</allowPrisoner>
-                <allowGuest>true</allowGuest>
-                <allowTrader>true</allowTrader>
-                <allowPet>true</allowPet>
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <passMode>PlayerPetsAndAllies</passMode>
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
             </li>
         </modExtensions>
         

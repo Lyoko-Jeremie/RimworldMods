@@ -24,16 +24,34 @@ namespace FullyAutomaticOmniCrafter
     /// targetTemperature（默认 21）：幻影墙尝试维持的房间温度。
     /// heatPushPower（默认 5）：每 Tick 调整温度的速度强度。
     /// </summary>
+    public enum PhantomWallPassMode
+    {
+        /// <summary>1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。</summary>
+        PlayerAndPets,
+        /// <summary>2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。</summary>
+        PlayerPetsAndAllies,
+        /// <summary>3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。</summary>
+        OnlyPlayerNoPets
+    }
+
+    /// <summary>
+    /// 幻影墙扩展参数。
+    /// 
+    /// 示例：
+    /// <code>
+    /// <modExtensions>
+    ///   <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+    ///     <passMode>PlayerAndPets</passMode>
+    ///     <targetTemperature>21</targetTemperature>
+    ///   </li>
+    /// </modExtensions>
+    /// </code>
+    /// </summary>
     public class PhantomWallExtension : DefModExtension
     {
-        /// <summary>玩家的俘虏是否可以穿越幻影墙。默认 true。</summary>
-        public bool allowPrisoner = true;
-        /// <summary>玩家的客人/访客是否可以穿越幻影墙。默认 true。</summary>
-        public bool allowGuest = true;
-        /// <summary>中立或盟友派系的商队是否可以穿越幻影墙。默认 true。</summary>
-        public bool allowTrader = true;
-        /// <summary>家养动物是否可以穿越幻影墙。默认 true。</summary>
-        public bool allowPet = true;
+        /// <summary>通行模式。默认为 PlayerPetsAndAllies。</summary>
+        public PhantomWallPassMode passMode = PhantomWallPassMode.PlayerPetsAndAllies;
+
         /// <summary>幻影墙尝试维持的房间温度。默认 21。</summary>
         public float targetTemperature = 21f;
     }
@@ -172,58 +190,61 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public override bool ExchangeVacuum => false;
 
+        /// <summary>
+        /// 检查小人是否可以穿越幻影墙。
+        /// 1: PlayerAndPets - 只有玩家、玩家动物、机器人能通过。
+        /// 2: PlayerPetsAndAllies - 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。
+        /// 3: OnlyPlayerNoPets - 只有玩家、机器人能通过。
+        /// </summary>
+        public static bool CanPawnPass(Pawn pawn, PhantomWallExtension ext)
+        {
+            if (pawn == null) return false;
+            var mode = ext?.passMode ?? PhantomWallPassMode.PlayerPetsAndAllies;
+
+            // 1. 玩家派系判定 (殖民者、机甲、玩家拥有的动物等)
+            if (pawn.Faction == Faction.OfPlayer)
+            {
+                // 如果是玩家的动物
+                if (pawn.RaceProps.Animal)
+                {
+                    // 只有模式 1 和 2 允许动物通过，模式 3 不允许
+                    return mode != PhantomWallPassMode.OnlyPlayerNoPets;
+                }
+                // 殖民者、机甲等人类或机器人始终可以通过
+                return true;
+            }
+
+            // 2. 友方判定 (俘虏、访客、盟友商队等)
+            // 只有模式 2 允许友方通过
+            if (mode == PhantomWallPassMode.PlayerPetsAndAllies)
+            {
+                // 玩家的俘虏
+                if (pawn.IsPrisonerOfColony) return true;
+
+                // 玩家的客人 (HostFaction 是玩家且不是俘虏)
+                if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner) return true;
+
+                // 盟友或中立派系 (非敌对)
+                if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer))
+                {
+                    // 只要是非敌对派系的，在 PlayerPetsAndAllies 模式下都允许
+                    // (涵盖了商队、旅行者等所有友方/中立单位)
+                    return true;
+                }
+            }
+
+            // 其余情况 (敌人、野生动物、在不支持模式下的友方) 一律不允许通过
+            return false;
+        }
+
         // ── IPathFindCostProvider ─────────────────────────────────────
         /// <summary>
-        /// 玩家（含盟友/俘虏）返回 0；敌人/野生动物返回 ushort.MaxValue。
-        /// PathFinderJob.IndexCost 会将 ushort.MaxValue 直接映射为 10000（不可通行）。
+        /// 寻路代价：能通过返回 0，不能通过返回 ushort.MaxValue。
         /// </summary>
         public ushort PathFindCostFor(Pawn pawn)
         {
-            if (pawn == null) return ushort.MaxValue;
-
             var ext = def.GetModExtension<PhantomWallExtension>();
-
-            // 本方小人（殖民者、机甲、动物等）
-            if (pawn.Faction == Faction.OfPlayer)
-            {
-                // 如果是玩家的动物，根据 allowPet 决定
-                if (pawn.RaceProps.Animal)
-                    return (ext == null || ext.allowPet) ? (ushort)0 : ushort.MaxValue;
-                
-                // 殖民者、机甲等其他本方单位可以自由穿行
-                return 0;
-            }
-
-            // 玩家的俘虏：由 XML 参数 allowPrisoner 决定（默认允许）
-            if (pawn.IsPrisonerOfColony)
-                return (ext == null || ext.allowPrisoner) ? (ushort)0 : ushort.MaxValue;
-
-            // 玩家的客人/访客：由 XML 参数 allowGuest 决定（默认允许）
-            // 判定逻辑：HostFaction 是玩家（访客、外交使团、寻求帮助的难民等）
-            if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner)
-                return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
-
-            // 商队/访客：由 allowTrader 和 allowGuest 决定
-            if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer))
-            {
-                var lord = pawn.GetLord();
-                var lordJob = lord?.LordJob;
-
-                // 1. 商队判定 (显式商人、商队任务、或是商队Kind)
-                bool isTrader = pawn.trader != null 
-                             || lordJob is LordJob_TradeWithColony 
-                             || (pawn.kindDef != null && pawn.kindDef.trader);
-
-                if (isTrader)
-                    return (ext == null || ext.allowTrader) ? (ushort)0 : ushort.MaxValue;
-
-                // 2. 访客/旅行者判定 (LordJob_VisitColony, LordJob_TravelAndExit 等)
-                if (lordJob is LordJob_VisitColony || lordJob is LordJob_TravelAndExit)
-                    return (ext == null || ext.allowGuest) ? (ushort)0 : ushort.MaxValue;
-            }
-
-            // 其余所有单位（敌人、野生动物、敌对派系）——视为墙壁（不可通行）
-            return ushort.MaxValue;
+            return CanPawnPass(pawn, ext) ? (ushort)0 : ushort.MaxValue;
         }
 
         public CellRect GetOccupiedRect() => this.OccupiedRect();
@@ -298,64 +319,10 @@ namespace FullyAutomaticOmniCrafter
             Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
             var ext = wall?.def.GetModExtension<PhantomWallExtension>();
 
-            // 友方可穿越
-            if (tp.pawn.Faction == Faction.OfPlayer)
+            if (!Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext))
             {
-                // 如果是玩家的动物，根据 allowPet 决定
-                if (tp.pawn.RaceProps.Animal)
-                {
-                    if (ext == null || ext.allowPet) return;
-                    __result = false;
-                    return;
-                }
-                return;
-            }
-
-            // 俘虏：由 allowPrisoner 决定
-            if (tp.pawn.IsPrisonerOfColony)
-            {
-                if (ext == null || ext.allowPrisoner) return;
                 __result = false;
-                return;
             }
-
-            // 客人/访客：由 allowGuest 决定
-            if (tp.pawn.HostFaction == Faction.OfPlayer && !tp.pawn.IsPrisoner)
-            {
-                if (ext == null || ext.allowGuest) return;
-                __result = false;
-                return;
-            }
-
-            // 商队/访客：由 allowTrader 和 allowGuest 决定
-            if (tp.pawn.Faction != null && !tp.pawn.Faction.HostileTo(Faction.OfPlayer))
-            {
-                var lord = tp.pawn.GetLord();
-                var lordJob = lord?.LordJob;
-
-                // 1. 商队判定
-                bool isTrader = tp.pawn.trader != null 
-                             || lordJob is LordJob_TradeWithColony 
-                             || (tp.pawn.kindDef != null && tp.pawn.kindDef.trader);
-
-                if (isTrader)
-                {
-                    if (ext == null || ext.allowTrader) return;
-                    __result = false;
-                    return;
-                }
-
-                // 2. 访客/旅行者判定
-                if (lordJob is LordJob_VisitColony || lordJob is LordJob_TravelAndExit)
-                {
-                    if (ext == null || ext.allowGuest) return;
-                    __result = false;
-                    return;
-                }
-            }
-
-            // 其余所有单位（敌人、野生动物、中立）→ BFS 层面封路
-            __result = false;
         }
     }
 
