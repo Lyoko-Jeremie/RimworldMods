@@ -201,10 +201,16 @@ namespace FullyAutomaticOmniCrafter
             if (pawn == null) return false;
             var mode = ext?.passMode ?? PhantomWallPassMode.PlayerPetsAndAllies;
 
-            // 1. 玩家单位判定 (殖民者、机甲、玩家拥有的动物等)
-            if (pawn.Faction == Faction.OfPlayer)
+            // 1. 核心玩家单位判定
+            // 检查是否为玩家派系的成员
+            bool isPlayerFaction = pawn.Faction == Faction.OfPlayer;
+            
+            // 玩家单位定义：
+            // - 是玩家派系的成员 (殖民者、机甲、玩家驯服的动物)
+            // - 是玩家托管的囚犯或客人 (仅在模式 2 下考虑)
+            if (isPlayerFaction)
             {
-                // 如果是玩家的动物
+                // 如果是动物
                 if (pawn.RaceProps.Animal)
                 {
                     // 只有模式 1 和 2 允许动物通过，模式 3 不允许
@@ -214,30 +220,27 @@ namespace FullyAutomaticOmniCrafter
                 return true;
             }
 
-            // 2. 友方判定 (俘虏、访客、盟友商队等)
-            // 只有模式 2 (PlayerPetsAndAllies) 允许非玩家单位通过
+            // 2. 友方/中立判定 (仅在模式 2: PlayerPetsAndAllies 下启用)
             if (mode == PhantomWallPassMode.PlayerPetsAndAllies)
             {
-                // 使用 RimWorld 标准的敌对判定。只要不是敌对的，在模式 2 下都可能允许通过。
+                // 如果是玩家托管的单位 (囚犯、受雇奴隶、受保护的客人)
+                if (pawn.IsPrisonerOfColony || pawn.HostFaction == Faction.OfPlayer)
+                {
+                    return true;
+                }
+
+                // 非敌对的商队、访客、盟友等
                 if (!pawn.HostileTo(Faction.OfPlayer))
                 {
-                    // 允许以下非敌对单位通过：
-                    // - 属于任何派系的单位（商队、盟友、中立访客）
-                    // - 属于某个群体（Lord），涵盖了商队中的动物、受保护的旅行者等
-                    // - 人类（访客、无派系人类、流浪者）
-                    // - 玩家托管的单位（俘虏、客人、奴隶等）
-                    if (pawn.Faction != null || 
-                        pawn.GetLord() != null || 
-                        pawn.RaceProps.Humanlike || 
-                        pawn.IsPrisonerOfColony || 
-                        pawn.HostFaction == Faction.OfPlayer)
+                    // 具有派系的人员或具有领主（Lord）的群体单位
+                    if (pawn.Faction != null || pawn.GetLord() != null || pawn.RaceProps.Humanlike)
                     {
                         return true;
                     }
                 }
             }
 
-            // 其余情况 (敌人、野生动物、在不支持模式下的友方) 一律不允许通过
+            // 3. 其余情况 (敌对者、野生动物、在不对外开放模式下的访客/商队) 一律不允许通过
             return false;
         }
 
@@ -317,7 +320,10 @@ namespace FullyAutomaticOmniCrafter
                 return;
 
             if (tp.pawn == null)
-                return; // 无特定小人时不限制（保持 true）
+            {
+                // 如果没有提供 Pawn 信息（如区域检查），不执行进一步拦截，以免破坏系统功能
+                return;
+            }
 
             // 从该区域的任意幻影墙 Thing 上读取扩展参数
             Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
