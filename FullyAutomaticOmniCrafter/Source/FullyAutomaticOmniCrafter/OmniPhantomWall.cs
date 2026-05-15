@@ -201,7 +201,7 @@ namespace FullyAutomaticOmniCrafter
             if (pawn == null) return false;
             var mode = ext?.passMode ?? PhantomWallPassMode.PlayerPetsAndAllies;
 
-            // 1. 玩家派系判定 (殖民者、机甲、玩家拥有的动物等)
+            // 1. 玩家单位判定 (殖民者、机甲、玩家拥有的动物等)
             if (pawn.Faction == Faction.OfPlayer)
             {
                 // 如果是玩家的动物
@@ -215,21 +215,25 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 2. 友方判定 (俘虏、访客、盟友商队等)
-            // 只有模式 2 允许友方通过
+            // 只有模式 2 (PlayerPetsAndAllies) 允许非玩家单位通过
             if (mode == PhantomWallPassMode.PlayerPetsAndAllies)
             {
-                // 玩家的俘虏
-                if (pawn.IsPrisonerOfColony) return true;
-
-                // 玩家的客人 (HostFaction 是玩家且不是俘虏)
-                if (pawn.HostFaction == Faction.OfPlayer && !pawn.IsPrisoner) return true;
-
-                // 盟友或中立派系 (非敌对)
-                if (pawn.Faction != null && !pawn.Faction.HostileTo(Faction.OfPlayer))
+                // 使用 RimWorld 标准的敌对判定。只要不是敌对的，在模式 2 下都可能允许通过。
+                if (!pawn.HostileTo(Faction.OfPlayer))
                 {
-                    // 只要是非敌对派系的，在 PlayerPetsAndAllies 模式下都允许
-                    // (涵盖了商队、旅行者等所有友方/中立单位)
-                    return true;
+                    // 允许以下非敌对单位通过：
+                    // - 属于任何派系的单位（商队、盟友、中立访客）
+                    // - 属于某个群体（Lord），涵盖了商队中的动物、受保护的旅行者等
+                    // - 人类（访客、无派系人类、流浪者）
+                    // - 玩家托管的单位（俘虏、客人、奴隶等）
+                    if (pawn.Faction != null || 
+                        pawn.GetLord() != null || 
+                        pawn.RaceProps.Humanlike || 
+                        pawn.IsPrisonerOfColony || 
+                        pawn.HostFaction == Faction.OfPlayer)
+                    {
+                        return true;
+                    }
                 }
             }
 
