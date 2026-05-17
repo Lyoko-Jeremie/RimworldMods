@@ -43,7 +43,12 @@ namespace FullyAutomaticOmniCrafter
                 defaultLabel = "OmniCrafter_UnlockAvailableResearch".Translate(),
                 defaultDesc = "OmniCrafter_UnlockAvailableResearchDesc".Translate(),
                 icon = CompInstantResearchTex.IconResearch,
-                action = UnlockAvailableResearch
+                action = () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "OmniCrafter_UnlockAvailableResearchDesc".Translate(),
+                        UnlockAvailableResearch));
+                }
             };
         }
 
