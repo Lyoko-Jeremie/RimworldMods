@@ -18,9 +18,10 @@ namespace FullyAutomaticOmniCrafter
         private bool filterPrisoners = true;
         private bool filterAllies = true;
         private bool filterEnemies = false;
-        private bool filterAnimals = false;
+        private bool filterDomesticAnimals = false;
+        private bool filterWildAnimals = false;
 
-        public override Vector2 InitialSize => new Vector2(600f, 700f);
+        public override Vector2 InitialSize => new Vector2(650f, 700f);
 
         public Dialog_SelectPawn(Building_FullyAutoOmniSurgeon surgeon, Action<Pawn> onSelected)
         {
@@ -47,7 +48,8 @@ namespace FullyAutomaticOmniCrafter
                 .Where(p => !p.Dead && (p.RaceProps.IsFlesh || p.RaceProps.IsMechanoid))
                 .Where(p =>
                 {
-                    if (filterAnimals && p.RaceProps.Animal) return true;
+                    if (filterDomesticAnimals && p.RaceProps.Animal && p.Faction == Faction.OfPlayer) return true;
+                    if (filterWildAnimals && p.RaceProps.Animal && p.Faction != Faction.OfPlayer) return true;
                     if (filterColonists && p.IsColonist) return true;
                     if (filterPrisoners && p.IsPrisonerOfColony) return true;
                     if (filterEnemies && p.HostileTo(Faction.OfPlayer)) return true;
@@ -88,7 +90,7 @@ namespace FullyAutomaticOmniCrafter
             y += 35f;
 
             // 过滤器
-            float filterW = (inRect.width - 10f) / 5f;
+            float filterW = (inRect.width - 10f) / 6f;
             bool changed = false;
 
             void Checkbox(Rect rect, string label, ref bool flag)
@@ -113,7 +115,8 @@ namespace FullyAutomaticOmniCrafter
             Checkbox(new Rect(filterW, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterPrisoners", ref filterPrisoners);
             Checkbox(new Rect(filterW * 2, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterAllies", ref filterAllies);
             Checkbox(new Rect(filterW * 3, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterEnemies", ref filterEnemies);
-            Checkbox(new Rect(filterW * 4, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterAnimals", ref filterAnimals);
+            Checkbox(new Rect(filterW * 4, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterDomesticAnimals", ref filterDomesticAnimals);
+            Checkbox(new Rect(filterW * 5, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterWildAnimals", ref filterWildAnimals);
 
             y += 35f;
             if (cachedPawns == null || changed) UpdateCache();

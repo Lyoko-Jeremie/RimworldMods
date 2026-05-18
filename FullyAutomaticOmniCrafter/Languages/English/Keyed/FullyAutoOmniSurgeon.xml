@@ -32,5 +32,6 @@
   <FullyAutoOmniSurgeon_FilterPrisoners>Prisoners</FullyAutoOmniSurgeon_FilterPrisoners>
   <FullyAutoOmniSurgeon_FilterAllies>Allies</FullyAutoOmniSurgeon_FilterAllies>
   <FullyAutoOmniSurgeon_FilterEnemies>Enemies</FullyAutoOmniSurgeon_FilterEnemies>
-  <FullyAutoOmniSurgeon_FilterAnimals>Animals</FullyAutoOmniSurgeon_FilterAnimals>
+  <FullyAutoOmniSurgeon_FilterDomesticAnimals>Domestic Animals</FullyAutoOmniSurgeon_FilterDomesticAnimals>
+  <FullyAutoOmniSurgeon_FilterWildAnimals>Wild Animals</FullyAutoOmniSurgeon_FilterWildAnimals>
 </LanguageData>

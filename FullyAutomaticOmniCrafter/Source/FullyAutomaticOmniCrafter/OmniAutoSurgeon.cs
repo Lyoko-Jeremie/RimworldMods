@@ -83,6 +83,7 @@ namespace FullyAutomaticOmniCrafter
             base.ExposeData();
             Scribe_Collections.Look(ref templates, "templates", LookMode.Deep);
             if (templates == null) templates = new List<SurgeryTemplate>();
+            Scribe_References.Look(ref selectedPawn, "selectedPawn");
         }
 
         public override IEnumerable<Gizmo> GetGizmos()
@@ -177,10 +178,24 @@ namespace FullyAutomaticOmniCrafter
         public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
         {
             base.DynamicDrawPhaseAt(phase, drawLoc, flip);
+            if (phase == DrawPhase.Draw && this.Occupant != null)
+            {
+                this.Occupant.Drawer.renderer.RenderPawnAt(drawLoc + this.PawnDrawOffset, null, neverAimWeapon: true);
+            }
+        }
+
+        public override string GetInspectString()
+        {
+            string text = base.GetInspectString();
             if (this.Occupant != null)
             {
-                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset, neverAimWeapon: true);
+                if (!text.NullOrEmpty())
+                {
+                    text += "\n";
+                }
+                text += "Occupant".Translate() + ": " + this.Occupant.LabelCap;
             }
+            return text;
         }
 
         public override AcceptanceReport CanAcceptPawn(Pawn pawn)

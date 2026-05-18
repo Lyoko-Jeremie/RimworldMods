@@ -32,5 +32,6 @@
   <FullyAutoOmniSurgeon_FilterPrisoners>囚犯</FullyAutoOmniSurgeon_FilterPrisoners>
   <FullyAutoOmniSurgeon_FilterAllies>盟友</FullyAutoOmniSurgeon_FilterAllies>
   <FullyAutoOmniSurgeon_FilterEnemies>敌人</FullyAutoOmniSurgeon_FilterEnemies>
-  <FullyAutoOmniSurgeon_FilterAnimals>动物</FullyAutoOmniSurgeon_FilterAnimals>
+  <FullyAutoOmniSurgeon_FilterDomesticAnimals>家养动物</FullyAutoOmniSurgeon_FilterDomesticAnimals>
+  <FullyAutoOmniSurgeon_FilterWildAnimals>野生动物</FullyAutoOmniSurgeon_FilterWildAnimals>
 </LanguageData>
