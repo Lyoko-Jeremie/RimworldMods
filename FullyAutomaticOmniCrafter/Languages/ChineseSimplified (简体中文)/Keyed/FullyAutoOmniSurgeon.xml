@@ -27,4 +27,10 @@
   <FullyAutoOmniSurgeon_Entered>{0} 已进入改造舱。</FullyAutoOmniSurgeon_Entered>
   <FullyAutoOmniSurgeon_FailedToEnter>无法将 {0} 移入改造舱。</FullyAutoOmniSurgeon_FailedToEnter>
   <FullyAutoOmniSurgeon_NoPawnFound>未发现可用的对象。</FullyAutoOmniSurgeon_NoPawnFound>
+  <FullyAutoOmniSurgeon_Search>搜索:</FullyAutoOmniSurgeon_Search>
+  <FullyAutoOmniSurgeon_FilterColonists>殖民者</FullyAutoOmniSurgeon_FilterColonists>
+  <FullyAutoOmniSurgeon_FilterPrisoners>囚犯</FullyAutoOmniSurgeon_FilterPrisoners>
+  <FullyAutoOmniSurgeon_FilterAllies>盟友</FullyAutoOmniSurgeon_FilterAllies>
+  <FullyAutoOmniSurgeon_FilterEnemies>敌人</FullyAutoOmniSurgeon_FilterEnemies>
+  <FullyAutoOmniSurgeon_FilterAnimals>动物</FullyAutoOmniSurgeon_FilterAnimals>
 </LanguageData>

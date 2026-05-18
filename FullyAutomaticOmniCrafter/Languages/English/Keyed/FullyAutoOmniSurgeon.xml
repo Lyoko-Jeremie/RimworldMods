@@ -27,4 +27,10 @@
   <FullyAutoOmniSurgeon_Entered>{0} has entered the pod.</FullyAutoOmniSurgeon_Entered>
   <FullyAutoOmniSurgeon_FailedToEnter>Failed to move {0} into the pod.</FullyAutoOmniSurgeon_FailedToEnter>
   <FullyAutoOmniSurgeon_NoPawnFound>No suitable target found.</FullyAutoOmniSurgeon_NoPawnFound>
+  <FullyAutoOmniSurgeon_Search>Search:</FullyAutoOmniSurgeon_Search>
+  <FullyAutoOmniSurgeon_FilterColonists>Colonists</FullyAutoOmniSurgeon_FilterColonists>
+  <FullyAutoOmniSurgeon_FilterPrisoners>Prisoners</FullyAutoOmniSurgeon_FilterPrisoners>
+  <FullyAutoOmniSurgeon_FilterAllies>Allies</FullyAutoOmniSurgeon_FilterAllies>
+  <FullyAutoOmniSurgeon_FilterEnemies>Enemies</FullyAutoOmniSurgeon_FilterEnemies>
+  <FullyAutoOmniSurgeon_FilterAnimals>Animals</FullyAutoOmniSurgeon_FilterAnimals>
 </LanguageData>

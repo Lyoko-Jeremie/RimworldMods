@@ -47,9 +47,9 @@ namespace FullyAutomaticOmniCrafter
                 .Where(p => !p.Dead && (p.RaceProps.IsFlesh || p.RaceProps.IsMechanoid))
                 .Where(p =>
                 {
+                    if (filterAnimals && p.RaceProps.Animal) return true;
                     if (filterColonists && p.IsColonist) return true;
                     if (filterPrisoners && p.IsPrisonerOfColony) return true;
-                    if (filterAnimals && p.RaceProps.Animal) return true;
                     if (filterEnemies && p.HostileTo(Faction.OfPlayer)) return true;
                     if (filterAllies && !p.IsColonist && !p.IsPrisonerOfColony && !p.RaceProps.Animal && !p.HostileTo(Faction.OfPlayer)) return true;
                     return false;
@@ -78,7 +78,7 @@ namespace FullyAutomaticOmniCrafter
             float y = 40f;
 
             // 搜索框
-            Widgets.Label(new Rect(0f, y, 60f, 30f), "OmniCrafter_Search".Translate());
+            Widgets.Label(new Rect(0f, y, 60f, 30f), "FullyAutoOmniSurgeon_Search".Translate());
             string newSearch = Widgets.TextField(new Rect(65f, y, inRect.width - 70f, 30f), searchText);
             if (newSearch != searchText)
             {
@@ -90,14 +90,19 @@ namespace FullyAutomaticOmniCrafter
             // 过滤器
             float filterW = (inRect.width - 10f) / 5f;
             bool changed = false;
-            Widgets.CheckboxLabeled(new Rect(0f, y, filterW, 30f), "Colonists".Translate(), ref filterColonists);
-            Widgets.CheckboxLabeled(new Rect(filterW, y, filterW, 30f), "Prisoners".Translate(), ref filterPrisoners);
-            Widgets.CheckboxLabeled(new Rect(filterW * 2, y, filterW, 30f), "Allies".Translate(), ref filterAllies);
-            Widgets.CheckboxLabeled(new Rect(filterW * 3, y, filterW, 30f), "Enemies".Translate(), ref filterEnemies);
-            Widgets.CheckboxLabeled(new Rect(filterW * 4, y, filterW, 30f), "Animals".Translate(), ref filterAnimals);
-            
-            // 简单检查状态变化
-            if (Event.current.type == EventType.Used) changed = true; 
+
+            void Checkbox(Rect rect, string label, ref bool flag)
+            {
+                bool old = flag;
+                Widgets.CheckboxLabeled(rect, label.Translate(), ref flag);
+                if (flag != old) changed = true;
+            }
+
+            Checkbox(new Rect(0f, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterColonists", ref filterColonists);
+            Checkbox(new Rect(filterW, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterPrisoners", ref filterPrisoners);
+            Checkbox(new Rect(filterW * 2, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterAllies", ref filterAllies);
+            Checkbox(new Rect(filterW * 3, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterEnemies", ref filterEnemies);
+            Checkbox(new Rect(filterW * 4, y, filterW, 30f), "FullyAutoOmniSurgeon_FilterAnimals", ref filterAnimals);
 
             y += 35f;
             if (cachedPawns == null || changed) UpdateCache();
