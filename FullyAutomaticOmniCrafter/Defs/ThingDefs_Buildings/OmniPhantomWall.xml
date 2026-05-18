@@ -22,8 +22,9 @@
         <!-- 1. 视觉属性：完全照搬原版的墙 -->
         <graphicData>
             <texPath>Things/Building/Linked/Wall</texPath>
-<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall/WallExampleGrid</texPath>-->
-<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall/OmniPhantomWall__Atlas</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall_all_</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWallTex/WallExampleGrid</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWallTex/OmniPhantomWall__Atlas</texPath>-->
             <graphicClass>Graphic_Appearances</graphicClass>
 <!--            <graphicClass>Graphic_Linked</graphicClass>-->
             <linkType>CornerFiller</linkType>
@@ -45,7 +46,7 @@
             <!-- ↓ 半透明三件套 -->
             <shaderType>Transparent</shaderType>          <!-- 开启 Alpha 混合 -->
 <!--            <color>(1, 0.6, 1, 0.3)</color>         &lt;!&ndash; 略带蓝紫色调，30% 不透明度 &ndash;&gt;-->
-            <allowAtlasing>false</allowAtlasing>           <!-- 禁止图集替换，保留 alpha -->
+<!--            <allowAtlasing>false</allowAtlasing>           &lt;!&ndash; 禁止图集替换，保留 alpha &ndash;&gt;-->
         </graphicData>
         <uiIconPath>Things/Building/Linked/WallSmooth_MenuIcon</uiIconPath>
 <!--        <uiIconPath>Things/Building/Linked/Wall_MenuIcon</uiIconPath>-->
@@ -136,13 +137,16 @@
         
     </ThingDef>
 
+    <!--  ===============================================================================================  -->
+
     <ThingDef Name="OmniPhantomWall_" ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_</defName>
         <label>OmniPhantomWall_</label>
         <description>description</description>
 
         <graphicData>
-<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall/OmniPhantomWall_</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
         </graphicData>
         
         <modExtensions>
@@ -202,7 +206,8 @@
         <description>description</description>
 
         <graphicData>
-<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall/OmniPhantomWall_all_</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall_all</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
         </graphicData>
         
         <modExtensions>
@@ -261,7 +266,8 @@
         <description>description</description>
         
         <graphicData>
-<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall/OmniPhantomWall_Animal_</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall_Animal</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
         </graphicData>
 
         <modExtensions>
