@@ -98,7 +98,7 @@ namespace FullyAutomaticOmniCrafter
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconErrorLog =
-            ContentFinder<Texture2D>.Get("UI/Buttons/DevRoot/ShowDebugLog", true) ??
+            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ErrorLog", true) ??
             BaseContent.WhiteTex;
     }
 
