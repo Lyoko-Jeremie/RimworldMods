@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
 using UnityEngine;
@@ -6,12 +7,21 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
-    public class SurgeryTemplate
+    public class SurgeryTemplate : IExposable
     {
         public string templateName;
 
-        // 记录部位 DefName 和对应的 义体 HediffDef
+        // 记录部位路径 (unique path or defName + index) 和对应的 义体 HediffDef
+        // 这里简单点，记录 BodyPartDef 的 defName 可能会有重复部位问题，
+        // 但对于大多数义体（眼、臂、腿）通常是通用的。
+        // 更好的做法是记录 BodyPartRecord 的某种标识。
         public Dictionary<string, string> partToBionicMap = new Dictionary<string, string>();
+
+        public void ExposeData()
+        {
+            Scribe_Values.Look(ref templateName, "templateName");
+            Scribe_Collections.Look(ref partToBionicMap, "partToBionicMap", LookMode.Value, LookMode.Value);
+        }
     }
 
     /// <summary>
@@ -21,10 +31,18 @@ namespace FullyAutomaticOmniCrafter
     /// 支持手动按部位编辑和安装。
     /// 忽略材料限制。 
     /// </summary>
-    public class Building_FullyAutoOmniSurgeon : Building
+    public class Building_FullyAutoOmniSurgeon : Building_Casket
     {
-        // 获取当前躺在里面的小人（如果你使用的是类似床或舱体的逻辑）
-        public Pawn Occupant => ...;
+        public List<SurgeryTemplate> templates = new List<SurgeryTemplate>();
+
+        public Pawn Occupant => innerContainer.FirstOrDefault() as Pawn;
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Collections.Look(ref templates, "templates", LookMode.Deep);
+            if (templates == null) templates = new List<SurgeryTemplate>();
+        }
 
         public override IEnumerable<Gizmo> GetGizmos()
         {
@@ -32,44 +50,244 @@ namespace FullyAutomaticOmniCrafter
 
             if (this.Occupant != null)
             {
-                Command_Action openUI = new Command_Action
+                yield return new Command_Action
                 {
                     defaultLabel = "打开改造面板",
                     defaultDesc = "编辑小人的身体部位、安装义体或应用模板。",
-                    icon = ContentFinder<Texture2D>.Get("UI/YourIcon"),
+                    icon = ContentFinder<Texture2D>.Get("UI/Buttons/MainButtons/Health"),
                     action = () => { Find.WindowStack.Add(new Window_OmniAutoSurgeonUI(this.Occupant, this)); }
                 };
-                yield return openUI;
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "全自动修复",
+                    defaultDesc = "一键修复所有损伤、疾病、成瘾和缺失部位（恢复原生）。",
+                    icon = ContentFinder<Texture2D>.Get("UI/Designators/HomeAreaOn"),
+                    action = () => { FullRepair(this.Occupant); }
+                };
+            }
+
+            if (this.Faction == Faction.OfPlayer && this.innerContainer.Count > 0)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "弹出",
+                    defaultDesc = "将舱内人员弹出。",
+                    icon = ContentFinder<Texture2D>.Get("UI/Commands/PodEject"),
+                    action = () => { EjectContents(); }
+                };
             }
         }
 
-        public void InstallBionic(Pawn pawn, BodyPartRecord part, HediffDef bionicDef, bool ignoreMaterials)
+        public override void EjectContents()
         {
-            // 1. 检查材料 (如果需要)
-            if (!ignoreMaterials)
+            foreach (Thing thing in (IEnumerable<Thing>)this.innerContainer)
             {
-                // 查找全图或相邻储物区是否有该义体的物品 (ThingDef)
-                // 如果有，则扣除 (Destroy)；如果没有，则返回错误提示
+                if (thing is Pawn pawn)
+                {
+                    PawnComponentsUtility.AddComponentsForSpawn(pawn);
+                }
+            }
+            base.EjectContents();
+        }
+
+        public void InstallBionic(Pawn pawn, BodyPartRecord part, HediffDef bionicDef)
+        {
+            if (pawn == null || part == null || bionicDef == null) return;
+
+            // 1. 移除该部位已有的义体或冲突
+            var existing = pawn.health.hediffSet.hediffs
+                .Where(h => h.Part == part && (h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null))
+                .ToList();
+            
+            foreach (var h in existing)
+            {
+                pawn.health.RemoveHediff(h);
             }
 
-            // 2. 移除该部位已有的其他冲突义体 (可选逻辑)
-
-            // 3. 安装新义体
+            // 2. 安装新义体
             pawn.health.AddHediff(bionicDef, part);
-
-            // 4. 处理原版逻辑：有些义体安装后会产生“已移除的原始器官”肉块，可根据需求生成
         }
 
         public void RemoveBionic(Pawn pawn, BodyPartRecord part, Hediff hediffToRemove)
         {
-            // 1. 移除义体 Hediff
+            if (pawn == null || hediffToRemove == null) return;
+
             pawn.health.RemoveHediff(hediffToRemove);
+            
+            // 如果拆除的是替换型义体，恢复原部位
+            if (part != null && !pawn.health.hediffSet.GetNotMissingParts().Contains(part))
+            {
+                pawn.health.RestorePart(part);
+            }
+        }
 
-            // 2. 恢复原部位 (如果拆除的是替换型义体，比如仿生臂，拆除后默认会变成“缺失”状态)
-            // 如果你的设定是拆除后恢复原样，可以使用：
-            pawn.health.RestorePart(part);
+        public void FullRepair(Pawn pawn)
+        {
+            if (pawn == null) return;
 
-            // 3. 生成拆下来的义体物品掉落在地上 (GenSpawn.Spawn)
+            // 1. 恢复所有缺失部位
+            var missingParts = pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+            foreach (var part in missingParts)
+            {
+                pawn.health.RestorePart(part.Part);
+            }
+
+            // 2. 移除所有负面状态
+            var toRemove = pawn.health.hediffSet.hediffs
+                .Where(h => h is Hediff_Injury || h is Hediff_Addiction || h.def.isBad || h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
+                .ToList();
+
+            foreach (var h in toRemove)
+            {
+                pawn.health.RemoveHediff(h);
+            }
+
+            Messages.Message("已完成对 " + pawn.LabelShort + " 的全自动修复。", MessageTypeDefOf.TaskCompletion);
+        }
+
+        public void ApplyTemplate(Pawn pawn, SurgeryTemplate template)
+        {
+            if (pawn == null || template == null) return;
+
+            foreach (var entry in template.partToBionicMap)
+            {
+                // 这里需要根据部位 ID 找到对应的 BodyPartRecord
+                // 为了简化，我们按部位 Label 或 DefName 匹配
+                var part = pawn.RaceProps.body.AllParts.FirstOrDefault(p => p.Label == entry.Key || p.def.defName == entry.Key);
+                var bionicDef = DefDatabase<HediffDef>.GetNamedSilentFail(entry.Value);
+
+                if (part != null && bionicDef != null)
+                {
+                    InstallBionic(pawn, part, bionicDef);
+                }
+            }
+            Messages.Message($"已为 {pawn.LabelShort} 应用模板: {template.templateName}", MessageTypeDefOf.TaskCompletion);
+        }
+
+        public void SaveAsTemplate(Pawn pawn, string name)
+        {
+            if (pawn == null) return;
+            var template = new SurgeryTemplate { templateName = name };
+            foreach (var h in pawn.health.hediffSet.hediffs)
+            {
+                if (h.Part != null && (h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null))
+                {
+                    template.partToBionicMap[h.Part.Label] = h.def.defName;
+                }
+            }
+            templates.Add(template);
+        }
+    }
+
+    public class Window_OmniAutoSurgeonUI : Window
+    {
+        private Pawn pawn;
+        private Building_FullyAutoOmniSurgeon surgeon;
+        private Vector2 scrollPos;
+
+        public override Vector2 InitialSize => new Vector2(600f, 700f);
+
+        public Window_OmniAutoSurgeonUI(Pawn pawn, Building_FullyAutoOmniSurgeon surgeon)
+        {
+            this.pawn = pawn;
+            this.surgeon = surgeon;
+            this.doCloseButton = true;
+            this.doCloseX = true;
+            this.closeOnClickedOutside = true;
+            this.absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0, 0, inRect.width, 40f), "改造面板: " + pawn.LabelCap);
+            Text.Font = GameFont.Small;
+
+            float x = inRect.width - 150f;
+            if (Widgets.ButtonText(new Rect(x, 0, 140f, 30f), "保存为模板"))
+            {
+                Find.WindowStack.Add(new Dialog_NameTemplate(name => surgeon.SaveAsTemplate(pawn, name)));
+            }
+            
+            if (surgeon.templates.Any() && Widgets.ButtonText(new Rect(x - 150f, 0, 140f, 30f), "应用模板"))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                foreach (var t in surgeon.templates)
+                {
+                    options.Add(new FloatMenuOption(t.templateName, () => surgeon.ApplyTemplate(pawn, t)));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            float y = 50f;
+            
+            // 简单列出所有身体部位
+            Rect outRect = new Rect(0, y, inRect.width, inRect.height - y - 60f);
+            Rect viewRect = new Rect(0, 0, outRect.width - 16f, pawn.RaceProps.body.AllParts.Count * 30f);
+            
+            Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
+            float curY = 0;
+            foreach (var part in pawn.RaceProps.body.AllParts)
+            {
+                Rect rowRect = new Rect(0, curY, viewRect.width, 25f);
+                Widgets.Label(new Rect(0, curY, 200f, 25f), part.LabelCap);
+                
+                // 显示当前状态
+                var hediffs = pawn.health.hediffSet.hediffs.Where(h => h.Part == part).ToList();
+                string status = hediffs.Any() ? string.Join(", ", hediffs.Select(h => h.LabelCap)) : "正常";
+                Widgets.Label(new Rect(210, curY, 200f, 25f), status);
+
+                if (Widgets.ButtonText(new Rect(420, curY, 60f, 25f), "安装"))
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+                    // 这里应该筛选出所有可能的义体 Def
+                    var bionicDefs = DefDatabase<HediffDef>.AllDefs
+                        .Where(d => d.spawnThingOnRemoved != null || d.hediffClass.Name.Contains("Bionic") || d.label.Contains("仿生"))
+                        .OrderBy(d => d.label);
+                    
+                    foreach (var def in bionicDefs)
+                    {
+                        options.Add(new FloatMenuOption(def.LabelCap, () => surgeon.InstallBionic(pawn, part, def)));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+
+                if (hediffs.Any() && Widgets.ButtonText(new Rect(490, curY, 60f, 25f), "移除"))
+                {
+                    foreach (var h in hediffs) surgeon.RemoveBionic(pawn, part, h);
+                }
+
+                curY += 30f;
+            }
+            Widgets.EndScrollView();
+        }
+    }
+
+    public class Dialog_NameTemplate : Window
+    {
+        private string name = "新模板";
+        private Action<string> onConfirm;
+
+        public override Vector2 InitialSize => new Vector2(300f, 150f);
+
+        public Dialog_NameTemplate(Action<string> onConfirm)
+        {
+            this.onConfirm = onConfirm;
+            this.doCloseButton = false;
+            this.doCloseX = true;
+            this.absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Widgets.Label(new Rect(0, 0, inRect.width, 30f), "输入模板名称:");
+            name = Widgets.TextField(new Rect(0, 40f, inRect.width, 30f), name);
+            if (Widgets.ButtonText(new Rect(0, 80f, inRect.width, 30f), "确定"))
+            {
+                onConfirm?.Invoke(name);
+                this.Close();
+            }
         }
     }
 }
