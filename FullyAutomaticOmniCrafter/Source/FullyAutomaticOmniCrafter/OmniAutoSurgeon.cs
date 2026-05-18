@@ -116,6 +116,11 @@ namespace FullyAutomaticOmniCrafter
                 if (thing is Pawn pawn)
                 {
                     PawnComponentsUtility.AddComponentsForSpawn(pawn);
+                    // 清理工作队列，防止出来后执行过时的 Job
+                    if (pawn.jobs != null)
+                    {
+                        pawn.jobs.StopAll();
+                    }
                 }
             }
 
@@ -140,17 +145,24 @@ namespace FullyAutomaticOmniCrafter
 
                 // 尝试进入建筑
                 // 注意：Pawn 必须脱离地图，否则会在地图上晃悠。
-                // Building_Casket.TryAcceptThing 只是放入容器，通常需要配套的 DeSpawn 逻辑。
+                // 1. 先从地图移除（如果是生成的）
+                if (pawn.Spawned)
+                {
+                    pawn.DeSpawn();
+                }
+
+                // 2. 尝试放入容器
                 if (this.TryAcceptThing(pawn))
                 {
-                    if (pawn.Spawned)
-                    {
-                        pawn.DeSpawn();
-                    }
                     Messages.Message("FullyAutoOmniSurgeon_Entered".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
                 }
                 else
                 {
+                    // 如果放入失败，需要尝试放回地图（虽然通常不应该失败）
+                    if (!pawn.Spawned)
+                    {
+                        GenSpawn.Spawn(pawn, this.Position, this.Map);
+                    }
                     Messages.Message("FullyAutoOmniSurgeon_FailedToEnter".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
                 }
             }));
