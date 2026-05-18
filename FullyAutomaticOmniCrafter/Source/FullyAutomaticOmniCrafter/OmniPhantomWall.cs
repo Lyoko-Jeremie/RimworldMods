@@ -26,11 +26,11 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public enum PhantomWallPassMode
     {
-        /// <summary>1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。</summary>
+        /// <summary>1: 只有玩家、玩家动物、玩家机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。</summary>
         PlayerAndPets,
-        /// <summary>2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。</summary>
+        /// <summary>2: 玩家、玩家动物、玩家机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。</summary>
         PlayerPetsAndAllies,
-        /// <summary>3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。</summary>
+        /// <summary>3: 只有玩家、玩家机器人能通过。动物、友方、敌方均不能通过。</summary>
         OnlyPlayerNoPets
     }
 
