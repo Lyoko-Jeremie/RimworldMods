@@ -95,22 +95,22 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Building_OmniPhantomWall : Building, IPathFindCostProvider
     {
-        /// <summary>
-        /// 重写绘制颜色：保留材料的基础颜色，但强制将透明度改为 0.3
-        /// </summary>
-        public override Color DrawColor
-        {
-            get
-            {
-                var alpha = 0.5f;
-                
-                // base.DrawColor 会自动计算并返回当前材料(Stuff)的颜色，或者派系的颜色
-                Color originalColor = base.DrawColor;
-                
-                // 返回 R, G, B 不变，强制将 Alpha 通道设为 0.3f (30% 不透明度)
-                return new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
-            }
-        }
+        // /// <summary>
+        // /// 重写绘制颜色：保留材料的基础颜色，但强制将透明度改为 0.3
+        // /// </summary>
+        // public override Color DrawColor
+        // {
+        //     get
+        //     {
+        //         var alpha = 0.5f;
+        //         
+        //         // base.DrawColor 会自动计算并返回当前材料(Stuff)的颜色，或者派系的颜色
+        //         Color originalColor = base.DrawColor;
+        //         
+        //         // 返回 R, G, B 不变，强制将 Alpha 通道设为 0.3f (30% 不透明度)
+        //         return new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+        //     }
+        // }
         
         // ── 无敌判定 ──────────────────────────────────────────────────
 
