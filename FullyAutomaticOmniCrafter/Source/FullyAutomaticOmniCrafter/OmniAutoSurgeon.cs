@@ -95,30 +95,44 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null || part == null || bionicDef == null) return;
 
-            // 1. 移除该部位已有的义体或冲突
-            var existing = pawn.health.hediffSet.hediffs
-                .Where(h => h.Part == part && (h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null))
-                .ToList();
-            
-            foreach (var h in existing)
+            try
             {
-                pawn.health.RemoveHediff(h);
-            }
+                // 1. 移除该部位已有的义体或冲突
+                var existing = pawn.health.hediffSet.hediffs
+                    .Where(h => h.Part == part && (h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null))
+                    .ToList();
 
-            // 2. 安装新义体
-            pawn.health.AddHediff(bionicDef, part);
+                foreach (var h in existing)
+                {
+                    pawn.health.RemoveHediff(h);
+                }
+
+                // 2. 安装新义体
+                pawn.health.AddHediff(bionicDef, part);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 安装义体 {bionicDef.defName} 到 {pawn.LabelShort} 的 {part.Label} 时发生异常: {ex}");
+            }
         }
 
         public void RemoveBionic(Pawn pawn, BodyPartRecord part, Hediff hediffToRemove)
         {
             if (pawn == null || hediffToRemove == null) return;
 
-            pawn.health.RemoveHediff(hediffToRemove);
-            
-            // 如果拆除的是替换型义体，恢复原部位
-            if (part != null && !pawn.health.hediffSet.GetNotMissingParts().Contains(part))
+            try
             {
-                pawn.health.RestorePart(part);
+                pawn.health.RemoveHediff(hediffToRemove);
+
+                // 如果拆除的是替换型义体，恢复原部位
+                if (part != null && !pawn.health.hediffSet.GetNotMissingParts().Contains(part))
+                {
+                    pawn.health.RestorePart(part);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 移除义体 {hediffToRemove.def.defName} 时发生异常: {ex}");
             }
         }
 
@@ -126,43 +140,91 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null) return;
 
-            // 1. 恢复所有缺失部位
-            var missingParts = pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
-            foreach (var part in missingParts)
+            try
             {
-                pawn.health.RestorePart(part.Part);
+                // 1. 恢复所有缺失部位
+                var missingParts = pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+                foreach (var part in missingParts)
+                {
+                    pawn.health.RestorePart(part.Part);
+                }
+
+                // 2. 移除所有负面状态
+                var toRemove = pawn.health.hediffSet.hediffs
+                    .Where(h => h is Hediff_Injury || h is Hediff_Addiction || h.def.isBad || h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
+                    .ToList();
+
+                foreach (var h in toRemove)
+                {
+                    pawn.health.RemoveHediff(h);
+                }
+
+                Messages.Message("已完成对 " + pawn.LabelShort + " 的全自动修复。", MessageTypeDefOf.TaskCompletion);
             }
-
-            // 2. 移除所有负面状态
-            var toRemove = pawn.health.hediffSet.hediffs
-                .Where(h => h is Hediff_Injury || h is Hediff_Addiction || h.def.isBad || h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
-                .ToList();
-
-            foreach (var h in toRemove)
+            catch (Exception ex)
             {
-                pawn.health.RemoveHediff(h);
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 进行全自动修复时发生异常: {ex}");
             }
-
-            Messages.Message("已完成对 " + pawn.LabelShort + " 的全自动修复。", MessageTypeDefOf.TaskCompletion);
         }
 
         public void ApplyTemplate(Pawn pawn, SurgeryTemplate template)
         {
             if (pawn == null || template == null) return;
 
-            foreach (var entry in template.partToBionicMap)
+            try
             {
-                // 这里需要根据部位 ID 找到对应的 BodyPartRecord
-                // 为了简化，我们按部位 Label 或 DefName 匹配
-                var part = pawn.RaceProps.body.AllParts.FirstOrDefault(p => p.Label == entry.Key || p.def.defName == entry.Key);
-                var bionicDef = DefDatabase<HediffDef>.GetNamedSilentFail(entry.Value);
-
-                if (part != null && bionicDef != null)
+                foreach (var entry in template.partToBionicMap)
                 {
-                    InstallBionic(pawn, part, bionicDef);
+                    var part = pawn.RaceProps.body.AllParts.FirstOrDefault(p => p.Label == entry.Key || p.def.defName == entry.Key);
+                    var bionicDef = DefDatabase<HediffDef>.GetNamedSilentFail(entry.Value);
+
+                    if (part != null && bionicDef != null)
+                    {
+                        // 检查 HAR 限制提示
+                        if (HarmonyLib.AccessTools.TypeByName("AlienRace.RaceRestrictionSettings") != null)
+                        {
+                            if (IsRestrictedFor(pawn, bionicDef, part))
+                            {
+                                Messages.Message($"警告: 义体 {bionicDef.label} 在该种族中可能受限，但已强制安装。", MessageTypeDefOf.CautionInput, false);
+                            }
+                        }
+                        InstallBionic(pawn, part, bionicDef);
+                    }
                 }
+                Messages.Message($"已为 {pawn.LabelShort} 应用模板: {template.templateName}", MessageTypeDefOf.TaskCompletion);
             }
-            Messages.Message($"已为 {pawn.LabelShort} 应用模板: {template.templateName}", MessageTypeDefOf.TaskCompletion);
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 应用模板 {template.templateName} 时发生异常: {ex}");
+            }
+        }
+
+        public static bool IsRestrictedFor(Pawn pawn, HediffDef hDef, BodyPartRecord part)
+        {
+            // 通过寻找是否有对应的 RecipeDef 被 HAR 限制来判断
+            var recipes = DefDatabase<RecipeDef>.AllDefsListForReading
+                .Where(r => r.addsHediff == hDef && (r.appliedOnFixedBodyParts.NullOrEmpty() || r.appliedOnFixedBodyParts.Contains(part.def)));
+
+            if (!recipes.Any()) return false;
+
+            var harType = HarmonyLib.AccessTools.TypeByName("AlienRace.RaceRestrictionSettings");
+            if (harType == null) return false;
+
+            var canDoMethod = HarmonyLib.AccessTools.Method(harType, "CanDoRecipe");
+            if (canDoMethod == null) return false;
+
+            foreach (var r in recipes)
+            {
+                try
+                {
+                    // HAR 的 CanDoRecipe(RecipeDef recipe, ThingDef race)
+                    bool canDo = (bool)canDoMethod.Invoke(null, new object[] { r, pawn.def });
+                    if (canDo) return false; // 只要有一个配方是允许的，就不算完全屏蔽
+                }
+                catch { }
+            }
+
+            return true; // 所有相关配方都被限制了
         }
 
         public void SaveAsTemplate(Pawn pawn, string name)
@@ -248,7 +310,13 @@ namespace FullyAutomaticOmniCrafter
                     
                     foreach (var def in bionicDefs)
                     {
-                        options.Add(new FloatMenuOption(def.LabelCap, () => surgeon.InstallBionic(pawn, part, def)));
+                        string label = def.LabelCap;
+                        bool restricted = Building_FullyAutoOmniSurgeon.IsRestrictedFor(pawn, def, part);
+                        if (restricted)
+                        {
+                            label = "<color=red>" + label + " (种族受限)</color>";
+                        }
+                        options.Add(new FloatMenuOption(label, () => surgeon.InstallBionic(pawn, part, def)));
                     }
                     Find.WindowStack.Add(new FloatMenu(options));
                 }
