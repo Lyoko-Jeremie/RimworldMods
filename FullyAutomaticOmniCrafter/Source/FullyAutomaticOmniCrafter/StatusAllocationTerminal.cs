@@ -75,6 +75,13 @@ namespace FullyAutomaticOmniCrafter
             this.timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
+        public bool IsDuplicate(Pawn pawn, BodyPartRecord part, HediffDef hediff)
+        {
+            return pawnName == pawn?.LabelCap &&
+                   bodyPartLabel == (part?.LabelCap ?? "SAT_WholeBody".Translate()) &&
+                   hediffLabel == hediff?.LabelCap;
+        }
+
         public string LogEntry => "SAT_LogEntry".Translate(timestamp, pawnName, bodyPartLabel, hediffLabel);
 
         public void ExposeData()
@@ -127,6 +134,17 @@ namespace FullyAutomaticOmniCrafter
         public List<HediffDef> autoRemovals = new List<HediffDef>();
         public List<HediffErrorRecord> failedHediffLogs = new List<HediffErrorRecord>();
 
+        public void AddFailedLog(Pawn pawn, BodyPartRecord part, HediffDef hediff)
+        {
+            if (failedHediffLogs.Any(x => x.IsDuplicate(pawn, part, hediff)))
+            {
+                return;
+            }
+
+            failedHediffLogs.Add(new HediffErrorRecord(pawn, part, hediff));
+            if (failedHediffLogs.Count > 100) failedHediffLogs.RemoveAt(0); // 限制记录数量
+        }
+
         public override void PostExposeData()
         {
             base.PostExposeData();
@@ -161,6 +179,7 @@ namespace FullyAutomaticOmniCrafter
                     // 检查部位是否存在，如果是部位Hediff但该部位在Pawn身上不存在（可能已缺失），则跳过
                     if (template.bodyPart != null && !pawn.health.hediffSet.GetNotMissingParts().Contains(template.bodyPart))
                     {
+                        AddFailedLog(pawn, template.bodyPart, template.hediffDef);
                         continue;
                     }
 
@@ -174,8 +193,7 @@ namespace FullyAutomaticOmniCrafter
                         {
                             Log.Warning(
                                 $"[StatusAllocationTerminal] Failed to add hediff {template.hediffDef.defName} to {pawn.LabelShort} at {template.bodyPart?.def.defName ?? "SAT_WholeBody".Translate()}: {ex.Message}");
-                            failedHediffLogs.Add(new HediffErrorRecord(pawn, template.bodyPart, template.hediffDef));
-                            if (failedHediffLogs.Count > 100) failedHediffLogs.RemoveAt(0); // 限制记录数量
+                            AddFailedLog(pawn, template.bodyPart, template.hediffDef);
                         }
                     }
                 }
@@ -498,11 +516,23 @@ namespace FullyAutomaticOmniCrafter
                         if (t.bodyPart != null &&
                             !selectedPawn.health.hediffSet.GetNotMissingParts().Contains(t.bodyPart))
                         {
+                            comp.AddFailedLog(selectedPawn, t.bodyPart, t.hediffDef);
                             continue;
                         }
 
                         if (!selectedPawn.health.hediffSet.HasHediff(t.hediffDef, t.bodyPart))
-                            selectedPawn.health.AddHediff(t.hediffDef, t.bodyPart);
+                        {
+                            try
+                            {
+                                selectedPawn.health.AddHediff(t.hediffDef, t.bodyPart);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Warning(
+                                    $"[StatusAllocationTerminal] Failed to manually add hediff {t.hediffDef.defName} to {selectedPawn.LabelShort}: {ex.Message}");
+                                comp.AddFailedLog(selectedPawn, t.bodyPart, t.hediffDef);
+                            }
+                        }
                     }
                 }
             }
