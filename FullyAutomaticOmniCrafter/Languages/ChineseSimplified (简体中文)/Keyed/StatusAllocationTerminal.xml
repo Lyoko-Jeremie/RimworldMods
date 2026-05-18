@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <SAT_AuraSettings>光环设置</SAT_AuraSettings>
+  <SAT_AuraSettingsDesc>打开终端面板，设置光环模板。</SAT_AuraSettingsDesc>
+  <SAT_ManualSettings>手动设置</SAT_ManualSettings>
+  <SAT_ManualSettingsDesc>打开终端面板，为我方人员分配或移除状态。</SAT_ManualSettingsDesc>
+  <SAT_ErrorLog>错误日志</SAT_ErrorLog>
+  <SAT_ErrorLogDesc>查看在添加状态时遇到的错误记录。</SAT_ErrorLogDesc>
+  
+  <SAT_AddStatusErrorLogTitle>添加状态错误记录</SAT_AddStatusErrorLogTitle>
+  <SAT_ClearLog>清空日志</SAT_ClearLog>
+  <SAT_LogEntry>{0}: [{1}] 部位: {2} 状态: {3}</SAT_LogEntry>
+  
+  <SAT_AuraManagement>状态光环管理</SAT_AuraManagement>
+  <SAT_ManualManagement>状态人员管理</SAT_ManualManagement>
+  
+  <SAT_PinyinShort>拼</SAT_PinyinShort>
+  <SAT_PinyinEnabled>拼音搜索已开启</SAT_PinyinEnabled>
+  <SAT_PinyinDisabled>拼音搜索已关闭</SAT_PinyinDisabled>
+  <SAT_PinyinRebuilt>拼音索引已重建</SAT_PinyinRebuilt>
+  <SAT_RebuildPinyinIndex>重建拼音索引</SAT_RebuildPinyinIndex>
+  
+  <SAT_CurrentStatus>当前状态 (部位分组)</SAT_CurrentStatus>
+  <SAT_ManualTemplate>手动模板 (双击移除)</SAT_ManualTemplate>
+  <SAT_ApplyToSelected>应用于选中人员</SAT_ApplyToSelected>
+  <SAT_AutoAddList>自动赋予列表</SAT_AutoAddList>
+  <SAT_AutoRemoveList>自动移除列表</SAT_AutoRemoveList>
+  <SAT_WholeBody>全身</SAT_WholeBody>
+</LanguageData>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <SAT_AuraSettings>Aura Settings</SAT_AuraSettings>
+  <SAT_AuraSettingsDesc>Open terminal panel to set aura templates.</SAT_AuraSettingsDesc>
+  <SAT_ManualSettings>Manual Settings</SAT_ManualSettings>
+  <SAT_ManualSettingsDesc>Open terminal panel to assign or remove status for pawns manually.</SAT_ManualSettingsDesc>
+  <SAT_ErrorLog>Error Log</SAT_ErrorLog>
+  <SAT_ErrorLogDesc>View error records encountered when adding status.</SAT_ErrorLogDesc>
+  
+  <SAT_AddStatusErrorLogTitle>Add Status Error Log</SAT_AddStatusErrorLogTitle>
+  <SAT_ClearLog>Clear Log</SAT_ClearLog>
+  <SAT_LogEntry>{0}: [{1}] Part: {2} Status: {3}</SAT_LogEntry>
+  
+  <SAT_AuraManagement>Status Aura Management</SAT_AuraManagement>
+  <SAT_ManualManagement>Status Manual Management</SAT_ManualManagement>
+  
+  <SAT_PinyinShort>Py</SAT_PinyinShort>
+  <SAT_PinyinEnabled>Pinyin search enabled</SAT_PinyinEnabled>
+  <SAT_PinyinDisabled>Pinyin search disabled</SAT_PinyinDisabled>
+  <SAT_PinyinRebuilt>Pinyin index rebuilt</SAT_PinyinRebuilt>
+  <SAT_RebuildPinyinIndex>Rebuild Pinyin index</SAT_RebuildPinyinIndex>
+  
+  <SAT_CurrentStatus>Current Status (Grouped by Part)</SAT_CurrentStatus>
+  <SAT_ManualTemplate>Manual Template (Double click to remove)</SAT_ManualTemplate>
+  <SAT_ApplyToSelected>Apply to selected pawn</SAT_ApplyToSelected>
+  <SAT_AutoAddList>Auto Assignment List</SAT_AutoAddList>
+  <SAT_AutoRemoveList>Auto Removal List</SAT_AutoRemoveList>
+  <SAT_WholeBody>Whole Body</SAT_WholeBody>
+</LanguageData>

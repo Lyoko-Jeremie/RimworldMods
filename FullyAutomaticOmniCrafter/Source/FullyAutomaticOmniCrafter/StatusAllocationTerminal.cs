@@ -70,10 +70,12 @@ namespace FullyAutomaticOmniCrafter
         public HediffErrorRecord(Pawn pawn, BodyPartRecord part, HediffDef hediff)
         {
             this.pawnName = pawn?.LabelCap ?? "Unknown";
-            this.bodyPartLabel = part?.LabelCap ?? "Whole Body";
+            this.bodyPartLabel = part?.LabelCap ?? "SAT_WholeBody".Translate();
             this.hediffLabel = hediff?.LabelCap ?? "Unknown Hediff";
             this.timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
+
+        public string LogEntry => "SAT_LogEntry".Translate(timestamp, pawnName, bodyPartLabel, hediffLabel);
 
         public void ExposeData()
         {
@@ -163,7 +165,8 @@ namespace FullyAutomaticOmniCrafter
                         }
                         catch (Exception ex)
                         {
-                            Log.Warning($"[StatusAllocationTerminal] Failed to add hediff {template.hediffDef.defName} to {pawn.LabelShort} at {template.bodyPart?.def.defName ?? "Whole Body"}: {ex.Message}");
+                            Log.Warning(
+                                $"[StatusAllocationTerminal] Failed to add hediff {template.hediffDef.defName} to {pawn.LabelShort} at {template.bodyPart?.def.defName ?? "SAT_WholeBody".Translate()}: {ex.Message}");
                             failedHediffLogs.Add(new HediffErrorRecord(pawn, template.bodyPart, template.hediffDef));
                             if (failedHediffLogs.Count > 100) failedHediffLogs.RemoveAt(0); // 限制记录数量
                         }
@@ -196,8 +199,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "光环设置",
-                    defaultDesc = "打开终端面板，设置光环模板。",
+                    defaultLabel = "SAT_AuraSettings".Translate(),
+                    defaultDesc = "SAT_AuraSettingsDesc".Translate(),
                     icon = StatusAllocationTerminalTex.IconAutoDialog,
                     action = delegate()
                     {
@@ -206,8 +209,8 @@ namespace FullyAutomaticOmniCrafter
                 };
                 yield return new Command_Action
                 {
-                    defaultLabel = "手动设置",
-                    defaultDesc = "打开终端面板，为我方人员分配或移除状态。",
+                    defaultLabel = "SAT_ManualSettings".Translate(),
+                    defaultDesc = "SAT_ManualSettingsDesc".Translate(),
                     icon = StatusAllocationTerminalTex.IconManualDialog,
                     action = delegate()
                     {
@@ -216,13 +219,10 @@ namespace FullyAutomaticOmniCrafter
                 };
                 yield return new Command_Action
                 {
-                    defaultLabel = "错误日志",
-                    defaultDesc = "查看在添加状态时遇到的错误记录。",
+                    defaultLabel = "SAT_ErrorLog".Translate(),
+                    defaultDesc = "SAT_ErrorLogDesc".Translate(),
                     icon = StatusAllocationTerminalTex.IconErrorLog,
-                    action = delegate()
-                    {
-                        Find.WindowStack.Add(new Dialog_StatusAllocationTerminalErrors(this));
-                    }
+                    action = delegate() { Find.WindowStack.Add(new Dialog_StatusAllocationTerminalErrors(this)); }
                 };
             }
         }
@@ -247,11 +247,11 @@ namespace FullyAutomaticOmniCrafter
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), "添加状态错误记录");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), "SAT_AddStatusErrorLogTitle".Translate());
             Text.Font = GameFont.Small;
 
             Rect clearRect = new Rect(inRect.width - 100f, 0f, 100f, 30f);
-            if (Widgets.ButtonText(clearRect, "清空日志"))
+            if (Widgets.ButtonText(clearRect, "SAT_ClearLog".Translate()))
             {
                 comp.failedHediffLogs.Clear();
             }
@@ -269,9 +269,11 @@ namespace FullyAutomaticOmniCrafter
                 {
                     Widgets.DrawLightHighlight(rect);
                 }
-                Widgets.Label(rect, $"{log.timestamp}: [{log.pawnName}] 部位: {log.bodyPartLabel} 状态: {log.hediffLabel}");
+
+                Widgets.Label(rect, log.LogEntry);
                 num += 25f;
             }
+
             Widgets.EndScrollView();
         }
     }
@@ -319,7 +321,7 @@ namespace FullyAutomaticOmniCrafter
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            string title = autoMode ? "状态光环管理" : "状态人员管理";
+            string title = autoMode ? "SAT_AuraManagement".Translate() : "SAT_ManualManagement".Translate();
             Rect titleRect = new Rect(0f, 0f, 250f, 35f);
             Widgets.Label(titleRect, title);
             Text.Font = GameFont.Small;
@@ -330,7 +332,7 @@ namespace FullyAutomaticOmniCrafter
             bool pe = OmniCrafterMod.Settings.enablePinyinSearch;
 
             GUI.color = pe ? Color.cyan : new Color(0.55f, 0.55f, 0.55f);
-            if (Widgets.ButtonText(pinyinBtnRect, "拼"))
+            if (Widgets.ButtonText(pinyinBtnRect, "SAT_PinyinShort".Translate()))
             {
                 pe = !pe;
                 OmniCrafterMod.Settings.enablePinyinSearch = pe;
@@ -342,7 +344,8 @@ namespace FullyAutomaticOmniCrafter
             }
 
             GUI.color = Color.white;
-            TooltipHandler.TipRegion(pinyinBtnRect, pe ? "拼音搜索已开启" : "拼音搜索已关闭");
+            TooltipHandler.TipRegion(pinyinBtnRect,
+                pe ? "SAT_PinyinEnabled".Translate() : "SAT_PinyinDisabled".Translate());
 
             // ── 重建拼音缓存按钮 ──
             float rebuildBtnX = pinyinBtnRect.xMax + 4f;
@@ -351,11 +354,16 @@ namespace FullyAutomaticOmniCrafter
             if (Widgets.ButtonText(rebuildBtnRect, "R"))
             {
                 PinyinSearchEngine.BuildIndex(cachedAllHediffs);
-                Messages.Message("拼音索引已重建", MessageTypeDefOf.TaskCompletion, false);
+                Messages.Message("SAT_PinyinRebuilt".Translate(), MessageTypeDefOf.TaskCompletion, false);
             }
 
             GUI.color = Color.white;
-            TooltipHandler.TipRegion(rebuildBtnRect, "重建拼音索引");
+            TooltipHandler.TipRegion(rebuildBtnRect, "SAT_RebuildPinyinIndex".Translate());
+
+            if (Widgets.ButtonText(new Rect(inRect.width - 100f, 4f, 100f, 26f), "SAT_ErrorLog".Translate()))
+            {
+                Find.WindowStack.Add(new Dialog_StatusAllocationTerminalErrors(comp));
+            }
 
             Rect mainRect = new Rect(0f, 40f, inRect.width, inRect.height - 100f);
             if (autoMode)
@@ -426,7 +434,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void DrawPawnHediffs(Rect rect)
         {
-            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "当前状态 (部位分组)");
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "SAT_CurrentStatus".Translate());
             Widgets.DrawMenuSection(rect);
             if (selectedPawn == null) return;
 
@@ -439,7 +447,8 @@ namespace FullyAutomaticOmniCrafter
                 Rect rowRect = new Rect(0f, y, viewRect.width, 25f);
                 string label = (h.Part != null ? "[" + h.Part.LabelCap + "] " : "") + h.LabelCap;
                 Widgets.Label(rowRect, label);
-                TooltipHandler.TipRegion(rowRect, new TipSignal(() => h.GetTooltip(selectedPawn, false), h.GetHashCode()));
+                TooltipHandler.TipRegion(rowRect,
+                    new TipSignal(() => h.GetTooltip(selectedPawn, false), h.GetHashCode()));
                 if (Widgets.ButtonText(new Rect(viewRect.width - 25f, y, 25f, 25f), "X"))
                 {
                     selectedPawn.health.RemoveHediff(h);
@@ -453,7 +462,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void DrawManualTemplates(Rect rect)
         {
-            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "手动模板 (双击移除)");
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "SAT_ManualTemplate".Translate());
             Widgets.DrawMenuSection(rect);
             Rect viewRect = new Rect(0f, 0f, rect.width - 16f, manualTemplates.Count * 30f + 40f);
             Widgets.BeginScrollView(rect, ref scrollPosC, viewRect);
@@ -475,7 +484,7 @@ namespace FullyAutomaticOmniCrafter
 
             if (selectedPawn != null && manualTemplates.Count > 0)
             {
-                if (Widgets.ButtonText(new Rect(0f, y, viewRect.width, 30f), "应用于选中人员"))
+                if (Widgets.ButtonText(new Rect(0f, y, viewRect.width, 30f), "SAT_ApplyToSelected".Translate()))
                 {
                     foreach (var t in manualTemplates)
                     {
@@ -494,7 +503,8 @@ namespace FullyAutomaticOmniCrafter
             Widgets.DrawMenuSection(rect);
 
             string query = searchFilter.ToLower();
-            bool usePinyin = !string.IsNullOrEmpty(query) && OmniCrafterMod.Settings.enablePinyinSearch && PinyinSearchEngine.IsReady;
+            bool usePinyin = !string.IsNullOrEmpty(query) && OmniCrafterMod.Settings.enablePinyinSearch &&
+                             PinyinSearchEngine.IsReady;
 
             var filtered = cachedAllHediffs.Where(d =>
             {
@@ -532,7 +542,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void DrawAutoTemplates(Rect rect)
         {
-            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "自动赋予列表");
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "SAT_AutoAddList".Translate());
             Widgets.DrawMenuSection(rect);
             Rect viewRect = new Rect(0f, 0f, rect.width - 16f, comp.autoTemplates.Count * 30f);
             Widgets.BeginScrollView(rect, ref scrollPosA, viewRect);
@@ -556,7 +566,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void DrawAutoRemovals(Rect rect)
         {
-            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "自动移除列表");
+            Widgets.Label(new Rect(rect.x, rect.y - 20f, rect.width, 20f), "SAT_AutoRemoveList".Translate());
             Widgets.DrawMenuSection(rect);
             Rect viewRect = new Rect(0f, 0f, rect.width - 16f, comp.autoRemovals.Count * 30f);
             Widgets.BeginScrollView(rect, ref scrollPosB, viewRect);
@@ -601,7 +611,7 @@ namespace FullyAutomaticOmniCrafter
         private void ShowPartPicker(HediffDef def, Action<BodyPartRecord> onSelected)
         {
             List<FloatMenuOption> list = new List<FloatMenuOption>();
-            list.Add(new FloatMenuOption("全身 (null)", () => onSelected(null)));
+            list.Add(new FloatMenuOption("SAT_WholeBody".Translate(), () => onSelected(null)));
 
             if (selectedPawn != null)
             {
