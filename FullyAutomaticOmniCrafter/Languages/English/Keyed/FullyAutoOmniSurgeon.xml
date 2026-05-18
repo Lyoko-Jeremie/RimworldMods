@@ -19,4 +19,12 @@
   <FullyAutoOmniSurgeon_NewTemplateName>New Template</FullyAutoOmniSurgeon_NewTemplateName>
   <FullyAutoOmniSurgeon_InputTemplateName>Input template name:</FullyAutoOmniSurgeon_InputTemplateName>
   <FullyAutoOmniSurgeon_OK>OK</FullyAutoOmniSurgeon_OK>
+
+  <FullyAutoOmniSurgeon_SelectOccupant>Select Occupant</FullyAutoOmniSurgeon_SelectOccupant>
+  <FullyAutoOmniSurgeon_SelectOccupantDesc>Select a creature on the map and immediately teleport it into the modification pod.</FullyAutoOmniSurgeon_SelectOccupantDesc>
+  <FullyAutoOmniSurgeon_Occupied>The pod is already occupied.</FullyAutoOmniSurgeon_Occupied>
+  <FullyAutoOmniSurgeon_DeadPawn>Cannot select a dead target.</FullyAutoOmniSurgeon_DeadPawn>
+  <FullyAutoOmniSurgeon_Entered>{0} has entered the pod.</FullyAutoOmniSurgeon_Entered>
+  <FullyAutoOmniSurgeon_FailedToEnter>Failed to move {0} into the pod.</FullyAutoOmniSurgeon_FailedToEnter>
+  <FullyAutoOmniSurgeon_NoPawnFound>No suitable target found.</FullyAutoOmniSurgeon_NoPawnFound>
 </LanguageData>

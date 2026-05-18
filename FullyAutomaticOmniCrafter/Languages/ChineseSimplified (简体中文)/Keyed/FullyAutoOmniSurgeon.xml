@@ -19,4 +19,12 @@
   <FullyAutoOmniSurgeon_NewTemplateName>新模板</FullyAutoOmniSurgeon_NewTemplateName>
   <FullyAutoOmniSurgeon_InputTemplateName>输入模板名称:</FullyAutoOmniSurgeon_InputTemplateName>
   <FullyAutoOmniSurgeon_OK>确定</FullyAutoOmniSurgeon_OK>
+
+  <FullyAutoOmniSurgeon_SelectOccupant>选择进入对象</FullyAutoOmniSurgeon_SelectOccupant>
+  <FullyAutoOmniSurgeon_SelectOccupantDesc>选择一个地图上的生物并立即传送到改造舱内。</FullyAutoOmniSurgeon_SelectOccupantDesc>
+  <FullyAutoOmniSurgeon_Occupied>改造舱已被占用。</FullyAutoOmniSurgeon_Occupied>
+  <FullyAutoOmniSurgeon_DeadPawn>无法选择已死亡的对象。</FullyAutoOmniSurgeon_DeadPawn>
+  <FullyAutoOmniSurgeon_Entered>{0} 已进入改造舱。</FullyAutoOmniSurgeon_Entered>
+  <FullyAutoOmniSurgeon_FailedToEnter>无法将 {0} 移入改造舱。</FullyAutoOmniSurgeon_FailedToEnter>
+  <FullyAutoOmniSurgeon_NoPawnFound>未发现可用的对象。</FullyAutoOmniSurgeon_NoPawnFound>
 </LanguageData>

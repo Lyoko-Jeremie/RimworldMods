@@ -38,6 +38,10 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconPodEject =
             ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_PodEject", true) ??
             BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconSelectOccupant =
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_SelectOccupant", true) ??
+            BaseContent.WhiteTex;
     }
 
     /// <summary>
@@ -82,6 +86,16 @@ namespace FullyAutomaticOmniCrafter
                     action = () => { FullRepair(this.Occupant); }
                 };
             }
+            else
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "FullyAutoOmniSurgeon_SelectOccupant".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_SelectOccupantDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconSelectOccupant,
+                    action = SelectOccupant
+                };
+            }
 
             if (this.Faction == Faction.OfPlayer && this.innerContainer.Count > 0)
             {
@@ -106,6 +120,57 @@ namespace FullyAutomaticOmniCrafter
             }
 
             base.EjectContents();
+        }
+
+        private void SelectOccupant()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+            // 搜寻地图上所有的 Pawn
+            var pawns = this.Map.mapPawns.AllPawnsSpawned
+                .Where(p => p.RaceProps.IsFlesh || p.RaceProps.IsMechanoid)
+                .OrderBy(p => p.Position.DistanceToSquared(this.Position));
+
+            foreach (var pawn in pawns)
+            {
+                string label = pawn.LabelCap;
+                if (pawn.Faction != null)
+                {
+                    label += $" ({pawn.Faction.Name})";
+                }
+
+                options.Add(new FloatMenuOption(label, () =>
+                {
+                    if (this.innerContainer.Count > 0)
+                    {
+                        Messages.Message("FullyAutoOmniSurgeon_Occupied".Translate(), MessageTypeDefOf.RejectInput, false);
+                        return;
+                    }
+
+                    if (pawn.Dead)
+                    {
+                        Messages.Message("FullyAutoOmniSurgeon_DeadPawn".Translate(), MessageTypeDefOf.RejectInput, false);
+                        return;
+                    }
+
+                    // 立即进入
+                    if (this.TryAcceptThing(pawn))
+                    {
+                        Messages.Message("FullyAutoOmniSurgeon_Entered".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                    }
+                    else
+                    {
+                        Messages.Message("FullyAutoOmniSurgeon_FailedToEnter".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
+                    }
+                }));
+            }
+
+            if (options.Count == 0)
+            {
+                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_NoPawnFound".Translate(), null));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
         }
 
         public void InstallBionic(Pawn pawn, BodyPartRecord part, HediffDef bionicDef)
