@@ -94,7 +94,18 @@ namespace FullyAutomaticOmniCrafter
             void Checkbox(Rect rect, string label, ref bool flag)
             {
                 bool old = flag;
-                Widgets.CheckboxLabeled(rect, label.Translate(), ref flag);
+                // 绘制复选框在左边
+                Widgets.CheckboxDraw(rect.x, rect.y + (rect.height - 24f) / 2f, flag, false);
+                // 绘制文字在复选框右边
+                Rect labelRect = new Rect(rect.x + 28f, rect.y, rect.width - 28f, rect.height);
+                Text.Anchor = TextAnchor.MiddleLeft;
+                Widgets.Label(labelRect, label.Translate());
+                Text.Anchor = TextAnchor.UpperLeft;
+                // 点击整行切换状态
+                if (Widgets.ButtonInvisible(rect))
+                {
+                    flag = !flag;
+                }
                 if (flag != old) changed = true;
             }
 
