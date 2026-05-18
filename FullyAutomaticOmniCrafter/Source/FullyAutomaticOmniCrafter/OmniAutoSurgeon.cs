@@ -73,7 +73,13 @@ namespace FullyAutomaticOmniCrafter
 
         public override Vector3 PawnDrawOffset
         {
-            get => IntVec3.West.RotatedBy(this.Rotation).ToVector3() / (float)this.def.size.x;
+            get
+            {
+                // 手术台是 3x2 建筑。中心在 1.5, 1.0 (相对于左下角)。
+                // 我们希望 Pawn 在中间位置，但在视觉上可能需要偏移到手术台上。
+                // 默认的 Building_Enterable 可能没有考虑多格建筑的中心偏移。
+                return Vector3.zero;
+            }
         }
 
         public override bool IsContentsSuspended => false;
@@ -181,10 +187,10 @@ namespace FullyAutomaticOmniCrafter
         {
             if (this.Occupant != null)
             {
-                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset,
-                    neverAimWeapon: true);
+                Rot4 rotation = this.Rotation;
+                rotation = rotation.Opposite;
+                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset, rotation, neverAimWeapon: true);
             }
-
             base.DynamicDrawPhaseAt(phase, drawLoc, flip);
         }
 
