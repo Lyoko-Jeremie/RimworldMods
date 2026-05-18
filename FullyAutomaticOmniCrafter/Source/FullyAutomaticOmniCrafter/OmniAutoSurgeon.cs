@@ -59,15 +59,7 @@ namespace FullyAutomaticOmniCrafter
 
         public float HeldPawnDrawPos_Y => this.DrawPos.y + 0.03658537f;
 
-        public float HeldPawnBodyAngle
-        {
-            get
-            {
-                Rot4 rot4 = this.Rotation;
-                rot4 = rot4.Opposite;
-                return rot4.AsAngle;
-            }
-        }
+        public float HeldPawnBodyAngle => this.Rotation.Opposite.AsAngle;
 
         public PawnPosture HeldPawnPosture => PawnPosture.LayingOnGroundFaceUp;
 
@@ -76,8 +68,10 @@ namespace FullyAutomaticOmniCrafter
             get
             {
                 // 手术台是 3x2 建筑。中心在 1.5, 1.0 (相对于左下角)。
-                // 我们希望 Pawn 在中间位置，但在视觉上可能需要偏移到手术台上。
-                // 默认的 Building_Enterable 可能没有考虑多格建筑的中心偏移。
+                // 我们希望 Pawn 在中间位置。
+                // 如果 Rotation 是 North/South, 3x2 实际上是宽3高2。中心是相对于(0,0)的。
+                // 但是 RimWorld 的 DrawPos 已经是建筑的中心。
+                // 所以 Vector3.zero 应该就是建筑的中心。
                 return Vector3.zero;
             }
         }
@@ -87,9 +81,15 @@ namespace FullyAutomaticOmniCrafter
         public override void ExposeData()
         {
             base.ExposeData();
+            // innerContainer 已经在 base.ExposeData() 中处理了（如果它是 Building_Enterable）
+            // 但 Building_Enterable 使用的是 Scribe_Deep.Look<ThingOwner>(ref this.innerContainer, "innerContainer", (object) this);
+            // 我们的类目前没有重写 innerContainer 字段，所以直接用父类的即可。
             Scribe_Collections.Look(ref templates, "templates", LookMode.Deep);
             if (templates == null) templates = new List<SurgeryTemplate>();
-            Scribe_References.Look(ref selectedPawn, "selectedPawn");
+            // 注意：selectedPawn 已经在 base.ExposeData() 中处理了。
+            // 为了兼容旧存档，我们可以保留对 selectedPawn 的显式加载逻辑，但通常 base 已经做了。
+            // 如果 base.ExposeData 没有处理，我们需要手动处理。
+            // 检查 Building_Enterable.ExposeData 确实有：Scribe_References.Look<Pawn>(ref this.selectedPawn, "selectedPawn");
         }
 
         public override IEnumerable<Gizmo> GetGizmos()
@@ -171,13 +171,14 @@ namespace FullyAutomaticOmniCrafter
         {
             if (this.innerContainer.Count > 0) return;
             this.selectedPawn = pawn;
+            bool wasSpawned = pawn.Spawned;
             bool deselected = pawn.DeSpawnOrDeselect();
             if (this.innerContainer.TryAddOrTransfer(pawn))
             {
                 // 可以记录进入时间等
             }
 
-            if (deselected)
+            if (wasSpawned && deselected)
             {
                 Find.Selector.Select(pawn, false, false);
             }
@@ -187,9 +188,7 @@ namespace FullyAutomaticOmniCrafter
         {
             if (this.Occupant != null)
             {
-                Rot4 rotation = this.Rotation;
-                rotation = rotation.Opposite;
-                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset, rotation, neverAimWeapon: true);
+                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset, neverAimWeapon: true);
             }
             base.DynamicDrawPhaseAt(phase, drawLoc, flip);
         }
