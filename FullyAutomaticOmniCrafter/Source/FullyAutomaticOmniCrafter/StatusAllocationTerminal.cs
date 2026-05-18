@@ -157,6 +157,13 @@ namespace FullyAutomaticOmniCrafter
                 foreach (var template in autoTemplates)
                 {
                     if (template.hediffDef == null) continue;
+
+                    // 检查部位是否存在，如果是部位Hediff但该部位在Pawn身上不存在（可能已缺失），则跳过
+                    if (template.bodyPart != null && !pawn.health.hediffSet.GetNotMissingParts().Contains(template.bodyPart))
+                    {
+                        continue;
+                    }
+
                     if (!pawn.health.hediffSet.HasHediff(template.hediffDef, template.bodyPart))
                     {
                         try
@@ -488,6 +495,12 @@ namespace FullyAutomaticOmniCrafter
                 {
                     foreach (var t in manualTemplates)
                     {
+                        if (t.bodyPart != null &&
+                            !selectedPawn.health.hediffSet.GetNotMissingParts().Contains(t.bodyPart))
+                        {
+                            continue;
+                        }
+
                         if (!selectedPawn.health.hediffSet.HasHediff(t.hediffDef, t.bodyPart))
                             selectedPawn.health.AddHediff(t.hediffDef, t.bodyPart);
                     }
