@@ -157,7 +157,8 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            this.innerContainer.TryDropAll(this.def.hasInteractionCell ? this.InteractionCell : this.Position, this.Map, ThingPlaceMode.Near);
+            this.innerContainer.TryDropAll(this.def.hasInteractionCell ? this.InteractionCell : this.Position, this.Map,
+                ThingPlaceMode.Near);
         }
 
         public override void TryAcceptPawn(Pawn pawn)
@@ -169,6 +170,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 可以记录进入时间等
             }
+
             if (deselected)
             {
                 Find.Selector.Select(pawn, false, false);
@@ -177,11 +179,13 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
         {
-            base.DynamicDrawPhaseAt(phase, drawLoc, flip);
-            if (phase == DrawPhase.Draw && this.Occupant != null)
+            if (this.Occupant != null)
             {
-                this.Occupant.Drawer.renderer.RenderPawnAt(drawLoc + this.PawnDrawOffset, null, neverAimWeapon: true);
+                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset,
+                    neverAimWeapon: true);
             }
+
+            base.DynamicDrawPhaseAt(phase, drawLoc, flip);
         }
 
         public override string GetInspectString()
@@ -193,8 +197,10 @@ namespace FullyAutomaticOmniCrafter
                 {
                     text += "\n";
                 }
+
                 text += "Occupant".Translate() + ": " + this.Occupant.LabelCap;
             }
+
             return text;
         }
 
