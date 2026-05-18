@@ -124,53 +124,36 @@ namespace FullyAutomaticOmniCrafter
 
         private void SelectOccupant()
         {
-            List<FloatMenuOption> options = new List<FloatMenuOption>();
-
-            // 搜寻地图上所有的 Pawn
-            var pawns = this.Map.mapPawns.AllPawnsSpawned
-                .Where(p => p.RaceProps.IsFlesh || p.RaceProps.IsMechanoid)
-                .OrderBy(p => p.Position.DistanceToSquared(this.Position));
-
-            foreach (var pawn in pawns)
+            Find.WindowStack.Add(new Dialog_SelectPawn(this, (pawn) =>
             {
-                string label = pawn.LabelCap;
-                if (pawn.Faction != null)
+                if (this.innerContainer.Count > 0)
                 {
-                    label += $" ({pawn.Faction.Name})";
+                    Messages.Message("FullyAutoOmniSurgeon_Occupied".Translate(), MessageTypeDefOf.RejectInput, false);
+                    return;
                 }
 
-                options.Add(new FloatMenuOption(label, () =>
+                if (pawn.Dead)
                 {
-                    if (this.innerContainer.Count > 0)
-                    {
-                        Messages.Message("FullyAutoOmniSurgeon_Occupied".Translate(), MessageTypeDefOf.RejectInput, false);
-                        return;
-                    }
+                    Messages.Message("FullyAutoOmniSurgeon_DeadPawn".Translate(), MessageTypeDefOf.RejectInput, false);
+                    return;
+                }
 
-                    if (pawn.Dead)
+                // 尝试进入建筑
+                // 注意：Pawn 必须脱离地图，否则会在地图上晃悠。
+                // Building_Casket.TryAcceptThing 只是放入容器，通常需要配套的 DeSpawn 逻辑。
+                if (this.TryAcceptThing(pawn))
+                {
+                    if (pawn.Spawned)
                     {
-                        Messages.Message("FullyAutoOmniSurgeon_DeadPawn".Translate(), MessageTypeDefOf.RejectInput, false);
-                        return;
+                        pawn.DeSpawn();
                     }
-
-                    // 立即进入
-                    if (this.TryAcceptThing(pawn))
-                    {
-                        Messages.Message("FullyAutoOmniSurgeon_Entered".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
-                    }
-                    else
-                    {
-                        Messages.Message("FullyAutoOmniSurgeon_FailedToEnter".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
-                    }
-                }));
-            }
-
-            if (options.Count == 0)
-            {
-                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_NoPawnFound".Translate(), null));
-            }
-
-            Find.WindowStack.Add(new FloatMenu(options));
+                    Messages.Message("FullyAutoOmniSurgeon_Entered".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                }
+                else
+                {
+                    Messages.Message("FullyAutoOmniSurgeon_FailedToEnter".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
+                }
+            }));
         }
 
         public void InstallBionic(Pawn pawn, BodyPartRecord part, HediffDef bionicDef)
