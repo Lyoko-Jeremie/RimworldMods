@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
-    <OmniPhantomWallBase.label>幻影隔离墙（居家）</OmniPhantomWallBase.label>
-    <OmniPhantomWallBase.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人、来访者、囚犯。</OmniPhantomWallBase.description>
+    <OmniPhantomWall_.label>幻影隔离墙（居家）</OmniPhantomWall_.label>
+    <OmniPhantomWall_.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人、来访者、囚犯。</OmniPhantomWall_.description>
 
     <OmniPhantomWall_Power.label>幻影隔离墙（居家）（带电缆）</OmniPhantomWall_Power.label>
     <OmniPhantomWall_Power.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止敌人、来访者、囚犯。\n\n自带电缆。</OmniPhantomWall_Power.description>

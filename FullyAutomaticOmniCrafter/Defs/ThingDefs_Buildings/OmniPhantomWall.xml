@@ -7,7 +7,7 @@
         <description>description</description>
     </DesignatorDropdownGroupDef>
 
-    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase">
+    <ThingDef Name="OmniPhantomWallBase" ParentName="BuildingBase" Abstract="True">
         <defName>OmniPhantomWallBase</defName>
         <label>OmniPhantomWallBase</label>
         <description>description</description>
@@ -120,6 +120,24 @@
         </comps>
 
         <modExtensions>
+<!--            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">-->
+<!--                &lt;!&ndash; 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 &ndash;&gt;-->
+<!--                <passMode>PlayerAndPets</passMode>-->
+<!--                &lt;!&ndash; 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 &ndash;&gt;-->
+<!--                &lt;!&ndash; <passMode>PlayerPetsAndAllies</passMode>&ndash;&gt;-->
+<!--                &lt;!&ndash; 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 &ndash;&gt;-->
+<!--                &lt;!&ndash; <passMode>OnlyPlayerNoPets</passMode>&ndash;&gt;-->
+<!--            </li>-->
+        </modExtensions>
+        
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPhantomWallBase">
+        <defName>OmniPhantomWall_</defName>
+        <label>OmniPhantomWall_</label>
+        <description>description</description>
+        
+        <modExtensions>
             <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
                 <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
                 <passMode>PlayerAndPets</passMode>
@@ -205,7 +223,7 @@
 
     <ThingDef ParentName="OmniPhantomWallBase">
         <defName>OmniPhantomWall_all_</defName>
-        <label>OmniPhantomWall_all_Power</label>
+        <label>OmniPhantomWall_all_</label>
         <description>description</description>
 
         <modExtensions>

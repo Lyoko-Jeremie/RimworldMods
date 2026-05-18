@@ -201,10 +201,17 @@ namespace FullyAutomaticOmniCrafter
             if (pawn == null) return false;
             var mode = ext?.passMode ?? PhantomWallPassMode.PlayerPetsAndAllies;
 
+            // Log.Message(
+            //     $"[OmniPhantomWall] Check pass: pawn={pawn}, " +
+            //     $"Faction={pawn.Faction}, HostFaction={pawn.HostFaction}, " +
+            //     $"Lord={pawn.GetLord()}, Humanlike={pawn.RaceProps.Humanlike}, Animal={pawn.RaceProps.Animal}, " +
+            //     $"HostileToPlayer={pawn.HostileTo(Faction.OfPlayer)}, Mode={mode}");
+
             // 1. 核心玩家单位判定
             // 检查是否为玩家派系的成员
             bool isPlayerFaction = pawn.Faction == Faction.OfPlayer;
             
+            // 【任何时候玩家单位都可通过】
             // 玩家单位定义：
             // - 是玩家派系的成员 (殖民者、机甲、玩家驯服的动物)
             // - 是玩家托管的囚犯或客人 (仅在模式 2 下考虑)
@@ -213,6 +220,7 @@ namespace FullyAutomaticOmniCrafter
                 // 如果是动物
                 if (pawn.RaceProps.Animal)
                 {
+                    // 【额外限制，动物不可在 OnlyPlayerNoPets 下通过，用于作为栅栏圈养动物】
                     // 只有模式 1 和 2 允许动物通过，模式 3 不允许
                     return mode != PhantomWallPassMode.OnlyPlayerNoPets;
                 }
@@ -220,6 +228,7 @@ namespace FullyAutomaticOmniCrafter
                 return true;
             }
 
+            // 【中立单位仅仅只在 PlayerPetsAndAllies 可通过】
             // 2. 友方/中立判定 (仅在模式 2: PlayerPetsAndAllies 下启用)
             if (mode == PhantomWallPassMode.PlayerPetsAndAllies)
             {
@@ -233,7 +242,7 @@ namespace FullyAutomaticOmniCrafter
                 if (!pawn.HostileTo(Faction.OfPlayer))
                 {
                     // 具有派系的人员或具有领主（Lord）的群体单位
-                    if (pawn.Faction != null || pawn.GetLord() != null || pawn.RaceProps.Humanlike)
+                    if (pawn.Faction != null || pawn.GetLord() != null || pawn.RaceProps.Humanlike/* || pawn.HostFaction != null*/)
                     {
                         return true;
                     }
@@ -250,6 +259,8 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public ushort PathFindCostFor(Pawn pawn)
         {
+            // Log.Message($"[OmniPhantomWall] PathFindCostFor ENTER: wall={this}, pawn={pawn}, def={def?.defName}");
+
             var ext = def.GetModExtension<PhantomWallExtension>();
             return CanPawnPass(pawn, ext) ? (ushort)0 : ushort.MaxValue;
         }
@@ -319,6 +330,10 @@ namespace FullyAutomaticOmniCrafter
             if (__instance.type != Building_OmniPhantomWall.PhantomWallRegionType)
                 return;
 
+            // Log.Message(
+            //     $"[OmniPhantomWall] Region.Allows PhantomWallRegion: pawn={tp.pawn}, " +
+            //     $"regionType={__instance.type}, originalResult={__result}");
+
             if (tp.pawn == null)
             {
                 // 如果没有提供 Pawn 信息（如区域检查），不执行进一步拦截，以免破坏系统功能
@@ -329,10 +344,7 @@ namespace FullyAutomaticOmniCrafter
             Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
             var ext = wall?.def.GetModExtension<PhantomWallExtension>();
 
-            if (!Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext))
-            {
-                __result = false;
-            }
+            __result = Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext);
         }
     }
 
