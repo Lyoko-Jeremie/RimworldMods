@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <StatusAllocationTerminal_AutoBlink_Hediff.label>【】Auto Blink</StatusAllocationTerminal_AutoBlink_Hediff.label>
+    <StatusAllocationTerminal_AutoBlink_Hediff.description>Auto Blink</StatusAllocationTerminal_AutoBlink_Hediff.description>
+
+    <StatusAllocationTerminal_SuperMan.label>【】Super Man</StatusAllocationTerminal_SuperMan.label>
+    <StatusAllocationTerminal_SuperMan.description>Super Man</StatusAllocationTerminal_SuperMan.description>
+
+</LanguageData>

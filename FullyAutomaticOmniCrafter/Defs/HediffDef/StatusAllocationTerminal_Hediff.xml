@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <HediffDef MayRequire="rabiosus.autoblink">
+        <defName>StatusAllocationTerminal_AutoBlink_Hediff</defName>
+        <label>StatusAllocationTerminal Auto Blink</label>
+        <description>StatusAllocationTerminal Auto Blink Ability</description>
+        <hediffClass>HediffWithComps</hediffClass>
+        <scenarioCanAdd>false</scenarioCanAdd>
+        <isBad>false</isBad>
+        
+        <!-- 是否影响殖民者的市场价值 -->
+        <priceImpact>false</priceImpact>
+        <!-- 计入人造器官或植入物 -->
+        <countsAsAddedPartOrImplant>false</countsAsAddedPartOrImplant>
+        <!-- 允许低优先级世界角色被封存/休眠 -->
+        <allowMothballIfLowPriorityWorldPawn>true</allowMothballIfLowPriorityWorldPawn>
+        <comps>
+            <li Class="AutoBlink.HediffCompProperties_AutoBlink">
+                <minDistanceToBlink>5</minDistanceToBlink>
+                <maxDistanceToBlink>300</maxDistanceToBlink>
+                <blinkIntervalTicks>60</blinkIntervalTicks>
+                <delayAfterEligibleTicks>40</delayAfterEligibleTicks>
+                <cellsBeforeTarget>1</cellsBeforeTarget>
+                <postBlinkStanceTicks>30</postBlinkStanceTicks>
+                <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
+                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
+                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
+                <playerFactionOnly>false</playerFactionOnly>
+                <excludedJobDefs>
+                    <!-- 闲逛时 -->
+                    <li>GotoWander</li>
+                    <!-- 被携带搬运时 -->
+                    <li>Carried</li>
+                </excludedJobDefs>
+                <drawGizmo>true</drawGizmo>
+                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>
+                <preBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Small</li>
+                </preBlinkSoundDefs>
+                <preBlinkEffecterDefs>
+                    <li>Skip_Entry</li>
+                </preBlinkEffecterDefs>
+                <postBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Exit_Small</li>
+                </postBlinkSoundDefs>
+                <postBlinkEffecterDefs>
+                    <li>Skip_ExitNoDelay</li>
+                </postBlinkEffecterDefs>
+            </li>
+        </comps>
+    </HediffDef>
+
+    <HediffDef>
+        <defName>StatusAllocationTerminal_SuperMan</defName>
+        <label>StatusAllocationTerminal Super Man</label>
+        <description>StatusAllocationTerminal Super Man</description>
+        <hediffClass>HediffWithComps</hediffClass>
+        <defaultLabelColor>(0.8, 0.8, 1.0)</defaultLabelColor>
+        <scenarioCanAdd>false</scenarioCanAdd>
+        <isBad>false</isBad>
+
+        <!-- 是否影响殖民者的市场价值 -->
+        <priceImpact>false</priceImpact>
+        <!-- 计入人造器官或植入物 -->
+        <countsAsAddedPartOrImplant>false</countsAsAddedPartOrImplant>
+        <stages>
+            <li>
+                <statOffsets>
+                    <!-- 核心战斗加成 -->
+                    <IncomingDamageFactor>-0.99985</IncomingDamageFactor> <!-- 对应 0.00015 的乘数，这里用负向偏移抵消 -->
+                    <AimingDelayFactor>-0.999</AimingDelayFactor>
+                    <RangedCooldownFactor>-0.999</RangedCooldownFactor>
+                    <ShootingAccuracyPawn>100</ShootingAccuracyPawn>
+                    <MoveSpeed>200</MoveSpeed>
+
+                    <!-- 近战属性 -->
+                    <MeleeHitChance>1</MeleeHitChance>
+                    <MeleeDodgeChance>1</MeleeDodgeChance>
+                    <MeleeCooldownFactor>-1</MeleeCooldownFactor>
+                    <MeleeDamageFactor>1</MeleeDamageFactor>
+                    <StaggerDurationFactor>-1</StaggerDurationFactor>
+
+                    <!-- 精神与生存 -->
+                    <ToxicResistance>1</ToxicResistance>
+                    <MentalBreakThreshold>-2</MentalBreakThreshold>
+                    <PsychicSensitivity>1</PsychicSensitivity>
+                    <PsychicEntropyMax MayRequire="Ludeon.RimWorld.Ideology">200000</PsychicEntropyMax>
+                    <PsychicEntropyRecoveryRate MayRequire="Ludeon.RimWorld.Ideology">10000</PsychicEntropyRecoveryRate>
+                    <MeditationFocusGain MayRequire="Ludeon.RimWorld.Ideology">30</MeditationFocusGain>
+                    <EatingSpeed>1</EatingSpeed>
+                    <RestFallRateFactor>-0.5</RestFallRateFactor>
+                    <FilthRate>-1.5</FilthRate>
+
+                    <!-- 机械师 (Biotech) 相关属性 -->
+                    <SubcoreEncodingSpeed>30</SubcoreEncodingSpeed>
+                    <MechRepairSpeed>300</MechRepairSpeed>
+                    <MechControlGroups>9</MechControlGroups>
+                    <MechRemoteShieldEnergy>2500</MechRemoteShieldEnergy>
+                    <MechBandwidth>600</MechBandwidth>
+                    <WorkSpeedGlobalOffsetMech>110</WorkSpeedGlobalOffsetMech>
+                    <MechFormingSpeed>120</MechFormingSpeed>
+
+                    <!-- 生产、搬运与工作 -->
+                    <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>
+                    <CarryingCapacity>10000000</CarryingCapacity>
+                    <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">100000</RI_MassCarryCapacity>
+                    <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency>
+                    <ConstructSuccessChance>1</ConstructSuccessChance>
+
+                    <!-- 特殊环境抗性 -->
+                    <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
+                    <Flammability>-1</Flammability>
+
+                    <!-- 护甲和抗性 (从物品的 statBases 转移过来) -->
+                    <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+                    <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+                    <ArmorRating_Heat>10000</ArmorRating_Heat>
+                    <Insulation_Cold>10000</Insulation_Cold>
+                    <Insulation_Heat>10000</Insulation_Heat>
+                </statOffsets>
+            </li>
+        </stages>
+
+        <comps>
+            <li Class="AutoBlink.HediffCompProperties_AutoBlink">
+                <minDistanceToBlink>5</minDistanceToBlink>
+                <maxDistanceToBlink>300</maxDistanceToBlink>
+                <blinkIntervalTicks>60</blinkIntervalTicks>
+                <delayAfterEligibleTicks>40</delayAfterEligibleTicks>
+                <cellsBeforeTarget>1</cellsBeforeTarget>
+                <postBlinkStanceTicks>30</postBlinkStanceTicks>
+                <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
+                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
+                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
+                <playerFactionOnly>false</playerFactionOnly>
+                <excludedJobDefs>
+                    <!-- 闲逛时 -->
+                    <li>GotoWander</li>
+                    <!-- 被携带搬运时 -->
+                    <li>Carried</li>
+                </excludedJobDefs>
+                <drawGizmo>true</drawGizmo>
+                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>
+                <preBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Small</li>
+                </preBlinkSoundDefs>
+                <preBlinkEffecterDefs>
+                    <li>Skip_Entry</li>
+                </preBlinkEffecterDefs>
+                <postBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Exit_Small</li>
+                </postBlinkSoundDefs>
+                <postBlinkEffecterDefs>
+                    <li>Skip_ExitNoDelay</li>
+                </postBlinkEffecterDefs>
+            </li>
+        </comps>
+    </HediffDef>
+
+    
+</Defs>

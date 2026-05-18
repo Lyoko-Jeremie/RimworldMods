@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <StatusAllocationTerminal_AutoBlink_Hediff.label>【】相位闪烁</StatusAllocationTerminal_AutoBlink_Hediff.label>
+    <StatusAllocationTerminal_AutoBlink_Hediff.description>相位闪烁</StatusAllocationTerminal_AutoBlink_Hediff.description>
+
+    <StatusAllocationTerminal_SuperMan.label>【】超人</StatusAllocationTerminal_SuperMan.label>
+    <StatusAllocationTerminal_SuperMan.description>超人</StatusAllocationTerminal_SuperMan.description>
+
+</LanguageData>

@@ -308,6 +308,14 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAut
 	<loadBefore>
 	</loadBefore>
 	<loadAfter>
+		
+		<li>rabiosus.autoblink</li>
+		<!-- <li>-->
+		<!-- 	<packageId>rabiosus.autoblink</packageId>-->
+		<!-- 	<displayName>AutoBlink</displayName>-->
+		<!-- 	<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>-->
+		<!-- </li>-->
+
 	</loadAfter>
 	<modDependencies>
 		<li>
