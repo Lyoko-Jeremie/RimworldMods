@@ -121,7 +121,7 @@ namespace FullyAutomaticOmniCrafter
 
                 foreach (var h in existing)
                 {
-                    pawn.health.RemoveHediff(h);
+                    RemoveBionic(pawn, part, h);
                 }
 
                 // 2. 安装新义体
@@ -139,6 +139,24 @@ namespace FullyAutomaticOmniCrafter
 
             try
             {
+                // 1. 尝试生成物品
+                ThingDef spawnThingDef = hediffToRemove.def.spawnThingOnRemoved;
+                if (spawnThingDef == null && part != null)
+                {
+                    // 如果 Hediff 本身没定义掉落物，且是移除整个部位（天然器官），尝试从部位定义获取
+                    // 只有在确定是“移除”操作且该部位是干净的时候才生成天然器官
+                    if (MedicalRecipesUtility.IsCleanAndDroppable(pawn, part))
+                    {
+                        spawnThingDef = part.def.spawnThingOnRemoved;
+                    }
+                }
+
+                if (spawnThingDef != null)
+                {
+                    GenSpawn.Spawn(spawnThingDef, Position, Map);
+                }
+
+                // 2. 移除 Hediff
                 pawn.health.RemoveHediff(hediffToRemove);
 
                 // 如果拆除的是替换型义体，恢复原部位
@@ -174,7 +192,14 @@ namespace FullyAutomaticOmniCrafter
 
                 foreach (var h in toRemove)
                 {
-                    pawn.health.RemoveHediff(h);
+                    if (h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
+                    {
+                        RemoveBionic(pawn, h.Part, h);
+                    }
+                    else
+                    {
+                        pawn.health.RemoveHediff(h);
+                    }
                 }
 
                 Messages.Message("FullyAutoOmniSurgeon_FullRepairComplete".Translate(pawn.LabelShort),
