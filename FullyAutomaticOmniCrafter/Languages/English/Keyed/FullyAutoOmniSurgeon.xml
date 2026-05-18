@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <FullyAutoOmniSurgeon_OpenPanel>Open Modification Panel</FullyAutoOmniSurgeon_OpenPanel>
+  <FullyAutoOmniSurgeon_OpenPanelDesc>Edit body parts, install bionics, or apply templates.</FullyAutoOmniSurgeon_OpenPanelDesc>
+  <FullyAutoOmniSurgeon_FullRepair>Full Automatic Repair</FullyAutoOmniSurgeon_FullRepair>
+  <FullyAutoOmniSurgeon_FullRepairDesc>One-click repair of all injuries, diseases, addictions, and missing parts (restore to native).</FullyAutoOmniSurgeon_FullRepairDesc>
+  <FullyAutoOmniSurgeon_Eject>Eject</FullyAutoOmniSurgeon_Eject>
+  <FullyAutoOmniSurgeon_EjectDesc>Eject the occupant from the pod.</FullyAutoOmniSurgeon_EjectDesc>
+  <FullyAutoOmniSurgeon_FullRepairComplete>Fully automatic repair completed for {0}.</FullyAutoOmniSurgeon_FullRepairComplete>
+  <FullyAutoOmniSurgeon_RaceRestrictedWarning>Warning: Bionic {0} might be restricted for this race, but has been forced to install.</FullyAutoOmniSurgeon_RaceRestrictedWarning>
+  <FullyAutoOmniSurgeon_TemplateApplied>Applied template {1} to {0}.</FullyAutoOmniSurgeon_TemplateApplied>
+  <FullyAutoOmniSurgeon_PanelTitle>Modification Panel: {0}</FullyAutoOmniSurgeon_PanelTitle>
+  <FullyAutoOmniSurgeon_SaveAsTemplate>Save as Template</FullyAutoOmniSurgeon_SaveAsTemplate>
+  <FullyAutoOmniSurgeon_ApplyTemplate>Apply Template</FullyAutoOmniSurgeon_ApplyTemplate>
+  <FullyAutoOmniSurgeon_StatusNormal>Normal</FullyAutoOmniSurgeon_StatusNormal>
+  <FullyAutoOmniSurgeon_Install>Install</FullyAutoOmniSurgeon_Install>
+  <FullyAutoOmniSurgeon_RaceRestricted> (Race Restricted)</FullyAutoOmniSurgeon_RaceRestricted>
+  <FullyAutoOmniSurgeon_Remove>Remove</FullyAutoOmniSurgeon_Remove>
+  <FullyAutoOmniSurgeon_NewTemplateName>New Template</FullyAutoOmniSurgeon_NewTemplateName>
+  <FullyAutoOmniSurgeon_InputTemplateName>Input template name:</FullyAutoOmniSurgeon_InputTemplateName>
+  <FullyAutoOmniSurgeon_OK>OK</FullyAutoOmniSurgeon_OK>
+</LanguageData>

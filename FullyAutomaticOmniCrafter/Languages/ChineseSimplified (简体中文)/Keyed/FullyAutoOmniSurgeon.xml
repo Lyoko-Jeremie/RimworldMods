@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <FullyAutoOmniSurgeon_OpenPanel>打开改造面板</FullyAutoOmniSurgeon_OpenPanel>
+  <FullyAutoOmniSurgeon_OpenPanelDesc>编辑小人的身体部位、安装义体或应用模板。</FullyAutoOmniSurgeon_OpenPanelDesc>
+  <FullyAutoOmniSurgeon_FullRepair>全自动修复</FullyAutoOmniSurgeon_FullRepair>
+  <FullyAutoOmniSurgeon_FullRepairDesc>一键修复所有损伤、疾病、成瘾和缺失部位（恢复原生）。</FullyAutoOmniSurgeon_FullRepairDesc>
+  <FullyAutoOmniSurgeon_Eject>弹出</FullyAutoOmniSurgeon_Eject>
+  <FullyAutoOmniSurgeon_EjectDesc>将舱内人员弹出。</FullyAutoOmniSurgeon_EjectDesc>
+  <FullyAutoOmniSurgeon_FullRepairComplete>已完成对 {0} 的全自动修复。</FullyAutoOmniSurgeon_FullRepairComplete>
+  <FullyAutoOmniSurgeon_RaceRestrictedWarning>警告: 义体 {0} 在该种族中可能受限，但已强制安装。</FullyAutoOmniSurgeon_RaceRestrictedWarning>
+  <FullyAutoOmniSurgeon_TemplateApplied>已为 {0} 应用模板: {1}</FullyAutoOmniSurgeon_TemplateApplied>
+  <FullyAutoOmniSurgeon_PanelTitle>改造面板: {0}</FullyAutoOmniSurgeon_PanelTitle>
+  <FullyAutoOmniSurgeon_SaveAsTemplate>保存为模板</FullyAutoOmniSurgeon_SaveAsTemplate>
+  <FullyAutoOmniSurgeon_ApplyTemplate>应用模板</FullyAutoOmniSurgeon_ApplyTemplate>
+  <FullyAutoOmniSurgeon_StatusNormal>正常</FullyAutoOmniSurgeon_StatusNormal>
+  <FullyAutoOmniSurgeon_Install>安装</FullyAutoOmniSurgeon_Install>
+  <FullyAutoOmniSurgeon_RaceRestricted> (种族受限)</FullyAutoOmniSurgeon_RaceRestricted>
+  <FullyAutoOmniSurgeon_Remove>移除</FullyAutoOmniSurgeon_Remove>
+  <FullyAutoOmniSurgeon_NewTemplateName>新模板</FullyAutoOmniSurgeon_NewTemplateName>
+  <FullyAutoOmniSurgeon_InputTemplateName>输入模板名称:</FullyAutoOmniSurgeon_InputTemplateName>
+  <FullyAutoOmniSurgeon_OK>确定</FullyAutoOmniSurgeon_OK>
+</LanguageData>

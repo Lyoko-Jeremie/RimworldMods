@@ -68,16 +68,16 @@ namespace FullyAutomaticOmniCrafter
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "打开改造面板",
-                    defaultDesc = "编辑小人的身体部位、安装义体或应用模板。",
+                    defaultLabel = "FullyAutoOmniSurgeon_OpenPanel".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_OpenPanelDesc".Translate(),
                     icon = FullyAutoOmniSurgeonTex.IconModifyDialog,
                     action = () => { Find.WindowStack.Add(new Window_OmniAutoSurgeonUI(this.Occupant, this)); }
                 };
 
                 yield return new Command_Action
                 {
-                    defaultLabel = "全自动修复",
-                    defaultDesc = "一键修复所有损伤、疾病、成瘾和缺失部位（恢复原生）。",
+                    defaultLabel = "FullyAutoOmniSurgeon_FullRepair".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_FullRepairDesc".Translate(),
                     icon = FullyAutoOmniSurgeonTex.IconRepair,
                     action = () => { FullRepair(this.Occupant); }
                 };
@@ -87,8 +87,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "弹出",
-                    defaultDesc = "将舱内人员弹出。",
+                    defaultLabel = "FullyAutoOmniSurgeon_Eject".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_EjectDesc".Translate(),
                     icon = FullyAutoOmniSurgeonTex.IconPodEject,
                     action = EjectContents
                 };
@@ -177,7 +177,8 @@ namespace FullyAutomaticOmniCrafter
                     pawn.health.RemoveHediff(h);
                 }
 
-                Messages.Message("已完成对 " + pawn.LabelShort + " 的全自动修复。", MessageTypeDefOf.TaskCompletion);
+                Messages.Message("FullyAutoOmniSurgeon_FullRepairComplete".Translate(pawn.LabelShort),
+                    MessageTypeDefOf.TaskCompletion);
             }
             catch (Exception ex)
             {
@@ -204,7 +205,8 @@ namespace FullyAutomaticOmniCrafter
                         {
                             if (IsRestrictedFor(pawn, bionicDef, part))
                             {
-                                Messages.Message($"警告: 义体 {bionicDef.label} 在该种族中可能受限，但已强制安装。",
+                                Messages.Message(
+                                    "FullyAutoOmniSurgeon_RaceRestrictedWarning".Translate(bionicDef.label),
                                     MessageTypeDefOf.CautionInput, false);
                             }
                         }
@@ -213,7 +215,8 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
 
-                Messages.Message($"已为 {pawn.LabelShort} 应用模板: {template.templateName}",
+                Messages.Message(
+                    "FullyAutoOmniSurgeon_TemplateApplied".Translate(pawn.LabelShort, template.templateName),
                     MessageTypeDefOf.TaskCompletion);
             }
             catch (Exception ex)
@@ -290,16 +293,18 @@ namespace FullyAutomaticOmniCrafter
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0, 0, inRect.width, 40f), "改造面板: " + pawn.LabelCap);
+            Widgets.Label(new Rect(0, 0, inRect.width, 40f),
+                "FullyAutoOmniSurgeon_PanelTitle".Translate(pawn.LabelCap));
             Text.Font = GameFont.Small;
 
             float x = inRect.width - 150f;
-            if (Widgets.ButtonText(new Rect(x, 0, 140f, 30f), "保存为模板"))
+            if (Widgets.ButtonText(new Rect(x, 0, 140f, 30f), "FullyAutoOmniSurgeon_SaveAsTemplate".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_NameTemplate(name => surgeon.SaveAsTemplate(pawn, name)));
             }
 
-            if (surgeon.templates.Any() && Widgets.ButtonText(new Rect(x - 150f, 0, 140f, 30f), "应用模板"))
+            if (surgeon.templates.Any() && Widgets.ButtonText(new Rect(x - 150f, 0, 140f, 30f),
+                    "FullyAutoOmniSurgeon_ApplyTemplate".Translate()))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
                 foreach (var t in surgeon.templates)
@@ -325,10 +330,12 @@ namespace FullyAutomaticOmniCrafter
 
                 // 显示当前状态
                 var hediffs = pawn.health.hediffSet.hediffs.Where(h => h.Part == part).ToList();
-                string status = hediffs.Any() ? string.Join(", ", hediffs.Select(h => h.LabelCap)) : "正常";
+                string status = hediffs.Any()
+                    ? string.Join(", ", hediffs.Select(h => h.LabelCap))
+                    : "FullyAutoOmniSurgeon_StatusNormal".Translate().ToString();
                 Widgets.Label(new Rect(210, curY, 200f, 25f), status);
 
-                if (Widgets.ButtonText(new Rect(420, curY, 60f, 25f), "安装"))
+                if (Widgets.ButtonText(new Rect(420, curY, 60f, 25f), "FullyAutoOmniSurgeon_Install".Translate()))
                 {
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
                     // 这里应该筛选出所有可能的义体 Def
@@ -343,7 +350,8 @@ namespace FullyAutomaticOmniCrafter
                         bool restricted = Building_FullyAutoOmniSurgeon.IsRestrictedFor(pawn, def, part);
                         if (restricted)
                         {
-                            label = "<color=red>" + label + " (种族受限)</color>";
+                            label = "<color=red>" + label + "FullyAutoOmniSurgeon_RaceRestricted".Translate() +
+                                    "</color>";
                         }
 
                         options.Add(new FloatMenuOption(label, () => surgeon.InstallBionic(pawn, part, def)));
@@ -352,7 +360,8 @@ namespace FullyAutomaticOmniCrafter
                     Find.WindowStack.Add(new FloatMenu(options));
                 }
 
-                if (hediffs.Any() && Widgets.ButtonText(new Rect(490, curY, 60f, 25f), "移除"))
+                if (hediffs.Any() && Widgets.ButtonText(new Rect(490, curY, 60f, 25f),
+                        "FullyAutoOmniSurgeon_Remove".Translate()))
                 {
                     foreach (var h in hediffs) surgeon.RemoveBionic(pawn, part, h);
                 }
@@ -366,7 +375,7 @@ namespace FullyAutomaticOmniCrafter
 
     public class Dialog_NameTemplate : Window
     {
-        private string name = "新模板";
+        private string name = "FullyAutoOmniSurgeon_NewTemplateName".Translate();
         private Action<string> onConfirm;
 
         public override Vector2 InitialSize => new Vector2(300f, 150f);
@@ -381,9 +390,9 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DoWindowContents(Rect inRect)
         {
-            Widgets.Label(new Rect(0, 0, inRect.width, 30f), "输入模板名称:");
+            Widgets.Label(new Rect(0, 0, inRect.width, 30f), "FullyAutoOmniSurgeon_InputTemplateName".Translate());
             name = Widgets.TextField(new Rect(0, 40f, inRect.width, 30f), name);
-            if (Widgets.ButtonText(new Rect(0, 80f, inRect.width, 30f), "确定"))
+            if (Widgets.ButtonText(new Rect(0, 80f, inRect.width, 30f), "FullyAutoOmniSurgeon_OK".Translate()))
             {
                 onConfirm?.Invoke(name);
                 this.Close();
