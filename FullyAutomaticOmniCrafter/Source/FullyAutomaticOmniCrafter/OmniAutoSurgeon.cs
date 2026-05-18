@@ -24,6 +24,22 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    [StaticConstructorOnStartup]
+    public static class FullyAutoOmniSurgeonTex
+    {
+        public static readonly Texture2D IconModifyDialog =
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Modify", true) ??
+            BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconRepair =
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Repair", true) ??
+            BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconPodEject =
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_PodEject", true) ??
+            BaseContent.WhiteTex;
+    }
+
     /// <summary>
     /// 全自动医疗改造舱 FullyAutoOmniSurgeon
     /// 一个类似医疗床或休眠舱的建筑，可以快速为特定对象快速批量添加删除身体部位和义肢等增强部件、以及修复损伤和医疗受伤的建筑。
@@ -54,7 +70,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = "打开改造面板",
                     defaultDesc = "编辑小人的身体部位、安装义体或应用模板。",
-                    icon = ContentFinder<Texture2D>.Get("UI/Buttons/MainButtons/Health"),
+                    icon = FullyAutoOmniSurgeonTex.IconModifyDialog,
                     action = () => { Find.WindowStack.Add(new Window_OmniAutoSurgeonUI(this.Occupant, this)); }
                 };
 
@@ -62,7 +78,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = "全自动修复",
                     defaultDesc = "一键修复所有损伤、疾病、成瘾和缺失部位（恢复原生）。",
-                    icon = ContentFinder<Texture2D>.Get("UI/Designators/HomeAreaOn"),
+                    icon = FullyAutoOmniSurgeonTex.IconRepair,
                     action = () => { FullRepair(this.Occupant); }
                 };
             }
@@ -73,8 +89,8 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = "弹出",
                     defaultDesc = "将舱内人员弹出。",
-                    icon = ContentFinder<Texture2D>.Get("UI/Commands/PodEject"),
-                    action = () => { EjectContents(); }
+                    icon = FullyAutoOmniSurgeonTex.IconPodEject,
+                    action = EjectContents
                 };
             }
         }
@@ -88,6 +104,7 @@ namespace FullyAutomaticOmniCrafter
                     PawnComponentsUtility.AddComponentsForSpawn(pawn);
                 }
             }
+
             base.EjectContents();
         }
 
@@ -151,7 +168,8 @@ namespace FullyAutomaticOmniCrafter
 
                 // 2. 移除所有负面状态
                 var toRemove = pawn.health.hediffSet.hediffs
-                    .Where(h => h is Hediff_Injury || h is Hediff_Addiction || h.def.isBad || h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
+                    .Where(h => h is Hediff_Injury || h is Hediff_Addiction || h.def.isBad ||
+                                h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
                     .ToList();
 
                 foreach (var h in toRemove)
@@ -175,7 +193,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 foreach (var entry in template.partToBionicMap)
                 {
-                    var part = pawn.RaceProps.body.AllParts.FirstOrDefault(p => p.Label == entry.Key || p.def.defName == entry.Key);
+                    var part = pawn.RaceProps.body.AllParts.FirstOrDefault(p =>
+                        p.Label == entry.Key || p.def.defName == entry.Key);
                     var bionicDef = DefDatabase<HediffDef>.GetNamedSilentFail(entry.Value);
 
                     if (part != null && bionicDef != null)
@@ -185,13 +204,17 @@ namespace FullyAutomaticOmniCrafter
                         {
                             if (IsRestrictedFor(pawn, bionicDef, part))
                             {
-                                Messages.Message($"警告: 义体 {bionicDef.label} 在该种族中可能受限，但已强制安装。", MessageTypeDefOf.CautionInput, false);
+                                Messages.Message($"警告: 义体 {bionicDef.label} 在该种族中可能受限，但已强制安装。",
+                                    MessageTypeDefOf.CautionInput, false);
                             }
                         }
+
                         InstallBionic(pawn, part, bionicDef);
                     }
                 }
-                Messages.Message($"已为 {pawn.LabelShort} 应用模板: {template.templateName}", MessageTypeDefOf.TaskCompletion);
+
+                Messages.Message($"已为 {pawn.LabelShort} 应用模板: {template.templateName}",
+                    MessageTypeDefOf.TaskCompletion);
             }
             catch (Exception ex)
             {
@@ -203,7 +226,8 @@ namespace FullyAutomaticOmniCrafter
         {
             // 通过寻找是否有对应的 RecipeDef 被 HAR 限制来判断
             var recipes = DefDatabase<RecipeDef>.AllDefsListForReading
-                .Where(r => r.addsHediff == hDef && (r.appliedOnFixedBodyParts.NullOrEmpty() || r.appliedOnFixedBodyParts.Contains(part.def)));
+                .Where(r => r.addsHediff == hDef && (r.appliedOnFixedBodyParts.NullOrEmpty() ||
+                                                     r.appliedOnFixedBodyParts.Contains(part.def)));
 
             if (!recipes.Any()) return false;
 
@@ -221,7 +245,9 @@ namespace FullyAutomaticOmniCrafter
                     bool canDo = (bool)canDoMethod.Invoke(null, new object[] { r, pawn.def });
                     if (canDo) return false; // 只要有一个配方是允许的，就不算完全屏蔽
                 }
-                catch { }
+                catch
+                {
+                }
             }
 
             return true; // 所有相关配方都被限制了
@@ -238,6 +264,7 @@ namespace FullyAutomaticOmniCrafter
                     template.partToBionicMap[h.Part.Label] = h.def.defName;
                 }
             }
+
             templates.Add(template);
         }
     }
@@ -271,7 +298,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Find.WindowStack.Add(new Dialog_NameTemplate(name => surgeon.SaveAsTemplate(pawn, name)));
             }
-            
+
             if (surgeon.templates.Any() && Widgets.ButtonText(new Rect(x - 150f, 0, 140f, 30f), "应用模板"))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -279,22 +306,23 @@ namespace FullyAutomaticOmniCrafter
                 {
                     options.Add(new FloatMenuOption(t.templateName, () => surgeon.ApplyTemplate(pawn, t)));
                 }
+
                 Find.WindowStack.Add(new FloatMenu(options));
             }
 
             float y = 50f;
-            
+
             // 简单列出所有身体部位
             Rect outRect = new Rect(0, y, inRect.width, inRect.height - y - 60f);
             Rect viewRect = new Rect(0, 0, outRect.width - 16f, pawn.RaceProps.body.AllParts.Count * 30f);
-            
+
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
             float curY = 0;
             foreach (var part in pawn.RaceProps.body.AllParts)
             {
                 Rect rowRect = new Rect(0, curY, viewRect.width, 25f);
                 Widgets.Label(new Rect(0, curY, 200f, 25f), part.LabelCap);
-                
+
                 // 显示当前状态
                 var hediffs = pawn.health.hediffSet.hediffs.Where(h => h.Part == part).ToList();
                 string status = hediffs.Any() ? string.Join(", ", hediffs.Select(h => h.LabelCap)) : "正常";
@@ -305,9 +333,10 @@ namespace FullyAutomaticOmniCrafter
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
                     // 这里应该筛选出所有可能的义体 Def
                     var bionicDefs = DefDatabase<HediffDef>.AllDefs
-                        .Where(d => d.spawnThingOnRemoved != null || d.hediffClass.Name.Contains("Bionic") || d.label.Contains("仿生"))
+                        .Where(d => d.spawnThingOnRemoved != null || d.hediffClass.Name.Contains("Bionic") ||
+                                    d.label.Contains("仿生"))
                         .OrderBy(d => d.label);
-                    
+
                     foreach (var def in bionicDefs)
                     {
                         string label = def.LabelCap;
@@ -316,8 +345,10 @@ namespace FullyAutomaticOmniCrafter
                         {
                             label = "<color=red>" + label + " (种族受限)</color>";
                         }
+
                         options.Add(new FloatMenuOption(label, () => surgeon.InstallBionic(pawn, part, def)));
                     }
+
                     Find.WindowStack.Add(new FloatMenu(options));
                 }
 
@@ -328,6 +359,7 @@ namespace FullyAutomaticOmniCrafter
 
                 curY += 30f;
             }
+
             Widgets.EndScrollView();
         }
     }
