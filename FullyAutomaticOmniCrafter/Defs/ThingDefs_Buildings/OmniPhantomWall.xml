@@ -308,4 +308,93 @@
         
     </ThingDef>
 
+    <!--  ===============================================================================================  -->
+
+    <ThingDef ParentName="OmniPhantomWallBase">
+        <defName>OmniPhantomWall_Animal_</defName>
+        <label>OmniPhantomWall_Animal_</label>
+        <description>description</description>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <passMode>OnlyPlayerNoPets</passMode>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+    
+    <ThingDef ParentName="OmniPhantomWallBase">
+        <defName>OmniPhantomWall_Animal_Power</defName>
+        <label>OmniPhantomWall_Animal_Power</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+        </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                 <passMode>OnlyPlayerNoPets</passMode>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPhantomWallBase">
+        <defName>OmniPhantomWall_Animal_PowerLight</defName>
+        <label>OmniPhantomWall_Animal_PowerLight</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+            <!-- 自发光 -->
+            <li Class="CompProperties_Glower">
+                <glowRadius>25</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
+                <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
+            </li>
+        </comps>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <passMode>OnlyPlayerNoPets</passMode>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+
 </Defs>

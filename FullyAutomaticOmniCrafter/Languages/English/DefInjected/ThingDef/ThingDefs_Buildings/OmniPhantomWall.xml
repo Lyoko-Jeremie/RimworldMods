@@ -6,8 +6,8 @@
     <!-- 一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。 -->
     <OmniPhantomWall.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.</OmniPhantomWall.description>
 
-    <OmniPhantomWallBase.label>Phantom Wall (Home)</OmniPhantomWallBase.label>
-    <OmniPhantomWallBase.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nPrevents enemies, visitors, and prisoners.</OmniPhantomWallBase.description>
+    <OmniPhantomWall_.label>Phantom Wall (Home)</OmniPhantomWall_.label>
+    <OmniPhantomWall_.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nPrevents enemies, visitors, and prisoners.</OmniPhantomWall_.description>
 
     <OmniPhantomWall_Power.label>Phantom Wall (Home) (With Cable)</OmniPhantomWall_Power.label>
     <OmniPhantomWall_Power.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nPrevents enemies, visitors, and prisoners.\n\nWith integrated cables.</OmniPhantomWall_Power.description>
@@ -23,5 +23,14 @@
 
     <OmniPhantomWall_all_PowerLight.label>Phantom Wall (Outdoor) (Self-Luminous With Cable)</OmniPhantomWall_all_PowerLight.label>
     <OmniPhantomWall_all_PowerLight.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops enemies, visitors, prisoners.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall_all_PowerLight.description>
+
+    <OmniPhantomWall_Animal_.label>Phantom Wall (Animal Pen)</OmniPhantomWall_Animal_.label>
+    <OmniPhantomWall_Animal_.description>A building that employs phase-space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies. \n\nStops domestic animals. Stops all objects except colonists.</OmniPhantomWall_Animal_.description>
+
+    <OmniPhantomWall_Animal_Power.label>Phantom Wall (Animal Pen) (With Cable)</OmniPhantomWall_Animal_Power.label>
+    <OmniPhantomWall_Animal_Power.description>A building that employs phase-space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals. Stops all objects except colonists.\n\nWith integrated cables.</OmniPhantomWall_Animal_Power.description>
+
+    <OmniPhantomWall_Animal_PowerLight.label>Phantom Wall (Animal Pen) (Self-Luminous With Cable)</OmniPhantomWall_Animal_PowerLight.label>
+    <OmniPhantomWall_Animal_PowerLight.description>A building that employs phase-space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals. Stops all objects except colonists.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall_Animal_PowerLight.description>
 
 </LanguageData>
