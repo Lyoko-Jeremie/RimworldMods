@@ -98,17 +98,17 @@ namespace FullyAutomaticOmniCrafter
 
             if (this.Occupant != null)
             {
-                yield return new Command_Action
-                {
-                    defaultLabel = "CommandSelectContainedPawn".Translate(),
-                    defaultDesc = "CommandSelectContainedPawnDesc".Translate(),
-                    icon = FullyAutoOmniSurgeonTex.IconSelectOccupant,
-                    action = () =>
-                    {
-                        Find.Selector.ClearSelection();
-                        Find.Selector.Select(this.Occupant);
-                    }
-                };
+                // yield return new Command_Action
+                // {
+                //     defaultLabel = "CommandSelectContainedPawn".Translate(),
+                //     defaultDesc = "CommandSelectContainedPawnDesc".Translate(),
+                //     icon = FullyAutoOmniSurgeonTex.IconSelectOccupant,
+                //     action = () =>
+                //     {
+                //         Find.Selector.ClearSelection();
+                //         Find.Selector.Select(this.Occupant);
+                //     }
+                // };
 
                 yield return new Command_Action
                 {
