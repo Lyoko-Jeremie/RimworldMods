@@ -51,11 +51,32 @@ namespace FullyAutomaticOmniCrafter
     /// 支持手动按部位编辑和安装。
     /// 忽略材料限制。 
     /// </summary>
-    public class Building_FullyAutoOmniSurgeon : Building_Casket
+    public class Building_FullyAutoOmniSurgeon : Building_Enterable, IThingHolderWithDrawnPawn
     {
         public List<SurgeryTemplate> templates = new List<SurgeryTemplate>();
 
         public Pawn Occupant => innerContainer.FirstOrDefault() as Pawn;
+
+        public float HeldPawnDrawPos_Y => this.DrawPos.y + 0.03658537f;
+
+        public float HeldPawnBodyAngle
+        {
+            get
+            {
+                Rot4 rot4 = this.Rotation;
+                rot4 = rot4.Opposite;
+                return rot4.AsAngle;
+            }
+        }
+
+        public PawnPosture HeldPawnPosture => PawnPosture.LayingOnGroundFaceUp;
+
+        public override Vector3 PawnDrawOffset
+        {
+            get => IntVec3.West.RotatedBy(this.Rotation).ToVector3() / (float)this.def.size.x;
+        }
+
+        public override bool IsContentsSuspended => false;
 
         public override void ExposeData()
         {
@@ -86,6 +107,16 @@ namespace FullyAutomaticOmniCrafter
                     action = () => { FullRepair(this.Occupant); }
                 };
             }
+            else if (this.selectedPawn != null)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "CommandCancelLoad".Translate(),
+                    defaultDesc = "CommandCancelLoadDesc".Translate(),
+                    icon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel"),
+                    action = () => { this.selectedPawn = null; }
+                };
+            }
             else
             {
                 yield return new Command_Action
@@ -109,8 +140,9 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        public override void EjectContents()
+        public void EjectContents()
         {
+            this.selectedPawn = null;
             foreach (Thing thing in (IEnumerable<Thing>)this.innerContainer)
             {
                 if (thing is Pawn pawn)
@@ -124,7 +156,39 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            base.EjectContents();
+            this.innerContainer.TryDropAll(this.def.hasInteractionCell ? this.InteractionCell : this.Position, this.Map, ThingPlaceMode.Near);
+        }
+
+        public override void TryAcceptPawn(Pawn pawn)
+        {
+            if (this.innerContainer.Count > 0) return;
+            this.selectedPawn = pawn;
+            bool deselected = pawn.DeSpawnOrDeselect();
+            if (this.innerContainer.TryAddOrTransfer(pawn))
+            {
+                // 可以记录进入时间等
+            }
+            if (deselected)
+            {
+                Find.Selector.Select(pawn, false, false);
+            }
+        }
+
+        public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
+        {
+            base.DynamicDrawPhaseAt(phase, drawLoc, flip);
+            if (this.Occupant != null)
+            {
+                this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset, neverAimWeapon: true);
+            }
+        }
+
+        public override AcceptanceReport CanAcceptPawn(Pawn pawn)
+        {
+            if (this.innerContainer.Count > 0) return "Occupied".Translate();
+            if (this.selectedPawn != null && this.selectedPawn != pawn) return false;
+            if (!pawn.RaceProps.IsFlesh && !pawn.RaceProps.IsMechanoid) return false;
+            return true;
         }
 
         private void SelectOccupant()
@@ -143,28 +207,7 @@ namespace FullyAutomaticOmniCrafter
                     return;
                 }
 
-                // 尝试进入建筑
-                // 注意：Pawn 必须脱离地图，否则会在地图上晃悠。
-                // 1. 先从地图移除（如果是生成的）
-                if (pawn.Spawned)
-                {
-                    pawn.DeSpawn();
-                }
-
-                // 2. 尝试放入容器
-                if (this.TryAcceptThing(pawn))
-                {
-                    Messages.Message("FullyAutoOmniSurgeon_Entered".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
-                }
-                else
-                {
-                    // 如果放入失败，需要尝试放回地图（虽然通常不应该失败）
-                    if (!pawn.Spawned)
-                    {
-                        GenSpawn.Spawn(pawn, this.Position, this.Map);
-                    }
-                    Messages.Message("FullyAutoOmniSurgeon_FailedToEnter".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
-                }
+                this.TryAcceptPawn(pawn);
             }));
         }
 
