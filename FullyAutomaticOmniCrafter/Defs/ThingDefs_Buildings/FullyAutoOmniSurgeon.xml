@@ -25,6 +25,8 @@
         <size>(5,5)</size>
         <uiIconPath>Things/Building/Production/FullyAutoOmniSurgeon</uiIconPath>
         <altitudeLayer>Building</altitudeLayer>
+        <drawerType>MapMeshAndRealTime</drawerType>
+        <containedPawnsSelectable>true</containedPawnsSelectable>
         <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
         <blockWind>false</blockWind>

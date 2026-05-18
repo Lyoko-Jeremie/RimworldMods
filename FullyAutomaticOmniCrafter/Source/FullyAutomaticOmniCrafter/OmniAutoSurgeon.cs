@@ -100,6 +100,18 @@ namespace FullyAutomaticOmniCrafter
             {
                 yield return new Command_Action
                 {
+                    defaultLabel = "CommandSelectContainedPawn".Translate(),
+                    defaultDesc = "CommandSelectContainedPawnDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconSelectOccupant,
+                    action = () =>
+                    {
+                        Find.Selector.ClearSelection();
+                        Find.Selector.Select(this.Occupant);
+                    }
+                };
+
+                yield return new Command_Action
+                {
                     defaultLabel = "FullyAutoOmniSurgeon_OpenPanel".Translate(),
                     defaultDesc = "FullyAutoOmniSurgeon_OpenPanelDesc".Translate(),
                     icon = FullyAutoOmniSurgeonTex.IconModifyDialog,
@@ -186,11 +198,12 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
         {
+            // Draw the building first, then draw occupant so the pawn is not hidden under building realtime graphics.
+            base.DynamicDrawPhaseAt(phase, drawLoc, flip);
             if (this.Occupant != null)
             {
                 this.Occupant.Drawer.renderer.DynamicDrawPhaseAt(phase, drawLoc + this.PawnDrawOffset, neverAimWeapon: true);
             }
-            base.DynamicDrawPhaseAt(phase, drawLoc, flip);
         }
 
         public override string GetInspectString()
