@@ -59,7 +59,7 @@ namespace FullyAutomaticOmniCrafter
 
         public float HeldPawnDrawPos_Y => this.DrawPos.y + 0.03658537f;
 
-        public float HeldPawnBodyAngle => this.Rotation.Opposite.AsAngle;
+        public float HeldPawnBodyAngle => this.Rotation.AsAngle;
 
         public PawnPosture HeldPawnPosture => PawnPosture.LayingOnGroundFaceUp;
 
