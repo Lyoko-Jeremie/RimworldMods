@@ -56,6 +56,34 @@ namespace FullyAutomaticOmniCrafter
         public string Label => hediffDef.LabelCap + (bodyPart != null ? $" ({bodyPart.LabelCap})" : "");
     }
 
+    public class HediffErrorRecord : IExposable
+    {
+        public string pawnName;
+        public string bodyPartLabel;
+        public string hediffLabel;
+        public string timestamp;
+
+        public HediffErrorRecord()
+        {
+        }
+
+        public HediffErrorRecord(Pawn pawn, BodyPartRecord part, HediffDef hediff)
+        {
+            this.pawnName = pawn?.LabelCap ?? "Unknown";
+            this.bodyPartLabel = part?.LabelCap ?? "Whole Body";
+            this.hediffLabel = hediff?.LabelCap ?? "Unknown Hediff";
+            this.timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        public void ExposeData()
+        {
+            Scribe_Values.Look(ref pawnName, "pawnName");
+            Scribe_Values.Look(ref bodyPartLabel, "bodyPartLabel");
+            Scribe_Values.Look(ref hediffLabel, "hediffLabel");
+            Scribe_Values.Look(ref timestamp, "timestamp");
+        }
+    }
+
     [StaticConstructorOnStartup]
     public static class StatusAllocationTerminalTex
     {
@@ -65,6 +93,10 @@ namespace FullyAutomaticOmniCrafter
 
         public static readonly Texture2D IconManualDialog =
             ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ManualDialog", true) ??
+            BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconErrorLog =
+            ContentFinder<Texture2D>.Get("UI/Buttons/DevRoot/ShowDebugLog", true) ??
             BaseContent.WhiteTex;
     }
 
@@ -91,16 +123,19 @@ namespace FullyAutomaticOmniCrafter
 
         public List<HediffAssignment> autoTemplates = new List<HediffAssignment>();
         public List<HediffDef> autoRemovals = new List<HediffDef>();
+        public List<HediffErrorRecord> failedHediffLogs = new List<HediffErrorRecord>();
 
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Collections.Look(ref autoTemplates, "autoTemplates", LookMode.Deep);
             Scribe_Collections.Look(ref autoRemovals, "autoRemovals", LookMode.Def);
+            Scribe_Collections.Look(ref failedHediffLogs, "failedHediffLogs", LookMode.Deep);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (autoTemplates == null) autoTemplates = new List<HediffAssignment>();
                 if (autoRemovals == null) autoRemovals = new List<HediffDef>();
+                if (failedHediffLogs == null) failedHediffLogs = new List<HediffErrorRecord>();
             }
         }
 
@@ -122,7 +157,16 @@ namespace FullyAutomaticOmniCrafter
                     if (template.hediffDef == null) continue;
                     if (!pawn.health.hediffSet.HasHediff(template.hediffDef, template.bodyPart))
                     {
-                        pawn.health.AddHediff(template.hediffDef, template.bodyPart);
+                        try
+                        {
+                            pawn.health.AddHediff(template.hediffDef, template.bodyPart);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning($"[StatusAllocationTerminal] Failed to add hediff {template.hediffDef.defName} to {pawn.LabelShort} at {template.bodyPart?.def.defName ?? "Whole Body"}: {ex.Message}");
+                            failedHediffLogs.Add(new HediffErrorRecord(pawn, template.bodyPart, template.hediffDef));
+                            if (failedHediffLogs.Count > 100) failedHediffLogs.RemoveAt(0); // 限制记录数量
+                        }
                     }
                 }
 
@@ -170,7 +214,65 @@ namespace FullyAutomaticOmniCrafter
                         Find.WindowStack.Add(new Dialog_StatusAllocationTerminal(parent.Map, this, false));
                     }
                 };
+                yield return new Command_Action
+                {
+                    defaultLabel = "错误日志",
+                    defaultDesc = "查看在添加状态时遇到的错误记录。",
+                    icon = StatusAllocationTerminalTex.IconErrorLog,
+                    action = delegate()
+                    {
+                        Find.WindowStack.Add(new Dialog_StatusAllocationTerminalErrors(this));
+                    }
+                };
             }
+        }
+    }
+
+    public class Dialog_StatusAllocationTerminalErrors : Window
+    {
+        private StatusAllocationTerminal comp;
+        private Vector2 scrollPosition;
+
+        public override Vector2 InitialSize => new Vector2(600f, 600f);
+
+        public Dialog_StatusAllocationTerminalErrors(StatusAllocationTerminal comp)
+        {
+            this.comp = comp;
+            this.doCloseButton = true;
+            this.doCloseX = true;
+            this.absorbInputAroundWindow = true;
+            this.forcePause = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), "添加状态错误记录");
+            Text.Font = GameFont.Small;
+
+            Rect clearRect = new Rect(inRect.width - 100f, 0f, 100f, 30f);
+            if (Widgets.ButtonText(clearRect, "清空日志"))
+            {
+                comp.failedHediffLogs.Clear();
+            }
+
+            Rect outRect = new Rect(0f, 40f, inRect.width, inRect.height - 100f);
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, comp.failedHediffLogs.Count * 25f);
+
+            Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
+            float num = 0f;
+            for (int i = comp.failedHediffLogs.Count - 1; i >= 0; i--)
+            {
+                var log = comp.failedHediffLogs[i];
+                Rect rect = new Rect(0f, num, viewRect.width, 25f);
+                if (i % 2 == 1)
+                {
+                    Widgets.DrawLightHighlight(rect);
+                }
+                Widgets.Label(rect, $"{log.timestamp}: [{log.pawnName}] 部位: {log.bodyPartLabel} 状态: {log.hediffLabel}");
+                num += 25f;
+            }
+            Widgets.EndScrollView();
         }
     }
 
