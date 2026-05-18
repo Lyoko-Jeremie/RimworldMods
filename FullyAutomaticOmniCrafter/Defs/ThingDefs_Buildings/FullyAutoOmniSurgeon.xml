@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>FullyAutoOmniSurgeon_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef Name="FullyAutoOmniSurgeon" ParentName="BuildingBase">
+        <defName>FullyAutoOmniSurgeon</defName>
+        <label>全自动医疗改造舱</label>
+        <description>一个类似医疗床或休眠舱的建筑，可以快速为特定对象快速批量添加删除身体部位和义肢等增强部件、以及修复损伤和医疗受伤的建筑。</description>
+        <!-- 绑定你的 C# 类 -->
+        <thingClass>FullyAutomaticOmniCrafter.Building_FullyAutoOmniSurgeon</thingClass>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>FullyAutoOmniSurgeon_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+        
+        <graphicData>
+            <texPath>Things/Building/Production/FullyAutoOmniSurgeon</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(5,5)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <size>(5,5)</size>
+        <uiIconPath>Things/Building/Production/FullyAutoOmniSurgeon</uiIconPath>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+        <costList>
+            <Steel>150</Steel>
+        </costList>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+        <rotatable>false</rotatable>
+    </ThingDef>
+    
+</Defs>

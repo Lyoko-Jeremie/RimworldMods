@@ -372,6 +372,7 @@
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="GlobalFireExtinguisher.cs" />
     <Compile Include="ModAssets.cs" />
+    <Compile Include="OmniAutoSurgeon.cs" />
     <Compile Include="OmniCrafterMod.cs" />
     <Compile Include="OmniPhantomWall.cs" />
     <Compile Include="RealityWeaver.cs" />
