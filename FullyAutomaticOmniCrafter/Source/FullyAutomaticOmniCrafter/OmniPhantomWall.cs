@@ -282,6 +282,19 @@ namespace FullyAutomaticOmniCrafter
                     {
                         return true;
                     }
+                    // 特殊实体：甲虫类 (Insects) 的边缘情况
+                    //      虽然在 Defs 中甲虫通常归类为 BaseInsect 派系，但如果通过 Mod 或特殊地图生成导致其派系丢失：
+                    //      甲虫的 fleshType 是 Insectoid（属于 isOrganic），所以它们通常会被识别为 Animal。
+                    //      但是，如果有实体被定义为类似虫子但智力设定为 ToolUser（工具使用级），它们会立即从 Animal 列表消失。
+                    // 通常包括以下几种
+                    //      Insectoid (虫族)
+                    //      对应生物：原版游戏中的所有虫族 (Insectoids)。
+                    //      具体例子：巨甲虫 (Megaspider)、巨型蜻蜓 (Spelopede)、甲壳虫 (Megascarab)。
+                    //      特性：
+                    //           属于有机体。
+                    //           受伤时产生虫族特有的打击效果（通常是深色/绿色的血液）。
+                    //           尸体归类为 CorpsesInsect。
+                    // 故不予放行
                 }
             }
 
