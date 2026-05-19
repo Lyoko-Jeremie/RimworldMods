@@ -1278,8 +1278,8 @@ namespace FullyAutomaticOmniCrafter
         private readonly List<RecipeCandidate> cached = new List<RecipeCandidate>();
         private string searchText = string.Empty;
         private Vector2 scrollPos;
-        private bool pinyinIndexPrepared;
-        private bool pinyinSearchEnabled;
+        private static bool pinyinIndexPrepared;
+        private static bool pinyinSearchEnabled;
 
         private struct RecipeCandidate
         {
@@ -1443,8 +1443,8 @@ namespace FullyAutomaticOmniCrafter
         private readonly List<HediffDef> cached = new List<HediffDef>();
         private string searchText = string.Empty;
         private Vector2 scrollPos;
-        private bool pinyinIndexPrepared;
-        private bool pinyinSearchEnabled;
+        private static bool pinyinIndexPrepared;
+        private static bool pinyinSearchEnabled;
 
         public override Vector2 InitialSize => new Vector2(720f, 680f);
 
