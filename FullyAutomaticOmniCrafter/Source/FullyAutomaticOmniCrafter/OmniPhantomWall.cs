@@ -269,16 +269,22 @@ namespace FullyAutomaticOmniCrafter
                     return true;
                 }
 
-                // 非敌对的商队、访客、盟友、野生动物等
+                // 非敌对的角色（商队、访客、盟友、野生动物、野人等）
                 if (!pawn.HostileTo(Faction.OfPlayer))
                 {
-                    // 具有派系的人员、具有领主（Lord）的群体单位，或非敌对的野生动物
-                    // 额外放行智力达到“工具使用”等级的非人类 (ToolUser)，增加对 Mod 实体的兼容性
+                    // 只要是非敌对的，且符合以下任一特征即放行：
+                    // 1. 具有派系的人员
+                    // 2. 具有领主（Lord）的群体单位
+                    // 3. 类人角色 (Humanlike)，涵盖野人 (Wild Man)
+                    // 4. 动物 (Animal)
+                    // 5. 智力达到“工具使用”等级 (ToolUser)
+                    // 6. 无派系且无领主的角色 (确保野人等特殊中立角色能通过)
                     if (pawn.Faction != null
                         || pawn.GetLord() != null
                         || pawn.RaceProps.Humanlike
                         || pawn.RaceProps.Animal
-                        || pawn.RaceProps.ToolUser)
+                        || pawn.RaceProps.ToolUser
+                        || (pawn.Faction == null && pawn.GetLord() == null))
                     {
                         return true;
                     }
