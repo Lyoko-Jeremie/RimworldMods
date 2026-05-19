@@ -105,5 +105,37 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
     }
+
+    [HarmonyPatch(typeof(MedicalRecipesUtility), "IsCleanAndDroppable")]
+    public static class Patch_MedicalRecipesUtility_IsCleanAndDroppable
+    {
+        public static bool Prefix(ref bool __result, Pawn pawn, BodyPartRecord part)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive)
+            {
+                // If the part has a spawn thing, we allow it regardless of cleanliness or animal status
+                if (part.def.spawnThingOnRemoved != null)
+                {
+                    __result = true;
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(MedicalRecipesUtility), "IsClean")]
+    public static class Patch_MedicalRecipesUtility_IsClean
+    {
+        public static bool Prefix(ref bool __result)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive)
+            {
+                __result = true;
+                return false;
+            }
+            return true;
+        }
+    }
 }
 

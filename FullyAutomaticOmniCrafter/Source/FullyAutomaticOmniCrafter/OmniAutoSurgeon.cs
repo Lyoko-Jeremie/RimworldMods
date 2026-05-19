@@ -448,8 +448,8 @@ namespace FullyAutomaticOmniCrafter
                 if (spawnThingDef == null && part != null)
                 {
                     // 如果 Hediff 本身没定义掉落物，且是移除整个部位（天然器官），尝试从部位定义获取
-                    // 只有在确定是“移除”操作且该部位是干净的时候才生成天然器官
-                    if (MedicalRecipesUtility.IsCleanAndDroppable(pawn, part))
+                    // 在全自动手术中，我们放宽“干净”的限制
+                    if (part.def.spawnThingOnRemoved != null)
                     {
                         spawnThingDef = part.def.spawnThingOnRemoved;
                     }
@@ -784,6 +784,28 @@ namespace FullyAutomaticOmniCrafter
                         using (OmniAutoSurgeonSurgeryContext.Enter())
                         {
                             recipe.Worker.ApplyOnPawn(pawn, part, billDoer, ingredients, null);
+                        }
+
+                        // 对于某些移除部位的操作，即使 ApplyOnPawn 没能成功生成物品（例如因为 IsCleanAndDroppable 限制或其他原因）
+                        // 且该部位确实被移除了（变成了缺失部位），我们尝试手动补救生成。
+                        // 注意：如果 Harmony 补丁生效了，这里通常不需要补救，但为了双重保险：
+                        if (recipe.targetsBodyPart && part != null && part.def.spawnThingOnRemoved != null)
+                        {
+                            // 检查该部位是否现在确实缺失了
+                            if (!pawn.health.hediffSet.GetNotMissingParts().Contains(part))
+                            {
+                                // 检查是否有新物品生成在地图上
+                                HashSet<int> afterThingIds = CaptureMapThingIds(this.Map);
+                                bool anyNewThing = afterThingIds.Any(id => !beforeThingIds.Contains(id));
+                                if (!anyNewThing)
+                                {
+                                    // 手动生成缺失的器官
+                                    Thing thing = ThingMaker.MakeThing(part.def.spawnThingOnRemoved);
+                                    ForceLegendaryQuality(thing);
+                                    IntVec3 dropCell = this.def != null && this.def.hasInteractionCell ? this.InteractionCell : this.Position;
+                                    GenPlace.TryPlaceThing(thing, dropCell, this.Map, ThingPlaceMode.Near);
+                                }
+                            }
                         }
 
                         PromoteNewMapThingsToLegendary(this.Map, beforeThingIds);
