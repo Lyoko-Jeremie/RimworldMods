@@ -604,7 +604,8 @@ namespace FullyAutomaticOmniCrafter
 
                         if (recipe.targetsBodyPart && part == null)
                         {
-                            part = pawn?.RaceProps?.body?.corePart;
+                            failReason = "Body part missing";
+                            return false;
                         }
 
                         Pawn billDoer = recipe.Worker is Recipe_Surgery ? SelectOperationSurgeon(pawn) : null;
