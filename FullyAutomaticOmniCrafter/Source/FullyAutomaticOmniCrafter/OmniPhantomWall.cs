@@ -10,19 +10,6 @@ namespace FullyAutomaticOmniCrafter
 {
     /// <summary>
     /// 幻影墙 XML 扩展参数。
-    /// 在 ThingDef 的 &lt;modExtensions&gt; 节点中添加：
-    /// <code>
-    /// &lt;modExtensions&gt;
-    ///   &lt;li Class="FullyAutomaticOmniCrafter.PhantomWallExtension"&gt;
-    ///     &lt;allowPrisoner&gt;false&lt;/allowPrisoner&gt;
-    ///     &lt;allowGuest&gt;false&lt;/allowGuest&gt;
-    ///   &lt;/li&gt;
-    /// &lt;/modExtensions&gt;
-    /// </code>
-    /// allowPrisoner（默认 true）：玩家的俘虏是否可穿越幻影墙。
-    /// allowGuest（默认 true）：玩家的客人/访客是否可穿越幻影墙。
-    /// targetTemperature（默认 21）：幻影墙尝试维持的房间温度。
-    /// heatPushPower（默认 5）：每 Tick 调整温度的速度强度。
     /// </summary>
     public enum PhantomWallPassMode
     {
@@ -31,7 +18,9 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>2: 玩家、玩家动物、玩家机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。</summary>
         PlayerPetsAndAllies,
         /// <summary>3: 只有玩家、玩家机器人能通过。动物、友方、敌方均不能通过。</summary>
-        OnlyPlayerNoPets
+        OnlyPlayerNoPets,
+        /// <summary>4: 只有玩家、玩家机器人能通过。动物、囚犯、友方、敌方均不能通过。</summary>
+        OnlyPlayerNoPetsNotPrisoners,
     }
 
     /// <summary>
@@ -224,28 +213,33 @@ namespace FullyAutomaticOmniCrafter
             //     $"Lord={pawn.GetLord()}, Humanlike={pawn.RaceProps.Humanlike}, Animal={pawn.RaceProps.Animal}, " +
             //     $"HostileToPlayer={pawn.HostileTo(Faction.OfPlayer)}, Mode={mode}");
 
+            // 【强制拦截判定】
+            // 0. 囚犯判定 (针对 OnlyPlayerNoPetsNotPrisoners 模式)
+            // 必须在检查 Faction.OfPlayer 之前执行，因为被逮捕的本派系殖民者虽然 Faction 仍为玩家，但身份已变为囚犯。
+            if (mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners)
+            {
+                // 如果是囚犯（无论所属派系，包括被逮捕的发疯殖民者），则绝不允许通过
+                if (pawn.IsPrisoner) return false;
+            }
+
             // 1. 核心玩家单位判定
             // 检查是否为玩家派系的成员
             bool isPlayerFaction = pawn.Faction == Faction.OfPlayer;
             
-            // 【任何时候玩家单位都可通过】
-            // 玩家单位定义：
-            // - 是玩家派系的成员 (殖民者、机甲、玩家驯服的动物)
-            // - 是玩家托管的囚犯或客人 (仅在模式 2 下考虑)
+            // 【任何时候玩家单位都可通过（除上述模式 4 的囚犯限制外）】
             if (isPlayerFaction)
             {
                 // 如果是动物
                 if (pawn.RaceProps.Animal)
                 {
-                    // 【额外限制，动物不可在 OnlyPlayerNoPets 下通过，用于作为栅栏圈养动物】
-                    // 只有模式 1 和 2 允许动物通过，模式 3 不允许
-                    return mode != PhantomWallPassMode.OnlyPlayerNoPets;
+                    // 【额外限制，动物不可在 OnlyPlayerNoPets 或 OnlyPlayerNoPetsNotPrisoners 下通过】
+                    return mode != PhantomWallPassMode.OnlyPlayerNoPets && mode != PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners;
                 }
                 // 殖民者、机甲等人类或机器人始终可以通过
                 return true;
             }
 
-            // 【中立单位仅仅只在 PlayerPetsAndAllies 可通过】
+            // 【中立/友方单位判定】
             // 2. 友方/中立判定 (仅在模式 2: PlayerPetsAndAllies 下启用)
             if (mode == PhantomWallPassMode.PlayerPetsAndAllies)
             {
