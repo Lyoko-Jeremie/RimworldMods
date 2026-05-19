@@ -318,4 +318,66 @@
         
     </ThingDef>
 
+    <!--  ===============================================================================================  -->
+
+    <ThingDef Name="OmniPhantomWall_Prisoners_" ParentName="OmniPhantomWallBase">
+        <defName>OmniPhantomWall_Prisoners_</defName>
+        <label>OmniPhantomWall_Prisoners_</label>
+        <description>description</description>
+        
+        <graphicData>
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall_Animal</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
+        </graphicData>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <!-- 1: 只有玩家、玩家动物、机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。 -->
+                <!-- <passMode>PlayerAndPets</passMode>-->
+                <!-- 2: 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。 -->
+                <!-- <passMode>PlayerPetsAndAllies</passMode>-->
+                <!-- 3: 只有玩家、机器人能通过。动物、友方、敌方均不能通过。 -->
+                <!-- <passMode>OnlyPlayerNoPets</passMode>-->
+                <!-- 4: 只有玩家、玩家机器人能通过。动物、囚犯、友方、敌方均不能通过。 -->
+                <passMode>OnlyPlayerNoPetsNotPrisoners</passMode>
+            </li>
+        </modExtensions>
+        
+    </ThingDef>
+    
+    <ThingDef Name="OmniPhantomWall_Prisoners_Power" ParentName="OmniPhantomWall_Prisoners_">
+        <defName>OmniPhantomWall_Prisoners_Power</defName>
+        <label>OmniPhantomWall_Prisoners_Power</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+        </comps>
+
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPhantomWall_Prisoners_Power">
+        <defName>OmniPhantomWall_Prisoners_PowerLight</defName>
+        <label>OmniPhantomWall_Prisoners_PowerLight</label>
+        <description>description</description>
+
+        <comps>
+            <!-- 自发光 -->
+            <li Class="CompProperties_Glower">
+                <glowRadius>25</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
+                <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
+            </li>
+        </comps>
+        
+    </ThingDef>
+
 </Defs>

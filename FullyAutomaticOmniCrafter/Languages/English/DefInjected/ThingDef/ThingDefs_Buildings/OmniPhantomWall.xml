@@ -33,4 +33,13 @@
     <OmniPhantomWall_Animal_PowerLight.label>Phantom Wall (Animal Pen) (Self-Luminous With Cable)</OmniPhantomWall_Animal_PowerLight.label>
     <OmniPhantomWall_Animal_PowerLight.description>A building that employs phase-space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals. Stops all objects except colonists.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall_Animal_PowerLight.description>
 
+    <OmniPhantomWall_Prisoners_.label>Phantom Wall (Prison)</OmniPhantomWall_Prisoners_.label>
+    <OmniPhantomWall_Prisoners_.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals and prisoners. Stops all objects except colonists.</OmniPhantomWall_Prisoners_.description>
+
+    <OmniPhantomWall_Prisoners_Power.label>Phantom Wall (Prison) (With Cable)</OmniPhantomWall_Prisoners_Power.label>
+    <OmniPhantomWall_Prisoners_Power.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals and prisoners. Stops all objects except colonists.\n\nWith integrated cables.</OmniPhantomWall_Prisoners_Power.description>
+
+    <OmniPhantomWall_Prisoners_PowerLight.label>Phantom Wall (Prison) (Self-Luminous With Cable)</OmniPhantomWall_Prisoners_PowerLight.label>
+    <OmniPhantomWall_Prisoners_PowerLight.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals and prisoners. Stops all objects except colonists.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall_Prisoners_PowerLight.description>
+
 </LanguageData>
