@@ -711,50 +711,6 @@ namespace FullyAutomaticOmniCrafter
                         if (billDoer == null) billDoer = pawn;
 
                         List<Thing> ingredients = new List<Thing>();
-                        if (recipe.ingredients != null && recipe.ingredients.Count > 0)
-                        {
-                            foreach (var ingredientCount in recipe.ingredients)
-                            {
-                                // 始终创建临时物品，不消耗地图上的材料
-                                Thing thing = ThingMaker.MakeThing(ingredientCount.FixedIngredient);
-                                if (thing != null)
-                                {
-                                    thing.stackCount = (int)ingredientCount.GetBaseCount();
-                                    ingredients.Add(thing);
-                                }
-                            }
-                        }
-
-                        // Special case for Recipe_AdministerUsableItem which doesn't always have ingredients defined in XML 
-                        // but expects them in ApplyOnPawn.
-                        if (ingredients.Count == 0 && recipe.Worker is Recipe_AdministerUsableItem)
-                        {
-                            // 对于这种没有在 ingredients 中定义但又需要的，尝试根据其特定逻辑生成
-                            // 通常这类 RecipeDef 关联一个特定的 ThingDef
-                            // 尝试寻找 fixedIngredientFilter 中的第一个允许的物品
-                            ThingDef singleIngredient = recipe.fixedIngredientFilter?.AnyAllowedDef;
-                            if (singleIngredient != null)
-                            {
-                                Thing thing = ThingMaker.MakeThing(singleIngredient);
-                                if (thing != null)
-                                {
-                                    thing.stackCount = 1;
-                                    ingredients.Add(thing);
-                                }
-                            }
-                            
-                            if (ingredients.Count == 0)
-                            {
-                                failReason = "Missing required item for administration (could not auto-generate)";
-                                return false;
-                            }
-                        }
-
-                        if (ingredients.Count == 0 && recipe.ingredients != null && recipe.ingredients.Count > 0)
-                        {
-                            failReason = "Could not generate required ingredients";
-                            return false;
-                        }
 
                         HashSet<int> beforeThingIds = CaptureMapThingIds(this.Map);
 

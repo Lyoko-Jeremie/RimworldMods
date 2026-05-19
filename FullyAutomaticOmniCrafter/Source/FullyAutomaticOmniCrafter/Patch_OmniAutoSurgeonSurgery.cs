@@ -60,5 +60,50 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
     }
+
+    [HarmonyPatch(typeof(Recipe_AdministerUsableItem), "ApplyOnPawn")]
+    public static class Patch_Recipe_AdministerUsableItem_ApplyOnPawn
+    {
+        public static bool Prefix(Recipe_AdministerUsableItem __instance, Pawn pawn, List<Thing> ingredients)
+        {
+            if (!OmniAutoSurgeonSurgeryContext.IsActive) return true;
+
+            // If ingredients is empty, we find the thing def from recipe and simulate usage
+            if (ingredients.Count == 0)
+            {
+                ThingDef itemDef = __instance.recipe.fixedIngredientFilter?.AnyAllowedDef;
+                if (itemDef != null)
+                {
+                    // Create a temporary thing to get its CompUsable
+                    Thing tempThing = ThingMaker.MakeThing(itemDef);
+                    if (tempThing != null)
+                    {
+                        CompUsable comp = tempThing.TryGetComp<CompUsable>();
+                        if (comp != null)
+                        {
+                            comp.UsedBy(pawn);
+                        }
+                    }
+                }
+                return false;
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(SurgeryOutcomeComp_MedicineQuality), "XGetter")]
+    public static class Patch_SurgeryOutcomeComp_MedicineQuality_XGetter
+    {
+        public static bool Prefix(ref float __result)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive)
+            {
+                // Always return high quality (e.g. 2.0 for Glitterworld medicine potency)
+                __result = 2.0f;
+                return false;
+            }
+            return true;
+        }
+    }
 }
 
