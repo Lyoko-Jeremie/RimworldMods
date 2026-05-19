@@ -175,29 +175,34 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    [HarmonyPatch(typeof(MedicalRecipesUtility), "SpawnThingsFromHediffs")]
+    public static class Patch_MedicalRecipesUtility_SpawnThingsFromHediffs
+    {
+        public static void Prefix(Pawn pawn, BodyPartRecord part, ref IntVec3 pos, ref Map map)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive && OmniAutoSurgeonSurgeryContext.CurrentSurgeon != null)
+            {
+                map = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Map;
+                pos = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.def.hasInteractionCell 
+                    ? OmniAutoSurgeonSurgeryContext.CurrentSurgeon.InteractionCell 
+                    : OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Position;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(MedicalRecipesUtility), "SpawnNaturalPartIfClean")]
     public static class Patch_MedicalRecipesUtility_SpawnNaturalPartIfClean
     {
-        public static bool Prefix(ref Thing __result, Pawn pawn, BodyPartRecord part, IntVec3 pos, Map map)
+        public static void Prefix(Pawn pawn, BodyPartRecord part, ref IntVec3 pos, ref Map map)
         {
-            if (OmniAutoSurgeonSurgeryContext.IsActive)
+            if (OmniAutoSurgeonSurgeryContext.IsActive && OmniAutoSurgeonSurgeryContext.CurrentSurgeon != null)
             {
-                // If map is null, use current surgeon building's map and position
-                if (map == null && OmniAutoSurgeonSurgeryContext.CurrentSurgeon != null)
-                {
-                    Map surgeonMap = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Map;
-                    IntVec3 surgeonPos = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.def.hasInteractionCell 
-                        ? OmniAutoSurgeonSurgeryContext.CurrentSurgeon.InteractionCell 
-                        : OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Position;
-                    
-                    if (surgeonMap != null && part.def.spawnThingOnRemoved != null)
-                    {
-                        __result = GenSpawn.Spawn(part.def.spawnThingOnRemoved, surgeonPos, surgeonMap);
-                        return false;
-                    }
-                }
+                // Force spawn at surgeon building's location
+                map = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Map;
+                pos = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.def.hasInteractionCell 
+                    ? OmniAutoSurgeonSurgeryContext.CurrentSurgeon.InteractionCell 
+                    : OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Position;
             }
-            return true;
         }
     }
 }
