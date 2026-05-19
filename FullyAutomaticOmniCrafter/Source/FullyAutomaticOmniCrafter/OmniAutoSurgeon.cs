@@ -569,7 +569,7 @@ namespace FullyAutomaticOmniCrafter
             if (pawn == null) return;
             try
             {
-                var anesthesia = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDef.Named("Anesthesia"));
+                var anesthesia = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.Anesthetic);
                 if (anesthesia != null)
                 {
                     pawn.health.RemoveHediff(anesthesia);
