@@ -201,6 +201,7 @@ namespace FullyAutomaticOmniCrafter
         /// 1: PlayerAndPets - 只有玩家、玩家动物、机器人能通过。
         /// 2: PlayerPetsAndAllies - 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。
         /// 3: OnlyPlayerNoPets - 只有玩家、机器人能通过。
+        /// 4: OnlyPlayerNoPetsNotPrisoners - 只有玩家、机器人能通过，动物、囚犯也不能通过。
         /// </summary>
         public static bool CanPawnPass(Pawn pawn, PhantomWallExtension ext)
         {
@@ -253,7 +254,12 @@ namespace FullyAutomaticOmniCrafter
                 if (!pawn.HostileTo(Faction.OfPlayer))
                 {
                     // 具有派系的人员、具有领主（Lord）的群体单位，或非敌对的野生动物
-                    if (pawn.Faction != null || pawn.GetLord() != null || pawn.RaceProps.Humanlike || pawn.RaceProps.Animal)
+                    // 额外放行智力达到“工具使用”等级的非人类 (ToolUser)，增加对 Mod 实体的兼容性
+                    if (pawn.Faction != null
+                        || pawn.GetLord() != null
+                        || pawn.RaceProps.Humanlike
+                        || pawn.RaceProps.Animal
+                        || pawn.RaceProps.ToolUser)
                     {
                         return true;
                     }
