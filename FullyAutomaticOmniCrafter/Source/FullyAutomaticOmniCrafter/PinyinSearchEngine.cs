@@ -48,46 +48,21 @@ namespace FullyAutomaticOmniCrafter
         {
             _index.Clear();
             _isReady = false;
-
-            if (defs == null || defs.Count == 0) return;
-
-            for (int i = 0; i < defs.Count; i++)
-            {
-                T def = defs[i];
-                if (def == null) continue;
-
-                string rawLabel = def.label ?? def.defName ?? "";
-                string fullPinyin = string.Empty;
-                string initials   = string.Empty;
-
-                try
-                {
-                    if (WordsHelper.HasChinese(rawLabel))
-                    {
-                        // GetPinyin(text, separator, tone=false) → 无声调全拼，分隔符为 ""
-                        // 例："中国" → "zhongguo"
-                        string raw = WordsHelper.GetPinyin(rawLabel, "", false);
-                        fullPinyin = raw != null ? raw.ToLower() : string.Empty;
-
-                        // GetFirstPinyin → 大写首字母串，例 "中国" → "ZG"
-                        string ini = WordsHelper.GetFirstPinyin(rawLabel);
-                        initials = ini != null ? ini.ToLower() : string.Empty;
-                    }
-                }
-                catch
-                {
-                    // 个别 def 转换失败时，保留空字符串，搜索时跳过拼音匹配即可
-                }
-
-                _index[def] = new PinyinEntry
-                {
-                    FullPinyin = fullPinyin,
-                    Initials   = initials
-                };
-            }
+            IndexDefs(defs);
 
             _isReady = true;
             Log.Message($"[OmniCrafter] PinyinSearchEngine: indexed {_index.Count} items.");
+        }
+
+        /// <summary>
+        /// 追加/更新指定 Def 列表的拼音索引，不清空已有索引。
+        /// 适合多个窗口按需引入不同 Def 类型（RecipeDef/HediffDef/PawnKindDef 等）。
+        /// </summary>
+        public static void EnsureIndexed<T>(List<T> defs) where T : Def
+        {
+            if (defs == null || defs.Count == 0) return;
+            IndexDefs(defs);
+            _isReady = true;
         }
 
         /// <summary>
@@ -122,6 +97,43 @@ namespace FullyAutomaticOmniCrafter
                 return true;
 
             return false;
+        }
+
+        private static void IndexDefs<T>(List<T> defs) where T : Def
+        {
+            if (defs == null || defs.Count == 0) return;
+
+            for (int i = 0; i < defs.Count; i++)
+            {
+                T def = defs[i];
+                if (def == null) continue;
+
+                string rawLabel = def.label ?? def.defName ?? "";
+                string fullPinyin = string.Empty;
+                string initials = string.Empty;
+
+                try
+                {
+                    if (WordsHelper.HasChinese(rawLabel))
+                    {
+                        string raw = WordsHelper.GetPinyin(rawLabel, "", false);
+                        fullPinyin = raw != null ? raw.ToLower() : string.Empty;
+
+                        string ini = WordsHelper.GetFirstPinyin(rawLabel);
+                        initials = ini != null ? ini.ToLower() : string.Empty;
+                    }
+                }
+                catch
+                {
+                    // Ignore conversion failure for a single def; keep empty pinyin fields.
+                }
+
+                _index[def] = new PinyinEntry
+                {
+                    FullPinyin = fullPinyin,
+                    Initials = initials
+                };
+            }
         }
     }
 }

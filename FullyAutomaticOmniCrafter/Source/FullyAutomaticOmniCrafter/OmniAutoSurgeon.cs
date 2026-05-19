@@ -1059,6 +1059,7 @@ namespace FullyAutomaticOmniCrafter
         private readonly List<RecipeCandidate> cached = new List<RecipeCandidate>();
         private string searchText = string.Empty;
         private Vector2 scrollPos;
+        private bool pinyinIndexPrepared;
 
         private struct RecipeCandidate
         {
@@ -1086,9 +1087,10 @@ namespace FullyAutomaticOmniCrafter
             cached.Clear();
             string lower = searchText.NullOrEmpty() ? string.Empty : searchText.ToLower();
 
-            if (OmniCrafterMod.Settings.enablePinyinSearch && !PinyinSearchEngine.IsReady)
+            if (OmniCrafterMod.Settings.enablePinyinSearch && !pinyinIndexPrepared)
             {
-                PinyinSearchEngine.BuildIndex(DefDatabase<RecipeDef>.AllDefsListForReading);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading);
+                pinyinIndexPrepared = true;
             }
 
             List<RecipeDef> defs = DefDatabase<RecipeDef>.AllDefsListForReading;
@@ -1173,6 +1175,7 @@ namespace FullyAutomaticOmniCrafter
         private readonly List<HediffDef> cached = new List<HediffDef>();
         private string searchText = string.Empty;
         private Vector2 scrollPos;
+        private bool pinyinIndexPrepared;
 
         public override Vector2 InitialSize => new Vector2(720f, 680f);
 
@@ -1193,9 +1196,10 @@ namespace FullyAutomaticOmniCrafter
             cached.Clear();
             string lower = searchText.NullOrEmpty() ? string.Empty : searchText.ToLower();
 
-            if (OmniCrafterMod.Settings.enablePinyinSearch && !PinyinSearchEngine.IsReady)
+            if (OmniCrafterMod.Settings.enablePinyinSearch && !pinyinIndexPrepared)
             {
-                PinyinSearchEngine.BuildIndex(DefDatabase<HediffDef>.AllDefsListForReading);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading);
+                pinyinIndexPrepared = true;
             }
 
             List<HediffDef> defs = DefDatabase<HediffDef>.AllDefsListForReading;
