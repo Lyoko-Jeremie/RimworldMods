@@ -1060,6 +1060,7 @@ namespace FullyAutomaticOmniCrafter
         private string searchText = string.Empty;
         private Vector2 scrollPos;
         private bool pinyinIndexPrepared;
+        private bool pinyinSearchEnabled;
 
         private struct RecipeCandidate
         {
@@ -1086,12 +1087,6 @@ namespace FullyAutomaticOmniCrafter
         {
             cached.Clear();
             string lower = searchText.NullOrEmpty() ? string.Empty : searchText.ToLower();
-
-            if (OmniCrafterMod.Settings.enablePinyinSearch && !pinyinIndexPrepared)
-            {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading);
-                pinyinIndexPrepared = true;
-            }
 
             List<RecipeDef> defs = DefDatabase<RecipeDef>.AllDefsListForReading;
             for (int i = 0; i < defs.Count; i++)
@@ -1123,14 +1118,33 @@ namespace FullyAutomaticOmniCrafter
             cached.Sort((a, b) => string.Compare(a.label, b.label, StringComparison.OrdinalIgnoreCase));
         }
 
-        private static bool MatchesSearch(RecipeDef recipe, string label, string lower)
+        private bool MatchesSearch(RecipeDef recipe, string label, string lower)
         {
             if (lower.NullOrEmpty()) return true;
             if ((label ?? string.Empty).ToLower().Contains(lower)) return true;
             if ((recipe.defName ?? string.Empty).ToLower().Contains(lower)) return true;
             if ((recipe.label ?? string.Empty).ToLower().Contains(lower)) return true;
-            if (PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(recipe, lower)) return true;
+            if (pinyinSearchEnabled && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(recipe, lower)) return true;
             return false;
+        }
+
+        private void TryEnablePinyinSearch()
+        {
+            if (!OmniCrafterMod.Settings.enablePinyinSearch)
+            {
+                Messages.Message("请先在设置中启用拼音搜索。", MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            if (!pinyinIndexPrepared)
+            {
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading);
+                pinyinIndexPrepared = true;
+            }
+
+            pinyinSearchEnabled = true;
+            RebuildCache();
+            Messages.Message("手术搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -1146,7 +1160,16 @@ namespace FullyAutomaticOmniCrafter
                 RebuildCache();
             }
 
-            Rect outRect = new Rect(0f, 74f, inRect.width, inRect.height - 74f);
+            string pinyinButtonLabel = pinyinSearchEnabled ? "拼音搜索: 已启用" : "启用拼音搜索";
+            if (Widgets.ButtonText(new Rect(0f, 74f, 180f, 28f), pinyinButtonLabel))
+            {
+                if (!pinyinSearchEnabled)
+                {
+                    TryEnablePinyinSearch();
+                }
+            }
+
+            Rect outRect = new Rect(0f, 108f, inRect.width, inRect.height - 108f);
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(40f, cached.Count * 34f));
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
 
@@ -1176,6 +1199,7 @@ namespace FullyAutomaticOmniCrafter
         private string searchText = string.Empty;
         private Vector2 scrollPos;
         private bool pinyinIndexPrepared;
+        private bool pinyinSearchEnabled;
 
         public override Vector2 InitialSize => new Vector2(720f, 680f);
 
@@ -1196,12 +1220,6 @@ namespace FullyAutomaticOmniCrafter
             cached.Clear();
             string lower = searchText.NullOrEmpty() ? string.Empty : searchText.ToLower();
 
-            if (OmniCrafterMod.Settings.enablePinyinSearch && !pinyinIndexPrepared)
-            {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading);
-                pinyinIndexPrepared = true;
-            }
-
             List<HediffDef> defs = DefDatabase<HediffDef>.AllDefsListForReading;
             for (int i = 0; i < defs.Count; i++)
             {
@@ -1213,7 +1231,7 @@ namespace FullyAutomaticOmniCrafter
                     bool matched = def.LabelCap.ToString().ToLower().Contains(lower) ||
                                    (def.defName ?? string.Empty).ToLower().Contains(lower) ||
                                    (def.label ?? string.Empty).ToLower().Contains(lower) ||
-                                   (PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(def, lower));
+                                   (pinyinSearchEnabled && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(def, lower));
                     if (!matched) continue;
                 }
 
@@ -1221,6 +1239,25 @@ namespace FullyAutomaticOmniCrafter
             }
 
             cached.Sort((a, b) => string.Compare(a.LabelCap.ToString(), b.LabelCap.ToString(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void TryEnablePinyinSearch()
+        {
+            if (!OmniCrafterMod.Settings.enablePinyinSearch)
+            {
+                Messages.Message("请先在设置中启用拼音搜索。", MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            if (!pinyinIndexPrepared)
+            {
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading);
+                pinyinIndexPrepared = true;
+            }
+
+            pinyinSearchEnabled = true;
+            RebuildCache();
+            Messages.Message("植入搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -1236,7 +1273,16 @@ namespace FullyAutomaticOmniCrafter
                 RebuildCache();
             }
 
-            Rect outRect = new Rect(0f, 74f, inRect.width, inRect.height - 74f);
+            string pinyinButtonLabel = pinyinSearchEnabled ? "拼音搜索: 已启用" : "启用拼音搜索";
+            if (Widgets.ButtonText(new Rect(0f, 74f, 180f, 28f), pinyinButtonLabel))
+            {
+                if (!pinyinSearchEnabled)
+                {
+                    TryEnablePinyinSearch();
+                }
+            }
+
+            Rect outRect = new Rect(0f, 108f, inRect.width, inRect.height - 108f);
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(40f, cached.Count * 34f));
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
 
