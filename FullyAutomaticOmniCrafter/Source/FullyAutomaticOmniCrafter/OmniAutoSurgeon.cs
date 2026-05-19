@@ -389,9 +389,11 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
 
-                if (spawnThingDef != null)
+                if (spawnThingDef != null && this.Map != null)
                 {
-                    GenSpawn.Spawn(spawnThingDef, Position, Map);
+                    Thing thing = ThingMaker.MakeThing(spawnThingDef);
+                    IntVec3 dropCell = this.def != null && this.def.hasInteractionCell ? this.InteractionCell : this.Position;
+                    GenPlace.TryPlaceThing(thing, dropCell, this.Map, ThingPlaceMode.Near);
                 }
 
                 // 2. 移除 Hediff
@@ -602,20 +604,11 @@ namespace FullyAutomaticOmniCrafter
 
                         if (recipe.targetsBodyPart && part == null)
                         {
-                            failReason = "Body part missing";
-                            return false;
+                            part = pawn?.RaceProps?.body?.corePart;
                         }
 
-                        Pawn billDoer = null;
-                        if (recipe.Worker is Recipe_Surgery)
-                        {
-                            billDoer = SelectOperationSurgeon(pawn);
-                            if (billDoer == null)
-                            {
-                                failReason = "No valid surgeon available";
-                                return false;
-                            }
-                        }
+                        Pawn billDoer = recipe.Worker is Recipe_Surgery ? SelectOperationSurgeon(pawn) : null;
+                        if (billDoer == null) billDoer = pawn;
 
                         recipe.Worker.ApplyOnPawn(pawn, part, billDoer, new List<Thing>(), null);
                         return true;
@@ -1092,24 +1085,56 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < defs.Count; i++)
             {
                 RecipeDef recipe = defs[i];
-                if (recipe == null || recipe.Worker == null || !(recipe.Worker is Recipe_Surgery) || !recipe.AvailableNow) continue;
-                if (!recipe.Worker.AvailableReport(pawn).Accepted) continue;
+                if (recipe == null || recipe.Worker == null || !(recipe.Worker is Recipe_Surgery)) continue;
 
                 if (recipe.targetsBodyPart)
                 {
-                    IEnumerable<BodyPartRecord> parts = recipe.Worker.GetPartsToApplyOn(pawn, recipe);
+                    IEnumerable<BodyPartRecord> parts = pawn?.RaceProps?.body?.AllParts ?? Enumerable.Empty<BodyPartRecord>();
+                    if (!recipe.appliedOnFixedBodyParts.NullOrEmpty())
+                    {
+                        parts = parts.Where(p => p != null && p.def != null && recipe.appliedOnFixedBodyParts.Contains(p.def));
+                    }
+
+                    bool anyPart = false;
                     foreach (BodyPartRecord part in parts)
                     {
-                        if (!recipe.AvailableOnNow(pawn, part)) continue;
-                        string label = recipe.Worker.GetLabelWhenUsedOn(pawn, part).CapitalizeFirst() + " (" + part.LabelCap + ")";
+                        anyPart = true;
+                        string opLabel;
+                        try
+                        {
+                            opLabel = recipe.Worker.GetLabelWhenUsedOn(pawn, part).CapitalizeFirst();
+                        }
+                        catch
+                        {
+                            opLabel = !recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "Unknown surgery");
+                        }
+
+                        string label = opLabel + " (" + part.LabelCap + ")";
                         if (!MatchesSearch(recipe, label, lower)) continue;
                         cached.Add(new RecipeCandidate { recipe = recipe, part = part, label = label });
+                    }
+
+                    if (!anyPart)
+                    {
+                        string fallbackLabel = (!recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "Unknown surgery")) + " (未匹配部位)";
+                        if (MatchesSearch(recipe, fallbackLabel, lower))
+                        {
+                            cached.Add(new RecipeCandidate { recipe = recipe, part = null, label = fallbackLabel });
+                        }
                     }
                 }
                 else
                 {
-                    if (!recipe.AvailableOnNow(pawn, null)) continue;
-                    string label = recipe.Worker.GetLabelWhenUsedOn(pawn, null).CapitalizeFirst();
+                    string label;
+                    try
+                    {
+                        label = recipe.Worker.GetLabelWhenUsedOn(pawn, null).CapitalizeFirst();
+                    }
+                    catch
+                    {
+                        label = !recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "Unknown surgery");
+                    }
+
                     if (!MatchesSearch(recipe, label, lower)) continue;
                     cached.Add(new RecipeCandidate { recipe = recipe, part = null, label = label });
                 }
@@ -1130,12 +1155,6 @@ namespace FullyAutomaticOmniCrafter
 
         private void TryEnablePinyinSearch()
         {
-            if (!OmniCrafterMod.Settings.enablePinyinSearch)
-            {
-                Messages.Message("请先在设置中启用拼音搜索。", MessageTypeDefOf.RejectInput, false);
-                return;
-            }
-
             if (!pinyinIndexPrepared)
             {
                 PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading);
@@ -1243,11 +1262,6 @@ namespace FullyAutomaticOmniCrafter
 
         private void TryEnablePinyinSearch()
         {
-            if (!OmniCrafterMod.Settings.enablePinyinSearch)
-            {
-                Messages.Message("请先在设置中启用拼音搜索。", MessageTypeDefOf.RejectInput, false);
-                return;
-            }
 
             if (!pinyinIndexPrepared)
             {
