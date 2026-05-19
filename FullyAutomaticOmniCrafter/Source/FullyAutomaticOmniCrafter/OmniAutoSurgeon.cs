@@ -710,11 +710,57 @@ namespace FullyAutomaticOmniCrafter
                         Pawn billDoer = recipe.Worker is Recipe_Surgery ? SelectOperationSurgeon(pawn) : null;
                         if (billDoer == null) billDoer = pawn;
 
+                        List<Thing> ingredients = new List<Thing>();
+                        if (recipe.ingredients != null && recipe.ingredients.Count > 0)
+                        {
+                            foreach (var ingredientCount in recipe.ingredients)
+                            {
+                                // 始终创建临时物品，不消耗地图上的材料
+                                Thing thing = ThingMaker.MakeThing(ingredientCount.FixedIngredient);
+                                if (thing != null)
+                                {
+                                    thing.stackCount = (int)ingredientCount.GetBaseCount();
+                                    ingredients.Add(thing);
+                                }
+                            }
+                        }
+
+                        // Special case for Recipe_AdministerUsableItem which doesn't always have ingredients defined in XML 
+                        // but expects them in ApplyOnPawn.
+                        if (ingredients.Count == 0 && recipe.Worker is Recipe_AdministerUsableItem)
+                        {
+                            // 对于这种没有在 ingredients 中定义但又需要的，尝试根据其特定逻辑生成
+                            // 通常这类 RecipeDef 关联一个特定的 ThingDef
+                            // 尝试寻找 fixedIngredientFilter 中的第一个允许的物品
+                            ThingDef singleIngredient = recipe.fixedIngredientFilter?.AnyAllowedDef;
+                            if (singleIngredient != null)
+                            {
+                                Thing thing = ThingMaker.MakeThing(singleIngredient);
+                                if (thing != null)
+                                {
+                                    thing.stackCount = 1;
+                                    ingredients.Add(thing);
+                                }
+                            }
+                            
+                            if (ingredients.Count == 0)
+                            {
+                                failReason = "Missing required item for administration (could not auto-generate)";
+                                return false;
+                            }
+                        }
+
+                        if (ingredients.Count == 0 && recipe.ingredients != null && recipe.ingredients.Count > 0)
+                        {
+                            failReason = "Could not generate required ingredients";
+                            return false;
+                        }
+
                         HashSet<int> beforeThingIds = CaptureMapThingIds(this.Map);
 
                         using (OmniAutoSurgeonSurgeryContext.Enter())
                         {
-                            recipe.Worker.ApplyOnPawn(pawn, part, billDoer, new List<Thing>(), null);
+                            recipe.Worker.ApplyOnPawn(pawn, part, billDoer, ingredients, null);
                         }
 
                         PromoteNewMapThingsToLegendary(this.Map, beforeThingIds);
@@ -1207,16 +1253,6 @@ namespace FullyAutomaticOmniCrafter
                 return label;
             }
 
-            HediffDef h = DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName);
-            string hLabel = h != null ? h.LabelCap.ToString() : operation.hediffDefName;
-            if (operation.operationType == OmniSurgeonOperationType.InstallImplant)
-            {
-                return "安装 " + hLabel + " -> " + partName;
-            }
-            if (operation.operationType == OmniSurgeonOperationType.RemoveImplant)
-            {
-                return "移除 " + hLabel + " <- " + partName;
-            }
             if (operation.operationType == OmniSurgeonOperationType.RepairAndHeal)
             {
                 return "修复损伤/医疗受伤";
@@ -1224,6 +1260,17 @@ namespace FullyAutomaticOmniCrafter
             if (operation.operationType == OmniSurgeonOperationType.RemoveAllImplantsAndRepair)
             {
                 return "卸载所有植入物并修复身体";
+            }
+
+            HediffDef h = !operation.hediffDefName.NullOrEmpty() ? DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName) : null;
+            string hLabel = h != null ? h.LabelCap.ToString() : (operation.hediffDefName ?? "未知");
+            if (operation.operationType == OmniSurgeonOperationType.InstallImplant)
+            {
+                return "安装 " + hLabel + " -> " + partName;
+            }
+            if (operation.operationType == OmniSurgeonOperationType.RemoveImplant)
+            {
+                return "移除 " + hLabel + " <- " + partName;
             }
 
             return "未知操作";
