@@ -42,4 +42,13 @@
     <OmniPhantomWall_Prisoners_PowerLight.label>Phantom Wall (Prison) (Self-Luminous With Cable)</OmniPhantomWall_Prisoners_PowerLight.label>
     <OmniPhantomWall_Prisoners_PowerLight.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals and prisoners. Stops all objects except colonists.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall_Prisoners_PowerLight.description>
 
+    <OmniPhantomWall_AnomalyEntity_.label>Phantom Wall (Entity Cell)</OmniPhantomWall_AnomalyEntity_.label>
+    <OmniPhantomWall_AnomalyEntity_.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals, prisoners and all anomaly entities. Stops all objects except colonists.</OmniPhantomWall_AnomalyEntity_.description>
+
+    <OmniPhantomWall_AnomalyEntity_Power.label>Phantom Wall (Entity Cell) (With Cable)</OmniPhantomWall_AnomalyEntity_Power.label>
+    <OmniPhantomWall_AnomalyEntity_Power.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals, prisoners and all anomaly entities. Stops all objects except colonists.\n\nWith integrated cables.</OmniPhantomWall_AnomalyEntity_Power.description>
+
+    <OmniPhantomWall_AnomalyEntity_PowerLight.label>Phantom Wall (Entity Cell) (Self-Luminous With Cable)</OmniPhantomWall_AnomalyEntity_PowerLight.label>
+    <OmniPhantomWall_AnomalyEntity_PowerLight.description>A building that employs phase-space folding technology. It is imperceptible to authorized personnel, yet an absolutely impenetrable barrier to unauthorized individuals and enemies.\n\nStops domestic animals, prisoners and all anomaly entities. Stops all objects except colonists.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall_AnomalyEntity_PowerLight.description>
+
 </LanguageData>

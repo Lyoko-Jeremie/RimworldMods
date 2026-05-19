@@ -37,4 +37,13 @@
     <OmniPhantomWall_Prisoners_PowerLight.label>幻影隔离墙（监狱）（自发光自带电缆）</OmniPhantomWall_Prisoners_PowerLight.label>
     <OmniPhantomWall_Prisoners_PowerLight.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止家养动物和囚犯。阻止除殖民者外的所有对象。\n\n自发光自带电缆。</OmniPhantomWall_Prisoners_PowerLight.description>
 
+    <OmniPhantomWall_AnomalyEntity_.label>幻影隔离墙（实体囚室）</OmniPhantomWall_AnomalyEntity_.label>
+    <OmniPhantomWall_AnomalyEntity_.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止家养动物、囚犯和所有异常实体。阻止除殖民者外的所有对象。</OmniPhantomWall_AnomalyEntity_.description>
+
+    <OmniPhantomWall_AnomalyEntity_Power.label>幻影隔离墙（实体囚室）（带电缆）</OmniPhantomWall_AnomalyEntity_Power.label>
+    <OmniPhantomWall_AnomalyEntity_Power.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止家养动物、囚犯和所有异常实体。阻止除殖民者外的所有对象。\n\n自带电缆。</OmniPhantomWall_AnomalyEntity_Power.description>
+
+    <OmniPhantomWall_AnomalyEntity_PowerLight.label>幻影隔离墙（实体囚室）（自发光自带电缆）</OmniPhantomWall_AnomalyEntity_PowerLight.label>
+    <OmniPhantomWall_AnomalyEntity_PowerLight.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n阻止家养动物、囚犯和所有异常实体。阻止除殖民者外的所有对象。\n\n自发光自带电缆。</OmniPhantomWall_AnomalyEntity_PowerLight.description>
+
 </LanguageData>

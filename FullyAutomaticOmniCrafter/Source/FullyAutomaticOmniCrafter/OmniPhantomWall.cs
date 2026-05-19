@@ -21,6 +21,8 @@ namespace FullyAutomaticOmniCrafter
         OnlyPlayerNoPets,
         /// <summary>4: 只有玩家、玩家机器人能通过。动物、囚犯、友方、敌方均不能通过。</summary>
         OnlyPlayerNoPetsNotPrisoners,
+        /// <summary>5: 只有玩家、玩家机器人能通过。动物、囚犯、实体、友方、敌方均不能通过。</summary>
+        OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity,
     }
 
     /// <summary>
@@ -202,6 +204,7 @@ namespace FullyAutomaticOmniCrafter
         /// 2: PlayerPetsAndAllies - 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。
         /// 3: OnlyPlayerNoPets - 只有玩家、机器人能通过。
         /// 4: OnlyPlayerNoPetsNotPrisoners - 只有玩家、机器人能通过，动物、囚犯也不能通过。
+        /// 5: OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity - 只有玩家、机器人能通过，动物、囚犯、实体均不能通过。
         /// </summary>
         public static bool CanPawnPass(Pawn pawn, PhantomWallExtension ext)
         {
@@ -215,12 +218,26 @@ namespace FullyAutomaticOmniCrafter
             //     $"HostileToPlayer={pawn.HostileTo(Faction.OfPlayer)}, Mode={mode}");
 
             // 【强制拦截判定】
-            // 0. 囚犯判定 (针对 OnlyPlayerNoPetsNotPrisoners 模式)
+            // 0. 囚犯判定 (针对模式 4, 5)
             // 必须在检查 Faction.OfPlayer 之前执行，因为被逮捕的本派系殖民者虽然 Faction 仍为玩家，但身份已变为囚犯。
-            if (mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners)
+            if (mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners || mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity)
             {
                 // 如果是囚犯（无论所属派系，包括被逮捕的发疯殖民者），则绝不允许通过
                 if (pawn.IsPrisoner) return false;
+            }
+
+            // 0.1 实体判定 (针对模式 5 或所有实体拦截需求)
+            // 如果是实体，且处于模式 5 或者是所有实体都需要拦截的情况
+            if (pawn.RaceProps.IsAnomalyEntity)
+            {
+                // 如果模式是 OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity，实体绝不允许通过
+                if (mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity) return false;
+                
+                // 此外，如果实体是对玩家敌对的，其他模式下也通常会被拦截（在后面处理），
+                // 但为了满足“额外拦截所有的 AnomalyEntity，以便用于建造实体囚室”，
+                // 我们确保在除了允许盟友的模式外，实体基本都不能通过。
+                // 如果是模式 1, 3, 4，实体也不应该通过，因为它们不是玩家单位。
+                // if (mode != PhantomWallPassMode.PlayerPetsAndAllies) return false;
             }
 
             // 1. 核心玩家单位判定
@@ -233,8 +250,10 @@ namespace FullyAutomaticOmniCrafter
                 // 如果是动物
                 if (pawn.RaceProps.Animal)
                 {
-                    // 【额外限制，动物不可在 OnlyPlayerNoPets 或 OnlyPlayerNoPetsNotPrisoners 下通过】
-                    return mode != PhantomWallPassMode.OnlyPlayerNoPets && mode != PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners;
+                    // 【额外限制，动物不可在 OnlyPlayerNoPets, OnlyPlayerNoPetsNotPrisoners 或 OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity 下通过】
+                    return mode != PhantomWallPassMode.OnlyPlayerNoPets && 
+                           mode != PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners &&
+                           mode != PhantomWallPassMode.OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity;
                 }
                 // 殖民者、机甲等人类或机器人始终可以通过
                 return true;

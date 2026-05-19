@@ -380,4 +380,55 @@
         
     </ThingDef>
 
+    <!--  ===============================================================================================  -->
+
+    <ThingDef Name="OmniPhantomWall_AnomalyEntity_" ParentName="OmniPhantomWallBase">
+        <defName>OmniPhantomWall_AnomalyEntity_</defName>
+        <label>OmniPhantomWall_AnomalyEntity_</label>
+        <description>description</description>
+
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
+                <!-- 5: 只有玩家、玩家机器人能通过。动物、囚犯、实体、友方、敌方均不能通过。 -->
+                <passMode>OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity</passMode>
+            </li>
+        </modExtensions>
+
+    </ThingDef>
+
+    <ThingDef Name="OmniPhantomWall_AnomalyEntity_Power" ParentName="OmniPhantomWall_AnomalyEntity_">
+        <defName>OmniPhantomWall_AnomalyEntity_Power</defName>
+        <label>OmniPhantomWall_AnomalyEntity_Power</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+        </comps>
+
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPhantomWall_AnomalyEntity_Power">
+        <defName>OmniPhantomWall_AnomalyEntity_PowerLight</defName>
+        <label>OmniPhantomWall_AnomalyEntity_PowerLight</label>
+        <description>description</description>
+
+        <comps>
+            <!-- 自发光 -->
+            <li Class="CompProperties_Glower">
+                <glowRadius>25</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
+                <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
+            </li>
+        </comps>
+
+    </ThingDef>
+
 </Defs>
