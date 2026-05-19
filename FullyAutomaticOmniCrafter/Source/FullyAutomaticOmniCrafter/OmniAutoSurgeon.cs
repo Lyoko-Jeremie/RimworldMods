@@ -7,6 +7,32 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
+    public static class OmniAutoSurgeonSurgeryContext
+    {
+        [ThreadStatic]
+        private static int activeDepth;
+
+        public static bool IsActive => activeDepth > 0;
+
+        public static IDisposable Enter()
+        {
+            activeDepth++;
+            return new Scope();
+        }
+
+        private sealed class Scope : IDisposable
+        {
+            private bool disposed;
+
+            public void Dispose()
+            {
+                if (disposed) return;
+                disposed = true;
+                if (activeDepth > 0) activeDepth--;
+            }
+        }
+    }
+
     public enum OmniSurgeonOperationType
     {
         Recipe,
@@ -611,7 +637,10 @@ namespace FullyAutomaticOmniCrafter
                         Pawn billDoer = recipe.Worker is Recipe_Surgery ? SelectOperationSurgeon(pawn) : null;
                         if (billDoer == null) billDoer = pawn;
 
-                        recipe.Worker.ApplyOnPawn(pawn, part, billDoer, new List<Thing>(), null);
+                        using (OmniAutoSurgeonSurgeryContext.Enter())
+                        {
+                            recipe.Worker.ApplyOnPawn(pawn, part, billDoer, new List<Thing>(), null);
+                        }
                         return true;
                     }
                     case OmniSurgeonOperationType.InstallImplant:
