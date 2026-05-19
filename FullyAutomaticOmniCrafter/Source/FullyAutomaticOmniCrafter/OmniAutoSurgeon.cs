@@ -39,7 +39,8 @@ namespace FullyAutomaticOmniCrafter
         InstallImplant,
         RemoveImplant,
         RepairAndHeal,
-        RemoveAllImplantsAndRepair
+        RemoveAllImplantsAndRepair,
+        TendAllWounds
     }
 
     public class OmniSurgeonOperation : IExposable
@@ -100,6 +101,14 @@ namespace FullyAutomaticOmniCrafter
             return new OmniSurgeonOperation
             {
                 operationType = OmniSurgeonOperationType.RemoveAllImplantsAndRepair
+            };
+        }
+
+        public static OmniSurgeonOperation CreateTendAllWounds()
+        {
+            return new OmniSurgeonOperation
+            {
+                operationType = OmniSurgeonOperationType.TendAllWounds
             };
         }
 
@@ -514,6 +523,33 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        public void TendAllWounds(Pawn pawn)
+        {
+            if (pawn == null) return;
+            try
+            {
+                int count = 0;
+                // 遍历所有 hediff，查找可以包扎的
+                foreach (var hediff in pawn.health.hediffSet.hediffs)
+                {
+                    if (hediff.TendableNow())
+                    {
+                        // 1.0f 代表 100% 的包扎质量。有些伤口可能支持更高的上限，但 1.0f 是最高标准质量。
+                        hediff.Tended(1.0f, 1.0f);
+                        count++;
+                    }
+                }
+                if (count > 0)
+                {
+                    Log.Message($"[OmniAutoSurgeon] 已为 {pawn.LabelShort} 包扎了 {count} 处伤口 (最高质量)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 包扎伤口时发生异常: {ex}");
+            }
+        }
+
         public void FullRepair(Pawn pawn)
         {
             if (pawn == null) return;
@@ -768,6 +804,11 @@ namespace FullyAutomaticOmniCrafter
                         RemoveAllImplantsAndRepair(pawn);
                         return true;
                     }
+                    case OmniSurgeonOperationType.TendAllWounds:
+                    {
+                        TendAllWounds(pawn);
+                        return true;
+                    }
                     default:
                         failReason = "Unknown operation type";
                         return false;
@@ -976,6 +1017,11 @@ namespace FullyAutomaticOmniCrafter
                 options.Add(new FloatMenuOption("卸载所有植入物并修复身体", delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRemoveAllImplantsAndRepair());
+                    SyncOperations();
+                }));
+                options.Add(new FloatMenuOption("包扎所有伤口 (最高质量)", delegate
+                {
+                    workingOperations.Add(OmniSurgeonOperation.CreateTendAllWounds());
                     SyncOperations();
                 }));
                 Find.WindowStack.Add(new FloatMenu(options));
@@ -1254,6 +1300,10 @@ namespace FullyAutomaticOmniCrafter
             if (operation.operationType == OmniSurgeonOperationType.RemoveAllImplantsAndRepair)
             {
                 return "卸载所有植入物并修复身体";
+            }
+            if (operation.operationType == OmniSurgeonOperationType.TendAllWounds)
+            {
+                return "包扎所有伤口 (最高质量)";
             }
 
             HediffDef h = !operation.hediffDefName.NullOrEmpty() ? DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName) : null;
