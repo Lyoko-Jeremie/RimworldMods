@@ -249,11 +249,11 @@ namespace FullyAutomaticOmniCrafter
                     return true;
                 }
 
-                // 非敌对的商队、访客、盟友等
+                // 非敌对的商队、访客、盟友、野生动物等
                 if (!pawn.HostileTo(Faction.OfPlayer))
                 {
-                    // 具有派系的人员或具有领主（Lord）的群体单位
-                    if (pawn.Faction != null || pawn.GetLord() != null || pawn.RaceProps.Humanlike/* || pawn.HostFaction != null*/)
+                    // 具有派系的人员、具有领主（Lord）的群体单位，或非敌对的野生动物
+                    if (pawn.Faction != null || pawn.GetLord() != null || pawn.RaceProps.Humanlike || pawn.RaceProps.Animal)
                     {
                         return true;
                     }
