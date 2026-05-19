@@ -232,7 +232,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void SelectOccupant()
         {
-            Find.WindowStack.Add(new Dialog_SelectPawn(this, (pawn) =>
+            Find.WindowStack.Add(new OmniAutoSurgeon_Dialog_SelectPawn(this, (pawn) =>
             {
                 if (this.innerContainer.Count > 0)
                 {

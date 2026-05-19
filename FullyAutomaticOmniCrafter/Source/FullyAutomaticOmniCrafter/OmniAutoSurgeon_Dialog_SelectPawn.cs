@@ -7,7 +7,7 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
-    public class Dialog_SelectPawn : Window
+    public class OmniAutoSurgeon_Dialog_SelectPawn : Window
     {
         private readonly Building_FullyAutoOmniSurgeon surgeon;
         private readonly Action<Pawn> onSelected;
@@ -23,7 +23,7 @@ namespace FullyAutomaticOmniCrafter
 
         public override Vector2 InitialSize => new Vector2(650f, 700f);
 
-        public Dialog_SelectPawn(Building_FullyAutoOmniSurgeon surgeon, Action<Pawn> onSelected)
+        public OmniAutoSurgeon_Dialog_SelectPawn(Building_FullyAutoOmniSurgeon surgeon, Action<Pawn> onSelected)
         {
             this.surgeon = surgeon;
             this.onSelected = onSelected;
