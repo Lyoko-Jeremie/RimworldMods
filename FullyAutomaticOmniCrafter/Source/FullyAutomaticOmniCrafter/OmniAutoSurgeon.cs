@@ -789,7 +789,9 @@ namespace FullyAutomaticOmniCrafter
                 Find.WindowStack.Add(new FloatMenu(options));
             }
 
-            Rect contentRect = new Rect(0f, 42f, inRect.width, inRect.height - 42f);
+            // Leave room for RimWorld's built-in bottom close button area.
+            const float bottomReservedForCloseButton = 42f;
+            Rect contentRect = new Rect(0f, 42f, inRect.width, inRect.height - 42f - bottomReservedForCloseButton);
             float gap = 10f;
             float leftWidth = Mathf.Floor(contentRect.width * 0.56f);
             Rect leftRect = new Rect(contentRect.x, contentRect.y, leftWidth - gap * 0.5f, contentRect.height);
