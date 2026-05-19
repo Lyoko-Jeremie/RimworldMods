@@ -418,6 +418,7 @@ namespace FullyAutomaticOmniCrafter
                 if (spawnThingDef != null && this.Map != null)
                 {
                     Thing thing = ThingMaker.MakeThing(spawnThingDef);
+                    ForceLegendaryQuality(thing);
                     IntVec3 dropCell = this.def != null && this.def.hasInteractionCell ? this.InteractionCell : this.Position;
                     GenPlace.TryPlaceThing(thing, dropCell, this.Map, ThingPlaceMode.Near);
                 }
@@ -637,10 +638,14 @@ namespace FullyAutomaticOmniCrafter
                         Pawn billDoer = recipe.Worker is Recipe_Surgery ? SelectOperationSurgeon(pawn) : null;
                         if (billDoer == null) billDoer = pawn;
 
+                        HashSet<int> beforeThingIds = CaptureMapThingIds(this.Map);
+
                         using (OmniAutoSurgeonSurgeryContext.Enter())
                         {
                             recipe.Worker.ApplyOnPawn(pawn, part, billDoer, new List<Thing>(), null);
                         }
+
+                        PromoteNewMapThingsToLegendary(this.Map, beforeThingIds);
                         return true;
                     }
                     case OmniSurgeonOperationType.InstallImplant:
@@ -704,6 +709,48 @@ namespace FullyAutomaticOmniCrafter
 
             if (patient != null && !patient.Dead) return patient;
             return null;
+        }
+
+        private static HashSet<int> CaptureMapThingIds(Map map)
+        {
+            if (map == null || map.listerThings == null) return null;
+
+            List<Thing> allThings = map.listerThings.AllThings;
+            HashSet<int> ids = new HashSet<int>();
+            for (int i = 0; i < allThings.Count; i++)
+            {
+                Thing thing = allThings[i];
+                if (thing != null)
+                {
+                    ids.Add(thing.thingIDNumber);
+                }
+            }
+
+            return ids;
+        }
+
+        private static void PromoteNewMapThingsToLegendary(Map map, HashSet<int> beforeThingIds)
+        {
+            if (map == null || beforeThingIds == null || map.listerThings == null) return;
+
+            List<Thing> allThings = map.listerThings.AllThings;
+            for (int i = 0; i < allThings.Count; i++)
+            {
+                Thing thing = allThings[i];
+                if (thing == null || beforeThingIds.Contains(thing.thingIDNumber)) continue;
+                ForceLegendaryQuality(thing);
+            }
+        }
+
+        private static void ForceLegendaryQuality(Thing thing)
+        {
+            if (thing == null) return;
+
+            CompQuality qualityComp = thing.TryGetComp<CompQuality>();
+            if (qualityComp != null)
+            {
+                qualityComp.SetQuality(QualityCategory.Legendary, ArtGenerationContext.Colony);
+            }
         }
 
         public static bool IsRestrictedFor(Pawn pawn, HediffDef hDef, BodyPartRecord part)
