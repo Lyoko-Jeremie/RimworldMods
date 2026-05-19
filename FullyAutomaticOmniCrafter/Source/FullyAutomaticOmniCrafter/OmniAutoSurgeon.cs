@@ -40,7 +40,8 @@ namespace FullyAutomaticOmniCrafter
         RemoveImplant,
         RepairAndHeal,
         RemoveAllImplantsAndRepair,
-        TendAllWounds
+        TendAllWounds,
+        RemoveAnesthesia
     }
 
     public class OmniSurgeonOperation : IExposable
@@ -109,6 +110,14 @@ namespace FullyAutomaticOmniCrafter
             return new OmniSurgeonOperation
             {
                 operationType = OmniSurgeonOperationType.TendAllWounds
+            };
+        }
+
+        public static OmniSurgeonOperation CreateRemoveAnesthesia()
+        {
+            return new OmniSurgeonOperation
+            {
+                operationType = OmniSurgeonOperationType.RemoveAnesthesia
             };
         }
 
@@ -550,6 +559,24 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        public void RemoveAnesthesia(Pawn pawn)
+        {
+            if (pawn == null) return;
+            try
+            {
+                var anesthesia = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDef.Named("Anesthesia"));
+                if (anesthesia != null)
+                {
+                    pawn.health.RemoveHediff(anesthesia);
+                    Log.Message($"[OmniAutoSurgeon] 已为 {pawn.LabelShort} 移除麻醉状态");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 移除麻醉状态时发生异常: {ex}");
+            }
+        }
+
         public void FullRepair(Pawn pawn)
         {
             if (pawn == null) return;
@@ -809,6 +836,11 @@ namespace FullyAutomaticOmniCrafter
                         TendAllWounds(pawn);
                         return true;
                     }
+                    case OmniSurgeonOperationType.RemoveAnesthesia:
+                    {
+                        RemoveAnesthesia(pawn);
+                        return true;
+                    }
                     default:
                         failReason = "Unknown operation type";
                         return false;
@@ -1022,6 +1054,11 @@ namespace FullyAutomaticOmniCrafter
                 options.Add(new FloatMenuOption("包扎所有伤口 (最高质量)", delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateTendAllWounds());
+                    SyncOperations();
+                }));
+                options.Add(new FloatMenuOption("移除麻醉状态", delegate
+                {
+                    workingOperations.Add(OmniSurgeonOperation.CreateRemoveAnesthesia());
                     SyncOperations();
                 }));
                 Find.WindowStack.Add(new FloatMenu(options));
@@ -1304,6 +1341,10 @@ namespace FullyAutomaticOmniCrafter
             if (operation.operationType == OmniSurgeonOperationType.TendAllWounds)
             {
                 return "包扎所有伤口 (最高质量)";
+            }
+            if (operation.operationType == OmniSurgeonOperationType.RemoveAnesthesia)
+            {
+                return "移除麻醉状态";
             }
 
             HediffDef h = !operation.hediffDefName.NullOrEmpty() ? DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName) : null;
