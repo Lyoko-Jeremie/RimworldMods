@@ -606,7 +606,18 @@ namespace FullyAutomaticOmniCrafter
                             return false;
                         }
 
-                        recipe.Worker.ApplyOnPawn(pawn, part, null, new List<Thing>(), null);
+                        Pawn billDoer = null;
+                        if (recipe.Worker is Recipe_Surgery)
+                        {
+                            billDoer = SelectOperationSurgeon(pawn);
+                            if (billDoer == null)
+                            {
+                                failReason = "No valid surgeon available";
+                                return false;
+                            }
+                        }
+
+                        recipe.Worker.ApplyOnPawn(pawn, part, billDoer, new List<Thing>(), null);
                         return true;
                     }
                     case OmniSurgeonOperationType.InstallImplant:
@@ -652,6 +663,24 @@ namespace FullyAutomaticOmniCrafter
                 Log.Error($"[OmniAutoSurgeon] 执行操作时发生异常: {ex}");
                 return false;
             }
+        }
+
+        private Pawn SelectOperationSurgeon(Pawn patient)
+        {
+            if (Map == null)
+            {
+                return patient != null && !patient.Dead ? patient : null;
+            }
+
+            Pawn best = Map.mapPawns.FreeColonistsSpawned
+                .Where(p => p != null && !p.Dead && !p.Downed && p.health != null && !p.health.InPainShock)
+                .OrderByDescending(p => p.skills != null ? p.skills.GetSkill(SkillDefOf.Medicine).Level : 0)
+                .FirstOrDefault();
+
+            if (best != null) return best;
+
+            if (patient != null && !patient.Dead) return patient;
+            return null;
         }
 
         public static bool IsRestrictedFor(Pawn pawn, HediffDef hDef, BodyPartRecord part)
