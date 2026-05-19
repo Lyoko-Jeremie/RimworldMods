@@ -137,5 +137,68 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
     }
+
+    [HarmonyPatch(typeof(Thing), "get_Map")]
+    public static class Patch_Thing_Map
+    {
+        public static bool Prefix(Thing __instance, ref Map __result)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive && !__instance.Spawned)
+            {
+                if (OmniAutoSurgeonSurgeryContext.CurrentSurgeon != null)
+                {
+                    __result = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Map;
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(Thing), "get_Position")]
+    public static class Patch_Thing_Position
+    {
+        public static bool Prefix(Thing __instance, ref IntVec3 __result)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive && !__instance.Spawned)
+            {
+                if (OmniAutoSurgeonSurgeryContext.CurrentSurgeon != null)
+                {
+                    // Use interaction cell if available, otherwise machine position
+                    __result = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.def.hasInteractionCell 
+                        ? OmniAutoSurgeonSurgeryContext.CurrentSurgeon.InteractionCell 
+                        : OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Position;
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(MedicalRecipesUtility), "SpawnNaturalPartIfClean")]
+    public static class Patch_MedicalRecipesUtility_SpawnNaturalPartIfClean
+    {
+        public static bool Prefix(ref Thing __result, Pawn pawn, BodyPartRecord part, IntVec3 pos, Map map)
+        {
+            if (OmniAutoSurgeonSurgeryContext.IsActive)
+            {
+                // If map is null, use current surgeon building's map and position
+                if (map == null && OmniAutoSurgeonSurgeryContext.CurrentSurgeon != null)
+                {
+                    Map surgeonMap = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Map;
+                    IntVec3 surgeonPos = OmniAutoSurgeonSurgeryContext.CurrentSurgeon.def.hasInteractionCell 
+                        ? OmniAutoSurgeonSurgeryContext.CurrentSurgeon.InteractionCell 
+                        : OmniAutoSurgeonSurgeryContext.CurrentSurgeon.Position;
+                    
+                    if (surgeonMap != null && part.def.spawnThingOnRemoved != null)
+                    {
+                        __result = GenSpawn.Spawn(part.def.spawnThingOnRemoved, surgeonPos, surgeonMap);
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+    }
 }
 

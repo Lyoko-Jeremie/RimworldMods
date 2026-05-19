@@ -12,11 +12,15 @@ namespace FullyAutomaticOmniCrafter
         [ThreadStatic]
         private static int activeDepth;
 
+        [ThreadStatic]
+        public static Building_FullyAutoOmniSurgeon CurrentSurgeon;
+
         public static bool IsActive => activeDepth > 0;
 
-        public static IDisposable Enter()
+        public static IDisposable Enter(Building_FullyAutoOmniSurgeon surgeon)
         {
             activeDepth++;
+            CurrentSurgeon = surgeon;
             return new Scope();
         }
 
@@ -29,6 +33,7 @@ namespace FullyAutomaticOmniCrafter
                 if (disposed) return;
                 disposed = true;
                 if (activeDepth > 0) activeDepth--;
+                if (activeDepth == 0) CurrentSurgeon = null;
             }
         }
     }
@@ -781,7 +786,7 @@ namespace FullyAutomaticOmniCrafter
 
                         HashSet<int> beforeThingIds = CaptureMapThingIds(this.Map);
 
-                        using (OmniAutoSurgeonSurgeryContext.Enter())
+                        using (OmniAutoSurgeonSurgeryContext.Enter(this))
                         {
                             recipe.Worker.ApplyOnPawn(pawn, part, billDoer, ingredients, null);
                         }
@@ -789,21 +794,27 @@ namespace FullyAutomaticOmniCrafter
                         // 对于某些移除部位的操作，即使 ApplyOnPawn 没能成功生成物品（例如因为 IsCleanAndDroppable 限制或其他原因）
                         // 且该部位确实被移除了（变成了缺失部位），我们尝试手动补救生成。
                         // 注意：如果 Harmony 补丁生效了，这里通常不需要补救，但为了双重保险：
-                        if (recipe.targetsBodyPart && part != null && part.def.spawnThingOnRemoved != null)
+                        if (recipe.targetsBodyPart && part != null)
                         {
                             // 检查该部位是否现在确实缺失了
                             if (!pawn.health.hediffSet.GetNotMissingParts().Contains(part))
                             {
                                 // 检查是否有新物品生成在地图上
                                 HashSet<int> afterThingIds = CaptureMapThingIds(this.Map);
-                                bool anyNewThing = afterThingIds.Any(id => !beforeThingIds.Contains(id));
+                                bool anyNewThing = afterThingIds != null && beforeThingIds != null && afterThingIds.Any(id => !beforeThingIds.Contains(id));
                                 if (!anyNewThing)
                                 {
-                                    // 手动生成缺失的器官
-                                    Thing thing = ThingMaker.MakeThing(part.def.spawnThingOnRemoved);
-                                    ForceLegendaryQuality(thing);
-                                    IntVec3 dropCell = this.def != null && this.def.hasInteractionCell ? this.InteractionCell : this.Position;
-                                    GenPlace.TryPlaceThing(thing, dropCell, this.Map, ThingPlaceMode.Near);
+                                    ThingDef spawnDef = part.def.spawnThingOnRemoved;
+                                    // 有些 Recipe 可能会在 recipe 级定义产出，虽然 RemoveBodyPart 主要是 BodyPartDef
+                                    
+                                    if (spawnDef != null)
+                                    {
+                                        // 手动生成缺失的器官
+                                        Thing thing = ThingMaker.MakeThing(spawnDef);
+                                        ForceLegendaryQuality(thing);
+                                        IntVec3 dropCell = this.def != null && this.def.hasInteractionCell ? this.InteractionCell : this.Position;
+                                        GenPlace.TryPlaceThing(thing, dropCell, this.Map, ThingPlaceMode.Near);
+                                    }
                                 }
                             }
                         }
