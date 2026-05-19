@@ -1265,7 +1265,7 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            Rect outRect = new Rect(0f, 108f, inRect.width, inRect.height - 108f);
+            Rect outRect = new Rect(0f, 108f, inRect.width, inRect.height - 108f - 42f);
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(40f, cached.Count * 34f));
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
 
@@ -1373,7 +1373,7 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            Rect outRect = new Rect(0f, 108f, inRect.width, inRect.height - 108f);
+            Rect outRect = new Rect(0f, 108f, inRect.width, inRect.height - 108f - 42f);
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(40f, cached.Count * 34f));
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
 
