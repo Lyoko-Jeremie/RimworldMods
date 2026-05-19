@@ -194,6 +194,7 @@ namespace FullyAutomaticOmniCrafter
     public class Building_FullyAutoOmniSurgeon : Building_Enterable, IThingHolderWithDrawnPawn
     {
         public List<SurgeryTemplate> templates = new List<SurgeryTemplate>();
+        public List<OmniSurgeonOperation> lastOperations = new List<OmniSurgeonOperation>();
 
         public Pawn Occupant => innerContainer.FirstOrDefault() as Pawn;
 
@@ -226,6 +227,9 @@ namespace FullyAutomaticOmniCrafter
             // 我们的类目前没有重写 innerContainer 字段，所以直接用父类的即可。
             Scribe_Collections.Look(ref templates, "templates", LookMode.Deep);
             if (templates == null) templates = new List<SurgeryTemplate>();
+
+            Scribe_Collections.Look(ref lastOperations, "lastOperations", LookMode.Deep);
+            if (lastOperations == null) lastOperations = new List<OmniSurgeonOperation>();
             // 注意：selectedPawn 已经在 base.ExposeData() 中处理了。
             // 为了兼容旧存档，我们可以保留对 selectedPawn 的显式加载逻辑，但通常 base 已经做了。
             // 如果 base.ExposeData 没有处理，我们需要手动处理。
@@ -903,6 +907,23 @@ namespace FullyAutomaticOmniCrafter
             this.closeOnClickedOutside = true;
             this.absorbInputAroundWindow = true;
             this.draggable = true;
+
+            if (!surgeon.lastOperations.NullOrEmpty())
+            {
+                foreach (var op in surgeon.lastOperations)
+                {
+                    workingOperations.Add(op.Clone());
+                }
+            }
+        }
+
+        private void SyncOperations()
+        {
+            surgeon.lastOperations.Clear();
+            foreach (var op in workingOperations)
+            {
+                surgeon.lastOperations.Add(op.Clone());
+            }
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -938,6 +959,7 @@ namespace FullyAutomaticOmniCrafter
                         {
                             surgeon.ApplyTemplate(pawn, localTemplate);
                         }
+                        SyncOperations();
                     }));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));
@@ -949,10 +971,12 @@ namespace FullyAutomaticOmniCrafter
                 options.Add(new FloatMenuOption("修复损伤/医疗受伤 (保留植入物)", delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRepairAndHeal());
+                    SyncOperations();
                 }));
                 options.Add(new FloatMenuOption("卸载所有植入物并修复身体", delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRemoveAllImplantsAndRepair());
+                    SyncOperations();
                 }));
                 Find.WindowStack.Add(new FloatMenu(options));
             }
@@ -1022,7 +1046,11 @@ namespace FullyAutomaticOmniCrafter
             {
                 Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_AddRecipeOperation(pawn, delegate(OmniSurgeonOperation op)
                 {
-                    if (op != null) workingOperations.Add(op);
+                    if (op != null)
+                    {
+                        workingOperations.Add(op);
+                        SyncOperations();
+                    }
                 }));
             }
 
@@ -1030,7 +1058,11 @@ namespace FullyAutomaticOmniCrafter
             {
                 Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_AddImplantOperation(pawn, delegate(OmniSurgeonOperation op)
                 {
-                    if (op != null) workingOperations.Add(op);
+                    if (op != null)
+                    {
+                        workingOperations.Add(op);
+                        SyncOperations();
+                    }
                 }));
             }
 
@@ -1055,6 +1087,7 @@ namespace FullyAutomaticOmniCrafter
                     OmniSurgeonOperation tmp = workingOperations[i - 1];
                     workingOperations[i - 1] = workingOperations[i];
                     workingOperations[i] = tmp;
+                    SyncOperations();
                 }
 
                 if (Widgets.ButtonText(new Rect(listViewRect.width - 62f, curY + 2f, 28f, 26f), "↓") && i < workingOperations.Count - 1)
@@ -1062,12 +1095,14 @@ namespace FullyAutomaticOmniCrafter
                     OmniSurgeonOperation tmp = workingOperations[i + 1];
                     workingOperations[i + 1] = workingOperations[i];
                     workingOperations[i] = tmp;
+                    SyncOperations();
                 }
 
                 if (Widgets.ButtonText(new Rect(listViewRect.width - 32f, curY + 2f, 28f, 26f), "X"))
                 {
                     workingOperations.RemoveAt(i);
                     i--;
+                    SyncOperations();
                 }
 
                 curY += 34f;
@@ -1084,6 +1119,7 @@ namespace FullyAutomaticOmniCrafter
             if (Widgets.ButtonText(new Rect(bottomRect.x + executeWidth + 8f, bottomRect.y, rect.width - executeWidth - 8f, bottomRect.height), "清空"))
             {
                 workingOperations.Clear();
+                SyncOperations();
             }
         }
 
@@ -1143,6 +1179,7 @@ namespace FullyAutomaticOmniCrafter
                 options.Add(new FloatMenuOption(label, delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateInstall(localDef, part));
+                    SyncOperations();
                 }));
             }
 
@@ -1169,6 +1206,7 @@ namespace FullyAutomaticOmniCrafter
                 options.Add(new FloatMenuOption("移除: " + local.LabelCap, delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRemove(local.def, part));
+                    SyncOperations();
                 }));
             }
             Find.WindowStack.Add(new FloatMenu(options));
