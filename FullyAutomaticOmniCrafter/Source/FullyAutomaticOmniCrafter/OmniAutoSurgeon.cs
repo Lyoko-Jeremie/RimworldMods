@@ -37,7 +37,9 @@ namespace FullyAutomaticOmniCrafter
     {
         Recipe,
         InstallImplant,
-        RemoveImplant
+        RemoveImplant,
+        RepairAndHeal,
+        RemoveAllImplantsAndRepair
     }
 
     public class OmniSurgeonOperation : IExposable
@@ -82,6 +84,22 @@ namespace FullyAutomaticOmniCrafter
                 partPath = Building_FullyAutoOmniSurgeon.GetPartPath(part),
                 partDefName = part != null && part.def != null ? part.def.defName : null,
                 partLabel = part != null ? part.Label : null
+            };
+        }
+
+        public static OmniSurgeonOperation CreateRepairAndHeal()
+        {
+            return new OmniSurgeonOperation
+            {
+                operationType = OmniSurgeonOperationType.RepairAndHeal
+            };
+        }
+
+        public static OmniSurgeonOperation CreateRemoveAllImplantsAndRepair()
+        {
+            return new OmniSurgeonOperation
+            {
+                operationType = OmniSurgeonOperationType.RemoveAllImplantsAndRepair
             };
         }
 
@@ -438,6 +456,60 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        public void RepairAndHeal(Pawn pawn)
+        {
+            if (pawn == null) return;
+            try
+            {
+                // 1. 恢复所有缺失部位
+                var missingParts = pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+                foreach (var part in missingParts)
+                {
+                    pawn.health.RestorePart(part.Part);
+                }
+
+                // 2. 移除所有负面状态（保留义体）
+                var toRemove = pawn.health.hediffSet.hediffs
+                    .Where(h => h is Hediff_Injury || h is Hediff_Addiction || h.def.isBad)
+                    .ToList();
+
+                foreach (var h in toRemove)
+                {
+                    // 如果是义体相关的 bad hediff（比如排斥），我们决定保留它，因为用户要求保持植入物不变
+                    // 但通常 isBad 指的是疾病、受伤等。
+                    pawn.health.RemoveHediff(h);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 进行修复和医疗时发生异常: {ex}");
+            }
+        }
+
+        public void RemoveAllImplantsAndRepair(Pawn pawn)
+        {
+            if (pawn == null) return;
+            try
+            {
+                // 1. 移除并掉落所有植入物/义体
+                var implants = pawn.health.hediffSet.hediffs
+                    .Where(h => h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null)
+                    .ToList();
+
+                foreach (var h in implants)
+                {
+                    RemoveBionic(pawn, h.Part, h);
+                }
+
+                // 2. 恢复所有肢体和损伤
+                RepairAndHeal(pawn);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[OmniAutoSurgeon] 为 {pawn.LabelShort} 移除所有植入物并修复时发生异常: {ex}");
+            }
+        }
+
         public void FullRepair(Pawn pawn)
         {
             if (pawn == null) return;
@@ -680,6 +752,16 @@ namespace FullyAutomaticOmniCrafter
                         RemoveBionic(pawn, part, target);
                         return true;
                     }
+                    case OmniSurgeonOperationType.RepairAndHeal:
+                    {
+                        RepairAndHeal(pawn);
+                        return true;
+                    }
+                    case OmniSurgeonOperationType.RemoveAllImplantsAndRepair:
+                    {
+                        RemoveAllImplantsAndRepair(pawn);
+                        return true;
+                    }
                     default:
                         failReason = "Unknown operation type";
                         return false;
@@ -856,6 +938,20 @@ namespace FullyAutomaticOmniCrafter
                         }
                     }));
                 }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            if (Widgets.ButtonText(new Rect(x - 292f, toolbarY, 136f, 28f), "特殊操作"))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                options.Add(new FloatMenuOption("修复损伤/医疗受伤 (保留植入物)", delegate
+                {
+                    workingOperations.Add(OmniSurgeonOperation.CreateRepairAndHeal());
+                }));
+                options.Add(new FloatMenuOption("卸载所有植入物并修复身体", delegate
+                {
+                    workingOperations.Add(OmniSurgeonOperation.CreateRemoveAllImplantsAndRepair());
+                }));
                 Find.WindowStack.Add(new FloatMenu(options));
             }
 
@@ -1117,8 +1213,20 @@ namespace FullyAutomaticOmniCrafter
             {
                 return "安装 " + hLabel + " -> " + partName;
             }
+            if (operation.operationType == OmniSurgeonOperationType.RemoveImplant)
+            {
+                return "移除 " + hLabel + " <- " + partName;
+            }
+            if (operation.operationType == OmniSurgeonOperationType.RepairAndHeal)
+            {
+                return "修复损伤/医疗受伤";
+            }
+            if (operation.operationType == OmniSurgeonOperationType.RemoveAllImplantsAndRepair)
+            {
+                return "卸载所有植入物并修复身体";
+            }
 
-            return "移除 " + hLabel + " <- " + partName;
+            return "未知操作";
         }
     }
 
