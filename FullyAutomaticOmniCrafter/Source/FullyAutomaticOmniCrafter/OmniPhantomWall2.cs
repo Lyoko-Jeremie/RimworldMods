@@ -5,6 +5,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 using Verse.AI.Group;
+using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter
 {
@@ -69,24 +70,24 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Building_OmniPhantomWall2 : Building, IPathFindCostProvider
     {
-        private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker = CreateNotifyWalkabilityChangedInvoker();
-
-        private static Action<RegionDirtyer, IntVec3, bool> CreateNotifyWalkabilityChangedInvoker()
-        {
-            try
-            {
-                var method = AccessTools.Method(typeof(RegionDirtyer), "Notify_WalkabilityChanged");
-                if (method == null)
-                    return null;
-
-                return AccessTools.MethodDelegate<Action<RegionDirtyer, IntVec3, bool>>(method);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning($"[OmniPhantomWall2] Failed to bind RegionDirtyer.Notify_WalkabilityChanged: {ex}");
-                return null;
-            }
-        }
+        // private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker = CreateNotifyWalkabilityChangedInvoker();
+        //
+        // private static Action<RegionDirtyer, IntVec3, bool> CreateNotifyWalkabilityChangedInvoker()
+        // {
+        //     try
+        //     {
+        //         var method = AccessTools.Method(typeof(RegionDirtyer), "Notify_WalkabilityChanged");
+        //         if (method == null)
+        //             return null;
+        //
+        //         return AccessTools.MethodDelegate<Action<RegionDirtyer, IntVec3, bool>>(method);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Log.Warning($"[OmniPhantomWall2] Failed to bind RegionDirtyer.Notify_WalkabilityChanged: {ex}");
+        //         return null;
+        //     }
+        // }
 
         /// <summary>
         /// 重写绘制颜色：保留材料的基础颜色，但强制将透明度改为 0.3
@@ -228,15 +229,16 @@ namespace FullyAutomaticOmniCrafter
             // 规则变化时只脏化当前格附近的区域，再重建 dirty 部分
             if (oldSig != newSig && Spawned)
             {
-                if (NotifyWalkabilityChangedInvoker != null)
-                {
-                    NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, true);
-                    Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
-                }
-                else
-                {
-                    Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
-                }
+                Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                // if (NotifyWalkabilityChangedInvoker != null)
+                // {
+                //     NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, true);
+                //     Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                // }
+                // else
+                // {
+                //     Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                // }
             }
         }
         
@@ -296,6 +298,135 @@ namespace FullyAutomaticOmniCrafter
         }
 
         public CellRect GetOccupiedRect() => this.OccupiedRect();
+
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            foreach (Gizmo gizmo in base.GetGizmos())
+            {
+                yield return gizmo;
+            }
+
+            // 只有在选中且有 Map 时才显示
+            if (!Spawned) yield break;
+
+            // 这里我们可以考虑是否需要一个 Gizmo 来弹出更详细的设置
+            // 但根据需求，“像 Designator_PhantomWall2Passability 一样在左侧有可配置的界面”
+            // 这通常意味着重写 SelectionDoNextFrame 或在某个地方调用 DoExtraGuiControls
+            // 不过在 Building 中，最接近的是 DoExtraGuiControls (如果它是继承自某个支持它的类)
+            // 或者我们可以模仿 Designator 的做法。
+        }
+
+        public override string GetInspectString()
+        {
+            string str = base.GetInspectString();
+            if (Spawned)
+            {
+                if (!string.IsNullOrEmpty(str))
+                {
+                    str += "\n";
+                }
+
+                str += "OPW_CurrentPassability".Translate() + ": " + GetPassabilitySummary();
+                
+                // 绘制左侧 UI
+                DrawPassabilitySettingsUI();
+            }
+            return str;
+        }
+
+        private string GetPassabilitySummary()
+        {
+            // 这里根据 settings 生成简短描述
+            // 模仿 Designator 的预设判断
+            foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
+            {
+                if (preset == PassabilityPreset.Custom) continue;
+                var presetSettings = Designator_PhantomWall2Passability.GetSettingsFromPreset(preset);
+                if (settings.Equals(presetSettings))
+                {
+                    return Designator_PhantomWall2Passability.GetPresetLabel(preset);
+                }
+            }
+            return Designator_PhantomWall2Passability.GetPresetLabel(PassabilityPreset.Custom);
+        }
+
+        private void DrawPassabilitySettingsUI()
+        {
+            // 模仿 Designator_PhantomWall2Passability.DoExtraGuiControls
+            // 使用与 Designator 相同的布局，通常在左侧
+            float leftX = 200f; // 默认左侧起始位置
+            float bottomY = (float)UI.screenHeight - 35f;
+            
+            // RimWorld 1.6 中获取信息面板高度的方法
+            // 如果信息面板可见，它通常是在底部的
+            float paneHeight = 165f; // 默认高度
+            bottomY -= paneHeight;
+
+            Rect winRect = new Rect(leftX, bottomY - 140f, 220f, 140f);
+            
+            Find.WindowStack.ImmediateWindow(73625892, winRect, WindowLayer.GameUI, () =>
+            {
+                Rect rect = winRect.AtZero().ContractedBy(5f);
+                
+                Text.Font = GameFont.Small;
+                Widgets.Label(rect.TopPartPixels(24f), "OPW_SelectPreset".Translate());
+                
+                Rect buttonArea = rect;
+                buttonArea.yMin += 28f;
+                
+                float buttonHeight = 24f;
+                float y = buttonArea.y;
+                
+                PassabilityPreset currentPreset = GetCurrentPreset();
+
+                foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
+                {
+                    Rect buttonRect = new Rect(buttonArea.x, y, buttonArea.width, buttonHeight);
+                    
+                    bool isSelected = (currentPreset == preset);
+                    if (Widgets.RadioButtonLabeled(buttonRect, Designator_PhantomWall2Passability.GetPresetLabel(preset), isSelected))
+                    {
+                        if (!isSelected)
+                        {
+                            ApplyPresetToSelectedWalls(preset);
+                            SoundDefOf.Click.PlayOneShotOnCamera();
+                        }
+                    }
+                    
+                    y += buttonHeight + 2f;
+                }
+            });
+        }
+
+        private PassabilityPreset GetCurrentPreset()
+        {
+            foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
+            {
+                if (preset == PassabilityPreset.Custom) continue;
+                var presetSettings = Designator_PhantomWall2Passability.GetSettingsFromPreset(preset);
+                if (settings.Equals(presetSettings))
+                {
+                    return preset;
+                }
+            }
+            return PassabilityPreset.Custom;
+        }
+
+        private void ApplyPresetToSelectedWalls(PassabilityPreset preset)
+        {
+            if (preset == PassabilityPreset.Custom) return;
+
+            var newSettings = Designator_PhantomWall2Passability.GetSettingsFromPreset(preset);
+            
+            // 处理当前选中的所有幻影墙
+            foreach (object obj in Find.Selector.SelectedObjects)
+            {
+                if (obj is Building_OmniPhantomWall2 wall)
+                {
+                    wall.ApplySettings(newSettings);
+                }
+            }
+        }
 
         // ── 自定义区域类型常量 ─────────────────────────────────────────────
         /// <summary>
