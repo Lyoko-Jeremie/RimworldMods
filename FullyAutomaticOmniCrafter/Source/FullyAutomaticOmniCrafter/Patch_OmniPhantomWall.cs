@@ -14,8 +14,6 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(RegionTypeUtility), nameof(RegionTypeUtility.GetExpectedRegionType))]
     public static class RegionTypeUtility_GetExpectedRegionType_Patch
     {
-        private static Dictionary<IntVec3, int> tempSignatures = new Dictionary<IntVec3, int>();
-
         public static void Postfix(IntVec3 c, Map map, ref RegionType __result)
         {
             // 只有当结果本来是 Normal（Standable 地块）才需要覆写
@@ -28,64 +26,27 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (edifice is Building_OmniPhantomWall2 wall2)
                 {
-                    __result = Building_OmniPhantomWall2.PhantomWallRegionType;
+                    // 根据签名动态生成 RegionType (18-255)
+                    // 这样做可以让 RegionMaker 自动根据 Type 不同进行分割，无需拦截 FloodFill
+                    int sig = wall2.settings.GetSignature();
+                    __result = GetRegionTypeForSignature(sig);
                 }
             }
         }
 
-        /// <summary>
-        /// 核心修复：通过在 FloodFill 过程中利用种子格子（root）的签名，
-        /// 强行阻止不同签名的 OmniPhantomWall2 单元格合并到同一个 Region。
-        /// </summary>
-        [HarmonyPatch(typeof(RegionMaker), "FloodFillAndAddCells")]
-        public static class RegionMaker_FloodFillAndAddCells_Patch
+        public static RegionType GetRegionTypeForSignature(int signature)
         {
-            public static void Prefix(RegionMaker __instance, IntVec3 root, Map ___map, Region ___newReg)
-            {
-                if (___newReg.type == Building_OmniPhantomWall2.PhantomWallRegionType)
-                {
-                    var wall = root.GetEdifice(___map) as Building_OmniPhantomWall2;
-                    if (wall != null)
-                    {
-                        tempSignatures[root] = wall.settings.GetSignature();
-                    }
-                }
-            }
-
-            public static void Postfix()
-            {
-                tempSignatures.Clear();
-            }
+            if (signature == 0) return Building_OmniPhantomWall.PhantomWallRegionType; // 兼容 1 代
+            
+            // 将签名映射到 19-255 范围
+            // 18 留给 1 代或签名 0
+            byte mapping = (byte)(19 + (uint)signature.GetHashCode() % 237);
+            return (RegionType)mapping;
         }
 
-        [HarmonyPatch(typeof(Verse.FloodFiller), nameof(Verse.FloodFiller.FloodFill), new[] { typeof(IntVec3), typeof(Predicate<IntVec3>), typeof(Action<IntVec3>), typeof(int), typeof(bool), typeof(IEnumerable<IntVec3>) })]
-        public static class FloodFiller_FloodFill_Patch
+        public static bool IsPhantomWallRegion(RegionType type)
         {
-            public static void Prefix(IntVec3 root, ref Predicate<IntVec3> passCheck, Map ___map)
-            {
-                if (tempSignatures.TryGetValue(root, out int rootSig))
-                {
-                    var oldCheck = passCheck;
-                    passCheck = (c) =>
-                    {
-                        if (!oldCheck(c)) return false;
-                        
-                        // 如果当前格也是 OmniPhantomWall2，必须签名一致才能继续填充（合并到同一区域）
-                        if (c.GetEdifice(___map) is Building_OmniPhantomWall2 otherWall)
-                        {
-                            return otherWall.settings.GetSignature() == rootSig;
-                        }
-                        
-                        // OmniPhantomWall (v1) 签名视为 0，如果 root 是 v2 且签名不是 0，则不合并
-                        if (c.GetEdifice(___map) is Building_OmniPhantomWall)
-                        {
-                            return rootSig == 0;
-                        }
-
-                        return true;
-                    };
-                }
-            }
+            return (byte)type >= (byte)Building_OmniPhantomWall.PhantomWallRegionType;
         }
     }
 
@@ -126,8 +87,7 @@ namespace FullyAutomaticOmniCrafter
     {
         public static void Postfix(Region __instance, TraverseParms tp, ref bool __result)
         {
-            // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
-            if (__instance.type != Building_OmniPhantomWall.PhantomWallRegionType)
+            if (!RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(__instance.type))
                 return;
 
             // Log.Message(
@@ -177,24 +137,19 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(RegionAndRoomUpdater), "ShouldBeInTheSameRoom")]
     public static class RegionAndRoomUpdater_ShouldBeInTheSameRoom_Patch
     {
-        // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
-        private static RegionType PhantomWallRegionType = Building_OmniPhantomWall.PhantomWallRegionType;
-        
         public static bool Prefix(District a, District b, ref bool __result)
         {
             RegionType typeA = a.RegionType;
             RegionType typeB = b.RegionType;
 
-            bool isPhantomA = typeA == PhantomWallRegionType;
-            bool isPhantomB = typeB == PhantomWallRegionType;
+            bool isPhantomA = RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(typeA);
+            bool isPhantomB = RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(typeB);
 
-            // 如果两个都是幻影墙，需要判定是否应该合并
+            // 如果两个都是幻影墙，且 RegionType 相同，则它们属于同一个房间
+            // 因为现在不同的签名已经被分配了不同的 RegionType，所以这里直接比对 type 即可
             if (isPhantomA && isPhantomB)
             {
-                // 获取两个区域的规则签名，只有规则相同才合并
-                int sigA = GetRegionRuleSignature(a);
-                int sigB = GetRegionRuleSignature(b);
-                __result = (sigA == sigB);
+                __result = (typeA == typeB);
                 return false;
             }
 
@@ -207,27 +162,6 @@ namespace FullyAutomaticOmniCrafter
 
             // 其余情况执行原版逻辑
             return true;
-        }
-        
-        private static int GetRegionRuleSignature(District district)
-        {
-            // 从区域中获取任意一个幻影墙的规则签名
-            if (district?.Regions == null || district.Regions.Count == 0)
-                return 0;
-            
-            foreach (var cell in district.Regions.First().Cells)
-            {
-                // 检查是否是OmniPhantomWall2
-                var wall2 = cell.GetEdifice(district.Map) as Building_OmniPhantomWall2;
-                if (wall2 != null) 
-                    return wall2.settings.GetSignature();
-                
-                // 检查是否是OmniPhantomWall（返回0表示兼容所有）
-                var wall1 = cell.GetEdifice(district.Map) as Building_OmniPhantomWall;
-                if (wall1 != null)
-                    return 0;
-            }
-            return 0;
         }
     }
 
@@ -270,9 +204,8 @@ namespace FullyAutomaticOmniCrafter
         public static void Postfix(Room __instance, ref float __result)
         {
             // 只有当房间属于幻影墙区域时才拦截
-            // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
             Region firstRegion = __instance.FirstRegion;
-            if (firstRegion == null || firstRegion.type != Building_OmniPhantomWall.PhantomWallRegionType)
+            if (firstRegion == null || !RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(firstRegion.type))
                 return;
 
             // 防止在区域系统重建中途（invalid 或尚无 cells）访问 AnyCell，
@@ -313,9 +246,8 @@ namespace FullyAutomaticOmniCrafter
         public static bool Prefix(Room __instance, ref float value)
         {
             // 如果是幻影墙房间，阻止任何温度修改，使其永远保持在 getter 返回的值
-            // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
             Region firstRegion = __instance.FirstRegion;
-            if (firstRegion != null && firstRegion.valid && firstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
+            if (firstRegion != null && firstRegion.valid && RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(firstRegion.type))
             {
                 return false;
             }
