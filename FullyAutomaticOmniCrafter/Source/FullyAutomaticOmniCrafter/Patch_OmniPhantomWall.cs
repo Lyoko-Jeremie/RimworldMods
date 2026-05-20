@@ -58,7 +58,7 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        [HarmonyPatch(typeof(Verse.FloodFiller), nameof(Verse.FloodFiller.FloodFill))]
+        [HarmonyPatch(typeof(Verse.FloodFiller), nameof(Verse.FloodFiller.FloodFill), new[] { typeof(IntVec3), typeof(Predicate<IntVec3>), typeof(Action<IntVec3>), typeof(int), typeof(bool), typeof(IEnumerable<IntVec3>) })]
         public static class FloodFiller_FloodFill_Patch
         {
             public static void Prefix(IntVec3 root, ref Predicate<IntVec3> passCheck, Map ___map)
