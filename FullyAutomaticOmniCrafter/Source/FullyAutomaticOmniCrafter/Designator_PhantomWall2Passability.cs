@@ -308,7 +308,9 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public override void DoExtraGuiControls(float leftX, float bottomY)
         {
-            Rect winRect = new Rect(leftX, bottomY - 140f, 220f, 140f);
+            float width = 220f;
+            float height = 230f;
+            Rect winRect = new Rect(leftX, bottomY - height, width, height);
             
             Find.WindowStack.ImmediateWindow(73625891, winRect, WindowLayer.GameUI, () =>
             {
