@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter
 {
@@ -19,6 +19,8 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Designator_PhantomWall2Passability : Designator
     {
+        private static readonly List<IntVec3> tmpHighlightCells = new List<IntVec3>();
+
         /// <summary>
         /// 当前选中的规则预设
         /// </summary>
@@ -238,12 +240,19 @@ namespace FullyAutomaticOmniCrafter
             GenUI.RenderMouseoverBracket();
             
             // 高亮所有幻影墙 - 同时支持OmniPhantomWall和OmniPhantomWall2
-            foreach (Thing thing in Map.listerThings.AllThings)
+            tmpHighlightCells.Clear();
+            List<Thing> allThings = Map.listerThings.AllThings;
+            for (int i = 0; i < allThings.Count; i++)
             {
-                if (thing is Building_OmniPhantomWall2 wall)
+                if (allThings[i] is Building_OmniPhantomWall2 wall)
                 {
-                    GenDraw.DrawFieldEdges(new List<IntVec3> { wall.Position }, Color.cyan);
+                    tmpHighlightCells.Add(wall.Position);
                 }
+            }
+
+            if (tmpHighlightCells.Count > 0)
+            {
+                GenDraw.DrawFieldEdges(tmpHighlightCells, Color.cyan);
             }
         }
 
