@@ -348,7 +348,13 @@ namespace FullyAutomaticOmniCrafter
             if (showCustom)
             {
                 width = 460f; // 增加宽度以显示详细设置
-                height = 420f;
+                // 16 个选项行 + 标题 + 底部保存按钮，避免控件重叠
+                const int customOptionCount = 16;
+                const float customRowStride = 24f; // 22f 行高 + 2f 间距
+                const float topHeaderHeight = 28f;
+                const float saveButtonBlockHeight = 36f;
+                const float windowPadding = 10f; // ContractedBy(5f) 的上下边距
+                height = topHeaderHeight + customOptionCount * customRowStride + saveButtonBlockHeight + windowPadding;
             }
 
             Rect winRect = new Rect(leftX, bottomY - height, width, height);
@@ -411,12 +417,14 @@ namespace FullyAutomaticOmniCrafter
 
                     DrawCheckbox("OPW_AllowColonists", ref customSettings.allowColonists, "Colonists");
                     DrawCheckbox("OPW_AllowPets", ref customSettings.allowPets, "Pets");
+                    DrawCheckbox("OPW_AllowDryad", ref customSettings.allowDryad, "Dryads");
                     DrawCheckbox("OPW_AllowTraders", ref customSettings.allowTraders, "Traders/Visitors");
                     DrawCheckbox("OPW_AllowPrisoners", ref customSettings.allowPrisoners, "Prisoners (Generic)");
                     DrawCheckbox("OPW_AllowColonyPrisoners", ref customSettings.allowColonyPrisoners, "Colony Prisoners");
                     DrawCheckbox("OPW_AllowWildAnimals", ref customSettings.allowWildAnimals, "Wild Animals");
                     DrawCheckbox("OPW_AllowEntities", ref customSettings.allowEntities, "Entities (Anomaly)");
                     DrawCheckbox("OPW_AllowHostiles", ref customSettings.allowHostiles, "Hostiles");
+                    DrawCheckbox("OPW_AllowMechanoids", ref customSettings.allowMechanoids, "Mechanoids");
                     DrawCheckbox("OPW_AllowFactioned", ref customSettings.allowFactioned, "Has Faction");
                     DrawCheckbox("OPW_AllowLords", ref customSettings.allowLords, "In Lord Group");
                     DrawCheckbox("OPW_AllowHumanlikes", ref customSettings.allowHumanlikes, "Humanlikes");
