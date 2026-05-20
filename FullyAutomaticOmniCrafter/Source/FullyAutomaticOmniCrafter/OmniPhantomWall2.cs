@@ -423,7 +423,7 @@ namespace FullyAutomaticOmniCrafter
             return str;
         }
 
-        private string GetPassabilitySummary()
+        public string GetPassabilitySummary()
         {
             // 这里根据 settings 生成简短描述
             // 模仿 Designator 的预设判断

@@ -144,6 +144,28 @@ namespace FullyAutomaticOmniCrafter
             };
         }
 
+        public List<string> GetEnabledFilters()
+        {
+            List<string> list = new List<string>();
+            if (allowColonists) list.Add("OPW_AllowColonists".Translate());
+            if (allowPets) list.Add("OPW_AllowPets".Translate());
+            if (allowDryad) list.Add("OPW_AllowDryad".Translate());
+            if (allowTraders) list.Add("OPW_AllowTraders".Translate());
+            if (allowPrisoners) list.Add("OPW_AllowPrisoners".Translate());
+            if (allowColonyPrisoners) list.Add("OPW_AllowColonyPrisoners".Translate());
+            if (allowWildAnimals) list.Add("OPW_AllowWildAnimals".Translate());
+            if (allowEntities) list.Add("OPW_AllowEntities".Translate());
+            if (allowHostiles) list.Add("OPW_AllowHostiles".Translate());
+            if (allowFactioned) list.Add("OPW_AllowFactioned".Translate());
+            if (allowLords) list.Add("OPW_AllowLords".Translate());
+            if (allowMechanoids) list.Add("OPW_AllowMechanoids".Translate());
+            if (allowHumanlikes) list.Add("OPW_AllowHumanlikes".Translate());
+            if (allowToolUsers) list.Add("OPW_AllowToolUsers".Translate());
+            if (allowUnfactions) list.Add("OPW_AllowUnfactions".Translate());
+            if (allowInsectoids) list.Add("OPW_AllowInsectoids".Translate());
+            return list;
+        }
+
         /// <summary>
         /// 根据设置生成唯一的颜色
         /// </summary>

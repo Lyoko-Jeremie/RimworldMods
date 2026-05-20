@@ -32,6 +32,8 @@ namespace FullyAutomaticOmniCrafter
         private static readonly Dictionary<int, Color> tmpGroupColors = new Dictionary<int, Color>();
         private static readonly List<IntVec3> tmpNoSettingsCells = new List<IntVec3>();
 
+        private Building_OmniPhantomWall2 mouseOverWall;
+
         /// <summary>
         /// 当前选中的规则预设
         /// </summary>
@@ -287,6 +289,9 @@ namespace FullyAutomaticOmniCrafter
         {
             GenUI.RenderMouseoverBracket();
             
+            // 检测鼠标下的墙
+            mouseOverWall = UI.MouseCell().GetEdifice(Map) as Building_OmniPhantomWall2;
+
             // 高亮所有幻影墙 - 同时支持OmniPhantomWall和OmniPhantomWall2
             // 按设置的签名分组以使用不同颜色
             foreach (var list in tmpHighlightGroups.Values)
@@ -337,11 +342,50 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        private void DrawMouseOverWallInfo()
+        {
+            if (mouseOverWall == null) return;
+
+            List<string> filters = mouseOverWall.settings?.GetEnabledFilters();
+            if (filters == null || filters.Count == 0) return;
+
+            float width = 250f;
+            float rowHeight = 24f;
+            float titleHeight = 30f;
+            float height = titleHeight + filters.Count * rowHeight + 10f;
+
+            // 绘制在屏幕左侧中间偏下的位置，避开资源栏
+            Rect rect = new Rect(20f, (UI.screenHeight / 2f) - (height / 2f), width, height);
+
+            Find.WindowStack.ImmediateWindow(89237410, rect, WindowLayer.GameUI, () =>
+            {
+                Rect innerRect = rect.AtZero().ContractedBy(10f);
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.UpperLeft;
+
+                // 标题：预设名称
+                string presetLabel = mouseOverWall.GetPassabilitySummary();
+                GUI.color = mouseOverWall.settings.GetColor();
+                Widgets.Label(new Rect(innerRect.x, innerRect.y, innerRect.width, titleHeight), "OPW_CurrentPreset".Translate() + ": " + presetLabel);
+                GUI.color = Color.white;
+
+                float curY = innerRect.y + titleHeight;
+                foreach (string filter in filters)
+                {
+                    Widgets.Label(new Rect(innerRect.x + 10f, curY, innerRect.width - 10f, rowHeight), "• " + filter);
+                    curY += rowHeight;
+                }
+            }, true, false, 0.7f);
+        }
+
         /// <summary>
         /// 底部额外 GUI 控件（用于切换预设）
         /// </summary>
         public override void DoExtraGuiControls(float leftX, float bottomY)
         {
+            // 绘制鼠标指向墙体的信息
+            DrawMouseOverWallInfo();
+
             float width = 220f;
             float height = 230f;
             
