@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>OmniPhantomWall2_DropdownGroup</defName>
+        <label>OmniPhantomWall2</label>
+        <description>description</description>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef Name="OmniPhantomWall2Base" ParentName="BuildingBase" Abstract="True">
+        <defName>OmniPhantomWall2Base</defName>
+        <label>OmniPhantomWall2Base</label>
+        <description>description</description>
+
+        <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall2</thingClass>
+        <tickerType>Never</tickerType> <!-- 关键：绝对不刷新，零 CPU 损耗 -->
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>OmniPhantomWall2_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <!-- 1. 视觉属性：完全照搬原版的墙 -->
+        <graphicData>
+            <texPath>Things/Building/Linked/Wall</texPath>
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall_all_</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWallTex/WallExampleGrid</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWallTex/OmniPhantomWall__Atlas</texPath>-->
+            <graphicClass>Graphic_Appearances</graphicClass>
+<!--            <graphicClass>Graphic_Linked</graphicClass>-->
+            <linkType>CornerFiller</linkType>
+            <linkFlags>
+                <li>Wall</li>
+                <li>Rock</li>
+            </linkFlags>
+            <damageData>
+                <cornerTL>Damage/Corner</cornerTL>
+                <cornerTR>Damage/Corner</cornerTR>
+                <cornerBL>Damage/Corner</cornerBL>
+                <cornerBR>Damage/Corner</cornerBR>
+                <edgeTop>Damage/Edge</edgeTop>
+                <edgeBot>Damage/Edge</edgeBot>
+                <edgeLeft>Damage/Edge</edgeLeft>
+                <edgeRight>Damage/Edge</edgeRight>
+            </damageData>
+            
+            <!-- ↓ 半透明三件套 -->
+            <shaderType>Transparent</shaderType>          <!-- 开启 Alpha 混合 -->
+<!--            <color>(1, 0.6, 1, 0.3)</color>         &lt;!&ndash; 略带蓝紫色调，30% 不透明度 &ndash;&gt;-->
+<!--            <allowAtlasing>false</allowAtlasing>           &lt;!&ndash; 禁止图集替换，保留 alpha &ndash;&gt;-->
+        </graphicData>
+        <uiIconPath>Things/Building/Linked/WallSmooth_MenuIcon</uiIconPath>
+<!--        <uiIconPath>Things/Building/Linked/Wall_MenuIcon</uiIconPath>-->
+
+        <!-- 声明可接受的材质分类 -->
+        <stuffCategories>
+            <li>Metallic</li>   <!-- 钢铁、钛金等金属 -->
+            <li>Woody</li>      <!-- 木材 -->
+            <li>Stony</li>      <!-- 各类石材 -->
+        </stuffCategories>
+        <!-- 建造消耗的材质数量 -->
+        <costStuffCount>1</costStuffCount>
+        <!-- 根据材质决定地形需求（可选，墙一般要加） -->
+        <!-- 不开启 useStuffTerrainAffordance，同时也不设 terrainAffordanceNeeded -->
+        <!-- 这样任意地形都能建造，符合"幻影"的科幻设定 -->
+        <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+
+
+
+        <!-- 欺骗引擎：将其设为可通行，使其不会打断原版的寻路网格和区域连接 -->
+        <passability>Standable</passability>
+
+        <holdsRoof>true</holdsRoof> <!-- 可以支撑屋顶 -->
+        <altitudeLayer>Building</altitudeLayer>
+        <blockLight>true</blockLight> <!-- 像墙一样挡光 -->
+        <!-- 幻影效果配套：去掉边缘阴影更干净 -->
+        <castEdgeShadows>false</castEdgeShadows>
+        <fillPercent>1</fillPercent> <!-- 100% 阻挡视线和提供掩体 -->
+        <coversFloor>true</coversFloor>
+
+
+        <!-- 2. 欺骗AI的属性 -->
+        <statBases>
+            <!-- 极高的血量，让破墙AI计算后认为破坏它极其不划算，从而绕路 -->
+            <MaxHitPoints>999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
+        </statBases>
+
+        <building>
+            <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+            <ai_neverTrashThis>true</ai_neverTrashThis>
+
+            <!-- 标记该建筑是否为"主体建筑"（地基级建筑），即占据地图格子的"正式"建筑。只有 Edifice 才能支撑屋顶 -->
+            <!-- 一个格子同时只能有一个 Edifice。如果新建筑是 Edifice，会替换并摧毁该格已有的 Edifice -->
+            <isEdifice>true</isEdifice>
+            <isWall>true</isWall>
+            <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
+            <isInert>true</isInert>
+            <!-- 允许选材质后涂色 -->
+            <paintable>true</paintable>
+            <isStuffableAirtight>true</isStuffableAirtight>
+            <!-- 声明此建筑是电力导体 -->
+<!--            <isPowerConduit>true</isPowerConduit>-->
+            <!-- ↓ 加这一行，允许在此建筑上挂壁灯等附件 -->
+            <supportsWallAttachments>true</supportsWallAttachments>
+        </building>
+        <rotatable>false</rotatable>
+        
+        <drawStyleCategory>Walls</drawStyleCategory>
+        
+    </ThingDef>
+
+    <!--  ===============================================================================================  -->
+
+    <ThingDef Name="OmniPhantomWall2_" ParentName="OmniPhantomWall2Base">
+        <defName>OmniPhantomWall2_</defName>
+        <label>OmniPhantomWall2_</label>
+        <description>description</description>
+
+        <graphicData>
+<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall</texPath>-->
+<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
+        </graphicData>
+                
+    </ThingDef>
+
+    <ThingDef Name="OmniPhantomWall2_Power" ParentName="OmniPhantomWall2_">
+        <defName>OmniPhantomWall2_Power</defName>
+        <label>OmniPhantomWall2_Power</label>
+        <description>description</description>
+
+        <building>
+            <!-- 声明此建筑是电力导体 -->
+            <isPowerConduit>true</isPowerConduit>
+        </building>
+        
+        <comps>
+            <!-- 电力传导 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTransmitter</compClass>
+                <transmitsPower>true</transmitsPower>
+            </li>
+
+        </comps>
+
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPhantomWall2_Power">
+        <defName>OmniPhantomWall2_PowerLight</defName>
+        <label>OmniPhantomWall2_PowerLight</label>
+        <description>description</description>
+
+        <comps>
+            <!-- 自发光 -->
+            <li Class="CompProperties_Glower">
+                <glowRadius>25</glowRadius>              <!-- 发光半径，单位=格，最大40 -->
+                <glowColor>(255,255,255,0)</glowColor>  <!-- RGB 0~255，第4位固定写0 -->
+            </li>
+        </comps>
+
+    </ThingDef>
+
+</Defs>
