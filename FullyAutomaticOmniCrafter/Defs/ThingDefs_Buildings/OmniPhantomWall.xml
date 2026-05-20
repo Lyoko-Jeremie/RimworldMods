@@ -63,7 +63,7 @@
         <!-- 不开启 useStuffTerrainAffordance，同时也不设 terrainAffordanceNeeded -->
         <!-- 这样任意地形都能建造，符合"幻影"的科幻设定 -->
         <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
-        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+<!--        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>-->
 
 
 
