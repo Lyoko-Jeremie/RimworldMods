@@ -229,6 +229,7 @@ namespace FullyAutomaticOmniCrafter
             // 规则变化时只脏化当前格附近的区域，再重建 dirty 部分
             if (oldSig != newSig && Spawned)
             {
+                // TODO not work
                 Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
                 // if (NotifyWalkabilityChangedInvoker != null)
                 // {
