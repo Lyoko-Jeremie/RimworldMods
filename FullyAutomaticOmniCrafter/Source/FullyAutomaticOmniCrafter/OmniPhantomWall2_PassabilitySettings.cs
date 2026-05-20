@@ -131,6 +131,20 @@ namespace FullyAutomaticOmniCrafter
                 allowInsectoids = this.allowInsectoids
             };
         }
+
+        /// <summary>
+        /// 根据设置生成唯一的颜色
+        /// </summary>
+        public Color GetColor()
+        {
+            int sig = GetSignature();
+            if (sig == 0) return Color.gray;
+            
+            // 使用黄金分割比生成分布均匀的色调
+            float hue = (sig * 0.61803398875f) % 1.0f;
+            Color color = Color.HSVToRGB(hue, 0.7f, 0.9f);
+            color.a = 0.5f;
+            return color;
+        }
     }
-    
 }

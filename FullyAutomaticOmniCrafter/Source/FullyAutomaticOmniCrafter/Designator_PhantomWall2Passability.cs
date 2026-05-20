@@ -27,8 +27,9 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Designator_PhantomWall2Passability : Designator
     {
-        private static readonly Dictionary<Room, List<IntVec3>> tmpHighlightRooms = new Dictionary<Room, List<IntVec3>>();
-        private static readonly List<IntVec3> tmpNoRoomCells = new List<IntVec3>();
+        private static readonly Dictionary<int, List<IntVec3>> tmpHighlightGroups = new Dictionary<int, List<IntVec3>>();
+        private static readonly Dictionary<int, Color> tmpGroupColors = new Dictionary<int, Color>();
+        private static readonly List<IntVec3> tmpNoSettingsCells = new List<IntVec3>();
 
         /// <summary>
         /// 当前选中的规则预设
@@ -248,54 +249,52 @@ namespace FullyAutomaticOmniCrafter
             GenUI.RenderMouseoverBracket();
             
             // 高亮所有幻影墙 - 同时支持OmniPhantomWall和OmniPhantomWall2
-            // 按房间分组以使用不同颜色
-            foreach (var list in tmpHighlightRooms.Values)
+            // 按设置的签名分组以使用不同颜色
+            foreach (var list in tmpHighlightGroups.Values)
             {
                 list.Clear();
             }
-            tmpHighlightRooms.Clear();
-            tmpNoRoomCells.Clear();
+            tmpHighlightGroups.Clear();
+            tmpGroupColors.Clear();
+            tmpNoSettingsCells.Clear();
 
             List<Thing> allThings = Map.listerThings.AllThings;
             for (int i = 0; i < allThings.Count; i++)
             {
                 if (allThings[i] is Building_OmniPhantomWall2 wall)
                 {
-                    Room room = wall.Position.GetRoom(Map);
-                    if (room != null && !room.PsychologicallyOutdoors)
+                    if (wall.settings != null)
                     {
-                        if (!tmpHighlightRooms.TryGetValue(room, out List<IntVec3> cells))
+                        int sig = wall.settings.GetSignature();
+                        if (!tmpHighlightGroups.TryGetValue(sig, out List<IntVec3> cells))
                         {
                             cells = new List<IntVec3>();
-                            tmpHighlightRooms[room] = cells;
+                            tmpHighlightGroups[sig] = cells;
+                            tmpGroupColors[sig] = wall.settings.GetColor();
                         }
                         cells.Add(wall.Position);
                     }
                     else
                     {
-                        tmpNoRoomCells.Add(wall.Position);
+                        tmpNoSettingsCells.Add(wall.Position);
                     }
                 }
             }
 
-            // 绘制有房间的墙
-            foreach (var kvp in tmpHighlightRooms)
+            // 绘制按设置分组的墙
+            foreach (var kvp in tmpHighlightGroups)
             {
-                Room room = kvp.Key;
+                int sig = kvp.Key;
                 List<IntVec3> cells = kvp.Value;
-                
-                // 使用房间ID生成稳定的颜色
-                float hue = (room.ID * 0.61803398875f) % 1.0f;
-                Color color = Color.HSVToRGB(hue, 0.6f, 1.0f);
-                color.a = 0.5f;
+                Color color = tmpGroupColors[sig];
 
                 GenDraw.DrawFieldEdges(cells, color);
             }
 
-            // 绘制没有房间（室外或边界）的墙
-            if (tmpNoRoomCells.Count > 0)
+            // 绘制没有设置的墙（理论上不应该出现）
+            if (tmpNoSettingsCells.Count > 0)
             {
-                GenDraw.DrawFieldEdges(tmpNoRoomCells, Color.cyan);
+                GenDraw.DrawFieldEdges(tmpNoSettingsCells, Color.cyan);
             }
         }
 
