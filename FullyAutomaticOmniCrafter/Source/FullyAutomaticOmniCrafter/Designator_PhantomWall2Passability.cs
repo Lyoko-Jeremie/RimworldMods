@@ -169,7 +169,13 @@ namespace FullyAutomaticOmniCrafter
                         allowPrisoners = true,
                         allowWildAnimals = true,
                         allowEntities = true,
-                        allowHostiles = true
+                        allowHostiles = true,
+                        allowMechanoids = true,
+                        allowInsectoids = true,
+                        allowHumanlikes = true,
+                        allowFactioned = true,
+                        allowLords = true,
+                        allowToolUsers = true
                     };
 
                 case PassabilityPreset.AllowFriendly:
@@ -181,7 +187,9 @@ namespace FullyAutomaticOmniCrafter
                         allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
-                        allowHostiles = false
+                        allowHostiles = false,
+                        allowMechanoids = false, // 默认非玩家机械族不通过
+                        allowInsectoids = false
                     };
 
                 case PassabilityPreset.ColonistsOnly:
@@ -193,7 +201,9 @@ namespace FullyAutomaticOmniCrafter
                         allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
-                        allowHostiles = false
+                        allowHostiles = false,
+                        allowMechanoids = false,
+                        allowInsectoids = false
                     };
 
                 case PassabilityPreset.BlockAll:

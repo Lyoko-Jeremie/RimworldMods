@@ -254,27 +254,32 @@ namespace FullyAutomaticOmniCrafter
         public bool CanPawnPassInstance(Pawn pawn)
         {
             if (pawn == null) return false;
-
-            // 1. 基础类别检查
+            
+            // 敌对单位
+            if (pawn.HostileTo(Faction.OfPlayer))
+                return settings.allowHostiles;
+            
+            // 异常实体 (IsAnomalyEntity)
             if (pawn.RaceProps.IsAnomalyEntity)
                 return settings.allowEntities;
 
-            if (pawn.RaceProps.Animal)
+            // 机械族 (IsMechanoid)
+            if (pawn.RaceProps.IsMechanoid)
             {
-                // 玩家宠物
                 if (pawn.Faction == Faction.OfPlayer)
-                    return settings.allowPets;
-                
-                // 虫族
-                if (pawn.RaceProps.Insect)
-                    return settings.allowInsectoids;
-
-                // 野生动物
-                if (pawn.Faction == null)
-                    return settings.allowWildAnimals;
+                    return true; // 玩家机械族默认允许
+                return settings.allowMechanoids;
             }
+            
+            // 树精 (Dryads)
+            if (pawn.RaceProps.Dryad)
+                return settings.allowDryad;
 
-            // 2. 派系与身份检查
+            // 虫族 (基于 FleshType)
+            if (pawn.RaceProps.Insect)
+                return settings.allowInsectoids;
+
+            // 类人 (Humanlike)
             if (pawn.RaceProps.Humanlike)
             {
                 if (pawn.Faction == Faction.OfPlayer)
@@ -289,12 +294,25 @@ namespace FullyAutomaticOmniCrafter
                 if (pawn.HostileTo(Faction.OfPlayer))
                     return settings.allowHostiles;
 
-                // 访客/商人
+                // 访客/商人 (有派系的人形)
                 if (pawn.Faction != null)
                     return settings.allowTraders;
             }
 
-            // 3. 高级属性检查
+            // 动物 (Animal)
+            // 原版定义: !ToolUser && IsFlesh && !IsAnomalyEntity
+            if (pawn.RaceProps.Animal)
+            {
+                // 玩家宠物 (必须有派系且是玩家派系)
+                if (pawn.Faction == Faction.OfPlayer)
+                    return settings.allowPets;
+
+                // 野生动物 (无派系)
+                if (pawn.Faction == null)
+                    return settings.allowWildAnimals;
+            }
+
+            // 2. 高级属性/回退检查
             if (settings.allowHumanlikes && pawn.RaceProps.Humanlike)
                 return true;
 
@@ -310,7 +328,7 @@ namespace FullyAutomaticOmniCrafter
             if (settings.allowUnfactions && pawn.Faction == null && pawn.GetLord() == null)
                 return true;
 
-            // 4. 回退处理
+            // 最终回退：玩家派系单位默认允许通过 (安全网)
             if (pawn.Faction == Faction.OfPlayer)
                 return true;
 

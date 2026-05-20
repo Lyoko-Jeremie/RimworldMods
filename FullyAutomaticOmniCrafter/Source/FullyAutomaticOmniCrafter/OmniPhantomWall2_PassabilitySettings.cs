@@ -13,6 +13,8 @@ namespace FullyAutomaticOmniCrafter
         public bool allowColonists = true;
         // 宠物
         public bool allowPets = true;
+        // 树精 (Dryads)
+        public bool allowDryad = false;
         // 商人/访客（非敌对的有派系人形）
         public bool allowTraders = true;
         // 囚犯
@@ -29,6 +31,8 @@ namespace FullyAutomaticOmniCrafter
         public bool allowFactioned = false;
         // 具有领主（Lord）的群体单位
         public bool allowLords = false;
+        // 机械族
+        public bool allowMechanoids = false;
         // 类人角色 (Humanlike)，涵盖野人 (Wild Man)
         public bool allowHumanlikes = false;
         // 智力达到“工具使用”等级 (ToolUser)
@@ -42,6 +46,7 @@ namespace FullyAutomaticOmniCrafter
         {
             Scribe_Values.Look(ref allowColonists, "allowColonists", true);
             Scribe_Values.Look(ref allowPets, "allowPets", true);
+            Scribe_Values.Look(ref allowDryad, "allowDryad", true);
             Scribe_Values.Look(ref allowTraders, "allowTraders", true);
             Scribe_Values.Look(ref allowPrisoners, "allowPrisoners", false);
             Scribe_Values.Look(ref allowColonyPrisoners, "allowColonyPrisoners", false);
@@ -50,6 +55,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref allowHostiles, "allowHostiles", false);
             Scribe_Values.Look(ref allowFactioned, "allowFactioned", false);
             Scribe_Values.Look(ref allowLords, "allowLords", false);
+            Scribe_Values.Look(ref allowMechanoids, "allowMechanoids", false);
             Scribe_Values.Look(ref allowHumanlikes, "allowHumanlikes", false);
             Scribe_Values.Look(ref allowToolUsers, "allowToolUsers", false);
             Scribe_Values.Look(ref allowUnfactions, "allowUnfactions", false);
@@ -69,18 +75,20 @@ namespace FullyAutomaticOmniCrafter
             int sig = 0;
             if (allowColonists)    sig |= 1 << 0;
             if (allowPets)         sig |= 1 << 1;
-            if (allowTraders)      sig |= 1 << 2;
-            if (allowPrisoners)    sig |= 1 << 3;
-            if (allowColonyPrisoners)    sig |= 1 << 4;
-            if (allowWildAnimals)  sig |= 1 << 5;
-            if (allowEntities)     sig |= 1 << 6;
-            if (allowHostiles)     sig |= 1 << 7;
-            if (allowFactioned)    sig |= 1 << 8;
-            if (allowLords)        sig |= 1 << 9;
-            if (allowHumanlikes)   sig |= 1 << 10;
-            if (allowToolUsers)    sig |= 1 << 11;
-            if (allowUnfactions)   sig |= 1 << 12;
-            if (allowInsectoids)   sig |= 1 << 13;
+            if (allowDryad)        sig |= 1 << 2;
+            if (allowTraders)      sig |= 1 << 3;
+            if (allowPrisoners)    sig |= 1 << 4;
+            if (allowColonyPrisoners)    sig |= 1 << 5;
+            if (allowWildAnimals)  sig |= 1 << 6;
+            if (allowEntities)     sig |= 1 << 7;
+            if (allowHostiles)     sig |= 1 << 8;
+            if (allowFactioned)    sig |= 1 << 9;
+            if (allowLords)        sig |= 1 << 10;
+            if (allowMechanoids)   sig |= 1 << 11;
+            if (allowHumanlikes)   sig |= 1 << 12;
+            if (allowToolUsers)    sig |= 1 << 13;
+            if (allowUnfactions)   sig |= 1 << 14;
+            if (allowInsectoids)   sig |= 1 << 15;
             return sig;
         }
     
@@ -97,6 +105,7 @@ namespace FullyAutomaticOmniCrafter
         {
             allowColonists = other.allowColonists;
             allowPets = other.allowPets;
+            allowDryad = other.allowDryad;
             allowTraders = other.allowTraders;
             allowPrisoners = other.allowPrisoners;
             allowColonyPrisoners = other.allowColonyPrisoners;
@@ -105,6 +114,7 @@ namespace FullyAutomaticOmniCrafter
             allowHostiles = other.allowHostiles;
             allowFactioned = other.allowFactioned;
             allowLords = other.allowLords;
+            allowMechanoids = other.allowMechanoids;
             allowHumanlikes = other.allowHumanlikes;
             allowToolUsers = other.allowToolUsers;
             allowUnfactions = other.allowUnfactions;
@@ -117,6 +127,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 allowColonists = this.allowColonists,
                 allowPets = this.allowPets,
+                allowDryad = this.allowDryad,
                 allowTraders = this.allowTraders,
                 allowPrisoners = this.allowPrisoners,
                 allowColonyPrisoners = this.allowColonyPrisoners,
@@ -125,6 +136,7 @@ namespace FullyAutomaticOmniCrafter
                 allowHostiles = this.allowHostiles,
                 allowFactioned = this.allowFactioned,
                 allowLords = this.allowLords,
+                allowMechanoids = this.allowMechanoids,
                 allowHumanlikes = this.allowHumanlikes,
                 allowToolUsers = this.allowToolUsers,
                 allowUnfactions = this.allowUnfactions,
