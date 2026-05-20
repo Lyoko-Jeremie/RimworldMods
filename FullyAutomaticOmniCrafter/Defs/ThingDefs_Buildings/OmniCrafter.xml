@@ -42,6 +42,8 @@
         <statBases>
             <Mass>50</Mass>
             <MaxHitPoints>999999999</MaxHitPoints>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
         </statBases>
         <tickerType>Rare</tickerType>
         <building>
