@@ -48,6 +48,8 @@ namespace FullyAutomaticOmniCrafter
         public bool mecXIncludeMass = true;
         /// <summary>是否将物品最大耐久（MaxHitPoints）加入 MEC 转化公式的 X。</summary>
         public bool mecXIncludeHitPoints = true;
+        
+        public OmniPhantomWall2_PassabilitySettings customPassabilitySettings = new OmniPhantomWall2_PassabilitySettings();
 
         public override void ExposeData()
         {
@@ -74,6 +76,9 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref mecEnergyN, "mecEnergyN", 0f);
             Scribe_Values.Look(ref mecXIncludeMass, "mecXIncludeMass", true);
             Scribe_Values.Look(ref mecXIncludeHitPoints, "mecXIncludeHitPoints", true);
+            
+            Scribe_Deep.Look(ref customPassabilitySettings, "customPassabilitySettings");
+            if (customPassabilitySettings == null) customPassabilitySettings = new OmniPhantomWall2_PassabilitySettings();
         }
     }
 

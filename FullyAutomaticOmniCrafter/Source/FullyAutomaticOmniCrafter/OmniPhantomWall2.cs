@@ -218,7 +218,7 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>
         /// 修改规则后触发区域重建
         /// </summary>
-        public void ApplySettings(OmniPhantomWall2_PassabilitySettings newSettings)
+        public void ApplySettings(OmniPhantomWall2_PassabilitySettings newSettings, bool rebuild = true)
         {
             int oldSig = settings.GetSignature();
             
@@ -233,11 +233,17 @@ namespace FullyAutomaticOmniCrafter
                 if (NotifyWalkabilityChangedInvoker != null)
                 {
                     NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, true);
-                    Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                    if (rebuild)
+                    {
+                        Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                    }
                 }
                 else
                 {
-                    Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                    if (rebuild)
+                    {
+                        Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                    }
                 }
             }
         }
@@ -248,43 +254,66 @@ namespace FullyAutomaticOmniCrafter
         public bool CanPawnPassInstance(Pawn pawn)
         {
             if (pawn == null) return false;
-            
-            // 玩家殖民者
-            if (pawn.Faction == Faction.OfPlayer && pawn.RaceProps.Humanlike)
-                return settings.allowColonists;
-            
-            // 玩家宠物
-            if (pawn.Faction == Faction.OfPlayer && pawn.RaceProps.Animal)
-                return settings.allowPets;
-            
-            // 玩家的囚犯
-            if (pawn.IsPrisonerOfColony)
-                return settings.allowColonyPrisoners;
-            
-            // 囚犯
-            if (pawn.IsPrisoner)
-                return settings.allowPrisoners;
-            
-            // 实体
+
+            // 1. 基础类别检查
             if (pawn.RaceProps.IsAnomalyEntity)
                 return settings.allowEntities;
-            
-            // 敌对单位
-            if (pawn.HostileTo(Faction.OfPlayer))
-                return settings.allowHostiles;
-            
-            // 商人/访客（非敌对的有派系人形）
-            if (!pawn.HostileTo(Faction.OfPlayer) && pawn.Faction != null && pawn.RaceProps.Humanlike)
-                return settings.allowTraders;
-            
-            // 野生动物
-            if (pawn.Faction == null && pawn.RaceProps.Animal)
-                return settings.allowWildAnimals;
-            
-            // 默认：玩家殖民者总是可以通过
+
+            if (pawn.RaceProps.Animal)
+            {
+                // 玩家宠物
+                if (pawn.Faction == Faction.OfPlayer)
+                    return settings.allowPets;
+                
+                // 虫族
+                if (pawn.RaceProps.Insect)
+                    return settings.allowInsectoids;
+
+                // 野生动物
+                if (pawn.Faction == null)
+                    return settings.allowWildAnimals;
+            }
+
+            // 2. 派系与身份检查
+            if (pawn.RaceProps.Humanlike)
+            {
+                if (pawn.Faction == Faction.OfPlayer)
+                    return settings.allowColonists;
+
+                if (pawn.IsPrisonerOfColony)
+                    return settings.allowColonyPrisoners;
+
+                if (pawn.IsPrisoner)
+                    return settings.allowPrisoners;
+
+                if (pawn.HostileTo(Faction.OfPlayer))
+                    return settings.allowHostiles;
+
+                // 访客/商人
+                if (pawn.Faction != null)
+                    return settings.allowTraders;
+            }
+
+            // 3. 高级属性检查
+            if (settings.allowHumanlikes && pawn.RaceProps.Humanlike)
+                return true;
+
+            if (settings.allowToolUsers && pawn.RaceProps.ToolUser)
+                return true;
+
+            if (settings.allowFactioned && pawn.Faction != null)
+                return true;
+
+            if (settings.allowLords && pawn.GetLord() != null)
+                return true;
+
+            if (settings.allowUnfactions && pawn.Faction == null && pawn.GetLord() == null)
+                return true;
+
+            // 4. 回退处理
             if (pawn.Faction == Faction.OfPlayer)
                 return true;
-                
+
             return false;
         }
 
@@ -320,8 +349,6 @@ namespace FullyAutomaticOmniCrafter
                     
                     foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
                     {
-                        if (preset == PassabilityPreset.Custom) continue;
-                        
                         PassabilityPreset localPreset = preset;
                         string label = Designator_PhantomWall2Passability.GetPresetLabel(localPreset);
                         if (localPreset == currentPreset)
@@ -386,17 +413,29 @@ namespace FullyAutomaticOmniCrafter
 
         private void ApplyPresetToSelectedWalls(PassabilityPreset preset)
         {
-            if (preset == PassabilityPreset.Custom) return;
-
             var newSettings = Designator_PhantomWall2Passability.GetSettingsFromPreset(preset);
+            Map map = Map;
             
             // 处理当前选中的所有幻影墙
+            int count = 0;
             foreach (object obj in Find.Selector.SelectedObjects)
             {
                 if (obj is Building_OmniPhantomWall2 wall)
                 {
-                    wall.ApplySettings(newSettings);
+                    wall.ApplySettings(newSettings, false);
+                    count++;
                 }
+            }
+            
+            if (count > 0 && map != null)
+            {
+                map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                
+                Messages.Message(
+                    "OPW_PresetAppliedBatch".Translate(count, Designator_PhantomWall2Passability.GetPresetLabel(preset)),
+                    MessageTypeDefOf.TaskCompletion,
+                    false
+                );
             }
         }
 

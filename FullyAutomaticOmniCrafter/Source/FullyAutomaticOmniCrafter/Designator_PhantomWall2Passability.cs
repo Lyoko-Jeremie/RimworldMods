@@ -39,7 +39,7 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>
         /// 自定义规则（当 currentPreset 为 Custom 时使用）
         /// </summary>
-        public static OmniPhantomWall2_PassabilitySettings customSettings = new OmniPhantomWall2_PassabilitySettings();
+        public static OmniPhantomWall2_PassabilitySettings customSettings => OmniCrafterMod.Settings.customPassabilitySettings;
 
         /// <summary>
         /// 启用二维拖拽（区域框选）
@@ -115,17 +115,25 @@ namespace FullyAutomaticOmniCrafter
         public override void DesignateMultiCell(IEnumerable<IntVec3> cells)
         {
             int count = 0;
+            Map map = Map;
             foreach (IntVec3 cell in cells)
             {
                 if (CanDesignateCell(cell).Accepted)
                 {
-                    DesignateSingleCell(cell);
-                    count++;
+                    Building_OmniPhantomWall2 wall = cell.GetEdifice(map) as Building_OmniPhantomWall2;
+                    if (wall != null)
+                    {
+                        OmniPhantomWall2_PassabilitySettings newSettings = GetSettingsFromPreset(currentPreset);
+                        wall.ApplySettings(newSettings, false);
+                        count++;
+                    }
                 }
             }
 
             if (count > 0)
             {
+                map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                
                 Messages.Message(
                     "OPW_AppliedToWalls".Translate(count, GetPresetLabel(currentPreset)),
                     MessageTypeDefOf.TaskCompletion,
@@ -310,16 +318,31 @@ namespace FullyAutomaticOmniCrafter
         {
             float width = 220f;
             float height = 230f;
+            
+            bool showCustom = currentPreset == PassabilityPreset.Custom;
+            if (showCustom)
+            {
+                width = 460f; // 增加宽度以显示详细设置
+                height = 420f;
+            }
+
             Rect winRect = new Rect(leftX, bottomY - height, width, height);
             
             Find.WindowStack.ImmediateWindow(73625891, winRect, WindowLayer.GameUI, () =>
             {
                 Rect rect = winRect.AtZero().ContractedBy(5f);
                 
+                // 左侧预设列表
+                Rect leftRect = rect;
+                if (showCustom)
+                {
+                    leftRect.width = 210f;
+                }
+
                 Text.Font = GameFont.Small;
-                Widgets.Label(rect.TopPartPixels(24f), "OPW_SelectPreset".Translate());
+                Widgets.Label(leftRect.TopPartPixels(24f), "OPW_SelectPreset".Translate());
                 
-                Rect buttonArea = rect;
+                Rect buttonArea = leftRect;
                 buttonArea.yMin += 28f;
                 
                 float buttonHeight = 24f;
@@ -337,6 +360,50 @@ namespace FullyAutomaticOmniCrafter
                     }
                     
                     y += buttonHeight + 2f;
+                }
+
+                // 右侧自定义设置
+                if (showCustom)
+                {
+                    Rect rightRect = new Rect(rect.x + 220f, rect.y, rect.width - 220f, rect.height);
+                    Widgets.DrawLineVertical(rect.x + 214f, rect.y, rect.height);
+                    
+                    Widgets.Label(rightRect.TopPartPixels(24f), "OPW_CustomSettings".Translate());
+                    
+                    Rect settingsArea = rightRect;
+                    settingsArea.yMin += 28f;
+                    
+                    float rowHeight = 22f;
+                    float curY = settingsArea.y;
+
+                    void DrawCheckbox(string labelKey, ref bool value, string defaultLabel)
+                    {
+                        Rect rowRect = new Rect(settingsArea.x, curY, settingsArea.width, rowHeight);
+                        string label = labelKey.CanTranslate() ? (string)labelKey.Translate() : defaultLabel;
+                        Widgets.CheckboxLabeled(rowRect, label, ref value);
+                        curY += rowHeight + 2f;
+                    }
+
+                    DrawCheckbox("OPW_AllowColonists", ref customSettings.allowColonists, "Colonists");
+                    DrawCheckbox("OPW_AllowPets", ref customSettings.allowPets, "Pets");
+                    DrawCheckbox("OPW_AllowTraders", ref customSettings.allowTraders, "Traders/Visitors");
+                    DrawCheckbox("OPW_AllowPrisoners", ref customSettings.allowPrisoners, "Prisoners (Generic)");
+                    DrawCheckbox("OPW_AllowColonyPrisoners", ref customSettings.allowColonyPrisoners, "Colony Prisoners");
+                    DrawCheckbox("OPW_AllowWildAnimals", ref customSettings.allowWildAnimals, "Wild Animals");
+                    DrawCheckbox("OPW_AllowEntities", ref customSettings.allowEntities, "Entities (Anomaly)");
+                    DrawCheckbox("OPW_AllowHostiles", ref customSettings.allowHostiles, "Hostiles");
+                    DrawCheckbox("OPW_AllowFactioned", ref customSettings.allowFactioned, "Has Faction");
+                    DrawCheckbox("OPW_AllowLords", ref customSettings.allowLords, "In Lord Group");
+                    DrawCheckbox("OPW_AllowHumanlikes", ref customSettings.allowHumanlikes, "Humanlikes");
+                    DrawCheckbox("OPW_AllowToolUsers", ref customSettings.allowToolUsers, "Tool Users");
+                    DrawCheckbox("OPW_AllowUnfactions", ref customSettings.allowUnfactions, "Unfactions");
+                    DrawCheckbox("OPW_AllowInsectoids", ref customSettings.allowInsectoids, "Insectoids");
+                    
+                    if (Widgets.ButtonText(new Rect(settingsArea.x, settingsArea.yMax - 30f, settingsArea.width, 30f), "OPW_SaveSettings".Translate()))
+                    {
+                        OmniCrafterMod.Instance.WriteSettings();
+                        Messages.Message("OPW_SettingsSaved".Translate(), MessageTypeDefOf.PositiveEvent, false);
+                    }
                 }
             });
         }
