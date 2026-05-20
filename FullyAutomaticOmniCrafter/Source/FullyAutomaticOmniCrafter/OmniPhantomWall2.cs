@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -305,14 +306,37 @@ namespace FullyAutomaticOmniCrafter
                 yield return gizmo;
             }
 
-            // 只有在选中且有 Map 时才显示
             if (!Spawned) yield break;
 
-            // 这里我们可以考虑是否需要一个 Gizmo 来弹出更详细的设置
-            // 但根据需求，“像 Designator_PhantomWall2Passability 一样在左侧有可配置的界面”
-            // 这通常意味着重写 SelectionDoNextFrame 或在某个地方调用 DoExtraGuiControls
-            // 不过在 Building 中，最接近的是 DoExtraGuiControls (如果它是继承自某个支持它的类)
-            // 或者我们可以模仿 Designator 的做法。
+            yield return new Command_Action
+            {
+                defaultLabel = "OPW_SelectPreset".Translate(),
+                defaultDesc = "OPW_CurrentPassability".Translate() + ": " + GetPassabilitySummary(),
+                icon = PhantomWall2Tex.IconSelectPreset,
+                action = delegate
+                {
+                    List<FloatMenuOption> list = new List<FloatMenuOption>();
+                    PassabilityPreset currentPreset = GetCurrentPreset();
+                    
+                    foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
+                    {
+                        if (preset == PassabilityPreset.Custom) continue;
+                        
+                        PassabilityPreset localPreset = preset;
+                        string label = Designator_PhantomWall2Passability.GetPresetLabel(localPreset);
+                        if (localPreset == currentPreset)
+                        {
+                            label += " (" + "Current".Translate() + ")";
+                        }
+                        
+                        list.Add(new FloatMenuOption(label, delegate
+                        {
+                            ApplyPresetToSelectedWalls(localPreset);
+                        }));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(list));
+                }
+            };
         }
 
         public override string GetInspectString()
@@ -326,9 +350,6 @@ namespace FullyAutomaticOmniCrafter
                 }
 
                 str += "OPW_CurrentPassability".Translate() + ": " + GetPassabilitySummary();
-                
-                // 绘制左侧 UI
-                DrawPassabilitySettingsUI();
             }
             return str;
         }
@@ -347,54 +368,6 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
             return Designator_PhantomWall2Passability.GetPresetLabel(PassabilityPreset.Custom);
-        }
-
-        private void DrawPassabilitySettingsUI()
-        {
-            // 模仿 Designator_PhantomWall2Passability.DoExtraGuiControls
-            // 使用与 Designator 相同的布局，通常在左侧
-            float leftX = 200f; // 默认左侧起始位置
-            float bottomY = (float)UI.screenHeight - 35f;
-            
-            // RimWorld 1.6 中获取信息面板高度的方法
-            // 如果信息面板可见，它通常是在底部的
-            float paneHeight = 165f; // 默认高度
-            bottomY -= paneHeight;
-
-            Rect winRect = new Rect(leftX, bottomY - 140f, 220f, 140f);
-            
-            Find.WindowStack.ImmediateWindow(73625892, winRect, WindowLayer.GameUI, () =>
-            {
-                Rect rect = winRect.AtZero().ContractedBy(5f);
-                
-                Text.Font = GameFont.Small;
-                Widgets.Label(rect.TopPartPixels(24f), "OPW_SelectPreset".Translate());
-                
-                Rect buttonArea = rect;
-                buttonArea.yMin += 28f;
-                
-                float buttonHeight = 24f;
-                float y = buttonArea.y;
-                
-                PassabilityPreset currentPreset = GetCurrentPreset();
-
-                foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
-                {
-                    Rect buttonRect = new Rect(buttonArea.x, y, buttonArea.width, buttonHeight);
-                    
-                    bool isSelected = (currentPreset == preset);
-                    if (Widgets.RadioButtonLabeled(buttonRect, Designator_PhantomWall2Passability.GetPresetLabel(preset), isSelected))
-                    {
-                        if (!isSelected)
-                        {
-                            ApplyPresetToSelectedWalls(preset);
-                            SoundDefOf.Click.PlayOneShotOnCamera();
-                        }
-                    }
-                    
-                    y += buttonHeight + 2f;
-                }
-            });
         }
 
         private PassabilityPreset GetCurrentPreset()
@@ -441,4 +414,10 @@ namespace FullyAutomaticOmniCrafter
         internal const RegionType PhantomWallRegionType = (RegionType)18;
     }
 
+    [StaticConstructorOnStartup]
+    public static class PhantomWall2Tex
+    {
+        public static readonly Texture2D IconSelectPreset =
+            ContentFinder<Texture2D>.Get("UI/Designators/PhantomWallPassability", true) ?? BaseContent.WhiteTex;
+    }
 }
