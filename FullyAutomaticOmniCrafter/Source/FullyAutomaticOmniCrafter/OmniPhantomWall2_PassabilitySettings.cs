@@ -105,6 +105,10 @@ namespace FullyAutomaticOmniCrafter
             allowHostiles = other.allowHostiles;
             allowFactioned = other.allowFactioned;
             allowLords = other.allowLords;
+            allowHumanlikes = other.allowHumanlikes;
+            allowToolUsers = other.allowToolUsers;
+            allowUnfactions = other.allowUnfactions;
+            allowInsectoids = other.allowInsectoids;
         }
 
         public OmniPhantomWall2_PassabilitySettings Clone()
