@@ -189,7 +189,8 @@ namespace FullyAutomaticOmniCrafter
         {
             base.ExposeData();
             Scribe_Deep.Look(ref settings, "settings");
-            settings ??= new OmniPhantomWall2_PassabilitySettings();
+            if (settings == null)
+                settings = new OmniPhantomWall2_PassabilitySettings();
         }
         
         
