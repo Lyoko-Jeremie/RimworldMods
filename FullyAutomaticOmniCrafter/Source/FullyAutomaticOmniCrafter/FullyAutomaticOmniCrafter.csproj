@@ -381,6 +381,7 @@
     <Compile Include="OmniPhantomWall2_PassabilitySettings.cs" />
     <Compile Include="Patch_OmniAutoSurgeonSurgery.cs" />
     <Compile Include="Patch_OmniPhantomWall.cs" />
+    <Compile Include="Patch_PhantomWall2DesignatorBinding.cs" />
     <Compile Include="RealityWeaver.cs" />
     <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />
