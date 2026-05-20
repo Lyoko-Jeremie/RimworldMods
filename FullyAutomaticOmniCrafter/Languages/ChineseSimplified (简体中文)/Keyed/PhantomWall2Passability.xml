@@ -16,6 +16,8 @@
     <OPW_Preset_KillBox>猎场模式</OPW_Preset_KillBox>
     <OPW_Preset_Custom>自定义</OPW_Preset_Custom>
 
+    <OPW_CurrentPreset>当前配置</OPW_CurrentPreset>
+
     <!-- Custom Settings -->
     <OPW_CustomSettings>自定义设置</OPW_CustomSettings>
     <OPW_AllowColonists>允许殖民者</OPW_AllowColonists>

@@ -16,6 +16,8 @@
     <OPW_Preset_KillBox>Killbox Mode</OPW_Preset_KillBox>
     <OPW_Preset_Custom>Custom</OPW_Preset_Custom>
 
+    <OPW_CurrentPreset>Current Preset</OPW_CurrentPreset>
+
     <!-- Custom Settings -->
     <OPW_CustomSettings>Custom Settings</OPW_CustomSettings>
     <OPW_AllowColonists>Allow Colonists</OPW_AllowColonists>
@@ -36,7 +38,7 @@
     <OPW_AllowInsectoids>Allow Insectoids</OPW_AllowInsectoids>
     <OPW_SaveSettings>Save Settings</OPW_SaveSettings>
     <OPW_SettingsSaved>Settings Saved</OPW_SettingsSaved>
-
+    
     <!-- Force Rebuild -->
     <OPW_ForceRebuildRegionsLabel>Force Refresh Map Data</OPW_ForceRebuildRegionsLabel>
     <OPW_ForceRebuildRegionsDesc>Force recalculate map region structures and pathfinding data. Use this if you modified phantom wall passability but pawns are not responding correctly.</OPW_ForceRebuildRegionsDesc>
