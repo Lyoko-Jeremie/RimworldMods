@@ -389,7 +389,9 @@ namespace FullyAutomaticOmniCrafter
                         art.InitializeArt(ArtGenerationContext.Colony);
 
                     // 继承样式（保留蓝图的风格定义）
-                    if (bp.StyleDef != null && bp.StyleSourcePrecept == null)
+                    if (bp.StyleSourcePrecept != null)
+                        thing.StyleSourcePrecept = bp.StyleSourcePrecept;
+                    if (bp.StyleDef != null)
                         thing.StyleDef = bp.StyleDef;
 
                     // 占位物已由 DemolishAndLootBlockers 清理，直接静默生成
@@ -463,6 +465,8 @@ namespace FullyAutomaticOmniCrafter
                     if (art2 != null && !art2.Active)
                         art2.InitializeArt(ArtGenerationContext.Colony);
 
+                    if (frame.StyleSourcePrecept != null)
+                        thing.StyleSourcePrecept = frame.StyleSourcePrecept;
                     if (frame.StyleDef != null)
                         thing.StyleDef = frame.StyleDef;
 
