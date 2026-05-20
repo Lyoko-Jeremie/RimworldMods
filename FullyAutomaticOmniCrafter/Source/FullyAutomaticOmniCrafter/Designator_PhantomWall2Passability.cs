@@ -425,12 +425,12 @@ namespace FullyAutomaticOmniCrafter
                     DrawCheckbox("OPW_AllowEntities", ref customSettings.allowEntities, "Entities (Anomaly)");
                     DrawCheckbox("OPW_AllowHostiles", ref customSettings.allowHostiles, "Hostiles");
                     DrawCheckbox("OPW_AllowMechanoids", ref customSettings.allowMechanoids, "Mechanoids");
+                    DrawCheckbox("OPW_AllowInsectoids", ref customSettings.allowInsectoids, "Insectoids");
                     DrawCheckbox("OPW_AllowFactioned", ref customSettings.allowFactioned, "Has Faction");
                     DrawCheckbox("OPW_AllowLords", ref customSettings.allowLords, "In Lord Group");
                     DrawCheckbox("OPW_AllowHumanlikes", ref customSettings.allowHumanlikes, "Humanlikes");
                     DrawCheckbox("OPW_AllowToolUsers", ref customSettings.allowToolUsers, "Tool Users");
                     DrawCheckbox("OPW_AllowUnfactions", ref customSettings.allowUnfactions, "Unfactions");
-                    DrawCheckbox("OPW_AllowInsectoids", ref customSettings.allowInsectoids, "Insectoids");
                     
                     if (Widgets.ButtonText(new Rect(settingsArea.x, settingsArea.yMax - 30f, settingsArea.width, 30f), "OPW_SaveSettings".Translate()))
                     {

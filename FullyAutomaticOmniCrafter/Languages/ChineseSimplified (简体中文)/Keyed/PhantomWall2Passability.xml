@@ -15,4 +15,25 @@
     <OPW_Preset_Prison>监狱模式</OPW_Preset_Prison>
     <OPW_Preset_KillBox>猎场模式</OPW_Preset_KillBox>
     <OPW_Preset_Custom>自定义</OPW_Preset_Custom>
+
+    <!-- Custom Settings -->
+    <OPW_CustomSettings>自定义设置</OPW_CustomSettings>
+    <OPW_AllowColonists>允许殖民者</OPW_AllowColonists>
+    <OPW_AllowPets>允许宠物</OPW_AllowPets>
+    <OPW_AllowDryad>允许树精</OPW_AllowDryad>
+    <OPW_AllowTraders>允许贸易商/访客</OPW_AllowTraders>
+    <OPW_AllowPrisoners>允许囚犯 (通用)</OPW_AllowPrisoners>
+    <OPW_AllowColonyPrisoners>允许本殖民地囚犯</OPW_AllowColonyPrisoners>
+    <OPW_AllowWildAnimals>允许野生动物</OPW_AllowWildAnimals>
+    <OPW_AllowEntities>允许实体 (异常)</OPW_AllowEntities>
+    <OPW_AllowHostiles>允许敌对单位</OPW_AllowHostiles>
+    <OPW_AllowMechanoids>允许机械族</OPW_AllowMechanoids>
+    <OPW_AllowFactioned>具有派系</OPW_AllowFactioned>
+    <OPW_AllowLords>处于群体/领主状态</OPW_AllowLords>
+    <OPW_AllowHumanlikes>类人生物</OPW_AllowHumanlikes>
+    <OPW_AllowToolUsers>工具使用者</OPW_AllowToolUsers>
+    <OPW_AllowUnfactions>无派系单位</OPW_AllowUnfactions>
+    <OPW_AllowInsectoids>允许虫族</OPW_AllowInsectoids>
+    <OPW_SaveSettings>保存设置</OPW_SaveSettings>
+    <OPW_SettingsSaved>设置已保存</OPW_SettingsSaved>
 </LanguageData>

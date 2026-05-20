@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <!-- Designator -->
+    <OPW_SetPassability>Set Passability Rules</OPW_SetPassability>
+    <OPW_SetPassabilityDesc>Click or drag to apply the selected passability preset to phantom walls.</OPW_SetPassabilityDesc>
+    <OPW_NotPhantomWall>No phantom wall here</OPW_NotPhantomWall>
+    <OPW_AppliedToWalls>Applied rule [{1}] to {0} phantom walls</OPW_AppliedToWalls>
+    <OPW_SelectPreset>Select Preset:</OPW_SelectPreset>
+
+    <!-- Presets -->
+    <OPW_Preset_AllowAll>Allow All</OPW_Preset_AllowAll>
+    <OPW_Preset_AllowFriendly>Allow Friendly</OPW_Preset_AllowFriendly>
+    <OPW_Preset_ColonistsOnly>Colonists Only</OPW_Preset_ColonistsOnly>
+    <OPW_Preset_BlockAll>Block All</OPW_Preset_BlockAll>
+    <OPW_Preset_Prison>Prison Mode</OPW_Preset_Prison>
+    <OPW_Preset_KillBox>Killbox Mode</OPW_Preset_KillBox>
+    <OPW_Preset_Custom>Custom</OPW_Preset_Custom>
+
+    <!-- Custom Settings -->
+    <OPW_CustomSettings>Custom Settings</OPW_CustomSettings>
+    <OPW_AllowColonists>Allow Colonists</OPW_AllowColonists>
+    <OPW_AllowPets>Allow Pets</OPW_AllowPets>
+    <OPW_AllowDryad>Allow Dryads</OPW_AllowDryad>
+    <OPW_AllowTraders>Allow Traders/Visitors</OPW_AllowTraders>
+    <OPW_AllowPrisoners>Allow Prisoners (Generic)</OPW_AllowPrisoners>
+    <OPW_AllowColonyPrisoners>Allow Colony Prisoners</OPW_AllowColonyPrisoners>
+    <OPW_AllowWildAnimals>Allow Wild Animals</OPW_AllowWildAnimals>
+    <OPW_AllowEntities>Allow Entities (Anomaly)</OPW_AllowEntities>
+    <OPW_AllowHostiles>Allow Hostiles</OPW_AllowHostiles>
+    <OPW_AllowMechanoids>Allow Mechanoids</OPW_AllowMechanoids>
+    <OPW_AllowFactioned>Has Faction</OPW_AllowFactioned>
+    <OPW_AllowLords>In Lord Group</OPW_AllowLords>
+    <OPW_AllowHumanlikes>Humanlikes</OPW_AllowHumanlikes>
+    <OPW_AllowToolUsers>Tool Users</OPW_AllowToolUsers>
+    <OPW_AllowUnfactions>Unfactions</OPW_AllowUnfactions>
+    <OPW_AllowInsectoids>Allow Insectoids</OPW_AllowInsectoids>
+    <OPW_SaveSettings>Save Settings</OPW_SaveSettings>
+    <OPW_SettingsSaved>Settings Saved</OPW_SettingsSaved>
+</LanguageData>
