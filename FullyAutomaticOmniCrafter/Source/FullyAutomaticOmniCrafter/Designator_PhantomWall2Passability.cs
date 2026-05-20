@@ -6,6 +6,14 @@ using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter
 {
+    
+    [StaticConstructorOnStartup]
+    public static class PhantomWall2DesignatorTex
+    {
+        public static readonly Texture2D IconSelectPreset =
+            ContentFinder<Texture2D>.Get("UI/Designators/PhantomWallPassability", true) ?? BaseContent.WhiteTex;
+    }
+    
     /// <summary>
     /// 幻影墙通行规则批量设置工具
     /// 使用方式：在建筑菜单中选择此工具，然后框选/点击幻影墙应用预设规则
@@ -35,7 +43,7 @@ namespace FullyAutomaticOmniCrafter
         {
             this.defaultLabel = "OPW_SetPassability".Translate();
             this.defaultDesc = "OPW_SetPassabilityDesc".Translate();
-            this.icon = ContentFinder<Texture2D>.Get("UI/Designators/PhantomWallPassability", true) ?? BaseContent.WhiteTex;
+            this.icon = PhantomWall2DesignatorTex.IconSelectPreset;
             this.soundDragSustain = SoundDefOf.Designate_DragStandard;
             this.soundDragChanged = SoundDefOf.Designate_DragStandard_Changed;
             this.soundSucceeded = SoundDefOf.Designate_Claim;
