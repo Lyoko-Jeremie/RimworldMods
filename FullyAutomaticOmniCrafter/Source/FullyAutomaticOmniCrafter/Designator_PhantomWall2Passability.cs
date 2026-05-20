@@ -237,8 +237,8 @@ namespace FullyAutomaticOmniCrafter
         {
             GenUI.RenderMouseoverBracket();
             
-            // 高亮所有幻影墙
-            foreach (Thing thing in Map.listerThings.ThingsOfDef(ThingDef.Named("OmniPhantomWall")))
+            // 高亮所有幻影墙 - 同时支持OmniPhantomWall和OmniPhantomWall2
+            foreach (Thing thing in Map.listerThings.AllThings)
             {
                 if (thing is Building_OmniPhantomWall2 wall)
                 {
