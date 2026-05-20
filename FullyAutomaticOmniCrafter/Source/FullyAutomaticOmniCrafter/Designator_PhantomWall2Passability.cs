@@ -27,7 +27,8 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Designator_PhantomWall2Passability : Designator
     {
-        private static readonly List<IntVec3> tmpHighlightCells = new List<IntVec3>();
+        private static readonly Dictionary<Room, List<IntVec3>> tmpHighlightRooms = new Dictionary<Room, List<IntVec3>>();
+        private static readonly List<IntVec3> tmpNoRoomCells = new List<IntVec3>();
 
         /// <summary>
         /// 当前选中的规则预设
@@ -247,19 +248,54 @@ namespace FullyAutomaticOmniCrafter
             GenUI.RenderMouseoverBracket();
             
             // 高亮所有幻影墙 - 同时支持OmniPhantomWall和OmniPhantomWall2
-            tmpHighlightCells.Clear();
+            // 按房间分组以使用不同颜色
+            foreach (var list in tmpHighlightRooms.Values)
+            {
+                list.Clear();
+            }
+            tmpHighlightRooms.Clear();
+            tmpNoRoomCells.Clear();
+
             List<Thing> allThings = Map.listerThings.AllThings;
             for (int i = 0; i < allThings.Count; i++)
             {
                 if (allThings[i] is Building_OmniPhantomWall2 wall)
                 {
-                    tmpHighlightCells.Add(wall.Position);
+                    Room room = wall.Position.GetRoom(Map);
+                    if (room != null && !room.PsychologicallyOutdoors)
+                    {
+                        if (!tmpHighlightRooms.TryGetValue(room, out List<IntVec3> cells))
+                        {
+                            cells = new List<IntVec3>();
+                            tmpHighlightRooms[room] = cells;
+                        }
+                        cells.Add(wall.Position);
+                    }
+                    else
+                    {
+                        tmpNoRoomCells.Add(wall.Position);
+                    }
                 }
             }
 
-            if (tmpHighlightCells.Count > 0)
+            // 绘制有房间的墙
+            foreach (var kvp in tmpHighlightRooms)
             {
-                GenDraw.DrawFieldEdges(tmpHighlightCells, Color.cyan);
+                Room room = kvp.Key;
+                List<IntVec3> cells = kvp.Value;
+                
+                // 使用房间ID生成稳定的颜色
+                float hue = (room.ID * 0.61803398875f) % 1.0f;
+                Color color = Color.HSVToRGB(hue, 0.6f, 1.0f);
+                color.a = 0.5f;
+
+                GenDraw.DrawFieldEdges(cells, color);
+            }
+
+            // 绘制没有房间（室外或边界）的墙
+            if (tmpNoRoomCells.Count > 0)
+            {
+                GenDraw.DrawFieldEdges(tmpNoRoomCells, Color.cyan);
             }
         }
 
