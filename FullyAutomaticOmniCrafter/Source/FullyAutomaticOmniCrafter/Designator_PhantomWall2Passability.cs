@@ -353,25 +353,12 @@ namespace FullyAutomaticOmniCrafter
             var allFilters = settings.GetAllFilters();
             if (allFilters == null || allFilters.Count == 0) return;
 
-            List<string> allowed = new List<string>();
-            List<string> denied = new List<string>();
-
-            foreach (var kvp in allFilters)
-            {
-                if (kvp.Value) allowed.Add(kvp.Key);
-                else denied.Add(kvp.Key);
-            }
-
             float width = 250f;
             float rowHeight = 20f;
             float titleHeight = 30f;
-            float sectionHeaderHeight = 25f;
             
-            // 计算高度：标题 + (允许列表标题 + 允许项) + (拒绝列表标题 + 拒绝项) + 间距
-            float height = titleHeight + 10f;
-            if (allowed.Count > 0) height += sectionHeaderHeight + allowed.Count * rowHeight;
-            if (denied.Count > 0) height += sectionHeaderHeight + denied.Count * rowHeight;
-            height += 10f;
+            // 计算高度：标题 + 所有过滤项 + 间距
+            float height = titleHeight + allFilters.Count * rowHeight + 20f;
 
             // 绘制在屏幕左侧中间偏下的位置，避开资源栏
             Rect rect = new Rect(20f, (UI.screenHeight / 2f) - (height / 2f), width, height);
@@ -391,41 +378,16 @@ namespace FullyAutomaticOmniCrafter
                 GUI.color = Color.white;
 
                 float curY = innerRect.y + titleHeight;
+                Text.Font = GameFont.Tiny;
 
-                // 绘制允许列表
-                if (allowed.Count > 0)
+                foreach (var kvp in allFilters)
                 {
-                    Text.Font = GameFont.Tiny;
-                    GUI.color = Color.green;
-                    Widgets.Label(new Rect(innerRect.x, curY, innerRect.width, sectionHeaderHeight), "OPW_AllowedList".Translate() + ":");
-                    GUI.color = Color.white;
-                    curY += sectionHeaderHeight;
-
-                    foreach (string filter in allowed)
-                    {
-                        Widgets.Label(new Rect(innerRect.x + 10f, curY, innerRect.width - 10f, rowHeight), "• " + filter);
-                        curY += rowHeight;
-                    }
-                }
-
-                // 绘制拒绝列表
-                if (denied.Count > 0)
-                {
-                    Text.Font = GameFont.Tiny;
-                    GUI.color = Color.red;
-                    Widgets.Label(new Rect(innerRect.x, curY, innerRect.width, sectionHeaderHeight), "OPW_DeniedList".Translate() + ":");
-                    GUI.color = Color.white;
-                    curY += sectionHeaderHeight;
-
-                    foreach (string filter in denied)
-                    {
-                        GUI.color = new Color(0.8f, 0.8f, 0.8f);
-                        Widgets.Label(new Rect(innerRect.x + 10f, curY, innerRect.width - 10f, rowHeight), "• " + filter);
-                        curY += rowHeight;
-                    }
-                    GUI.color = Color.white;
+                    GUI.color = kvp.Value ? Color.green : Color.red;
+                    Widgets.Label(new Rect(innerRect.x + 10f, curY, innerRect.width - 10f, rowHeight), "• " + kvp.Key);
+                    curY += rowHeight;
                 }
                 
+                GUI.color = Color.white;
                 Text.Font = GameFont.Small;
             }, true, false, 0.7f);
         }

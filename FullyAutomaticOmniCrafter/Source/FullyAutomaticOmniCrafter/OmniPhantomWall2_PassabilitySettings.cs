@@ -167,13 +167,13 @@ namespace FullyAutomaticOmniCrafter
                 { "OPW_AllowWildAnimals".Translate(), allowWildAnimals },
                 { "OPW_AllowEntities".Translate(), allowEntities },
                 { "OPW_AllowHostiles".Translate(), allowHostiles },
+                { "OPW_AllowMechanoids".Translate(), allowMechanoids },
+                { "OPW_AllowInsectoids".Translate(), allowInsectoids },
                 { "OPW_AllowFactioned".Translate(), allowFactioned },
                 { "OPW_AllowLords".Translate(), allowLords },
-                { "OPW_AllowMechanoids".Translate(), allowMechanoids },
                 { "OPW_AllowHumanlikes".Translate(), allowHumanlikes },
                 { "OPW_AllowToolUsers".Translate(), allowToolUsers },
-                { "OPW_AllowUnfactions".Translate(), allowUnfactions },
-                { "OPW_AllowInsectoids".Translate(), allowInsectoids }
+                { "OPW_AllowUnfactions".Translate(), allowUnfactions }
             };
         }
 
