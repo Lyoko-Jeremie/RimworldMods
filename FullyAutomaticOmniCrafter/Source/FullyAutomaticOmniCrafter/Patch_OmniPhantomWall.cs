@@ -62,6 +62,7 @@ namespace FullyAutomaticOmniCrafter
     {
         public static void Postfix(Region __instance, TraverseParms tp, ref bool __result)
         {
+            // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
             if (__instance.type != Building_OmniPhantomWall.PhantomWallRegionType)
                 return;
 
@@ -75,46 +76,61 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            // 从该区域的任意幻影墙 Thing 上读取扩展参数
-            Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
-            var ext = wall?.def.GetModExtension<PhantomWallExtension>();
-
-            __result = Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext);
+            // 从该区域的任意幻影墙 Thing 上读取规则
+            var cell = __instance.AnyCell;
+            var building = cell.GetEdifice(__instance.Map);
+            
+            // 检查是否是OmniPhantomWall2
+            if (building is Building_OmniPhantomWall2 wall2)
+            {
+                __result = wall2.CanPawnPassInstance(tp.pawn);
+                return;
+            }
+            
+            // 检查是否是OmniPhantomWall
+            if (building is Building_OmniPhantomWall wall1)
+            {
+                var ext = wall1.def.GetModExtension<PhantomWallExtension>();
+                __result = Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext);
+                return;
+            }
+            
+            // 默认允许通过
+            __result = true;
         }
     }
 
-    // ── 房间合并补丁：让幻影墙形成独立的房间区域 ─────────────────────────── TODO fix
+    // ── 房间合并补丁：让幻影墙形成独立的房间区域 ───────────────────────────
     /// <summary>
     /// 修正幻影墙无法产生房间的问题。
     ///
     /// RimWorld 原逻辑中，只有 Normal/ImpassableFreeAirExchange/Fence 才能属于一个 Room。
     /// 此补丁允许 PhantomWallRegionType 区域互相合并进入同一个 Room，
     /// 但阻止它们与 Normal 等其他区域合并，从而在物理上和逻辑上切断内外连接，形成独立房间。
+    /// 
+    /// 对于OmniPhantomWall2，需要比对通行规则签名，规则相同的墙体才能合并为同一房间。
     /// </summary>
     [HarmonyPatch(typeof(RegionAndRoomUpdater), "ShouldBeInTheSameRoom")]
     public static class RegionAndRoomUpdater_ShouldBeInTheSameRoom_Patch
     {
+        // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
+        private static RegionType PhantomWallRegionType = Building_OmniPhantomWall.PhantomWallRegionType;
+        
         public static bool Prefix(District a, District b, ref bool __result)
         {
             RegionType typeA = a.RegionType;
             RegionType typeB = b.RegionType;
 
-            bool isPhantomA = typeA == Building_OmniPhantomWall.PhantomWallRegionType;
-            bool isPhantomB = typeB == Building_OmniPhantomWall.PhantomWallRegionType;
+            bool isPhantomA = typeA == PhantomWallRegionType;
+            bool isPhantomB = typeB == PhantomWallRegionType;
 
-            // 如果两个都是幻影墙，它们属于同一个房间（连成一圈）
+            // 如果两个都是幻影墙，需要判定是否应该合并
             if (isPhantomA && isPhantomB)
             {
-                // Building_OmniPhantomWall2
-                // // 获取两个区域的规则签名
-                // int sigA = GetRegionRuleSignature(a);
-                // int sigB = GetRegionRuleSignature(b);
-                //
-                // // 只有规则相同才合并为同一房间
-                // __result = (sigA == sigB);
-                
-                // Building_OmniPhantomWall
-                __result = true;
+                // 获取两个区域的规则签名，只有规则相同才合并
+                int sigA = GetRegionRuleSignature(a);
+                int sigB = GetRegionRuleSignature(b);
+                __result = (sigA == sigB);
                 return false;
             }
 
@@ -132,11 +148,20 @@ namespace FullyAutomaticOmniCrafter
         private static int GetRegionRuleSignature(District district)
         {
             // 从区域中获取任意一个幻影墙的规则签名
+            if (district?.Regions == null || district.Regions.Count == 0)
+                return 0;
+            
             foreach (var cell in district.Regions.First().Cells)
             {
-                // TODO check if cell.GetEdifice(district.Map) is Building_OmniPhantomWall2 OR Building_OmniPhantomWall
-                var wall = cell.GetEdifice(district.Map) as Building_OmniPhantomWall2;
-                if (wall != null) return wall.settings.GetSignature();
+                // 检查是否是OmniPhantomWall2
+                var wall2 = cell.GetEdifice(district.Map) as Building_OmniPhantomWall2;
+                if (wall2 != null) 
+                    return wall2.settings.GetSignature();
+                
+                // 检查是否是OmniPhantomWall（返回0表示兼容所有）
+                var wall1 = cell.GetEdifice(district.Map) as Building_OmniPhantomWall;
+                if (wall1 != null)
+                    return 0;
             }
             return 0;
         }
@@ -151,7 +176,7 @@ namespace FullyAutomaticOmniCrafter
     {
         public static void Postfix(Projectile __instance, Thing thing, ref bool __result)
         {
-            if (!(thing is Building_OmniPhantomWall))
+            if (!(thing is Building_OmniPhantomWall) && !(thing is Building_OmniPhantomWall2))
                 return;
 
             // Launcher 属性返回发射者 Thing（武器持有者/建筑炮台）
@@ -181,6 +206,7 @@ namespace FullyAutomaticOmniCrafter
         public static void Postfix(Room __instance, ref float __result)
         {
             // 只有当房间属于幻影墙区域时才拦截
+            // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
             Region firstRegion = __instance.FirstRegion;
             if (firstRegion == null || firstRegion.type != Building_OmniPhantomWall.PhantomWallRegionType)
                 return;
@@ -223,6 +249,7 @@ namespace FullyAutomaticOmniCrafter
         public static bool Prefix(Room __instance, ref float value)
         {
             // 如果是幻影墙房间，阻止任何温度修改，使其永远保持在 getter 返回的值
+            // Building_OmniPhantomWall和Building_OmniPhantomWall2的PhantomWallRegionType值相同
             Region firstRegion = __instance.FirstRegion;
             if (firstRegion != null && firstRegion.valid && firstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
             {
