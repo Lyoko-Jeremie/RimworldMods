@@ -209,7 +209,7 @@ namespace FullyAutomaticOmniCrafter
             // 规则变化时触发区域重建
             if (oldSig != newSig && Spawned)
             {
-                Map.regionAndRoomUpdater.Notify_WalkabilityChanged(Position);
+                Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
             }
         }
         
