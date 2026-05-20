@@ -147,23 +147,34 @@ namespace FullyAutomaticOmniCrafter
         public List<string> GetEnabledFilters()
         {
             List<string> list = new List<string>();
-            if (allowColonists) list.Add("OPW_AllowColonists".Translate());
-            if (allowPets) list.Add("OPW_AllowPets".Translate());
-            if (allowDryad) list.Add("OPW_AllowDryad".Translate());
-            if (allowTraders) list.Add("OPW_AllowTraders".Translate());
-            if (allowPrisoners) list.Add("OPW_AllowPrisoners".Translate());
-            if (allowColonyPrisoners) list.Add("OPW_AllowColonyPrisoners".Translate());
-            if (allowWildAnimals) list.Add("OPW_AllowWildAnimals".Translate());
-            if (allowEntities) list.Add("OPW_AllowEntities".Translate());
-            if (allowHostiles) list.Add("OPW_AllowHostiles".Translate());
-            if (allowFactioned) list.Add("OPW_AllowFactioned".Translate());
-            if (allowLords) list.Add("OPW_AllowLords".Translate());
-            if (allowMechanoids) list.Add("OPW_AllowMechanoids".Translate());
-            if (allowHumanlikes) list.Add("OPW_AllowHumanlikes".Translate());
-            if (allowToolUsers) list.Add("OPW_AllowToolUsers".Translate());
-            if (allowUnfactions) list.Add("OPW_AllowUnfactions".Translate());
-            if (allowInsectoids) list.Add("OPW_AllowInsectoids".Translate());
+            foreach (var kvp in GetAllFilters())
+            {
+                if (kvp.Value) list.Add(kvp.Key);
+            }
             return list;
+        }
+
+        public Dictionary<string, bool> GetAllFilters()
+        {
+            return new Dictionary<string, bool>
+            {
+                { "OPW_AllowColonists".Translate(), allowColonists },
+                { "OPW_AllowPets".Translate(), allowPets },
+                { "OPW_AllowDryad".Translate(), allowDryad },
+                { "OPW_AllowTraders".Translate(), allowTraders },
+                { "OPW_AllowPrisoners".Translate(), allowPrisoners },
+                { "OPW_AllowColonyPrisoners".Translate(), allowColonyPrisoners },
+                { "OPW_AllowWildAnimals".Translate(), allowWildAnimals },
+                { "OPW_AllowEntities".Translate(), allowEntities },
+                { "OPW_AllowHostiles".Translate(), allowHostiles },
+                { "OPW_AllowFactioned".Translate(), allowFactioned },
+                { "OPW_AllowLords".Translate(), allowLords },
+                { "OPW_AllowMechanoids".Translate(), allowMechanoids },
+                { "OPW_AllowHumanlikes".Translate(), allowHumanlikes },
+                { "OPW_AllowToolUsers".Translate(), allowToolUsers },
+                { "OPW_AllowUnfactions".Translate(), allowUnfactions },
+                { "OPW_AllowInsectoids".Translate(), allowInsectoids }
+            };
         }
 
         /// <summary>
