@@ -379,33 +379,33 @@ namespace FullyAutomaticOmniCrafter
 
             if (!Spawned) yield break;
 
-            yield return new Command_Action
-            {
-                defaultLabel = "OPW_SelectPreset".Translate(),
-                defaultDesc = "OPW_CurrentPassability".Translate() + ": " + GetPassabilitySummary(),
-                icon = PhantomWall2Tex.IconSelectPreset,
-                action = delegate
-                {
-                    List<FloatMenuOption> list = new List<FloatMenuOption>();
-                    PassabilityPreset currentPreset = GetCurrentPreset();
-                    
-                    foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
-                    {
-                        PassabilityPreset localPreset = preset;
-                        string label = Designator_PhantomWall2Passability.GetPresetLabel(localPreset);
-                        if (localPreset == currentPreset)
-                        {
-                            label += " (" + "Current".Translate() + ")";
-                        }
-                        
-                        list.Add(new FloatMenuOption(label, delegate
-                        {
-                            ApplyPresetToSelectedWalls(localPreset);
-                        }));
-                    }
-                    Find.WindowStack.Add(new FloatMenu(list));
-                }
-            };
+            // yield return new Command_Action
+            // {
+            //     defaultLabel = "OPW_SelectPreset".Translate(),
+            //     defaultDesc = "OPW_CurrentPassability".Translate() + ": " + GetPassabilitySummary(),
+            //     icon = PhantomWall2Tex.IconSelectPreset,
+            //     action = delegate
+            //     {
+            //         List<FloatMenuOption> list = new List<FloatMenuOption>();
+            //         PassabilityPreset currentPreset = GetCurrentPreset();
+            //         
+            //         foreach (PassabilityPreset preset in (PassabilityPreset[])Enum.GetValues(typeof(PassabilityPreset)))
+            //         {
+            //             PassabilityPreset localPreset = preset;
+            //             string label = Designator_PhantomWall2Passability.GetPresetLabel(localPreset);
+            //             if (localPreset == currentPreset)
+            //             {
+            //                 label += " (" + "Current".Translate() + ")";
+            //             }
+            //             
+            //             list.Add(new FloatMenuOption(label, delegate
+            //             {
+            //                 ApplyPresetToSelectedWalls(localPreset);
+            //             }));
+            //         }
+            //         Find.WindowStack.Add(new FloatMenu(list));
+            //     }
+            // };
         }
 
         public override string GetInspectString()
