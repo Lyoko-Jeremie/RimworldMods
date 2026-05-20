@@ -255,9 +255,51 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null) return false;
             
+            if (pawn.IsPrisonerOfColony)
+                return settings.allowColonyPrisoners;
+            
+            if (pawn.IsPrisoner)
+                return settings.allowPrisoners;
+            
+            // 玩家单位
+            if (pawn.Faction == Faction.OfPlayer)
+            {
+                if (pawn.RaceProps.Humanlike)
+                    return settings.allowColonists;
+                
+                // 异常实体 (IsAnomalyEntity)
+                if (pawn.RaceProps.IsAnomalyEntity)
+                    return settings.allowEntities;
+
+                // 机械族 (IsMechanoid)
+                if (pawn.RaceProps.IsMechanoid)
+                    return settings.allowMechanoids;
+                
+                // 树精 (Dryads)
+                if (pawn.RaceProps.Dryad)
+                    return settings.allowDryad;
+
+                // 虫族 (基于 FleshType)
+                if (pawn.RaceProps.Insect)
+                    return settings.allowInsectoids;
+                
+                if (pawn.RaceProps.Animal)
+                    return settings.allowPets;
+            }
+            
             // 敌对单位
             if (pawn.HostileTo(Faction.OfPlayer))
                 return settings.allowHostiles;
+
+            // 商人 (Trader)
+            if (settings.allowTraders &&
+                // 非敌对
+                !pawn.HostileTo(Faction.OfPlayer) &&
+                // 有派系但不属于我们
+                pawn.Faction != null && pawn.Faction != Faction.OfPlayer &&
+                // 具有领主（Lord）的群体单位
+                pawn.GetLord() != null)
+                return settings.allowTraders;
             
             // 异常实体 (IsAnomalyEntity)
             if (pawn.RaceProps.IsAnomalyEntity)
@@ -265,11 +307,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 机械族 (IsMechanoid)
             if (pawn.RaceProps.IsMechanoid)
-            {
-                if (pawn.Faction == Faction.OfPlayer)
-                    return true; // 玩家机械族默认允许
                 return settings.allowMechanoids;
-            }
             
             // 树精 (Dryads)
             if (pawn.RaceProps.Dryad)
@@ -278,35 +316,11 @@ namespace FullyAutomaticOmniCrafter
             // 虫族 (基于 FleshType)
             if (pawn.RaceProps.Insect)
                 return settings.allowInsectoids;
-
-            // 类人 (Humanlike)
-            if (pawn.RaceProps.Humanlike)
-            {
-                if (pawn.Faction == Faction.OfPlayer)
-                    return settings.allowColonists;
-
-                if (pawn.IsPrisonerOfColony)
-                    return settings.allowColonyPrisoners;
-
-                if (pawn.IsPrisoner)
-                    return settings.allowPrisoners;
-
-                if (pawn.HostileTo(Faction.OfPlayer))
-                    return settings.allowHostiles;
-
-                // 访客/商人 (有派系的人形)
-                if (pawn.Faction != null)
-                    return settings.allowTraders;
-            }
-
+            
             // 动物 (Animal)
             // 原版定义: !ToolUser && IsFlesh && !IsAnomalyEntity
             if (pawn.RaceProps.Animal)
             {
-                // 玩家宠物 (必须有派系且是玩家派系)
-                if (pawn.Faction == Faction.OfPlayer)
-                    return settings.allowPets;
-
                 // 野生动物 (无派系)
                 if (pawn.Faction == null)
                     return settings.allowWildAnimals;
@@ -316,15 +330,19 @@ namespace FullyAutomaticOmniCrafter
             if (settings.allowHumanlikes && pawn.RaceProps.Humanlike)
                 return true;
 
+            // 智力达到“工具使用”等级 (ToolUser) 可使用工具
             if (settings.allowToolUsers && pawn.RaceProps.ToolUser)
                 return true;
 
+            // 具有派系的人员
             if (settings.allowFactioned && pawn.Faction != null)
                 return true;
 
+            // 具有领主（Lord）的群体单位
             if (settings.allowLords && pawn.GetLord() != null)
                 return true;
 
+            // 无派系且无领主的角色 (确保野人等特殊中立角色能通过)
             if (settings.allowUnfactions && pawn.Faction == null && pawn.GetLord() == null)
                 return true;
 
