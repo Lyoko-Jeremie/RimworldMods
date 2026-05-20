@@ -36,4 +36,9 @@
     <OPW_AllowInsectoids>允许虫族</OPW_AllowInsectoids>
     <OPW_SaveSettings>保存设置</OPW_SaveSettings>
     <OPW_SettingsSaved>设置已保存</OPW_SettingsSaved>
+
+    <!-- Force Rebuild -->
+    <OPW_ForceRebuildRegionsLabel>强制刷新地图数据</OPW_ForceRebuildRegionsLabel>
+    <OPW_ForceRebuildRegionsDesc>强制重新计算全图的区域结构和寻路路径。如果你修改了幻影墙的通过性设置但角色行为没有立即更新，请点击此按钮。</OPW_ForceRebuildRegionsDesc>
+    <OPW_MapRebuildComplete>地图区域和寻路数据已完成强制重建。</OPW_MapRebuildComplete>
 </LanguageData>

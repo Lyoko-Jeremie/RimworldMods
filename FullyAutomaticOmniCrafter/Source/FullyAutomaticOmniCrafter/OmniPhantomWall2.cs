@@ -379,6 +379,17 @@ namespace FullyAutomaticOmniCrafter
 
             if (!Spawned) yield break;
 
+            yield return new Command_Action
+            {
+                defaultLabel = "OPW_ForceRebuildRegionsLabel".Translate(),
+                defaultDesc = "OPW_ForceRebuildRegionsDesc".Translate(),
+                icon = TexButton.AutoRebuild,
+                action = delegate
+                {
+                    ForceRebuildAll(Map);
+                }
+            };
+            
             // yield return new Command_Action
             // {
             //     defaultLabel = "OPW_SelectPreset".Translate(),
@@ -479,6 +490,23 @@ namespace FullyAutomaticOmniCrafter
                     false
                 );
             }
+        }
+
+        public static void ForceRebuildAll(Map map)
+        {
+            if (map == null) return;
+
+            // 1. 强制重新计算所有路径成本并脏化缓存
+            map.pathing.RecalculateAllPerceivedPathCosts();
+
+            // 2. 清除可达性缓存
+            map.reachability.ClearCache();
+
+            // 3. 立即强制重建所有区域和房间
+            // RebuildAllRegionsAndRooms 内部会调用 map.regionDirtyer.SetAllDirty()
+            map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+
+            Messages.Message("OPW_MapRebuildComplete".Translate(), MessageTypeDefOf.TaskCompletion, false);
         }
 
         // ── 自定义区域类型常量 ─────────────────────────────────────────────

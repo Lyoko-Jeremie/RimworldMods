@@ -36,4 +36,9 @@
     <OPW_AllowInsectoids>Allow Insectoids</OPW_AllowInsectoids>
     <OPW_SaveSettings>Save Settings</OPW_SaveSettings>
     <OPW_SettingsSaved>Settings Saved</OPW_SettingsSaved>
+
+    <!-- Force Rebuild -->
+    <OPW_ForceRebuildRegionsLabel>Force Refresh Map Data</OPW_ForceRebuildRegionsLabel>
+    <OPW_ForceRebuildRegionsDesc>Force recalculate map region structures and pathfinding data. Use this if you modified phantom wall passability but pawns are not responding correctly.</OPW_ForceRebuildRegionsDesc>
+    <OPW_MapRebuildComplete>Map regions and pathfinding data have been forcibly rebuilt.</OPW_MapRebuildComplete>
 </LanguageData>
