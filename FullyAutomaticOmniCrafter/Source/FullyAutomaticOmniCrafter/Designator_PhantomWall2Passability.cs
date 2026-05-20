@@ -41,6 +41,11 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public static OmniPhantomWall2_PassabilitySettings customSettings = new OmniPhantomWall2_PassabilitySettings();
 
+        /// <summary>
+        /// 启用二维拖拽（区域框选）
+        /// </summary>
+        public override DrawStyleCategoryDef DrawStyleCategory => DrawStyleCategoryDefOf.FilledRectangle;
+
         public Designator_PhantomWall2Passability()
         {
             this.defaultLabel = "OPW_SetPassability".Translate();
