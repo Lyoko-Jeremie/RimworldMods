@@ -400,7 +400,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="MEC.md" />
-    <Content Include="OmniPhantomWall2_readme.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
