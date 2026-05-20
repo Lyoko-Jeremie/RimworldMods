@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <!-- 将 Designator 添加到 Structure 分类（或你自己的分类） -->
+    <DesignationCategoryDef>
+        <defName>Structure</defName>
+        <!-- 使用 MayRequire 确保不与其他 mod 冲突 -->
+        <modExtensions>
+            <li Class="FullyAutomaticOmniCrafter.DesignationCategoryExtension">
+                <extraDesignators>
+                    <li>FullyAutomaticOmniCrafter.Designator_PhantomWall2Passability</li>
+                </extraDesignators>
+            </li>
+        </modExtensions>
+    </DesignationCategoryDef>
+</Defs>

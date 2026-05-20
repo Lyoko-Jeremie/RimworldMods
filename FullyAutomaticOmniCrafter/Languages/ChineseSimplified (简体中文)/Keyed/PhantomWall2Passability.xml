@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <!-- Designator -->
+    <OPW_SetPassability>设置通行规则</OPW_SetPassability>
+    <OPW_SetPassabilityDesc>点击或框选幻影墙，批量应用当前选中的通行规则预设。</OPW_SetPassabilityDesc>
+    <OPW_NotPhantomWall>此处没有幻影墙</OPW_NotPhantomWall>
+    <OPW_AppliedToWalls>已将规则 [{1}] 应用到 {0} 个幻影墙</OPW_AppliedToWalls>
+    <OPW_SelectPreset>选择规则预设：</OPW_SelectPreset>
+
+    <!-- Presets -->
+    <OPW_Preset_AllowAll>允许所有</OPW_Preset_AllowAll>
+    <OPW_Preset_AllowFriendly>允许友方</OPW_Preset_AllowFriendly>
+    <OPW_Preset_ColonistsOnly>仅殖民者</OPW_Preset_ColonistsOnly>
+    <OPW_Preset_BlockAll>全部阻止</OPW_Preset_BlockAll>
+    <OPW_Preset_Prison>监狱模式</OPW_Preset_Prison>
+    <OPW_Preset_KillBox>猎场模式</OPW_Preset_KillBox>
+    <OPW_Preset_Custom>自定义</OPW_Preset_Custom>
+</LanguageData>

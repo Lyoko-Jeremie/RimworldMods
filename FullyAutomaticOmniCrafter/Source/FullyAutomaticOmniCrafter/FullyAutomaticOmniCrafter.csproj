@@ -370,13 +370,17 @@
     <Compile Include="CompAutoSmoother.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
+    <Compile Include="Designator_PhantomWall2Passability.cs" />
     <Compile Include="OmniAutoSurgeon_Dialog_SelectPawn.cs" />
     <Compile Include="GlobalFireExtinguisher.cs" />
     <Compile Include="ModAssets.cs" />
     <Compile Include="OmniAutoSurgeon.cs" />
     <Compile Include="OmniCrafterMod.cs" />
     <Compile Include="OmniPhantomWall.cs" />
+    <Compile Include="OmniPhantomWall2.cs" />
+    <Compile Include="OmniPhantomWall2_PassabilitySettings.cs" />
     <Compile Include="Patch_OmniAutoSurgeonSurgery.cs" />
+    <Compile Include="Patch_OmniPhantomWall.cs" />
     <Compile Include="RealityWeaver.cs" />
     <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />
@@ -396,6 +400,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="MEC.md" />
+    <Content Include="OmniPhantomWall2_readme.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

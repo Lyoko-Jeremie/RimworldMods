@@ -1,0 +1,234 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using HarmonyLib;
+using RimWorld;
+using UnityEngine;
+using Verse;
+using Verse.AI.Group;
+
+namespace FullyAutomaticOmniCrafter
+{
+
+    // ── 区域类型补丁：让幻影墙形成真正的房间边界（不产生无用单格房间）───────
+    [HarmonyPatch(typeof(RegionTypeUtility), nameof(RegionTypeUtility.GetExpectedRegionType))]
+    public static class RegionTypeUtility_GetExpectedRegionType_Patch
+    {
+        public static void Postfix(IntVec3 c, Map map, ref RegionType __result)
+        {
+            // 只有当结果本来是 Normal（Standable 地块）才需要覆写
+            if (__result == RegionType.Normal && c.GetEdifice(map) is Building_OmniPhantomWall)
+                __result = Building_OmniPhantomWall.PhantomWallRegionType;
+            // 只有当结果本来是 Normal（Standable 地块）才需要覆写
+            if (__result == RegionType.Normal && c.GetEdifice(map) is Building_OmniPhantomWall2)
+                __result = Building_OmniPhantomWall2.PhantomWallRegionType;
+        }
+    }
+
+    // ── AffectsRegions 补丁：使 SpawnSetup/DeSpawn 正确触发区域 dirty ─────────
+    /// <summary>
+    /// ThingDef.AffectsRegions 默认只对 Impassable/IsDoor/IsFence 返回 true。
+    /// 幻影墙 passability=Standable，导致 Thing.SpawnSetup 和 Thing.DeSpawn 均不会调用
+    /// Notify_ThingAffectingRegionsSpawned / Notify_ThingAffectingRegionsDespawned，
+    /// 区域永远不 dirty，GetExpectedRegionType 补丁无法生效，围墙无法形成独立房间。
+    ///
+    /// 此补丁让 OmniPhantomWall 的 ThingDef 返回 AffectsRegions=true，
+    /// 使 Thing.SpawnSetup/DeSpawn 走正常的区域 dirty 流程。
+    /// </summary>
+    [HarmonyPatch(typeof(ThingDef), "AffectsRegions", MethodType.Getter)]
+    public static class ThingDef_AffectsRegions_Patch
+    {
+        public static void Postfix(ThingDef __instance, ref bool __result)
+        {
+            if (__result) return; // already true
+            // 支持子类，如果将来有继承自 Building_OmniPhantomWall 的子类，也会自动生效。
+            if (typeof(Building_OmniPhantomWall).IsAssignableFrom(__instance.thingClass))
+                __result = true;
+            // 支持子类，如果将来有继承自 Building_OmniPhantomWall2 的子类，也会自动生效。
+            if (typeof(Building_OmniPhantomWall2).IsAssignableFrom(__instance.thingClass))
+                __result = true;
+        }
+    }
+
+    // ── 可达性补丁：敌方小人在 BFS 层无法穿越幻影墙区域 ─────────────────────
+    /// <summary>
+    /// 敌方小人不应在可达性 BFS（Region.Allows）层面穿越幻影墙区域。
+    ///
+    /// 否则敌人会"认为"能到达幻影墙内部，反复尝试寻路，产生无效 AI 行为。
+    /// 友方小人（pawn=null 或 Faction=OfPlayer/HostFaction=OfPlayer）正常穿越。
+    /// </summary>
+    [HarmonyPatch(typeof(Region), nameof(Region.Allows))]
+    public static class Region_Allows_PhantomWall_Patch
+    {
+        public static void Postfix(Region __instance, TraverseParms tp, ref bool __result)
+        {
+            if (__instance.type != Building_OmniPhantomWall.PhantomWallRegionType)
+                return;
+
+            // Log.Message(
+            //     $"[OmniPhantomWall] Region.Allows PhantomWallRegion: pawn={tp.pawn}, " +
+            //     $"regionType={__instance.type}, originalResult={__result}");
+
+            if (tp.pawn == null)
+            {
+                // 如果没有提供 Pawn 信息（如区域检查），不执行进一步拦截，以免破坏系统功能
+                return;
+            }
+
+            // 从该区域的任意幻影墙 Thing 上读取扩展参数
+            Building_OmniPhantomWall wall = __instance.AnyCell.GetEdifice(__instance.Map) as Building_OmniPhantomWall;
+            var ext = wall?.def.GetModExtension<PhantomWallExtension>();
+
+            __result = Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext);
+        }
+    }
+
+    // ── 房间合并补丁：让幻影墙形成独立的房间区域 ─────────────────────────── TODO fix
+    /// <summary>
+    /// 修正幻影墙无法产生房间的问题。
+    ///
+    /// RimWorld 原逻辑中，只有 Normal/ImpassableFreeAirExchange/Fence 才能属于一个 Room。
+    /// 此补丁允许 PhantomWallRegionType 区域互相合并进入同一个 Room，
+    /// 但阻止它们与 Normal 等其他区域合并，从而在物理上和逻辑上切断内外连接，形成独立房间。
+    /// </summary>
+    [HarmonyPatch(typeof(RegionAndRoomUpdater), "ShouldBeInTheSameRoom")]
+    public static class RegionAndRoomUpdater_ShouldBeInTheSameRoom_Patch
+    {
+        public static bool Prefix(District a, District b, ref bool __result)
+        {
+            RegionType typeA = a.RegionType;
+            RegionType typeB = b.RegionType;
+
+            bool isPhantomA = typeA == Building_OmniPhantomWall.PhantomWallRegionType;
+            bool isPhantomB = typeB == Building_OmniPhantomWall.PhantomWallRegionType;
+
+            // 如果两个都是幻影墙，它们属于同一个房间（连成一圈）
+            if (isPhantomA && isPhantomB)
+            {
+                // Building_OmniPhantomWall2
+                // // 获取两个区域的规则签名
+                // int sigA = GetRegionRuleSignature(a);
+                // int sigB = GetRegionRuleSignature(b);
+                //
+                // // 只有规则相同才合并为同一房间
+                // __result = (sigA == sigB);
+                
+                // Building_OmniPhantomWall
+                __result = true;
+                return false;
+            }
+
+            // 如果其中一个是幻影墙（另一个必然不是），它们绝不属于同一个房间（隔离内外）
+            if (isPhantomA || isPhantomB)
+            {
+                __result = false;
+                return false;
+            }
+
+            // 其余情况执行原版逻辑
+            return true;
+        }
+        
+        private static int GetRegionRuleSignature(District district)
+        {
+            // 从区域中获取任意一个幻影墙的规则签名
+            foreach (var cell in district.Regions.First().Cells)
+            {
+                // TODO check if cell.GetEdifice(district.Map) is Building_OmniPhantomWall2 OR Building_OmniPhantomWall
+                var wall = cell.GetEdifice(district.Map) as Building_OmniPhantomWall2;
+                if (wall != null) return wall.settings.GetSignature();
+            }
+            return 0;
+        }
+    }
+
+    // ── 子弹穿透补丁 ──────────────────────────────────────────────────
+    /// <summary>
+    /// 让玩家发射的子弹穿过幻影墙，敌人发射的子弹被挡住。
+    /// </summary>
+    [HarmonyPatch(typeof(Projectile), "CanHit")]
+    public static class Projectile_CanHit_Patch
+    {
+        public static void Postfix(Projectile __instance, Thing thing, ref bool __result)
+        {
+            if (!(thing is Building_OmniPhantomWall))
+                return;
+
+            // Launcher 属性返回发射者 Thing（武器持有者/建筑炮台）
+            Thing launcher = __instance.Launcher;
+            if (launcher != null && launcher.Faction == Faction.OfPlayer)
+            {
+                // 玩家发射的子弹穿透幻影墙
+                __result = false;
+            }
+            else
+            {
+                // 敌人发射的子弹被幻影墙拦截
+                __result = true;
+            }
+        }
+    }
+
+    // ── 性能优化：Harmony Patch 统一管理幻影墙区域温度 ───────────────────────────
+    /// <summary>
+    /// 当幻影墙数量巨大（如上万个）时，MapComponent 定时遍历房间虽然比逐个建筑 Tick 高效，
+    /// 但仍存在不必要的开销。通过 Patch Room.Temperature 的 Getter，可以在不产生任何
+    /// 定时计算开销的情况下，让幻影墙区域始终表现为恒温。
+    /// </summary>
+    [HarmonyPatch(typeof(Room), "get_Temperature")]
+    public static class Room_Temperature_Getter_Patch
+    {
+        public static void Postfix(Room __instance, ref float __result)
+        {
+            // 只有当房间属于幻影墙区域时才拦截
+            Region firstRegion = __instance.FirstRegion;
+            if (firstRegion == null || firstRegion.type != Building_OmniPhantomWall.PhantomWallRegionType)
+                return;
+
+            // 防止在区域系统重建中途（invalid 或尚无 cells）访问 AnyCell，
+            // 否则 Region.AnyCell → RegionGrid.DirectGrid 会触发递归重建，
+            // 导致 "Could not register region" / "Couldn't find any cell in region" 错误。
+            if (!firstRegion.valid)
+                return;
+
+            Map map = __instance.Map;
+            if (map == null)
+                return;
+
+            // 仿 AnyCell 逻辑，但使用 GetRegionAt_NoRebuild_InvalidAllowed（不触发重建）
+            // 而非 DirectGrid（会调用 TryRebuildDirtyRegionsAndRooms，导致递归重建崩溃）。
+            // 同时避免 Cells（yield return 生成器，存在 IEnumerator 堆分配开销）。
+            IntVec3 cell = IntVec3.Invalid;
+            RegionGrid regionGrid = map.regionGrid;
+            foreach (IntVec3 c in firstRegion.extentsClose)
+            {
+                if (regionGrid.GetRegionAt_NoRebuild_InvalidAllowed(c) == firstRegion)
+                {
+                    cell = c;
+                    break;
+                }
+            }
+            if (!cell.IsValid)
+                return;
+
+            Building building = cell.GetEdifice(map);
+            var ext = building?.def.GetModExtension<PhantomWallExtension>();
+            __result = ext?.targetTemperature ?? 21f;
+        }
+    }
+
+    [HarmonyPatch(typeof(Room), "set_Temperature")]
+    public static class Room_Temperature_Setter_Patch
+    {
+        public static bool Prefix(Room __instance, ref float value)
+        {
+            // 如果是幻影墙房间，阻止任何温度修改，使其永远保持在 getter 返回的值
+            Region firstRegion = __instance.FirstRegion;
+            if (firstRegion != null && firstRegion.valid && firstRegion.type == Building_OmniPhantomWall.PhantomWallRegionType)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
+}

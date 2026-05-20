@@ -8,48 +8,31 @@ using Verse.AI.Group;
 
 namespace FullyAutomaticOmniCrafter
 {
-    /// <summary>
-    /// 幻影墙 XML 扩展参数。
-    /// </summary>
-    public enum PhantomWallPassMode
-    {
-        /// <summary>1: 只有玩家、玩家动物、玩家机器人能通过。友方（俘虏、客人、商队）和敌方都不能通过。</summary>
-        PlayerAndPets,
-        /// <summary>2: 玩家、玩家动物、玩家机器人以及友方（俘虏、客人、商队）能通过。敌方不能通过。</summary>
-        PlayerPetsAndAllies,
-        /// <summary>3: 只有玩家、玩家机器人能通过。动物、友方、敌方均不能通过。</summary>
-        OnlyPlayerNoPets,
-        /// <summary>4: 只有玩家、玩家机器人能通过。动物、囚犯、友方、敌方均不能通过。</summary>
-        OnlyPlayerNoPetsNotPrisoners,
-        /// <summary>5: 只有玩家、玩家机器人能通过。动物、囚犯、实体、友方、敌方均不能通过。</summary>
-        OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity,
-    }
-
-    /// <summary>
-    /// 幻影墙扩展参数。
-    /// 
-    /// 示例：
-    /// <code>
-    /// <modExtensions>
-    ///   <li Class="FullyAutomaticOmniCrafter.PhantomWallExtension">
-    ///     <passMode>PlayerAndPets</passMode>
-    ///     <targetTemperature>21</targetTemperature>
-    ///   </li>
-    /// </modExtensions>
-    /// </code>
-    /// </summary>
-    public class PhantomWallExtension : DefModExtension
-    {
-        /// <summary>通行模式。默认为 PlayerPetsAndAllies。</summary>
-        public PhantomWallPassMode passMode = PhantomWallPassMode.PlayerPetsAndAllies;
-
-        /// <summary>幻影墙尝试维持的房间温度。默认 21。</summary>
-        public float targetTemperature = 21f;
-    }
 
     /// <summary>
     /// 幻影墙建筑类。
     ///
+    /// 设计
+    /// 1所有新建的墙体方块预设一套“默认通行规则”
+    /// 例如，默认设置可以如下：
+    /// 宠物：允许通行
+    /// 商人：允许通行
+    /// 其他实体：禁止通行
+    /// 囚犯：禁止通行
+    /// 野生动物：禁止通行
+    /// 2 墙体建成后，玩家可以选中单个方块，或同时选中多个方块（使用 SHIFT+点击 进行多选），随后点击相应的交互按钮（Gizmo），即可切换或调整允许/禁止特定类型单位通行的规则
+    /// 3设计一个标记工具 (Designator) 用来批量设置墙的通过性属性/规则
+    /// 4通过性规则的可视化，让玩家可以直接看出哪个墙体的规则是什么 TODO 绘制规则可视化
+    /// 5保持当前的room特性不变，特别是墙体包围的区域能够围成房间，以及连续的墙体会自成房间
+    /// 6让规则不同的墙各自生成不连续的房间，即使这些墙连接在一起
+    ///
+    /// 可视化方案（优缺点分析）：
+    /// 颜色叠加 重写 DrawColor 根据规则返回不同颜色 简单直观，但颜色有限且可能与材质颜色冲突
+    /// Overlay 系统 类似电力网络的覆盖层显示 可切换显示/隐藏
+    /// 图标覆盖 在 Draw() 中绘制小图标 信息丰富，但可能视觉杂乱
+    ///
+    /// -----------------------------------------------------------------
+    /// 
     /// 寻路机制说明（RimWorld 1.6 Unity Jobs 架构）：
     ///
     /// 寻路管线分三阶段：
@@ -84,7 +67,7 @@ namespace FullyAutomaticOmniCrafter
     ///        （即幻影墙格本身不存在真空，穿越的小人不受真空伤害）。
     ///      — 修复：覆写 IsAirtight / ExchangeVacuum。
     /// </summary>
-    public class Building_OmniPhantomWall : Building, IPathFindCostProvider
+    public class Building_OmniPhantomWall2 : Building, IPathFindCostProvider
     {
         /// <summary>
         /// 重写绘制颜色：保留材料的基础颜色，但强制将透明度改为 0.3
@@ -156,7 +139,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (!_authorizedVanish)
                 {
-                    Log.Message($"[OmniPhantomWall] 阻止销毁：{this}，DestroyMode={mode}");
+                    Log.Message($"[OmniPhantomWall2] 阻止销毁：{this}，DestroyMode={mode}");
                     return;
                 }
                 _authorizedVanish = false;
@@ -198,113 +181,80 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public override bool ExchangeVacuum => false;
 
+        // ── Passable ──────────────────────────────────────────────────
+        
+        public OmniPhantomWall2_PassabilitySettings settings = new OmniPhantomWall2_PassabilitySettings();
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Deep.Look(ref settings, "settings");
+            settings ??= new OmniPhantomWall2_PassabilitySettings();
+        }
+        
+        
         /// <summary>
-        /// 检查小人是否可以穿越幻影墙。
-        /// 1: PlayerAndPets - 只有玩家、玩家动物、机器人能通过。
-        /// 2: PlayerPetsAndAllies - 玩家、玩家动物、机器人以及友方（俘虏、客人、商队）能通过。
-        /// 3: OnlyPlayerNoPets - 只有玩家、机器人能通过。
-        /// 4: OnlyPlayerNoPetsNotPrisoners - 只有玩家、机器人能通过，动物、囚犯也不能通过。
-        /// 5: OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity - 只有玩家、机器人能通过，动物、囚犯、实体均不能通过。
+        /// 修改规则后触发区域重建
         /// </summary>
-        public static bool CanPawnPass(Pawn pawn, PhantomWallExtension ext)
+        public void ApplySettings(OmniPhantomWall2_PassabilitySettings newSettings)
+        {
+            int oldSig = settings.GetSignature();
+            
+            // 复制新设置
+            settings.CopyFrom(newSettings);
+            
+            int newSig = settings.GetSignature();
+            
+            // 规则变化时触发区域重建
+            if (oldSig != newSig && Spawned)
+            {
+                Map.regionAndRoomUpdater.Notify_WalkabilityChanged(Position);
+            }
+        }
+        
+        /// <summary>
+        /// 实例级通行判断（替代原静态方法）
+        /// </summary>
+        public bool CanPawnPassInstance(Pawn pawn)
         {
             if (pawn == null) return false;
-            var mode = ext?.passMode ?? PhantomWallPassMode.PlayerPetsAndAllies;
-
-            // Log.Message(
-            //     $"[OmniPhantomWall] Check pass: pawn={pawn}, " +
-            //     $"Faction={pawn.Faction}, HostFaction={pawn.HostFaction}, " +
-            //     $"Lord={pawn.GetLord()}, Humanlike={pawn.RaceProps.Humanlike}, Animal={pawn.RaceProps.Animal}, " +
-            //     $"HostileToPlayer={pawn.HostileTo(Faction.OfPlayer)}, Mode={mode}");
-
-            // 【强制拦截判定】
-            // 0. 囚犯判定 (针对模式 4, 5)
-            // 必须在检查 Faction.OfPlayer 之前执行，因为被逮捕的本派系殖民者虽然 Faction 仍为玩家，但身份已变为囚犯。
-            if (mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners || mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity)
-            {
-                // 如果是囚犯（无论所属派系，包括被逮捕的发疯殖民者），则绝不允许通过
-                if (pawn.IsPrisoner) return false;
-            }
-
-            // 0.1 实体判定 (针对模式 5 或所有实体拦截需求)
-            // 如果是实体，且处于模式 5 或者是所有实体都需要拦截的情况
-            if (pawn.RaceProps.IsAnomalyEntity)
-            {
-                // 如果模式是 OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity，实体绝不允许通过
-                if (mode == PhantomWallPassMode.OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity) return false;
-                
-                // 此外，如果实体是对玩家敌对的，其他模式下也通常会被拦截（在后面处理），
-                // 但为了满足“额外拦截所有的 AnomalyEntity，以便用于建造实体囚室”，
-                // 我们确保在除了允许盟友的模式外，实体基本都不能通过。
-                // 如果是模式 1, 3, 4，实体也不应该通过，因为它们不是玩家单位。
-                // if (mode != PhantomWallPassMode.PlayerPetsAndAllies) return false;
-            }
-
-            // 1. 核心玩家单位判定
-            // 检查是否为玩家派系的成员
-            bool isPlayerFaction = pawn.Faction == Faction.OfPlayer;
             
-            // 【任何时候玩家单位都可通过（除上述模式 4 的囚犯限制外）】
-            if (isPlayerFaction)
-            {
-                // 如果是动物
-                if (pawn.RaceProps.Animal)
-                {
-                    // 【额外限制，动物不可在 OnlyPlayerNoPets, OnlyPlayerNoPetsNotPrisoners 或 OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity 下通过】
-                    return mode != PhantomWallPassMode.OnlyPlayerNoPets && 
-                           mode != PhantomWallPassMode.OnlyPlayerNoPetsNotPrisoners &&
-                           mode != PhantomWallPassMode.OnlyPlayerNoPetsNotPrisonersNotAnomalyEntity;
-                }
-                // 殖民者、机甲等人类或机器人始终可以通过
+            // 玩家殖民者
+            if (pawn.Faction == Faction.OfPlayer && pawn.RaceProps.Humanlike)
+                return settings.allowColonists;
+            
+            // 玩家宠物
+            if (pawn.Faction == Faction.OfPlayer && pawn.RaceProps.Animal)
+                return settings.allowPets;
+            
+            // 玩家的囚犯
+            if (pawn.IsPrisonerOfColony)
+                return settings.allowColonyPrisoners;
+            
+            // 囚犯
+            if (pawn.IsPrisoner)
+                return settings.allowPrisoners;
+            
+            // 实体
+            if (pawn.RaceProps.IsAnomalyEntity)
+                return settings.allowEntities;
+            
+            // 敌对单位
+            if (pawn.HostileTo(Faction.OfPlayer))
+                return settings.allowHostiles;
+            
+            // 商人/访客（非敌对的有派系人形）
+            if (!pawn.HostileTo(Faction.OfPlayer) && pawn.Faction != null && pawn.RaceProps.Humanlike)
+                return settings.allowTraders;
+            
+            // 野生动物
+            if (pawn.Faction == null && pawn.RaceProps.Animal)
+                return settings.allowWildAnimals;
+            
+            // 默认：玩家殖民者总是可以通过
+            if (pawn.Faction == Faction.OfPlayer)
                 return true;
-            }
-
-            // 【中立/友方单位判定】
-            // 2. 友方/中立判定 (仅在模式 2: PlayerPetsAndAllies 下启用)
-            if (mode == PhantomWallPassMode.PlayerPetsAndAllies)
-            {
-                // 如果是玩家托管的单位 (囚犯、受雇奴隶、受保护的客人)
-                if (pawn.IsPrisonerOfColony || pawn.HostFaction == Faction.OfPlayer)
-                {
-                    return true;
-                }
-
-                // 非敌对的角色（商队、访客、盟友、野生动物、野人等）
-                if (!pawn.HostileTo(Faction.OfPlayer))
-                {
-                    // 只要是非敌对的，且符合以下任一特征即放行：
-                    // 1. 具有派系的人员
-                    // 2. 具有领主（Lord）的群体单位
-                    // 3. 类人角色 (Humanlike)，涵盖野人 (Wild Man)
-                    // 4. 动物 (Animal)
-                    // 5. 智力达到“工具使用”等级 (ToolUser)
-                    // 6. 无派系且无领主的角色 (确保野人等特殊中立角色能通过)
-                    if (pawn.Faction != null
-                        || pawn.GetLord() != null
-                        || pawn.RaceProps.Humanlike
-                        || pawn.RaceProps.Animal
-                        || pawn.RaceProps.ToolUser
-                        || (pawn.Faction == null && pawn.GetLord() == null))
-                    {
-                        return true;
-                    }
-                    // 特殊实体：甲虫类 (Insects) 的边缘情况
-                    //      虽然在 Defs 中甲虫通常归类为 BaseInsect 派系，但如果通过 Mod 或特殊地图生成导致其派系丢失：
-                    //      甲虫的 fleshType 是 Insectoid（属于 isOrganic），所以它们通常会被识别为 Animal。
-                    //      但是，如果有实体被定义为类似虫子但智力设定为 ToolUser（工具使用级），它们会立即从 Animal 列表消失。
-                    // 通常包括以下几种
-                    //      Insectoid (虫族)
-                    //      对应生物：原版游戏中的所有虫族 (Insectoids)。
-                    //      具体例子：巨甲虫 (Megaspider)、巨型蜻蜓 (Spelopede)、甲壳虫 (Megascarab)。
-                    //      特性：
-                    //           属于有机体。
-                    //           受伤时产生虫族特有的打击效果（通常是深色/绿色的血液）。
-                    //           尸体归类为 CorpsesInsect。
-                    // 故不予放行
-                }
-            }
-
-            // 3. 其余情况 (敌对者、野生动物、在不对外开放模式下的访客/商队) 一律不允许通过
+                
             return false;
         }
 
@@ -314,10 +264,7 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public ushort PathFindCostFor(Pawn pawn)
         {
-            // Log.Message($"[OmniPhantomWall] PathFindCostFor ENTER: wall={this}, pawn={pawn}, def={def?.defName}");
-
-            var ext = def.GetModExtension<PhantomWallExtension>();
-            return CanPawnPass(pawn, ext) ? (ushort)0 : ushort.MaxValue;
+            return CanPawnPassInstance(pawn) ? (ushort)0 : ushort.MaxValue;
         }
 
         public CellRect GetOccupiedRect() => this.OccupiedRect();
