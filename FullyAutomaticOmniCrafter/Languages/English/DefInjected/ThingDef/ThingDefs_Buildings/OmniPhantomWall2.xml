@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniPhantomWall2_.label>Omni Phantom Wall</OmniPhantomWall2_.label>
+    <OmniPhantomWall2_.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nCan freely modify access rules.</OmniPhantomWall2_.description>
+
+    
+    <OmniPhantomWall2_Power.label>Omni Phantom Wall (With Cable)</OmniPhantomWall2_Power.label>
+    <OmniPhantomWall2_Power.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nCan freely modify access rules.\n\With integrated cables.</OmniPhantomWall2_Power.description>
+
+    <OmniPhantomWall2_PowerLight.label>Omni Phantom Wall (Self-Luminous With Cable)</OmniPhantomWall2_PowerLight.label>
+    <OmniPhantomWall2_PowerLight.description>A building that employs phase space folding technology. It is invisible to authorized personnel and an impenetrable barrier to unauthorized individuals and enemies.\n\nCan freely modify access rules.\n\nSelf-illuminating with integrated cables.</OmniPhantomWall2_PowerLight.description>
+
+</LanguageData>

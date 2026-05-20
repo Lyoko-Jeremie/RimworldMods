@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniPhantomWall2_.label>万能幻影隔离墙</OmniPhantomWall2_.label>
+    <OmniPhantomWall2_.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n可以自由修改通行规则。</OmniPhantomWall2_.description>
+
+    <OmniPhantomWall2_Power.label>万能幻影隔离墙（带电缆）</OmniPhantomWall2_Power.label>
+    <OmniPhantomWall2_Power.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n可以自由修改通行规则。\n\n自带电缆。</OmniPhantomWall2_Power.description>
+
+    <OmniPhantomWall2_PowerLight.label>万能幻影隔离墙（自发光自带电缆）</OmniPhantomWall2_PowerLight.label>
+    <OmniPhantomWall2_PowerLight.description>一种采用了相位空间折叠技术的建筑。对已授权人员而言它形同无物，对未授权者和敌人则是坚不可摧的绝对壁垒。\n\n可以自由修改通行规则。\n\n自发光自带电缆。</OmniPhantomWall2_PowerLight.description>
+
+</LanguageData>
