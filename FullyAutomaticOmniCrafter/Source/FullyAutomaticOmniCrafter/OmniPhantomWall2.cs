@@ -255,9 +255,15 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null) return false;
             
+            // 敌对单位 （优先排除敌对单位，如果禁止敌对单位的话）
+            if (!settings.allowHostiles && pawn.HostileTo(Faction.OfPlayer))
+                return false;
+            
+            // 玩家的囚犯
             if (pawn.IsPrisonerOfColony)
                 return settings.allowColonyPrisoners;
             
+            // 任意囚犯 （包括其他派系的囚犯）
             if (pawn.IsPrisoner)
                 return settings.allowPrisoners;
             

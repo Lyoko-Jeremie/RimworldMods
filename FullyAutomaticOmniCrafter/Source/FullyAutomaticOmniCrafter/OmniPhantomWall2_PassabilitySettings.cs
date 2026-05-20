@@ -45,9 +45,9 @@ namespace FullyAutomaticOmniCrafter
         public void ExposeData()
         {
             Scribe_Values.Look(ref allowColonists, "allowColonists", true);
-            Scribe_Values.Look(ref allowPets, "allowPets", true);
-            Scribe_Values.Look(ref allowDryad, "allowDryad", true);
-            Scribe_Values.Look(ref allowTraders, "allowTraders", true);
+            Scribe_Values.Look(ref allowPets, "allowPets", false);
+            Scribe_Values.Look(ref allowDryad, "allowDryad", false);
+            Scribe_Values.Look(ref allowTraders, "allowTraders", false);
             Scribe_Values.Look(ref allowPrisoners, "allowPrisoners", false);
             Scribe_Values.Look(ref allowColonyPrisoners, "allowColonyPrisoners", false);
             Scribe_Values.Look(ref allowWildAnimals, "allowWildAnimals", false);

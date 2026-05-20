@@ -165,6 +165,7 @@ namespace FullyAutomaticOmniCrafter
                     {
                         allowColonists = true,
                         allowPets = true,
+                        allowDryad = true,
                         allowTraders = true,
                         allowPrisoners = true,
                         allowWildAnimals = true,
@@ -175,7 +176,9 @@ namespace FullyAutomaticOmniCrafter
                         allowHumanlikes = true,
                         allowFactioned = true,
                         allowLords = true,
-                        allowToolUsers = true
+                        allowToolUsers = true,
+                        allowUnfactions = true,
+                        allowColonyPrisoners = true,
                     };
 
                 case PassabilityPreset.AllowFriendly:
@@ -184,12 +187,13 @@ namespace FullyAutomaticOmniCrafter
                         allowColonists = true,
                         allowPets = true,
                         allowTraders = true,
-                        allowPrisoners = false,
-                        allowWildAnimals = false,
-                        allowEntities = false,
+                        allowColonyPrisoners = true,
+                        allowPrisoners = true,
+                        allowWildAnimals = true,
+                        allowEntities = true,
                         allowHostiles = false,
-                        allowMechanoids = false, // 默认非玩家机械族不通过
-                        allowInsectoids = false
+                        allowMechanoids = true,
+                        allowInsectoids = true,
                     };
 
                 case PassabilityPreset.ColonistsOnly:
@@ -211,11 +215,20 @@ namespace FullyAutomaticOmniCrafter
                     {
                         allowColonists = false,
                         allowPets = false,
+                        allowDryad = false,
                         allowTraders = false,
                         allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
-                        allowHostiles = false
+                        allowHostiles = false,
+                        allowMechanoids = false,
+                        allowInsectoids = false,
+                        allowHumanlikes = false,
+                        allowFactioned = false,
+                        allowLords = false,
+                        allowToolUsers = false,
+                        allowUnfactions = false,
+                        allowColonyPrisoners = false,
                     };
 
                 case PassabilityPreset.Prison:
@@ -223,8 +236,10 @@ namespace FullyAutomaticOmniCrafter
                     {
                         allowColonists = true,
                         allowPets = false,
+                        allowDryad = false,
                         allowTraders = false,
-                        allowPrisoners = false, // 囚犯不能通过
+                        allowColonyPrisoners = false,
+                        allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
                         allowHostiles = false
@@ -234,12 +249,12 @@ namespace FullyAutomaticOmniCrafter
                     return new OmniPhantomWall2_PassabilitySettings
                     {
                         allowColonists = true,
-                        allowPets = true,
-                        allowTraders = true,
+                        allowPets = false,
+                        allowTraders = false,
                         allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
-                        allowHostiles = false // 敌人不能通过，只能走缺口
+                        allowHostiles = true // 敌人不能通过，只能走缺口
                     };
 
                 case PassabilityPreset.Custom:
