@@ -20,9 +20,10 @@ namespace FullyAutomaticOmniCrafter
     ///
     /// 批量框选墙体
     /// 应用预设规则模板
-    /// TODO 可视反馈 鼠标显示当前预设名称，墙体高亮显示
+    /// TODO 可视反馈 鼠标显示当前预设名称
+    /// 墙体高亮显示
     /// TODO 支持"复制/粘贴"规则
-    /// TODO 自定义模式 支持自定义规则组合（需要额外 UI）
+    /// 自定义模式 支持自定义规则组合（需要额外 UI）
     /// 区域重建 规则改变后自动触发区域系统重建
     /// </summary>
     public class Designator_PhantomWall2Passability : Designator
