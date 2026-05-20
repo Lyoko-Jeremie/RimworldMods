@@ -14,14 +14,78 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(RegionTypeUtility), nameof(RegionTypeUtility.GetExpectedRegionType))]
     public static class RegionTypeUtility_GetExpectedRegionType_Patch
     {
+        private static Dictionary<IntVec3, int> tempSignatures = new Dictionary<IntVec3, int>();
+
         public static void Postfix(IntVec3 c, Map map, ref RegionType __result)
         {
             // 只有当结果本来是 Normal（Standable 地块）才需要覆写
-            if (__result == RegionType.Normal && c.GetEdifice(map) is Building_OmniPhantomWall)
-                __result = Building_OmniPhantomWall.PhantomWallRegionType;
-            // 只有当结果本来是 Normal（Standable 地块）才需要覆写
-            if (__result == RegionType.Normal && c.GetEdifice(map) is Building_OmniPhantomWall2)
-                __result = Building_OmniPhantomWall2.PhantomWallRegionType;
+            if (__result == RegionType.Normal)
+            {
+                var edifice = c.GetEdifice(map);
+                if (edifice is Building_OmniPhantomWall)
+                {
+                    __result = Building_OmniPhantomWall.PhantomWallRegionType;
+                }
+                else if (edifice is Building_OmniPhantomWall2 wall2)
+                {
+                    __result = Building_OmniPhantomWall2.PhantomWallRegionType;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 核心修复：通过在 FloodFill 过程中利用种子格子（root）的签名，
+        /// 强行阻止不同签名的 OmniPhantomWall2 单元格合并到同一个 Region。
+        /// </summary>
+        [HarmonyPatch(typeof(RegionMaker), "FloodFillAndAddCells")]
+        public static class RegionMaker_FloodFillAndAddCells_Patch
+        {
+            public static void Prefix(RegionMaker __instance, IntVec3 root, Map ___map, Region ___newReg)
+            {
+                if (___newReg.type == Building_OmniPhantomWall2.PhantomWallRegionType)
+                {
+                    var wall = root.GetEdifice(___map) as Building_OmniPhantomWall2;
+                    if (wall != null)
+                    {
+                        tempSignatures[root] = wall.settings.GetSignature();
+                    }
+                }
+            }
+
+            public static void Postfix()
+            {
+                tempSignatures.Clear();
+            }
+        }
+
+        [HarmonyPatch(typeof(Verse.FloodFiller), nameof(Verse.FloodFiller.FloodFill))]
+        public static class FloodFiller_FloodFill_Patch
+        {
+            public static void Prefix(IntVec3 root, ref Predicate<IntVec3> passCheck, Map ___map)
+            {
+                if (tempSignatures.TryGetValue(root, out int rootSig))
+                {
+                    var oldCheck = passCheck;
+                    passCheck = (c) =>
+                    {
+                        if (!oldCheck(c)) return false;
+                        
+                        // 如果当前格也是 OmniPhantomWall2，必须签名一致才能继续填充（合并到同一区域）
+                        if (c.GetEdifice(___map) is Building_OmniPhantomWall2 otherWall)
+                        {
+                            return otherWall.settings.GetSignature() == rootSig;
+                        }
+                        
+                        // OmniPhantomWall (v1) 签名视为 0，如果 root 是 v2 且签名不是 0，则不合并
+                        if (c.GetEdifice(___map) is Building_OmniPhantomWall)
+                        {
+                            return rootSig == 0;
+                        }
+
+                        return true;
+                    };
+                }
+            }
         }
     }
 

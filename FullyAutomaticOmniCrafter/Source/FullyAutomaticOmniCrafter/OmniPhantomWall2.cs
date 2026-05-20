@@ -70,24 +70,24 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Building_OmniPhantomWall2 : Building, IPathFindCostProvider
     {
-        // private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker = CreateNotifyWalkabilityChangedInvoker();
-        //
-        // private static Action<RegionDirtyer, IntVec3, bool> CreateNotifyWalkabilityChangedInvoker()
-        // {
-        //     try
-        //     {
-        //         var method = AccessTools.Method(typeof(RegionDirtyer), "Notify_WalkabilityChanged");
-        //         if (method == null)
-        //             return null;
-        //
-        //         return AccessTools.MethodDelegate<Action<RegionDirtyer, IntVec3, bool>>(method);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Log.Warning($"[OmniPhantomWall2] Failed to bind RegionDirtyer.Notify_WalkabilityChanged: {ex}");
-        //         return null;
-        //     }
-        // }
+        private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker = CreateNotifyWalkabilityChangedInvoker();
+        
+        private static Action<RegionDirtyer, IntVec3, bool> CreateNotifyWalkabilityChangedInvoker()
+        {
+            try
+            {
+                var method = AccessTools.Method(typeof(RegionDirtyer), "Notify_WalkabilityChanged");
+                if (method == null)
+                    return null;
+
+                return AccessTools.MethodDelegate<Action<RegionDirtyer, IntVec3, bool>>(method);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniPhantomWall2] Failed to bind RegionDirtyer.Notify_WalkabilityChanged: {ex}");
+                return null;
+            }
+        }
 
         /// <summary>
         /// 重写绘制颜色：保留材料的基础颜色，但强制将透明度改为 0.3
@@ -229,17 +229,15 @@ namespace FullyAutomaticOmniCrafter
             // 规则变化时只脏化当前格附近的区域，再重建 dirty 部分
             if (oldSig != newSig && Spawned)
             {
-                // TODO not work
-                Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
-                // if (NotifyWalkabilityChangedInvoker != null)
-                // {
-                //     NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, true);
-                //     Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
-                // }
-                // else
-                // {
-                //     Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
-                // }
+                if (NotifyWalkabilityChangedInvoker != null)
+                {
+                    NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, true);
+                    Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                }
+                else
+                {
+                    Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                }
             }
         }
         
