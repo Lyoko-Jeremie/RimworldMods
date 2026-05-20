@@ -35,8 +35,7 @@ namespace FullyAutomaticOmniCrafter
         {
             this.defaultLabel = "OPW_SetPassability".Translate();
             this.defaultDesc = "OPW_SetPassabilityDesc".Translate();
-            this.icon = ContentFinder<Texture2D>.Get("UI/Designators/PhantomWallPassability", true) 
-                        ?? ContentFinder<Texture2D>.Get("UI/Designators/Claim", true); // 备用图标
+            this.icon = ContentFinder<Texture2D>.Get("UI/Designators/PhantomWallPassability", true) ?? BaseContent.WhiteTex;
             this.soundDragSustain = SoundDefOf.Designate_DragStandard;
             this.soundDragChanged = SoundDefOf.Designate_DragStandard_Changed;
             this.soundSucceeded = SoundDefOf.Designate_Claim;
