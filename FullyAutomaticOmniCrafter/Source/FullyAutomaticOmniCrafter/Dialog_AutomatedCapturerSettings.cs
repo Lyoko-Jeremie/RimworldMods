@@ -12,7 +12,6 @@ namespace FullyAutomaticOmniCrafter
         private readonly CompAutomatedCapturer comp;
         private Vector2 scrollPosLeft;
         private Vector2 scrollPosMid;
-        private Vector2 scrollPosRight;
         private List<Pawn> cachedMatchingPawns;
         private int lastUpdateTick;
 
