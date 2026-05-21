@@ -31,6 +31,8 @@
     <OPW_AllowEntities>允许实体 (异常)</OPW_AllowEntities>
     <OPW_AllowHostiles>允许敌对单位</OPW_AllowHostiles>
     <OPW_AllowMechanoids>允许机械族</OPW_AllowMechanoids>
+    <OPW_AllowRoamers>允许畜栏动物 (会定时逃离)</OPW_AllowRoamers>
+    <OPW_AllowTrainableAnimals>允许可训练动物 (包括宠物)</OPW_AllowTrainableAnimals>
     <OPW_AllowFactioned>具有派系</OPW_AllowFactioned>
     <OPW_AllowLords>处于群体/领主状态</OPW_AllowLords>
     <OPW_AllowHumanlikes>类人生物</OPW_AllowHumanlikes>

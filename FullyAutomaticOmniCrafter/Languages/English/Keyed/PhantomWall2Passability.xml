@@ -31,6 +31,8 @@
     <OPW_AllowEntities>Allow Entities (Anomaly)</OPW_AllowEntities>
     <OPW_AllowHostiles>Allow Hostiles</OPW_AllowHostiles>
     <OPW_AllowMechanoids>Allow Mechanoids</OPW_AllowMechanoids>
+    <OPW_AllowRoamers>Allow Roamers (Pen Animals)</OPW_AllowRoamers>
+    <OPW_AllowTrainableAnimals>Allow Trainable Animals (Pets)</OPW_AllowTrainableAnimals>
     <OPW_AllowFactioned>Has Faction</OPW_AllowFactioned>
     <OPW_AllowLords>In Lord Group</OPW_AllowLords>
     <OPW_AllowHumanlikes>Humanlikes</OPW_AllowHumanlikes>

@@ -496,6 +496,8 @@ namespace FullyAutomaticOmniCrafter
 
                 DrawCheckbox("OPW_AllowColonists", ref displaySettings.allowColonists, "Colonists");
                 DrawCheckbox("OPW_AllowPets", ref displaySettings.allowPets, "Pets");
+                DrawCheckbox("OPW_AllowRoamers", ref displaySettings.allowRoamers, "Roamers (Pen Animals)");
+                DrawCheckbox("OPW_AllowTrainableAnimals", ref displaySettings.allowTrainableAnimals, "Trainable Animals");
                 DrawCheckbox("OPW_AllowDryad", ref displaySettings.allowDryad, "Dryads");
                 DrawCheckbox("OPW_AllowTraders", ref displaySettings.allowTraders, "Traders/Visitors");
                 DrawCheckbox("OPW_AllowPrisoners", ref displaySettings.allowPrisoners, "Prisoners (Generic)");
@@ -504,8 +506,6 @@ namespace FullyAutomaticOmniCrafter
                 DrawCheckbox("OPW_AllowEntities", ref displaySettings.allowEntities, "Entities (Anomaly)");
                 DrawCheckbox("OPW_AllowHostiles", ref displaySettings.allowHostiles, "Hostiles");
                 DrawCheckbox("OPW_AllowMechanoids", ref displaySettings.allowMechanoids, "Mechanoids");
-                DrawCheckbox("OPW_AllowRoamers", ref displaySettings.allowRoamers, "Roamers (Pen Animals)");
-                DrawCheckbox("OPW_AllowTrainableAnimals", ref displaySettings.allowTrainableAnimals, "Trainable Animals");
                 DrawCheckbox("OPW_AllowInsectoids", ref displaySettings.allowInsectoids, "Insectoids");
                 DrawCheckbox("OPW_AllowFactioned", ref displaySettings.allowFactioned, "Has Faction");
                 DrawCheckbox("OPW_AllowLords", ref displaySettings.allowLords, "In Lord Group");
