@@ -14,6 +14,7 @@ namespace FullyAutomaticOmniCrafter
         private Vector2 scrollPosMid;
         private List<Pawn> cachedMatchingPawns;
         private int lastUpdateTick;
+        private bool? mouseDragState;
 
         public override Vector2 InitialSize => new Vector2(900f, 700f);
 
@@ -39,6 +40,11 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DoWindowContents(Rect inRect)
         {
+            if (Event.current.type == EventType.MouseUp)
+            {
+                mouseDragState = null;
+            }
+
             if (cachedMatchingPawns == null || Find.TickManager.TicksGame > lastUpdateTick + 60)
             {
                 UpdatePawnCache();
@@ -72,7 +78,7 @@ namespace FullyAutomaticOmniCrafter
         {
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(rect);
-            
+
             Text.Font = GameFont.Tiny;
             listing.Label("AutomatedCapturer_FilterConditions".Translate());
             Text.Font = GameFont.Small;
@@ -81,76 +87,53 @@ namespace FullyAutomaticOmniCrafter
             float viewHeight = 16 * 28f + 50f;
             Rect viewRect = new Rect(0f, 0f, rect.width - 16f, viewHeight);
             Rect outRect = new Rect(0f, listing.CurHeight, rect.width, rect.height - listing.CurHeight);
-            
+
             Widgets.BeginScrollView(outRect, ref scrollPosLeft, viewRect);
             Listing_Standard scrollListing = new Listing_Standard();
             scrollListing.Begin(viewRect);
 
             var settings = comp.settings;
-            bool initial;
-            initial = settings.allowColonists;
-            scrollListing.CheckboxLabeled("OPW_AllowColonists".Translate(), ref settings.allowColonists);
-            if (settings.allowColonists != initial) UpdatePawnCache();
 
-            initial = settings.allowPets;
-            scrollListing.CheckboxLabeled("OPW_AllowPets".Translate(), ref settings.allowPets);
-            if (settings.allowPets != initial) UpdatePawnCache();
+            void CheckboxLabeled(string label, ref bool checkOn)
+            {
+                Rect rect2 = scrollListing.GetRect(Text.LineHeight);
+                if (Mouse.IsOver(rect2))
+                {
+                    Widgets.DrawHighlight(rect2);
+                }
 
-            initial = settings.allowDryad;
-            scrollListing.CheckboxLabeled("OPW_AllowDryad".Translate(), ref settings.allowDryad);
-            if (settings.allowDryad != initial) UpdatePawnCache();
+                bool initial = checkOn;
+                Widgets.CheckboxLabeled(rect2, label, ref checkOn);
+                if (checkOn != initial)
+                {
+                    mouseDragState = checkOn;
+                    UpdatePawnCache();
+                }
+                else if (mouseDragState.HasValue && Mouse.IsOver(rect2) && checkOn != mouseDragState.Value)
+                {
+                    checkOn = mouseDragState.Value;
+                    UpdatePawnCache();
+                }
 
-            initial = settings.allowTraders;
-            scrollListing.CheckboxLabeled("OPW_AllowTraders".Translate(), ref settings.allowTraders);
-            if (settings.allowTraders != initial) UpdatePawnCache();
+                scrollListing.Gap(scrollListing.verticalSpacing);
+            }
 
-            initial = settings.allowPrisoners;
-            scrollListing.CheckboxLabeled("OPW_AllowPrisoners".Translate(), ref settings.allowPrisoners);
-            if (settings.allowPrisoners != initial) UpdatePawnCache();
-
-            initial = settings.allowColonyPrisoners;
-            scrollListing.CheckboxLabeled("OPW_AllowColonyPrisoners".Translate(), ref settings.allowColonyPrisoners);
-            if (settings.allowColonyPrisoners != initial) UpdatePawnCache();
-
-            initial = settings.allowWildAnimals;
-            scrollListing.CheckboxLabeled("OPW_AllowWildAnimals".Translate(), ref settings.allowWildAnimals);
-            if (settings.allowWildAnimals != initial) UpdatePawnCache();
-
-            initial = settings.allowEntities;
-            scrollListing.CheckboxLabeled("OPW_AllowEntities".Translate(), ref settings.allowEntities);
-            if (settings.allowEntities != initial) UpdatePawnCache();
-
-            initial = settings.allowHostiles;
-            scrollListing.CheckboxLabeled("OPW_AllowHostiles".Translate(), ref settings.allowHostiles);
-            if (settings.allowHostiles != initial) UpdatePawnCache();
-
-            initial = settings.allowMechanoids;
-            scrollListing.CheckboxLabeled("OPW_AllowMechanoids".Translate(), ref settings.allowMechanoids);
-            if (settings.allowMechanoids != initial) UpdatePawnCache();
-
-            initial = settings.allowInsectoids;
-            scrollListing.CheckboxLabeled("OPW_AllowInsectoids".Translate(), ref settings.allowInsectoids);
-            if (settings.allowInsectoids != initial) UpdatePawnCache();
-
-            initial = settings.allowFactioned;
-            scrollListing.CheckboxLabeled("OPW_AllowFactioned".Translate(), ref settings.allowFactioned);
-            if (settings.allowFactioned != initial) UpdatePawnCache();
-
-            initial = settings.allowLords;
-            scrollListing.CheckboxLabeled("OPW_AllowLords".Translate(), ref settings.allowLords);
-            if (settings.allowLords != initial) UpdatePawnCache();
-
-            initial = settings.allowHumanlikes;
-            scrollListing.CheckboxLabeled("OPW_AllowHumanlikes".Translate(), ref settings.allowHumanlikes);
-            if (settings.allowHumanlikes != initial) UpdatePawnCache();
-
-            initial = settings.allowToolUsers;
-            scrollListing.CheckboxLabeled("OPW_AllowToolUsers".Translate(), ref settings.allowToolUsers);
-            if (settings.allowToolUsers != initial) UpdatePawnCache();
-
-            initial = settings.allowUnfactions;
-            scrollListing.CheckboxLabeled("OPW_AllowUnfactions".Translate(), ref settings.allowUnfactions);
-            if (settings.allowUnfactions != initial) UpdatePawnCache();
+            CheckboxLabeled("OPW_AllowColonists".Translate(), ref settings.allowColonists);
+            CheckboxLabeled("OPW_AllowPets".Translate(), ref settings.allowPets);
+            CheckboxLabeled("OPW_AllowDryad".Translate(), ref settings.allowDryad);
+            CheckboxLabeled("OPW_AllowTraders".Translate(), ref settings.allowTraders);
+            CheckboxLabeled("OPW_AllowPrisoners".Translate(), ref settings.allowPrisoners);
+            CheckboxLabeled("OPW_AllowColonyPrisoners".Translate(), ref settings.allowColonyPrisoners);
+            CheckboxLabeled("OPW_AllowWildAnimals".Translate(), ref settings.allowWildAnimals);
+            CheckboxLabeled("OPW_AllowEntities".Translate(), ref settings.allowEntities);
+            CheckboxLabeled("OPW_AllowHostiles".Translate(), ref settings.allowHostiles);
+            CheckboxLabeled("OPW_AllowMechanoids".Translate(), ref settings.allowMechanoids);
+            CheckboxLabeled("OPW_AllowInsectoids".Translate(), ref settings.allowInsectoids);
+            CheckboxLabeled("OPW_AllowFactioned".Translate(), ref settings.allowFactioned);
+            CheckboxLabeled("OPW_AllowLords".Translate(), ref settings.allowLords);
+            CheckboxLabeled("OPW_AllowHumanlikes".Translate(), ref settings.allowHumanlikes);
+            CheckboxLabeled("OPW_AllowToolUsers".Translate(), ref settings.allowToolUsers);
+            CheckboxLabeled("OPW_AllowUnfactions".Translate(), ref settings.allowUnfactions);
 
             scrollListing.End();
             Widgets.EndScrollView();
