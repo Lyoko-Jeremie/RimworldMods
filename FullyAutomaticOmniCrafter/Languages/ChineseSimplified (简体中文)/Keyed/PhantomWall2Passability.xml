@@ -8,6 +8,7 @@
     <OPW_SelectPreset>选择规则预设：</OPW_SelectPreset>
 
     <!-- Presets -->
+    <OPW_Preset_Default>默认</OPW_Preset_Default>
     <OPW_Preset_AllowAll>允许所有</OPW_Preset_AllowAll>
     <OPW_Preset_AllowFriendly>允许友方</OPW_Preset_AllowFriendly>
     <OPW_Preset_ColonistsOnly>仅殖民者</OPW_Preset_ColonistsOnly>

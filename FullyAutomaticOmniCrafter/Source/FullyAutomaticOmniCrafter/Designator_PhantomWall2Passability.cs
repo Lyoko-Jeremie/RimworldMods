@@ -163,6 +163,9 @@ namespace FullyAutomaticOmniCrafter
         {
             switch (preset)
             {
+                case PassabilityPreset.Default:
+                    return OmniPhantomWall2_PassabilitySettings.Default.Clone();
+
                 case PassabilityPreset.AllowAll:
                     return new OmniPhantomWall2_PassabilitySettings
                     {
@@ -264,7 +267,7 @@ namespace FullyAutomaticOmniCrafter
                     return customSettings.Clone();
 
                 default:
-                    return new OmniPhantomWall2_PassabilitySettings();
+                    return OmniPhantomWall2_PassabilitySettings.Default.Clone();
             }
         }
 
@@ -508,6 +511,8 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public enum PassabilityPreset
     {
+        /// <summary>默认设置</summary>
+        Default,
         /// <summary>允许所有单位通过</summary>
         AllowAll,
         /// <summary>允许友方通过（殖民者、宠物、商人）</summary>

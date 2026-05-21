@@ -9,6 +9,8 @@ namespace FullyAutomaticOmniCrafter
 
     public class OmniPhantomWall2_PassabilitySettings : IExposable
     {
+        public static readonly OmniPhantomWall2_PassabilitySettings Default = new OmniPhantomWall2_PassabilitySettings();
+
         // 玩家殖民者
         public bool allowColonists = true;
         // 宠物
@@ -44,22 +46,22 @@ namespace FullyAutomaticOmniCrafter
     
         public void ExposeData()
         {
-            Scribe_Values.Look(ref allowColonists, "allowColonists", true);
-            Scribe_Values.Look(ref allowPets, "allowPets", false);
-            Scribe_Values.Look(ref allowDryad, "allowDryad", false);
-            Scribe_Values.Look(ref allowTraders, "allowTraders", false);
-            Scribe_Values.Look(ref allowPrisoners, "allowPrisoners", false);
-            Scribe_Values.Look(ref allowColonyPrisoners, "allowColonyPrisoners", false);
-            Scribe_Values.Look(ref allowWildAnimals, "allowWildAnimals", false);
-            Scribe_Values.Look(ref allowEntities, "allowEntities", false);
-            Scribe_Values.Look(ref allowHostiles, "allowHostiles", false);
-            Scribe_Values.Look(ref allowFactioned, "allowFactioned", false);
-            Scribe_Values.Look(ref allowLords, "allowLords", false);
-            Scribe_Values.Look(ref allowMechanoids, "allowMechanoids", false);
-            Scribe_Values.Look(ref allowHumanlikes, "allowHumanlikes", false);
-            Scribe_Values.Look(ref allowToolUsers, "allowToolUsers", false);
-            Scribe_Values.Look(ref allowUnfactions, "allowUnfactions", false);
-            Scribe_Values.Look(ref allowInsectoids, "allowInsectoids", false);
+            Scribe_Values.Look(ref allowColonists, "allowColonists", Default.allowColonists);
+            Scribe_Values.Look(ref allowPets, "allowPets", Default.allowPets);
+            Scribe_Values.Look(ref allowDryad, "allowDryad", Default.allowDryad);
+            Scribe_Values.Look(ref allowTraders, "allowTraders", Default.allowTraders);
+            Scribe_Values.Look(ref allowPrisoners, "allowPrisoners", Default.allowPrisoners);
+            Scribe_Values.Look(ref allowColonyPrisoners, "allowColonyPrisoners", Default.allowColonyPrisoners);
+            Scribe_Values.Look(ref allowWildAnimals, "allowWildAnimals", Default.allowWildAnimals);
+            Scribe_Values.Look(ref allowEntities, "allowEntities", Default.allowEntities);
+            Scribe_Values.Look(ref allowHostiles, "allowHostiles", Default.allowHostiles);
+            Scribe_Values.Look(ref allowFactioned, "allowFactioned", Default.allowFactioned);
+            Scribe_Values.Look(ref allowLords, "allowLords", Default.allowLords);
+            Scribe_Values.Look(ref allowMechanoids, "allowMechanoids", Default.allowMechanoids);
+            Scribe_Values.Look(ref allowHumanlikes, "allowHumanlikes", Default.allowHumanlikes);
+            Scribe_Values.Look(ref allowToolUsers, "allowToolUsers", Default.allowToolUsers);
+            Scribe_Values.Look(ref allowUnfactions, "allowUnfactions", Default.allowUnfactions);
+            Scribe_Values.Look(ref allowInsectoids, "allowInsectoids", Default.allowInsectoids);
         }
     
         /// <summary>

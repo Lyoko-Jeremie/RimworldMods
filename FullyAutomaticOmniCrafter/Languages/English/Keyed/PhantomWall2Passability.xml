@@ -8,6 +8,7 @@
     <OPW_SelectPreset>Select Preset:</OPW_SelectPreset>
 
     <!-- Presets -->
+    <OPW_Preset_Default>Default</OPW_Preset_Default>
     <OPW_Preset_AllowAll>Allow All</OPW_Preset_AllowAll>
     <OPW_Preset_AllowFriendly>Allow Friendly</OPW_Preset_AllowFriendly>
     <OPW_Preset_ColonistsOnly>Colonists Only</OPW_Preset_ColonistsOnly>
