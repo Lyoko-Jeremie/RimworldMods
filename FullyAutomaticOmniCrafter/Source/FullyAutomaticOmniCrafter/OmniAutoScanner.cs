@@ -161,9 +161,20 @@ namespace FullyAutomaticOmniCrafter
                         // 动态检查是否存在金属怪形感染组件，避免在未安装异象时直接引用类型导致解析失败
                         for (int i = 0; i < twc.AllComps.Count; i++)
                         {
-                            if (twc.AllComps[i].GetType().Name == "CompMetalhorrorInfectible")
+                            var comp = twc.AllComps[i];
+                            if (comp.GetType().Name == "CompMetalhorrorInfectible")
                             {
-                                contaminatedItems.Add(thing);
+                                // 必须检查是否有感染记录。原版中该组件会挂在所有食物上，但 Infections > 0 才代表已污染。
+                                // 使用反射获取 Infections 属性
+                                var infectionsProp = comp.GetType().GetProperty("Infections");
+                                if (infectionsProp != null)
+                                {
+                                    int count = (int)infectionsProp.GetValue(comp);
+                                    if (count > 0)
+                                    {
+                                        contaminatedItems.Add(thing);
+                                    }
+                                }
                                 break;
                             }
                         }
