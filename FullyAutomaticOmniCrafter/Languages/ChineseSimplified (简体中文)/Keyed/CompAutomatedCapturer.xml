@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <AutomatedCapturer_OpenSettings>捕捉器设置</AutomatedCapturer_OpenSettings>
+  <AutomatedCapturer_OpenSettingsDesc>打开自动捕捉器的详细筛选与效果设置面板。</AutomatedCapturer_OpenSettingsDesc>
+  <AutomatedCapturer_Active>激活自动捕捉</AutomatedCapturer_Active>
+  <AutomatedCapturer_ActiveDesc>如果激活，建筑将定期扫描地图上符合条件的单位并将其捕捉到当前房间内。</AutomatedCapturer_ActiveDesc>
+  <AutomatedCapturer_ManualCapture>立即手动捕捉</AutomatedCapturer_ManualCapture>
+  <AutomatedCapturer_ManualCaptureDesc>立即执行一次全图扫描并捕捉所有符合条件的单位。</AutomatedCapturer_ManualCaptureDesc>
+  
+  <AutomatedCapturer_Settings>自动捕捉器设置</AutomatedCapturer_Settings>
+  <AutomatedCapturer_FilterConditions>筛选条件 (符合任意一项即可)</AutomatedCapturer_FilterConditions>
+  <AutomatedCapturer_MatchingPawns>匹配的目标数量: {0}</AutomatedCapturer_MatchingPawns>
+  <AutomatedCapturer_CaptureEffects>捕捉附加效果</AutomatedCapturer_CaptureEffects>
+  
+  <AutomatedCapturer_EffectTeleportOnly>仅传送</AutomatedCapturer_EffectTeleportOnly>
+  <AutomatedCapturer_EffectStun>传送并击晕</AutomatedCapturer_EffectStun>
+  <AutomatedCapturer_EffectTameOrRecruit>传送并直接招募/驯服</AutomatedCapturer_EffectTameOrRecruit>
+  <AutomatedCapturer_EffectHostileToPrisoner>传送并转为囚犯 (仅限敌对人类)</AutomatedCapturer_EffectHostileToPrisoner>
+  <AutomatedCapturer_VisualEffects>显示传送视觉与音效</AutomatedCapturer_VisualEffects>
+</LanguageData>

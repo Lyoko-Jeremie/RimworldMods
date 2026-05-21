@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <AutomatedCapturer_OpenSettings>Capturer Settings</AutomatedCapturer_OpenSettings>
+  <AutomatedCapturer_OpenSettingsDesc>Open the detailed filtering and effect settings panel for the automated capturer.</AutomatedCapturer_OpenSettingsDesc>
+  <AutomatedCapturer_Active>Active Auto-Capture</AutomatedCapturer_Active>
+  <AutomatedCapturer_ActiveDesc>If active, the building will periodically scan the map for matching units and capture them to the current room.</AutomatedCapturer_ActiveDesc>
+  <AutomatedCapturer_ManualCapture>Manual Capture Now</AutomatedCapturer_ManualCapture>
+  <AutomatedCapturer_ManualCaptureDesc>Execute a full map scan and capture all matching units immediately.</AutomatedCapturer_ManualCaptureDesc>
+  
+  <AutomatedCapturer_Settings>Automated Capturer Settings</AutomatedCapturer_Settings>
+  <AutomatedCapturer_FilterConditions>Filter Conditions (Match any)</AutomatedCapturer_FilterConditions>
+  <AutomatedCapturer_MatchingPawns>Matching targets count: {0}</AutomatedCapturer_MatchingPawns>
+  <AutomatedCapturer_CaptureEffects>Capture Extra Effects</AutomatedCapturer_CaptureEffects>
+  
+  <AutomatedCapturer_EffectTeleportOnly>Teleport Only</AutomatedCapturer_EffectTeleportOnly>
+  <AutomatedCapturer_EffectStun>Teleport and Stun</AutomatedCapturer_EffectStun>
+  <AutomatedCapturer_EffectTameOrRecruit>Teleport and Recruit/Tame Directly</AutomatedCapturer_EffectTameOrRecruit>
+  <AutomatedCapturer_EffectHostileToPrisoner>Teleport and Set as Prisoner (Hostile Humans only)</AutomatedCapturer_EffectHostileToPrisoner>
+  <AutomatedCapturer_VisualEffects>Show teleport visual and sound effects</AutomatedCapturer_VisualEffects>
+</LanguageData>
