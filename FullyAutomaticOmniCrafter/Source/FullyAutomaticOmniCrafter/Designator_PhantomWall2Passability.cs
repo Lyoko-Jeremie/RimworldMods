@@ -273,10 +273,6 @@ namespace FullyAutomaticOmniCrafter
 
         public static string GetPresetLabel(PassabilityPreset preset)
         {
-            if (preset == PassabilityPreset.Default)
-            {
-                return "Default";
-            }
             return $"OPW_Preset_{preset}".Translate();
         }
 
