@@ -74,7 +74,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = "OmniAutoDetector_AutoPurgeFoodLabel".Translate(),
                     defaultDesc = "OmniAutoDetector_AutoPurgeFoodDesc".Translate(),
-                    icon = ContentFinder<Texture2D>.Get("UI/Designators/Deconstruct"),
+                    icon = ContentFinder<Texture2D>.Get("UI/Designators/Deconstruct") ?? BaseContent.WhiteTex,
                     isActive = () => autoPurgeFood,
                     toggleAction = () => { autoPurgeFood = !autoPurgeFood; }
                 };
