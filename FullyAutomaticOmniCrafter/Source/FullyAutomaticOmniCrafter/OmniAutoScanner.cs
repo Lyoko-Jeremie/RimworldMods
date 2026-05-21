@@ -140,7 +140,7 @@ namespace FullyAutomaticOmniCrafter
                             {
                                 // 如果没有组件但名字包含隐形，直接移除（兼容一些简单实现的MOD）
                                 p.health.RemoveHediff(hd);
-                                Messages.Message($"全自动扫描仪已移除隐形: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
+                                Messages.Message($"全自动扫描仪已移除疑似隐形属性: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
                                     MessageTypeDefOf.PositiveEvent);
                             }
                         }
