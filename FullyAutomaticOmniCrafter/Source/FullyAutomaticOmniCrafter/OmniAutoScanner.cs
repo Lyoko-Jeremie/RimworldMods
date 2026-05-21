@@ -18,7 +18,7 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 全自动万能扫描器 (全自动探测尖塔) OmniAutoDetector
+    /// 全自动万能扫描器 (全自动探测尖塔) (全自动监测终端) OmniAutoDetector
     /// 当前支持全自动发现全图的异常，并根据设置清除异常状态或对隐形敌人反隐（不杀死隐形敌人）
     /// </summary>
     public class CompOmniAutoDetector : ThingComp
