@@ -147,9 +147,14 @@ namespace FullyAutomaticOmniCrafter
         {
             // 复用 OmniPhantomWall2 的逻辑
             if (pawn == null) return false;
+            
+            // 优先检查明确排除的条件
             if (!settings.allowHostiles && pawn.HostileTo(Faction.OfPlayer)) return false;
+
+            // 检查特定身份
             if (pawn.IsPrisonerOfColony) return settings.allowColonyPrisoners;
             if (pawn.IsPrisoner) return settings.allowPrisoners;
+            
             if (pawn.Faction == Faction.OfPlayer)
             {
                 if (pawn.RaceProps.Humanlike) return settings.allowColonists;
@@ -159,19 +164,27 @@ namespace FullyAutomaticOmniCrafter
                 if (pawn.RaceProps.Insect) return settings.allowInsectoids;
                 if (pawn.RaceProps.Animal) return settings.allowPets;
             }
+
+            // 敌对单位（如果前面没被排除，说明可能允许）
             if (pawn.HostileTo(Faction.OfPlayer)) return settings.allowHostiles;
-            if (settings.allowTraders && !pawn.HostileTo(Faction.OfPlayer) && pawn.Faction != null && pawn.Faction != Faction.OfPlayer && pawn.GetLord() != null) return settings.allowTraders;
-            if (pawn.RaceProps.IsAnomalyEntity) return settings.allowEntities;
-            if (pawn.RaceProps.IsMechanoid) return settings.allowMechanoids;
-            if (pawn.RaceProps.Dryad) return settings.allowDryad;
-            if (pawn.RaceProps.Insect) return settings.allowInsectoids;
-            if (pawn.RaceProps.Animal && pawn.Faction == null) return settings.allowWildAnimals;
+
+            // 商人
+            if (settings.allowTraders && pawn.Faction != null && pawn.Faction != Faction.OfPlayer && pawn.GetLord() != null) return true;
+
+            // 其他种族/类型
+            if (settings.allowEntities && pawn.RaceProps.IsAnomalyEntity) return true;
+            if (settings.allowMechanoids && pawn.RaceProps.IsMechanoid) return true;
+            if (settings.allowDryad && pawn.RaceProps.Dryad) return true;
+            if (settings.allowInsectoids && pawn.RaceProps.Insect) return true;
+            if (settings.allowWildAnimals && pawn.RaceProps.Animal && pawn.Faction == null) return true;
+
+            // 通用分类
             if (settings.allowHumanlikes && pawn.RaceProps.Humanlike) return true;
             if (settings.allowToolUsers && pawn.RaceProps.ToolUser) return true;
             if (settings.allowFactioned && pawn.Faction != null) return true;
             if (settings.allowLords && pawn.GetLord() != null) return true;
             if (settings.allowUnfactions && pawn.Faction == null && pawn.GetLord() == null) return true;
-            if (pawn.Faction == Faction.OfPlayer) return true;
+
             return false;
         }
 
