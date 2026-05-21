@@ -360,9 +360,9 @@ namespace FullyAutomaticOmniCrafter
             var allFilters = settings.GetAllFilters();
             if (allFilters == null || allFilters.Count == 0) return;
 
-            float width = 250f;
-            float rowHeight = 20f;
-            float titleHeight = 30f;
+            float width = 320f;
+            float rowHeight = 26f;
+            float titleHeight = 35f;
             
             // 计算高度：标题 + 所有过滤项 + 间距
             float height = titleHeight + allFilters.Count * rowHeight + 20f;
@@ -380,12 +380,10 @@ namespace FullyAutomaticOmniCrafter
 
                 // 标题：预设名称
                 string presetLabel = localWall.GetPassabilitySummary();
-                GUI.color = settings.GetColor();
                 Widgets.Label(new Rect(innerRect.x, innerRect.y, innerRect.width, titleHeight), "OPW_CurrentPreset".Translate() + ": " + presetLabel);
-                GUI.color = Color.white;
 
                 float curY = innerRect.y + titleHeight;
-                Text.Font = GameFont.Tiny;
+                Text.Font = GameFont.Small;
 
                 foreach (var kvp in allFilters)
                 {
