@@ -14,7 +14,6 @@ namespace FullyAutomaticOmniCrafter
         private Vector2 scrollPosMid;
         private List<Pawn> cachedMatchingPawns;
         private int lastUpdateTick;
-        private bool? mouseDragState;
 
         public override Vector2 InitialSize => new Vector2(900f, 700f);
 
@@ -26,7 +25,7 @@ namespace FullyAutomaticOmniCrafter
             this.forcePause = true;
             this.closeOnClickedOutside = true;
             this.absorbInputAroundWindow = true;
-            this.draggable = true;
+            this.draggable = false;
         }
 
         private void UpdatePawnCache()
@@ -74,18 +73,19 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DoWindowContents(Rect inRect)
         {
-            if (Event.current.type == EventType.MouseUp)
-            {
-                mouseDragState = null;
-            }
-
             if (cachedMatchingPawns == null || Find.TickManager.TicksGame > lastUpdateTick + 60)
             {
                 UpdatePawnCache();
             }
 
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 35f), "AutomatedCapturer_Settings".Translate());
+            Rect titleRect = new Rect(0f, 0f, inRect.width, 35f);
+            Widgets.Label(titleRect, "AutomatedCapturer_Settings".Translate());
+            if (Mouse.IsOver(titleRect))
+            {
+                Widgets.DrawHighlight(titleRect);
+            }
+            GUI.DragWindow(titleRect);
             Text.Font = GameFont.Small;
 
             float y = 45f;
@@ -137,15 +137,9 @@ namespace FullyAutomaticOmniCrafter
                 }
 
                 bool initial = checkOn;
-                Widgets.CheckboxLabeled(rect2, label, ref checkOn);
+                Widgets.CheckboxLabeled(rect2, label, ref checkOn, paintable: true);
                 if (checkOn != initial)
                 {
-                    mouseDragState = checkOn;
-                    UpdatePawnCache();
-                }
-                else if (mouseDragState.HasValue && Mouse.IsOver(rect2) && checkOn != mouseDragState.Value)
-                {
-                    checkOn = mouseDragState.Value;
                     UpdatePawnCache();
                 }
 
@@ -171,6 +165,11 @@ namespace FullyAutomaticOmniCrafter
 
             scrollListing.End();
             Widgets.EndScrollView();
+
+            if (Widgets.Painting)
+            {
+                UpdatePawnCache();
+            }
 
             listing.End();
         }
