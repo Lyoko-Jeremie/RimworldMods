@@ -480,7 +480,7 @@ namespace FullyAutomaticOmniCrafter
                     Rect rowRect = new Rect(settingsArea.x, curY, settingsArea.width, rowHeight);
                     string label = labelKey.CanTranslate() ? (string)labelKey.Translate() : defaultLabel;
                     bool val = value;
-                    Widgets.CheckboxLabeled(rowRect, label, ref val);
+                    Widgets.CheckboxLabeled(rowRect, label, ref val, paintable: true);
                     if (val != value)
                     {
                         value = val;
@@ -490,7 +490,6 @@ namespace FullyAutomaticOmniCrafter
                             customSettings.CopyFrom(displaySettings);
                             currentPreset = PassabilityPreset.Custom;
                         }
-                        SoundDefOf.Click.PlayOneShotOnCamera();
                     }
                     curY += rowHeight + 2f;
                 }
