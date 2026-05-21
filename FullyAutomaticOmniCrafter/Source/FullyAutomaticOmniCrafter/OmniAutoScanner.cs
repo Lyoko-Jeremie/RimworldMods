@@ -44,15 +44,18 @@ namespace FullyAutomaticOmniCrafter
                 yield return gizmo;
             }
 
-            // 治愈金属怪形开关
-            yield return new Command_Toggle
+            if (ModsConfig.AnomalyActive)
             {
-                defaultLabel = "自动清除体内异象",
-                defaultDesc = "开启后，瞬间无痛抹除全图殖民者体内的金属怪形寄生状态。",
-                icon = TexCommand.Draft, // 这里可以换成你自己的图标
-                isActive = () => autoCureMetalhorror,
-                toggleAction = () => { autoCureMetalhorror = !autoCureMetalhorror; }
-            };
+                // 治愈金属怪形开关
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "自动清除体内异象",
+                    defaultDesc = "开启后，瞬间无痛抹除全图殖民者体内的金属怪形寄生状态。",
+                    icon = TexCommand.Draft, // 这里可以换成你自己的图标
+                    isActive = () => autoCureMetalhorror,
+                    toggleAction = () => { autoCureMetalhorror = !autoCureMetalhorror; }
+                };
+            }
 
             // 破除隐形开关
             yield return new Command_Toggle
@@ -64,15 +67,18 @@ namespace FullyAutomaticOmniCrafter
                 toggleAction = () => { autoVisitableEntities = !autoVisitableEntities; }
             };
 
-            // 自动清除受污染食物开关
-            yield return new Command_Toggle
+            if (ModsConfig.AnomalyActive)
             {
-                defaultLabel = "自动销毁受污染食物",
-                defaultDesc = "开启后，自动寻找并销毁带有异常污染的食物（如金属怪形污染）。",
-                icon = ContentFinder<Texture2D>.Get("UI/Designators/Deconstruct"),
-                isActive = () => autoPurgeFood,
-                toggleAction = () => { autoPurgeFood = !autoPurgeFood; }
-            };
+                // 自动清除受污染食物开关
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "自动销毁受污染食物",
+                    defaultDesc = "开启后，自动寻找并销毁带有异常污染的食物（如金属怪形污染）。",
+                    icon = ContentFinder<Texture2D>.Get("UI/Designators/Deconstruct"),
+                    isActive = () => autoPurgeFood,
+                    toggleAction = () => { autoPurgeFood = !autoPurgeFood; }
+                };
+            }
         }
 
         public override void CompTickRare()
@@ -134,7 +140,7 @@ namespace FullyAutomaticOmniCrafter
                             {
                                 // 如果没有组件但名字包含隐形，直接移除（兼容一些简单实现的MOD）
                                 p.health.RemoveHediff(hd);
-                                Messages.Message($"全自动扫描仪已移除隐形异象: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
+                                Messages.Message($"全自动扫描仪已移除隐形: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
                                     MessageTypeDefOf.PositiveEvent);
                             }
                         }
@@ -151,10 +157,14 @@ namespace FullyAutomaticOmniCrafter
                 {
                     if (thing.def.IsIngestible && thing is ThingWithComps twc)
                     {
-                        // 直接检查是否存在金属怪形感染组件
-                        if (twc.AllComps.Any(c => c is CompMetalhorrorInfectible))
+                        // 动态检查是否存在金属怪形感染组件，避免在未安装异象时直接引用类型导致解析失败
+                        for (int i = 0; i < twc.AllComps.Count; i++)
                         {
-                            contaminatedItems.Add(thing);
+                            if (twc.AllComps[i].GetType().Name == "CompMetalhorrorInfectible")
+                            {
+                                contaminatedItems.Add(thing);
+                                break;
+                            }
                         }
                     }
                 }
