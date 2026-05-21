@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OmniAutoDetector_AutoCureMetalhorrorLabel>Auto Cure Anomaly</OmniAutoDetector_AutoCureMetalhorrorLabel>
+  <OmniAutoDetector_AutoCureMetalhorrorDesc>When enabled, instantly and painlessly wipes out Metalhorror parasite status from all colonists on the map.</OmniAutoDetector_AutoCureMetalhorrorDesc>
+  
+  <OmniAutoDetector_AutoVisitableEntitiesLabel>Auto Reveal Invisible Entities</OmniAutoDetector_AutoVisitableEntitiesLabel>
+  <OmniAutoDetector_AutoVisitableEntitiesDesc>When enabled, any hostile entity with invisibility status on the map will be immediately revealed.</OmniAutoDetector_AutoVisitableEntitiesDesc>
+  
+  <OmniAutoDetector_AutoPurgeFoodLabel>Auto Destroy Contaminated Food</OmniAutoDetector_AutoPurgeFoodLabel>
+  <OmniAutoDetector_AutoPurgeFoodDesc>When enabled, automatically finds and destroys food items with anomaly contamination (e.g., Metalhorror contamination).</OmniAutoDetector_AutoPurgeFoodDesc>
+  
+  <OmniAutoDetector_MetalhorrorCured>Metalhorror inside {0} has been safely erased by the scanner.</OmniAutoDetector_MetalhorrorCured>
+  <OmniAutoDetector_InvisibilityBroken>OmniAutoDetector has broken invisibility: {0} ({1})</OmniAutoDetector_InvisibilityBroken>
+  <OmniAutoDetector_InvisibilityRemoved>OmniAutoDetector has removed suspected invisibility property: {0} ({1}) [{2}]</OmniAutoDetector_InvisibilityRemoved>
+  <OmniAutoDetector_ContaminatedFoodDestroyed>OmniAutoDetector has destroyed contaminated item: {0}</OmniAutoDetector_ContaminatedFoodDestroyed>
+</LanguageData>

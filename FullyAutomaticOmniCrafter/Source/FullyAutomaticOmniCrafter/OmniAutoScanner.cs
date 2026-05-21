@@ -49,8 +49,8 @@ namespace FullyAutomaticOmniCrafter
                 // 治愈金属怪形开关
                 yield return new Command_Toggle
                 {
-                    defaultLabel = "自动清除体内异象",
-                    defaultDesc = "开启后，瞬间无痛抹除全图殖民者体内的金属怪形寄生状态。",
+                    defaultLabel = "OmniAutoDetector_AutoCureMetalhorrorLabel".Translate(),
+                    defaultDesc = "OmniAutoDetector_AutoCureMetalhorrorDesc".Translate(),
                     icon = TexCommand.Draft, // 这里可以换成你自己的图标
                     isActive = () => autoCureMetalhorror,
                     toggleAction = () => { autoCureMetalhorror = !autoCureMetalhorror; }
@@ -60,8 +60,8 @@ namespace FullyAutomaticOmniCrafter
             // 破除隐形开关
             yield return new Command_Toggle
             {
-                defaultLabel = "自动反隐隐形实体",
-                defaultDesc = "开启后，全图任何带有隐形状态的敌对实体将立即反隐。",
+                defaultLabel = "OmniAutoDetector_AutoVisitableEntitiesLabel".Translate(),
+                defaultDesc = "OmniAutoDetector_AutoVisitableEntitiesDesc".Translate(),
                 icon = TexCommand.ForbidOff,
                 isActive = () => autoVisitableEntities,
                 toggleAction = () => { autoVisitableEntities = !autoVisitableEntities; }
@@ -72,8 +72,8 @@ namespace FullyAutomaticOmniCrafter
                 // 自动清除受污染食物开关
                 yield return new Command_Toggle
                 {
-                    defaultLabel = "自动销毁受污染食物",
-                    defaultDesc = "开启后，自动寻找并销毁带有异常污染的食物（如金属怪形污染）。",
+                    defaultLabel = "OmniAutoDetector_AutoPurgeFoodLabel".Translate(),
+                    defaultDesc = "OmniAutoDetector_AutoPurgeFoodDesc".Translate(),
                     icon = ContentFinder<Texture2D>.Get("UI/Designators/Deconstruct"),
                     isActive = () => autoPurgeFood,
                     toggleAction = () => { autoPurgeFood = !autoPurgeFood; }
@@ -95,7 +95,7 @@ namespace FullyAutomaticOmniCrafter
             // 1. 无痛治愈金属怪形
             if (autoCureMetalhorror && ModsConfig.AnomalyActive)
             {
-                // 遍历所有殖民者、囚犯和奴隶
+                // 遍历所有殖民者、囚牢和奴隶
                 foreach (Pawn pawn in map.mapPawns.AllPawnsSpawned)
                 {
                     if (pawn.Faction != Faction.OfPlayer && !pawn.IsPrisonerOfColony && !pawn.IsSlaveOfColony) continue;
@@ -104,7 +104,7 @@ namespace FullyAutomaticOmniCrafter
                     if (parasite != null)
                     {
                         pawn.health.RemoveHediff(parasite);
-                        Messages.Message($"{pawn.Name.ToStringShort} 体内的金属怪形已被扫描仪安全抹除。", pawn,
+                        Messages.Message("OmniAutoDetector_MetalhorrorCured".Translate(pawn.Name.ToStringShort), pawn,
                             MessageTypeDefOf.PositiveEvent);
                     }
                 }
@@ -132,7 +132,7 @@ namespace FullyAutomaticOmniCrafter
                                 if (!invisComp.PsychologicallyVisible)
                                 {
                                     invisComp.BecomeVisible(true);
-                                    Messages.Message($"全自动扫描仪已破除隐形状态: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
+                                    Messages.Message("OmniAutoDetector_InvisibilityBroken".Translate(p.LabelShortCap, hd.Label), new TargetInfo(p.Position, map),
                                         MessageTypeDefOf.PositiveEvent);
                                 }
                             }
@@ -140,7 +140,7 @@ namespace FullyAutomaticOmniCrafter
                             {
                                 // 如果没有组件但名字包含隐形，直接移除（兼容一些简单实现的MOD）
                                 p.health.RemoveHediff(hd);
-                                Messages.Message($"全自动扫描仪已移除疑似隐形属性: {p.LabelShortCap} ({hd.Label}) [{hd.def.defName}]",
+                                Messages.Message("OmniAutoDetector_InvisibilityRemoved".Translate(p.LabelShortCap, hd.Label, hd.def.defName),
                                     new TargetInfo(p.Position, map),
                                     MessageTypeDefOf.PositiveEvent);
                             }
@@ -185,7 +185,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     string label = item.Label;
                     item.Destroy(DestroyMode.Vanish);
-                    Messages.Message($"全自动扫描仪已销毁受污染物品: {label}", MessageTypeDefOf.PositiveEvent);
+                    Messages.Message("OmniAutoDetector_ContaminatedFoodDestroyed".Translate(label), MessageTypeDefOf.PositiveEvent);
                 }
             }
         }

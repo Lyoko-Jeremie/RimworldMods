@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OmniAutoDetector_AutoCureMetalhorrorLabel>自动清除体内异象</OmniAutoDetector_AutoCureMetalhorrorLabel>
+  <OmniAutoDetector_AutoCureMetalhorrorDesc>开启后，瞬间无痛抹除全图殖民者体内的金属怪形寄生状态。</OmniAutoDetector_AutoCureMetalhorrorDesc>
+  
+  <OmniAutoDetector_AutoVisitableEntitiesLabel>自动反隐隐形实体</OmniAutoDetector_AutoVisitableEntitiesLabel>
+  <OmniAutoDetector_AutoVisitableEntitiesDesc>开启后，全图任何带有隐形状态的敌对实体将立即反隐。</OmniAutoDetector_AutoVisitableEntitiesDesc>
+  
+  <OmniAutoDetector_AutoPurgeFoodLabel>自动销毁受污染食物</OmniAutoDetector_AutoPurgeFoodLabel>
+  <OmniAutoDetector_AutoPurgeFoodDesc>开启后，自动寻找并销毁带有异常污染的食物（如金属怪形污染）。</OmniAutoDetector_AutoPurgeFoodDesc>
+  
+  <OmniAutoDetector_MetalhorrorCured>{0} 体内的金属怪形已被扫描仪安全抹除。</OmniAutoDetector_MetalhorrorCured>
+  <OmniAutoDetector_InvisibilityBroken>全自动扫描仪已破除隐形状态: {0} ({1})</OmniAutoDetector_InvisibilityBroken>
+  <OmniAutoDetector_InvisibilityRemoved>全自动扫描仪已移除疑似隐形属性: {0} ({1}) [{2}]</OmniAutoDetector_InvisibilityRemoved>
+  <OmniAutoDetector_ContaminatedFoodDestroyed>全自动扫描仪已销毁受污染物品: {0}</OmniAutoDetector_ContaminatedFoodDestroyed>
+</LanguageData>
