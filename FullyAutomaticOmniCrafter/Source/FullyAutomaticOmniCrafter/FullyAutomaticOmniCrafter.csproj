@@ -365,6 +365,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRepair.cs" />
+    <Compile Include="CompAutomatedCapturer.cs" />
     <Compile Include="CompAutoPainter.cs" />
     <Compile Include="CompAutoRoofer.cs" />
     <Compile Include="CompAutoSmoother.cs" />
@@ -379,6 +380,7 @@
     <Compile Include="OmniPhantomWall.cs" />
     <Compile Include="OmniPhantomWall2.cs" />
     <Compile Include="OmniPhantomWall2_PassabilitySettings.cs" />
+    <Compile Include="Patch_MinifyProtection.cs" />
     <Compile Include="Patch_OmniAutoSurgeonSurgery.cs" />
     <Compile Include="Patch_OmniPhantomWall.cs" />
     <Compile Include="Patch_OmniPhantomWallTerrain.cs" />
