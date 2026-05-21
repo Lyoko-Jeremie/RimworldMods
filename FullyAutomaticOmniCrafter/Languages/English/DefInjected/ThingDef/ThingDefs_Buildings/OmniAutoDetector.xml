@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniAutoDetector.label>Auto Detector</OmniAutoDetector.label>
+    <!-- 一种基于因果探测技术的建筑。能自动探测并治疗金属怪形，探测隐形对象并反隐，销毁受到污染的食物。守护殖民地安全！ -->
+    <OmniAutoDetector.description>A building based on causal detection technology. It can automatically detect and treat metal monsters, detect and unhide invisible objects, and destroy contaminated food. Guarding the safety of the colony!</OmniAutoDetector.description>
+
+</LanguageData>
