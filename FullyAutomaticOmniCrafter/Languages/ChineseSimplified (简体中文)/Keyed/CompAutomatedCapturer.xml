@@ -17,4 +17,12 @@
   <AutomatedCapturer_EffectTameOrRecruit>传送并直接招募/驯服</AutomatedCapturer_EffectTameOrRecruit>
   <AutomatedCapturer_EffectHostileToPrisoner>传送并转为囚犯 (仅限敌对人类)</AutomatedCapturer_EffectHostileToPrisoner>
   <AutomatedCapturer_VisualEffects>显示传送视觉与音效</AutomatedCapturer_VisualEffects>
+
+  <AutomatedCapturer_SortBy_Distance>按距离排序</AutomatedCapturer_SortBy_Distance>
+  <AutomatedCapturer_SortBy_Name>按名称排序</AutomatedCapturer_SortBy_Name>
+  <AutomatedCapturer_SortBy_Faction>按派系排序</AutomatedCapturer_SortBy_Faction>
+  <AutomatedCapturer_SortBy_Health>按生命值排序</AutomatedCapturer_SortBy_Health>
+  <AutomatedCapturer_SortBy_MarketValue>按市场价值排序</AutomatedCapturer_SortBy_MarketValue>
+  <AutomatedCapturer_SortAscending>升序</AutomatedCapturer_SortAscending>
+  <AutomatedCapturer_SortDescending>降序</AutomatedCapturer_SortDescending>
 </LanguageData>

@@ -17,4 +17,12 @@
   <AutomatedCapturer_EffectTameOrRecruit>Teleport and Recruit/Tame Directly</AutomatedCapturer_EffectTameOrRecruit>
   <AutomatedCapturer_EffectHostileToPrisoner>Teleport and Set as Prisoner (Hostile Humans only)</AutomatedCapturer_EffectHostileToPrisoner>
   <AutomatedCapturer_VisualEffects>Show teleport visual and sound effects</AutomatedCapturer_VisualEffects>
+
+  <AutomatedCapturer_SortBy_Distance>Sort by Distance</AutomatedCapturer_SortBy_Distance>
+  <AutomatedCapturer_SortBy_Name>Sort by Name</AutomatedCapturer_SortBy_Name>
+  <AutomatedCapturer_SortBy_Faction>Sort by Faction</AutomatedCapturer_SortBy_Faction>
+  <AutomatedCapturer_SortBy_Health>Sort by Health</AutomatedCapturer_SortBy_Health>
+  <AutomatedCapturer_SortBy_MarketValue>Sort by Market Value</AutomatedCapturer_SortBy_MarketValue>
+  <AutomatedCapturer_SortAscending>Ascending</AutomatedCapturer_SortAscending>
+  <AutomatedCapturer_SortDescending>Descending</AutomatedCapturer_SortDescending>
 </LanguageData>

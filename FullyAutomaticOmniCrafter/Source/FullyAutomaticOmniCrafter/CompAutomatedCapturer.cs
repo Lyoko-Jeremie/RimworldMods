@@ -24,6 +24,15 @@ namespace FullyAutomaticOmniCrafter
         /// <summary> 传送并将敌对人类转为囚犯 </summary>
         HostileToPrisoner
     }
+
+    public enum CapturerSortMode
+    {
+        Distance,
+        Name,
+        Faction,
+        Health,
+        MarketValue
+    }
     
     public class CompProperties_AutomatedCapturer : CompProperties
     {
@@ -50,6 +59,10 @@ namespace FullyAutomaticOmniCrafter
         public CaptureEffect captureEffect = CaptureEffect.TeleportOnly;
         /// <summary> 是否显示传送视觉和音效 </summary>
         public bool showVisualEffects = true;
+        /// <summary> 列表排序模式 </summary>
+        public CapturerSortMode sortMode = CapturerSortMode.Distance;
+        /// <summary> 是否逆序 </summary>
+        public bool sortDescending = false;
 
         public override void PostExposeData()
         {
@@ -59,6 +72,8 @@ namespace FullyAutomaticOmniCrafter
             if (settings == null) settings = new OmniPhantomWall2_PassabilitySettings();
             Scribe_Values.Look(ref captureEffect, "captureEffect", CaptureEffect.TeleportOnly);
             Scribe_Values.Look(ref showVisualEffects, "showVisualEffects", true);
+            Scribe_Values.Look(ref sortMode, "sortMode", CapturerSortMode.Distance);
+            Scribe_Values.Look(ref sortDescending, "sortDescending", false);
         }
 
         // --- 无敌逻辑 ---

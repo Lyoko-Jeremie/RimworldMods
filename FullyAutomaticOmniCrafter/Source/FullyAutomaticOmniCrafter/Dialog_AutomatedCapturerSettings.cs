@@ -31,10 +31,43 @@ namespace FullyAutomaticOmniCrafter
         private void UpdatePawnCache()
         {
             if (comp.parent.Map == null) return;
-            cachedMatchingPawns = comp.parent.Map.mapPawns.AllPawnsSpawned
-                .Where(p => comp.IsValidTarget(p))
-                .OrderBy(p => p.Position.DistanceToSquared(comp.parent.Position))
-                .ToList();
+            var query = comp.parent.Map.mapPawns.AllPawnsSpawned
+                .Where(p => comp.IsValidTarget(p));
+
+            IOrderedEnumerable<Pawn> ordered;
+            switch (comp.sortMode)
+            {
+                case CapturerSortMode.Distance:
+                    ordered = comp.sortDescending 
+                        ? query.OrderByDescending(p => p.Position.DistanceToSquared(comp.parent.Position))
+                        : query.OrderBy(p => p.Position.DistanceToSquared(comp.parent.Position));
+                    break;
+                case CapturerSortMode.Name:
+                    ordered = comp.sortDescending 
+                        ? query.OrderByDescending(p => p.LabelCap)
+                        : query.OrderBy(p => p.LabelCap);
+                    break;
+                case CapturerSortMode.Faction:
+                    ordered = comp.sortDescending 
+                        ? query.OrderByDescending(p => p.Faction?.Name ?? "")
+                        : query.OrderBy(p => p.Faction?.Name ?? "");
+                    break;
+                case CapturerSortMode.Health:
+                    ordered = comp.sortDescending 
+                        ? query.OrderByDescending(p => p.health.summaryHealth.SummaryHealthPercent)
+                        : query.OrderBy(p => p.health.summaryHealth.SummaryHealthPercent);
+                    break;
+                case CapturerSortMode.MarketValue:
+                    ordered = comp.sortDescending 
+                        ? query.OrderByDescending(p => p.MarketValue)
+                        : query.OrderBy(p => p.MarketValue);
+                    break;
+                default:
+                    ordered = query.OrderBy(p => p.Position.DistanceToSquared(comp.parent.Position));
+                    break;
+            }
+
+            cachedMatchingPawns = ordered.ToList();
             lastUpdateTick = Find.TickManager.TicksGame;
         }
 
@@ -144,10 +177,40 @@ namespace FullyAutomaticOmniCrafter
         private void DrawMiddlePanel(Rect rect)
         {
             Text.Font = GameFont.Tiny;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 25f), "AutomatedCapturer_MatchingPawns".Translate(cachedMatchingPawns.Count));
+            float headerHeight = 25f;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, headerHeight), "AutomatedCapturer_MatchingPawns".Translate(cachedMatchingPawns.Count));
+            
+            // 排序按钮区域
+            float sortBtnY = rect.y + headerHeight + 2f;
+            float sortBtnHeight = 25f;
+            Rect sortRect = new Rect(rect.x, sortBtnY, rect.width, sortBtnHeight);
+            
+            float btnWidth = rect.width / 2f - 2f;
+            if (Widgets.ButtonText(new Rect(sortRect.x, sortRect.y, btnWidth, sortBtnHeight), ("AutomatedCapturer_SortBy_" + comp.sortMode).Translate()))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                foreach (CapturerSortMode mode in Enum.GetValues(typeof(CapturerSortMode)))
+                {
+                    options.Add(new FloatMenuOption(("AutomatedCapturer_SortBy_" + mode).Translate(), () =>
+                    {
+                        comp.sortMode = mode;
+                        UpdatePawnCache();
+                    }));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            if (Widgets.ButtonText(new Rect(sortRect.x + btnWidth + 4f, sortRect.y, btnWidth, sortBtnHeight), 
+                comp.sortDescending ? "AutomatedCapturer_SortDescending".Translate() : "AutomatedCapturer_SortAscending".Translate()))
+            {
+                comp.sortDescending = !comp.sortDescending;
+                UpdatePawnCache();
+            }
+
             Text.Font = GameFont.Small;
             
-            Rect listRect = new Rect(rect.x, rect.y + 30f, rect.width, rect.height - 30f);
+            float listStartOffset = headerHeight + sortBtnHeight + 10f;
+            Rect listRect = new Rect(rect.x, rect.y + listStartOffset, rect.width, rect.height - listStartOffset);
             Rect viewRect = new Rect(0f, 0f, listRect.width - 16f, cachedMatchingPawns.Count * 35f);
 
             Widgets.BeginScrollView(listRect, ref scrollPosMid, viewRect);
