@@ -45,7 +45,12 @@
             <WorkToBuild>1</WorkToBuild>
             <Flammability>0</Flammability> <!-- 不可燃 -->
             <Beauty>100</Beauty>
+            <Mass>50</Mass>
         </statBases>
+        
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
 
         <comps>
             <li Class="FullyAutomaticOmniCrafter.CompProperties_AutomatedCapturer"/>

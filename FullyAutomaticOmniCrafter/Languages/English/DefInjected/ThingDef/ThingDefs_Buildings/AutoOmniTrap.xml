@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <AutoOmniTrap.label>Omni Trap</AutoOmniTrap.label>
+    <!-- 一种采用了相位空间折叠技术的建筑。可以根据设定自动抓取对象并释放在周围，适合建造自动监狱、自动陷阱、将危险排除出基地，等等。 -->
+    <AutoOmniTrap.description>A trap that can automatically capture objects and release them around according to settings, suitable for building automatic prisons, automatic traps, and excluding dangerous objects from the base, etc.</AutoOmniTrap.description>
+
+</LanguageData>
