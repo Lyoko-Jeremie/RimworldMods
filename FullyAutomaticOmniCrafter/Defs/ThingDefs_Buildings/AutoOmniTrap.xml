@@ -11,7 +11,7 @@
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter2</texPath>
+            <texPath>Things/Building/Production/AutoOmniTrap</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
@@ -23,7 +23,7 @@
         <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
         <size>(3,3)</size>
-        <uiIconPath>Things/Building/Production/OmniCrafter2</uiIconPath>
+        <uiIconPath>Things/Building/Production/AutoOmniTrap</uiIconPath>
         
         <costList>
             <Steel>200</Steel>
