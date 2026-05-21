@@ -185,6 +185,8 @@ namespace FullyAutomaticOmniCrafter
                         allowToolUsers = true,
                         allowUnfactions = true,
                         allowColonyPrisoners = true,
+                        allowRoamers = true,
+                        allowTrainableAnimals = true,
                     };
 
                 case PassabilityPreset.AllowFriendly:
@@ -200,6 +202,8 @@ namespace FullyAutomaticOmniCrafter
                         allowHostiles = false,
                         allowMechanoids = true,
                         allowInsectoids = true,
+                        allowRoamers = true,
+                        allowTrainableAnimals = true,
                     };
 
                 case PassabilityPreset.ColonistsOnly:
@@ -213,7 +217,9 @@ namespace FullyAutomaticOmniCrafter
                         allowEntities = false,
                         allowHostiles = false,
                         allowMechanoids = false,
-                        allowInsectoids = false
+                        allowInsectoids = false,
+                        allowRoamers = false,
+                        allowTrainableAnimals = false,
                     };
 
                 case PassabilityPreset.BlockAll:
@@ -235,6 +241,8 @@ namespace FullyAutomaticOmniCrafter
                         allowToolUsers = false,
                         allowUnfactions = false,
                         allowColonyPrisoners = false,
+                        allowRoamers = false,
+                        allowTrainableAnimals = false,
                     };
 
                 case PassabilityPreset.Prison:
@@ -248,7 +256,9 @@ namespace FullyAutomaticOmniCrafter
                         allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
-                        allowHostiles = false
+                        allowHostiles = false,
+                        allowRoamers = false,
+                        allowTrainableAnimals = false,
                     };
 
                 case PassabilityPreset.KillBox:
@@ -260,7 +270,9 @@ namespace FullyAutomaticOmniCrafter
                         allowPrisoners = false,
                         allowWildAnimals = false,
                         allowEntities = false,
-                        allowHostiles = true // 敌人不能通过，只能走缺口
+                        allowHostiles = true, // 敌人能通过
+                        allowRoamers = false,
+                        allowTrainableAnimals = false,
                     };
 
                 case PassabilityPreset.Custom:
@@ -404,8 +416,8 @@ namespace FullyAutomaticOmniCrafter
             // 总是显示右侧面板，宽度固定为 460f
             float width = 460f;
             
-            // 计算高度以容纳所有选项（16个选项行 + 标题 + 底部保存按钮 + 间距）
-            const int optionCount = 16;
+            // 计算高度以容纳所有选项（18个选项行 + 标题 + 底部保存按钮 + 间距）
+            const int optionCount = 18;
             const float rowStride = 24f; // 22f 行高 + 2f 间距
             const float topHeaderHeight = 28f;
             const float saveButtonBlockHeight = 36f;
@@ -492,6 +504,8 @@ namespace FullyAutomaticOmniCrafter
                 DrawCheckbox("OPW_AllowEntities", ref displaySettings.allowEntities, "Entities (Anomaly)");
                 DrawCheckbox("OPW_AllowHostiles", ref displaySettings.allowHostiles, "Hostiles");
                 DrawCheckbox("OPW_AllowMechanoids", ref displaySettings.allowMechanoids, "Mechanoids");
+                DrawCheckbox("OPW_AllowRoamers", ref displaySettings.allowRoamers, "Roamers (Pen Animals)");
+                DrawCheckbox("OPW_AllowTrainableAnimals", ref displaySettings.allowTrainableAnimals, "Trainable Animals");
                 DrawCheckbox("OPW_AllowInsectoids", ref displaySettings.allowInsectoids, "Insectoids");
                 DrawCheckbox("OPW_AllowFactioned", ref displaySettings.allowFactioned, "Has Faction");
                 DrawCheckbox("OPW_AllowLords", ref displaySettings.allowLords, "In Lord Group");

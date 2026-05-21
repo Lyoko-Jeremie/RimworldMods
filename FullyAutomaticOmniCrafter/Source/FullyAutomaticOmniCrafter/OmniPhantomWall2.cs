@@ -293,7 +293,15 @@ namespace FullyAutomaticOmniCrafter
                     return settings.allowInsectoids;
                 
                 if (pawn.RaceProps.Animal)
+                {
+                    if (pawn.Roamer && settings.allowRoamers)
+                        return true;
+                    
+                    if (pawn.RaceProps.trainability != null && pawn.RaceProps.trainability != TrainabilityDefOf.None && settings.allowTrainableAnimals)
+                        return true;
+
                     return settings.allowPets;
+                }
             }
             
             // 敌对单位

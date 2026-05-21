@@ -177,7 +177,16 @@ namespace FullyAutomaticOmniCrafter
                 if (pawn.RaceProps.IsMechanoid) return settings.allowMechanoids;
                 if (pawn.RaceProps.Dryad) return settings.allowDryad;
                 if (pawn.RaceProps.Insect) return settings.allowInsectoids;
-                if (pawn.RaceProps.Animal) return settings.allowPets;
+                if (pawn.RaceProps.Animal)
+                {
+                    if (pawn.Roamer && settings.allowRoamers)
+                        return true;
+                    
+                    if (pawn.RaceProps.trainability != null && pawn.RaceProps.trainability != TrainabilityDefOf.None && settings.allowTrainableAnimals)
+                        return true;
+
+                    return settings.allowPets;
+                }
             }
 
             // 敌对单位（如果前面没被排除，说明可能允许）

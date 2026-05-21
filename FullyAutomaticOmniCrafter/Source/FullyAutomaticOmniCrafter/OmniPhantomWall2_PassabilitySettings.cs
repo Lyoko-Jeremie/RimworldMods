@@ -35,6 +35,10 @@ namespace FullyAutomaticOmniCrafter
         public bool allowLords = false;
         // 机械族
         public bool allowMechanoids = false;
+        // 畜栏动物 (Roamers)
+        public bool allowRoamers = false;
+        // 可训练动物 (Trainable Animals)
+        public bool allowTrainableAnimals = false;
         // 类人角色 (Humanlike)，涵盖野人 (Wild Man)
         public bool allowHumanlikes = false;
         // 智力达到“工具使用”等级 (ToolUser)
@@ -58,6 +62,8 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref allowFactioned, "allowFactioned", Default.allowFactioned);
             Scribe_Values.Look(ref allowLords, "allowLords", Default.allowLords);
             Scribe_Values.Look(ref allowMechanoids, "allowMechanoids", Default.allowMechanoids);
+            Scribe_Values.Look(ref allowRoamers, "allowRoamers", Default.allowRoamers);
+            Scribe_Values.Look(ref allowTrainableAnimals, "allowTrainableAnimals", Default.allowTrainableAnimals);
             Scribe_Values.Look(ref allowHumanlikes, "allowHumanlikes", Default.allowHumanlikes);
             Scribe_Values.Look(ref allowToolUsers, "allowToolUsers", Default.allowToolUsers);
             Scribe_Values.Look(ref allowUnfactions, "allowUnfactions", Default.allowUnfactions);
@@ -87,10 +93,12 @@ namespace FullyAutomaticOmniCrafter
             if (allowFactioned)    sig |= 1 << 9;
             if (allowLords)        sig |= 1 << 10;
             if (allowMechanoids)   sig |= 1 << 11;
-            if (allowHumanlikes)   sig |= 1 << 12;
-            if (allowToolUsers)    sig |= 1 << 13;
-            if (allowUnfactions)   sig |= 1 << 14;
-            if (allowInsectoids)   sig |= 1 << 15;
+            if (allowRoamers)      sig |= 1 << 12;
+            if (allowTrainableAnimals) sig |= 1 << 13;
+            if (allowHumanlikes)   sig |= 1 << 14;
+            if (allowToolUsers)    sig |= 1 << 15;
+            if (allowUnfactions)   sig |= 1 << 16;
+            if (allowInsectoids)   sig |= 1 << 17;
             return sig;
         }
     
@@ -117,6 +125,8 @@ namespace FullyAutomaticOmniCrafter
             allowFactioned = other.allowFactioned;
             allowLords = other.allowLords;
             allowMechanoids = other.allowMechanoids;
+            allowRoamers = other.allowRoamers;
+            allowTrainableAnimals = other.allowTrainableAnimals;
             allowHumanlikes = other.allowHumanlikes;
             allowToolUsers = other.allowToolUsers;
             allowUnfactions = other.allowUnfactions;
@@ -139,6 +149,8 @@ namespace FullyAutomaticOmniCrafter
                 allowFactioned = this.allowFactioned,
                 allowLords = this.allowLords,
                 allowMechanoids = this.allowMechanoids,
+                allowRoamers = this.allowRoamers,
+                allowTrainableAnimals = this.allowTrainableAnimals,
                 allowHumanlikes = this.allowHumanlikes,
                 allowToolUsers = this.allowToolUsers,
                 allowUnfactions = this.allowUnfactions,
@@ -170,6 +182,8 @@ namespace FullyAutomaticOmniCrafter
                 { "OPW_AllowEntities".Translate(), allowEntities },
                 { "OPW_AllowHostiles".Translate(), allowHostiles },
                 { "OPW_AllowMechanoids".Translate(), allowMechanoids },
+                { "OPW_AllowRoamers".Translate(), allowRoamers },
+                { "OPW_AllowTrainableAnimals".Translate(), allowTrainableAnimals },
                 { "OPW_AllowInsectoids".Translate(), allowInsectoids },
                 { "OPW_AllowFactioned".Translate(), allowFactioned },
                 { "OPW_AllowLords".Translate(), allowLords },
