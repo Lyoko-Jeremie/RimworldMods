@@ -135,7 +135,8 @@ namespace FullyAutomaticOmniCrafter
 
             if (count > 0)
             {
-                map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                // 批量操作后，通过 RebuildAllRegionsAndRooms 彻底重建，避免 TryRebuildDirtyRegionsAndRooms 可能存在的边界连接残留问题
+                map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
                 
                 Messages.Message(
                     "OPW_AppliedToWalls".Translate(count, GetPresetLabel(currentPreset)),

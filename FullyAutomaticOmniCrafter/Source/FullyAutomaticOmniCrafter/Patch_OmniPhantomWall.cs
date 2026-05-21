@@ -38,9 +38,17 @@ namespace FullyAutomaticOmniCrafter
         {
             if (signature == 0) return Building_OmniPhantomWall.PhantomWallRegionType; // 兼容 1 代
             
+            // 使用更分散的哈希处理
+            uint h = (uint)signature;
+            h ^= h >> 16;
+            h *= 0x85ebca6b;
+            h ^= h >> 13;
+            h *= 0xc2b2ae35;
+            h ^= h >> 16;
+
             // 将签名映射到 19-255 范围
             // 18 留给 1 代或签名 0
-            byte mapping = (byte)(19 + (uint)signature.GetHashCode() % 237);
+            byte mapping = (byte)(19 + (h % 237));
             return (RegionType)mapping;
         }
 
