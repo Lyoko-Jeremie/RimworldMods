@@ -145,6 +145,12 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
+            // 如果是 Minify（打包），检查是否被允许。
+            // 当 MinifyUtility.MakeMinified 调用时，mode 通常是 Vanish。
+            // 但是我们很难在 Destroy 内部区分是战斗损坏还是打包。
+            // 不过既然 PreApplyDamage 已经吸收了所有伤害，战斗损坏通常不会触发 Destroy(Vanish)。
+            // 主要的 Vanish 来源就是打包或脚本。
+            
             // 玩家主动拆除指令
             if (mode == DestroyMode.Deconstruct)
             {

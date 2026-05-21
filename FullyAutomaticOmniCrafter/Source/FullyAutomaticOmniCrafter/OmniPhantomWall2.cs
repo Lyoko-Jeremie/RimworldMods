@@ -149,6 +149,9 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
+            // 如果是 Minify（打包），检查是否被允许。
+            // 当 MinifyUtility.MakeMinified 调用时，mode 通常是 Vanish。
+            
             // 玩家主动拆除指令
             if (mode == DestroyMode.Deconstruct)
             {
