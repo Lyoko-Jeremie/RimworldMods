@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>OmniPhantomWall2_DropdownGroup</defName>
+        <label>OmniPhantomWall2</label>
+        <description>description</description>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef ParentName="BuildingBase">
+        <defName>AutoOmniTrap</defName>
+        <label>AutoOmniTrap</label>
+        <description>description</description>
+
+        <tickerType>Rare</tickerType>
+
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniCrafter2</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(3,3)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+        <size>(3,3)</size>
+        <uiIconPath>Things/Building/Production/OmniCrafter2</uiIconPath>
+        
+        <costList>
+            <Steel>200</Steel>
+            <!--            <ComponentIndustrial>8</ComponentIndustrial>-->
+            <!--            <ComponentSpacer>4</ComponentSpacer>-->
+        </costList>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+
+        <!-- 欺骗引擎：将其设为可通行，使其不会打断原版的寻路网格和区域连接 -->
+        <passability>Standable</passability>
+        <pathCost>1</pathCost>
+
+        <!-- 2. 欺骗AI的属性 -->
+        <statBases>
+            <!-- 极高的血量，让破墙AI计算后认为破坏它极其不划算，从而绕路 -->
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
+        </statBases>
+
+        <comps>
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_AutomatedCapturer"/>
+        </comps>
+        
+        <building>
+            <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+            <ai_neverTrashThis>true</ai_neverTrashThis>
+
+            <!-- 标记该建筑是否为"主体建筑"（地基级建筑），即占据地图格子的"正式"建筑。只有 Edifice 才能支撑屋顶 -->
+            <!-- 一个格子同时只能有一个 Edifice。如果新建筑是 Edifice，会替换并摧毁该格已有的 Edifice -->
+            <isEdifice>true</isEdifice>
+            <isWall>true</isWall>
+            <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
+            <isInert>true</isInert>
+        </building>
+        <rotatable>false</rotatable>
+
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+    </ThingDef>
+
+</Defs>

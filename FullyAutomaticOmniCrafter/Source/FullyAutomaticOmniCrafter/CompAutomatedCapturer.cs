@@ -24,6 +24,14 @@ namespace FullyAutomaticOmniCrafter
         /// <summary> 传送并将敌对人类转为囚犯 </summary>
         HostileToPrisoner
     }
+    
+    public class CompProperties_AutomatedCapturer : CompProperties
+    {
+        public CompProperties_AutomatedCapturer()
+        {
+            this.compClass = typeof(CompAutomatedCapturer);
+        }
+    }
 
     /// <summary>
     /// 自动捕捉器
@@ -32,6 +40,8 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompAutomatedCapturer : ThingComp
     {
+        public CompProperties_AutomatedCapturer Props => (CompProperties_AutomatedCapturer)this.props;
+        
         /// <summary> 是否激活自动扫描捕捉 </summary>
         public bool isActive = true;
         /// <summary> 筛选设置（复用 OmniPhantomWall2 的通行证设置结构） </summary>
@@ -247,7 +257,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "AutomatedCapturer_OpenSettings".Translate(),
                 defaultDesc = "AutomatedCapturer_OpenSettingsDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Gizmos/Trade"),
+                icon = CompAutomatedCapturerTex.IconOpenSettings,
                 action = () => Find.WindowStack.Add(new Dialog_AutomatedCapturerSettings(this))
             };
 
@@ -255,7 +265,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "AutomatedCapturer_Active".Translate(),
                 defaultDesc = "AutomatedCapturer_ActiveDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/Attack"),
+                icon = CompAutomatedCapturerTex.IconActive,
                 isActive = () => isActive,
                 toggleAction = () => isActive = !isActive
             };
@@ -264,9 +274,24 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "AutomatedCapturer_ManualCapture".Translate(),
                 defaultDesc = "AutomatedCapturer_ManualCaptureDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Designators/GatherAnimalProduce"),
+                icon = CompAutomatedCapturerTex.IconManualCapture,
                 action = () => ScanAndCapture()
             };
         }
     }
+    
+
+    [StaticConstructorOnStartup]
+    public static class CompAutomatedCapturerTex
+    {
+        public static readonly Texture2D IconOpenSettings =
+            ContentFinder<Texture2D>.Get("UI/Commands/AutomatedCapturer_OpenSettings", true) ?? BaseContent.WhiteTex;
+        
+        public static readonly Texture2D IconActive =
+            ContentFinder<Texture2D>.Get("UI/Commands/AutomatedCapturer_Active", true) ?? BaseContent.WhiteTex;
+        
+        public static readonly Texture2D IconManualCapture =
+            ContentFinder<Texture2D>.Get("UI/Commands/AutomatedCapturer_ManualCapture", true) ?? BaseContent.WhiteTex;
+    }
+    
 }
