@@ -23,6 +23,7 @@ namespace FullyAutomaticOmniCrafter
             this.comp = comp;
             this.doCloseButton = true;
             this.doCloseX = true;
+            this.forcePause = true;
             this.closeOnClickedOutside = true;
             this.absorbInputAroundWindow = true;
             this.draggable = true;
