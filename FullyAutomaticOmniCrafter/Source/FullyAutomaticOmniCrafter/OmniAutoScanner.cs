@@ -18,7 +18,8 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 全自动万能扫描器 ，能够全自动发现全图的异常，并根据设置清除异常状态或对隐形敌人反隐（不杀死隐形敌人）
+    /// 全自动万能扫描器 OmniAutoScanner
+    /// 当前支持全自动发现全图的异常，并根据设置清除异常状态或对隐形敌人反隐（不杀死隐形敌人）
     /// </summary>
     public class CompOmniAutoScanner : ThingComp
     {
@@ -53,7 +54,7 @@ namespace FullyAutomaticOmniCrafter
                 toggleAction = () => { autoCureMetalhorror = !autoCureMetalhorror; }
             };
 
-            // 秒杀隐形生物开关
+            // 破除隐形开关
             yield return new Command_Toggle
             {
                 defaultLabel = "自动反隐隐形实体",
@@ -61,6 +62,16 @@ namespace FullyAutomaticOmniCrafter
                 icon = TexCommand.ForbidOff,
                 isActive = () => autoVisitableEntities,
                 toggleAction = () => { autoVisitableEntities = !autoVisitableEntities; }
+            };
+
+            // 自动清除受污染食物开关
+            yield return new Command_Toggle
+            {
+                defaultLabel = "自动销毁受污染食物",
+                defaultDesc = "开启后，自动寻找并销毁带有异常污染的食物（如金属怪形污染）。",
+                icon = ContentFinder<Texture2D>.Get("UI/Designators/Deconstruct"),
+                isActive = () => autoPurgeFood,
+                toggleAction = () => { autoPurgeFood = !autoPurgeFood; }
             };
         }
 
@@ -76,13 +87,14 @@ namespace FullyAutomaticOmniCrafter
             if (map == null) return;
 
             // 1. 无痛治愈金属怪形
-            if (autoCureMetalhorror)
+            if (autoCureMetalhorror && ModsConfig.AnomalyActive)
             {
-                // 遍历所有殖民者和囚犯
-                foreach (Pawn pawn in map.mapPawns.FreeColonistsAndPrisoners)
+                // 遍历所有殖民者、囚犯和奴隶
+                foreach (Pawn pawn in map.mapPawns.AllPawnsSpawned)
                 {
-                    // 假设 Anomaly 的寄生 Hediff 叫做 MetalhorrorImplant (需查阅源码核实确切 DefName)
-                    Hediff parasite = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDef.Named("MetalhorrorImplant"));
+                    if (pawn.Faction != Faction.OfPlayer && !pawn.IsPrisonerOfColony && !pawn.IsSlaveOfColony) continue;
+
+                    Hediff parasite = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.MetalhorrorImplant);
                     if (parasite != null)
                     {
                         pawn.health.RemoveHediff(parasite);
@@ -95,35 +107,63 @@ namespace FullyAutomaticOmniCrafter
             // 2. 破除隐形实体 (亡魂、潜见者)
             if (autoVisitableEntities)
             {
-                // 遍历全图所有 Pawn
-                List<Pawn> allPawns = map.mapPawns.AllPawns;
-                // 为了防止在循环中直接杀死对象导致集合改变报错，先收集目标
-                List<Pawn> targetsToKill = new List<Pawn>();
-
+                var allPawns = map.mapPawns.AllPawnsSpawned;
                 for (int i = 0; i < allPawns.Count; i++)
                 {
                     Pawn p = allPawns[i];
                     if (p.HostileTo(Faction.OfPlayer))
                     {
-                        // 检查是否有隐形状态
-                        if (p.health.hediffSet.HasHediff(HediffDefOf.Invisibility) ||
-                            p.def.defName == "Revenant" || p.def.defName == "Sightstealer")
+                        // 遍历所有 Hediff 寻找具有隐形组件的
+                        List<Hediff> hediffs = p.health.hediffSet.hediffs;
+                        for (int j = hediffs.Count - 1; j >= 0; j--)
                         {
-                            // TODO
+                            Hediff hd = hediffs[j];
+                            
+                            // 检查是否有通用的隐形组件
+                            HediffComp_Invisibility invisComp = hd.TryGetComp<HediffComp_Invisibility>();
+                            if (invisComp != null)
+                            {
+                                if (!invisComp.PsychologicallyVisible)
+                                {
+                                    invisComp.BecomeVisible(true);
+                                    Messages.Message($"全自动扫描仪已破除隐形状态: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
+                                        MessageTypeDefOf.PositiveEvent);
+                                }
+                            }
+                            else if (hd.def.defName.Contains("Invisibility") || hd.def.label.Contains("隐形") || hd.def.label.Contains("Invisibility"))
+                            {
+                                // 如果没有组件但名字包含隐形，直接移除（兼容一些简单实现的MOD）
+                                p.health.RemoveHediff(hd);
+                                Messages.Message($"全自动扫描仪已移除隐形异象: {p.LabelShortCap} ({hd.Label})", new TargetInfo(p.Position, map),
+                                    MessageTypeDefOf.PositiveEvent);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. 自动销毁受污染食物
+            if (autoPurgeFood && ModsConfig.AnomalyActive)
+            {
+                // 金属怪形会通过受污染食物传播，检查带有 MetalhorrorInfectionPathway 组件的物品
+                List<Thing> contaminatedItems = new List<Thing>();
+                foreach (Thing thing in map.listerThings.AllThings)
+                {
+                    if (thing.def.IsIngestible && thing is ThingWithComps twc)
+                    {
+                        // 直接检查是否存在金属怪形感染组件
+                        if (twc.AllComps.Any(c => c is CompMetalhorrorInfectible))
+                        {
+                            contaminatedItems.Add(thing);
                         }
                     }
                 }
 
-                // 处决目标
-                foreach (Pawn target in targetsToKill)
+                foreach (Thing item in contaminatedItems)
                 {
-                    // 方式 A：直接消除（连尸体都不剩）
-                    // target.Destroy(DestroyMode.Vanish); 
-
-                    // 方式 B：判定死亡，留下尸体供研究
-                    // target.Kill(null, null);
-                    Messages.Message($"全自动扫描仪已反隐隐形异象: {target.Label}", new TargetInfo(target.Position, map),
-                        MessageTypeDefOf.PositiveEvent);
+                    string label = item.Label;
+                    item.Destroy(DestroyMode.Vanish);
+                    Messages.Message($"全自动扫描仪已销毁受污染物品: {label}", MessageTypeDefOf.PositiveEvent);
                 }
             }
         }
