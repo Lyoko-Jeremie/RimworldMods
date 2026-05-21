@@ -10,11 +10,18 @@ using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter
 {
+    /// <summary>
+    /// 捕捉后的附加效果枚举
+    /// </summary>
     public enum CaptureEffect
     {
+        /// <summary> 仅传送 </summary>
         TeleportOnly,
+        /// <summary> 传送并击晕 </summary>
         Stun,
+        /// <summary> 传送并尝试驯服(动物)或招募(人类) </summary>
         TameOrRecruit,
+        /// <summary> 传送并将敌对人类转为囚犯 </summary>
         HostileToPrisoner
     }
 
@@ -25,9 +32,13 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompAutomatedCapturer : ThingComp
     {
+        /// <summary> 是否激活自动扫描捕捉 </summary>
         public bool isActive = true;
+        /// <summary> 筛选设置（复用 OmniPhantomWall2 的通行证设置结构） </summary>
         public OmniPhantomWall2_PassabilitySettings settings = new OmniPhantomWall2_PassabilitySettings();
+        /// <summary> 捕捉时应用的额外效果 </summary>
         public CaptureEffect captureEffect = CaptureEffect.TeleportOnly;
+        /// <summary> 是否显示传送视觉和音效 </summary>
         public bool showVisualEffects = true;
 
         public override void PostExposeData()
@@ -41,11 +52,17 @@ namespace FullyAutomaticOmniCrafter
         }
 
         // --- 无敌逻辑 ---
+        /// <summary>
+        /// 在受到伤害前拦截，实现绝对无敌。
+        /// </summary>
         public void PreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
             absorbed = true;
         }
 
+        /// <summary>
+        /// 受到伤害后的回调，强制回满血作为第二重保险。
+        /// </summary>
         public override void PostPostApplyDamage(DamageInfo dinfo, float totalDamageDealt)
         {
             base.PostPostApplyDamage(dinfo, totalDamageDealt);
@@ -55,6 +72,9 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 稀疏 Tick (每250tick执行一次)，用于定期扫描地图上的目标。
+        /// </summary>
         public override void CompTickRare()
         {
             base.CompTickRare();
@@ -63,6 +83,9 @@ namespace FullyAutomaticOmniCrafter
             ScanAndCapture();
         }
 
+        /// <summary>
+        /// 扫描全地图符合条件的 Pawn 并执行捕捉。
+        /// </summary>
         private void ScanAndCapture()
         {
             Map map = parent.Map;
@@ -79,6 +102,9 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 判断一个 Pawn 是否为合法的捕捉目标。
+        /// </summary>
         public bool IsValidTarget(Pawn p)
         {
             if (p == null || p.Dead || !p.Spawned || p.Map != parent.Map) return false;
@@ -86,7 +112,7 @@ namespace FullyAutomaticOmniCrafter
             // 检查是否符合筛选条件
             if (!CanPass(p)) return false;
 
-            // 排除当前所在的room区域
+            // 排除当前所在的room区域 (已经在目标房间内则不需要捕捉)
             Room pawnRoom = p.GetRoom();
             Room parentRoom = parent.GetRoom();
             if (pawnRoom != null && parentRoom != null && pawnRoom == parentRoom) return false;
@@ -100,6 +126,10 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
 
+        /// <summary>
+        /// 核心筛选逻辑：判断 Pawn 是否符合 settings 中定义的"允许通过"类型。
+        /// 逻辑上与 OmniPhantomWall2 保持一致。
+        /// </summary>
         private bool CanPass(Pawn pawn)
         {
             // 复用 OmniPhantomWall2 的逻辑
@@ -132,6 +162,9 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
 
+        /// <summary>
+        /// 获取传送的目标坐标。如果是室内则随机选一格，否则默认传送到建筑本身位置。
+        /// </summary>
         private IntVec3 GetTargetCell(Room room)
         {
             if (room != null && !room.PsychologicallyOutdoors)
@@ -141,6 +174,9 @@ namespace FullyAutomaticOmniCrafter
             return parent.Position;
         }
 
+        /// <summary>
+        /// 执行具体的捕捉传送逻辑，包含视觉效果和后续影响。
+        /// </summary>
         private void ExecuteCapture(Pawn pawn, IntVec3 targetCell)
         {
             Map map = parent.Map;
@@ -170,6 +206,9 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 应用捕捉后的额外效果（如击晕、招募等）。
+        /// </summary>
         private void ApplyCaptureEffects(Pawn pawn)
         {
             switch (captureEffect)
@@ -196,6 +235,9 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 添加建筑额外的交互图标（Gizmos）。
+        /// </summary>
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             yield return new Command_Action
