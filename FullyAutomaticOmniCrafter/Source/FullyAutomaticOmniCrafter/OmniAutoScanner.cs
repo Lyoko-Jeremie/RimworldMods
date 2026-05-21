@@ -104,7 +104,7 @@ namespace FullyAutomaticOmniCrafter
                     if (parasite != null)
                     {
                         pawn.health.RemoveHediff(parasite);
-                        Messages.Message($"{pawn.Name.ToStringShort} 体内的异象已被扫描仪安全抹除。", pawn,
+                        Messages.Message($"{pawn.Name.ToStringShort} 体内的金属怪形已被扫描仪安全抹除。", pawn,
                             MessageTypeDefOf.PositiveEvent);
                     }
                 }
