@@ -372,6 +372,7 @@
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="Designator_PhantomWall2Passability.cs" />
+    <Compile Include="Dialog_AutomatedCapturerSettings.cs" />
     <Compile Include="OmniAutoSurgeon_Dialog_SelectPawn.cs" />
     <Compile Include="GlobalFireExtinguisher.cs" />
     <Compile Include="ModAssets.cs" />
