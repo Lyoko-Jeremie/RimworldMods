@@ -88,6 +88,8 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         private void ScanAndCapture()
         {
+            if(parent.Map == null) return;
+
             Map map = parent.Map;
             Room targetRoom = parent.GetRoom();
 
@@ -115,13 +117,14 @@ namespace FullyAutomaticOmniCrafter
             // 排除当前所在的room区域 (已经在目标房间内则不需要捕捉)
             Room pawnRoom = p.GetRoom();
             Room parentRoom = parent.GetRoom();
+
+            // 如果都在同一个房间，不需要捕捉
             if (pawnRoom != null && parentRoom != null && pawnRoom == parentRoom) return false;
-            
-            // 如果都不在房间里（户外），且距离很近，也视为已在区域内
-            if (pawnRoom == null && parentRoom == null && p.Position.DistanceToEdge(parent.Map) > 0)
-            {
-                if (p.Position.InHorDistOf(parent.Position, 5f)) return false;
-            }
+
+            // 对于在室外的情况，如果同时都在室外，则不进行传送
+            bool pawnOutdoors = pawnRoom == null || pawnRoom.PsychologicallyOutdoors;
+            bool parentOutdoors = parentRoom == null || parentRoom.PsychologicallyOutdoors;
+            if (pawnOutdoors && parentOutdoors) return false;
 
             return true;
         }
