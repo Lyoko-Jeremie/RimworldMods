@@ -9,19 +9,19 @@ using Verse.AI.Group;
 
 namespace FullyAutomaticOmniCrafter
 {
-    public class CompProperties_OmniAutoScanner : CompProperties
+    public class CompProperties_OmniAutoDetector : CompProperties
     {
-        public CompProperties_OmniAutoScanner()
+        public CompProperties_OmniAutoDetector()
         {
-            this.compClass = typeof(CompOmniAutoScanner);
+            this.compClass = typeof(CompOmniAutoDetector);
         }
     }
 
     /// <summary>
-    /// 全自动万能扫描器 OmniAutoScanner
+    /// 全自动万能扫描器 (全自动探测尖塔) OmniAutoDetector
     /// 当前支持全自动发现全图的异常，并根据设置清除异常状态或对隐形敌人反隐（不杀死隐形敌人）
     /// </summary>
-    public class CompOmniAutoScanner : ThingComp
+    public class CompOmniAutoDetector : ThingComp
     {
         // 玩家的设置开关
         public bool autoCureMetalhorror = true;
