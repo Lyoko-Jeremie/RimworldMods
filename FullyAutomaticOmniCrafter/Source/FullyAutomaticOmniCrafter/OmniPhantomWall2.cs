@@ -355,10 +355,6 @@ namespace FullyAutomaticOmniCrafter
             if (settings.allowUnfactions && pawn.Faction == null && pawn.GetLord() == null)
                 return true;
 
-            // 最终回退：玩家派系单位默认允许通过 (安全网)
-            if (pawn.Faction == Faction.OfPlayer)
-                return true;
-
             return false;
         }
 
