@@ -407,21 +407,16 @@ namespace FullyAutomaticOmniCrafter
             // 绘制鼠标指向墙体的信息
             DrawMouseOverWallInfo();
 
-            float width = 220f;
-            float height = 260f;
+            // 总是显示右侧面板，宽度固定为 460f
+            float width = 460f;
             
-            bool showCustom = currentPreset == PassabilityPreset.Custom;
-            if (showCustom)
-            {
-                width = 460f; // 增加宽度以显示详细设置
-                // 16 个选项行 + 标题 + 底部保存按钮，避免控件重叠
-                const int customOptionCount = 16;
-                const float customRowStride = 24f; // 22f 行高 + 2f 间距
-                const float topHeaderHeight = 28f;
-                const float saveButtonBlockHeight = 36f;
-                const float windowPadding = 10f; // ContractedBy(5f) 的上下边距
-                height = topHeaderHeight + customOptionCount * customRowStride + saveButtonBlockHeight + windowPadding + 10f;
-            }
+            // 计算高度以容纳所有选项（16个选项行 + 标题 + 底部保存按钮 + 间距）
+            const int optionCount = 16;
+            const float rowStride = 24f; // 22f 行高 + 2f 间距
+            const float topHeaderHeight = 28f;
+            const float saveButtonBlockHeight = 36f;
+            const float windowPadding = 10f; // ContractedBy(5f) 的上下边距
+            float height = topHeaderHeight + optionCount * rowStride + saveButtonBlockHeight + windowPadding + 10f;
 
             Rect winRect = new Rect(leftX, bottomY - height, width, height);
             
@@ -429,12 +424,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect rect = winRect.AtZero().ContractedBy(5f);
                 
-                // 左侧预设列表
-                Rect leftRect = rect;
-                if (showCustom)
-                {
-                    leftRect.width = 210f;
-                }
+                // 左侧预设列表 (固定宽度 210f)
+                Rect leftRect = new Rect(rect.x, rect.y, 210f, rect.height);
 
                 Text.Font = GameFont.Small;
                 Widgets.Label(leftRect.TopPartPixels(24f), "OPW_SelectPreset".Translate());
@@ -459,45 +450,64 @@ namespace FullyAutomaticOmniCrafter
                     y += buttonHeight + 2f;
                 }
 
-                // 右侧自定义设置
-                if (showCustom)
+                // 右侧设置面板
+                Rect rightRect = new Rect(rect.x + 220f, rect.y, rect.width - 220f, rect.height);
+                Widgets.DrawLineVertical(rect.x + 214f, rect.y, rect.height);
+                
+                // 获取当前显示的设置（如果是预设则取克隆，如果是自定义则取引用）
+                OmniPhantomWall2_PassabilitySettings displaySettings = (currentPreset == PassabilityPreset.Custom) 
+                    ? customSettings 
+                    : GetSettingsFromPreset(currentPreset);
+
+                string title = (currentPreset == PassabilityPreset.Custom) ? (string)"OPW_CustomSettings".Translate() : GetPresetLabel(currentPreset);
+                Widgets.Label(rightRect.TopPartPixels(24f), title);
+                
+                Rect settingsArea = rightRect;
+                settingsArea.yMin += 28f;
+                
+                float rowHeight = 22f;
+                float curY = settingsArea.y;
+
+                void DrawCheckbox(string labelKey, ref bool value, string defaultLabel)
                 {
-                    Rect rightRect = new Rect(rect.x + 220f, rect.y, rect.width - 220f, rect.height);
-                    Widgets.DrawLineVertical(rect.x + 214f, rect.y, rect.height);
-                    
-                    Widgets.Label(rightRect.TopPartPixels(24f), "OPW_CustomSettings".Translate());
-                    
-                    Rect settingsArea = rightRect;
-                    settingsArea.yMin += 28f;
-                    
-                    float rowHeight = 22f;
-                    float curY = settingsArea.y;
-
-                    void DrawCheckbox(string labelKey, ref bool value, string defaultLabel)
+                    Rect rowRect = new Rect(settingsArea.x, curY, settingsArea.width, rowHeight);
+                    string label = labelKey.CanTranslate() ? (string)labelKey.Translate() : defaultLabel;
+                    bool val = value;
+                    Widgets.CheckboxLabeled(rowRect, label, ref val);
+                    if (val != value)
                     {
-                        Rect rowRect = new Rect(settingsArea.x, curY, settingsArea.width, rowHeight);
-                        string label = labelKey.CanTranslate() ? (string)labelKey.Translate() : defaultLabel;
-                        Widgets.CheckboxLabeled(rowRect, label, ref value);
-                        curY += rowHeight + 2f;
+                        value = val;
+                        // 如果当前不是自定义模式，则切换到自定义模式并同步所有设置
+                        if (currentPreset != PassabilityPreset.Custom)
+                        {
+                            customSettings.CopyFrom(displaySettings);
+                            currentPreset = PassabilityPreset.Custom;
+                        }
+                        SoundDefOf.Click.PlayOneShotOnCamera();
                     }
+                    curY += rowHeight + 2f;
+                }
 
-                    DrawCheckbox("OPW_AllowColonists", ref customSettings.allowColonists, "Colonists");
-                    DrawCheckbox("OPW_AllowPets", ref customSettings.allowPets, "Pets");
-                    DrawCheckbox("OPW_AllowDryad", ref customSettings.allowDryad, "Dryads");
-                    DrawCheckbox("OPW_AllowTraders", ref customSettings.allowTraders, "Traders/Visitors");
-                    DrawCheckbox("OPW_AllowPrisoners", ref customSettings.allowPrisoners, "Prisoners (Generic)");
-                    DrawCheckbox("OPW_AllowColonyPrisoners", ref customSettings.allowColonyPrisoners, "Colony Prisoners");
-                    DrawCheckbox("OPW_AllowWildAnimals", ref customSettings.allowWildAnimals, "Wild Animals");
-                    DrawCheckbox("OPW_AllowEntities", ref customSettings.allowEntities, "Entities (Anomaly)");
-                    DrawCheckbox("OPW_AllowHostiles", ref customSettings.allowHostiles, "Hostiles");
-                    DrawCheckbox("OPW_AllowMechanoids", ref customSettings.allowMechanoids, "Mechanoids");
-                    DrawCheckbox("OPW_AllowInsectoids", ref customSettings.allowInsectoids, "Insectoids");
-                    DrawCheckbox("OPW_AllowFactioned", ref customSettings.allowFactioned, "Has Faction");
-                    DrawCheckbox("OPW_AllowLords", ref customSettings.allowLords, "In Lord Group");
-                    DrawCheckbox("OPW_AllowHumanlikes", ref customSettings.allowHumanlikes, "Humanlikes");
-                    DrawCheckbox("OPW_AllowToolUsers", ref customSettings.allowToolUsers, "Tool Users");
-                    DrawCheckbox("OPW_AllowUnfactions", ref customSettings.allowUnfactions, "Unfactions");
-                    
+                DrawCheckbox("OPW_AllowColonists", ref displaySettings.allowColonists, "Colonists");
+                DrawCheckbox("OPW_AllowPets", ref displaySettings.allowPets, "Pets");
+                DrawCheckbox("OPW_AllowDryad", ref displaySettings.allowDryad, "Dryads");
+                DrawCheckbox("OPW_AllowTraders", ref displaySettings.allowTraders, "Traders/Visitors");
+                DrawCheckbox("OPW_AllowPrisoners", ref displaySettings.allowPrisoners, "Prisoners (Generic)");
+                DrawCheckbox("OPW_AllowColonyPrisoners", ref displaySettings.allowColonyPrisoners, "Colony Prisoners");
+                DrawCheckbox("OPW_AllowWildAnimals", ref displaySettings.allowWildAnimals, "Wild Animals");
+                DrawCheckbox("OPW_AllowEntities", ref displaySettings.allowEntities, "Entities (Anomaly)");
+                DrawCheckbox("OPW_AllowHostiles", ref displaySettings.allowHostiles, "Hostiles");
+                DrawCheckbox("OPW_AllowMechanoids", ref displaySettings.allowMechanoids, "Mechanoids");
+                DrawCheckbox("OPW_AllowInsectoids", ref displaySettings.allowInsectoids, "Insectoids");
+                DrawCheckbox("OPW_AllowFactioned", ref displaySettings.allowFactioned, "Has Faction");
+                DrawCheckbox("OPW_AllowLords", ref displaySettings.allowLords, "In Lord Group");
+                DrawCheckbox("OPW_AllowHumanlikes", ref displaySettings.allowHumanlikes, "Humanlikes");
+                DrawCheckbox("OPW_AllowToolUsers", ref displaySettings.allowToolUsers, "Tool Users");
+                DrawCheckbox("OPW_AllowUnfactions", ref displaySettings.allowUnfactions, "Unfactions");
+                
+                // 仅在自定义模式下显示保存按钮
+                if (currentPreset == PassabilityPreset.Custom)
+                {
                     if (Widgets.ButtonText(new Rect(settingsArea.x, settingsArea.yMax - 30f, settingsArea.width, 30f), "OPW_SaveSettings".Translate()))
                     {
                         OmniCrafterMod.Instance.WriteSettings();
