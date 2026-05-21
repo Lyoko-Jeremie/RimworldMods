@@ -15,14 +15,10 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 检查当前是否是由玩家操作触发。
                 // 如果是 JobDriver_Uninstall 触发，我们可以检查当前 Pawn。
-                Pawn actor = null;
                 
                 // 尝试从当前 Job 获取执行者
                 if (Current.ProgramState == ProgramState.Playing)
                 {
-                    // 检查当前是否在玩家的设计模式下（上帝模式除外）
-                    // 如果有其他 Mod 赋予了 Minifiable 属性，敌人可能尝试通过 Job 移除它。
-                    
                     // 我们检查当前堆栈中是否有 JobDriver_Uninstall
                     var st = new System.Diagnostics.StackTrace();
                     for (int i = 0; i < st.FrameCount; i++)
@@ -43,7 +39,7 @@ namespace FullyAutomaticOmniCrafter
                                             __result = null;
                                             return false;
                                         }
-                                        break; // 找到了执行者，检查完毕
+                                        return true; // 找到了玩家派系执行者，允许
                                     }
                                 }
                             }
@@ -64,10 +60,9 @@ namespace FullyAutomaticOmniCrafter
 
             if (t is Building_OmniPhantomWall || t is Building_OmniPhantomWall2)
             {
-                // 确保只有玩家派系可以指定打包。
-                // 实际上原版 Designator_Uninstall 已经检查了 Faction.OfPlayer。
-                // 但如果有其他 Mod 修改了 Designator 逻辑，这里做二次确认。
-                if (t.Faction != Faction.OfPlayer && !DebugSettings.godMode)
+                // 允许玩家对自己的幻影墙下达打包指令（如果墙体本身是可打包的）。
+                // 这里仅拦截非玩家派系的墙体（除非开启上帝模式）。
+                if (t.Faction != null && t.Faction != Faction.OfPlayer && !DebugSettings.godMode)
                 {
                     __result = false;
                 }
