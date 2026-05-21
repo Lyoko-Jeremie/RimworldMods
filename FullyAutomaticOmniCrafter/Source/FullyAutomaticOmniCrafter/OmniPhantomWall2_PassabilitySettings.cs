@@ -201,8 +201,16 @@ namespace FullyAutomaticOmniCrafter
             int sig = GetSignature();
             if (sig == 0) return Color.gray;
             
-            // 使用黄金分割比生成分布均匀的色调
-            float hue = (sig * 0.61803398875f) % 1.0f;
+            // 使用与 GetRegionTypeForSignature 相同的哈希算法来分散相近的设置
+            uint h = (uint)sig;
+            h ^= h >> 16;
+            h *= 0x85ebca6b;
+            h ^= h >> 13;
+            h *= 0xc2b2ae35;
+            h ^= h >> 16;
+            
+            // 使用哈希后的值结合黄金分割比生成分布均匀的色调
+            float hue = (h * 0.61803398875f) % 1.0f;
             Color color = Color.HSVToRGB(hue, 0.7f, 0.9f);
             color.a = 0.5f;
             return color;
