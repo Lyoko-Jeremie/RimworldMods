@@ -273,6 +273,10 @@ namespace FullyAutomaticOmniCrafter
 
         public static string GetPresetLabel(PassabilityPreset preset)
         {
+            if (preset == PassabilityPreset.Default)
+            {
+                return "Default";
+            }
             return $"OPW_Preset_{preset}".Translate();
         }
 
@@ -404,7 +408,7 @@ namespace FullyAutomaticOmniCrafter
             DrawMouseOverWallInfo();
 
             float width = 220f;
-            float height = 230f;
+            float height = 260f;
             
             bool showCustom = currentPreset == PassabilityPreset.Custom;
             if (showCustom)
@@ -416,7 +420,7 @@ namespace FullyAutomaticOmniCrafter
                 const float topHeaderHeight = 28f;
                 const float saveButtonBlockHeight = 36f;
                 const float windowPadding = 10f; // ContractedBy(5f) 的上下边距
-                height = topHeaderHeight + customOptionCount * customRowStride + saveButtonBlockHeight + windowPadding;
+                height = topHeaderHeight + customOptionCount * customRowStride + saveButtonBlockHeight + windowPadding + 10f;
             }
 
             Rect winRect = new Rect(leftX, bottomY - height, width, height);
