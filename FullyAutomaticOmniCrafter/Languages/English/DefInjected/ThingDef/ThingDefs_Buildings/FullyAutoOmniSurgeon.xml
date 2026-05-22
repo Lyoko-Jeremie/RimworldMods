@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <FullyAutoOmniSurgeon.label>Fully Auto Omni Surgeon</FullyAutoOmniSurgeon.label>
+    <!-- 一种超维科技的医疗建筑，可以快速为特定对象快速批量添加删除身体部位和义肢等增强部件、以及修复损伤和医疗受伤的建筑。 -->
+    <FullyAutoOmniSurgeon.description>A hyper-dimensional medical building capable of rapidly adding, removing, and repairing body parts, prosthetics, and injuries for specific targets.</FullyAutoOmniSurgeon.description>
+
+</LanguageData>

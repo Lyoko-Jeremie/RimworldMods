@@ -7,8 +7,8 @@
 
     <ThingDef Name="FullyAutoOmniSurgeon" ParentName="BuildingBase">
         <defName>FullyAutoOmniSurgeon</defName>
-        <label>全自动医疗改造舱</label>
-        <description>一个类似医疗床或休眠舱的建筑，可以快速为特定对象快速批量添加删除身体部位和义肢等增强部件、以及修复损伤和医疗受伤的建筑。</description>
+        <label>FullyAutoOmniSurgeon</label>
+        <description>description</description>
         <!-- 绑定你的 C# 类 -->
         <thingClass>FullyAutomaticOmniCrafter.Building_FullyAutoOmniSurgeon</thingClass>
 
