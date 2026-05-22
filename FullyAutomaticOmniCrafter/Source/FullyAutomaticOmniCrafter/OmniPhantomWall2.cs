@@ -408,8 +408,12 @@ namespace FullyAutomaticOmniCrafter
                     icon = PhantomWall2Tex.IconSelectPreset,
                     action = delegate
                     {
-                        Designator_PhantomWall2Passability.customSettings.CopyFrom(this.settings);
-                        Designator_PhantomWall2Passability.currentPreset = PassabilityPreset.Custom;
+                        PassabilityPreset matchedPreset = GetCurrentPreset();
+                        Designator_PhantomWall2Passability.currentPreset = matchedPreset;
+                        if (matchedPreset == PassabilityPreset.Custom)
+                        {
+                            Designator_PhantomWall2Passability.customSettings.CopyFrom(this.settings);
+                        }
 
                         Designator_PhantomWall2Passability designator = Find.ReverseDesignatorDatabase.Get<Designator_PhantomWall2Passability>();
                         if (designator != null)
