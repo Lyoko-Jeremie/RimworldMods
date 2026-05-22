@@ -136,7 +136,7 @@ namespace FullyAutomaticOmniCrafter
                                         MessageTypeDefOf.PositiveEvent);
                                 }
                             }
-                            else if (hd.def.defName.ToLower().Contains("Invisibility") || hd.def.label.Contains("隐形") || hd.def.label.ToLower().Contains("Invisibility"))
+                            else if (hd.def.defName.Contains("Invisibility") || hd.def.label.Contains("隐形") || hd.def.label.Contains("Invisibility"))
                             {
                                 // 如果没有组件但名字包含隐形，直接移除（兼容一些简单实现的MOD）
                                 p.health.RemoveHediff(hd);
