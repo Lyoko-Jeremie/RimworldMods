@@ -236,20 +236,11 @@ namespace FullyAutomaticOmniCrafter
                 // 先脏化
                 if (NotifyWalkabilityChangedInvoker != null)
                 {
-                    NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, true);
+                    NotifyWalkabilityChangedInvoker(Map.regionDirtyer, Position, rebuild);
                 }
-                else
+                else if (rebuild)
                 {
-                    // 备选方案：通过 RebuildAllRegionsAndRooms 触发全图重建（非常安全但开销大）
-                    if (rebuild)
-                    {
-                        Map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
-                        return;
-                    }
-                }
-                
-                if (rebuild)
-                {
+                    // 备选方案：通过 TryRebuildDirtyRegionsAndRooms 触发重建
                     Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
                 }
             }
@@ -493,7 +484,7 @@ namespace FullyAutomaticOmniCrafter
             
             if (count > 0 && map != null)
             {
-                map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
                 
                 Messages.Message(
                     "OPW_PresetAppliedBatch".Translate(count, Designator_PhantomWall2Passability.GetPresetLabel(preset)),

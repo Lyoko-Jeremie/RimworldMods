@@ -119,24 +119,35 @@ namespace FullyAutomaticOmniCrafter
         {
             int count = 0;
             Map map = Map;
-            foreach (IntVec3 cell in cells)
+
+            // 批量操作期间禁用区域更新，防止中间状态导致的 "> 2 regions on link" 报错
+            bool wasEnabled = map.regionAndRoomUpdater.Enabled;
+            map.regionAndRoomUpdater.Enabled = false;
+            try
             {
-                if (CanDesignateCell(cell).Accepted)
+                foreach (IntVec3 cell in cells)
                 {
-                    Building_OmniPhantomWall2 wall = cell.GetEdifice(map) as Building_OmniPhantomWall2;
-                    if (wall != null)
+                    if (CanDesignateCell(cell).Accepted)
                     {
-                        OmniPhantomWall2_PassabilitySettings newSettings = GetSettingsFromPreset(currentPreset);
-                        wall.ApplySettings(newSettings, false);
-                        count++;
+                        Building_OmniPhantomWall2 wall = cell.GetEdifice(map) as Building_OmniPhantomWall2;
+                        if (wall != null)
+                        {
+                            OmniPhantomWall2_PassabilitySettings newSettings = GetSettingsFromPreset(currentPreset);
+                            wall.ApplySettings(newSettings, false);
+                            count++;
+                        }
                     }
                 }
+            }
+            finally
+            {
+                map.regionAndRoomUpdater.Enabled = wasEnabled;
             }
 
             if (count > 0)
             {
-                // 批量操作后，通过 RebuildAllRegionsAndRooms 彻底重建，避免 TryRebuildDirtyRegionsAndRooms 可能存在的边界连接残留问题
-                map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+                // 批量操作后，通过 TryRebuildDirtyRegionsAndRooms 重建脏区域
+                map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
                 
                 Messages.Message(
                     "OPW_AppliedToWalls".Translate(count, GetPresetLabel(currentPreset)),
