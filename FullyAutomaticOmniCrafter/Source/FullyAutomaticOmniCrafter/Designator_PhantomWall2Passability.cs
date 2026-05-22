@@ -372,12 +372,11 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        private void DrawMouseOverWallInfo()
+        public static void DrawWallInfo(Building_OmniPhantomWall2 wall)
         {
-            Building_OmniPhantomWall2 localWall = mouseOverWall;
-            if (localWall == null) return;
+            if (wall == null) return;
 
-            var settings = localWall.settings;
+            var settings = wall.settings;
             if (settings == null) return;
 
             var allFilters = settings.GetAllFilters();
@@ -395,14 +394,14 @@ namespace FullyAutomaticOmniCrafter
 
             Find.WindowStack.ImmediateWindow(89237410, rect, WindowLayer.GameUI, () =>
             {
-                if (localWall == null || localWall.Destroyed || settings == null) return;
+                if (wall == null || wall.Destroyed || settings == null) return;
 
                 Rect innerRect = rect.AtZero().ContractedBy(10f);
                 Text.Font = GameFont.Small;
                 Text.Anchor = TextAnchor.UpperLeft;
 
                 // 标题：预设名称
-                string presetLabel = localWall.GetPassabilitySummary();
+                string presetLabel = wall.GetPassabilitySummary();
                 Widgets.Label(new Rect(innerRect.x, innerRect.y, innerRect.width, titleHeight), "OPW_CurrentPreset".Translate() + ": " + presetLabel);
 
                 float curY = innerRect.y + titleHeight;
@@ -418,6 +417,11 @@ namespace FullyAutomaticOmniCrafter
                 GUI.color = Color.white;
                 Text.Font = GameFont.Small;
             }, true, false, 0.7f);
+        }
+
+        private void DrawMouseOverWallInfo()
+        {
+            DrawWallInfo(mouseOverWall);
         }
 
         /// <summary>

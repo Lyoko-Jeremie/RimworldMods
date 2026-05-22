@@ -379,6 +379,15 @@ namespace FullyAutomaticOmniCrafter
 
         public CellRect GetOccupiedRect() => this.OccupiedRect();
 
+        public override void DrawGUIOverlay()
+        {
+            base.DrawGUIOverlay();
+            if (Find.Selector.NumSelected == 1 && Find.Selector.SingleSelectedThing == this)
+            {
+                Designator_PhantomWall2Passability.DrawWallInfo(this);
+            }
+        }
+
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (Gizmo gizmo in base.GetGizmos())
