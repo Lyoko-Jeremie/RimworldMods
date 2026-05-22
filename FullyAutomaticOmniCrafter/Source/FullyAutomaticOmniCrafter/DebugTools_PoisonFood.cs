@@ -10,8 +10,14 @@ namespace FullyAutomaticOmniCrafter
         [DebugAction("General", "Poison Food (Test)", actionType = DebugActionType.ToolMap)]
         private static void PoisonFoodTool()
         {
+            IntVec3 mouseCell = UI.MouseCell();
+            if (!mouseCell.InBounds(Find.CurrentMap))
+            {
+                return;
+            }
+
             // 获取鼠标当前点击的格子里的所有物品
-            foreach (Thing t in Find.CurrentMap.thingGrid.ThingsAt(UI.MouseCell()))
+            foreach (Thing t in Find.CurrentMap.thingGrid.ThingsAt(mouseCell))
             {
                 // 尝试获取食物中毒组件
                 CompFoodPoisonable comp = t.TryGetComp<CompFoodPoisonable>();

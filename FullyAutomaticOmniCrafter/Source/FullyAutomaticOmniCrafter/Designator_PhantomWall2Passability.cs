@@ -320,7 +320,15 @@ namespace FullyAutomaticOmniCrafter
             GenUI.RenderMouseoverBracket();
             
             // 检测鼠标下的墙
-            mouseOverWall = UI.MouseCell().GetEdifice(Map) as Building_OmniPhantomWall2;
+            IntVec3 mouseCell = UI.MouseCell();
+            if (mouseCell.InBounds(Map))
+            {
+                mouseOverWall = mouseCell.GetEdifice(Map) as Building_OmniPhantomWall2;
+            }
+            else
+            {
+                mouseOverWall = null;
+            }
 
             // 高亮所有幻影墙 - 同时支持OmniPhantomWall和OmniPhantomWall2
             // 按设置的签名分组以使用不同颜色
