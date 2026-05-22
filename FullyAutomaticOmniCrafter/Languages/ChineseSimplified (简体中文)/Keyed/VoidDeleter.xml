@@ -5,10 +5,10 @@
     <VoidDeleter_ToggleDesc>启用或禁用虚空删除器。禁用时即使通电也不会处理任何标记。</VoidDeleter_ToggleDesc>
 
     <VoidDeleter_SelectArea>选择活动区域</VoidDeleter_SelectArea>
-    <VoidDeleter_SelectAreaDesc>选择此虚空删除器监控的区域，用于执行拆除和挖掘标记（当前：{0}）。</VoidDeleter_SelectAreaDesc>
+    <VoidDeleter_SelectAreaDesc>选择此虚空删除器监控的区域，用于执行拆除、挖掘、地基和地板移除标记（当前：{0}）。</VoidDeleter_SelectAreaDesc>
 
     <VoidDeleter_OutputMode>输出方式：{0}</VoidDeleter_OutputMode>
-    <VoidDeleter_OutputModeDesc>切换拆除/挖掘产物的放置方式。当前模式：{0}。点击切换。</VoidDeleter_OutputModeDesc>
+    <VoidDeleter_OutputModeDesc>切换拆除、挖掘或移除地板/地基产物的放置方式。当前模式：{0}。点击切换。</VoidDeleter_OutputModeDesc>
 
     <VoidDeleter_DropNear>就近放置</VoidDeleter_DropNear>
     <VoidDeleter_SendToStorage>送入存储区</VoidDeleter_SendToStorage>
@@ -17,5 +17,6 @@
     <VoidDeleter_Disabled>已禁用</VoidDeleter_Disabled>
     <VoidDeleter_NoPower>无电力</VoidDeleter_NoPower>
     <VoidDeleter_Status>待处理：{0} 个拆除，{1} 个挖掘目标 | 区域：{2}</VoidDeleter_Status>
+    <VoidDeleter_FloorRemovalPending>待处理：{0} 个地板/地基移除</VoidDeleter_FloorRemovalPending>
 </LanguageData>
 

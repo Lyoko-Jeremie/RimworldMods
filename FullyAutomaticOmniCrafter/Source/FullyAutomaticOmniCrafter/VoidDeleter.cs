@@ -19,6 +19,7 @@ namespace FullyAutomaticOmniCrafter
         // Reused snapshots to avoid per-tick list allocations from LINQ ToList().
         private readonly List<Designation> _deconstructSnapshot = new List<Designation>();
         private readonly List<Designation> _mineSnapshot = new List<Designation>();
+        private readonly List<Designation> _floorRemovalSnapshot = new List<Designation>();
 
         // Per-building state
         private Area _targetArea = null;
@@ -58,6 +59,7 @@ namespace FullyAutomaticOmniCrafter
             if (!IsPowered || !_enabled) return;
             ProcessDeconstructions();
             ProcessMining();
+            ProcessFloorRemovals();
         }
 
         // ── Deconstruct pass ───────────────────────────────────────────────────
@@ -169,6 +171,77 @@ namespace FullyAutomaticOmniCrafter
                 catch (Exception ex)
                 {
                     Log.Error($"[VoidDeleter] ProcessMining error: {ex}");
+                }
+            }
+        }
+
+        // ── Floor removal pass ─────────────────────────────────────────────────
+        private void ProcessFloorRemovals()
+        {
+            var dm = Map.designationManager;
+            var tg = Map.terrainGrid;
+
+            _floorRemovalSnapshot.Clear();
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.RemoveFloor))
+                _floorRemovalSnapshot.Add(des);
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.RemoveFoundation))
+                _floorRemovalSnapshot.Add(des);
+
+            var processed = new HashSet<IntVec3>();
+
+            foreach (Designation des in _floorRemovalSnapshot)
+            {
+                try
+                {
+                    IntVec3 cell = des.target.Cell;
+                    if (!processed.Add(cell)) continue;
+                    if (_targetArea != null && !_targetArea[cell]) continue;
+
+                    TerrainDef terrain = null;
+                    bool isFoundation = des.def == DesignationDefOf.RemoveFoundation;
+
+                    if (isFoundation)
+                    {
+                        if (!tg.CanRemoveFoundationAt(cell)) continue;
+                        terrain = tg.FoundationAt(cell);
+                    }
+                    else
+                    {
+                        if (!tg.CanRemoveTopLayerAt(cell)) continue;
+                        terrain = tg.TempTerrainAt(cell) ?? tg.topGrid[Map.cellIndices.CellToIndex(cell)];
+                    }
+
+                    if (terrain == null) continue;
+
+                    // Compute products
+                    var products = new List<(ThingDef def, int count)>();
+                    List<ThingDefCountClass> costs = terrain.CostListAdjusted(null);
+                    foreach (var cost in costs)
+                    {
+                        int count = GenMath.RoundRandom(cost.count * terrain.resourcesFractionWhenDeconstructed);
+                        if (count > 0)
+                            products.Add((cost.thingDef, count));
+                    }
+
+                    // Perform removal
+                    if (isFoundation)
+                    {
+                        tg.RemoveFoundation(cell, false);
+                    }
+                    else
+                    {
+                        tg.RemoveTopLayer(cell, false);
+                    }
+                    
+                    FilthMaker.RemoveAllFilth(cell, Map);
+                    dm.TryRemoveDesignation(cell, DesignationDefOf.RemoveFloor);
+                    dm.TryRemoveDesignation(cell, DesignationDefOf.RemoveFoundation);
+
+                    SpawnProducts(products, Position);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"[VoidDeleter] ProcessFloorRemovals error: {ex}");
                 }
             }
         }
@@ -321,10 +394,24 @@ namespace FullyAutomaticOmniCrafter
 
             mineCount = mineCells.Count;
 
+            int floorRemovalCount = 0;
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.RemoveFloor))
+            {
+                if (_targetArea == null || _targetArea[des.target.Cell]) floorRemovalCount++;
+            }
+            foreach (Designation des in dm.SpawnedDesignationsOfDef(DesignationDefOf.RemoveFoundation))
+            {
+                if (_targetArea == null || _targetArea[des.target.Cell]) floorRemovalCount++;
+            }
+
             string areaLabel = _targetArea?.Label ?? (string)"VoidDeleter_AnyArea".Translate();
 
             if (!s.NullOrEmpty()) s += "\n";
             s += "VoidDeleter_Status".Translate(deconstructCount, mineCount, areaLabel);
+            if (floorRemovalCount > 0)
+            {
+                s += "\n" + "VoidDeleter_FloorRemovalPending".Translate(floorRemovalCount);
+            }
 
             return s;
         }

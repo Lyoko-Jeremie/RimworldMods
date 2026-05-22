@@ -5,10 +5,10 @@
     <VoidDeleter_ToggleDesc>Enable or disable the Void Deleter. When disabled it will not process any designations even if powered.</VoidDeleter_ToggleDesc>
 
     <VoidDeleter_SelectArea>Select Active Area</VoidDeleter_SelectArea>
-    <VoidDeleter_SelectAreaDesc>Choose which area this Void Deleter monitors for deconstruction and mining designations (current: {0}).</VoidDeleter_SelectAreaDesc>
+    <VoidDeleter_SelectAreaDesc>Choose which area this Void Deleter monitors for deconstruction, mining, floor and foundation removal designations (current: {0}).</VoidDeleter_SelectAreaDesc>
 
     <VoidDeleter_OutputMode>Output: {0}</VoidDeleter_OutputMode>
-    <VoidDeleter_OutputModeDesc>Toggle where products are placed after deconstruction or mining. Current mode: {0}. Click to switch.</VoidDeleter_OutputModeDesc>
+    <VoidDeleter_OutputModeDesc>Toggle where products are placed after deconstruction, mining or floor/foundation removal. Current mode: {0}. Click to switch.</VoidDeleter_OutputModeDesc>
 
     <VoidDeleter_DropNear>Drop Near</VoidDeleter_DropNear>
     <VoidDeleter_SendToStorage>Send to Storage</VoidDeleter_SendToStorage>
@@ -17,5 +17,6 @@
     <VoidDeleter_Disabled>Disabled</VoidDeleter_Disabled>
     <VoidDeleter_NoPower>No power</VoidDeleter_NoPower>
     <VoidDeleter_Status>Pending: {0} deconstructions, {1} mining targets | Area: {2}</VoidDeleter_Status>
+    <VoidDeleter_FloorRemovalPending>Pending: {0} floor/foundation removals</VoidDeleter_FloorRemovalPending>
 </LanguageData>
 
