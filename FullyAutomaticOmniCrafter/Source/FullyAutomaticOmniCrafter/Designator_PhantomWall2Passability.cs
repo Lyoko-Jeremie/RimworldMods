@@ -425,7 +425,8 @@ namespace FullyAutomaticOmniCrafter
             const float windowPadding = 10f; // ContractedBy(5f) 的上下边距
             float height = topHeaderHeight + optionCount * rowStride + saveButtonBlockHeight + windowPadding + 10f;
 
-            Rect winRect = new Rect(leftX, bottomY - height, width, height);
+            // Rect winRect = new Rect(leftX, bottomY - height, width, height);
+            Rect winRect = new Rect(leftX + 250f, bottomY, width, height);
             
             Find.WindowStack.ImmediateWindow(73625891, winRect, WindowLayer.GameUI, () =>
             {
