@@ -379,11 +379,16 @@ namespace FullyAutomaticOmniCrafter
 
         public CellRect GetOccupiedRect() => this.OccupiedRect();
 
-        public override void DrawGUIOverlay()
+        public override void DrawExtraSelectionOverlays()
         {
-            base.DrawGUIOverlay();
+            base.DrawExtraSelectionOverlays();
             if (Find.Selector.NumSelected == 1 && Find.Selector.SingleSelectedThing == this)
             {
+                // 如果当前正在使用设置工具，则不在这里重复绘制信息面板，避免遮挡工具界面
+                if (Find.DesignatorManager.SelectedDesignator is Designator_PhantomWall2Passability)
+                {
+                    return;
+                }
                 Designator_PhantomWall2Passability.DrawWallInfo(this);
             }
         }
