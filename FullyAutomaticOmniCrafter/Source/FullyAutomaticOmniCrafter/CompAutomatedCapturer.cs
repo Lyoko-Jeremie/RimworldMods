@@ -52,7 +52,7 @@ namespace FullyAutomaticOmniCrafter
         public CompProperties_AutomatedCapturer Props => (CompProperties_AutomatedCapturer)this.props;
         
         /// <summary> 是否激活自动扫描捕捉 </summary>
-        public bool isActive = true;
+        public bool isActive = false;
         /// <summary> 筛选设置（复用 OmniPhantomWall2 的通行证设置结构） </summary>
         public OmniPhantomWall2_PassabilitySettings settings = new OmniPhantomWall2_PassabilitySettings();
         /// <summary> 捕捉时应用的额外效果 </summary>
@@ -67,7 +67,7 @@ namespace FullyAutomaticOmniCrafter
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref isActive, "isActive", true);
+            Scribe_Values.Look(ref isActive, "isActive", false);
             Scribe_Deep.Look(ref settings, "settings");
             if (settings == null) settings = new OmniPhantomWall2_PassabilitySettings();
             Scribe_Values.Look(ref captureEffect, "captureEffect", CaptureEffect.TeleportOnly);
