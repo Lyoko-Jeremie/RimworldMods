@@ -101,8 +101,6 @@
             <!-- 允许选材质后涂色 -->
             <paintable>true</paintable>
             <isStuffableAirtight>true</isStuffableAirtight>
-            <!-- 声明此建筑是电力导体 -->
-<!--            <isPowerConduit>true</isPowerConduit>-->
             <!-- ↓ 加这一行，允许在此建筑上挂壁灯等附件 -->
             <supportsWallAttachments>true</supportsWallAttachments>
         </building>
@@ -132,8 +130,6 @@
         <description>description</description>
 
         <building>
-            <!-- 声明此建筑是电力导体 -->
-            <isPowerConduit>true</isPowerConduit>
         </building>
         
         <comps>

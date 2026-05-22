@@ -290,7 +290,7 @@
 
         <building>
             <!-- 声明此建筑是电力导体 -->
-            <isPowerConduit>true</isPowerConduit>
+<!--            <isPowerConduit>true</isPowerConduit>-->
         </building>
         
         <comps>
@@ -352,7 +352,7 @@
 
         <building>
             <!-- 声明此建筑是电力导体 -->
-            <isPowerConduit>true</isPowerConduit>
+<!--            <isPowerConduit>true</isPowerConduit>-->
         </building>
         
         <comps>
@@ -403,7 +403,7 @@
 
         <building>
             <!-- 声明此建筑是电力导体 -->
-            <isPowerConduit>true</isPowerConduit>
+<!--            <isPowerConduit>true</isPowerConduit>-->
         </building>
 
         <comps>
