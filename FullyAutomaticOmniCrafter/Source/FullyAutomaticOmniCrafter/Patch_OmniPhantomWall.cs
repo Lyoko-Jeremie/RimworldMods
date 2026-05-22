@@ -46,15 +46,16 @@ namespace FullyAutomaticOmniCrafter
             h *= 0xc2b2ae35;
             h ^= h >> 16;
 
-            // 将签名映射到 19-255 范围
+            // 将签名映射到 20-255 范围
             // 18 留给 1 代或签名 0
-            byte mapping = (byte)(19 + (h % 237));
+            // 19 留给映射碰撞的保底
+            byte mapping = (byte)(20 + (h % 236));
             return (RegionType)mapping;
         }
 
         public static bool IsPhantomWallRegion(RegionType type)
         {
-            return (byte)type >= (byte)Building_OmniPhantomWall.PhantomWallRegionType;
+            return (byte)type >= (byte)Building_OmniPhantomWall.PhantomWallRegionType && (byte)type <= 255;
         }
     }
 

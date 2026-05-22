@@ -125,6 +125,9 @@ namespace FullyAutomaticOmniCrafter
             map.regionAndRoomUpdater.Enabled = false;
             try
             {
+                OmniPhantomWall2_PassabilitySettings newSettings = GetSettingsFromPreset(currentPreset);
+                
+                // 第一步：应用新设置并标记为脏
                 foreach (IntVec3 cell in cells)
                 {
                     if (CanDesignateCell(cell).Accepted)
@@ -132,7 +135,7 @@ namespace FullyAutomaticOmniCrafter
                         Building_OmniPhantomWall2 wall = cell.GetEdifice(map) as Building_OmniPhantomWall2;
                         if (wall != null)
                         {
-                            OmniPhantomWall2_PassabilitySettings newSettings = GetSettingsFromPreset(currentPreset);
+                            // 即使不立即重建，也要确保格子被标记为脏
                             wall.ApplySettings(newSettings, false);
                             count++;
                         }
