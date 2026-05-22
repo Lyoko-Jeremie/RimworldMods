@@ -13,4 +13,8 @@
   <OmniAutoDetector_InvisibilityBroken>全自动扫描仪已破除隐形状态: {0} ({1})</OmniAutoDetector_InvisibilityBroken>
   <OmniAutoDetector_InvisibilityRemoved>全自动扫描仪已移除疑似隐形属性: {0} ({1}) [{2}]</OmniAutoDetector_InvisibilityRemoved>
   <OmniAutoDetector_ContaminatedFoodDestroyed>全自动扫描仪已销毁受污染物品: {0}</OmniAutoDetector_ContaminatedFoodDestroyed>
+  
+  <OmniAutoDetector_AutoDestroyPathogenicFoodLabel>自动销毁致病食物</OmniAutoDetector_AutoDestroyPathogenicFoodLabel>
+  <OmniAutoDetector_AutoDestroyPathogenicFoodDesc>开启后，自动寻找并销毁可能导致食物中毒（腐烂或厨师不卫生等原因）的物品。如果由于模组原因堆栈仅部分致病，则仅销毁致病部分。</OmniAutoDetector_AutoDestroyPathogenicFoodDesc>
+  <OmniAutoDetector_PathogenicFoodDestroyed>全自动扫描仪已销毁致病物品: {0}</OmniAutoDetector_PathogenicFoodDestroyed>
 </LanguageData>

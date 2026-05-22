@@ -27,6 +27,7 @@ namespace FullyAutomaticOmniCrafter
         public bool autoCureMetalhorror = true;
         public bool autoVisitableEntities = true;
         public bool autoPurgeFood = true;
+        public bool autoDestroyPathogenicFood = true;
 
         // 保存设置到存档
         public override void PostExposeData()
@@ -35,6 +36,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref autoCureMetalhorror, "autoCureMetalhorror", true);
             Scribe_Values.Look(ref autoVisitableEntities, "autoVisitableEntities", true);
             Scribe_Values.Look(ref autoPurgeFood, "autoPurgeFood", true);
+            Scribe_Values.Look(ref autoDestroyPathogenicFood, "autoDestroyPathogenicFood", true);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
@@ -79,6 +81,16 @@ namespace FullyAutomaticOmniCrafter
                     toggleAction = () => { autoPurgeFood = !autoPurgeFood; }
                 };
             }
+
+            // 自动销毁致病食物开关
+            yield return new Command_Toggle
+            {
+                defaultLabel = "OmniAutoDetector_AutoDestroyPathogenicFoodLabel".Translate(),
+                defaultDesc = "OmniAutoDetector_AutoDestroyPathogenicFoodDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Designators/ForbidOff") ?? BaseContent.WhiteTex,
+                isActive = () => autoDestroyPathogenicFood,
+                toggleAction = () => { autoDestroyPathogenicFood = !autoDestroyPathogenicFood; }
+            };
         }
 
         public override void CompTickRare()
@@ -186,6 +198,60 @@ namespace FullyAutomaticOmniCrafter
                     string label = item.Label;
                     item.Destroy(DestroyMode.Vanish);
                     Messages.Message("OmniAutoDetector_ContaminatedFoodDestroyed".Translate(label), MessageTypeDefOf.PositiveEvent);
+                }
+            }
+
+            // 4. 自动销毁致病食物 (Food Poisoning)
+            if (autoDestroyPathogenicFood)
+            {
+                List<Thing> things = map.listerThings.AllThings;
+                for (int i = things.Count - 1; i >= 0; i--)
+                {
+                    Thing thing = things[i];
+                    if (thing.def.IsIngestible)
+                    {
+                        CompFoodPoisonable comp = thing.TryGetComp<CompFoodPoisonable>();
+                        if (comp != null && comp.PoisonPercent > 0f)
+                        {
+                            string label = thing.Label;
+                            if (comp.PoisonPercent >= 1f)
+                            {
+                                thing.Destroy(DestroyMode.Vanish);
+                            }
+                            else
+                            {
+                                // 处理部分污染的情况
+                                int numToDestroy = Mathf.CeilToInt(thing.stackCount * comp.PoisonPercent);
+                                if (numToDestroy >= thing.stackCount)
+                                {
+                                    thing.Destroy(DestroyMode.Vanish);
+                                }
+                                else
+                                {
+                                    thing.SplitOff(numToDestroy).Destroy(DestroyMode.Vanish);
+                                    // SplitOff 会处理 poisonPct 的按比例分配吗？
+                                    // 查看之前的源码：
+                                    // public override void PostSplitOff(Thing piece)
+                                    // {
+                                    //   base.PostSplitOff(piece);
+                                    //   CompFoodPoisonable comp = piece.TryGetComp<CompFoodPoisonable>();
+                                    //   comp.poisonPct = this.poisonPct;
+                                    //   comp.cause = this.cause;
+                                    // }
+                                    // 原版 SplitOff 后两边的 poisonPct 是一样的。
+                                    // 所以我们需要手动重置剩余部分的 poisonPct。
+                                    // 但是 poisonPct 是私有的，只能通过反射修改，或者如果它是 0 就不管了。
+                                    // 实际上，如果我们要“清除”致病部分，剩下的应该就是干净的。
+                                    var poisonPctField = typeof(CompFoodPoisonable).GetField("poisonPct", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                                    if (poisonPctField != null)
+                                    {
+                                        poisonPctField.SetValue(comp, 0f);
+                                    }
+                                }
+                            }
+                            Messages.Message("OmniAutoDetector_PathogenicFoodDestroyed".Translate(label), MessageTypeDefOf.PositiveEvent);
+                        }
+                    }
                 }
             }
         }

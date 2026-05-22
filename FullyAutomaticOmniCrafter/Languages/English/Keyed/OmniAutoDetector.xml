@@ -13,4 +13,8 @@
   <OmniAutoDetector_InvisibilityBroken>OmniAutoDetector has broken invisibility: {0} ({1})</OmniAutoDetector_InvisibilityBroken>
   <OmniAutoDetector_InvisibilityRemoved>OmniAutoDetector has removed suspected invisibility property: {0} ({1}) [{2}]</OmniAutoDetector_InvisibilityRemoved>
   <OmniAutoDetector_ContaminatedFoodDestroyed>OmniAutoDetector has destroyed contaminated item: {0}</OmniAutoDetector_ContaminatedFoodDestroyed>
+
+  <OmniAutoDetector_AutoDestroyPathogenicFoodLabel>Auto Destroy Pathogenic Food</OmniAutoDetector_AutoDestroyPathogenicFoodLabel>
+  <OmniAutoDetector_AutoDestroyPathogenicFoodDesc>When enabled, automatically finds and destroys items that may cause food poisoning (due to rot or incompetent cooking, etc.). If the stack is only partially pathogenic due to mod effects, only the pathogenic part will be destroyed.</OmniAutoDetector_AutoDestroyPathogenicFoodDesc>
+  <OmniAutoDetector_PathogenicFoodDestroyed>OmniAutoDetector has destroyed pathogenic item: {0}</OmniAutoDetector_PathogenicFoodDestroyed>
 </LanguageData>
