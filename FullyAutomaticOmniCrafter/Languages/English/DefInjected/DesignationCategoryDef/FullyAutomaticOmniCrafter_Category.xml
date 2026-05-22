@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
-    <OmniCrafter_Category.label>Archotech Ontological</OmniCrafter_Category.label>
-    <OmniCrafter_Category.description>An ontological reality construct, manifested through archotech will.</OmniCrafter_Category.description>
+    <!-- 超维科技 -->
+    <OmniCrafter_Category.label>Outerrealm Tech</OmniCrafter_Category.label>
+    <!-- 来自边缘世界所在宇宙维度外的超级国度的科技，超越了常规科技的极限 -->
+    <OmniCrafter_Category.description>Technologies from beyond the dimensions of the edge worlds, surpassing the limits of conventional technology.</OmniCrafter_Category.description>
 
 </LanguageData>
