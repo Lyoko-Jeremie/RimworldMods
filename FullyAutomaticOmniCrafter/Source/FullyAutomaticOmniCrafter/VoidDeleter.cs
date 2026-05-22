@@ -95,6 +95,19 @@ namespace FullyAutomaticOmniCrafter
                         }
                         // phantomWall.DestroyByScript(DestroyMode.Vanish);
                     }
+                    else if (target is Building_OmniPhantomWall2 phantomWall2)
+                    {
+                        Building_OmniPhantomWall2._authorizedVanish = true;
+                        try
+                        {
+                            phantomWall2.Destroy(DestroyMode.Vanish);
+                        }
+                        finally
+                        {
+                            Building_OmniPhantomWall2._authorizedVanish = false;
+                        }
+                        // phantomWall2.DestroyByScript(DestroyMode.Vanish);
+                    }
                     else
                     {
                         target.Destroy(DestroyMode.Vanish);

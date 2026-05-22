@@ -149,12 +149,6 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
         {
-            // 如果处于上帝模式，允许任何形式的销毁
-            if (DebugSettings.godMode)
-            {
-                base.Destroy(mode);
-                return;
-            }
 
             // 如果是 Minify（打包），检查是否被允许。
             // 当 MinifyUtility.MakeMinified 调用时，mode 通常是 Vanish。
@@ -168,6 +162,12 @@ namespace FullyAutomaticOmniCrafter
             // mod脚本拆除
             if (mode == DestroyMode.Vanish)
             {
+                // 如果处于上帝模式，允许销毁
+                if (DebugSettings.godMode)
+                {
+                    base.Destroy(mode);
+                    return;
+                }
                 if (!_authorizedVanish)
                 {
                     Log.Message($"[OmniPhantomWall2] 阻止销毁：{this}，DestroyMode={mode}");
