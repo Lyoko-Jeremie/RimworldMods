@@ -174,6 +174,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 { "OPW_AllowColonists".Translate(), allowColonists },
                 { "OPW_AllowPets".Translate(), allowPets },
+                { "OPW_AllowRoamers".Translate(), allowRoamers },
+                { "OPW_AllowTrainableAnimals".Translate(), allowTrainableAnimals },
                 { "OPW_AllowDryad".Translate(), allowDryad },
                 { "OPW_AllowTraders".Translate(), allowTraders },
                 { "OPW_AllowPrisoners".Translate(), allowPrisoners },
@@ -182,8 +184,6 @@ namespace FullyAutomaticOmniCrafter
                 { "OPW_AllowEntities".Translate(), allowEntities },
                 { "OPW_AllowHostiles".Translate(), allowHostiles },
                 { "OPW_AllowMechanoids".Translate(), allowMechanoids },
-                { "OPW_AllowRoamers".Translate(), allowRoamers },
-                { "OPW_AllowTrainableAnimals".Translate(), allowTrainableAnimals },
                 { "OPW_AllowInsectoids".Translate(), allowInsectoids },
                 { "OPW_AllowFactioned".Translate(), allowFactioned },
                 { "OPW_AllowLords".Translate(), allowLords },
