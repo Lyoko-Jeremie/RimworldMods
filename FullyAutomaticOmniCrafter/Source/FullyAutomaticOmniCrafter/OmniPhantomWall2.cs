@@ -398,6 +398,46 @@ namespace FullyAutomaticOmniCrafter
                     ForceRebuildAll(Map);
                 }
             };
+
+            if (Find.Selector.NumSelected == 1)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "OPW_ExtractAndCopySettingsLabel".Translate(),
+                    defaultDesc = "OPW_ExtractAndCopySettingsDesc".Translate(),
+                    icon = PhantomWall2Tex.IconSelectPreset,
+                    action = delegate
+                    {
+                        Designator_PhantomWall2Passability.customSettings.CopyFrom(this.settings);
+                        Designator_PhantomWall2Passability.currentPreset = PassabilityPreset.Custom;
+
+                        Designator_PhantomWall2Passability designator = Find.ReverseDesignatorDatabase.Get<Designator_PhantomWall2Passability>();
+                        if (designator != null)
+                        {
+                            Find.DesignatorManager.Select(designator);
+                        }
+                        else
+                        {
+                            // 备选方案：从菜单中找
+                            // 检查 OmniCrafter_Category
+                            DesignationCategoryDef omniCategory = DefDatabase<DesignationCategoryDef>.GetNamed("OmniCrafter_Category", false);
+                            if (omniCategory != null)
+                            {
+                                designator = omniCategory.AllResolvedDesignators.OfType<Designator_PhantomWall2Passability>().FirstOrDefault();
+                            }
+
+                            if (designator != null)
+                            {
+                                Find.DesignatorManager.Select(designator);
+                            }
+                            else
+                            {
+                                Messages.Message("OPW_DesignatorNotFound".Translate(), MessageTypeDefOf.RejectInput, false);
+                            }
+                        }
+                    }
+                };
+            }
             
             // yield return new Command_Action
             // {

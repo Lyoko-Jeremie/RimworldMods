@@ -18,6 +18,7 @@
     <OPW_Preset_Custom>自定义</OPW_Preset_Custom>
 
     <OPW_CurrentPreset>当前配置</OPW_CurrentPreset>
+    <OPW_CurrentPassability>当前通过性</OPW_CurrentPassability>
 
     <!-- Custom Settings -->
     <OPW_CustomSettings>自定义设置</OPW_CustomSettings>
@@ -46,4 +47,9 @@
     <OPW_ForceRebuildRegionsLabel>强制刷新地图数据</OPW_ForceRebuildRegionsLabel>
     <OPW_ForceRebuildRegionsDesc>强制重新计算全图的区域结构和寻路路径。如果你修改了幻影墙的通过性设置但角色行为没有立即更新，请点击此按钮。</OPW_ForceRebuildRegionsDesc>
     <OPW_MapRebuildComplete>地图区域和寻路数据已完成强制重建。</OPW_MapRebuildComplete>
+
+    <!-- Settings Extraction -->
+    <OPW_ExtractAndCopySettingsLabel>提取并复制设置</OPW_ExtractAndCopySettingsLabel>
+    <OPW_ExtractAndCopySettingsDesc>提取当前墙的通行设置，复制到自定义预设，并唤起设置工具以便应用到其他墙上。</OPW_ExtractAndCopySettingsDesc>
+    <OPW_DesignatorNotFound>未找到通行设置工具。</OPW_DesignatorNotFound>
 </LanguageData>
