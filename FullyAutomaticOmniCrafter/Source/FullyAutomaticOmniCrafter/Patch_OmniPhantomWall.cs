@@ -201,6 +201,71 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ── 激光穿透补丁 ──────────────────────────────────────────────────
+    /// <summary>
+    /// 让玩家发射的激光穿过幻影墙，敌人发射的激光被挡住。
+    /// 激光（Verb_ShootBeam）使用 GenSight.LastPointOnLineOfSight 进行命中检测，
+    /// 其中使用了 CanBeSeenOverFast 检查建筑是否阻挡视线（Fillage == Full）。
+    /// </summary>
+    [HarmonyPatch(typeof(GenGrid), "CanBeSeenOverFast")]
+    public static class GenGrid_CanBeSeenOverFast_Patch
+    {
+        // 我们使用 ThreadLocal 来标记当前的视线检查是否来自于激光 Verb
+        private static System.Threading.ThreadLocal<Verb> currentVerb = new System.Threading.ThreadLocal<Verb>();
+
+        [HarmonyPatch(typeof(Verb_ShootBeam), "TryGetHitCell")]
+        [HarmonyPrefix]
+        public static void ShootBeam_TryGetHitCell_Prefix(Verb_ShootBeam __instance) => currentVerb.Value = __instance;
+
+        [HarmonyPatch(typeof(Verb_ShootBeam), "TryGetHitCell")]
+        [HarmonyPostfix]
+        public static void ShootBeam_TryGetHitCell_Postfix() => currentVerb.Value = null;
+
+        [HarmonyPatch(typeof(Verb_ShootBeam), "BurstingTick")]
+        [HarmonyPrefix]
+        public static void ShootBeam_BurstingTick_Prefix(Verb_ShootBeam __instance) => currentVerb.Value = __instance;
+
+        [HarmonyPatch(typeof(Verb_ShootBeam), "BurstingTick")]
+        [HarmonyPostfix]
+        public static void ShootBeam_BurstingTick_Postfix() => currentVerb.Value = null;
+
+        [HarmonyPatch(typeof(Verb_ShootBeam), "ApplyDamage")]
+        [HarmonyPrefix]
+        public static void ShootBeam_ApplyDamage_Prefix(Verb_ShootBeam __instance) => currentVerb.Value = __instance;
+
+        [HarmonyPatch(typeof(Verb_ShootBeam), "ApplyDamage")]
+        [HarmonyPostfix]
+        public static void ShootBeam_ApplyDamage_Postfix() => currentVerb.Value = null;
+
+        public static void Postfix(IntVec3 c, Map map, ref bool __result)
+        {
+            // 如果已经被判定为不阻挡（__result == true），则无需处理
+            // 注意：CanBeSeenOverFast 返回 true 表示“可以被看透”，即“不阻挡”
+            // if (__result) return;
+
+            // 检查该位置是否有幻影墙
+            Building edifice = c.GetEdifice(map);
+            if (!(edifice is Building_OmniPhantomWall) && !(edifice is Building_OmniPhantomWall2))
+                return;
+
+            // 如果当前正处于 Verb_ShootBeam 的路径计算中
+            Verb verb = currentVerb.Value;
+            if (verb != null)
+            {
+                if (verb.caster?.Faction == Faction.OfPlayer)
+                {
+                    // 玩家激光：设为不阻挡
+                    __result = true;
+                }
+                else
+                {
+                    // 敌人激光：设为阻挡
+                    __result = false;
+                }
+            }
+        }
+    }
+
     // ── 性能优化：Harmony Patch 统一管理幻影墙区域温度 ───────────────────────────
     /// <summary>
     /// 当幻影墙数量巨大（如上万个）时，MapComponent 定时遍历房间虽然比逐个建筑 Tick 高效，
