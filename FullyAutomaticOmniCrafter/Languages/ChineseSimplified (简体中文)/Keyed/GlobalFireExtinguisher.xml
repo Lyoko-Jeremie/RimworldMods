@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <GlobalFireExtinguisher_Active>启用自动灭火</GlobalFireExtinguisher_Active>
+    <GlobalFireExtinguisher_ActiveDesc>控制全图灭火器是否自动执行灭火扫描。</GlobalFireExtinguisher_ActiveDesc>
+</LanguageData>

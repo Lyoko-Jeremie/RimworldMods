@@ -51,7 +51,7 @@
             <li Class="CompProperties_Power">
                 <compClass>CompPowerTrader</compClass>
                 <basePowerConsumption>1500</basePowerConsumption>
-                <shortCircuitInRain>true</shortCircuitInRain>
+                <shortCircuitInRain>false</shortCircuitInRain>
             </li>
 
             <li Class="FullyAutomaticOmniCrafter.CompProperties_GlobalFireExtinguisher">

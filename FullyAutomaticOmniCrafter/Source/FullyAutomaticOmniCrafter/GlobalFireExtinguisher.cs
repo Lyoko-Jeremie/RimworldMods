@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 
@@ -20,11 +21,21 @@ namespace FullyAutomaticOmniCrafter
     // 核心逻辑组件
     public class CompGlobalFireExtinguisher : ThingComp
     {
+        public bool extinguishEnabled = true;
+
         public CompProperties_GlobalFireExtinguisher Props => (CompProperties_GlobalFireExtinguisher)props;
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref extinguishEnabled, "extinguishEnabled", true);
+        }
 
         public override void CompTick()
         {
             base.CompTick();
+
+            if (!extinguishEnabled) return;
 
             // 【性能优化1】降频且错峰执行。
             // IsHashIntervalTick 会根据建筑的 ThingID 进行哈希计算，
@@ -34,14 +45,39 @@ namespace FullyAutomaticOmniCrafter
                 ExtinguishAllFires();
             }
         }
+        
+        [StaticConstructorOnStartup]
+        public static class GlobalFireExtinguisherTex
+        {
+            public static readonly Texture2D IconActive =
+                ContentFinder<Texture2D>.Get("UI/Commands/GlobalFireExtinguisher_Active", false)
+                ?? BaseContent.WhiteTex;
+        }
+        
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (Gizmo gizmo in base.CompGetGizmosExtra())
+            {
+                yield return gizmo;
+            }
+
+            yield return new Command_Toggle
+            {
+                defaultLabel = "GlobalFireExtinguisher_Active".Translate(),
+                defaultDesc = "GlobalFireExtinguisher_ActiveDesc".Translate(),
+                icon = GlobalFireExtinguisherTex.IconActive,
+                isActive = () => extinguishEnabled,
+                toggleAction = () => extinguishEnabled = !extinguishEnabled
+            };
+        }
 
         private void ExtinguishAllFires()
         {
             if (parent.Map == null) return;
 
-            // 可选检查：如果建筑需要电力，且没电，则不工作
-            CompPowerTrader powerComp = parent.GetComp<CompPowerTrader>();
-            if (powerComp != null && !powerComp.PowerOn) return;
+            // // 可选检查：如果建筑需要电力，且没电，则不工作
+            // CompPowerTrader powerComp = parent.GetComp<CompPowerTrader>();
+            // if (powerComp != null && !powerComp.PowerOn) return;
 
             // 【性能优化2】直接读取游戏引擎缓存的火焰列表，O(1) 的查找复杂度！
             // 绝对不要用 Map.AllCells 遍历全图！
