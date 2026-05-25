@@ -559,6 +559,26 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        public static void ForceRePath(Map map)
+        {
+            // 强制所有 Pawn 重新寻路
+            foreach (Pawn pawn in map.mapPawns.AllPawnsSpawned)
+            {
+                var pather = pawn.pather;
+                if (pather == null) continue;
+
+                // 标记当前路径已陈旧
+                pather.curPathJobIsStale = true;
+
+                // 如果小人正在移动，强制其重置路径
+                // 这会清除 curPath 并触发新的路径请求
+                if (pather.Moving)
+                {
+                    pather.ResetToCurrentPosition();
+                }
+            }
+        }
+
         public static void ForceRebuildAll(Map map)
         {
             if (map == null) return;
@@ -573,6 +593,8 @@ namespace FullyAutomaticOmniCrafter
             // RebuildAllRegionsAndRooms 内部会调用 map.regionDirtyer.SetAllDirty()
             map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
 
+            ForceRePath(map);
+            
             Messages.Message("OPW_MapRebuildComplete".Translate(), MessageTypeDefOf.TaskCompletion, false);
         }
 
