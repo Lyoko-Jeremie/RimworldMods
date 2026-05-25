@@ -151,6 +151,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 批量操作后，通过 TryRebuildDirtyRegionsAndRooms 重建脏区域
                 map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                Building_OmniPhantomWall2.ForceRePath(map);
                 
                 Messages.Message(
                     "OPW_AppliedToWalls".Translate(count, GetPresetLabel(currentPreset)),

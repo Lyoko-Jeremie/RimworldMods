@@ -250,6 +250,11 @@ namespace FullyAutomaticOmniCrafter
                     // 备选方案：通过 TryRebuildDirtyRegionsAndRooms 触发重建
                     Map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
                 }
+
+                if (rebuild)
+                {
+                    ForceRePath(Map);
+                }
             }
         }
         
@@ -550,6 +555,7 @@ namespace FullyAutomaticOmniCrafter
             if (count > 0 && map != null)
             {
                 map.regionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms();
+                ForceRePath(map);
                 
                 Messages.Message(
                     "OPW_PresetAppliedBatch".Translate(count, Designator_PhantomWall2Passability.GetPresetLabel(preset)),
