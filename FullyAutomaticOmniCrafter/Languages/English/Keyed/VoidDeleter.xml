@@ -18,5 +18,7 @@
     <VoidDeleter_NoPower>No power</VoidDeleter_NoPower>
     <VoidDeleter_Status>Pending: {0} deconstructions, {1} mining targets | Area: {2}</VoidDeleter_Status>
     <VoidDeleter_FloorRemovalPending>Pending: {0} floor/foundation removals</VoidDeleter_FloorRemovalPending>
+    <VoidDeleter_FinishAll>Finish All</VoidDeleter_FinishAll>
+    <VoidDeleter_FinishAllDesc>Immediately finish all pending designations (respects selected area).</VoidDeleter_FinishAllDesc>
 </LanguageData>
 

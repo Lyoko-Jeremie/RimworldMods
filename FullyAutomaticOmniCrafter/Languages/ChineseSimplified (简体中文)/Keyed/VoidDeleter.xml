@@ -18,5 +18,7 @@
     <VoidDeleter_NoPower>无电力</VoidDeleter_NoPower>
     <VoidDeleter_Status>待处理：{0} 个拆除，{1} 个挖掘目标 | 区域：{2}</VoidDeleter_Status>
     <VoidDeleter_FloorRemovalPending>待处理：{0} 个地板/地基移除</VoidDeleter_FloorRemovalPending>
+    <VoidDeleter_FinishAll>一键完成</VoidDeleter_FinishAll>
+    <VoidDeleter_FinishAllDesc>立即完成所有已标记的任务（受当前所选区域限制）。</VoidDeleter_FinishAllDesc>
 </LanguageData>
 

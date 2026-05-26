@@ -489,6 +489,20 @@ namespace FullyAutomaticOmniCrafter
                         : OutputMode.DropNear;
                 }
             };
+
+            // ── 4. Finish all immediately ─────────────────────────────────────
+            yield return new Command_Action
+            {
+                defaultLabel = "VoidDeleter_FinishAll".Translate(),
+                defaultDesc = "VoidDeleter_FinishAllDesc".Translate(),
+                icon = VoidDeleterTex.IconFinishAll,
+                action = () =>
+                {
+                    ProcessDeconstructions();
+                    ProcessMining();
+                    ProcessFloorRemovals();
+                }
+            };
         }
     }
 
@@ -511,6 +525,11 @@ namespace FullyAutomaticOmniCrafter
 
         public static readonly Texture2D IconOutputModeStorage =
             ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_OutputMode_Storage", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconFinishAll =
+            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_FinishAll", false)
+            ?? ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_CompleteAll", false)
             ?? BaseContent.WhiteTex;
     }
 }
