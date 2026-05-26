@@ -37,6 +37,9 @@
     <RealityWeaver_RemovePaintDesc>Instantly complete all planned floor paint removal tasks on the current map</RealityWeaver_RemovePaintDesc>
     <RealityWeaver_PaintOk>Automatically completed {0} floor painting tasks</RealityWeaver_PaintOk>
     <RealityWeaver_RemovePaintOk>Automatically completed {0} floor paint removal tasks</RealityWeaver_RemovePaintOk>
+
+    <RealityWeaver_CompleteAll>Complete All Construction</RealityWeaver_CompleteAll>
+    <RealityWeaver_CompleteAllDesc>Instantly complete all pending blueprints and construction frames in the target area. This will consume power as usual.</RealityWeaver_CompleteAllDesc>
     
 </LanguageData>
 

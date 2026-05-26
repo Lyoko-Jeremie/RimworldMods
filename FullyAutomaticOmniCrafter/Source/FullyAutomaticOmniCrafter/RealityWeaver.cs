@@ -540,6 +540,23 @@ namespace FullyAutomaticOmniCrafter
                     Find.WindowStack.Add(new FloatMenu(options));
                 }
             };
+
+            // 立即完成所有建造
+            yield return new Command_Action
+            {
+                defaultLabel = "RealityWeaver_CompleteAll".Translate(),
+                defaultDesc = "RealityWeaver_CompleteAllDesc".Translate(),
+                icon = RealityWeaverTex.IconCompleteAll,
+                action = () =>
+                {
+                    if (!IsPowered)
+                    {
+                        Messages.Message("RealityWeaver_NoPower".Translate(), MessageTypeDefOf.RejectInput, false);
+                        return;
+                    }
+                    TryWeaveAll();
+                }
+            };
         }
 
         // ── 信息栏 ────────────────────────────────────────────────────────────
@@ -616,6 +633,11 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconSelectArea =
             ContentFinder<Texture2D>.Get("UI/Commands/RealityWeaver_SelectArea", false)
             ?? ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_SelectArea", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconCompleteAll =
+            ContentFinder<Texture2D>.Get("UI/Commands/RealityWeaver_CompleteAll", false)
+            ?? ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_CompleteAll", false)
             ?? BaseContent.WhiteTex;
     }
 }
