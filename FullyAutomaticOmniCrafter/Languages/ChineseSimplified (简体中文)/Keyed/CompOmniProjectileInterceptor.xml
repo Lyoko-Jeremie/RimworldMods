@@ -8,4 +8,8 @@
   <OmniInterceptor_InterceptSkyfallersDesc>切换是否拦截进入的空降物（如空投舱、陨石等）。</OmniInterceptor_InterceptSkyfallersDesc>
   <OmniInterceptor_SkyfallerRedirected>一个空降物已被重定向。</OmniInterceptor_SkyfallerRedirected>
   <OmniInterceptor_SkyfallerDestroyed>{0} 已被拦截器摧毁。</OmniInterceptor_SkyfallerDestroyed>
+  <OmniInterceptor_ShieldEnabled>启用护盾</OmniInterceptor_ShieldEnabled>
+  <OmniInterceptor_ShieldEnabledDesc>切换能量护盾的开启或关闭状态。</OmniInterceptor_ShieldEnabledDesc>
+  <OmniInterceptor_AlwaysVisible>始终可见</OmniInterceptor_AlwaysVisible>
+  <OmniInterceptor_AlwaysVisibleDesc>控制护盾在未选中状态下是否仍然保持可见（低亮度显示）。</OmniInterceptor_AlwaysVisibleDesc>
 </LanguageData>

@@ -6,6 +6,8 @@
         <label>OmniSphericalEnergyDefenseField</label>
         <description>description</description>
 
+        <thingClass>Building</thingClass>
+        <drawerType>MapMeshAndRealTime</drawerType>
         <tickerType>Normal</tickerType>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
@@ -59,9 +61,18 @@
             <isInert>true</isInert>
         </building>
         <rotatable>false</rotatable>
+        <selectable>true</selectable>
+        <placeWorkers>
+            <li>PlaceWorker_ShowProjectileInterceptorRadius</li>
+        </placeWorkers>
         
         <comps>
             <li Class="FullyAutomaticOmniCrafter.CompProperties_OmniProjectileInterceptor">
+                <radius>10</radius>
+                <interceptGroundProjectiles>true</interceptGroundProjectiles>
+                <interceptAirProjectiles>true</interceptAirProjectiles>
+                <color>(0.3, 0.8, 1.0)</color> <!-- 天蓝色护盾 -->
+                <activeSound>MortarShield_Ambience</activeSound>
                 <isStatic>true</isStatic>
             </li>
         </comps>

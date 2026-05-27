@@ -8,4 +8,8 @@
   <OmniInterceptor_InterceptSkyfallersDesc>Toggle whether to intercept incoming skyfallers (e.g. drop pods, meteorites).</OmniInterceptor_InterceptSkyfallersDesc>
   <OmniInterceptor_SkyfallerRedirected>A skyfaller was redirected.</OmniInterceptor_SkyfallerRedirected>
   <OmniInterceptor_SkyfallerDestroyed>{0} was destroyed by the interceptor.</OmniInterceptor_SkyfallerDestroyed>
+  <OmniInterceptor_ShieldEnabled>Shield Enabled</OmniInterceptor_ShieldEnabled>
+  <OmniInterceptor_ShieldEnabledDesc>Toggle whether the energy shield is active.</OmniInterceptor_ShieldEnabledDesc>
+  <OmniInterceptor_AlwaysVisible>Always Visible</OmniInterceptor_AlwaysVisible>
+  <OmniInterceptor_AlwaysVisibleDesc>Toggle whether the shield remains visible (at low brightness) even when the building is not selected.</OmniInterceptor_AlwaysVisibleDesc>
 </LanguageData>

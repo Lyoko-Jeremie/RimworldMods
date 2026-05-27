@@ -60,16 +60,26 @@ namespace FullyAutomaticOmniCrafter
         }
 
         public bool interceptSkyfallers = true;
+        public bool shieldEnabled = true;
+        public bool alwaysVisible = true;
 
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Values.Look(ref radiusOverride, "radiusOverride");
             Scribe_Values.Look(ref interceptSkyfallers, "interceptSkyfallers", true);
+            Scribe_Values.Look(ref shieldEnabled, "shieldEnabled", true);
+            Scribe_Values.Look(ref alwaysVisible, "alwaysVisible", true);
         }
 
         public override void CompTick()
         {
+            if (!shieldEnabled)
+            {
+                currentHitPoints = 0;
+                return;
+            }
+
             base.CompTick();
             // 确保状态始终处于激活，无视任何损伤
             if (Active && currentHitPoints < HitPointsMax)
@@ -94,11 +104,36 @@ namespace FullyAutomaticOmniCrafter
 
             yield return new Command_Toggle
             {
+                defaultLabel = "OmniInterceptor_ShieldEnabled".Translate(),
+                defaultDesc = "OmniInterceptor_ShieldEnabledDesc".Translate(),
+                icon = parent.def.uiIcon,
+                isActive = () => shieldEnabled,
+                toggleAction = () =>
+                {
+                    shieldEnabled = !shieldEnabled;
+                    if (parent.Map != null)
+                    {
+                        parent.Map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
+                    }
+                }
+            };
+
+            yield return new Command_Toggle
+            {
                 defaultLabel = "OmniInterceptor_InterceptSkyfallers".Translate(),
                 defaultDesc = "OmniInterceptor_InterceptSkyfallersDesc".Translate(),
                 icon = OmniProjectileInterceptorTex.IconInterceptSkyfaller,
                 isActive = () => interceptSkyfallers,
                 toggleAction = () => interceptSkyfallers = !interceptSkyfallers
+            };
+
+            yield return new Command_Toggle
+            {
+                defaultLabel = "OmniInterceptor_AlwaysVisible".Translate(),
+                defaultDesc = "OmniInterceptor_AlwaysVisibleDesc".Translate(),
+                icon = parent.def.uiIcon,
+                isActive = () => alwaysVisible,
+                toggleAction = () => alwaysVisible = !alwaysVisible
             };
 
             yield return new Command_Action
@@ -136,10 +171,67 @@ namespace FullyAutomaticOmniCrafter
             return thing.Faction.HostileTo(Faction.OfPlayer);
         }
 
+        public override void PostDraw()
+        {
+            // base.PostDraw(); // 不调用基类的绘制，因为我们要自定义半径和始终可见逻辑
+
+            if (!shieldEnabled) return;
+
+            Vector3 drawPos = parent.DrawPos;
+            drawPos.y = AltitudeLayer.MoteOverhead.AltitudeFor();
+            
+            float currentAlpha = GetCurrentAlpha();
+            if (currentAlpha > 0.0f)
+            {
+                Color color = Props.color;
+                color.a *= currentAlpha;
+
+                // 注入我们的材质属性
+                MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
+                matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
+
+                // 护盾纹理实际大小因子 (297/256 来自原版)
+                float sizeFactor = 2.3203125f; // (297.0 / 256.0) * 2
+                float drawSize = Radius * sizeFactor;
+
+                Matrix4x4 matrix = default;
+                matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(drawSize, 1f, drawSize));
+                
+                // 使用基类的 ForceFieldMat
+                // 注意：由于 ForceFieldMat 是私有的，我们需要通过反射获取或者使用相同的路径
+                // 原版路径是 "Other/ForceField"
+                Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Other/ForceField", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
+            }
+        }
+
+        private float GetCurrentAlpha()
+        {
+            // 如果没开启始终可见，且没被选中，则不显示（或者返回基类默认逻辑，但由于我们接管了绘制，这里直接处理）
+            if (!alwaysVisible && !Find.Selector.IsSelected(parent))
+            {
+                return 0f;
+            }
+
+            // 始终显示护盾，即使没有被选中。
+            // 原版的 GetCurrentAlpha_Idle 在玩家派系且没有被选中时返回 0。
+            // 我们这里强制返回一个基础亮度。
+            
+            float idleAlpha = Mathf.Lerp(Props.minIdleAlpha, 0.11f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 96804938) % 100) + Time.realtimeSinceStartup * Props.idlePulseSpeed) + 1f) / 2f);
+            
+            if (Find.Selector.IsSelected(parent))
+            {
+                float pulseSpeed = Mathf.Max(2f, Props.idlePulseSpeed);
+                float selectedAlpha = Mathf.Lerp(0.2f, 0.62f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 35990913) % 100) + Time.realtimeSinceStartup * pulseSpeed) + 1f) / 2f);
+                return Mathf.Max(idleAlpha, selectedAlpha);
+            }
+
+            return Mathf.Max(idleAlpha, Props.minAlpha);
+        }
+
         // 拦截逻辑
         public new bool CheckIntercept(Projectile projectile, Vector3 lastExactPos, Vector3 newExactPos)
         {
-            if (!Active) return false;
+            if (!Active || !shieldEnabled) return false;
 
             // 检查来源
             if (!IsEnemy(projectile.Launcher))
