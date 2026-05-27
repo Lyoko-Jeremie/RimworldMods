@@ -23,5 +23,8 @@
 
     <VoidDeleter_CleanFilth>一键清理污物</VoidDeleter_CleanFilth>
     <VoidDeleter_CleanFilthDesc>立即清理所选区域内的所有污物（如果未选择区域，则清理全图）。</VoidDeleter_CleanFilthDesc>
+
+    <VoidDeleter_ConfirmCleanFilth>确认要清理该区域内的所有污物吗？</VoidDeleter_ConfirmCleanFilth>
+    <VoidDeleter_ConfirmFinishAll>确认要立即完成该区域内的所有任务吗？</VoidDeleter_ConfirmFinishAll>
 </LanguageData>
 

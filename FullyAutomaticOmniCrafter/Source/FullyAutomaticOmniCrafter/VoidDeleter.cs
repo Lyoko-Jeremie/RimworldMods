@@ -518,10 +518,16 @@ namespace FullyAutomaticOmniCrafter
                 icon = VoidDeleterTex.IconFinishAll,
                 action = () =>
                 {
-                    ProcessDeconstructions();
-                    ProcessMining();
-                    ProcessFloorRemovals();
-                    ProcessFilthCleanup();
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "VoidDeleter_ConfirmFinishAll".Translate(),
+                        () =>
+                        {
+                            ProcessDeconstructions();
+                            ProcessMining();
+                            ProcessFloorRemovals();
+                            ProcessFilthCleanup();
+                        },
+                        destructive: true));
                 }
             };
 
@@ -533,7 +539,13 @@ namespace FullyAutomaticOmniCrafter
                 icon = VoidDeleterTex.IconCleanFilth,
                 action = () =>
                 {
-                    ProcessFilthCleanup();
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "VoidDeleter_ConfirmCleanFilth".Translate(),
+                        () =>
+                        {
+                            ProcessFilthCleanup();
+                        },
+                        destructive: true));
                 }
             };
         }
@@ -566,7 +578,7 @@ namespace FullyAutomaticOmniCrafter
             ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconCleanFilth =
-            ContentFinder<Texture2D>.Get("UI/Designators/HomeAreaClearFilth", false)
+            ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearFilth", false)
             ?? BaseContent.WhiteTex;
     }
 }

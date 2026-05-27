@@ -23,5 +23,8 @@
 
     <VoidDeleter_CleanFilth>Clean Filth</VoidDeleter_CleanFilth>
     <VoidDeleter_CleanFilthDesc>Immediately clean all filth in the selected area (cleans entire map if no area is selected).</VoidDeleter_CleanFilthDesc>
+
+    <VoidDeleter_ConfirmCleanFilth>Are you sure you want to clean all filth in the area?</VoidDeleter_ConfirmCleanFilth>
+    <VoidDeleter_ConfirmFinishAll>Are you sure you want to finish all pending tasks in the area?</VoidDeleter_ConfirmFinishAll>
 </LanguageData>
 
