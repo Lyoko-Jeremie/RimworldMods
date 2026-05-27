@@ -371,6 +371,7 @@
     <Compile Include="CompAutoSmoother.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
+    <Compile Include="CompOmniProjectileInterceptor.cs" />
     <Compile Include="DebugTools_PoisonFood.cs" />
     <Compile Include="Designator_PhantomWall2Passability.cs" />
     <Compile Include="Dialog_AutomatedCapturerSettings.cs" />
