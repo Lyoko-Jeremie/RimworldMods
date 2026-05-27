@@ -18,7 +18,7 @@
               <comps>
                 <li Class="CompProperties_CauseHediff_Apparel">
                   <hediff>SNS_TemporalBarrier_RadClear</hediff>
-                  <hediffSeverity>1.0</hediffSeverity>
+<!--                  <hediffSeverity>1.0</hediffSeverity>-->
                 </li>
               </comps>
             </value>
@@ -29,7 +29,7 @@
             <value>
               <li Class="CompProperties_CauseHediff_Apparel">
                 <hediff>SNS_TemporalBarrier_RadClear</hediff>
-                <hediffSeverity>1.0</hediffSeverity>
+<!--                <hediffSeverity>1.0</hediffSeverity>-->
               </li>
             </value>
           </match>
