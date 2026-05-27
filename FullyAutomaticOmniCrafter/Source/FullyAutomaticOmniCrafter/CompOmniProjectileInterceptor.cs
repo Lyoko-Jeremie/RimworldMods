@@ -181,8 +181,14 @@ namespace FullyAutomaticOmniCrafter
 
         public override void PostDraw()
         {
-            // base.PostDraw(); // 不调用基类的绘制，因为我们要自定义半径和始终可见逻辑
+            // 不再在 PostDraw 中绘制，改为由 OmniInterceptorTracker.MapComponentUpdate 统一绘制，
+            // 这样即使物体不在视口范围内，光效圈仍然可见。
+        }
 
+        private static readonly MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
+
+        public void DrawShield()
+        {
             if (!shieldEnabled) return;
 
             // 只有选中时才绘制半径圆圈（白色边框）
@@ -200,8 +206,8 @@ namespace FullyAutomaticOmniCrafter
                 Color color = Props.color;
                 color.a *= currentAlpha;
 
-                // 注入我们的材质属性
-                MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
+                // 使用静态缓存的材质属性块，避免每帧分配
+                matPropertyBlock.Clear();
                 matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
 
                 // 护盾纹理实际大小因子 (297/256 来自原版)
@@ -341,6 +347,36 @@ namespace FullyAutomaticOmniCrafter
         public OmniInterceptorTracker(Map map) : base(map)
         {
             cellCache = new CompOmniProjectileInterceptor[map.cellIndices.NumGridCells];
+        }
+
+        public override void MapComponentUpdate()
+        {
+            base.MapComponentUpdate();
+            
+            // 获取当前相机的视口范围（以格子为单位）
+            // 如果不在游戏运行状态，或者地图不是当前地图，则不执行视口检查绘制（安全保护）
+            if (Find.CurrentMap != map) return;
+            
+            CellRect viewRect = Find.CameraDriver.CurrentViewRect;
+            
+            // 统一绘制所有护盾，但增加视口裁剪检查以优化性能
+            for (int i = 0; i < staticInterceptors.Count; i++)
+            {
+                var inter = staticInterceptors[i];
+                // 增加护盾半径作为缓冲区，确保边缘不会被突然截断
+                if (viewRect.ExpandedBy(Mathf.CeilToInt(inter.Radius)).Contains(inter.parent.Position))
+                {
+                    inter.DrawShield();
+                }
+            }
+            for (int i = 0; i < mobileInterceptors.Count; i++)
+            {
+                var inter = mobileInterceptors[i];
+                if (viewRect.ExpandedBy(Mathf.CeilToInt(inter.Radius)).Contains(inter.parent.Position))
+                {
+                    inter.DrawShield();
+                }
+            }
         }
 
         public void Register(CompOmniProjectileInterceptor interceptor)
