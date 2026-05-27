@@ -5,7 +5,8 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
-// 1. 属性类：用于在XML中定义和传递参数
+
+    // 1. 属性类：用于在XML中定义和传递参数
     public class CompProperties_AutoRoofer : CompProperties
     {
         public CompProperties_AutoRoofer()
@@ -89,11 +90,11 @@ namespace FullyAutomaticOmniCrafter
                     RoofDef roof = map.roofGrid.RoofAt(cell);
                     if (roof == null) continue;
 
-                    if (roof.isThickRoof && roof.isNatural)
-                        continue; // 天然岩顶，永不触碰
+                    // if (roof.isThickRoof && roof.isNatural)
+                    //     continue; // 天然岩顶，永不触碰
 
-                    if (roof.isThickRoof && !roof.isNatural && !canRemoveThickRoof)
-                        continue; // ExpandedRoofing 玩家建造的厚屋顶，研究未完成则跳过
+                    // if (roof.isThickRoof && !roof.isNatural && !canRemoveThickRoof)
+                    //     continue; // ExpandedRoofing 玩家建造的厚屋顶，研究未完成则跳过
 
                     map.roofGrid.SetRoof(cell, null);
                     removedCount++;
