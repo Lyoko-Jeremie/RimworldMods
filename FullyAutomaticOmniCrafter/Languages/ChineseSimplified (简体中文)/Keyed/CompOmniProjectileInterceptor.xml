@@ -4,4 +4,8 @@
   <OmniInterceptor_SetRadiusDesc>调整护盾的影响半径。</OmniInterceptor_SetRadiusDesc>
   <OmniInterceptor_Radius>当前半径</OmniInterceptor_Radius>
   <OmniInterceptor_RadiusInput>输入数值</OmniInterceptor_RadiusInput>
+  <OmniInterceptor_InterceptSkyfallers>拦截空降物</OmniInterceptor_InterceptSkyfallers>
+  <OmniInterceptor_InterceptSkyfallersDesc>切换是否拦截进入的空降物（如空投舱、陨石等）。</OmniInterceptor_InterceptSkyfallersDesc>
+  <OmniInterceptor_SkyfallerRedirected>一个空降物已被重定向。</OmniInterceptor_SkyfallerRedirected>
+  <OmniInterceptor_SkyfallerDestroyed>{0} 已被拦截器摧毁。</OmniInterceptor_SkyfallerDestroyed>
 </LanguageData>

@@ -23,6 +23,9 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconRangeSlider =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_RangeSlider", false)
             ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconInterceptSkyfaller =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_InterceptSkyfaller", false)
+            ?? BaseContent.WhiteTex;
     }
 
     /// <summary>
@@ -93,7 +96,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "OmniInterceptor_InterceptSkyfallers".Translate(),
                 defaultDesc = "OmniInterceptor_InterceptSkyfallersDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", false), // 借用个图标
+                icon = OmniProjectileInterceptorTex.IconInterceptSkyfaller,
                 isActive = () => interceptSkyfallers,
                 toggleAction = () => interceptSkyfallers = !interceptSkyfallers
             };
@@ -467,7 +470,7 @@ namespace FullyAutomaticOmniCrafter
                     c => c.InBounds(map) && (trackerLocal == null || !trackerLocal.IsCellProtected(c, null, out _)), out var foundCell))
             {
                 skyfaller.Position = foundCell;
-                // Messages.Message("OmniInterceptor_SkyfallerRedirected".Translate(), skyfaller, MessageTypeDefOf.NeutralEvent);
+                Messages.Message("OmniInterceptor_SkyfallerRedirected".Translate(), skyfaller, MessageTypeDefOf.NeutralEvent);
             }
             else
             {

@@ -4,4 +4,8 @@
   <OmniInterceptor_SetRadiusDesc>Adjust the impact radius of the shield.</OmniInterceptor_SetRadiusDesc>
   <OmniInterceptor_Radius>Current Radius</OmniInterceptor_Radius>
   <OmniInterceptor_RadiusInput>Manual Input</OmniInterceptor_RadiusInput>
+  <OmniInterceptor_InterceptSkyfallers>Intercept Skyfallers</OmniInterceptor_InterceptSkyfallers>
+  <OmniInterceptor_InterceptSkyfallersDesc>Toggle whether to intercept incoming skyfallers (e.g. drop pods, meteorites).</OmniInterceptor_InterceptSkyfallersDesc>
+  <OmniInterceptor_SkyfallerRedirected>A skyfaller was redirected.</OmniInterceptor_SkyfallerRedirected>
+  <OmniInterceptor_SkyfallerDestroyed>{0} was destroyed by the interceptor.</OmniInterceptor_SkyfallerDestroyed>
 </LanguageData>
