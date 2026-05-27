@@ -28,6 +28,8 @@ namespace FullyAutomaticOmniCrafter
 
         public bool IsStatic => Props.isStatic ?? (parent is Building);
 
+        public float Radius => Props.radius;
+
         public override void PostPreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
             // 护盾本体无敌，不吸收伤害（因为它是能量场的一部分，不应该被损毁）
