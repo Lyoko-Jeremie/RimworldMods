@@ -20,11 +20,17 @@ namespace FullyAutomaticOmniCrafter
     [StaticConstructorOnStartup]
     public static class OmniProjectileInterceptorTex
     {
+        public static readonly Texture2D IconShieldEnabled =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_ShieldEnabled", false)
+            ?? BaseContent.WhiteTex;
         public static readonly Texture2D IconRangeSlider =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_RangeSlider", false)
             ?? BaseContent.WhiteTex;
         public static readonly Texture2D IconInterceptSkyfaller =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_InterceptSkyfaller", false)
+            ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconAlwaysVisible =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_AlwaysVisible", false)
             ?? BaseContent.WhiteTex;
     }
 
@@ -106,7 +112,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "OmniInterceptor_ShieldEnabled".Translate(),
                 defaultDesc = "OmniInterceptor_ShieldEnabledDesc".Translate(),
-                icon = parent.def.uiIcon,
+                icon = OmniProjectileInterceptorTex.IconShieldEnabled,
                 isActive = () => shieldEnabled,
                 toggleAction = () =>
                 {
@@ -131,7 +137,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "OmniInterceptor_AlwaysVisible".Translate(),
                 defaultDesc = "OmniInterceptor_AlwaysVisibleDesc".Translate(),
-                icon = parent.def.uiIcon,
+                icon = OmniProjectileInterceptorTex.IconAlwaysVisible,
                 isActive = () => alwaysVisible,
                 toggleAction = () => alwaysVisible = !alwaysVisible
             };
