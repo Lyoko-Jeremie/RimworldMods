@@ -183,8 +183,8 @@ namespace FullyAutomaticOmniCrafter
 
             if (!shieldEnabled) return;
 
-            // 如果开启了始终可见，绘制半径圆圈
-            if (alwaysVisible || Find.Selector.IsSelected(parent))
+            // 只有选中时才绘制半径圆圈（白色边框）
+            if (Find.Selector.IsSelected(parent))
             {
                 GenDraw.DrawRadiusRing(parent.Position, Radius);
             }
