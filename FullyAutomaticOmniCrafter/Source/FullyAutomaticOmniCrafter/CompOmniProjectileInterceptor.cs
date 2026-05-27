@@ -183,6 +183,12 @@ namespace FullyAutomaticOmniCrafter
 
             if (!shieldEnabled) return;
 
+            // 如果开启了始终可见，绘制半径圆圈
+            if (alwaysVisible || Find.Selector.IsSelected(parent))
+            {
+                GenDraw.DrawRadiusRing(parent.Position, Radius);
+            }
+
             Vector3 drawPos = parent.DrawPos;
             drawPos.y = AltitudeLayer.MoteOverhead.AltitudeFor();
             
@@ -212,17 +218,16 @@ namespace FullyAutomaticOmniCrafter
 
         private float GetCurrentAlpha()
         {
-            // 如果没开启始终可见，且没被选中，则不显示（或者返回基类默认逻辑，但由于我们接管了绘制，这里直接处理）
+            // 如果没开启始终可见，且没被选中，则不显示
             if (!alwaysVisible && !Find.Selector.IsSelected(parent))
             {
                 return 0f;
             }
 
             // 始终显示护盾，即使没有被选中。
-            // 原版的 GetCurrentAlpha_Idle 在玩家派系且没有被选中时返回 0。
-            // 我们这里强制返回一个基础亮度。
-            
-            float idleAlpha = Mathf.Lerp(Props.minIdleAlpha, 0.11f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 96804938) % 100) + Time.realtimeSinceStartup * Props.idlePulseSpeed) + 1f) / 2f);
+            // 使用 Mathf.Max 确保 minIdleAlpha 不会导致 alpha 变成负数（原版 minIdleAlpha 默认为 -1.7）
+            float baseMinIdleAlpha = Mathf.Max(0.05f, Props.minIdleAlpha);
+            float idleAlpha = Mathf.Lerp(baseMinIdleAlpha, 0.11f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 96804938) % 100) + Time.realtimeSinceStartup * Props.idlePulseSpeed) + 1f) / 2f);
             
             if (Find.Selector.IsSelected(parent))
             {
@@ -231,7 +236,7 @@ namespace FullyAutomaticOmniCrafter
                 return Mathf.Max(idleAlpha, selectedAlpha);
             }
 
-            return Mathf.Max(idleAlpha, Props.minAlpha);
+            return Mathf.Max(idleAlpha, Mathf.Max(Props.minAlpha, 0.05f));
         }
 
         // 拦截逻辑
