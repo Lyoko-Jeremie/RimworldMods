@@ -6,7 +6,6 @@
         <label>OmniSphericalEnergyDefenseField</label>
         <description>description</description>
 
-        <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall2</thingClass>
         <tickerType>Normal</tickerType>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
@@ -19,7 +18,7 @@
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <size>(1,1)</size>
-        <uiIconPath>Things/Building/Linked/OmniSphericalEnergyDefenseField</uiIconPath>
+        <uiIconPath>Things/Building/Production/OmniSphericalEnergyDefenseField</uiIconPath>
 
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
@@ -61,11 +60,11 @@
         </building>
         <rotatable>false</rotatable>
         
-        <comp>
+        <comps>
             <li Class="FullyAutomaticOmniCrafter.CompProperties_OmniProjectileInterceptor">
                 <isStatic>true</isStatic>
             </li>
-        </comp>
+        </comps>
 
     </ThingDef>
 
