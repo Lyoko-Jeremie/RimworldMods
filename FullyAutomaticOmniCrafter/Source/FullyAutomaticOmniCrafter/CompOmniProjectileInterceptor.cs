@@ -56,10 +56,13 @@ namespace FullyAutomaticOmniCrafter
             base.PostDeSpawn(map, mode);
         }
 
+        public bool interceptSkyfallers = true;
+
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Values.Look(ref radiusOverride, "radiusOverride");
+            Scribe_Values.Look(ref interceptSkyfallers, "interceptSkyfallers", true);
         }
 
         public override void CompTick()
@@ -86,6 +89,15 @@ namespace FullyAutomaticOmniCrafter
                 yield return gizmo;
             }
 
+            yield return new Command_Toggle
+            {
+                defaultLabel = "OmniInterceptor_InterceptSkyfallers".Translate(),
+                defaultDesc = "OmniInterceptor_InterceptSkyfallersDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", false), // 借用个图标
+                isActive = () => interceptSkyfallers,
+                toggleAction = () => interceptSkyfallers = !interceptSkyfallers
+            };
+
             yield return new Command_Action
             {
                 defaultLabel = "OmniInterceptor_SetRadius".Translate(),
@@ -107,9 +119,18 @@ namespace FullyAutomaticOmniCrafter
 
         public bool IsEnemy(Pawn pawn)
         {
-            if (pawn == null) return false;
-            if (parent.Faction == null) return pawn.HostileTo(Faction.OfPlayer);
-            return pawn.HostileTo(parent.Faction);
+            if (pawn == null) return true; // 无主也视为拦截对象（保守策略）
+            // 无论护盾属于谁，只要该 Pawn 对玩家敌对，就视为“敌人”
+            return pawn.HostileTo(Faction.OfPlayer);
+        }
+
+        public bool IsEnemy(Thing thing)
+        {
+            if (thing == null) return true;
+            if (thing is Pawn pawn) return IsEnemy(pawn);
+            // 检查派系是否对玩家敌对
+            if (thing.Faction == null) return true; // 无派系通常视为拦截对象（如无主投影物）
+            return thing.Faction.HostileTo(Faction.OfPlayer);
         }
 
         // 拦截逻辑
@@ -117,20 +138,12 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!Active) return false;
 
-            // 只要不是己方或盟友，且不在白名单内，就拦截
-            bool hostile = false;
-            if (projectile.Launcher != null)
+            // 检查来源
+            if (!IsEnemy(projectile.Launcher))
             {
-                hostile = IsEnemy(projectile.Launcher as Pawn)
-                          || (projectile.Launcher.Faction != null && parent.Faction != null &&
-                              projectile.Launcher.Faction.HostileTo(parent.Faction));
+                // 如果不是敌人发射的，且配置为不拦截非敌对投影物，则放行
+                if (!Props.interceptNonHostileProjectiles) return false;
             }
-            else
-            {
-                hostile = true; // 无主投影物默认拦截（除非配置了不拦截非敌对）
-            }
-
-            if (!hostile && !Props.interceptNonHostileProjectiles) return false;
 
             // 距离检查
             float radius = Radius;
@@ -140,18 +153,27 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
 
+            // 如果已经进入了护盾内部（相对于中心），拦截它
+            // 基类逻辑通常处理这种穿过边界的情况
             return base.CheckIntercept(projectile, lastExactPos, newExactPos);
         }
 
         public new bool CheckBombardmentIntercept(Bombardment bombardment, Bombardment.BombardmentProjectile projectile)
         {
             if (!Active) return false;
+            // 拦截敌人或无主的轰炸
+            if (IsEnemy(bombardment.instigator)) return true;
             return base.CheckBombardmentIntercept(bombardment, projectile);
         }
 
         public new bool BombardmentCanStartFireAt(Bombardment bombardment, IntVec3 cell)
         {
-            if (!Active) return true; // 返回 true 表示拦截（阻止开火）
+            if (!Active) return true; 
+            // 如果轰炸者是敌人，且目标在护盾半径内，拦截（阻止开火）
+            if (IsEnemy(bombardment.instigator) && cell.InHorDistOf(parent.Position, Radius))
+            {
+                return false; // 返回 false 表示不能开火（即拦截）
+            }
             return base.BombardmentCanStartFireAt(bombardment, cell);
         }
     }
@@ -255,7 +277,7 @@ namespace FullyAutomaticOmniCrafter
             cacheDirty = false;
         }
 
-        public bool IsCellProtected(IntVec3 c, Pawn forPawn, out CompOmniProjectileInterceptor protector)
+        public bool IsCellProtected(IntVec3 c, Thing searcher, out CompOmniProjectileInterceptor protector)
         {
             protector = null;
             if (!c.InBounds(map)) return false;
@@ -267,7 +289,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 1. 检查固定护盾缓存 O(1)
             var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
-            if (staticInter != null && staticInter.Active && staticInter.IsEnemy(forPawn))
+            if (staticInter != null && staticInter.Active && staticInter.IsEnemy(searcher))
             {
                 protector = staticInter;
                 return true;
@@ -279,7 +301,7 @@ namespace FullyAutomaticOmniCrafter
                 var inter = mobileInterceptors[i];
                 if (inter.Active && c.InHorDistOf(inter.parent.Position, inter.Radius))
                 {
-                    if (inter.IsEnemy(forPawn))
+                    if (inter.IsEnemy(searcher))
                     {
                         protector = inter;
                         return true;
@@ -290,7 +312,7 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
 
-        public bool IsTargetProtected(Thing target, Pawn searcher)
+        public bool IsTargetProtected(Thing target, Thing searcher)
         {
             if (target == null || !target.Spawned) return false;
             return IsCellProtected(target.Position, searcher, out _);
@@ -317,12 +339,144 @@ namespace FullyAutomaticOmniCrafter
     {
         public static void Postfix(ref IAttackTarget __result, IAttackTargetSearcher searcher)
         {
-            if (__result == null || searcher?.Thing?.Map == null) return;
+            if (searcher?.Thing?.Map == null) return;
 
             var tracker = searcher.Thing.Map.GetComponent<OmniInterceptorTracker>();
-            if (tracker != null && tracker.IsTargetProtected(__result.Thing, searcher.Thing as Pawn))
+            if (tracker == null) return;
+
+            // 如果已经有了目标，检查目标是否受保护（如果是敌人在攻击，则拦截）
+            if (__result != null && tracker.IsTargetProtected(__result.Thing, searcher.Thing))
             {
                 __result = null;
+            }
+
+            // 额外逻辑：如果攻击者自己就在某个敌方护盾内，他也不能攻击任何人
+            if (tracker.IsCellProtected(searcher.Thing.Position, searcher.Thing, out _))
+            {
+                __result = null;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Explosion), "StartExplosion")]
+    public static class Patch_Explosion_StartExplosion
+    {
+        public static bool Prefix(Explosion __instance)
+        {
+            if (__instance.Map == null) return true;
+            var tracker = __instance.Map.GetComponent<OmniInterceptorTracker>();
+            if (tracker == null) return true;
+
+            // 如果爆炸中心在受保护区域（且来源是敌人/无主），则抑制
+            // 注意：爆炸可能没有明确的instigator，这里我们保守一点，如果中心受保护就拦截
+            // 或者尝试获取instigator
+            if (tracker.IsCellProtected(__instance.Position, __instance.instigator, out _))
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(Skyfaller), "Tick")]
+    public static class Patch_Skyfaller_Tick
+    {
+        public static void Postfix(Skyfaller __instance)
+        {
+            if (!__instance.Spawned || __instance.Map == null) return;
+            var tracker = __instance.Map.GetComponent<OmniInterceptorTracker>();
+            if (tracker == null) return;
+
+            // 检查落点是否受保护
+            if (tracker.IsCellProtected(__instance.Position, null, out var protector))
+            {
+                if (protector.interceptSkyfallers)
+                {
+                    RedirectOrDestroy(__instance, protector);
+                }
+            }
+        }
+
+        private static void RedirectOrDestroy(Skyfaller skyfaller, CompOmniProjectileInterceptor protector)
+        {
+            Map map = skyfaller.Map;
+            float radius = protector.Radius;
+            IntVec3 center = protector.parent.Position;
+
+            // 尝试在护盾半径外寻找最近的有效空地
+            // 简单逻辑：沿着从中心到落点的向量往外推，直到超出半径
+            Vector3 direction = (skyfaller.Position - center).ToVector3();
+            if (direction.sqrMagnitude < 0.001f)
+            {
+                direction = Vector3.forward;
+            }
+            direction.Normalize();
+
+            IntVec3 targetCell = center + (direction * (radius + 2f)).ToIntVec3();
+
+            // 如果超出地图边界，尝试在地图边缘寻找
+            if (!targetCell.InBounds(map))
+            {
+                targetCell = skyfaller.Position; // 重置，准备进行更广泛的搜索
+            }
+
+            // 在目标位置附近寻找最近的落点
+            var trackerLocal = map.GetComponent<OmniInterceptorTracker>();
+            if (CellFinder.TryFindRandomCellNear(targetCell, map, Mathf.CeilToInt(radius) + 10,
+                    c => c.InBounds(map) && (trackerLocal == null || !trackerLocal.IsCellProtected(c, null, out _)), out var foundCell))
+            {
+                skyfaller.Position = foundCell;
+                // Messages.Message("OmniInterceptor_SkyfallerRedirected".Translate(), skyfaller, MessageTypeDefOf.NeutralEvent);
+            }
+            else
+            {
+                // 实在找不到地方落（可能是全图盾），直接销毁
+                Messages.Message("OmniInterceptor_SkyfallerDestroyed".Translate(skyfaller.LabelCap), MessageTypeDefOf.CautionInput);
+                skyfaller.Destroy();
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(OrbitalStrike), "Tick")]
+    public static class Patch_OrbitalStrike_Tick
+    {
+        public static void Postfix(OrbitalStrike __instance)
+        {
+            if (!__instance.Spawned || __instance.Map == null) return;
+            var tracker = __instance.Map.GetComponent<OmniInterceptorTracker>();
+            if (tracker == null) return;
+
+            if (tracker.IsCellProtected(__instance.Position, __instance.instigator, out _))
+            {
+                __instance.Destroy();
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Verb_LaunchProjectile), "CanHitTargetFrom")]
+    public static class Patch_Verb_LaunchProjectile_CanHitTargetFrom
+    {
+        public static void Postfix(Verb_LaunchProjectile __instance, IntVec3 root, LocalTargetInfo targ, ref bool __result)
+        {
+            if (!__result || __instance.caster?.Map == null) return;
+
+            var tracker = __instance.caster.Map.GetComponent<OmniInterceptorTracker>();
+            if (tracker == null) return;
+
+            // 如果攻击者是敌人，且目标位置受保护，拦截
+            if (tracker.IsTargetProtected(targ.Thing, __instance.caster) || 
+                (targ.HasThing == false && tracker.IsCellProtected(targ.Cell, __instance.caster, out _)))
+            {
+                __result = false;
+                return;
+            }
+
+            // 如果攻击者自己就在受保护位置（敌方护盾内），也不能向外射击
+            if (tracker.IsCellProtected(root, __instance.caster, out _))
+            {
+                __result = false;
+                return;
             }
         }
     }
