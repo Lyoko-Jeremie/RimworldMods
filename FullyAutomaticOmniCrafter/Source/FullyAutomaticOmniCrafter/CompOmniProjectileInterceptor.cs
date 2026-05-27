@@ -68,6 +68,7 @@ namespace FullyAutomaticOmniCrafter
         public bool interceptSkyfallers = true;
         public bool shieldEnabled = true;
         public bool alwaysVisible = true;
+        public float idleAlphaMultiplier = 1f;
 
         public override void PostExposeData()
         {
@@ -76,6 +77,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref interceptSkyfallers, "interceptSkyfallers", true);
             Scribe_Values.Look(ref shieldEnabled, "shieldEnabled", true);
             Scribe_Values.Look(ref alwaysVisible, "alwaysVisible", true);
+            Scribe_Values.Look(ref idleAlphaMultiplier, "idleAlphaMultiplier", 1f);
         }
 
         public override void CompTick()
@@ -186,7 +188,7 @@ namespace FullyAutomaticOmniCrafter
             // 只有选中时才绘制半径圆圈（白色边框）
             if (Find.Selector.IsSelected(parent))
             {
-                GenDraw.DrawRadiusRing(parent.Position, Radius);
+                DrawRadiusRing(parent.Position, Radius);
             }
 
             Vector3 drawPos = parent.DrawPos;
@@ -216,6 +218,50 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        private static List<IntVec3> ringDrawCells = new List<IntVec3>();
+
+        private void DrawRadiusRing(IntVec3 center, float radius)
+        {
+            if (radius < 50f)
+            {
+                GenDraw.DrawRadiusRing(center, radius);
+                return;
+            }
+
+            ringDrawCells.Clear();
+            int num = Mathf.CeilToInt(radius);
+            for (int x = -num; x <= num; x++)
+            {
+                // 仅检查大概在圆周附近的点
+                float xSq = x * x;
+                // 如果 x 的位置已经超过了半径，直接跳过
+                if (xSq > radius * radius) continue;
+
+                // 确定 z 的范围
+                // z^2 <= r^2 - x^2  =>  |z| <= sqrt(r^2 - x^2)
+                float maxZ = Mathf.Sqrt(radius * radius - xSq);
+                float minZ = 0;
+                float innerRadiusSq = (radius - 1f) * (radius - 1f);
+                if (xSq < innerRadiusSq)
+                {
+                    minZ = Mathf.Sqrt(innerRadiusSq - xSq);
+                }
+
+                int zStart = Mathf.CeilToInt(minZ);
+                int zEnd = Mathf.FloorToInt(maxZ);
+
+                for (int z = zStart; z <= zEnd; z++)
+                {
+                    ringDrawCells.Add(center + new IntVec3(x, 0, z));
+                    if (z != 0) ringDrawCells.Add(center + new IntVec3(x, 0, -z));
+                }
+            }
+            if (ringDrawCells.Count > 0)
+            {
+                GenDraw.DrawFieldEdges(ringDrawCells, Color.white);
+            }
+        }
+
         private float GetCurrentAlpha()
         {
             // 如果没开启始终可见，且没被选中，则不显示
@@ -228,6 +274,7 @@ namespace FullyAutomaticOmniCrafter
             // 使用 Mathf.Max 确保 minIdleAlpha 不会导致 alpha 变成负数（原版 minIdleAlpha 默认为 -1.7）
             float baseMinIdleAlpha = Mathf.Max(0.05f, Props.minIdleAlpha);
             float idleAlpha = Mathf.Lerp(baseMinIdleAlpha, 0.11f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 96804938) % 100) + Time.realtimeSinceStartup * Props.idlePulseSpeed) + 1f) / 2f);
+            idleAlpha *= idleAlphaMultiplier;
             
             if (Find.Selector.IsSelected(parent))
             {
@@ -636,14 +683,16 @@ namespace FullyAutomaticOmniCrafter
         private CompOmniProjectileInterceptor comp;
         private float radius;
         private string radiusBuffer;
+        private float idleAlphaMultiplier;
 
-        public override Vector2 InitialSize => new Vector2(400f, 150f);
+        public override Vector2 InitialSize => new Vector2(400f, 250f);
 
         public Dialog_OmniInterceptorSettings(CompOmniProjectileInterceptor comp)
         {
             this.comp = comp;
             this.radius = comp.Radius;
             this.radiusBuffer = radius.ToString("0.0");
+            this.idleAlphaMultiplier = comp.idleAlphaMultiplier;
             this.doCloseButton = true;
             this.doCloseX = true;
             this.forcePause = true;
@@ -676,6 +725,15 @@ namespace FullyAutomaticOmniCrafter
                     radius = parsed;
                     comp.SetRadius(radius);
                 }
+            }
+
+            listing.Gap();
+            listing.Label("OmniInterceptor_IdleAlphaMultiplier".Translate() + ": " + idleAlphaMultiplier.ToString("P0"));
+            float newIdleAlphaMultiplier = listing.Slider(idleAlphaMultiplier, 0f, 10f);
+            if (newIdleAlphaMultiplier != idleAlphaMultiplier)
+            {
+                idleAlphaMultiplier = newIdleAlphaMultiplier;
+                comp.idleAlphaMultiplier = idleAlphaMultiplier;
             }
 
             listing.End();

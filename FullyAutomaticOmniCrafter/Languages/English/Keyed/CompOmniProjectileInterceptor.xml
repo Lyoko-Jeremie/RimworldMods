@@ -12,4 +12,5 @@
   <OmniInterceptor_ShieldEnabledDesc>Toggle whether the energy shield is active.</OmniInterceptor_ShieldEnabledDesc>
   <OmniInterceptor_AlwaysVisible>Always Visible</OmniInterceptor_AlwaysVisible>
   <OmniInterceptor_AlwaysVisibleDesc>Toggle whether the shield remains visible (at low brightness) even when the building is not selected.</OmniInterceptor_AlwaysVisibleDesc>
+  <OmniInterceptor_IdleAlphaMultiplier>Unselected Brightness Multiplier</OmniInterceptor_IdleAlphaMultiplier>
 </LanguageData>
