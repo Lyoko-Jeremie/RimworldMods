@@ -22,6 +22,6 @@
     <VoidDeleter_FinishAllDesc>Immediately finish all pending designations (respects selected area).</VoidDeleter_FinishAllDesc>
 
     <VoidDeleter_CleanFilth>Clean Filth</VoidDeleter_CleanFilth>
-    <VoidDeleter_CleanFilthDesc>Immediately clean all filth in the selected area (respects selected area).</VoidDeleter_CleanFilthDesc>
+    <VoidDeleter_CleanFilthDesc>Immediately clean all filth in the selected area (cleans entire map if no area is selected).</VoidDeleter_CleanFilthDesc>
 </LanguageData>
 
