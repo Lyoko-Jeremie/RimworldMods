@@ -9,14 +9,24 @@ using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter
 {
+    public class CompProperties_OmniProjectileInterceptor : CompProperties_ProjectileInterceptor
+    {
+        public bool? isStatic;
+
+        public CompProperties_OmniProjectileInterceptor()
+        {
+            compClass = typeof(CompOmniProjectileInterceptor);
+        }
+    }
+
     /// <summary>
     /// 一个能量盾，阻挡任何形式的攻击，且阻止敌人通过但允许我方通过，敌人不会主动攻击能量盾内的目标 
     /// </summary>
     public class CompOmniProjectileInterceptor : CompProjectileInterceptor
     {
-        public new CompProperties_ProjectileInterceptor Props => (CompProperties_ProjectileInterceptor)props;
+        public new CompProperties_OmniProjectileInterceptor Props => (CompProperties_OmniProjectileInterceptor)props;
 
-        public bool IsStatic => parent is Building;
+        public bool IsStatic => Props.isStatic ?? (parent is Building);
 
         public override void PostPreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
@@ -79,7 +89,7 @@ namespace FullyAutomaticOmniCrafter
             if (!hostile && !Props.interceptNonHostileProjectiles) return false;
 
             // 距离检查
-            float radius = Props.radius;
+            float radius = Radius;
             Vector3 myPos = parent.Position.ToVector3Shifted();
             if ((newExactPos - myPos).MagnitudeHorizontalSquared() > (radius + 1f) * (radius + 1f))
             {
@@ -164,21 +174,21 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (!inter.Active) continue;
 
-                int radius = Mathf.CeilToInt(inter.Props.radius);
+                int radius = Mathf.CeilToInt(inter.Radius);
                 IntVec3 center = inter.parent.Position;
                 int minX = Mathf.Max(0, center.x - radius);
                 int maxX = Mathf.Min(map.Size.x - 1, center.x + radius);
                 int minZ = Mathf.Max(0, center.z - radius);
                 int maxZ = Mathf.Min(map.Size.z - 1, center.z + radius);
 
-                float radiusSq = inter.Props.radius * inter.Props.radius;
+                float radiusSq = inter.Radius * inter.Radius;
 
                 for (int x = minX; x <= maxX; x++)
                 {
                     for (int z = minZ; z <= maxZ; z++)
                     {
                         IntVec3 c = new IntVec3(x, 0, z);
-                        if (c.InHorDistOf(center, inter.Props.radius))
+                        if (c.InHorDistOf(center, inter.Radius))
                         {
                             int idx = map.cellIndices.CellToIndex(c);
                             // 如果有多个护盾覆盖，这里只保存一个。对于目前逻辑足够，因为只要有一个保护就行。
@@ -216,7 +226,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < mobileInterceptors.Count; i++)
             {
                 var inter = mobileInterceptors[i];
-                if (inter.Active && c.InHorDistOf(inter.parent.Position, inter.Props.radius))
+                if (inter.Active && c.InHorDistOf(inter.parent.Position, inter.Radius))
                 {
                     if (inter.IsEnemy(forPawn))
                     {
