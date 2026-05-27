@@ -501,12 +501,12 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    [HarmonyPatch(typeof(Verb_LaunchProjectile), "CanHitTargetFrom")]
+    [HarmonyPatch(typeof(Verb), "CanHitTargetFrom")]
     public static class Patch_Verb_LaunchProjectile_CanHitTargetFrom
     {
-        public static void Postfix(Verb_LaunchProjectile __instance, IntVec3 root, LocalTargetInfo targ, ref bool __result)
+        public static void Postfix(Verb __instance, IntVec3 root, LocalTargetInfo targ, ref bool __result)
         {
-            if (!__result || __instance.caster?.Map == null) return;
+            if (!__result || !(__instance is Verb_LaunchProjectile) || __instance.caster?.Map == null) return;
 
             var tracker = __instance.caster.Map.GetComponent<OmniInterceptorTracker>();
             if (tracker == null) return;
