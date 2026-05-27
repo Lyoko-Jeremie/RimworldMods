@@ -20,5 +20,8 @@
     <VoidDeleter_FloorRemovalPending>待处理：{0} 个地板/地基移除</VoidDeleter_FloorRemovalPending>
     <VoidDeleter_FinishAll>一键完成</VoidDeleter_FinishAll>
     <VoidDeleter_FinishAllDesc>立即完成所有已标记的任务（受当前所选区域限制）。</VoidDeleter_FinishAllDesc>
+
+    <VoidDeleter_CleanFilth>一键清理污物</VoidDeleter_CleanFilth>
+    <VoidDeleter_CleanFilthDesc>立即清理所选区域内的所有污物（受当前所选区域限制）。</VoidDeleter_CleanFilthDesc>
 </LanguageData>
 

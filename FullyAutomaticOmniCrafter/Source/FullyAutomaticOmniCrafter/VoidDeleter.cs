@@ -62,6 +62,26 @@ namespace FullyAutomaticOmniCrafter
             ProcessFloorRemovals();
         }
 
+        // ── Filth cleanup pass ────────────────────────────────────────────────
+        private void ProcessFilthCleanup()
+        {
+            if (_targetArea != null)
+            {
+                foreach (IntVec3 cell in _targetArea.ActiveCells)
+                {
+                    FilthMaker.RemoveAllFilth(cell, Map);
+                }
+            }
+            else
+            {
+                // 手动执行时，如果未选定区域，则清理全图
+                foreach (IntVec3 cell in Map.AllCells)
+                {
+                    FilthMaker.RemoveAllFilth(cell, Map);
+                }
+            }
+        }
+
         // ── Deconstruct pass ───────────────────────────────────────────────────
         private void ProcessDeconstructions()
         {
@@ -501,6 +521,19 @@ namespace FullyAutomaticOmniCrafter
                     ProcessDeconstructions();
                     ProcessMining();
                     ProcessFloorRemovals();
+                    ProcessFilthCleanup();
+                }
+            };
+
+            // ── 5. Clean Filth ────────────────────────────────────────────────
+            yield return new Command_Action
+            {
+                defaultLabel = "VoidDeleter_CleanFilth".Translate(),
+                defaultDesc = "VoidDeleter_CleanFilthDesc".Translate(),
+                icon = VoidDeleterTex.IconCleanFilth,
+                action = () =>
+                {
+                    ProcessFilthCleanup();
                 }
             };
         }
@@ -530,6 +563,10 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconFinishAll =
             ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_FinishAll", false)
             ?? ContentFinder<Texture2D>.Get("UI/Commands/UltimateAutoRepair_CompleteAll", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconCleanFilth =
+            ContentFinder<Texture2D>.Get("UI/Designators/HomeAreaClearFilth", false)
             ?? BaseContent.WhiteTex;
     }
 }

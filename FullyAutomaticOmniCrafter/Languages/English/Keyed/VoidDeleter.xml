@@ -20,5 +20,8 @@
     <VoidDeleter_FloorRemovalPending>Pending: {0} floor/foundation removals</VoidDeleter_FloorRemovalPending>
     <VoidDeleter_FinishAll>Finish All</VoidDeleter_FinishAll>
     <VoidDeleter_FinishAllDesc>Immediately finish all pending designations (respects selected area).</VoidDeleter_FinishAllDesc>
+
+    <VoidDeleter_CleanFilth>Clean Filth</VoidDeleter_CleanFilth>
+    <VoidDeleter_CleanFilthDesc>Immediately clean all filth in the selected area (respects selected area).</VoidDeleter_CleanFilthDesc>
 </LanguageData>
 
