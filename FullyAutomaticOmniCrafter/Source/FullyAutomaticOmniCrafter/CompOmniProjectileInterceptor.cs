@@ -312,6 +312,48 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
 
+        public bool IsAreaProtected(IntVec3 center, float radius, Thing searcher, out CompOmniProjectileInterceptor protector)
+        {
+            protector = null;
+
+            if (cacheDirty)
+            {
+                RebuildCache();
+            }
+
+            // 1. 检查固定护盾
+            // 只要 (护盾中心和攻击中心之间的距离) < (护盾半径 + 攻击半径)，两个圆就相交
+            foreach (var inter in staticInterceptors)
+            {
+                if (inter.Active && inter.IsEnemy(searcher))
+                {
+                    float combinedRadius = inter.Radius + radius;
+                    if (center.InHorDistOf(inter.parent.Position, combinedRadius))
+                    {
+                        protector = inter;
+                        return true;
+                    }
+                }
+            }
+
+            // 2. 检查移动护盾
+            for (int i = 0; i < mobileInterceptors.Count; i++)
+            {
+                var inter = mobileInterceptors[i];
+                if (inter.Active && inter.IsEnemy(searcher))
+                {
+                    float combinedRadius = inter.Radius + radius;
+                    if (center.InHorDistOf(inter.parent.Position, combinedRadius))
+                    {
+                        protector = inter;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         public bool IsTargetProtected(Thing target, Thing searcher)
         {
             if (target == null || !target.Spawned) return false;
@@ -367,10 +409,8 @@ namespace FullyAutomaticOmniCrafter
             var tracker = __instance.Map.GetComponent<OmniInterceptorTracker>();
             if (tracker == null) return true;
 
-            // 如果爆炸中心在受保护区域（且来源是敌人/无主），则抑制
-            // 注意：爆炸可能没有明确的instigator，这里我们保守一点，如果中心受保护就拦截
-            // 或者尝试获取instigator
-            if (tracker.IsCellProtected(__instance.Position, __instance.instigator, out _))
+            // 如果爆炸范围涉及受保护区域（且来源是敌人/无主），则抑制
+            if (tracker.IsAreaProtected(__instance.Position, __instance.radius, __instance.instigator, out _))
             {
                 return false;
             }
@@ -447,7 +487,11 @@ namespace FullyAutomaticOmniCrafter
             var tracker = __instance.Map.GetComponent<OmniInterceptorTracker>();
             if (tracker == null) return;
 
-            if (tracker.IsCellProtected(__instance.Position, __instance.instigator, out _))
+            float radius = 0f;
+            if (__instance is PowerBeam) radius = 15f;
+            else if (__instance is Bombardment b) radius = b.impactAreaRadius + 8f; // 加上爆炸半径
+
+            if (tracker.IsAreaProtected(__instance.Position, radius, __instance.instigator, out _))
             {
                 __instance.Destroy();
             }
