@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OmniInterceptor_SetRadius>Set Radius</OmniInterceptor_SetRadius>
+  <OmniInterceptor_SetRadiusDesc>Adjust the impact radius of the shield.</OmniInterceptor_SetRadiusDesc>
+  <OmniInterceptor_Radius>Current Radius</OmniInterceptor_Radius>
+  <OmniInterceptor_RadiusInput>Manual Input</OmniInterceptor_RadiusInput>
+</LanguageData>

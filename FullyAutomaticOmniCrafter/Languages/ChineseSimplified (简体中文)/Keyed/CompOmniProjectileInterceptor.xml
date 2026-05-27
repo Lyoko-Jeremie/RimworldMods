@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OmniInterceptor_SetRadius>设置半径</OmniInterceptor_SetRadius>
+  <OmniInterceptor_SetRadiusDesc>调整护盾的影响半径。</OmniInterceptor_SetRadiusDesc>
+  <OmniInterceptor_Radius>当前半径</OmniInterceptor_Radius>
+  <OmniInterceptor_RadiusInput>输入数值</OmniInterceptor_RadiusInput>
+</LanguageData>

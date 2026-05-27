@@ -17,6 +17,14 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    [StaticConstructorOnStartup]
+    public static class OmniProjectileInterceptorTex
+    {
+        public static readonly Texture2D IconRangeSlider =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniProjectileInterceptor_RangeSlider", false)
+            ?? BaseContent.WhiteTex;
+    }
+
     /// <summary>
     /// 一个能量盾，阻挡任何形式的攻击，且阻止敌人通过但允许我方通过，敌人不会主动攻击能量盾内的目标 
     /// </summary>
@@ -26,7 +34,9 @@ namespace FullyAutomaticOmniCrafter
 
         public bool IsStatic => Props.isStatic ?? (parent is Building);
 
-        public float Radius => Props.radius;
+        private float? radiusOverride;
+
+        public float Radius => radiusOverride ?? Props.radius;
 
         public override void PostPreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
@@ -46,6 +56,12 @@ namespace FullyAutomaticOmniCrafter
             base.PostDeSpawn(map, mode);
         }
 
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref radiusOverride, "radiusOverride");
+        }
+
         public override void CompTick()
         {
             base.CompTick();
@@ -60,6 +76,32 @@ namespace FullyAutomaticOmniCrafter
                 // 检查激活状态变化或半径变化。由于 currentHitPoints 总是被重设为满，Active 通常稳定。
                 // 暂时只在 Register/Deregister 时刷新，这里作为安全网
                 // parent.Map.GetComponent<OmniInterceptorTracker>().DirtyCache();
+            }
+        }
+
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (var gizmo in base.CompGetGizmosExtra())
+            {
+                yield return gizmo;
+            }
+
+            yield return new Command_Action
+            {
+                defaultLabel = "OmniInterceptor_SetRadius".Translate(),
+                defaultDesc = "OmniInterceptor_SetRadiusDesc".Translate(),
+                icon = OmniProjectileInterceptorTex.IconRangeSlider,
+                action = () => Find.WindowStack.Add(new Dialog_OmniInterceptorSettings(this))
+            };
+        }
+
+        public void SetRadius(float newRadius)
+        {
+            radiusOverride = newRadius;
+            var map = parent.Map;
+            if (map != null)
+            {
+                map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
             }
         }
 
@@ -79,7 +121,9 @@ namespace FullyAutomaticOmniCrafter
             bool hostile = false;
             if (projectile.Launcher != null)
             {
-                hostile = IsEnemy(projectile.Launcher as Pawn) || (projectile.Launcher.Faction != null && parent.Faction != null && projectile.Launcher.Faction.HostileTo(parent.Faction));
+                hostile = IsEnemy(projectile.Launcher as Pawn)
+                          || (projectile.Launcher.Faction != null && parent.Faction != null &&
+                              projectile.Launcher.Faction.HostileTo(parent.Faction));
             }
             else
             {
@@ -165,6 +209,11 @@ namespace FullyAutomaticOmniCrafter
 
         private void RebuildCache()
         {
+            if (cellCache == null || cellCache.Length != map.cellIndices.NumGridCells)
+            {
+                cellCache = new CompOmniProjectileInterceptor[map.cellIndices.NumGridCells];
+            }
+
             for (int i = 0; i < cellCache.Length; i++)
             {
                 cellCache[i] = null;
@@ -174,24 +223,26 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (!inter.Active) continue;
 
-                int radius = Mathf.CeilToInt(inter.Radius);
+                float currentRadius = inter.Radius;
+                int radiusInt = Mathf.CeilToInt(currentRadius);
                 IntVec3 center = inter.parent.Position;
-                int minX = Mathf.Max(0, center.x - radius);
-                int maxX = Mathf.Min(map.Size.x - 1, center.x + radius);
-                int minZ = Mathf.Max(0, center.z - radius);
-                int maxZ = Mathf.Min(map.Size.z - 1, center.z + radius);
 
-                float radiusSq = inter.Radius * inter.Radius;
+                int minX = Mathf.Max(0, center.x - radiusInt);
+                int maxX = Mathf.Min(map.Size.x - 1, center.x + radiusInt);
+                int minZ = Mathf.Max(0, center.z - radiusInt);
+                int maxZ = Mathf.Min(map.Size.z - 1, center.z + radiusInt);
 
                 for (int x = minX; x <= maxX; x++)
                 {
                     for (int z = minZ; z <= maxZ; z++)
                     {
                         IntVec3 c = new IntVec3(x, 0, z);
-                        if (c.InHorDistOf(center, inter.Radius))
+                        // 使用平面的欧几里得距离平方检查
+                        float dx = (float)(x - center.x);
+                        float dz = (float)(z - center.z);
+                        if (dx * dx + dz * dz <= currentRadius * currentRadius)
                         {
                             int idx = map.cellIndices.CellToIndex(c);
-                            // 如果有多个护盾覆盖，这里只保存一个。对于目前逻辑足够，因为只要有一个保护就行。
                             if (cellCache[idx] == null)
                             {
                                 cellCache[idx] = inter;
@@ -267,7 +318,7 @@ namespace FullyAutomaticOmniCrafter
         public static void Postfix(ref IAttackTarget __result, IAttackTargetSearcher searcher)
         {
             if (__result == null || searcher?.Thing?.Map == null) return;
-            
+
             var tracker = searcher.Thing.Map.GetComponent<OmniInterceptorTracker>();
             if (tracker != null && tracker.IsTargetProtected(__result.Thing, searcher.Thing as Pawn))
             {
@@ -275,4 +326,56 @@ namespace FullyAutomaticOmniCrafter
             }
         }
     }
+    
+    public class Dialog_OmniInterceptorSettings : Window
+    {
+        private CompOmniProjectileInterceptor comp;
+        private float radius;
+        private string radiusBuffer;
+
+        public override Vector2 InitialSize => new Vector2(400f, 150f);
+
+        public Dialog_OmniInterceptorSettings(CompOmniProjectileInterceptor comp)
+        {
+            this.comp = comp;
+            this.radius = comp.Radius;
+            this.radiusBuffer = radius.ToString("0.0");
+            this.doCloseButton = true;
+            this.doCloseX = true;
+            this.forcePause = true;
+            this.absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(inRect);
+
+            listing.Label("OmniInterceptor_Radius".Translate() + ": " + radius.ToString("0.0"));
+
+            float newRadius = listing.Slider(radius, 1f, 256f);
+            if (newRadius != radius)
+            {
+                radius = newRadius;
+                radiusBuffer = radius.ToString("0.0");
+                comp.SetRadius(radius);
+            }
+
+            Rect textRect = listing.GetRect(24f);
+            Widgets.Label(textRect.LeftPart(0.4f), "OmniInterceptor_RadiusInput".Translate());
+            string buffer = Widgets.TextField(textRect.RightPart(0.6f), radiusBuffer);
+            if (buffer != radiusBuffer)
+            {
+                radiusBuffer = buffer;
+                if (float.TryParse(radiusBuffer, out float parsed) && parsed >= 1f && parsed <= 256f)
+                {
+                    radius = parsed;
+                    comp.SetRadius(radius);
+                }
+            }
+
+            listing.End();
+        }
+    }
+    
 }
