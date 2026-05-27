@@ -1,0 +1,494 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RimWorld Mod 创意工坊介绍生成器</title>
+    <!-- 引入 Tailwind CSS 用于快速构建美观的 UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Fabric.js 用于 Canvas 图像处理与排版 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        /* 自定义滚动条样式，契合暗色主题 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .canvas-container { margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen overflow-hidden flex font-sans">
+
+    <!-- 左侧：控制面板与物品列表 -->
+    <div class="w-1/3 bg-gray-800 flex flex-col h-full border-r border-gray-700 shadow-xl z-10">
+        <div class="p-5 border-b border-gray-700 bg-gray-800">
+            <h1 class="text-xl font-bold text-blue-400 mb-2">RimWorld Mod 介绍生成器</h1>
+            <p class="text-xs text-gray-400 mb-4">添加物品，填写介绍，生成精美的创意工坊长图。支持导出工程以便下次修改。</p>
+            
+            <!-- 新增：分辨率与导出设置 -->
+            <div class="mb-4 bg-gray-900 p-3 rounded border border-gray-700">
+                <h2 class="text-sm font-bold text-gray-300 mb-2">⚙️ 分辨率与导出设置</h2>
+                <div class="flex gap-2 items-center mb-2">
+                    <label class="text-xs text-gray-400 w-16">画布宽度:</label>
+                    <input type="number" id="canvasWidthInput" value="800" min="400" max="3000" step="50" onchange="renderToCanvas()" class="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" title="调整排版的基础宽度，内部元素会等比缩放">
+                    <span class="text-xs text-gray-500 w-4">px</span>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <label class="text-xs text-gray-400 w-16">导出倍率:</label>
+                    <select id="exportMultiplier" class="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500" title="导出图片时的清晰度放大倍数（不改变画布布局）">
+                        <option value="1">1x (标准)</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x (高清)</option>
+                        <option value="3">3x (超清)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button onclick="addNewItem()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded text-sm transition font-medium">
+                    + 添加新物品
+                </button>
+                <button onclick="renderToCanvas()" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-3 rounded text-sm transition font-medium" title="根据下方列表重新生成排版（会覆盖右侧的手动微调）">
+                    🔄 生成/刷新排版
+                </button>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-2">
+                <button onclick="exportImage()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-3 rounded text-sm transition font-medium">
+                    🖼️ 导出 PNG 图片
+                </button>
+                <button onclick="exportProject()" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm transition font-medium">
+                    💾 保存工程
+                </button>
+                <label class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm transition font-medium text-center cursor-pointer border-2 border-dashed border-transparent hover:border-gray-400"
+                       ondragover="handleDragOver(event)" ondrop="handleProjectDrop(event)" title="可以直接将 .json 工程文件拖拽到此按钮上">
+                    📂 导入工程 (支持拖拽)
+                    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importProject(event)">
+                </label>
+            </div>
+        </div>
+
+        <!-- 物品列表区域 -->
+        <div id="itemList" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900">
+            <!-- 物品卡片将由 JS 动态生成在这里 -->
+        </div>
+    </div>
+
+    <!-- 右侧：Canvas 预览与编辑区 -->
+    <div class="w-2/3 bg-gray-950 p-6 overflow-y-auto flex justify-center relative">
+        <div class="absolute top-4 right-6 text-gray-500 text-sm z-10 pointer-events-none">
+            提示：你可以直接在画布上拖拽文字或图片进行微调。
+        </div>
+        <div>
+            <canvas id="modCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 初始化 Fabric.js 画布
+        const canvas = new fabric.Canvas('modCanvas', {
+            backgroundColor: '#1e1e24',
+            selection: true
+        });
+
+        // 核心数据模型：存储所有物品的信息
+        let itemsData = [
+            {
+                id: Date.now(),
+                name: "超凡机械臂 (Archotech Arm)",
+                story: "从失落的超凡世界遗迹中发掘出的奇迹造物。它的运作原理违背了人类已知的物理学常识，其表面的金属似乎有着自己的生命。",
+                desc: "【功能介绍】\n- 提供 150% 的操作效率。\n- 极大提升殖民者的近战攻击力。\n- 安装需要 15 级医疗技能。\n- 无法制作，只能通过远古遗迹、任务奖励或稀有商队获取。",
+                imgUrl: null // 存储 base64 图片数据
+            }
+        ];
+
+        // --- UI 渲染相关 ---
+
+        // 渲染左侧物品列表表单
+        function renderItemList() {
+            const listContainer = document.getElementById('itemList');
+            listContainer.innerHTML = '';
+
+            itemsData.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'bg-gray-800 border border-gray-700 rounded-lg p-4 shadow relative';
+                
+                // 默认图片占位符
+                const imgPreview = item.imgUrl 
+                    ? `<img src="${item.imgUrl}" class="w-16 h-16 object-cover rounded border border-gray-600">`
+                    : `<div class="w-16 h-16 bg-gray-700 rounded border border-gray-600 flex items-center justify-center text-xs text-gray-400">无图片</div>`;
+
+                itemDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold text-gray-300">物品 ${index + 1}</span>
+                        <div class="flex gap-2 items-center">
+                            <button onclick="moveItemUp(${index})" class="text-gray-400 hover:text-white text-xs px-1 ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}" ${index === 0 ? 'disabled' : ''} title="上移">▲</button>
+                            <button onclick="moveItemDown(${index})" class="text-gray-400 hover:text-white text-xs px-1 ${index === itemsData.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}" ${index === itemsData.length - 1 ? 'disabled' : ''} title="下移">▼</button>
+                            <button onclick="removeItem(${item.id})" class="text-red-400 hover:text-red-300 text-sm ml-2">删除</button>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mb-3">
+                        <div class="flex flex-col gap-2 rounded border-2 border-dashed border-transparent hover:border-gray-500 p-1 transition"
+                             ondragover="handleDragOver(event)" ondrop="handleImageDrop(event, ${item.id})" title="也可以将图片直接拖拽到这里">
+                            ${imgPreview}
+                            <label class="bg-gray-700 hover:bg-gray-600 text-xs text-center py-1 rounded cursor-pointer transition">
+                                上传图片
+                                <input type="file" class="hidden" accept="image/*" onchange="handleImageUpload(event, ${item.id})">
+                            </label>
+                        </div>
+                        <div class="flex-1 flex flex-col gap-2">
+                            <input type="text" placeholder="物品名称" value="${item.name}" 
+                                oninput="updateItem(${item.id}, 'name', this.value)"
+                                class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <textarea placeholder="背景故事 (斜体显示)" rows="2"
+                                oninput="updateItem(${item.id}, 'story', this.value)"
+                                class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500 resize-y">${item.story}</textarea>
+                        </div>
+                    </div>
+                    <textarea placeholder="详细介绍与功能 (支持换行)" rows="4"
+                        oninput="updateItem(${item.id}, 'desc', this.value)"
+                        class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500 resize-y">${item.desc}</textarea>
+                `;
+                listContainer.appendChild(itemDiv);
+            });
+        }
+
+        // 添加新物品
+        function addNewItem() {
+            itemsData.push({
+                id: Date.now(),
+                name: "",
+                story: "",
+                desc: "",
+                imgUrl: null
+            });
+            renderItemList();
+        }
+
+        // 删除物品
+        function removeItem(id) {
+            itemsData = itemsData.filter(item => item.id !== id);
+            renderItemList();
+        }
+
+        // 上移物品
+        function moveItemUp(index) {
+            if (index <= 0) return;
+            const temp = itemsData[index];
+            itemsData[index] = itemsData[index - 1];
+            itemsData[index - 1] = temp;
+            renderItemList();
+        }
+
+        // 下移物品
+        function moveItemDown(index) {
+            if (index >= itemsData.length - 1) return;
+            const temp = itemsData[index];
+            itemsData[index] = itemsData[index + 1];
+            itemsData[index + 1] = temp;
+            renderItemList();
+        }
+
+        // 更新物品文本数据
+        function updateItem(id, field, value) {
+            const item = itemsData.find(i => i.id === id);
+            if (item) {
+                item[field] = value;
+            }
+        }
+
+        // 拖拽相关通用事件：阻止默认行为以允许放置
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        // 提取图片处理公用逻辑
+        function processImageFile(file, id) {
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const item = itemsData.find(i => i.id === id);
+                if (item) {
+                    item.imgUrl = e.target.result;
+                    renderItemList(); // 重新渲染以显示缩略图预览
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 处理图片拖放
+        function handleImageDrop(event, id) {
+            event.preventDefault();
+            event.stopPropagation();
+            const file = event.dataTransfer.files[0];
+            processImageFile(file, id);
+        }
+
+        // 处理图片点击上传
+        function handleImageUpload(event, id) {
+            const file = event.target.files[0];
+            processImageFile(file, id);
+        }
+
+        // --- 画布排版与生成逻辑 ---
+
+        // 将数据渲染到 Fabric Canvas 上的核心函数
+        async function renderToCanvas() {
+            canvas.clear();
+            canvas.backgroundColor = '#1e1e24'; // Rimworld 风格深色背景
+
+            // 动态获取用户设置的画布宽度，默认 800
+            const canvasWidth = parseInt(document.getElementById('canvasWidthInput').value) || 800; 
+            canvas.setWidth(canvasWidth);
+
+            // 计算缩放比例，以便根据新宽度等比例调整字体、间距大小
+            const scale = canvasWidth / 800;
+
+            const startX = 30 * scale; // 左侧边距
+            const gapX = 20 * scale; // 图文横向间距
+            const contentWidth = canvasWidth - startX * 2; // 内容可用总宽度
+            
+            // 严格保证 图片和右侧简介的宽度 1:3 分配
+            const imgSize = (contentWidth - gapX) * 0.25; 
+            const rightTextWidth = (contentWidth - gapX) * 0.75; 
+            
+            const textStartX = startX + imgSize + gapX; // 右侧文字起始X轴
+            const fullTextWidth = contentWidth; // 下方文字可用宽度
+
+            let currentY = 40 * scale; // 起始Y轴
+
+            for (let i = 0; i < itemsData.length; i++) {
+                const item = itemsData[i];
+                let itemMaxTopHeight = 0; // 记录上半部分（图/名/故事）的最大高度
+
+                // 1. 渲染图片 (左上)
+                let imgObj = null;
+                if (item.imgUrl) {
+                    imgObj = await new Promise((resolve) => {
+                        fabric.Image.fromURL(item.imgUrl, (img) => {
+                            // 强制按计算出的图片宽度进行缩放，严格保证 1:3 比例关系
+                            img.scaleToWidth(imgSize);
+                            img.set({
+                                left: startX,
+                                top: currentY,
+                                originX: 'left',
+                                originY: 'top',
+                                rx: 5 * scale, // 圆角参数也按比例放大
+                                ry: 5 * scale
+                            });
+                            resolve(img);
+                        });
+                    });
+                    canvas.add(imgObj);
+                    // 高度现在取决于按宽度缩放后的实际高度
+                    itemMaxTopHeight = Math.max(itemMaxTopHeight, imgObj.getScaledHeight());
+                } else {
+                    // 如果没有图片，画一个占位框
+                    imgObj = new fabric.Rect({
+                        left: startX, top: currentY,
+                        width: imgSize, height: imgSize,
+                        fill: '#374151', stroke: '#4b5563', strokeWidth: 2 * scale,
+                        rx: 5 * scale, ry: 5 * scale
+                    });
+                    const placeholderText = new fabric.Text("暂无图片", {
+                        left: startX + imgSize/2, top: currentY + imgSize/2,
+                        fontSize: 16 * scale, fill: '#9ca3af',
+                        originX: 'center', originY: 'center', fontFamily: 'sans-serif'
+                    });
+                    canvas.add(imgObj, placeholderText);
+                    itemMaxTopHeight = Math.max(itemMaxTopHeight, imgSize);
+                }
+
+                // 2. 渲染物品名称 (右上首行)
+                const nameText = new fabric.Text(item.name || "未命名物品", {
+                    left: textStartX,
+                    top: currentY,
+                    fontSize: 28 * scale, // 字体缩放
+                    fill: '#f8fafc',
+                    fontWeight: 'bold',
+                    fontFamily: 'sans-serif',
+                    shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 2 * scale, offsetX: 1 * scale, offsetY: 1 * scale })
+                });
+                canvas.add(nameText);
+
+                // 3. 渲染背景故事 (右上名称下方)
+                const storyTop = currentY + nameText.height + 10 * scale;
+                const storyText = new fabric.Textbox(item.story || "暂无背景故事...", {
+                    left: textStartX,
+                    top: storyTop,
+                    width: rightTextWidth,
+                    fontSize: 16 * scale,
+                    fill: '#94a3b8',
+                    fontStyle: 'italic',
+                    fontFamily: 'sans-serif',
+                    splitByGrapheme: true, // 允许中文字符正确换行
+                    lineHeight: 1.2
+                });
+                canvas.add(storyText);
+
+                // 计算上半部分到底有多高
+                const rightSideHeight = (storyTop - currentY) + storyText.height;
+                itemMaxTopHeight = Math.max(itemMaxTopHeight, rightSideHeight);
+
+                // 4. 渲染详细介绍 (下半部分)
+                const descTop = currentY + itemMaxTopHeight + 25 * scale;
+                const descText = new fabric.Textbox(item.desc || "暂无详细介绍...", {
+                    left: startX,
+                    top: descTop,
+                    width: fullTextWidth,
+                    fontSize: 18 * scale,
+                    fill: '#cbd5e1',
+                    fontFamily: 'sans-serif',
+                    splitByGrapheme: true,
+                    lineHeight: 1.4
+                });
+                canvas.add(descText);
+
+                // 5. 计算当前物品模块总高度并绘制分隔线
+                const itemTotalHeight = (descTop - currentY) + descText.height + 40 * scale; // 40*scale为底部留白
+                
+                // 如果不是最后一个物品，画一条低调的分隔线
+                if (i < itemsData.length - 1) {
+                    const lineY = currentY + itemTotalHeight - 10 * scale;
+                    const line = new fabric.Line([startX, lineY, canvasWidth - startX, lineY], {
+                        stroke: '#334155',
+                        strokeWidth: 2 * scale,
+                        selectable: false // 不允许拖拽分隔线
+                    });
+                    canvas.add(line);
+                }
+
+                // 推进 Y 轴，准备画下一个物品
+                currentY += itemTotalHeight;
+            }
+
+            // 动态设置画布最终总高度
+            canvas.setHeight(currentY);
+            canvas.renderAll();
+        }
+
+        // --- 导出与导入逻辑 ---
+
+        // 导出 PNG 图片
+        function exportImage() {
+            // 暂时取消所有选中状态，避免导出时带有控制框
+            canvas.discardActiveObject();
+            canvas.renderAll();
+
+            // 获取导出倍率，以便导出更高分辨率的图像
+            const exportMultiplier = parseFloat(document.getElementById('exportMultiplier').value) || 1;
+
+            const dataURL = canvas.toDataURL({
+                format: 'png',
+                quality: 1,
+                multiplier: exportMultiplier
+            });
+
+            const link = document.createElement('a');
+            link.download = 'rimworld_mod_presentation.png';
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 导出工程 (包含表单数据、设置和画布当前状态)
+        function exportProject() {
+            const projectData = {
+                version: "1.1",
+                items: itemsData,
+                settings: {
+                    canvasWidth: document.getElementById('canvasWidthInput').value,
+                    exportMultiplier: document.getElementById('exportMultiplier').value
+                },
+                canvasData: canvas.toJSON() // 提取当前画布上所有元素及修改过的位置
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
+            const link = document.createElement('a');
+            link.download = 'rimworld_mod_project.json';
+            link.href = dataStr;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 提取工程文件处理公用逻辑
+        function processProjectFile(file) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const projectData = JSON.parse(e.target.result);
+                    if (projectData.items && projectData.canvasData) {
+                        // 1. 恢复表单数据
+                        itemsData = projectData.items;
+                        
+                        // 2. 恢复全局设置
+                        if (projectData.settings) {
+                            if (projectData.settings.canvasWidth) document.getElementById('canvasWidthInput').value = projectData.settings.canvasWidth;
+                            if (projectData.settings.exportMultiplier) document.getElementById('exportMultiplier').value = projectData.settings.exportMultiplier;
+                        }
+
+                        renderItemList();
+                        
+                        // 3. 恢复画布状态 (包括用户手动挪动的位置)
+                        canvas.loadFromJSON(projectData.canvasData, function() {
+                            // 动态恢复画布的宽和高
+                            const canvasWidth = projectData.settings?.canvasWidth || (projectData.canvasData.backgroundImage ? projectData.canvasData.backgroundImage.width : 800);
+                            const scale = parseInt(canvasWidth) / 800;
+
+                            // 遍历恢复后的对象，找出最底部的元素以确定画布高度
+                            let maxH = 0;
+                            canvas.getObjects().forEach(obj => {
+                                const bottom = obj.top + (obj.height * obj.scaleY);
+                                if (bottom > maxH) maxH = bottom;
+                            });
+                            
+                            canvas.setWidth(parseInt(canvasWidth));
+                            canvas.setHeight(maxH + 40 * scale); // 留出等比的底边距
+                            canvas.renderAll();
+                        });
+                    } else {
+                        alert("无效的工程文件格式！");
+                    }
+                } catch (err) {
+                    alert("解析工程文件失败！");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 处理拖拽导入工程
+        function handleProjectDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const file = event.dataTransfer.files[0];
+            if (file && file.name.endsWith('.json')) {
+                processProjectFile(file);
+            } else {
+                alert("请拖入有效的 .json 工程文件！");
+            }
+        }
+
+        // 处理点击导入工程
+        function importProject(event) {
+            const file = event.target.files[0];
+            processProjectFile(file);
+            // 清空 input，允许重复导入相同文件
+            event.target.value = '';
+        }
+
+        // 初始化：渲染列表并初次生成画布
+        window.onload = () => {
+            renderItemList();
+            // 延迟一点时间等待字体加载，确保首次排版准确
+            setTimeout(() => {
+                renderToCanvas();
+            }, 200);
+        };
+    </script>
+</body>
+</html>
