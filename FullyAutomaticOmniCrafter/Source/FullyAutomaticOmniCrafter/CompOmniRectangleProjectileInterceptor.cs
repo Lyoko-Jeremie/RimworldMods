@@ -133,7 +133,7 @@ namespace FullyAutomaticOmniCrafter
             // MeshPool.plane10 是 10x10 的，所以缩放需要除以 10
             matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(Width / 10f, 1f, Height / 10f));
             
-            Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Other/Mote/PlainColor", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
+            Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Things/Mote/Transparent", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
         }
 
         public void SetSize(float width, float height)
