@@ -109,6 +109,8 @@ namespace FullyAutomaticOmniCrafter
             return cornerDistanceSq <= radius * radius;
         }
 
+        private static readonly MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
+
         public override void DrawShield()
         {
             if (!Active) return;
@@ -129,16 +131,18 @@ namespace FullyAutomaticOmniCrafter
 
             Color color = Props.color;
             // 将 idleAlphaMultiplier 应用到颜色上，这样它会影响填充效果的亮度
-            color.a *= currentAlpha * 0.3f; 
+            color.a *= currentAlpha; 
 
-            MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
+            matPropertyBlock.Clear();
             matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
 
             Matrix4x4 matrix = default;
             // MeshPool.plane10 是 10x10 的，所以缩放需要除以 10
-            matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(Width / 10f, 1f, Height / 10f));
+            // 参考原版 CompProjectileInterceptor，这里也稍微扩大一点点以覆盖边缘
+            float extraScale = 1.16015625f; // 297/256
+            matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(Width * extraScale / 10f, 1f, Height * extraScale / 10f));
             
-            Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Things/Mote/Transparent", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
+            Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Other/ForceField", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
         }
 
         public void SetSize(float width, float height)
