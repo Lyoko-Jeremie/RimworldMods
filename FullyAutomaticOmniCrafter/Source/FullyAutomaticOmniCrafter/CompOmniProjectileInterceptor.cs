@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Reflection;
+using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -47,6 +48,8 @@ namespace FullyAutomaticOmniCrafter
 
         public virtual float Radius => radiusOverride ?? Props.radius;
 
+        private static readonly FieldInfo lastShieldBreakTickField = typeof(CompProjectileInterceptor).GetField("lastShieldBreakTick", BindingFlags.Instance | BindingFlags.NonPublic);
+
         public virtual bool IsInside(Vector3 pos)
         {
             return (pos - parent.Position.ToVector3Shifted()).MagnitudeHorizontalSquared() <= Radius * Radius;
@@ -68,6 +71,10 @@ namespace FullyAutomaticOmniCrafter
             // 护盾本体无敌，不吸收伤害（因为它是能量场的一部分，不应该被损毁）
             absorbed = true;
         }
+
+        // 注意：RimWorld 1.5 中护盾崩溃是在 PostPreApplyDamage 之后由原生逻辑处理的
+        // 或者在 Notify_DamageApplied 中。如果 Notify_DamageApplied 无法 override，
+        // 我们通过在 CompTick 中强制重置 lastShieldBreakTick 来抵消它。
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -106,6 +113,10 @@ namespace FullyAutomaticOmniCrafter
             }
 
             base.CompTick();
+
+            // 强制重置冷却时间，使其即使受到 EMP 也不会失效
+            lastShieldBreakTickField?.SetValue(this, -99999);
+
             // 确保状态始终处于激活，无视任何损伤
             if (Active && currentHitPoints < HitPointsMax)
             {
