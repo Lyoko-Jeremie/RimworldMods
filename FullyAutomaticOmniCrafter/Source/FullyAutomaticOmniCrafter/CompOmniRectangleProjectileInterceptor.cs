@@ -186,14 +186,20 @@ namespace FullyAutomaticOmniCrafter
         private CompOmniRectangleProjectileInterceptor comp;
         private float width;
         private float height;
+        private string widthBuffer;
+        private string heightBuffer;
+        private float idleAlphaMultiplier;
 
-        public override Vector2 InitialSize => new Vector2(400f, 300f);
+        public override Vector2 InitialSize => new Vector2(400f, 350f);
 
         public Dialog_OmniRectangleInterceptorSettings(CompOmniRectangleProjectileInterceptor comp)
         {
             this.comp = comp;
             this.width = comp.Width;
             this.height = comp.Height;
+            this.widthBuffer = width.ToString("0.0");
+            this.heightBuffer = height.ToString("0.0");
+            this.idleAlphaMultiplier = comp.idleAlphaMultiplier;
             this.doCloseButton = true;
             this.doCloseX = true;
             this.forcePause = true;
@@ -205,15 +211,63 @@ namespace FullyAutomaticOmniCrafter
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
 
+            // 宽度设置
             listing.Label("OmniInterceptor_Width".Translate() + ": " + width.ToString("0.0"));
-            width = listing.Slider(width, 1f, 256f);
-
-            listing.Label("OmniInterceptor_Height".Translate() + ": " + height.ToString("0.0"));
-            height = listing.Slider(height, 1f, 256f);
-
-            if (GUI.changed)
+            float newWidth = listing.Slider(width, 1f, 256f);
+            if (newWidth != width)
             {
+                width = newWidth;
+                widthBuffer = width.ToString("0.0");
                 comp.SetSize(width, height);
+            }
+
+            Rect widthInputRect = listing.GetRect(24f);
+            Widgets.Label(widthInputRect.LeftPart(0.4f), "OmniInterceptor_WidthInput".Translate());
+            string wBuffer = Widgets.TextField(widthInputRect.RightPart(0.6f), widthBuffer);
+            if (wBuffer != widthBuffer)
+            {
+                widthBuffer = wBuffer;
+                if (float.TryParse(widthBuffer, out float parsed) && parsed >= 1f && parsed <= 256f)
+                {
+                    width = parsed;
+                    comp.SetSize(width, height);
+                }
+            }
+
+            listing.Gap();
+
+            // 高度设置
+            listing.Label("OmniInterceptor_Height".Translate() + ": " + height.ToString("0.0"));
+            float newHeight = listing.Slider(height, 1f, 256f);
+            if (newHeight != height)
+            {
+                height = newHeight;
+                heightBuffer = height.ToString("0.0");
+                comp.SetSize(width, height);
+            }
+
+            Rect heightInputRect = listing.GetRect(24f);
+            Widgets.Label(heightInputRect.LeftPart(0.4f), "OmniInterceptor_HeightInput".Translate());
+            string hBuffer = Widgets.TextField(heightInputRect.RightPart(0.6f), heightBuffer);
+            if (hBuffer != heightBuffer)
+            {
+                heightBuffer = hBuffer;
+                if (float.TryParse(heightBuffer, out float parsed) && parsed >= 1f && parsed <= 256f)
+                {
+                    height = parsed;
+                    comp.SetSize(width, height);
+                }
+            }
+
+            listing.Gap();
+
+            // 亮度设置
+            listing.Label("OmniInterceptor_IdleAlphaMultiplier".Translate() + ": " + idleAlphaMultiplier.ToString("P0"));
+            float newIdleAlphaMultiplier = listing.Slider(idleAlphaMultiplier, 0f, 10f);
+            if (newIdleAlphaMultiplier != idleAlphaMultiplier)
+            {
+                idleAlphaMultiplier = newIdleAlphaMultiplier;
+                comp.idleAlphaMultiplier = idleAlphaMultiplier;
             }
 
             listing.End();
