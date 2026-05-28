@@ -109,7 +109,6 @@ namespace FullyAutomaticOmniCrafter
             return cornerDistanceSq <= radius * radius;
         }
 
-        private static readonly MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
 
         public override void DrawShield()
         {
@@ -118,31 +117,18 @@ namespace FullyAutomaticOmniCrafter
             float currentAlpha = GetCurrentAlpha();
             if (currentAlpha <= 0f) return;
 
+            // 绘制护盾范围边缘（蓝色脉动圈）
+            Color edgeColor = Props.color;
+            edgeColor.a *= currentAlpha;
+            GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), edgeColor);
+
             if (Find.Selector.IsSelected(parent))
             {
-                // 绘制选中时的白框，使用固定的透明度（由 GetCurrentAlpha 计算，但保持原始逻辑）
+                // 绘制选中时的白框，使用固定的透明度
                 GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white * currentAlpha);
                 // 强制重绘选中的范围圈，即使是在暂停时
                 parent.Map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
             }
-
-            Vector3 drawPos = parent.DrawPos;
-            drawPos.y = AltitudeLayer.MoteOverhead.AltitudeFor();
-
-            Color color = Props.color;
-            // 将 idleAlphaMultiplier 应用到颜色上，这样它会影响填充效果的亮度
-            color.a *= currentAlpha; 
-
-            matPropertyBlock.Clear();
-            matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
-
-            Matrix4x4 matrix = default;
-            // MeshPool.plane10 是 10x10 的，所以缩放需要除以 10
-            // 参考原版 CompProjectileInterceptor，这里也稍微扩大一点点以覆盖边缘
-            float extraScale = 1.16015625f; // 297/256
-            matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(Width * extraScale / 10f, 1f, Height * extraScale / 10f));
-            
-            Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Other/ForceField", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
         }
 
         public void SetSize(float width, float height)
