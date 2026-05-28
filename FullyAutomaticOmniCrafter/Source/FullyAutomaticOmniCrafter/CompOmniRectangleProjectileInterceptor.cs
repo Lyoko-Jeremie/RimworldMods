@@ -115,7 +115,7 @@ namespace FullyAutomaticOmniCrafter
             float currentAlpha = GetCurrentAlpha();
             if (currentAlpha <= 0f) return;
 
-            if (Find.Selector.IsSelected(parent) || alwaysVisible)
+            if (Find.Selector.IsSelected(parent))
             {
                 GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white * currentAlpha);
             }
