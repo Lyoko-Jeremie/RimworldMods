@@ -447,7 +447,7 @@ namespace FullyAutomaticOmniCrafter
 
             foreach (var inter in staticInterceptors)
             {
-                if (!inter.Active) continue;
+                if (!inter.Active || !inter.shieldEnabled) continue;
 
                 if (inter is CompOmniRectangleProjectileInterceptor rectInter)
                 {
@@ -523,19 +523,22 @@ namespace FullyAutomaticOmniCrafter
 
             // 1. 检查固定护盾缓存 O(1)
             var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
-            if (staticInter != null && staticInter.Active && staticInter.IsEnemy(searcher))
+            if (staticInter != null && staticInter.shieldEnabled && staticInter.Active && staticInter.IsEnemy(searcher))
             {
                 protector = staticInter;
                 return true;
             }
 
             // 2. 检查移动护盾 O(N_mobile)
-            for (int i = 0; i < mobileInterceptors.Count; i++)
+            // 只有当存在移动护盾时才进行检查
+            int mobileCount = mobileInterceptors.Count;
+            if (mobileCount > 0)
             {
-                var inter = mobileInterceptors[i];
-                if (inter.IsActiveAndEnabled && inter.IsCellInside(c))
+                for (int i = 0; i < mobileCount; i++)
                 {
-                    if (inter.IsEnemy(searcher))
+                    var inter = mobileInterceptors[i];
+                    // 先检查 shieldEnabled 和 Active 属性（通常比几何判定快）
+                    if (inter.shieldEnabled && inter.Active && inter.IsCellInside(c) && inter.IsEnemy(searcher))
                     {
                         protector = inter;
                         return true;
@@ -555,10 +558,29 @@ namespace FullyAutomaticOmniCrafter
                 RebuildCache();
             }
 
-            // 1. 检查固定护盾
-            foreach (var inter in staticInterceptors)
+            // 1. 优先通过 CellCache 快速检查中心点（如果半径较小）
+            // 如果中心点已经被保护，则整个区域肯定被保护
+            if (radius <= 1.5f)
             {
-                if (inter.Active && inter.IsEnemy(searcher))
+                if (IsCellProtected(center, searcher, out protector)) return true;
+            }
+            else
+            {
+                // 对于大半径，先通过 CellCache 检查中心点也是一个很好的启发式优化
+                var staticInter = cellCache[map.cellIndices.CellToIndex(center)];
+                if (staticInter != null && staticInter.shieldEnabled && staticInter.Active && staticInter.IsEnemy(searcher))
+                {
+                    protector = staticInter;
+                    return true;
+                }
+            }
+
+            // 2. 检查固定护盾
+            int staticCount = staticInterceptors.Count;
+            for (int i = 0; i < staticCount; i++)
+            {
+                var inter = staticInterceptors[i];
+                if (inter.shieldEnabled && inter.Active && inter.IsEnemy(searcher))
                 {
                     if (inter.Intersects(center, radius))
                     {
@@ -568,11 +590,12 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            // 2. 检查移动护盾
-            for (int i = 0; i < mobileInterceptors.Count; i++)
+            // 3. 检查移动护盾
+            int mobileCount = mobileInterceptors.Count;
+            for (int i = 0; i < mobileCount; i++)
             {
                 var inter = mobileInterceptors[i];
-                if (inter.Active && inter.IsEnemy(searcher))
+                if (inter.shieldEnabled && inter.Active && inter.IsEnemy(searcher))
                 {
                     if (inter.Intersects(center, radius))
                     {
