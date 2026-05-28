@@ -207,10 +207,12 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!Active) return;
 
+            bool isSelected = Find.Selector.IsSelected(parent);
+
             // 只有选中时才绘制半径圆圈（白色边框）
-            if (Find.Selector.IsSelected(parent))
+            if (isSelected)
             {
-                DrawRadiusRing(parent.Position, Radius);
+                DrawRadiusRing(parent.Position, Radius, Color.white);
             }
 
             Vector3 drawPos = parent.DrawPos;
@@ -220,7 +222,17 @@ namespace FullyAutomaticOmniCrafter
             if (currentAlpha > 0.0f)
             {
                 Color color = Props.color;
-                color.a *= currentAlpha;
+                // 如果选中，我们是否也要提高网格绘制的亮度？
+                // 需求说的是“框”，对于圆形护盾，这通常指 RadiusRing。
+                // 但为了统一体验，如果选中时我们也想让它更清晰：
+                if (isSelected)
+                {
+                    color.a = Mathf.Max(color.a, 0.62f); // 选中时至少保持最高脉动亮度
+                }
+                else
+                {
+                    color.a *= currentAlpha;
+                }
 
                 // 使用静态缓存的材质属性块，避免每帧分配
                 matPropertyBlock.Clear();
@@ -242,10 +254,11 @@ namespace FullyAutomaticOmniCrafter
 
         private static List<IntVec3> ringDrawCells = new List<IntVec3>();
 
-        private void DrawRadiusRing(IntVec3 center, float radius)
+        private void DrawRadiusRing(IntVec3 center, float radius, Color color)
         {
             if (radius < 50f)
             {
+                // GenDraw.DrawRadiusRing 不支持颜色参数，默认为白色
                 GenDraw.DrawRadiusRing(center, radius);
                 return;
             }
@@ -280,7 +293,7 @@ namespace FullyAutomaticOmniCrafter
             }
             if (ringDrawCells.Count > 0)
             {
-                GenDraw.DrawFieldEdges(ringDrawCells, Color.white);
+                GenDraw.DrawFieldEdges(ringDrawCells, color);
             }
         }
 

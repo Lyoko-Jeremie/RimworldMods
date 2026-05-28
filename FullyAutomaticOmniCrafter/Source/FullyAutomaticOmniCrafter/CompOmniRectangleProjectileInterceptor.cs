@@ -114,18 +114,27 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!Active) return;
 
+            bool isSelected = Find.Selector.IsSelected(parent);
             float currentAlpha = GetCurrentAlpha();
-            if (currentAlpha <= 0f) return;
+            
+            if (!isSelected && currentAlpha <= 0f) return;
 
             // 绘制护盾范围边缘（蓝色脉动圈）
             Color edgeColor = Props.color;
-            edgeColor.a *= currentAlpha;
+            if (isSelected)
+            {
+                edgeColor.a = 1f; // 选中时始终以最高亮度绘制
+            }
+            else
+            {
+                edgeColor.a *= currentAlpha;
+            }
             GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), edgeColor);
 
-            if (Find.Selector.IsSelected(parent))
+            if (isSelected)
             {
-                // 绘制选中时的白框，使用固定的透明度
-                GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white * currentAlpha);
+                // 绘制选中时的白框，使用最高亮度
+                GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white);
                 // 强制重绘选中的范围圈，即使是在暂停时
                 parent.Map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
             }
