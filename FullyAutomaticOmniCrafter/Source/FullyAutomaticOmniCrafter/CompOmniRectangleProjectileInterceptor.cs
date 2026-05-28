@@ -48,7 +48,22 @@ namespace FullyAutomaticOmniCrafter
         public float Width => widthOverride ?? Props.width ?? 1f;
         public float Height => heightOverride ?? Props.height ?? 1f;
 
-        public CellRect OccupiedRect => CellRect.CenteredOn(parent.Position, Mathf.CeilToInt(Width), Mathf.CeilToInt(Height));
+        public override float Radius => Mathf.Max(Width, Height) / 2f; // 给基类一个参考半径，虽然我们重写了判定
+
+        public CellRect OccupiedRect
+        {
+            get
+            {
+                Vector3 myPos = parent.Position.ToVector3Shifted();
+                float halfW = Width / 2f;
+                float halfH = Height / 2f;
+                int minX = Mathf.FloorToInt(myPos.x - halfW + 0.001f);
+                int maxX = Mathf.FloorToInt(myPos.x + halfW + 0.001f);
+                int minZ = Mathf.FloorToInt(myPos.z - halfH + 0.001f);
+                int maxZ = Mathf.FloorToInt(myPos.z + halfH + 0.001f);
+                return new CellRect(minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
+            }
+        }
 
         public override void PostExposeData()
         {
@@ -60,12 +75,17 @@ namespace FullyAutomaticOmniCrafter
         public override bool IsInside(Vector3 pos)
         {
             Vector3 myPos = parent.Position.ToVector3Shifted();
-            return Mathf.Abs(pos.x - myPos.x) <= Width / 2f && Mathf.Abs(pos.z - myPos.z) <= Height / 2f;
+            return Mathf.Abs(pos.x - myPos.x) <= Width / 2f + 0.01f && Mathf.Abs(pos.z - myPos.z) <= Height / 2f + 0.01f;
         }
 
         public override bool IsCellInside(IntVec3 cell)
         {
-            return OccupiedRect.Contains(cell);
+            Vector3 myPos = parent.Position.ToVector3Shifted();
+            // 使用与 RebuildCache 相同的边界逻辑
+            float halfW = Width / 2f;
+            float halfH = Height / 2f;
+            return (float)cell.x >= (myPos.x - halfW - 0.001f) && (float)cell.x <= (myPos.x + halfW + 0.001f) &&
+                   (float)cell.z >= (myPos.z - halfH - 0.001f) && (float)cell.z <= (myPos.z + halfH + 0.001f);
         }
 
         public override bool Intersects(IntVec3 center, float radius)
@@ -75,13 +95,16 @@ namespace FullyAutomaticOmniCrafter
             float dx = Mathf.Abs(center.x - myPos.x);
             float dz = Mathf.Abs(center.z - myPos.z);
 
-            if (dx > (Width / 2f + radius)) return false;
-            if (dz > (Height / 2f + radius)) return false;
+            float halfW = Width / 2f;
+            float halfH = Height / 2f;
 
-            if (dx <= (Width / 2f)) return true;
-            if (dz <= (Height / 2f)) return true;
+            if (dx > (halfW + radius)) return false;
+            if (dz > (halfH + radius)) return false;
 
-            float cornerDistanceSq = Mathf.Pow(dx - Width / 2f, 2) + Mathf.Pow(dz - Height / 2f, 2);
+            if (dx <= halfW) return true;
+            if (dz <= halfH) return true;
+
+            float cornerDistanceSq = Mathf.Pow(dx - halfW, 2) + Mathf.Pow(dz - halfH, 2);
             return cornerDistanceSq <= radius * radius;
         }
 
@@ -89,28 +112,28 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!shieldEnabled) return;
 
-            if (Find.Selector.IsSelected(parent))
+            float currentAlpha = GetCurrentAlpha();
+            if (currentAlpha <= 0f) return;
+
+            if (Find.Selector.IsSelected(parent) || alwaysVisible)
             {
-                GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white);
+                GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white * currentAlpha);
             }
 
             Vector3 drawPos = parent.DrawPos;
             drawPos.y = AltitudeLayer.MoteOverhead.AltitudeFor();
 
-            float currentAlpha = GetCurrentAlpha();
-            if (currentAlpha > 0.0f)
-            {
-                Color color = Props.color;
-                color.a *= currentAlpha;
+            Color color = Props.color;
+            color.a *= currentAlpha * 0.3f; // 进一步降低填充透明度，使边缘更明显
 
-                MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
-                matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
+            MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
+            matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
 
-                Matrix4x4 matrix = default;
-                matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(Width * 1.15f, 1f, Height * 1.15f));
-                
-                Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Other/ForceField", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
-            }
+            Matrix4x4 matrix = default;
+            // MeshPool.plane10 是 10x10 的，所以缩放需要除以 10
+            matrix.SetTRS(drawPos, Quaternion.identity, new Vector3(Width / 10f, 1f, Height / 10f));
+            
+            Graphics.DrawMesh(MeshPool.plane10, matrix, MaterialPool.MatFrom("Other/Mote/PlainColor", ShaderDatabase.MoteGlow), 0, null, 0, matPropertyBlock);
         }
 
         public void SetSize(float width, float height)
