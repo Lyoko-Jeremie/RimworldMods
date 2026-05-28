@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniRectangleEnergyDefenseField.label>矩形能量防御场发生器</OmniRectangleEnergyDefenseField.label>
+    <OmniRectangleEnergyDefenseField.description>一个可以阻挡地面和空中飞行物，并阻止敌人的强力能量盾。护盾对友军无害，且会自动修复。它可以拦截子弹、炮弹以及空投仓。</OmniRectangleEnergyDefenseField.description>
+
+</LanguageData>
