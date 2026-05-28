@@ -57,10 +57,16 @@ namespace FullyAutomaticOmniCrafter
                 Vector3 myPos = parent.Position.ToVector3Shifted();
                 float halfW = Width / 2f;
                 float halfH = Height / 2f;
-                int minX = Mathf.FloorToInt(myPos.x - halfW + 0.001f);
-                int maxX = Mathf.FloorToInt(myPos.x + halfW + 0.001f);
-                int minZ = Mathf.FloorToInt(myPos.z - halfH + 0.001f);
-                int maxZ = Mathf.FloorToInt(myPos.z + halfH + 0.001f);
+                // 使用更精确的浮点数边界判定，确保细微变化能反映在格子上
+                int minX = Mathf.RoundToInt(myPos.x - halfW);
+                int maxX = Mathf.RoundToInt(myPos.x + halfW - 1f);
+                int minZ = Mathf.RoundToInt(myPos.z - halfH);
+                int maxZ = Mathf.RoundToInt(myPos.z + halfH - 1f);
+                
+                // 确保至少占一格，且处理宽度小于1的情况
+                if (maxX < minX) maxX = minX;
+                if (maxZ < minZ) maxZ = minZ;
+                
                 return new CellRect(minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
             }
         }
@@ -80,12 +86,7 @@ namespace FullyAutomaticOmniCrafter
 
         public override bool IsCellInside(IntVec3 cell)
         {
-            Vector3 myPos = parent.Position.ToVector3Shifted();
-            // 使用与 RebuildCache 相同的边界逻辑
-            float halfW = Width / 2f;
-            float halfH = Height / 2f;
-            return (float)cell.x >= (myPos.x - halfW - 0.001f) && (float)cell.x <= (myPos.x + halfW + 0.001f) &&
-                   (float)cell.z >= (myPos.z - halfH - 0.001f) && (float)cell.z <= (myPos.z + halfH + 0.001f);
+            return OccupiedRect.Contains(cell);
         }
 
         public override bool Intersects(IntVec3 center, float radius)
@@ -118,6 +119,8 @@ namespace FullyAutomaticOmniCrafter
             if (Find.Selector.IsSelected(parent))
             {
                 GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white * currentAlpha);
+                // 强制重绘选中的范围圈，即使是在暂停时
+                parent.Map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
             }
 
             Vector3 drawPos = parent.DrawPos;

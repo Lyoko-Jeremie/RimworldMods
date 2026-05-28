@@ -451,18 +451,11 @@ namespace FullyAutomaticOmniCrafter
 
                 if (inter is CompOmniRectangleProjectileInterceptor rectInter)
                 {
-                    float w = rectInter.Width;
-                    float h = rectInter.Height;
-                    Vector3 center = inter.parent.Position.ToVector3Shifted();
+                    CellRect rect = rectInter.OccupiedRect;
 
-                    int minX = Mathf.FloorToInt(center.x - w / 2f + 0.001f);
-                    int maxX = Mathf.FloorToInt(center.x + w / 2f + 0.001f);
-                    int minZ = Mathf.FloorToInt(center.z - h / 2f + 0.001f);
-                    int maxZ = Mathf.FloorToInt(center.z + h / 2f + 0.001f);
-
-                    for (int x = minX; x <= maxX; x++)
+                    for (int x = rect.minX; x <= rect.maxX; x++)
                     {
-                        for (int z = minZ; z <= maxZ; z++)
+                        for (int z = rect.minZ; z <= rect.maxZ; z++)
                         {
                             IntVec3 c = new IntVec3(x, 0, z);
                             if (c.InBounds(map))
