@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <ThingDef ParentName="BuildingBase">
+        <defName>OmniRectangleEnergyDefenseField</defName>
+        <label>OmniRectangleEnergyDefenseField</label>
+        <description>description</description>
+
+        <thingClass>Building</thingClass>
+        <drawerType>MapMeshAndRealTime</drawerType>
+        <tickerType>Normal</tickerType>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniRectangleEnergyDefenseField</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(1,1)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <size>(1,1)</size>
+        <uiIconPath>Things/Building/Production/OmniRectangleEnergyDefenseField</uiIconPath>
+
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+        
+        <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
+
+        <costList>
+            <Steel>1</Steel>
+        </costList>
+
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
+        </statBases>
+        
+        <building>
+            <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+            <ai_neverTrashThis>true</ai_neverTrashThis>
+
+            <!-- 标记该建筑是否为"主体建筑"（地基级建筑），即占据地图格子的"正式"建筑。只有 Edifice 才能支撑屋顶 -->
+            <!-- 一个格子同时只能有一个 Edifice。如果新建筑是 Edifice，会替换并摧毁该格已有的 Edifice -->
+            <isEdifice>false</isEdifice>
+            <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
+            <isInert>true</isInert>
+        </building>
+        <rotatable>false</rotatable>
+        <selectable>true</selectable>
+        <placeWorkers>
+            <li>PlaceWorker_ShowProjectileInterceptorRadius</li>
+        </placeWorkers>
+        
+        <comps>
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_CompOmniRectangleProjectileInterceptor">
+                <width>10</width>
+                <height>10</height>
+                <interceptGroundProjectiles>true</interceptGroundProjectiles>
+                <interceptAirProjectiles>true</interceptAirProjectiles>
+                <color>(0.3, 0.8, 1.0)</color> <!-- 天蓝色护盾 -->
+                <activeSound>MortarShield_Ambience</activeSound>
+                <isStatic>true</isStatic>
+            </li>
+        </comps>
+
+    </ThingDef>
+
+</Defs>

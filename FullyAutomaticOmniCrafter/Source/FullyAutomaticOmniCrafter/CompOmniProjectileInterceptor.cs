@@ -45,7 +45,23 @@ namespace FullyAutomaticOmniCrafter
 
         private float? radiusOverride;
 
-        public float Radius => radiusOverride ?? Props.radius;
+        public virtual float Radius => radiusOverride ?? Props.radius;
+
+        public virtual bool IsInside(Vector3 pos)
+        {
+            return (pos - parent.Position.ToVector3Shifted()).MagnitudeHorizontalSquared() <= Radius * Radius;
+        }
+
+        public virtual bool IsCellInside(IntVec3 cell)
+        {
+            return cell.InHorDistOf(parent.Position, Radius);
+        }
+
+        public virtual bool Intersects(IntVec3 center, float radius)
+        {
+            float combinedRadius = Radius + radius;
+            return center.InHorDistOf(parent.Position, combinedRadius);
+        }
 
         public override void PostPreApplyDamage(ref DamageInfo dinfo, out bool absorbed)
         {
@@ -67,6 +83,7 @@ namespace FullyAutomaticOmniCrafter
 
         public bool interceptSkyfallers = true;
         public bool shieldEnabled = true;
+        public bool IsActiveAndEnabled => Active && shieldEnabled;
         public bool alwaysVisible = true;
         public float idleAlphaMultiplier = 1f;
 
@@ -153,7 +170,7 @@ namespace FullyAutomaticOmniCrafter
             };
         }
 
-        public void SetRadius(float newRadius)
+        public virtual void SetRadius(float newRadius)
         {
             radiusOverride = newRadius;
             var map = parent.Map;
@@ -187,7 +204,7 @@ namespace FullyAutomaticOmniCrafter
 
         private static readonly MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
 
-        public void DrawShield()
+        public virtual void DrawShield()
         {
             if (!shieldEnabled) return;
 
@@ -305,9 +322,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 距离检查
-            float radius = Radius;
-            Vector3 myPos = parent.Position.ToVector3Shifted();
-            if ((newExactPos - myPos).MagnitudeHorizontalSquared() > (radius + 1f) * (radius + 1f))
+            if (!IsInside(newExactPos))
             {
                 return false;
             }
@@ -329,7 +344,7 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!Active) return true; 
             // 如果轰炸者是敌人，且目标在护盾半径内，拦截（阻止开火）
-            if (IsEnemy(bombardment.instigator) && cell.InHorDistOf(parent.Position, Radius))
+            if (IsEnemy(bombardment.instigator) && IsCellInside(cell))
             {
                 return false; // 返回 false 表示不能开火（即拦截）
             }
@@ -364,7 +379,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 var inter = staticInterceptors[i];
                 // 增加护盾半径作为缓冲区，确保边缘不会被突然截断
-                if (viewRect.ExpandedBy(Mathf.CeilToInt(inter.Radius)).Contains(inter.parent.Position))
+                if (viewRect.ExpandedBy(Mathf.CeilToInt(inter is CompOmniRectangleProjectileInterceptor r ? Mathf.Max(r.Width, r.Height) : inter.Radius)).Contains(inter.parent.Position))
                 {
                     inter.DrawShield();
                 }
@@ -372,7 +387,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < mobileInterceptors.Count; i++)
             {
                 var inter = mobileInterceptors[i];
-                if (viewRect.ExpandedBy(Mathf.CeilToInt(inter.Radius)).Contains(inter.parent.Position))
+                if (viewRect.ExpandedBy(Mathf.CeilToInt(inter is CompOmniRectangleProjectileInterceptor r ? Mathf.Max(r.Width, r.Height) : inter.Radius)).Contains(inter.parent.Position))
                 {
                     inter.DrawShield();
                 }
@@ -434,29 +449,47 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (!inter.Active) continue;
 
-                float currentRadius = inter.Radius;
-                int radiusInt = Mathf.CeilToInt(currentRadius);
-                IntVec3 center = inter.parent.Position;
-
-                int minX = Mathf.Max(0, center.x - radiusInt);
-                int maxX = Mathf.Min(map.Size.x - 1, center.x + radiusInt);
-                int minZ = Mathf.Max(0, center.z - radiusInt);
-                int maxZ = Mathf.Min(map.Size.z - 1, center.z + radiusInt);
-
-                for (int x = minX; x <= maxX; x++)
+                if (inter is CompOmniRectangleProjectileInterceptor rectInter)
                 {
-                    for (int z = minZ; z <= maxZ; z++)
+                    CellRect rect = rectInter.OccupiedRect;
+                    foreach (var c in rect)
                     {
-                        IntVec3 c = new IntVec3(x, 0, z);
-                        // 使用平面的欧几里得距离平方检查
-                        float dx = (float)(x - center.x);
-                        float dz = (float)(z - center.z);
-                        if (dx * dx + dz * dz <= currentRadius * currentRadius)
+                        if (c.InBounds(map))
                         {
                             int idx = map.cellIndices.CellToIndex(c);
                             if (cellCache[idx] == null)
                             {
                                 cellCache[idx] = inter;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    float currentRadius = inter.Radius;
+                    int radiusInt = Mathf.CeilToInt(currentRadius);
+                    IntVec3 center = inter.parent.Position;
+
+                    int minX = Mathf.Max(0, center.x - radiusInt);
+                    int maxX = Mathf.Min(map.Size.x - 1, center.x + radiusInt);
+                    int minZ = Mathf.Max(0, center.z - radiusInt);
+                    int maxZ = Mathf.Min(map.Size.z - 1, center.z + radiusInt);
+
+                    for (int x = minX; x <= maxX; x++)
+                    {
+                        for (int z = minZ; z <= maxZ; z++)
+                        {
+                            IntVec3 c = new IntVec3(x, 0, z);
+                            // 使用平面的欧几里得距离平方检查
+                            float dx = (float)(x - center.x);
+                            float dz = (float)(z - center.z);
+                            if (dx * dx + dz * dz <= currentRadius * currentRadius)
+                            {
+                                int idx = map.cellIndices.CellToIndex(c);
+                                if (cellCache[idx] == null)
+                                {
+                                    cellCache[idx] = inter;
+                                }
                             }
                         }
                     }
@@ -488,7 +521,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < mobileInterceptors.Count; i++)
             {
                 var inter = mobileInterceptors[i];
-                if (inter.Active && c.InHorDistOf(inter.parent.Position, inter.Radius))
+                if (inter.IsActiveAndEnabled && inter.IsCellInside(c))
                 {
                     if (inter.IsEnemy(searcher))
                     {
@@ -511,13 +544,11 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 1. 检查固定护盾
-            // 只要 (护盾中心和攻击中心之间的距离) < (护盾半径 + 攻击半径)，两个圆就相交
             foreach (var inter in staticInterceptors)
             {
                 if (inter.Active && inter.IsEnemy(searcher))
                 {
-                    float combinedRadius = inter.Radius + radius;
-                    if (center.InHorDistOf(inter.parent.Position, combinedRadius))
+                    if (inter.Intersects(center, radius))
                     {
                         protector = inter;
                         return true;
@@ -531,8 +562,7 @@ namespace FullyAutomaticOmniCrafter
                 var inter = mobileInterceptors[i];
                 if (inter.Active && inter.IsEnemy(searcher))
                 {
-                    float combinedRadius = inter.Radius + radius;
-                    if (center.InHorDistOf(inter.parent.Position, combinedRadius))
+                    if (inter.Intersects(center, radius))
                     {
                         protector = inter;
                         return true;
