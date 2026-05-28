@@ -390,6 +390,7 @@
     <Compile Include="Patch_OmniPhantomWallTerrain.cs" />
     <Compile Include="Patch_OmniPhantomWall_DoorFix.cs" />
     <Compile Include="Patch_PhantomWall2DesignatorBinding.cs" />
+    <Compile Include="Patch_ProjectileInterceptor.cs" />
     <Compile Include="RealityWeaver.cs" />
     <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />
