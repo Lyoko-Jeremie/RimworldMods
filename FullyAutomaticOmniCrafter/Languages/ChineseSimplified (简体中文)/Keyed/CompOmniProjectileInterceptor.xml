@@ -14,7 +14,9 @@
   <OmniInterceptor_AlwaysVisibleDesc>控制护盾在未选中状态下是否仍然保持可见（低亮度显示）。</OmniInterceptor_AlwaysVisibleDesc>
   <OmniInterceptor_IdleAlphaMultiplier>未选中时的亮度倍数</OmniInterceptor_IdleAlphaMultiplier>
   <OmniInterceptor_Width>宽度</OmniInterceptor_Width>
+  <OmniInterceptor_WidthInput>宽度输入</OmniInterceptor_WidthInput>
   <OmniInterceptor_Height>高度</OmniInterceptor_Height>
+  <OmniInterceptor_HeightInput>高度输入</OmniInterceptor_HeightInput>
   <OmniInterceptor_SetSize>设置尺寸</OmniInterceptor_SetSize>
   <OmniInterceptor_SetSizeDesc>调整矩形护盾的宽度和高度。</OmniInterceptor_SetSizeDesc>
 </LanguageData>

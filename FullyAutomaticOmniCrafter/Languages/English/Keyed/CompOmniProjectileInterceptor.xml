@@ -14,7 +14,9 @@
   <OmniInterceptor_AlwaysVisibleDesc>Toggle whether the shield remains visible (at low brightness) even when the building is not selected.</OmniInterceptor_AlwaysVisibleDesc>
   <OmniInterceptor_IdleAlphaMultiplier>Unselected Brightness Multiplier</OmniInterceptor_IdleAlphaMultiplier>
   <OmniInterceptor_Width>Width</OmniInterceptor_Width>
+  <OmniInterceptor_WidthInput>Width Input</OmniInterceptor_WidthInput>
   <OmniInterceptor_Height>Height</OmniInterceptor_Height>
+  <OmniInterceptor_HeightInput>Height Input</OmniInterceptor_HeightInput>
   <OmniInterceptor_SetSize>Set Size</OmniInterceptor_SetSize>
   <OmniInterceptor_SetSizeDesc>Adjust the width and height of the rectangular shield.</OmniInterceptor_SetSizeDesc>
 </LanguageData>
