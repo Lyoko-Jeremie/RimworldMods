@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -48,8 +47,6 @@ namespace FullyAutomaticOmniCrafter
 
         public virtual float Radius => radiusOverride ?? Props.radius;
 
-        private static readonly FieldInfo lastShieldBreakTickField = typeof(CompProjectileInterceptor).GetField("lastShieldBreakTick", BindingFlags.Instance | BindingFlags.NonPublic);
-
         public virtual bool IsInside(Vector3 pos)
         {
             return (pos - parent.Position.ToVector3Shifted()).MagnitudeHorizontalSquared() <= Radius * Radius;
@@ -90,7 +87,8 @@ namespace FullyAutomaticOmniCrafter
 
         public bool interceptSkyfallers = true;
         public bool shieldEnabled = true;
-        public bool IsActiveAndEnabled => Active && shieldEnabled;
+        public new bool Active => shieldEnabled && parent.Spawned;
+
         public bool alwaysVisible = true;
         public float idleAlphaMultiplier = 1f;
 
@@ -114,20 +112,10 @@ namespace FullyAutomaticOmniCrafter
 
             base.CompTick();
 
-            // 强制重置冷却时间，使其即使受到 EMP 也不会失效
-            lastShieldBreakTickField?.SetValue(this, -99999);
-
             // 确保状态始终处于激活，无视任何损伤
-            if (Active && currentHitPoints < HitPointsMax)
+            if (currentHitPoints < HitPointsMax)
             {
                 currentHitPoints = HitPointsMax;
-            }
-
-            if (IsStatic && parent.IsHashIntervalTick(60))
-            {
-                // 检查激活状态变化或半径变化。由于 currentHitPoints 总是被重设为满，Active 通常稳定。
-                // 暂时只在 Register/Deregister 时刷新，这里作为安全网
-                // parent.Map.GetComponent<OmniInterceptorTracker>().DirtyCache();
             }
         }
 
@@ -217,7 +205,7 @@ namespace FullyAutomaticOmniCrafter
 
         public virtual void DrawShield()
         {
-            if (!shieldEnabled) return;
+            if (!Active) return;
 
             // 只有选中时才绘制半径圆圈（白色边框）
             if (Find.Selector.IsSelected(parent))
@@ -323,7 +311,7 @@ namespace FullyAutomaticOmniCrafter
         // 拦截逻辑
         public new bool CheckIntercept(Projectile projectile, Vector3 lastExactPos, Vector3 newExactPos)
         {
-            if (!Active || !shieldEnabled) return false;
+            if (!Active) return false;
 
             // 检查来源
             if (!IsEnemy(projectile.Launcher))
@@ -389,6 +377,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < staticInterceptors.Count; i++)
             {
                 var inter = staticInterceptors[i];
+                if (!inter.Active) continue;
                 // 增加护盾半径作为缓冲区，确保边缘不会被突然截断
                 if (viewRect.ExpandedBy(Mathf.CeilToInt(inter is CompOmniRectangleProjectileInterceptor r ? Mathf.Max(r.Width, r.Height) : inter.Radius)).Contains(inter.parent.Position))
                 {
@@ -398,6 +387,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < mobileInterceptors.Count; i++)
             {
                 var inter = mobileInterceptors[i];
+                if (!inter.Active) continue;
                 if (viewRect.ExpandedBy(Mathf.CeilToInt(inter is CompOmniRectangleProjectileInterceptor r ? Mathf.Max(r.Width, r.Height) : inter.Radius)).Contains(inter.parent.Position))
                 {
                     inter.DrawShield();
@@ -527,7 +517,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 1. 检查固定护盾缓存 O(1)
             var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
-            if (staticInter != null && staticInter.shieldEnabled && staticInter.Active && staticInter.IsEnemy(searcher))
+            if (staticInter != null && staticInter.Active && staticInter.IsEnemy(searcher))
             {
                 protector = staticInter;
                 return true;
@@ -541,8 +531,8 @@ namespace FullyAutomaticOmniCrafter
                 for (int i = 0; i < mobileCount; i++)
                 {
                     var inter = mobileInterceptors[i];
-                    // 先检查 shieldEnabled 和 Active 属性（通常比几何判定快）
-                    if (inter.shieldEnabled && inter.Active && inter.IsCellInside(c) && inter.IsEnemy(searcher))
+                    // 先检查 Active 属性（通常比几何判定快）
+                    if (inter.Active && inter.IsCellInside(c) && inter.IsEnemy(searcher))
                     {
                         protector = inter;
                         return true;
@@ -572,7 +562,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 对于大半径，先通过 CellCache 检查中心点也是一个很好的启发式优化
                 var staticInter = cellCache[map.cellIndices.CellToIndex(center)];
-                if (staticInter != null && staticInter.shieldEnabled && staticInter.Active && staticInter.IsEnemy(searcher))
+                if (staticInter != null && staticInter.Active && staticInter.IsEnemy(searcher))
                 {
                     protector = staticInter;
                     return true;
@@ -584,7 +574,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < staticCount; i++)
             {
                 var inter = staticInterceptors[i];
-                if (inter.shieldEnabled && inter.Active && inter.IsEnemy(searcher))
+                if (inter.Active && inter.IsEnemy(searcher))
                 {
                     if (inter.Intersects(center, radius))
                     {
@@ -599,7 +589,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < mobileCount; i++)
             {
                 var inter = mobileInterceptors[i];
-                if (inter.shieldEnabled && inter.Active && inter.IsEnemy(searcher))
+                if (inter.Active && inter.IsEnemy(searcher))
                 {
                     if (inter.Intersects(center, radius))
                     {

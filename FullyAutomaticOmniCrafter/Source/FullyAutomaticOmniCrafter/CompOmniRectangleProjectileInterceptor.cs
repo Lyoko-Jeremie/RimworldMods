@@ -111,7 +111,7 @@ namespace FullyAutomaticOmniCrafter
 
         public override void DrawShield()
         {
-            if (!shieldEnabled) return;
+            if (!Active) return;
 
             float currentAlpha = GetCurrentAlpha();
             if (currentAlpha <= 0f) return;
