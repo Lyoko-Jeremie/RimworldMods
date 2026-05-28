@@ -118,6 +118,7 @@ namespace FullyAutomaticOmniCrafter
 
             if (Find.Selector.IsSelected(parent))
             {
+                // 绘制选中时的白框，使用固定的透明度（由 GetCurrentAlpha 计算，但保持原始逻辑）
                 GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white * currentAlpha);
                 // 强制重绘选中的范围圈，即使是在暂停时
                 parent.Map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
@@ -127,7 +128,8 @@ namespace FullyAutomaticOmniCrafter
             drawPos.y = AltitudeLayer.MoteOverhead.AltitudeFor();
 
             Color color = Props.color;
-            color.a *= currentAlpha * 0.3f; // 进一步降低填充透明度，使边缘更明显
+            // 将 idleAlphaMultiplier 应用到颜色上，这样它会影响填充效果的亮度
+            color.a *= currentAlpha * 0.3f; 
 
             MaterialPropertyBlock matPropertyBlock = new MaterialPropertyBlock();
             matPropertyBlock.SetColor(ShaderPropertyIDs.Color, color);
@@ -171,16 +173,15 @@ namespace FullyAutomaticOmniCrafter
             if (!alwaysVisible && !Find.Selector.IsSelected(parent)) return 0f;
             float baseMinIdleAlpha = Mathf.Max(0.05f, Props.minIdleAlpha);
             float idleAlpha = Mathf.Lerp(baseMinIdleAlpha, 0.11f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 96804938) % 100) + Time.realtimeSinceStartup * Props.idlePulseSpeed) + 1f) / 2f);
-            idleAlpha *= idleAlphaMultiplier;
             
             if (Find.Selector.IsSelected(parent))
             {
                 float pulseSpeed = Mathf.Max(2f, Props.idlePulseSpeed);
                 float selectedAlpha = Mathf.Lerp(0.2f, 0.62f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 35990913) % 100) + Time.realtimeSinceStartup * pulseSpeed) + 1f) / 2f);
-                return Mathf.Max(idleAlpha, selectedAlpha);
+                return Mathf.Max(idleAlpha * idleAlphaMultiplier, selectedAlpha);
             }
 
-            return Mathf.Max(idleAlpha, Mathf.Max(Props.minAlpha, 0.05f));
+            return Mathf.Max(idleAlpha * idleAlphaMultiplier, Mathf.Max(Props.minAlpha, 0.05f));
         }
     }
 

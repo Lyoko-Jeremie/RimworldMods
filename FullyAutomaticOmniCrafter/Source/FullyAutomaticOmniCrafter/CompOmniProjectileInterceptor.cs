@@ -296,16 +296,15 @@ namespace FullyAutomaticOmniCrafter
             // 使用 Mathf.Max 确保 minIdleAlpha 不会导致 alpha 变成负数（原版 minIdleAlpha 默认为 -1.7）
             float baseMinIdleAlpha = Mathf.Max(0.05f, Props.minIdleAlpha);
             float idleAlpha = Mathf.Lerp(baseMinIdleAlpha, 0.11f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 96804938) % 100) + Time.realtimeSinceStartup * Props.idlePulseSpeed) + 1f) / 2f);
-            idleAlpha *= idleAlphaMultiplier;
             
             if (Find.Selector.IsSelected(parent))
             {
                 float pulseSpeed = Mathf.Max(2f, Props.idlePulseSpeed);
                 float selectedAlpha = Mathf.Lerp(0.2f, 0.62f, (Mathf.Sin((float)(Gen.HashCombineInt(parent.thingIDNumber, 35990913) % 100) + Time.realtimeSinceStartup * pulseSpeed) + 1f) / 2f);
-                return Mathf.Max(idleAlpha, selectedAlpha);
+                return Mathf.Max(idleAlpha * idleAlphaMultiplier, selectedAlpha);
             }
 
-            return Mathf.Max(idleAlpha, Mathf.Max(Props.minAlpha, 0.05f));
+            return Mathf.Max(idleAlpha * idleAlphaMultiplier, Mathf.Max(Props.minAlpha, 0.05f));
         }
 
         // 拦截逻辑
