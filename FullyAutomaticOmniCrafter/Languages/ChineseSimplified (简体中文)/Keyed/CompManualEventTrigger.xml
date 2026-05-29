@@ -4,10 +4,10 @@
   <CompManualEventTrigger_OpenEventMenu_Label>控制台：触发事件</CompManualEventTrigger_OpenEventMenu_Label>
   <CompManualEventTrigger_OpenEventMenu_Desc>查看并启动可用的事件链（支持拼音搜索）。</CompManualEventTrigger_OpenEventMenu_Desc>
   
-  <CompManualEventTrigger_DisableReason_WaitDays>时间未到 (需存活至第 {0} 天)</CompManualEventTrigger_DisableReason_WaitDays>
-  <CompManualEventTrigger_DisableReason_MinPopulation>人口不足 (需要 {0} 人，当前 {1} 人)</CompManualEventTrigger_DisableReason_MinPopulation>
-  <CompManualEventTrigger_DisableReason_InvalidBiome>当前群落地形不匹配</CompManualEventTrigger_DisableReason_InvalidBiome>
-  <CompManualEventTrigger_DisableReason_Unknown>被事件内部 C# 逻辑拦截 (如：财富不足/缺少特定建筑/条件不满足等)</CompManualEventTrigger_DisableReason_Unknown>
+  <CompManualEventTrigger_Reason_WaitDays>存活未满 {0} 天</CompManualEventTrigger_Reason_WaitDays>
+  <CompManualEventTrigger_Reason_MinPopulation>人口不足 {0}</CompManualEventTrigger_Reason_MinPopulation>
+  <CompManualEventTrigger_Reason_InvalidBiome>地形不匹配</CompManualEventTrigger_Reason_InvalidBiome>
+  <CompManualEventTrigger_Reason_Unknown>逻辑拦截</CompManualEventTrigger_Reason_Unknown>
 
   <!-- Dialog_ManualEventTrigger -->
   <Dialog_ManualEventTrigger_Title>手动事件触发器</Dialog_ManualEventTrigger_Title>

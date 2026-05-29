@@ -59,31 +59,27 @@ namespace FullyAutomaticOmniCrafter
             // 1. 检查游戏天数 (earliestDay 标签)
             if (GenDate.DaysPassed < incidentDef.earliestDay)
             {
-                return "CompManualEventTrigger_DisableReason_WaitDays".Translate(incidentDef.earliestDay);
+                return "CompManualEventTrigger_Reason_WaitDays".Translate(incidentDef.earliestDay);
             }
 
             // 2. 检查人口数量 (minPopulation 标签)
             int colonistCount = map.mapPawns.FreeColonistsCount;
             if (colonistCount < incidentDef.minPopulation)
             {
-                return "CompManualEventTrigger_DisableReason_MinPopulation".Translate(incidentDef.minPopulation, colonistCount);
+                return "CompManualEventTrigger_Reason_MinPopulation".Translate(incidentDef.minPopulation);
             }
 
             // 3. 检查群落限制 (allowedBiomes 标签)
             if (incidentDef.allowedBiomes != null && !incidentDef.allowedBiomes.Contains(map.Biome))
             {
-                return "CompManualEventTrigger_DisableReason_InvalidBiome".Translate();
+                return "CompManualEventTrigger_Reason_InvalidBiome".Translate();
             }
 
             // 4. 检查是否在冷却期 (minRefireDays 标签)
-            if (incidentDef.minRefireDays > 0)
-            {
-                // 这里检查是否由于冷却导致的不可用（简化逻辑）
-                // 实际上 Worker.CanFireNow 会检查 Storyteller.incidentQueue 和 StorytellerWatcher
-            }
+            // 这里暂不做复杂检查，Worker.CanFireNow 已经涵盖了
 
             // 5. 如果上面的 XML 常见条件都满足，那说明是被 C# 的动态逻辑拦截了
-            return "CompManualEventTrigger_DisableReason_Unknown".Translate();
+            return "CompManualEventTrigger_Reason_Unknown".Translate();
         }
     }
 
@@ -234,7 +230,15 @@ namespace FullyAutomaticOmniCrafter
                 }
 
                 string label = incidentDef.label ?? incidentDef.defName;
-                string displayLabel = canFire ? label : (string)"Dialog_ManualEventTrigger_ForcedLabel".Translate(label, CompManualEventTrigger.GetDisableReason(incidentDef, map));
+                string modName = incidentDef.modContentPack?.Name ?? "Core";
+                string disableReason = canFire ? "" : CompManualEventTrigger.GetDisableReason(incidentDef, map);
+                
+                // 格式: 名字-[来源]-(不能开始的原因)
+                string displayLabel = $"{label}-[{modName}]";
+                if (!canFire)
+                {
+                    displayLabel += $"-({disableReason})";
+                }
 
                 GUI.color = canFire ? Color.white : Color.yellow;
                 if (Widgets.ButtonInvisible(rowRect))

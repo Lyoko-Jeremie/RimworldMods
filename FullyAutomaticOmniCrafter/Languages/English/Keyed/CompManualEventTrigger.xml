@@ -4,10 +4,10 @@
   <CompManualEventTrigger_OpenEventMenu_Label>Console: Trigger Event</CompManualEventTrigger_OpenEventMenu_Label>
   <CompManualEventTrigger_OpenEventMenu_Desc>View and start available event chains (supports pinyin search).</CompManualEventTrigger_OpenEventMenu_Desc>
   
-  <CompManualEventTrigger_DisableReason_WaitDays>Time not yet reached (needs to survive until day {0})</CompManualEventTrigger_DisableReason_WaitDays>
-  <CompManualEventTrigger_DisableReason_MinPopulation>Insufficient population (needs {0}, currently {1})</CompManualEventTrigger_DisableReason_MinPopulation>
-  <CompManualEventTrigger_DisableReason_InvalidBiome>Current biome does not match</CompManualEventTrigger_DisableReason_InvalidBiome>
-  <CompManualEventTrigger_DisableReason_Unknown>Intercepted by event internal C# logic (e.g., insufficient wealth/missing specific buildings/conditions not met, etc.)</CompManualEventTrigger_DisableReason_Unknown>
+  <CompManualEventTrigger_Reason_WaitDays>Days passed < {0}</CompManualEventTrigger_Reason_WaitDays>
+  <CompManualEventTrigger_Reason_MinPopulation>Pop < {0}</CompManualEventTrigger_Reason_MinPopulation>
+  <CompManualEventTrigger_Reason_InvalidBiome>Invalid biome</CompManualEventTrigger_Reason_InvalidBiome>
+  <CompManualEventTrigger_Reason_Unknown>Logic blocked</CompManualEventTrigger_Reason_Unknown>
 
   <!-- Dialog_ManualEventTrigger -->
   <Dialog_ManualEventTrigger_Title>Manual Event Trigger</Dialog_ManualEventTrigger_Title>
