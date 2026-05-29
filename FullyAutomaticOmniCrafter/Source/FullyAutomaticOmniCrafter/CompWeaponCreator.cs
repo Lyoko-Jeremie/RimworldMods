@@ -446,11 +446,15 @@ namespace FullyAutomaticOmniCrafter
             // Search bar area
             float searchBarY = innerRect.y + detailHeight + 5f;
             float searchBarHeight = 30f;
-            Rect searchRect = new Rect(innerRect.x, searchBarY, innerRect.width - 75f, searchBarHeight);
-            Rect pinyinBtnRect = new Rect(innerRect.x + innerRect.width - 70f, searchBarY, 70f, searchBarHeight);
+            float pinyinBtnWidth = 30f;
+            Rect searchRect = new Rect(innerRect.x, searchBarY, innerRect.width - pinyinBtnWidth - 5f, searchBarHeight);
+            Rect pinyinBtnRect = new Rect(innerRect.x + innerRect.width - pinyinBtnWidth, searchBarY, pinyinBtnWidth, searchBarHeight);
 
             traitSearchText = Widgets.TextField(searchRect, traitSearchText);
-            if (Widgets.ButtonText(pinyinBtnRect, usePinyinForTraits ? "Pinyin: ON" : "Pinyin: OFF"))
+            
+            Color oldColor = GUI.color;
+            if (usePinyinForTraits) GUI.color = Color.green;
+            if (Widgets.ButtonText(pinyinBtnRect, "拼"))
             {
                 usePinyinForTraits = !usePinyinForTraits;
                 if (usePinyinForTraits)
@@ -458,6 +462,8 @@ namespace FullyAutomaticOmniCrafter
                     PinyinSearchEngine.EnsureIndexed(availableTraits, PinyinSource.WeaponTrait);
                 }
             }
+            GUI.color = oldColor;
+            TooltipHandler.TipRegion(pinyinBtnRect, "Pinyin Search: " + (usePinyinForTraits ? "ON" : "OFF"));
             if (traitSearchText != "" && Widgets.ButtonImage(new Rect(searchRect.xMax - 20f, searchRect.y + 5f, 18f, 18f), Widgets.CheckboxOffTex))
             {
                 traitSearchText = "";
