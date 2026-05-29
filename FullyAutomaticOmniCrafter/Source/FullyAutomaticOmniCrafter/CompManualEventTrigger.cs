@@ -91,6 +91,10 @@ namespace FullyAutomaticOmniCrafter
         private List<IncidentDef> cachedIncidents;
         private List<IncidentDef> filteredIncidents;
         private Dictionary<IncidentDef, bool> canFireCache = new Dictionary<IncidentDef, bool>();
+        
+        private string sourceFilter = "All"; // "All", "Core", or Mod Name
+        private bool showOnlyCanFire = false;
+        private List<string> availableSources = new List<string>();
 
         public override Vector2 InitialSize => new Vector2(Mathf.Min(1200f, (float)UI.screenWidth * 0.9f), 700f);
 
@@ -121,6 +125,26 @@ namespace FullyAutomaticOmniCrafter
                     incidentDef.category != IncidentCategoryDefOf.Special)
                 .OrderBy(d => d.label ?? d.defName)
                 .ToList();
+
+            availableSources.Clear();
+            availableSources.Add("All");
+            availableSources.Add("Core");
+            foreach (var incident in cachedIncidents)
+            {
+                string modName = incident.modContentPack?.Name;
+                if (!modName.NullOrEmpty() && !availableSources.Contains(modName))
+                {
+                    availableSources.Add(modName);
+                }
+            }
+            availableSources.Sort((a, b) =>
+            {
+                if (a == "All") return -1;
+                if (b == "All") return 1;
+                if (a == "Core") return -1;
+                if (b == "Core") return 1;
+                return string.Compare(a, b, StringComparison.Ordinal);
+            });
             
             RefreshCanFireCache();
             FilterIncidents();
@@ -153,26 +177,47 @@ namespace FullyAutomaticOmniCrafter
 
         private void FilterIncidents()
         {
-            if (searchText.NullOrEmpty())
+            IEnumerable<IncidentDef> queryRows = cachedIncidents;
+
+            // 1. 来源筛选
+            if (sourceFilter != "All")
             {
-                filteredIncidents = cachedIncidents;
-                return;
+                if (sourceFilter == "Core")
+                {
+                    queryRows = queryRows.Where(d => d.modContentPack == null || d.modContentPack.IsCoreMod);
+                }
+                else
+                {
+                    queryRows = queryRows.Where(d => d.modContentPack?.Name == sourceFilter);
+                }
             }
 
-            string query = searchText.ToLower();
-            filteredIncidents = cachedIncidents.Where(d =>
+            // 2. 是否可触发筛选
+            if (showOnlyCanFire)
             {
-                bool match = (d.label != null && d.label.ToLower().Contains(query)) ||
-                             (d.defName != null && d.defName.ToLower().Contains(query));
-                if (match) return true;
+                queryRows = queryRows.Where(d => canFireCache.TryGetValue(d, out bool canFire) && canFire);
+            }
 
-                if (OmniCrafterMod.Settings.enablePinyinSearch)
+            // 3. 搜索文本筛选
+            if (!searchText.NullOrEmpty())
+            {
+                string query = searchText.ToLower();
+                queryRows = queryRows.Where(d =>
                 {
-                    return PinyinSearchEngine.MatchesPinyin(d, query, PinyinSource.ManualEvent);
-                }
+                    bool match = (d.label != null && d.label.ToLower().Contains(query)) ||
+                                 (d.defName != null && d.defName.ToLower().Contains(query));
+                    if (match) return true;
 
-                return false;
-            }).ToList();
+                    if (OmniCrafterMod.Settings.enablePinyinSearch)
+                    {
+                        return PinyinSearchEngine.MatchesPinyin(d, query, PinyinSource.ManualEvent);
+                    }
+
+                    return false;
+                });
+            }
+
+            filteredIncidents = queryRows.ToList();
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -203,6 +248,38 @@ namespace FullyAutomaticOmniCrafter
                 {
                     PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList(), PinyinSource.ManualEvent);
                 }
+                FilterIncidents();
+            }
+
+            y += 40f;
+
+            // 筛选行
+            float filterX = 0;
+            Widgets.Label(new Rect(filterX, y, 60f, 30f), "Dialog_ManualEventTrigger_Source".Translate());
+            filterX += 65f;
+            if (Widgets.ButtonText(new Rect(filterX, y, 200f, 30f), sourceFilter == "All" ? (string)"Dialog_ManualEventTrigger_SourceAll".Translate() : (sourceFilter == "Core" ? (string)"Dialog_ManualEventTrigger_SourceCore".Translate() : sourceFilter)))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                foreach (string source in availableSources)
+                {
+                    string labelOption = source;
+                    if (source == "All") labelOption = "Dialog_ManualEventTrigger_SourceAll".Translate();
+                    else if (source == "Core") labelOption = "Dialog_ManualEventTrigger_SourceCore".Translate();
+                    
+                    options.Add(new FloatMenuOption(labelOption, () =>
+                    {
+                        sourceFilter = source;
+                        FilterIncidents();
+                    }));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+            filterX += 210f;
+
+            // 仅显示可触发
+            if (Widgets.ButtonText(new Rect(filterX, y, 150f, 30f), showOnlyCanFire ? (string)"Dialog_ManualEventTrigger_OnlyCanFireOn".Translate() : (string)"Dialog_ManualEventTrigger_OnlyCanFireOff".Translate()))
+            {
+                showOnlyCanFire = !showOnlyCanFire;
                 FilterIncidents();
             }
 
