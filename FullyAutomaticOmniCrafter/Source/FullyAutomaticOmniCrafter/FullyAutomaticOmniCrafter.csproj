@@ -371,6 +371,7 @@
     <Compile Include="CompAutoSmoother.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
+    <Compile Include="CompManualEventTrigger.cs" />
     <Compile Include="CompOmniProjectileInterceptor.cs" />
     <Compile Include="CompOmniRectangleProjectileInterceptor.cs" />
     <Compile Include="DebugTools_PoisonFood.cs" />
