@@ -12,4 +12,5 @@
   <WeaponCreator_GenerateWeapon>生成武器</WeaponCreator_GenerateWeapon>
   <WeaponCreator_Generated>武器已生成: {0}</WeaponCreator_Generated>
   <WeaponCreator_CustomName>自定义 {0}</WeaponCreator_CustomName>
+  <WeaponCreator_Source>来源: {0}</WeaponCreator_Source>
 </LanguageData>

@@ -12,4 +12,5 @@
   <WeaponCreator_GenerateWeapon>Generate Weapon</WeaponCreator_GenerateWeapon>
   <WeaponCreator_Generated>Weapon generated: {0}</WeaponCreator_Generated>
   <WeaponCreator_CustomName>Custom {0}</WeaponCreator_CustomName>
+  <WeaponCreator_Source>Source: {0}</WeaponCreator_Source>
 </LanguageData>

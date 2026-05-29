@@ -251,23 +251,45 @@ namespace FullyAutomaticOmniCrafter
                 .ToList();
 
             Rect outRect = new Rect(rect.x, rect.y + 35, rect.width, rect.height - 35);
-            Rect viewRect = new Rect(0, 0, outRect.width - 16f, filtered.Count * 30f);
+            float rowHeight = 36f;
+            float iconSize = 30f;
+            float infoBtnWidth = 26f;
+            Rect viewRect = new Rect(0, 0, outRect.width - 16f, filtered.Count * rowHeight);
             
             Widgets.BeginScrollView(outRect, ref middleScroll, viewRect);
             float curY = 0;
-            foreach (var def in filtered)
+            for (int i = 0; i < filtered.Count; i++)
             {
-                Rect rowRect = new Rect(0, curY, viewRect.width, 28f);
+                var def = filtered[i];
+                Rect rowRect = new Rect(0, curY, viewRect.width, rowHeight);
                 if (selectedDef == def) Widgets.DrawHighlightSelected(rowRect);
                 else Widgets.DrawHighlightIfMouseover(rowRect);
+
+                // Icon
+                Rect iconRect = new Rect(3f, curY + (rowHeight - iconSize) / 2f, iconSize, iconSize);
+                Widgets.ThingIcon(iconRect, def);
+
+                // Info button
+                Rect infoRect = new Rect(viewRect.width - infoBtnWidth - 2f, curY + (rowHeight - 24f) / 2f, infoBtnWidth, 24f);
+                if (Widgets.ButtonText(infoRect, "i"))
+                {
+                    ThingDef stuff = def.MadeFromStuff ? (selectedDef == def && selectedStuff != null ? selectedStuff : GenStuff.DefaultStuffFor(def)) : null;
+                    Find.WindowStack.Add(new Dialog_InfoCard(def, stuff));
+                }
+
+                // Label
+                float labelX = iconSize + 8f;
+                float labelWidth = viewRect.width - labelX - infoBtnWidth - 10f;
+                Widgets.Label(new Rect(labelX, curY, labelWidth, rowHeight), def.LabelCap);
                 
-                Widgets.Label(new Rect(5, curY, viewRect.width - 10, 28f), def.LabelCap);
-                if (Widgets.ButtonInvisible(rowRect))
+                // Selection logic
+                Rect clickRect = new Rect(0, curY, viewRect.width - infoBtnWidth - 5f, rowHeight);
+                if (Widgets.ButtonInvisible(clickRect))
                 {
                     selectedDef = def;
                     selectedStuff = def.MadeFromStuff ? GenStuff.DefaultStuffFor(def) : null;
                 }
-                curY += 30f;
+                curY += rowHeight;
             }
             Widgets.EndScrollView();
         }
@@ -283,7 +305,22 @@ namespace FullyAutomaticOmniCrafter
 
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(rect.ContractedBy(10f));
-            listing.Label(selectedDef.LabelCap, 30f);
+            
+            // Icon and Name
+            Rect headerRect = listing.GetRect(40f);
+            Rect iconRect = new Rect(headerRect.x, headerRect.y, 40f, 40f);
+            Widgets.DefIcon(iconRect, selectedDef);
+            Rect nameRect = new Rect(headerRect.x + 45f, headerRect.y, headerRect.width - 45f, 40f);
+            Text.Font = GameFont.Medium;
+            Widgets.Label(nameRect, selectedDef.LabelCap);
+            Text.Font = GameFont.Small;
+
+            // Mod Source
+            string source = selectedDef.modContentPack?.Name ?? "Unknown";
+            GUI.color = Color.gray;
+            listing.Label("WeaponCreator_Source".Translate(source));
+            GUI.color = Color.white;
+            
             listing.Label(selectedDef.description.Truncate(200f));
             listing.Gap();
 
