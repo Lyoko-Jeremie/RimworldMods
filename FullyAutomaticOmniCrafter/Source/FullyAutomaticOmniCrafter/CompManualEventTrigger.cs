@@ -30,8 +30,8 @@ namespace FullyAutomaticOmniCrafter
             // 添加一个自定义按钮
             yield return new Command_Action
             {
-                defaultLabel = "控制台：触发事件",
-                defaultDesc = "查看并启动可用的事件链（支持拼音搜索）。",
+                defaultLabel = "CompManualEventTrigger_OpenEventMenu_Label".Translate(),
+                defaultDesc = "CompManualEventTrigger_OpenEventMenu_Desc".Translate(),
                 icon = CompManualEventTriggerTex.IconOpenEventMenu,
                 action = delegate { OpenAllEventsMenu(); }
             };
@@ -47,20 +47,20 @@ namespace FullyAutomaticOmniCrafter
             // 1. 检查游戏天数 (earliestDay 标签)
             if (GenDate.DaysPassed < incidentDef.earliestDay)
             {
-                return $"时间未到 (需存活至第 {incidentDef.earliestDay} 天)";
+                return "CompManualEventTrigger_DisableReason_WaitDays".Translate(incidentDef.earliestDay);
             }
 
             // 2. 检查人口数量 (minPopulation 标签)
             int colonistCount = map.mapPawns.FreeColonistsCount;
             if (colonistCount < incidentDef.minPopulation)
             {
-                return $"人口不足 (需要 {incidentDef.minPopulation} 人，当前 {colonistCount} 人)";
+                return "CompManualEventTrigger_DisableReason_MinPopulation".Translate(incidentDef.minPopulation, colonistCount);
             }
 
             // 3. 检查群落限制 (allowedBiomes 标签)
             if (incidentDef.allowedBiomes != null && !incidentDef.allowedBiomes.Contains(map.Biome))
             {
-                return "当前群落地形不匹配";
+                return "CompManualEventTrigger_DisableReason_InvalidBiome".Translate();
             }
 
             // 4. 检查是否在冷却期 (minRefireDays 标签)
@@ -71,7 +71,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 5. 如果上面的 XML 常见条件都满足，那说明是被 C# 的动态逻辑拦截了
-            return "被事件内部 C# 逻辑拦截 (如：财富不足/缺少特定建筑/条件不满足等)";
+            return "CompManualEventTrigger_DisableReason_Unknown".Translate();
         }
     }
 
@@ -142,13 +142,13 @@ namespace FullyAutomaticOmniCrafter
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0, 0, inRect.width, 35f), "手动事件触发器");
+            Widgets.Label(new Rect(0, 0, inRect.width, 35f), "Dialog_ManualEventTrigger_Title".Translate());
             Text.Font = GameFont.Small;
 
             float y = 45f;
 
             // 搜索框
-            Widgets.Label(new Rect(0, y, 60f, 30f), "搜索: ");
+            Widgets.Label(new Rect(0, y, 60f, 30f), "Dialog_ManualEventTrigger_Search".Translate());
             string newSearchText = Widgets.TextField(new Rect(65f, y, inRect.width - 150f, 30f), searchText);
             if (newSearchText != searchText)
             {
@@ -158,7 +158,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 拼音切换按钮
             bool pinyin = OmniCrafterMod.Settings.enablePinyinSearch;
-            if (Widgets.ButtonText(new Rect(inRect.width - 80f, y, 80f, 30f), pinyin ? "拼音: 开" : "拼音: 关"))
+            if (Widgets.ButtonText(new Rect(inRect.width - 80f, y, 80f, 30f), pinyin ? "Dialog_ManualEventTrigger_PinyinOn".Translate() : "Dialog_ManualEventTrigger_PinyinOff".Translate()))
             {
                 pinyin = !pinyin;
                 OmniCrafterMod.Settings.enablePinyinSearch = pinyin;
@@ -197,7 +197,7 @@ namespace FullyAutomaticOmniCrafter
 
                 bool canFire = incidentDef.Worker.CanFireNow(parms);
                 string label = incidentDef.label ?? incidentDef.defName;
-                string displayLabel = canFire ? label : $"{label} (强制 - {CompManualEventTrigger.GetDisableReason(incidentDef, map)})";
+                string displayLabel = canFire ? label : (string)"Dialog_ManualEventTrigger_ForcedLabel".Translate(label, CompManualEventTrigger.GetDisableReason(incidentDef, map));
 
                 GUI.color = canFire ? Color.white : Color.yellow;
                 if (Widgets.ButtonInvisible(rowRect))
@@ -220,18 +220,18 @@ namespace FullyAutomaticOmniCrafter
                 bool success = incidentDef.Worker.TryExecute(parms);
                 if (success)
                 {
-                    Messages.Message(canFire ? $"已触发事件: {label}" : $"已无视条件强制触发事件: {label}", MessageTypeDefOf.NeutralEvent);
+                    Messages.Message(canFire ? "Dialog_ManualEventTrigger_Success".Translate(label) : "Dialog_ManualEventTrigger_ForcedSuccess".Translate(label), MessageTypeDefOf.NeutralEvent);
                     this.Close();
                 }
                 else
                 {
-                    Messages.Message($"事件 {label} 触发失败（代码内部阻断）。", MessageTypeDefOf.RejectInput);
+                    Messages.Message("Dialog_ManualEventTrigger_Failed".Translate(label), MessageTypeDefOf.RejectInput);
                 }
             }
             catch (Exception ex)
             {
                 Log.Error($"[ManualEventTrigger] 触发事件 {incidentDef.defName} 时发生异常: {ex}");
-                Messages.Message($"触发异常: {ex.Message}", MessageTypeDefOf.RejectInput);
+                Messages.Message("Dialog_ManualEventTrigger_Exception".Translate(ex.Message), MessageTypeDefOf.RejectInput);
             }
         }
     }

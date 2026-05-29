@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <!-- CompManualEventTrigger -->
+  <CompManualEventTrigger_OpenEventMenu_Label>Console: Trigger Event</CompManualEventTrigger_OpenEventMenu_Label>
+  <CompManualEventTrigger_OpenEventMenu_Desc>View and start available event chains (supports pinyin search).</CompManualEventTrigger_OpenEventMenu_Desc>
+  
+  <CompManualEventTrigger_DisableReason_WaitDays>Time not yet reached (needs to survive until day {0})</CompManualEventTrigger_DisableReason_WaitDays>
+  <CompManualEventTrigger_DisableReason_MinPopulation>Insufficient population (needs {0}, currently {1})</CompManualEventTrigger_DisableReason_MinPopulation>
+  <CompManualEventTrigger_DisableReason_InvalidBiome>Current biome does not match</CompManualEventTrigger_DisableReason_InvalidBiome>
+  <CompManualEventTrigger_DisableReason_Unknown>Intercepted by event internal C# logic (e.g., insufficient wealth/missing specific buildings/conditions not met, etc.)</CompManualEventTrigger_DisableReason_Unknown>
+
+  <!-- Dialog_ManualEventTrigger -->
+  <Dialog_ManualEventTrigger_Title>Manual Event Trigger</Dialog_ManualEventTrigger_Title>
+  <Dialog_ManualEventTrigger_Search>Search: </Dialog_ManualEventTrigger_Search>
+  <Dialog_ManualEventTrigger_PinyinOn>Pinyin: ON</Dialog_ManualEventTrigger_PinyinOn>
+  <Dialog_ManualEventTrigger_PinyinOff>Pinyin: OFF</Dialog_ManualEventTrigger_PinyinOff>
+  <Dialog_ManualEventTrigger_ForcedLabel>{0} (Forced - {1})</Dialog_ManualEventTrigger_ForcedLabel>
+  
+  <Dialog_ManualEventTrigger_Success>Triggered event: {0}</Dialog_ManualEventTrigger_Success>
+  <Dialog_ManualEventTrigger_ForcedSuccess>Force triggered event ignoring conditions: {0}</Dialog_ManualEventTrigger_ForcedSuccess>
+  <Dialog_ManualEventTrigger_Failed>Event {0} failed to trigger (internal code block).</Dialog_ManualEventTrigger_Failed>
+  <Dialog_ManualEventTrigger_Exception>Trigger exception: {0}</Dialog_ManualEventTrigger_Exception>
+</LanguageData>
