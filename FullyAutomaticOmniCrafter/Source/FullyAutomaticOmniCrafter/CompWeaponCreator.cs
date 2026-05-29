@@ -96,6 +96,8 @@ namespace FullyAutomaticOmniCrafter
         
         private ThingCategoryDef selectedCategory;
         private string searchText = "";
+        private string traitSearchText = "";
+        private bool usePinyinForTraits = false;
         private Vector2 leftScroll;
         private Vector2 middleScroll;
         private Vector2 midRightScroll;
@@ -385,9 +387,30 @@ namespace FullyAutomaticOmniCrafter
             Widgets.DrawMenuSection(rect);
             Rect innerRect = rect.ContractedBy(5f);
             
-            float detailHeight = rect.height * 0.4f;
+            float detailHeight = rect.height * 0.35f;
             Rect detailRect = new Rect(innerRect.x, innerRect.y, innerRect.width, detailHeight);
-            Rect listRect = new Rect(innerRect.x, innerRect.y + detailHeight + 5f, innerRect.width, innerRect.height - detailHeight - 5f);
+            
+            // Search bar area
+            float searchBarY = innerRect.y + detailHeight + 5f;
+            float searchBarHeight = 30f;
+            Rect searchRect = new Rect(innerRect.x, searchBarY, innerRect.width - 75f, searchBarHeight);
+            Rect pinyinBtnRect = new Rect(innerRect.x + innerRect.width - 70f, searchBarY, 70f, searchBarHeight);
+
+            traitSearchText = Widgets.TextField(searchRect, traitSearchText);
+            if (Widgets.ButtonText(pinyinBtnRect, usePinyinForTraits ? "Pinyin: ON" : "Pinyin: OFF"))
+            {
+                usePinyinForTraits = !usePinyinForTraits;
+                if (usePinyinForTraits)
+                {
+                    PinyinSearchEngine.EnsureIndexed(availableTraits, PinyinSource.WeaponTrait);
+                }
+            }
+            if (traitSearchText != "" && Widgets.ButtonImage(new Rect(searchRect.xMax - 20f, searchRect.y + 5f, 18f, 18f), Widgets.CheckboxOffTex))
+            {
+                traitSearchText = "";
+            }
+
+            Rect listRect = new Rect(innerRect.x, searchBarY + searchBarHeight + 5f, innerRect.width, innerRect.height - detailHeight - searchBarHeight - 10f);
             
             DrawTraitDetail(detailRect);
             listing_Traits(listRect);
@@ -413,7 +436,8 @@ namespace FullyAutomaticOmniCrafter
             
             listing.End();
 
-            Rect descRect = new Rect(innerRect.x, innerRect.y + 40f, innerRect.width, innerRect.height - 80f);
+            // Adjusted description area to be smaller and moved up slightly
+            Rect descRect = new Rect(innerRect.x, innerRect.y + 40f, innerRect.width, innerRect.height - 100f);
             Widgets.LabelScrollable(descRect, selectedTraitForDetail.description, ref detailScroll);
 
             if (Widgets.ButtonText(new Rect(innerRect.x, innerRect.y + innerRect.height - 30f, innerRect.width, 30f), "WeaponCreator_AddTrait".Translate()))
@@ -439,12 +463,27 @@ namespace FullyAutomaticOmniCrafter
 
         private void listing_Traits(Rect rect)
         {
+            List<WeaponTraitDef> filteredTraits = availableTraits;
+            if (!traitSearchText.NullOrEmpty())
+            {
+                string searchLower = traitSearchText.ToLower();
+                filteredTraits = availableTraits.Where(t =>
+                {
+                    if (usePinyinForTraits)
+                    {
+                        return PinyinSearchEngine.MatchesPinyin(t, searchLower, PinyinSource.WeaponTrait) || 
+                               t.label.ToLower().Contains(searchLower);
+                    }
+                    return t.label.ToLower().Contains(searchLower);
+                }).ToList();
+            }
+
             Rect outRect = new Rect(rect.x, rect.y, rect.width, rect.height);
-            Rect viewRect = new Rect(0, 0, outRect.width - 16f, availableTraits.Count * 28f);
+            Rect viewRect = new Rect(0, 0, outRect.width - 16f, filteredTraits.Count * 28f);
             
             Widgets.BeginScrollView(outRect, ref farRightScroll, viewRect);
             float curY = 0;
-            foreach (var trait in availableTraits)
+            foreach (var trait in filteredTraits)
             {
                 Rect tRect = new Rect(0, curY, viewRect.width, 26f);
                 Widgets.DrawHighlightIfMouseover(tRect);
