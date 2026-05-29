@@ -141,9 +141,6 @@ namespace FullyAutomaticOmniCrafter
                 .Distinct()
                 .OrderBy(m => m.Name)
                 .ToList();
-
-            PinyinSearchEngine.EnsureIndexed(weaponDefs, PinyinSource.Weapon);
-            PinyinSearchEngine.EnsureIndexed(availableTraits, PinyinSource.WeaponTrait);
             
             // Log for debugging
             Log.Message("WeaponCreator_Loaded".Translate(weaponDefs.Count, availableTraits.Count));
@@ -270,6 +267,10 @@ namespace FullyAutomaticOmniCrafter
             if (Widgets.ButtonText(pinyinBtnRect, "拼", true, true, true))
             {
                 usePinyinForWeapons = !usePinyinForWeapons;
+                if (usePinyinForWeapons)
+                {
+                    PinyinSearchEngine.EnsureIndexed(weaponDefs, PinyinSource.Weapon);
+                }
             }
             if (usePinyinForWeapons)
             {
