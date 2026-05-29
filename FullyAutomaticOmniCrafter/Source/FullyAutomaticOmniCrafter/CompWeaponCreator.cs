@@ -64,6 +64,14 @@ namespace FullyAutomaticOmniCrafter
                     {
                         traitsField.SetValue(bladelink, traits.ToList());
                     }
+                    else
+                    {
+                        Log.Error($"Failed to access 'traits' field in CompBladelinkWeapon for weapon '{def.label}'");
+                    }
+                }
+                else
+                {
+                    Log.Warning($"Weapon '{def.label}' does not have CompBladelinkWeapon, traits will not be applied to it.");
                 }
 
                 // CompUniqueWeapon
@@ -83,6 +91,14 @@ namespace FullyAutomaticOmniCrafter
                             nameField.SetValue(unique, "WeaponCreator_CustomName".Translate(def.label).ToString());
                         }
                     }
+                    else
+                    {
+                        Log.Error($"Failed to access 'traits' field in CompUniqueWeapon for weapon '{def.label}'");
+                    }
+                }
+                else
+                {
+                    Log.Warning($"Weapon '{def.label}' does not have CompUniqueWeapon, traits will not be applied to it.");
                 }
             }
 
