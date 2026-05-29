@@ -20,4 +20,6 @@
   <WeaponCreator_SelectWeaponFirst>请先选择一件武器</WeaponCreator_SelectWeaponFirst>
   <WeaponCreator_TooManyTraits>特质数量过多</WeaponCreator_TooManyTraits>
   <WeaponCreator_TraitAlreadyAdded>该特质已添加</WeaponCreator_TraitAlreadyAdded>
+  <WeaponCreator_UsePinyin>使用拼音搜索</WeaponCreator_UsePinyin>
+  <WeaponCreator_AllMods>所有来源 (原版/Mod)</WeaponCreator_AllMods>
 </LanguageData>

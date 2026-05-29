@@ -97,7 +97,9 @@ namespace FullyAutomaticOmniCrafter
         private ThingCategoryDef selectedCategory;
         private string searchText = "";
         private string traitSearchText = "";
+        private bool usePinyinForWeapons = false;
         private bool usePinyinForTraits = false;
+        private ModContentPack selectedModFilter;
         private Vector2 leftScroll;
         private Vector2 middleScroll;
         private Vector2 midRightScroll;
@@ -112,6 +114,7 @@ namespace FullyAutomaticOmniCrafter
         
         private List<ThingDef> weaponDefs;
         private List<WeaponTraitDef> availableTraits;
+        private List<ModContentPack> availableMods;
 
         public override Vector2 InitialSize => new Vector2(1350f, 750f);
 
@@ -131,6 +134,16 @@ namespace FullyAutomaticOmniCrafter
                 .ToList();
                 
             availableTraits = DefDatabase<WeaponTraitDef>.AllDefs.OrderBy(t => t.label).ToList();
+
+            availableMods = weaponDefs
+                .Select(d => d.modContentPack)
+                .Where(m => m != null)
+                .Distinct()
+                .OrderBy(m => m.Name)
+                .ToList();
+
+            PinyinSearchEngine.EnsureIndexed(weaponDefs, PinyinSource.Weapon);
+            PinyinSearchEngine.EnsureIndexed(availableTraits, PinyinSource.WeaponTrait);
             
             // Log for debugging
             Log.Message("WeaponCreator_Loaded".Translate(weaponDefs.Count, availableTraits.Count));
@@ -247,14 +260,53 @@ namespace FullyAutomaticOmniCrafter
         private void DrawMiddlePanel(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
-            searchText = Widgets.TextField(new Rect(rect.x + 5, rect.y + 5, rect.width - 10, 25), searchText);
             
+            // Search bar and Pinyin button
+            Rect searchRect = new Rect(rect.x + 5, rect.y + 5, rect.width - 40, 25);
+            searchText = Widgets.TextField(searchRect, searchText);
+            
+            Rect pinyinBtnRect = new Rect(rect.x + rect.width - 32, rect.y + 5, 25, 25);
+            TooltipHandler.TipRegion(pinyinBtnRect, "WeaponCreator_UsePinyin".Translate());
+            if (Widgets.ButtonText(pinyinBtnRect, "拼", true, true, true))
+            {
+                usePinyinForWeapons = !usePinyinForWeapons;
+            }
+            if (usePinyinForWeapons)
+            {
+                Widgets.DrawBoxSolid(pinyinBtnRect, new Color(0.2f, 0.8f, 0.2f, 0.2f));
+            }
+
+            // Mod filter
+            Rect filterRect = new Rect(rect.x + 5, rect.y + 35, rect.width - 10, 25);
+            string filterLabel = selectedModFilter?.Name ?? "WeaponCreator_AllMods".Translate();
+            if (Widgets.ButtonText(filterRect, filterLabel))
+            {
+                List<FloatMenuOption> options = new List<FloatMenuOption>();
+                options.Add(new FloatMenuOption("WeaponCreator_AllMods".Translate(), () => selectedModFilter = null));
+                foreach (var mod in availableMods)
+                {
+                    options.Add(new FloatMenuOption(mod.Name, () => selectedModFilter = mod));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            string searchLower = searchText.ToLower();
             var filtered = weaponDefs
                 .Where(d => selectedCategory == null || (d.thingCategories != null && Enumerable.Any(d.thingCategories, c => IsDescendantOf(c, selectedCategory))))
-                .Where(d => searchText.NullOrEmpty() || d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Where(d => selectedModFilter == null || d.modContentPack == selectedModFilter)
+                .Where(d =>
+                {
+                    if (searchText.NullOrEmpty()) return true;
+                    if (usePinyinForWeapons)
+                    {
+                        return PinyinSearchEngine.MatchesPinyin(d, searchLower, PinyinSource.Weapon) || 
+                               d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0;
+                    }
+                    return d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0;
+                })
                 .ToList();
 
-            Rect outRect = new Rect(rect.x, rect.y + 35, rect.width, rect.height - 35);
+            Rect outRect = new Rect(rect.x, rect.y + 65, rect.width, rect.height - 65);
             float rowHeight = 36f;
             float iconSize = 30f;
             float infoBtnWidth = 26f;

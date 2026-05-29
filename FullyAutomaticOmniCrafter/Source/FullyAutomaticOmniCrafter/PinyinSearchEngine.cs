@@ -13,7 +13,8 @@ namespace FullyAutomaticOmniCrafter
         SurgeryImplant,      // 手术室 - 植入物 (HediffDef)
         SurgeryPawnKind,     // 手术室 - 角色种类 (PawnKindDef)
         SurgeryPawnRace,     // 手术室 - 种族 (ThingDef)
-        WeaponTrait          // 武器特性 (WeaponTraitDef)
+        WeaponTrait,         // 武器特性 (WeaponTraitDef)
+        Weapon               // 武器 (ThingDef)
     }
 
     /// <summary>

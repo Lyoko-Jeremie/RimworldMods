@@ -20,4 +20,6 @@
   <WeaponCreator_SelectWeaponFirst>Please select a weapon first</WeaponCreator_SelectWeaponFirst>
   <WeaponCreator_TooManyTraits>Too many traits</WeaponCreator_TooManyTraits>
   <WeaponCreator_TraitAlreadyAdded>Trait already added</WeaponCreator_TraitAlreadyAdded>
+  <WeaponCreator_UsePinyin>Use Pinyin search</WeaponCreator_UsePinyin>
+  <WeaponCreator_AllMods>All sources (Core/Mod)</WeaponCreator_AllMods>
 </LanguageData>
