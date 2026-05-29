@@ -453,13 +453,22 @@ namespace FullyAutomaticOmniCrafter
                     Widgets.DrawHighlightSelected(tRect);
                 }
                 
-                Rect labelRect = new Rect(5, curY, viewRect.width - 35, 26f);
+                Rect labelRect = new Rect(5, curY, viewRect.width - 60, 26f);
                 Widgets.Label(labelRect, trait.LabelCap);
                 
                 // Detail/Select button
                 if (Widgets.ButtonInvisible(labelRect))
                 {
                     selectedTraitForDetail = trait;
+                }
+
+                // Status icon (added)
+                if (selectedTraits.Contains(trait))
+                {
+                    Rect iconRect = new Rect(viewRect.width - 50, curY + 4, 18, 18);
+                    GUI.color = Color.green;
+                    Widgets.DrawTextureFitted(iconRect, Widgets.CheckboxOnTex, 1f);
+                    GUI.color = Color.white;
                 }
 
                 if (Widgets.InfoCardButton(viewRect.width - 25, curY + 3, trait))
