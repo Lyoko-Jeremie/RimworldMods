@@ -80,7 +80,7 @@ namespace FullyAutomaticOmniCrafter
                         var nameField = typeof(CompUniqueWeapon).GetField("name", BindingFlags.Instance | BindingFlags.NonPublic);
                         if (nameField != null)
                         {
-                            nameField.SetValue(unique, "WeaponCreator_CustomName".Translate(def.label));
+                            nameField.SetValue(unique, "WeaponCreator_CustomName".Translate(def.label).ToString());
                         }
                     }
                 }
