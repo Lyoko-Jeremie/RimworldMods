@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniWeaponCreator.label>万能武器制作台</OmniWeaponCreator.label>
+    <OmniWeaponCreator.description>一种来自超维世界的武器制作台，常出现在娱乐室中作为娱乐用品制作台使用。在边缘世界，可以制作各种武器。</OmniWeaponCreator.description>
+
+    <OmniWeaponCreator_mini.label>万能武器制作台（便携版）</OmniWeaponCreator_mini.label>
+    <OmniWeaponCreator_mini.description>一种来自超维世界的武器制作台，常出现在娱乐室中作为娱乐用品制作台使用。在边缘世界，可以制作各种武器。</OmniWeaponCreator_mini.description>
+
+</LanguageData>

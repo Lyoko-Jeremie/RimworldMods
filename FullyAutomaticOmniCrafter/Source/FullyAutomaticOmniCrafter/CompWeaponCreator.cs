@@ -80,7 +80,7 @@ namespace FullyAutomaticOmniCrafter
                         var nameField = typeof(CompUniqueWeapon).GetField("name", BindingFlags.Instance | BindingFlags.NonPublic);
                         if (nameField != null)
                         {
-                            nameField.SetValue(unique, "Custom " + def.label);
+                            nameField.SetValue(unique, "WeaponCreator_CustomName".Translate(def.label));
                         }
                     }
                 }
@@ -167,7 +167,7 @@ namespace FullyAutomaticOmniCrafter
             Widgets.BeginScrollView(rect, ref leftScroll, viewRect);
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(viewRect);
-            if (listing.RadioButton("All", selectedCategory == null)) selectedCategory = null;
+            if (listing.RadioButton("WeaponCreator_All".Translate(), selectedCategory == null)) selectedCategory = null;
             foreach (var cat in categories)
             {
                 if (listing.RadioButton(cat.LabelCap, selectedCategory == cat)) selectedCategory = cat;
@@ -213,7 +213,7 @@ namespace FullyAutomaticOmniCrafter
             Widgets.DrawMenuSection(rect);
             if (selectedDef == null)
             {
-                Widgets.Label(rect.ContractedBy(10f), "Select a weapon");
+                Widgets.Label(rect.ContractedBy(10f), "WeaponCreator_SelectWeapon".Translate());
                 return;
             }
 
@@ -225,7 +225,7 @@ namespace FullyAutomaticOmniCrafter
 
             if (selectedDef.MadeFromStuff)
             {
-                if (listing.ButtonText("Stuff: " + (selectedStuff?.LabelCap ?? "None")))
+                if (listing.ButtonText("WeaponCreator_Stuff".Translate(selectedStuff?.LabelCap ?? "WeaponCreator_None".Translate())))
                 {
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
                     foreach (var stuff in GenStuff.AllowedStuffsFor(selectedDef))
@@ -236,18 +236,18 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            if (listing.ButtonText("Quality: " + selectedQuality))
+            if (listing.ButtonText("WeaponCreator_Quality".Translate(selectedQuality.GetLabel())))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
                 foreach (QualityCategory q in Enum.GetValues(typeof(QualityCategory)))
                 {
-                    options.Add(new FloatMenuOption(q.ToString(), () => selectedQuality = q));
+                    options.Add(new FloatMenuOption(q.GetLabel(), () => selectedQuality = q));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));
             }
 
             listing.Gap();
-            listing.Label("Selected Traits:");
+            listing.Label("WeaponCreator_SelectedTraits".Translate());
             listing.End();
 
             Rect traitsRect = new Rect(rect.x + 10, rect.y + 220, rect.width - 20, rect.height - 300);
@@ -270,10 +270,10 @@ namespace FullyAutomaticOmniCrafter
             }
             Widgets.EndScrollView();
 
-            if (Widgets.ButtonText(new Rect(rect.x + 10, rect.y + rect.height - 40, rect.width - 20, 30), "Generate Weapon"))
+            if (Widgets.ButtonText(new Rect(rect.x + 10, rect.y + rect.height - 40, rect.width - 20, 30), "WeaponCreator_GenerateWeapon".Translate()))
             {
                 comp.CreateWeapon(selectedDef, selectedStuff, selectedQuality, selectedTraits);
-                Messages.Message("Weapon generated: " + selectedDef.label, MessageTypeDefOf.PositiveEvent);
+                Messages.Message("WeaponCreator_Generated".Translate(selectedDef.label), MessageTypeDefOf.PositiveEvent);
             }
         }
 

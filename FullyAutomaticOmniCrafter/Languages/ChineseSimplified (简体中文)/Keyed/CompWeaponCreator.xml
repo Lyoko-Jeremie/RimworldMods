@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <WeaponCreator_OpenUI>武器制作器</WeaponCreator_OpenUI>
+  <WeaponCreator_OpenUIDesc>打开武器制作界面，制作具有特定特质的自定义武器。</WeaponCreator_OpenUIDesc>
+  <WeaponCreator_Title>武器制作器</WeaponCreator_Title>
+  <WeaponCreator_All>全部</WeaponCreator_All>
+  <WeaponCreator_SelectWeapon>选择一件武器</WeaponCreator_SelectWeapon>
+  <WeaponCreator_Stuff>材料: {0}</WeaponCreator_Stuff>
+  <WeaponCreator_None>无</WeaponCreator_None>
+  <WeaponCreator_Quality>品质: {0}</WeaponCreator_Quality>
+  <WeaponCreator_SelectedTraits>已选特质:</WeaponCreator_SelectedTraits>
+  <WeaponCreator_GenerateWeapon>生成武器</WeaponCreator_GenerateWeapon>
+  <WeaponCreator_Generated>武器已生成: {0}</WeaponCreator_Generated>
+  <WeaponCreator_CustomName>自定义 {0}</WeaponCreator_CustomName>
+</LanguageData>

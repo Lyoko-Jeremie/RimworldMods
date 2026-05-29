@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <WeaponCreator_OpenUI>Weapon Creator</WeaponCreator_OpenUI>
+  <WeaponCreator_OpenUIDesc>Open the weapon creator interface to craft custom weapons with specific traits.</WeaponCreator_OpenUIDesc>
+  <WeaponCreator_Title>Weapon Creator</WeaponCreator_Title>
+  <WeaponCreator_All>All</WeaponCreator_All>
+  <WeaponCreator_SelectWeapon>Select a weapon</WeaponCreator_SelectWeapon>
+  <WeaponCreator_Stuff>Stuff: {0}</WeaponCreator_Stuff>
+  <WeaponCreator_None>None</WeaponCreator_None>
+  <WeaponCreator_Quality>Quality: {0}</WeaponCreator_Quality>
+  <WeaponCreator_SelectedTraits>Selected Traits:</WeaponCreator_SelectedTraits>
+  <WeaponCreator_GenerateWeapon>Generate Weapon</WeaponCreator_GenerateWeapon>
+  <WeaponCreator_Generated>Weapon generated: {0}</WeaponCreator_Generated>
+  <WeaponCreator_CustomName>Custom {0}</WeaponCreator_CustomName>
+</LanguageData>

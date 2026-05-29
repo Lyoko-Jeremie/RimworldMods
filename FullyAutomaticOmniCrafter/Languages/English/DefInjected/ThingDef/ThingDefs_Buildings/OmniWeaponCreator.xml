@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniWeaponCreator.label>Omni Weapon Creator</OmniWeaponCreator.label>
+    <OmniWeaponCreator.description>A weapon creation device from the Outerrealm world, commonly found in entertainment rooms as a toy creation device. In the rimworld world, it can create various weapons.</OmniWeaponCreator.description>
+
+    <OmniWeaponCreator_mini.label>Omni Weapon Creator (Portable)</OmniWeaponCreator_mini.label>
+    <OmniWeaponCreator_mini.description>A weapon creation device from the Outerrealm world, commonly found in entertainment rooms as a toy creation device. In the rimworld world, it can create various weapons.</OmniWeaponCreator_mini.description>
+
+</LanguageData>
