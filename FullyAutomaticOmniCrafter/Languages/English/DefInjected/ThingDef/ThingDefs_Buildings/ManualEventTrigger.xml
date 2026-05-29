@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <ManualEventTrigger.label>Event Terminal</ManualEventTrigger.label>
+    <ManualEventTrigger.description>A terminal for manipulating causal relationships.</ManualEventTrigger.description>
+
+    <ManualEventTrigger_mini.label>Event Terminal (Portable)</ManualEventTrigger_mini.label>
+    <ManualEventTrigger_mini.description>A terminal for manipulating causal relationships.</ManualEventTrigger_mini.description>
+
+</LanguageData>

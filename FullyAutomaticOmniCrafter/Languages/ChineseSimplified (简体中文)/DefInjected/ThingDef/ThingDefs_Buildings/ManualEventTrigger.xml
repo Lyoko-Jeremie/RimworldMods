@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <ManualEventTrigger.label>事件控制台</ManualEventTrigger.label>
+    <ManualEventTrigger.description>一台来自超维世界的因果律控制建筑，可以用于改变因果关系，让事件发生。</ManualEventTrigger.description>
+
+    <ManualEventTrigger_mini.label>事件控制台（便携版）</ManualEventTrigger_mini.label>
+    <ManualEventTrigger_mini.description>一台来自超维世界的因果律控制建筑，可以用于改变因果关系，让事件发生。</ManualEventTrigger_mini.description>
+
+</LanguageData>
