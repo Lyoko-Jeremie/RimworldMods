@@ -157,22 +157,86 @@ namespace FullyAutomaticOmniCrafter
             DrawFarRightPanel(new Rect(x3, bodyRect.y, farRightW, bodyRect.height));
         }
 
+        private HashSet<ThingCategoryDef> GetValidCategorySet()
+        {
+            var set = new HashSet<ThingCategoryDef>();
+            foreach (var def in weaponDefs)
+            {
+                if (def.thingCategories == null) continue;
+                foreach (var cat in def.thingCategories)
+                {
+                    ThingCategoryDef c = cat;
+                    while (c != null)
+                    {
+                        set.Add(c);
+                        c = c.parent;
+                    }
+                }
+            }
+            return set;
+        }
+
+        private float ComputeTreeHeight(TreeNode_ThingCategory node, HashSet<ThingCategoryDef> validCats, float lh)
+        {
+            float h = 0f;
+            foreach (TreeNode_ThingCategory child in node.ChildCategoryNodes)
+            {
+                if (!validCats.Contains(child.catDef)) continue;
+                h += lh + 2f;
+                if (child.IsOpen(1))
+                    h += ComputeTreeHeight(child, validCats, lh);
+            }
+            return h;
+        }
+
+        private bool IsDescendantOf(ThingCategoryDef sub, ThingCategoryDef parent)
+        {
+            if (sub == null || parent == null) return false;
+            ThingCategoryDef current = sub;
+            while (current != null)
+            {
+                if (current == parent) return true;
+                current = current.parent;
+            }
+            return false;
+        }
+
         private void DrawLeftPanel(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
-            // Weapon Categories
-            var categories = weaponDefs.SelectMany(d => d.thingCategories ?? new List<ThingCategoryDef>()).Distinct().OrderBy(c => c.label).ToList();
-            
-            Rect viewRect = new Rect(0, 0, rect.width - 16f, categories.Count * 24f + 30f);
+            float lh = 24f;
+            var validCats = GetValidCategorySet();
+            float treeH = ComputeTreeHeight(ThingCategoryDefOf.Root.treeNode, validCats, lh);
+            float totalH = lh + 2f + treeH + 10f;
+
+            Rect viewRect = new Rect(0, 0, rect.width - 16f, totalH);
             Widgets.BeginScrollView(rect, ref leftScroll, viewRect);
-            Listing_Standard listing = new Listing_Standard();
-            listing.Begin(viewRect);
-            if (listing.RadioButton("WeaponCreator_All".Translate(), selectedCategory == null)) selectedCategory = null;
-            foreach (var cat in categories)
+            
+            float y = 0;
+            // "All" button
+            Rect allRect = new Rect(0, y, viewRect.width, lh);
+            if (selectedCategory == null) Widgets.DrawHighlightSelected(allRect);
+            else Widgets.DrawHighlightIfMouseover(allRect);
+            Widgets.Label(allRect, "WeaponCreator_All".Translate());
+            if (Widgets.ButtonInvisible(allRect))
             {
-                if (listing.RadioButton(cat.LabelCap, selectedCategory == cat)) selectedCategory = cat;
+                selectedCategory = null;
+            }
+            y += lh + 2f;
+
+            // Tree
+            Rect treeRect = new Rect(0, y, viewRect.width, treeH);
+            Rect visibleRect = new Rect(0, leftScroll.y - y, viewRect.width, rect.height);
+            
+            var listing = new Listing_TreeCategorySelect(validCats, selectedCategory, cat => selectedCategory = cat);
+            listing.SetVisibleRect(visibleRect);
+            listing.Begin(treeRect);
+            foreach (TreeNode_ThingCategory child in ThingCategoryDefOf.Root.treeNode.ChildCategoryNodes)
+            {
+                listing.DoCategoryNode(child, 0, 1);
             }
             listing.End();
+
             Widgets.EndScrollView();
         }
 
@@ -182,7 +246,7 @@ namespace FullyAutomaticOmniCrafter
             searchText = Widgets.TextField(new Rect(rect.x + 5, rect.y + 5, rect.width - 10, 25), searchText);
             
             var filtered = weaponDefs
-                .Where(d => selectedCategory == null || (d.thingCategories != null && d.thingCategories.Contains(selectedCategory)))
+                .Where(d => selectedCategory == null || (d.thingCategories != null && Enumerable.Any(d.thingCategories, c => IsDescendantOf(c, selectedCategory))))
                 .Where(d => searchText.NullOrEmpty() || d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
                 .ToList();
 
