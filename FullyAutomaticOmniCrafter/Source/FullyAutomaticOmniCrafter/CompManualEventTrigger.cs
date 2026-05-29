@@ -94,6 +94,7 @@ namespace FullyAutomaticOmniCrafter
         private Vector2 scrollPosition;
         private List<IncidentDef> cachedIncidents;
         private List<IncidentDef> filteredIncidents;
+        private Dictionary<IncidentDef, bool> canFireCache = new Dictionary<IncidentDef, bool>();
 
         public override Vector2 InitialSize => new Vector2(Mathf.Min(1200f, (float)UI.screenWidth * 0.9f), 700f);
 
@@ -124,7 +125,34 @@ namespace FullyAutomaticOmniCrafter
                     incidentDef.category != IncidentCategoryDefOf.Special)
                 .OrderBy(d => d.label ?? d.defName)
                 .ToList();
+            
+            RefreshCanFireCache();
             FilterIncidents();
+        }
+
+        private void RefreshCanFireCache()
+        {
+            canFireCache.Clear();
+            foreach (var incidentDef in cachedIncidents)
+            {
+                IncidentParms parms = StorytellerUtility.DefaultParmsNow(incidentDef.category, map);
+                if (incidentDef.category == IncidentCategoryDefOf.ThreatBig || incidentDef.category == IncidentCategoryDefOf.ThreatSmall)
+                {
+                    parms.points = StorytellerUtility.DefaultThreatPointsNow(map);
+                }
+
+                bool canFire;
+                try
+                {
+                    canFire = incidentDef.Worker.CanFireNow(parms);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"[ManualEventTrigger] 缓存检查事件 {incidentDef.defName} 的 CanFireNow 时发生异常: {ex}");
+                    canFire = false;
+                }
+                canFireCache[incidentDef] = canFire;
+            }
         }
 
         private void FilterIncidents()
@@ -200,20 +228,22 @@ namespace FullyAutomaticOmniCrafter
                     Widgets.DrawHighlight(rowRect);
                 }
 
-                IncidentParms parms = StorytellerUtility.DefaultParmsNow(incidentDef.category, map);
-                // 优化参数：如果是袭击，确保有点数
-                if (incidentDef.category == IncidentCategoryDefOf.ThreatBig || incidentDef.category == IncidentCategoryDefOf.ThreatSmall)
+                if (!canFireCache.TryGetValue(incidentDef, out bool canFire))
                 {
-                    parms.points = StorytellerUtility.DefaultThreatPointsNow(map);
+                    canFire = false;
                 }
 
-                bool canFire = incidentDef.Worker.CanFireNow(parms);
                 string label = incidentDef.label ?? incidentDef.defName;
                 string displayLabel = canFire ? label : (string)"Dialog_ManualEventTrigger_ForcedLabel".Translate(label, CompManualEventTrigger.GetDisableReason(incidentDef, map));
 
                 GUI.color = canFire ? Color.white : Color.yellow;
                 if (Widgets.ButtonInvisible(rowRect))
                 {
+                    IncidentParms parms = StorytellerUtility.DefaultParmsNow(incidentDef.category, map);
+                    if (incidentDef.category == IncidentCategoryDefOf.ThreatBig || incidentDef.category == IncidentCategoryDefOf.ThreatSmall)
+                    {
+                        parms.points = StorytellerUtility.DefaultThreatPointsNow(map);
+                    }
                     ExecuteIncident(incidentDef, parms, canFire);
                 }
                 Widgets.Label(rowRect, displayLabel);
