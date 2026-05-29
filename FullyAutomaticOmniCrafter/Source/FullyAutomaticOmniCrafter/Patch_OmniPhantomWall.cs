@@ -210,8 +210,16 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(GenGrid), "CanBeSeenOverFast")]
     public static class GenGrid_CanBeSeenOverFast_Patch
     {
-        // 我们使用 ThreadLocal 来标记当前的视线检查是否来自于激光 Verb
+        // 我们使用 ThreadLocal 来标记当前的视线检查是否来自于 Verb
         private static System.Threading.ThreadLocal<Verb> currentVerb = new System.Threading.ThreadLocal<Verb>();
+
+        [HarmonyPatch(typeof(Verb), "TryFindShootLineFromTo")]
+        [HarmonyPrefix]
+        public static void Verb_TryFindShootLineFromTo_Prefix(Verb __instance) => currentVerb.Value = __instance;
+
+        [HarmonyPatch(typeof(Verb), "TryFindShootLineFromTo")]
+        [HarmonyPostfix]
+        public static void Verb_TryFindShootLineFromTo_Postfix() => currentVerb.Value = null;
 
         [HarmonyPatch(typeof(Verb_ShootBeam), "TryGetHitCell")]
         [HarmonyPrefix]
@@ -248,20 +256,26 @@ namespace FullyAutomaticOmniCrafter
             if (!(edifice is Building_OmniPhantomWall) && !(edifice is Building_OmniPhantomWall2))
                 return;
 
-            // 如果当前正处于 Verb_ShootBeam 的路径计算中
+            // 如果当前正处于 Verb 的路径计算中
             Verb verb = currentVerb.Value;
             if (verb != null)
             {
                 if (verb.caster?.Faction == Faction.OfPlayer)
                 {
-                    // 玩家激光：设为不阻挡
+                    // 玩家行为：设为不阻挡视线
                     __result = true;
                 }
                 else
                 {
-                    // 敌人激光：设为阻挡
+                    // 敌人行为：设为阻挡视线
                     __result = false;
                 }
+            }
+            else
+            {
+                // 非 Verb 发起的检查（可能是 AI 寻找路径或其他逻辑）
+                // 默认维持原有 Fillage 逻辑，或者根据需要调整。
+                // 这里的 edifice.def.Fillage 通常是 Full，所以 __result 默认是 false。
             }
         }
     }
