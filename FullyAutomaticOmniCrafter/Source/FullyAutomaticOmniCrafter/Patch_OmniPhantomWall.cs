@@ -306,19 +306,32 @@ namespace FullyAutomaticOmniCrafter
 
     /// <summary>
     /// 防止破墙攻击路径算法将幻影墙所在的格子视为“阻塞”。
-    /// 如果格子不被视为阻塞，AI 会倾向于直接走过去（如果对它们可通行）或者绕道，而不会尝试爆破该格。
+    /// 如果格子被视为阻塞，AI 会倾向于避开它，或者尝试爆破它。
+    /// 我们配合 ShouldBreachBuilding 补丁（防止爆破），使 AI 在不可通行时倾向于绕道。
     /// </summary>
     [HarmonyPatch(typeof(BreachingUtility), "BlocksBreaching")]
     public static class BreachingUtility_BlocksBreaching_Patch
     {
         public static void Postfix(Map map, IntVec3 c, ref bool __result)
         {
-            if (!__result) return;
-
             Building edifice = c.GetEdifice(map);
-            if (edifice is Building_OmniPhantomWall || edifice is Building_OmniPhantomWall2)
+            if (edifice is Building_OmniPhantomWall wall1)
             {
-                __result = false;
+                // 一代幻影墙目前没有任何模式允许敌对单位通过
+                // 因此对于破墙 AI（敌方）来说，它始终是阻塞的
+                __result = true;
+            }
+            else if (edifice is Building_OmniPhantomWall2 wall2)
+            {
+                // 二代幻影墙根据其设置决定是否阻塞敌对单位
+                if (!wall2.settings.allowHostiles)
+                {
+                    __result = true;
+                }
+                else
+                {
+                    __result = false;
+                }
             }
         }
     }
