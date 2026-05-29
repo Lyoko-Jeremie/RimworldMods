@@ -97,7 +97,7 @@ namespace FullyAutomaticOmniCrafter
             // 初始化拼音索引
             if (OmniCrafterMod.Settings.enablePinyinSearch)
             {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList(), PinyinSource.Incident);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList(), PinyinSource.ManualEvent);
             }
 
             BuildCache();
@@ -132,7 +132,7 @@ namespace FullyAutomaticOmniCrafter
 
                 if (OmniCrafterMod.Settings.enablePinyinSearch)
                 {
-                    return PinyinSearchEngine.MatchesPinyin(d, query);
+                    return PinyinSearchEngine.MatchesPinyin(d, query, PinyinSource.ManualEvent);
                 }
 
                 return false;
@@ -165,7 +165,7 @@ namespace FullyAutomaticOmniCrafter
                 OmniCrafterMod.Settings.Write();
                 if (pinyin)
                 {
-                    PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList(), PinyinSource.Incident);
+                    PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList(), PinyinSource.ManualEvent);
                 }
                 FilterIncidents();
             }

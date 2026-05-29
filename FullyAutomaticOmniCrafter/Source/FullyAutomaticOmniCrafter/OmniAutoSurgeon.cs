@@ -1499,13 +1499,13 @@ namespace FullyAutomaticOmniCrafter
             if ((label ?? string.Empty).ToLower().Contains(lower)) return true;
             if ((recipe.defName ?? string.Empty).ToLower().Contains(lower)) return true;
             if ((recipe.label ?? string.Empty).ToLower().Contains(lower)) return true;
-            if (pinyinSearchEnabled && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(recipe, lower)) return true;
+            if (pinyinSearchEnabled && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(recipe, lower, PinyinSource.SurgeryRecipe)) return true;
             return false;
         }
 
         private void TryEnablePinyinSearch()
         {
-            PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading, PinyinSource.Recipe);
+            PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading, PinyinSource.SurgeryRecipe);
             pinyinSearchEnabled = true;
             RebuildCache();
             Messages.Message("手术搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);
@@ -1595,7 +1595,7 @@ namespace FullyAutomaticOmniCrafter
                     bool matched = def.LabelCap.ToString().ToLower().Contains(lower) ||
                                    (def.defName ?? string.Empty).ToLower().Contains(lower) ||
                                    (def.label ?? string.Empty).ToLower().Contains(lower) ||
-                                   (pinyinSearchEnabled && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(def, lower));
+                                   (pinyinSearchEnabled && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(def, lower, PinyinSource.SurgeryImplant));
                     if (!matched) continue;
                 }
 
@@ -1607,7 +1607,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void TryEnablePinyinSearch()
         {
-            PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading, PinyinSource.Hediff);
+            PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading, PinyinSource.SurgeryImplant);
             pinyinSearchEnabled = true;
             RebuildCache();
             Messages.Message("植入搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);

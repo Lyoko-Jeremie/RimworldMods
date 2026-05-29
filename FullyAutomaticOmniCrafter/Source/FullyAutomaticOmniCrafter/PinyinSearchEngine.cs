@@ -6,11 +6,13 @@ namespace FullyAutomaticOmniCrafter
 {
     public enum PinyinSource
     {
-        Thing,
-        Hediff,
-        Incident,
-        Recipe,
-        PawnKind
+        OmniCrafter,         // 万能制造机 (ThingDef)
+        StatusTerminal,      // 状态分配终端 (HediffDef)
+        ManualEvent,         // 手动事件触发器 (IncidentDef)
+        SurgeryRecipe,       // 手术室 - 手术 (RecipeDef)
+        SurgeryImplant,      // 手术室 - 植入物 (HediffDef)
+        SurgeryPawnKind,     // 手术室 - 角色种类 (PawnKindDef)
+        SurgeryPawnRace      // 手术室 - 种族 (ThingDef)
     }
 
     /// <summary>
@@ -39,9 +41,10 @@ namespace FullyAutomaticOmniCrafter
 
         private static readonly Dictionary<Def, PinyinEntry> _index =
             new Dictionary<Def, PinyinEntry>(8192);
-
-        private static readonly HashSet<PinyinSource> _indexedSources = new HashSet<PinyinSource>();
-
+ 
+        private static readonly Dictionary<PinyinSource, HashSet<Def>> _sourceMembership =
+            new Dictionary<PinyinSource, HashSet<Def>>();
+ 
         private static bool _isReady;
 
         // ── 公开接口 ────────────────────────────────────────────────────────────
@@ -54,7 +57,7 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public static bool IsSourceIndexed(PinyinSource source)
         {
-            return _indexedSources.Contains(source);
+            return _sourceMembership.ContainsKey(source);
         }
 
         /// <summary>
@@ -63,10 +66,10 @@ namespace FullyAutomaticOmniCrafter
         public static void BuildIndex<T>(List<T> defs, PinyinSource source) where T : Def
         {
             _index.Clear();
-            _indexedSources.Clear();
+            _sourceMembership.Clear();
             _isReady = false;
             IndexDefs(defs, source);
-
+ 
             _isReady = true;
             Log.Message($"[OmniCrafter] PinyinSearchEngine: Rebuilt index with {defs.Count} items of source {source}. Total: {_index.Count}");
         }
@@ -92,18 +95,26 @@ namespace FullyAutomaticOmniCrafter
         {
             _isReady = false;
             _index.Clear();
-            _indexedSources.Clear();
+            _sourceMembership.Clear();
         }
 
         /// <summary>
         /// 判断 def 是否在拼音维度上匹配给定关键词。
         /// <param name="keyword">已转小写的搜索关键词</param>
+        /// <param name="source">来源，用于过滤搜索范围（可选）</param>
         /// 调用前应确认 IsReady == true。
         /// </summary>
-        public static bool MatchesPinyin(Def def, string keyword)
+        public static bool MatchesPinyin(Def def, string keyword, PinyinSource? source = null)
         {
             if (def == null || string.IsNullOrEmpty(keyword)) return false;
-
+ 
+            // 如果指定了来源，检查该 Def 是否属于该来源
+            if (source.HasValue)
+            {
+                if (!_sourceMembership.TryGetValue(source.Value, out var set) || !set.Contains(def))
+                    return false;
+            }
+ 
             PinyinEntry entry;
             if (!_index.TryGetValue(def, out entry)) return false;
 
@@ -123,12 +134,23 @@ namespace FullyAutomaticOmniCrafter
         private static void IndexDefs<T>(List<T> defs, PinyinSource source) where T : Def
         {
             if (defs == null || defs.Count == 0) return;
-
+ 
+            if (!_sourceMembership.TryGetValue(source, out var set))
+            {
+                set = new HashSet<Def>();
+                _sourceMembership[source] = set;
+            }
+ 
             for (int i = 0; i < defs.Count; i++)
             {
                 T def = defs[i];
                 if (def == null) continue;
-
+ 
+                set.Add(def);
+ 
+                // 如果已经有索引了（其他来源已处理过），则跳过拼音计算
+                if (_index.ContainsKey(def)) continue;
+ 
                 string rawLabel = def.label ?? def.defName ?? "";
                 string fullPinyin = string.Empty;
                 string initials = string.Empty;
@@ -155,8 +177,6 @@ namespace FullyAutomaticOmniCrafter
                     Initials = initials
                 };
             }
-
-            _indexedSources.Add(source);
         }
     }
 }

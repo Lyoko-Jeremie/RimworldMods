@@ -364,7 +364,7 @@ namespace FullyAutomaticOmniCrafter
                 OmniCrafterMod.Settings.Write();
                 if (pe)
                 {
-                    PinyinSearchEngine.EnsureIndexed(cachedAllHediffs, PinyinSource.Hediff);
+                    PinyinSearchEngine.EnsureIndexed(cachedAllHediffs, PinyinSource.StatusTerminal);
                 }
             }
 
@@ -375,10 +375,10 @@ namespace FullyAutomaticOmniCrafter
             // ── 重建拼音缓存按钮 ──
             float rebuildBtnX = pinyinBtnRect.xMax + 4f;
             Rect rebuildBtnRect = new Rect(rebuildBtnX, 4f, 26f, 26f);
-            GUI.color = PinyinSearchEngine.IsSourceIndexed(PinyinSource.Hediff) ? Color.white : new Color(1f, 0.7f, 0.3f);
+            GUI.color = PinyinSearchEngine.IsSourceIndexed(PinyinSource.StatusTerminal) ? Color.white : new Color(1f, 0.7f, 0.3f);
             if (Widgets.ButtonText(rebuildBtnRect, "R"))
             {
-                PinyinSearchEngine.EnsureIndexed(cachedAllHediffs, PinyinSource.Hediff);
+                PinyinSearchEngine.EnsureIndexed(cachedAllHediffs, PinyinSource.StatusTerminal);
                 Messages.Message("SAT_PinyinRebuilt".Translate(), MessageTypeDefOf.TaskCompletion, false);
             }
 
@@ -553,7 +553,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (string.IsNullOrEmpty(query)) return true;
                 if (d.label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
-                if (usePinyin && PinyinSearchEngine.MatchesPinyin(d, query)) return true;
+                if (usePinyin && PinyinSearchEngine.MatchesPinyin(d, query, PinyinSource.StatusTerminal)) return true;
                 return false;
             }).ToList();
 

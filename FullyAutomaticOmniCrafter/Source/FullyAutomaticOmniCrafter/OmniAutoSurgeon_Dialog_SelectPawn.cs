@@ -41,8 +41,8 @@ namespace FullyAutomaticOmniCrafter
             // 确保拼音引擎已为 PawnKindDef 构建索引
             if (OmniCrafterMod.Settings.enablePinyinSearch)
             {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<PawnKindDef>.AllDefsListForReading, PinyinSource.PawnKind);
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d.race != null).ToList(), PinyinSource.Thing);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<PawnKindDef>.AllDefsListForReading, PinyinSource.SurgeryPawnKind);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d.race != null).ToList(), PinyinSource.SurgeryPawnRace);
             }
 
             cachedPawns = surgeon.Map.mapPawns.AllPawnsSpawned
@@ -64,8 +64,8 @@ namespace FullyAutomaticOmniCrafter
                     if (p.LabelCap.ToLower().Contains(lowerSearch)) return true;
                     if (p.def.defName.ToLower().Contains(lowerSearch)) return true;
                     if (p.kindDef != null && p.kindDef.defName.ToLower().Contains(lowerSearch)) return true;
-                    if (PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(p.def, lowerSearch)) return true;
-                    if (PinyinSearchEngine.IsReady && p.kindDef != null && PinyinSearchEngine.MatchesPinyin(p.kindDef, lowerSearch)) return true;
+                    if (PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(p.def, lowerSearch, PinyinSource.SurgeryPawnRace)) return true;
+                    if (PinyinSearchEngine.IsReady && p.kindDef != null && PinyinSearchEngine.MatchesPinyin(p.kindDef, lowerSearch, PinyinSource.SurgeryPawnKind)) return true;
                     return false;
                 })
                 .OrderBy(p => p.Position.DistanceToSquared(surgeon.Position))
