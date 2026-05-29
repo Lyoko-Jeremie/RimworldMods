@@ -4,6 +4,15 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
+    public enum PinyinSource
+    {
+        Thing,
+        Hediff,
+        Incident,
+        Recipe,
+        PawnKind
+    }
+
     /// <summary>
     /// 高性能拼音搜索索引。
     /// 在 OmniCrafterCache 构建完成后调用 BuildIndex 预处理所有 ThingDef 的拼音数据，
@@ -31,7 +40,7 @@ namespace FullyAutomaticOmniCrafter
         private static readonly Dictionary<Def, PinyinEntry> _index =
             new Dictionary<Def, PinyinEntry>(8192);
 
-        private static readonly HashSet<System.Type> _indexedTypes = new HashSet<System.Type>();
+        private static readonly HashSet<PinyinSource> _indexedSources = new HashSet<PinyinSource>();
 
         private static bool _isReady;
 
@@ -41,39 +50,39 @@ namespace FullyAutomaticOmniCrafter
         public static bool IsReady => _isReady;
 
         /// <summary>
-        /// 检查特定类型的 Def 是否已建立拼音索引。
+        /// 检查特定来源的 Def 是否已建立拼音索引。
         /// </summary>
-        public static bool IsTypeIndexed<T>() where T : Def
+        public static bool IsSourceIndexed(PinyinSource source)
         {
-            return _indexedTypes.Contains(typeof(T));
+            return _indexedSources.Contains(source);
         }
 
         /// <summary>
         /// 全量重建拼音索引。会清空现有所有类型的索引。
         /// </summary>
-        public static void BuildIndex<T>(List<T> defs) where T : Def
+        public static void BuildIndex<T>(List<T> defs, PinyinSource source) where T : Def
         {
             _index.Clear();
-            _indexedTypes.Clear();
+            _indexedSources.Clear();
             _isReady = false;
-            IndexDefs(defs);
+            IndexDefs(defs, source);
 
             _isReady = true;
-            Log.Message($"[OmniCrafter] PinyinSearchEngine: Rebuilt index with {defs.Count} items of type {typeof(T).Name}. Total: {_index.Count}");
+            Log.Message($"[OmniCrafter] PinyinSearchEngine: Rebuilt index with {defs.Count} items of source {source}. Total: {_index.Count}");
         }
 
         /// <summary>
         /// 追加/更新指定 Def 列表的拼音索引，不清空已有索引。
         /// 适合多个窗口按需引入不同 Def 类型（RecipeDef/HediffDef/PawnKindDef 等）。
         /// </summary>
-        public static void EnsureIndexed<T>(List<T> defs) where T : Def
+        public static void EnsureIndexed<T>(List<T> defs, PinyinSource source) where T : Def
         {
             if (defs == null || defs.Count == 0) return;
-            if (IsTypeIndexed<T>()) return;
+            if (IsSourceIndexed(source)) return;
 
-            IndexDefs(defs);
+            IndexDefs(defs, source);
             _isReady = true;
-            Log.Message($"[OmniCrafter] PinyinSearchEngine: Appended {defs.Count} items of type {typeof(T).Name}. Total: {_index.Count}");
+            Log.Message($"[OmniCrafter] PinyinSearchEngine: Appended {defs.Count} items of source {source}. Total: {_index.Count}");
         }
 
         /// <summary>
@@ -83,7 +92,7 @@ namespace FullyAutomaticOmniCrafter
         {
             _isReady = false;
             _index.Clear();
-            _indexedTypes.Clear();
+            _indexedSources.Clear();
         }
 
         /// <summary>
@@ -111,7 +120,7 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
 
-        private static void IndexDefs<T>(List<T> defs) where T : Def
+        private static void IndexDefs<T>(List<T> defs, PinyinSource source) where T : Def
         {
             if (defs == null || defs.Count == 0) return;
 
@@ -146,6 +155,8 @@ namespace FullyAutomaticOmniCrafter
                     Initials = initials
                 };
             }
+
+            _indexedSources.Add(source);
         }
     }
 }

@@ -41,8 +41,8 @@ namespace FullyAutomaticOmniCrafter
             // 确保拼音引擎已为 PawnKindDef 构建索引
             if (OmniCrafterMod.Settings.enablePinyinSearch)
             {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<PawnKindDef>.AllDefsListForReading);
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d.race != null).ToList());
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<PawnKindDef>.AllDefsListForReading, PinyinSource.PawnKind);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d.race != null).ToList(), PinyinSource.Thing);
             }
 
             cachedPawns = surgeon.Map.mapPawns.AllPawnsSpawned

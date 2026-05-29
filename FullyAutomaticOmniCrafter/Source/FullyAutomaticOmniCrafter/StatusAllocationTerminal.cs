@@ -364,7 +364,7 @@ namespace FullyAutomaticOmniCrafter
                 OmniCrafterMod.Settings.Write();
                 if (pe)
                 {
-                    PinyinSearchEngine.EnsureIndexed(cachedAllHediffs);
+                    PinyinSearchEngine.EnsureIndexed(cachedAllHediffs, PinyinSource.Hediff);
                 }
             }
 
@@ -375,10 +375,10 @@ namespace FullyAutomaticOmniCrafter
             // ── 重建拼音缓存按钮 ──
             float rebuildBtnX = pinyinBtnRect.xMax + 4f;
             Rect rebuildBtnRect = new Rect(rebuildBtnX, 4f, 26f, 26f);
-            GUI.color = PinyinSearchEngine.IsTypeIndexed<HediffDef>() ? Color.white : new Color(1f, 0.7f, 0.3f);
+            GUI.color = PinyinSearchEngine.IsSourceIndexed(PinyinSource.Hediff) ? Color.white : new Color(1f, 0.7f, 0.3f);
             if (Widgets.ButtonText(rebuildBtnRect, "R"))
             {
-                PinyinSearchEngine.EnsureIndexed(cachedAllHediffs);
+                PinyinSearchEngine.EnsureIndexed(cachedAllHediffs, PinyinSource.Hediff);
                 Messages.Message("SAT_PinyinRebuilt".Translate(), MessageTypeDefOf.TaskCompletion, false);
             }
 
