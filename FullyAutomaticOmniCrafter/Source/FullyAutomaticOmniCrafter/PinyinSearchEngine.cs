@@ -28,30 +28,38 @@ namespace FullyAutomaticOmniCrafter
             public string Initials;
         }
 
-        // 使用 ThingDef 引用作 key——比 string key 少一次哈希计算
-        // 初始容量预留 4096，游戏内通常几千到数万条目
         private static readonly Dictionary<Def, PinyinEntry> _index =
-            new Dictionary<Def, PinyinEntry>(4096);
+            new Dictionary<Def, PinyinEntry>(8192);
+
+        private static readonly HashSet<System.Type> _indexedTypes = new HashSet<System.Type>();
 
         private static bool _isReady;
 
         // ── 公开接口 ────────────────────────────────────────────────────────────
 
-        /// <summary>索引已就绪（BuildIndex 成功执行后为 true）。</summary>
+        /// <summary>索引已就绪（至少有一种类型的 Def 已索引）。</summary>
         public static bool IsReady => _isReady;
 
         /// <summary>
-        /// 重建拼音索引。在 OmniCrafterCache.BuildCache 结束后调用。
-        /// 此方法在游戏加载时执行一次，允许产生较多 GC，搜索阶段不再分配。
+        /// 检查特定类型的 Def 是否已建立拼音索引。
+        /// </summary>
+        public static bool IsTypeIndexed<T>() where T : Def
+        {
+            return _indexedTypes.Contains(typeof(T));
+        }
+
+        /// <summary>
+        /// 全量重建拼音索引。会清空现有所有类型的索引。
         /// </summary>
         public static void BuildIndex<T>(List<T> defs) where T : Def
         {
             _index.Clear();
+            _indexedTypes.Clear();
             _isReady = false;
             IndexDefs(defs);
 
             _isReady = true;
-            Log.Message($"[OmniCrafter] PinyinSearchEngine: indexed {_index.Count} items.");
+            Log.Message($"[OmniCrafter] PinyinSearchEngine: Rebuilt index with {defs.Count} items of type {typeof(T).Name}. Total: {_index.Count}");
         }
 
         /// <summary>
@@ -61,8 +69,11 @@ namespace FullyAutomaticOmniCrafter
         public static void EnsureIndexed<T>(List<T> defs) where T : Def
         {
             if (defs == null || defs.Count == 0) return;
+            if (IsTypeIndexed<T>()) return;
+
             IndexDefs(defs);
             _isReady = true;
+            Log.Message($"[OmniCrafter] PinyinSearchEngine: Appended {defs.Count} items of type {typeof(T).Name}. Total: {_index.Count}");
         }
 
         /// <summary>
@@ -71,7 +82,8 @@ namespace FullyAutomaticOmniCrafter
         public static void Invalidate()
         {
             _isReady = false;
-            // 不 Clear _index，保留内存以备下次 BuildIndex 复用桶数组
+            _index.Clear();
+            _indexedTypes.Clear();
         }
 
         /// <summary>

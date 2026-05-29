@@ -1505,12 +1505,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void TryEnablePinyinSearch()
         {
-            if (!pinyinIndexPrepared)
-            {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading);
-                pinyinIndexPrepared = true;
-            }
-
+            PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading);
             pinyinSearchEnabled = true;
             RebuildCache();
             Messages.Message("手术搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);
@@ -1612,13 +1607,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void TryEnablePinyinSearch()
         {
-
-            if (!pinyinIndexPrepared)
-            {
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading);
-                pinyinIndexPrepared = true;
-            }
-
+            PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading);
             pinyinSearchEnabled = true;
             RebuildCache();
             Messages.Message("植入搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);

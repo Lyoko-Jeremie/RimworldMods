@@ -95,11 +95,7 @@ namespace FullyAutomaticOmniCrafter
             this.forcePause = true;
 
             // 初始化拼音索引
-            if (!PinyinSearchEngine.IsReady)
-            {
-                PinyinSearchEngine.BuildIndex(DefDatabase<IncidentDef>.AllDefs.ToList());
-            }
-            else
+            if (OmniCrafterMod.Settings.enablePinyinSearch)
             {
                 PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList());
             }
@@ -164,8 +160,13 @@ namespace FullyAutomaticOmniCrafter
             bool pinyin = OmniCrafterMod.Settings.enablePinyinSearch;
             if (Widgets.ButtonText(new Rect(inRect.width - 80f, y, 80f, 30f), pinyin ? "拼音: 开" : "拼音: 关"))
             {
-                OmniCrafterMod.Settings.enablePinyinSearch = !pinyin;
+                pinyin = !pinyin;
+                OmniCrafterMod.Settings.enablePinyinSearch = pinyin;
                 OmniCrafterMod.Settings.Write();
+                if (pinyin)
+                {
+                    PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList());
+                }
                 FilterIncidents();
             }
 

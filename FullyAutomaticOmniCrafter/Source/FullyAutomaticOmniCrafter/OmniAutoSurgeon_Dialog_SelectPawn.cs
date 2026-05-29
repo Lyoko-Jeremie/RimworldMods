@@ -39,9 +39,10 @@ namespace FullyAutomaticOmniCrafter
             if (surgeon?.Map == null) return;
 
             // 确保拼音引擎已为 PawnKindDef 构建索引
-            if (OmniCrafterMod.Settings.enablePinyinSearch && !PinyinSearchEngine.IsReady)
+            if (OmniCrafterMod.Settings.enablePinyinSearch)
             {
-                PinyinSearchEngine.BuildIndex(DefDatabase<PawnKindDef>.AllDefsListForReading);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<PawnKindDef>.AllDefsListForReading);
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d.race != null).ToList());
             }
 
             cachedPawns = surgeon.Map.mapPawns.AllPawnsSpawned

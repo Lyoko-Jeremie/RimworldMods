@@ -225,9 +225,9 @@ namespace FullyAutomaticOmniCrafter
                     OmniCrafterMod.Settings.enablePinyinSearch = newState;
                     OmniCrafterMod.Settings.Write();
                     // 首次启用（或缓存失效后重新启用）时按需构建拼音索引
-                    if (newState && !PinyinSearchEngine.IsReady)
+                    if (newState && !PinyinSearchEngine.IsTypeIndexed<ThingDef>())
                     {
-                        PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
+                        PinyinSearchEngine.EnsureIndexed(OmniCrafterCache.AllCraftable);
                     }
 
                     // 切换后需重建搜索缓存
@@ -243,7 +243,7 @@ namespace FullyAutomaticOmniCrafter
                 // ── 重建拼音缓存按钮（"⟳"）─────────────────────────────────────
                 float rebuildBtnX = pinyinBtnX + 36f + 4f;
                 Rect rebuildBtnRect = new Rect(rebuildBtnX, rect.y + 4f, 26f, 26f);
-                GUI.color = PinyinSearchEngine.IsReady ? Color.white : new Color(1f, 0.7f, 0.3f);
+                GUI.color = PinyinSearchEngine.IsTypeIndexed<ThingDef>() ? Color.white : new Color(1f, 0.7f, 0.3f);
                 if (Widgets.ButtonText(rebuildBtnRect, "R"))
                 {
                     PinyinSearchEngine.BuildIndex(OmniCrafterCache.AllCraftable);
