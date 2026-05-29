@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-    <ThingDef ParentName="BuildingBase">
+    <DesignatorDropdownGroupDef>
+        <defName>OmniAutoDetector_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef Name="OmniAutoDetector" ParentName="BuildingBase">
         <defName>OmniAutoDetector</defName>
         <label>OmniAutoDetector</label>
         <description>description</description>
@@ -60,5 +64,15 @@
         <constructEffect>ConstructMetal</constructEffect>
         <repairEffect>Repair</repairEffect>
     </ThingDef>
-
+    
+    <ThingDef ParentName="OmniAutoDetector">
+        <defName>OmniAutoDetector_mini</defName>
+        <label>OmniAutoDetector mini</label>
+        <description>description</description>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+        <size>(1,1)</size>
+    </ThingDef>
+    
 </Defs>

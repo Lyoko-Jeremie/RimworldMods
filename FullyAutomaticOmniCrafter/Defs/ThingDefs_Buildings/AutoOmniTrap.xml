@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-    <ThingDef ParentName="BuildingBase">
+    <DesignatorDropdownGroupDef>
+        <defName>AutoOmniTrap_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef Name="AutoOmniTrap" ParentName="BuildingBase">
         <defName>AutoOmniTrap</defName>
         <label>AutoOmniTrap</label>
         <description>description</description>
@@ -68,4 +72,14 @@
         <repairEffect>Repair</repairEffect>
     </ThingDef>
 
+    <ThingDef ParentName="AutoOmniTrap">
+        <defName>AutoOmniTrap_mini</defName>
+        <label>AutoOmniTrap mini</label>
+        <description>description</description>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+        <size>(1,1)</size>
+    </ThingDef>
+    
 </Defs>

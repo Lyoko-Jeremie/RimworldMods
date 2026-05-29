@@ -52,5 +52,15 @@
         <repairEffect>Repair</repairEffect>
         <rotatable>false</rotatable>
     </ThingDef>
+
+    <ThingDef ParentName="FullyAutoOmniSurgeon">
+        <defName>FullyAutoOmniSurgeon_mini</defName>
+        <label>FullyAutoOmniSurgeon mini</label>
+        <description>description</description>
+        <graphicData>
+            <drawSize>(3,3)</drawSize>
+        </graphicData>
+        <size>(3,3)</size>
+    </ThingDef>
     
 </Defs>
