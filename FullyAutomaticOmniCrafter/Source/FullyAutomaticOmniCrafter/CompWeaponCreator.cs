@@ -100,11 +100,13 @@ namespace FullyAutomaticOmniCrafter
         private Vector2 middleScroll;
         private Vector2 midRightScroll;
         private Vector2 farRightScroll;
+        private Vector2 detailScroll;
         
         private ThingDef selectedDef;
         private ThingDef selectedStuff;
         private QualityCategory selectedQuality = QualityCategory.Normal;
         private List<WeaponTraitDef> selectedTraits = new List<WeaponTraitDef>();
+        private WeaponTraitDef selectedTraitForDetail;
         
         private List<ThingDef> weaponDefs;
         private List<WeaponTraitDef> availableTraits;
@@ -381,7 +383,58 @@ namespace FullyAutomaticOmniCrafter
         private void DrawFarRightPanel(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
-            listing_Traits(rect.ContractedBy(5f));
+            Rect innerRect = rect.ContractedBy(5f);
+            
+            float detailHeight = rect.height * 0.4f;
+            Rect detailRect = new Rect(innerRect.x, innerRect.y, innerRect.width, detailHeight);
+            Rect listRect = new Rect(innerRect.x, innerRect.y + detailHeight + 5f, innerRect.width, innerRect.height - detailHeight - 5f);
+            
+            DrawTraitDetail(detailRect);
+            listing_Traits(listRect);
+        }
+
+        private void DrawTraitDetail(Rect rect)
+        {
+            Widgets.DrawBoxSolid(rect, new Color(0, 0, 0, 0.2f));
+            if (selectedTraitForDetail == null)
+            {
+                Widgets.Label(rect.ContractedBy(10f), "WeaponCreator_SelectTraitForDetail".Translate());
+                return;
+            }
+
+            Rect innerRect = rect.ContractedBy(10f);
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(innerRect);
+            
+            Text.Font = GameFont.Medium;
+            listing.Label(selectedTraitForDetail.LabelCap);
+            Text.Font = GameFont.Small;
+            listing.GapLine(4f);
+            
+            listing.End();
+
+            Rect descRect = new Rect(innerRect.x, innerRect.y + 40f, innerRect.width, innerRect.height - 80f);
+            Widgets.LabelScrollable(descRect, selectedTraitForDetail.description, ref detailScroll);
+
+            if (Widgets.ButtonText(new Rect(innerRect.x, innerRect.y + innerRect.height - 30f, innerRect.width, 30f), "WeaponCreator_AddTrait".Translate()))
+            {
+                if (selectedDef == null)
+                {
+                    Messages.Message("WeaponCreator_SelectWeaponFirst".Translate(), MessageTypeDefOf.RejectInput, false);
+                }
+                else if (selectedTraits.Count >= 10) // Arbitrary limit or based on game logic
+                {
+                    Messages.Message("WeaponCreator_TooManyTraits".Translate(), MessageTypeDefOf.RejectInput, false);
+                }
+                else if (selectedTraits.Contains(selectedTraitForDetail))
+                {
+                    Messages.Message("WeaponCreator_TraitAlreadyAdded".Translate(), MessageTypeDefOf.RejectInput, false);
+                }
+                else
+                {
+                    selectedTraits.Add(selectedTraitForDetail);
+                }
+            }
         }
 
         private void listing_Traits(Rect rect)
@@ -395,12 +448,23 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect tRect = new Rect(0, curY, viewRect.width, 26f);
                 Widgets.DrawHighlightIfMouseover(tRect);
-                Widgets.Label(new Rect(5, curY, viewRect.width - 30, 26f), trait.LabelCap);
-                
-                if (Widgets.ButtonImage(new Rect(viewRect.width - 25, curY + 2, 20, 20), Widgets.CheckboxOnTex))
+                if (selectedTraitForDetail == trait)
                 {
-                    if (!selectedTraits.Contains(trait))
-                        selectedTraits.Add(trait);
+                    Widgets.DrawHighlightSelected(tRect);
+                }
+                
+                Rect labelRect = new Rect(5, curY, viewRect.width - 35, 26f);
+                Widgets.Label(labelRect, trait.LabelCap);
+                
+                // Detail/Select button
+                if (Widgets.ButtonInvisible(labelRect))
+                {
+                    selectedTraitForDetail = trait;
+                }
+
+                if (Widgets.InfoCardButton(viewRect.width - 25, curY + 3, trait))
+                {
+                    selectedTraitForDetail = trait;
                 }
                 
                 TooltipHandler.TipRegion(tRect, trait.description);
