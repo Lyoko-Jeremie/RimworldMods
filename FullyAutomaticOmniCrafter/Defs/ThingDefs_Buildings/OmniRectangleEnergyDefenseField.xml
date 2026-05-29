@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
+    <DesignatorDropdownGroupDef>
+        <defName>OmniEnergyDefenseField_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+    
     <ThingDef ParentName="BuildingBase">
         <defName>OmniRectangleEnergyDefenseField</defName>
         <label>OmniRectangleEnergyDefenseField</label>
@@ -11,6 +15,7 @@
         <tickerType>Normal</tickerType>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>OmniEnergyDefenseField_DropdownGroup</designatorDropdown>
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
