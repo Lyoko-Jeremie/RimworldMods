@@ -131,7 +131,7 @@ namespace FullyAutomaticOmniCrafter
             availableTraits = DefDatabase<WeaponTraitDef>.AllDefs.OrderBy(t => t.label).ToList();
             
             // Log for debugging
-            Log.Message($"[WeaponCreator] Loaded {weaponDefs.Count} weapons and {availableTraits.Count} traits.");
+            Log.Message("WeaponCreator_Loaded".Translate(weaponDefs.Count, availableTraits.Count));
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -318,7 +318,7 @@ namespace FullyAutomaticOmniCrafter
             Text.Font = GameFont.Small;
 
             // Mod Source
-            string source = selectedDef.modContentPack?.Name ?? "Unknown";
+            string source = selectedDef.modContentPack?.Name ?? "WeaponCreator_Unknown".Translate();
             GUI.color = Color.gray;
             listing.Label("WeaponCreator_Source".Translate(source));
             GUI.color = Color.white;
