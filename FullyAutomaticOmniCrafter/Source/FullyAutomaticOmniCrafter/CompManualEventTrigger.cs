@@ -95,7 +95,7 @@ namespace FullyAutomaticOmniCrafter
         private List<IncidentDef> cachedIncidents;
         private List<IncidentDef> filteredIncidents;
 
-        public override Vector2 InitialSize => new Vector2(600f, 700f);
+        public override Vector2 InitialSize => new Vector2(Mathf.Min(1200f, (float)UI.screenWidth * 0.9f), 700f);
 
         public Dialog_ManualEventTrigger(Map map)
         {
@@ -224,7 +224,7 @@ namespace FullyAutomaticOmniCrafter
             Widgets.EndScrollView();
         }
 
-                private void ExecuteIncident(IncidentDef incidentDef, IncidentParms parms, bool canFire)
+        private void ExecuteIncident(IncidentDef incidentDef, IncidentParms parms, bool canFire)
         {
             string label = incidentDef.label ?? incidentDef.defName;
             try
