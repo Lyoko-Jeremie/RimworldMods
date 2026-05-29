@@ -20,4 +20,10 @@
   <Dialog_ManualEventTrigger_ForcedSuccess>Force triggered event ignoring conditions: {0}</Dialog_ManualEventTrigger_ForcedSuccess>
   <Dialog_ManualEventTrigger_Failed>Event {0} failed to trigger (internal code block).</Dialog_ManualEventTrigger_Failed>
   <Dialog_ManualEventTrigger_Exception>Trigger exception: {0}</Dialog_ManualEventTrigger_Exception>
+
+  <Dialog_ManualEventTrigger_Source>Source: </Dialog_ManualEventTrigger_Source>
+  <Dialog_ManualEventTrigger_SourceAll>All</Dialog_ManualEventTrigger_SourceAll>
+  <Dialog_ManualEventTrigger_SourceCore>Core</Dialog_ManualEventTrigger_SourceCore>
+  <Dialog_ManualEventTrigger_OnlyCanFireOn>Show: Only Fireable</Dialog_ManualEventTrigger_OnlyCanFireOn>
+  <Dialog_ManualEventTrigger_OnlyCanFireOff>Show: All Status</Dialog_ManualEventTrigger_OnlyCanFireOff>
 </LanguageData>

@@ -20,4 +20,10 @@
   <Dialog_ManualEventTrigger_ForcedSuccess>已无视条件强制触发事件: {0}</Dialog_ManualEventTrigger_ForcedSuccess>
   <Dialog_ManualEventTrigger_Failed>事件 {0} 触发失败（代码内部阻断）。</Dialog_ManualEventTrigger_Failed>
   <Dialog_ManualEventTrigger_Exception>触发异常: {0}</Dialog_ManualEventTrigger_Exception>
+
+  <Dialog_ManualEventTrigger_Source>来源: </Dialog_ManualEventTrigger_Source>
+  <Dialog_ManualEventTrigger_SourceAll>全部</Dialog_ManualEventTrigger_SourceAll>
+  <Dialog_ManualEventTrigger_SourceCore>原版</Dialog_ManualEventTrigger_SourceCore>
+  <Dialog_ManualEventTrigger_OnlyCanFireOn>显示：仅可触发</Dialog_ManualEventTrigger_OnlyCanFireOn>
+  <Dialog_ManualEventTrigger_OnlyCanFireOff>显示：全部状态</Dialog_ManualEventTrigger_OnlyCanFireOff>
 </LanguageData>
