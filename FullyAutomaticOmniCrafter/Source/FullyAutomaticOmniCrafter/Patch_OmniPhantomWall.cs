@@ -280,6 +280,49 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ── 破墙攻击 AI 补丁 ───────────────────────────────────────────────
+    /// <summary>
+    /// 防止破墙攻击（Breaching）的袭击者将幻影墙视为目标。
+    /// </summary>
+    [HarmonyPatch(typeof(BreachingUtility), "ShouldBreachBuilding")]
+    public static class BreachingUtility_ShouldBreachBuilding_Patch
+    {
+        public static bool Postfix(bool __result, Thing thing)
+        {
+            if (!__result) return false;
+
+            if (thing is Building_OmniPhantomWall || thing is Building_OmniPhantomWall2)
+            {
+                // 如果是幻影墙，我们通常不希望它被爆破。
+                // 如果小人本身就被允许通过，那么爆破它是多余的。
+                // 如果小人被禁止通过，根据上一轮的需求，我们依然拦截爆破行为，
+                // 这将迫使 AI 寻找其他爆破路径（绕过幻影墙）。
+                return false;
+            }
+
+            return __result;
+        }
+    }
+
+    /// <summary>
+    /// 防止破墙攻击路径算法将幻影墙所在的格子视为“阻塞”。
+    /// 如果格子不被视为阻塞，AI 会倾向于直接走过去（如果对它们可通行）或者绕道，而不会尝试爆破该格。
+    /// </summary>
+    [HarmonyPatch(typeof(BreachingUtility), "BlocksBreaching")]
+    public static class BreachingUtility_BlocksBreaching_Patch
+    {
+        public static void Postfix(Map map, IntVec3 c, ref bool __result)
+        {
+            if (!__result) return;
+
+            Building edifice = c.GetEdifice(map);
+            if (edifice is Building_OmniPhantomWall || edifice is Building_OmniPhantomWall2)
+            {
+                __result = false;
+            }
+        }
+    }
+
     // ── 性能优化：Harmony Patch 统一管理幻影墙区域温度 ───────────────────────────
     /// <summary>
     /// 当幻影墙数量巨大（如上万个）时，MapComponent 定时遍历房间虽然比逐个建筑 Tick 高效，
