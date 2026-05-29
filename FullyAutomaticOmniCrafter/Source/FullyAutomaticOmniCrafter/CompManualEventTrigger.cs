@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
 using UnityEngine;
@@ -30,7 +31,7 @@ namespace FullyAutomaticOmniCrafter
             yield return new Command_Action
             {
                 defaultLabel = "控制台：触发事件",
-                defaultDesc = "查看并启动可用的事件链。",
+                defaultDesc = "查看并启动可用的事件链（支持拼音搜索）。",
                 icon = CompManualEventTriggerTex.IconOpenEventMenu,
                 action = delegate { OpenAllEventsMenu(); }
             };
@@ -38,84 +39,10 @@ namespace FullyAutomaticOmniCrafter
 
         private void OpenAllEventsMenu()
         {
-            List<FloatMenuOption> options = new List<FloatMenuOption>();
-            Map map = this.parent.Map;
-
-            // 遍历游戏数据库中加载的所有事件 (IncidentDef)
-            // 按名称拼音/字母排序，方便玩家查找
-            var allIncidents = DefDatabase<IncidentDef>.AllDefs.OrderBy(d => d.label ?? d.defName);
-
-            foreach (IncidentDef incidentDef in allIncidents)
-            {
-                // 过滤 1：目标必须是玩家地图
-                if (!incidentDef.targetTags.Contains(IncidentTargetTagDefOf.Map_PlayerHome))
-                {
-                    continue;
-                }
-
-                // 过滤 2：排除事件链中间环节和隐藏事件（核心防线！）
-                // 绝大多数正规、独立的事件，其 baseChance 必然大于 0。
-                // 如果为 0，说明它只允许被其他代码（如任务脚本）在特定时刻显式调用。
-                if (incidentDef.baseChance <= 0f)
-                {
-                    continue;
-                }
-
-                // 过滤 3：排除特定类别的系统内部事件
-                // "Special" 类别通常用于游戏底层的机制过渡，不适合作为独立事件触发
-                if (incidentDef.category == IncidentCategoryDefOf.Special)
-                {
-                    continue;
-                }
-
-                // 1. 为这个事件生成默认的上下文参数（比如当前地图、当前财富值算出的袭击点数等）
-                IncidentParms parms = StorytellerUtility.DefaultParmsNow(incidentDef.category, map);
-
-                // 满足条件：选项为白色，点击即可触发
-                string label = incidentDef.label != null ? incidentDef.label : incidentDef.defName;
-
-                // 2. 调用原版的检测方法：这个事件现在能发生吗？
-                // 这会自动检测事件自带的所有条件（比如温度、季节、财富、冷却时间等）
-                if (incidentDef.Worker.CanFireNow(parms))
-                {
-                    options.Add(new FloatMenuOption(label, () =>
-                    {
-                        // 强制触发该事件
-                        incidentDef.Worker.TryExecute(parms);
-                        Messages.Message($"已强制触发事件: {label}", MessageTypeDefOf.NeutralEvent);
-                    }));
-                }
-                else
-                {
-                    // 条件未满足，但允许强制触发！
-                    string reason = GetDisableReason(incidentDef, map);
-
-                    // 给标签加上红色/黄色警告，或者明确标注 [强制执行]
-                    string forcedLabel = $"{label} [强制触发 - {reason}]";
-
-                    options.Add(new FloatMenuOption(forcedLabel, () =>
-                    {
-                        // 核心：无视 CanFireNow，直接霸王硬上弓调用 TryExecute！
-                        bool success = incidentDef.Worker.TryExecute(parms);
-
-                        if (success)
-                        {
-                            Messages.Message($"已无视条件强制触发事件: {label}", MessageTypeDefOf.NeutralEvent);
-                        }
-                        else
-                        {
-                            // 如果强制触发仍然失败，给出提示
-                            Messages.Message($"强制触发失败：该事件内部代码存在硬性物理阻断。", MessageTypeDefOf.RejectInput, false);
-                        }
-                    }));
-                }
-            }
-
-            // 弹出浮动菜单。如果事件很多，RimWorld 的 FloatMenu 会自动生成滚动条。
-            Find.WindowStack.Add(new FloatMenu(options));
+            Find.WindowStack.Add(new Dialog_ManualEventTrigger(this.parent.Map));
         }
 
-        private string GetDisableReason(IncidentDef incidentDef, Map map)
+        public static string GetDisableReason(IncidentDef incidentDef, Map map)
         {
             // 1. 检查游戏天数 (earliestDay 标签)
             if (GenDate.DaysPassed < incidentDef.earliestDay)
@@ -136,25 +63,175 @@ namespace FullyAutomaticOmniCrafter
                 return "当前群落地形不匹配";
             }
 
-            // 4. 检查温度条件 (min/max 相关的隐藏逻辑，如果事件配置了特定气象要求)
-            // 比如：某些冷冻事件要求温度极低
-            // 虽然温度有时在 C# 中判断，但我们可以做一个大概的捕获
-
-            // 5. 检查是否在冷却期 (minRefireDays 标签)
-            // 游戏内部有一个事件历史记录板 (StorytellerWatcher)
+            // 4. 检查是否在冷却期 (minRefireDays 标签)
             if (incidentDef.minRefireDays > 0)
             {
-                // 查找这个事件上一次触发是什么时候
-                int lastFireTick = Find.Storyteller.incidentQueue.DebugQueueReadout
-                    .Where(q => q.def == incidentDef)
-                    .Select(q => q.fireTick)
-                    .FirstOrDefault(); // 注意：这里仅为简化示例，原版精确判断历史略复杂
-
-                // 如果需要更精确的冷却时间诊断，需要查阅 Find.StoryWatcher
+                // 这里检查是否由于冷却导致的不可用（简化逻辑）
+                // 实际上 Worker.CanFireNow 会检查 Storyteller.incidentQueue 和 StorytellerWatcher
             }
 
-            // 6. 如果上面的 XML 常见条件都满足，那说明是被 C# 的动态逻辑拦截了
-            return "被事件内部 C# 逻辑拦截 (如：财富不足/缺少特定建筑等)";
+            // 5. 如果上面的 XML 常见条件都满足，那说明是被 C# 的动态逻辑拦截了
+            return "被事件内部 C# 逻辑拦截 (如：财富不足/缺少特定建筑/条件不满足等)";
+        }
+    }
+
+    public class Dialog_ManualEventTrigger : Window
+    {
+        private readonly Map map;
+        private string searchText = "";
+        private Vector2 scrollPosition;
+        private List<IncidentDef> cachedIncidents;
+        private List<IncidentDef> filteredIncidents;
+
+        public override Vector2 InitialSize => new Vector2(600f, 700f);
+
+        public Dialog_ManualEventTrigger(Map map)
+        {
+            this.map = map;
+            this.doCloseButton = true;
+            this.doCloseX = true;
+            this.absorbInputAroundWindow = true;
+            this.draggable = true;
+            this.forcePause = true;
+
+            // 初始化拼音索引
+            if (!PinyinSearchEngine.IsReady)
+            {
+                PinyinSearchEngine.BuildIndex(DefDatabase<IncidentDef>.AllDefs.ToList());
+            }
+            else
+            {
+                PinyinSearchEngine.EnsureIndexed(DefDatabase<IncidentDef>.AllDefs.ToList());
+            }
+
+            BuildCache();
+        }
+
+        private void BuildCache()
+        {
+            cachedIncidents = DefDatabase<IncidentDef>.AllDefs
+                .Where(incidentDef =>
+                    incidentDef.targetTags.Contains(IncidentTargetTagDefOf.Map_PlayerHome) &&
+                    incidentDef.baseChance > 0f &&
+                    incidentDef.category != IncidentCategoryDefOf.Special)
+                .OrderBy(d => d.label ?? d.defName)
+                .ToList();
+            FilterIncidents();
+        }
+
+        private void FilterIncidents()
+        {
+            if (searchText.NullOrEmpty())
+            {
+                filteredIncidents = cachedIncidents;
+                return;
+            }
+
+            string query = searchText.ToLower();
+            filteredIncidents = cachedIncidents.Where(d =>
+            {
+                bool match = (d.label != null && d.label.ToLower().Contains(query)) ||
+                             (d.defName != null && d.defName.ToLower().Contains(query));
+                if (match) return true;
+
+                if (OmniCrafterMod.Settings.enablePinyinSearch)
+                {
+                    return PinyinSearchEngine.MatchesPinyin(d, query);
+                }
+
+                return false;
+            }).ToList();
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0, 0, inRect.width, 35f), "手动事件触发器");
+            Text.Font = GameFont.Small;
+
+            float y = 45f;
+
+            // 搜索框
+            Widgets.Label(new Rect(0, y, 60f, 30f), "搜索: ");
+            string newSearchText = Widgets.TextField(new Rect(65f, y, inRect.width - 150f, 30f), searchText);
+            if (newSearchText != searchText)
+            {
+                searchText = newSearchText;
+                FilterIncidents();
+            }
+
+            // 拼音切换按钮
+            bool pinyin = OmniCrafterMod.Settings.enablePinyinSearch;
+            if (Widgets.ButtonText(new Rect(inRect.width - 80f, y, 80f, 30f), pinyin ? "拼音: 开" : "拼音: 关"))
+            {
+                OmniCrafterMod.Settings.enablePinyinSearch = !pinyin;
+                OmniCrafterMod.Settings.Write();
+                FilterIncidents();
+            }
+
+            y += 40f;
+
+            // 列表
+            Rect outRect = new Rect(0, y, inRect.width, inRect.height - y - 55f);
+            Rect viewRect = new Rect(0, 0, outRect.width - 16f, filteredIncidents.Count * 35f);
+
+            Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
+            float curY = 0;
+            for (int i = 0; i < filteredIncidents.Count; i++)
+            {
+                IncidentDef incidentDef = filteredIncidents[i];
+                Rect rowRect = new Rect(0, curY, viewRect.width, 30f);
+
+                if (Mouse.IsOver(rowRect))
+                {
+                    Widgets.DrawHighlight(rowRect);
+                }
+
+                IncidentParms parms = StorytellerUtility.DefaultParmsNow(incidentDef.category, map);
+                // 优化参数：如果是袭击，确保有点数
+                if (incidentDef.category == IncidentCategoryDefOf.ThreatBig || incidentDef.category == IncidentCategoryDefOf.ThreatSmall)
+                {
+                    parms.points = StorytellerUtility.DefaultThreatPointsNow(map);
+                }
+
+                bool canFire = incidentDef.Worker.CanFireNow(parms);
+                string label = incidentDef.label ?? incidentDef.defName;
+                string displayLabel = canFire ? label : $"{label} (强制 - {CompManualEventTrigger.GetDisableReason(incidentDef, map)})";
+
+                GUI.color = canFire ? Color.white : Color.yellow;
+                if (Widgets.ButtonInvisible(rowRect))
+                {
+                    ExecuteIncident(incidentDef, parms, canFire);
+                }
+                Widgets.Label(rowRect, displayLabel);
+                GUI.color = Color.white;
+
+                curY += 35f;
+            }
+            Widgets.EndScrollView();
+        }
+
+                private void ExecuteIncident(IncidentDef incidentDef, IncidentParms parms, bool canFire)
+        {
+            string label = incidentDef.label ?? incidentDef.defName;
+            try
+            {
+                bool success = incidentDef.Worker.TryExecute(parms);
+                if (success)
+                {
+                    Messages.Message(canFire ? $"已触发事件: {label}" : $"已无视条件强制触发事件: {label}", MessageTypeDefOf.NeutralEvent);
+                    this.Close();
+                }
+                else
+                {
+                    Messages.Message($"事件 {label} 触发失败（代码内部阻断）。", MessageTypeDefOf.RejectInput);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[ManualEventTrigger] 触发事件 {incidentDef.defName} 时发生异常: {ex}");
+                Messages.Message($"触发异常: {ex.Message}", MessageTypeDefOf.RejectInput);
+            }
         }
     }
 }
