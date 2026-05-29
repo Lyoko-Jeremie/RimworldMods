@@ -7,6 +7,16 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
+    
+    public class CompProperties_ManualEventTrigger : CompProperties
+    {
+        public CompProperties_ManualEventTrigger()
+        {
+            this.compClass = typeof(CompManualEventTrigger);
+        }
+    }
+    
+    
     [StaticConstructorOnStartup]
     public static class CompManualEventTriggerTex
     {
@@ -19,6 +29,8 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompManualEventTrigger : ThingComp
     {
+        public CompProperties_ManualEventTrigger Props => (CompProperties_ManualEventTrigger)props;
+        
         // 这个方法用于在选中建筑时生成底部的按钮
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
