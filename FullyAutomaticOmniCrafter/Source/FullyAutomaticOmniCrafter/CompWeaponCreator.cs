@@ -66,6 +66,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 处理绑定类武器 (CompBladelinkWeapon)
                 // 这种武器通常出现在皇权(Royalty) DLC中
+                // 需要满足 (trait.weaponCategory != WeaponCategoryDefOf.BladeLink)
                 CompBladelinkWeapon bladelink = weapon.TryGetComp<CompBladelinkWeapon>();
                 if (bladelink != null)
                 {
