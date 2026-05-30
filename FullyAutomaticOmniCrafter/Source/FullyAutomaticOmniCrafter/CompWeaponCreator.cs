@@ -41,27 +41,39 @@ namespace FullyAutomaticOmniCrafter
             };
         }
 
+        /// <summary>
+        /// 根据指定的参数创建武器并放置在地图上。
+        /// </summary>
+        /// <param name="def">武器的物品定义</param>
+        /// <param name="stuff">制造材料（如果适用）</param>
+        /// <param name="quality">武器质量等级</param>
+        /// <param name="traits">要应用的武器特质列表（针对灵能/独特武器）</param>
         public void CreateWeapon(ThingDef def, ThingDef stuff, QualityCategory quality, List<WeaponTraitDef> traits)
         {
+            // 创建武器物品实例
             Thing weapon = ThingMaker.MakeThing(def, stuff);
             
-            // Set Quality
+            // 设置武器质量
             CompQuality compQuality = weapon.TryGetComp<CompQuality>();
             if (compQuality != null)
             {
+                // 设置质量等级，上下文设为殖民地生成
                 compQuality.SetQuality(quality, ArtGenerationContext.Colony);
             }
 
-            // Set Traits
+            // 处理并设置武器特质
             if (!traits.NullOrEmpty())
             {
-                // CompBladelinkWeapon
+                // 处理绑定类武器 (CompBladelinkWeapon)
+                // 这种武器通常出现在皇权(Royalty) DLC中
                 CompBladelinkWeapon bladelink = weapon.TryGetComp<CompBladelinkWeapon>();
                 if (bladelink != null)
                 {
+                    // 使用反射访问私有字段 'traits'
                     var traitsField = typeof(CompBladelinkWeapon).GetField("traits", BindingFlags.Instance | BindingFlags.NonPublic);
                     if (traitsField != null)
                     {
+                        // 将特质列表应用到武器上
                         traitsField.SetValue(bladelink, traits.ToList());
                     }
                     else
@@ -74,20 +86,23 @@ namespace FullyAutomaticOmniCrafter
                     Log.Warning($"Weapon '{def.label}' does not have CompBladelinkWeapon, traits will not be applied to it.");
                 }
 
-                // CompUniqueWeapon
+                // 处理独特武器 (CompUniqueWeapon)
                 CompUniqueWeapon unique = weapon.TryGetComp<CompUniqueWeapon>();
                 if (unique != null)
                 {
+                    // 同样通过反射设置其私有特质字段
                     var traitsField = typeof(CompUniqueWeapon).GetField("traits", BindingFlags.Instance | BindingFlags.NonPublic);
                     if (traitsField != null)
                     {
                         traitsField.SetValue(unique, traits.ToList());
+                        // 调用 Setup 初始化武器状态
                         unique.Setup(false);
                         
-                        // Set Name for Unique Weapon
+                        // 为独特武器设置自定义名称
                         var nameField = typeof(CompUniqueWeapon).GetField("name", BindingFlags.Instance | BindingFlags.NonPublic);
                         if (nameField != null)
                         {
+                            // 使用翻译字符串生成名称
                             nameField.SetValue(unique, "WeaponCreator_CustomName".Translate(def.label).ToString());
                         }
                     }
@@ -102,6 +117,7 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            // 将生成的武器放置在当前建筑附近的空地上
             GenPlace.TryPlaceThing(weapon, parent.Position, parent.Map, ThingPlaceMode.Near);
         }
     }
