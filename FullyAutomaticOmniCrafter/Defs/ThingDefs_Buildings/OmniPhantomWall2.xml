@@ -21,11 +21,13 @@
 
         <!-- 1. 视觉属性：完全照搬原版的墙 -->
         <graphicData>
-            <texPath>Things/Building/Linked/Wall</texPath>
+<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
+<!--            <texPath>Things/Building/Linked/OmniPhantomWall2_Atlas</texPath>-->
 <!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall_all_</texPath>-->
 <!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWallTex/WallExampleGrid</texPath>-->
 <!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWallTex/OmniPhantomWall__Atlas</texPath>-->
-            <graphicClass>Graphic_Appearances</graphicClass>
+<!--            <graphicClass>Graphic_Appearances</graphicClass>-->
+            <graphicClass>Graphic_Single</graphicClass>
 <!--            <graphicClass>Graphic_Linked</graphicClass>-->
             <linkType>CornerFiller</linkType>
             <linkFlags>
@@ -45,10 +47,10 @@
             
             <!-- ↓ 半透明三件套 -->
             <shaderType>Transparent</shaderType>          <!-- 开启 Alpha 混合 -->
-<!--            <color>(1, 0.6, 1, 0.3)</color>         &lt;!&ndash; 略带蓝紫色调，30% 不透明度 &ndash;&gt;-->
-<!--            <allowAtlasing>false</allowAtlasing>           &lt;!&ndash; 禁止图集替换，保留 alpha &ndash;&gt;-->
+            <!--<color>(1, 0.6, 1, 0.3)</color>-->         <!-- 略带蓝紫色调，30% 不透明度 -->
+            <!--<allowAtlasing>false</allowAtlasing>-->           <!-- 禁止图集替换，保留 alpha -->
         </graphicData>
-        <uiIconPath>Things/Building/Linked/WallSmooth_MenuIcon</uiIconPath>
+<!--        <uiIconPath>Things/Building/Linked/OmniPhantomWall2_MenuIcon</uiIconPath>-->
 <!--        <uiIconPath>Things/Building/Linked/Wall_MenuIcon</uiIconPath>-->
 
         <!-- 声明可接受的材质分类 -->
@@ -118,9 +120,9 @@
         <description>description</description>
 
         <graphicData>
-<!--            <texPath>Things/Building/Linked/Wall/OmniPhantomWall</texPath>-->
-<!--            <texPath>Things/Building/Linked/Wall</texPath>-->
+            <texPath>Things/Building/Linked/OmniPhantomWall2A_Atlas</texPath>
         </graphicData>
+        <uiIconPath>Things/Building/Linked/OmniPhantomWall2A_MenuIcon</uiIconPath>
                 
     </ThingDef>
 
@@ -131,6 +133,11 @@
 
         <building>
         </building>
+
+        <graphicData>
+            <texPath>Things/Building/Linked/OmniPhantomWall2B_Atlas</texPath>
+        </graphicData>
+        <uiIconPath>Things/Building/Linked/OmniPhantomWall2B_MenuIcon</uiIconPath>
         
         <comps>
             <!-- 电力传导 -->
@@ -148,6 +155,11 @@
         <label>OmniPhantomWall2_PowerLight</label>
         <description>description</description>
 
+        <graphicData>
+            <texPath>Things/Building/Linked/OmniPhantomWall2C_Atlas</texPath>
+        </graphicData>
+        <uiIconPath>Things/Building/Linked/OmniPhantomWall2C_MenuIcon</uiIconPath>
+        
         <comps>
             <!-- 自发光 -->
             <li Class="CompProperties_Glower">
