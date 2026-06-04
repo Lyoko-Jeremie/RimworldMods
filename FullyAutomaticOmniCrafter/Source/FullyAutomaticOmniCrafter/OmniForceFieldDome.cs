@@ -208,9 +208,9 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class OmniForceFieldDomeNetworkManager : MapComponent
     {
-        // 10 = Normal(2) | Fence(8). 它是 passable，但不会被原版 ShouldBeInTheSameRoom
-        // 视为 Normal/Fence 的精确值，因此可以作为可通行的房间边界。
-        public const RegionType DomeBoundaryRegionType = (RegionType)10;
+        // 178 = Normal(2) | 自定义高位标志。它是 passable，但不会被原版
+        // ShouldBeInTheSameRoom 视为 Normal/Fence 的精确值，因此可以作为可通行的房间边界。
+        public const RegionType DomeBoundaryRegionType = (RegionType)178;
 
         private readonly List<CompOmniForceFieldDome> domes = new List<CompOmniForceFieldDome>();
         private readonly List<OmniForceFieldDomeNetwork> networks = new List<OmniForceFieldDomeNetwork>();
