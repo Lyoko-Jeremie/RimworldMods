@@ -51,7 +51,7 @@
         </comps>
     </HediffDef>
 
-    <HediffDef>
+    <HediffDef Name="StatusAllocationTerminal_SuperMan">
         <defName>StatusAllocationTerminal_SuperMan</defName>
         <label>StatusAllocationTerminal Super Man</label>
         <description>StatusAllocationTerminal Super Man</description>
@@ -158,5 +158,10 @@
         </comps>
     </HediffDef>
 
+    <HediffDef ParentName="StatusAllocationTerminal_SuperMan">
+        <defName>OmniForceFieldDome_Protect</defName>
+        <label>Omni Force Field Dome Protect</label>
+        <description>Omni Force Field Dome Protect</description>
+    </HediffDef>
     
 </Defs>

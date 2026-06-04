@@ -8,25 +8,35 @@ using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter
 {
+    /// <summary>
+    /// 穹顶配置。继承矩形护盾配置，是为了直接复用宽高设置、绘制、投射物拦截和
+    /// OmniInterceptorTracker 的保护区域缓存。
+    /// </summary>
     public class CompProperties_OmniForceFieldDome : CompProperties_CompOmniRectangleProjectileInterceptor
     {
+        // 能量屋顶：真实写入 RoofGrid，让游戏把穹顶格视为有屋顶；
+        // 透光和防塌方行为在下方 Harmony 补丁中修正。
         public bool applyRoof = true;
         public RoofDef roofDef;
 
+        // 温度/真空通过查询补丁处理，避免把室外大房间本身整体改温。
         public bool maintainTemperature = true;
         public float targetTemperature = 21f;
 
+        // 周期性环境清理项。它们只作用于穹顶缓存格，不扫描整张地图。
         public bool blockVacuum = true;
         public bool clearGas = true;
         public bool clearPollution = true;
         public bool cleanFilth = true;
         public bool extinguishFire = true;
 
+        // 默认复用状态分配终端已有的“OmniForceFieldDome_Protect”hediff；XML 可直接传 HediffDef 或 defName。
         public bool applyFriendlyHediff = true;
         public HediffDef friendlyHediffDef;
-        public string friendlyHediffDefName = "StatusAllocationTerminal_SuperMan";
+        public string friendlyHediffDefName = "OmniForceFieldDome_Protect";
         public bool removeFriendlyHediffWhenLeaving = true;
 
+        // 大区域穹顶可能覆盖很多格，维护逻辑按间隔执行以控制开销。
         public int environmentTickInterval = 250;
         public int pawnTickInterval = 60;
 
@@ -38,6 +48,9 @@ namespace FullyAutomaticOmniCrafter
 
         public RoofDef RoofDefToUse => roofDef ?? RoofDefOf.RoofConstructed;
 
+        /// <summary>
+        /// 延迟解析 hediff，避免 DefDatabase 尚未完全加载时过早取值。
+        /// </summary>
         public HediffDef FriendlyHediffDefToUse
         {
             get
@@ -64,8 +77,10 @@ namespace FullyAutomaticOmniCrafter
     {
         public new CompProperties_OmniForceFieldDome Props => (CompProperties_OmniForceFieldDome)props;
 
+        // 当前穹顶实际覆盖矩形。网络合并和环境维护都以这个矩形为准。
         public CellRect DomeRect => OccupiedRect;
 
+        // 玩家通过 Gizmo 改宽高、或开关护盾时，矩形缓存需要失效。
         private float cachedNetworkWidth = -1f;
         private float cachedNetworkHeight = -1f;
         private bool cachedNetworkActive;
@@ -144,6 +159,7 @@ namespace FullyAutomaticOmniCrafter
                 || !Mathf.Approximately(cachedNetworkWidth, Width)
                 || !Mathf.Approximately(cachedNetworkHeight, Height))
             {
+                // 尺寸和启用状态会改变网络连通性、屋顶范围和保护格缓存。
                 parent.Map.GetComponent<OmniForceFieldDomeNetworkManager>()?.DirtyCache();
                 RememberNetworkState();
             }
@@ -159,6 +175,7 @@ namespace FullyAutomaticOmniCrafter
 
     public sealed class OmniForceFieldDomeNetwork
     {
+        // 一个 network 表示所有相邻或重叠穹顶合并后的连续区域。
         public readonly List<CompOmniForceFieldDome> Domes = new List<CompOmniForceFieldDome>();
         public readonly List<IntVec3> Cells = new List<IntVec3>();
 
@@ -168,6 +185,7 @@ namespace FullyAutomaticOmniCrafter
         {
             get
             {
+                // 多个穹顶配置不一致时，用第一个仍激活的穹顶作为网络配置来源。
                 for (int i = 0; i < Domes.Count; i++)
                 {
                     if (Domes[i]?.Active == true)
@@ -189,9 +207,12 @@ namespace FullyAutomaticOmniCrafter
     {
         private readonly List<CompOmniForceFieldDome> domes = new List<CompOmniForceFieldDome>();
         private readonly List<OmniForceFieldDomeNetwork> networks = new List<OmniForceFieldDomeNetwork>();
+
+        // 只移除本 manager 曾经授予的 hediff，避免误删玩家通过其他系统添加的同类状态。
         private readonly HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
         private readonly List<Pawn> tmpPawnsToRemove = new List<Pawn>();
 
+        // 每个地图格到 network 的 O(1) 查询缓存；攻击、温度、真空等补丁会频繁查询它。
         private OmniForceFieldDomeNetwork[] networkCache;
         private bool cacheDirty = true;
 
@@ -220,6 +241,7 @@ namespace FullyAutomaticOmniCrafter
 
         public void DirtyCache()
         {
+            // 延迟到下一次查询或 tick 重建，避免同一帧多次尺寸/开关变化反复重算。
             cacheDirty = true;
         }
 
@@ -286,6 +308,7 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
             CompOmniForceFieldDome dome = network.PrimaryDome;
+            // 复用 CompOmniProjectileInterceptor 的敌我判定：敌方/无主来源被保护区域拒绝。
             return dome != null && dome.IsEnemy(searcher);
         }
 
@@ -307,6 +330,8 @@ namespace FullyAutomaticOmniCrafter
                     continue;
                 }
 
+                // BFS 合并相邻/重叠矩形。这里按穹顶数量做图搜索，而不是按格洪泛，
+                // 对少量大穹顶更便宜，也能保留每个网络的穹顶列表。
                 OmniForceFieldDomeNetwork network = new OmniForceFieldDomeNetwork();
                 Queue<int> queue = new Queue<int>();
                 visited[i] = true;
@@ -352,6 +377,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void CacheNetworkCells(OmniForceFieldDomeNetwork network)
         {
+            // 将合并后的所有矩形投影到格缓存。重叠格只记录一次。
             HashSet<IntVec3> seenCells = new HashSet<IntVec3>();
             for (int i = 0; i < network.Domes.Count; i++)
             {
@@ -374,6 +400,7 @@ namespace FullyAutomaticOmniCrafter
 
         private static bool RectsTouchOrOverlap(CellRect a, CellRect b)
         {
+            // +1 使边贴边的穹顶也合并为一个连续穹顶房间。
             return a.minX <= b.maxX + 1
                    && a.maxX + 1 >= b.minX
                    && a.minZ <= b.maxZ + 1
@@ -423,6 +450,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     IntVec3 c = network.Cells[j];
 
+                    // 屋顶写入真实 RoofGrid，使雨雪/真空等原版系统首先把它当作有顶区域。
                     if (props.applyRoof && props.RoofDefToUse != null && !map.roofGrid.Roofed(c))
                     {
                         map.roofGrid.SetRoof(c, props.RoofDefToUse);
@@ -430,6 +458,7 @@ namespace FullyAutomaticOmniCrafter
 
                     if (props.clearGas && map.gasGrid != null && map.gasGrid.AnyGasAt(c))
                     {
+                        // ClearCellUnsafe 不触发气体扩散，适合穹顶这种“直接净化”效果。
                         map.gasGrid.ClearCellUnsafe(c);
                     }
 
@@ -466,6 +495,8 @@ namespace FullyAutomaticOmniCrafter
         private void MaintainPawnEffects()
         {
             tmpPawnsToRemove.Clear();
+
+            // 先处理离开穹顶或离图的 Pawn，再给当前穹顶内友方补状态。
             foreach (Pawn pawn in pawnsGrantedHediff)
             {
                 if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsDomeCell(pawn.Position))
@@ -526,6 +557,8 @@ namespace FullyAutomaticOmniCrafter
                 {
                     continue;
                 }
+
+                // 只尝试移除本穹顶配置对应的 hediff；若多个穹顶使用不同 hediff，都能各自清理。
                 Hediff hediff = pawn.health.hediffSet.GetFirstHediffOfDef(hediffDef);
                 if (hediff != null)
                 {
@@ -558,6 +591,7 @@ namespace FullyAutomaticOmniCrafter
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
                 && props.maintainTemperature)
             {
+                // 直接覆盖单格温度查询结果，让穹顶像独立恒温房间，但不污染 Room.Temperature。
                 tempResult = props.targetTemperature;
                 __result = true;
             }
@@ -578,6 +612,7 @@ namespace FullyAutomaticOmniCrafter
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(cell, out props)
                 && props.blockVacuum)
             {
+                // 真空伤害、真空顾虑等逻辑最终都会查询 GetVacuum，这里统一归零。
                 __result = 0f;
             }
         }
@@ -606,6 +641,7 @@ namespace FullyAutomaticOmniCrafter
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
                 && props.applyRoof)
             {
+                // RoofGrid 有屋顶会让原版不再取天空光；这里把天空光补回来，实现“透光屋顶”。
                 __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
             }
         }
@@ -625,6 +661,7 @@ namespace FullyAutomaticOmniCrafter
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
                 && props.applyRoof)
             {
+                // 能量屋顶不依赖墙柱支撑，避免原版屋顶塌方扫描把它标记为坍塌。
                 __result = true;
             }
         }
@@ -644,6 +681,7 @@ namespace FullyAutomaticOmniCrafter
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
                 && props.applyRoof)
             {
+                // 建造/维护屋顶时还会检查“是否连接到支撑物”，这里同样放行穹顶格。
                 __result = true;
             }
         }
@@ -674,6 +712,7 @@ namespace FullyAutomaticOmniCrafter
             Thing caster = __instance.caster;
             if (targ.HasThing && targ.Thing != null && manager.IsProtectedFrom(caster, targ.Thing.Position))
             {
+                // 覆盖非投射物 Verb（例如 beam/特殊武器）的 CanHitTargetFrom 结果。
                 __result = false;
                 return;
             }
