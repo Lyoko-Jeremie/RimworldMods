@@ -63,6 +63,9 @@ namespace FullyAutomaticOmniCrafter
         private static readonly Dictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
             new Dictionary<Map, PhantomWall2RegionColorCache>();
 
+        /// <summary>
+        /// Harmony 后缀：在原版判定为 Normal 的格子上，把幻影墙格改成自定义 RegionType。
+        /// </summary>
         public static void Postfix(IntVec3 c, Map map, ref RegionType __result)
         {
             // 只有当结果本来是 Normal（Standable 地块）才需要覆写
@@ -81,6 +84,9 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 标记指定地图的二代幻影墙涂色缓存已过期，下一次查询时会重新计算。
+        /// </summary>
         public static void NotifyPhantomWall2ColoringDirty(Map map)
         {
             if (map == null)
@@ -91,6 +97,9 @@ namespace FullyAutomaticOmniCrafter
             GetPhantomWall2ColorCache(map).MarkDirty();
         }
 
+        /// <summary>
+        /// 判断给定 RegionType 是否属于一代或二代幻影墙保留的区域类型。
+        /// </summary>
         public static bool IsPhantomWallRegion(RegionType type)
         {
             // 只能识别明确保留给幻影墙的桶，避免把穹顶或其他 Mod 的
@@ -103,6 +112,9 @@ namespace FullyAutomaticOmniCrafter
             return type == Building_OmniPhantomWall.PhantomWallRegionType;
         }
 
+        /// <summary>
+        /// 获取某个二代幻影墙格当前应使用的 RegionType 桶。
+        /// </summary>
         private static RegionType GetRegionTypeForWall2Cell(Map map, IntVec3 c, Building_OmniPhantomWall2 wall2)
         {
             if (map == null || wall2 == null)
@@ -113,6 +125,9 @@ namespace FullyAutomaticOmniCrafter
             return GetPhantomWall2ColorCache(map).GetRegionType(c);
         }
 
+        /// <summary>
+        /// 获取指定地图的二代墙涂色缓存；不存在或地图尺寸变化时创建新缓存。
+        /// </summary>
         private static PhantomWall2RegionColorCache GetPhantomWall2ColorCache(Map map)
         {
             PhantomWall2RegionColorCache cache;
@@ -142,12 +157,18 @@ namespace FullyAutomaticOmniCrafter
             private int[] componentByCell;
             private bool dirty = true;
 
+            /// <summary>
+            /// 创建某张地图的二代墙 RegionType 涂色缓存。
+            /// </summary>
             public PhantomWall2RegionColorCache(Map map, RegionType[] buckets)
             {
                 this.map = map;
                 this.buckets = buckets;
             }
 
+            /// <summary>
+            /// 判断缓存数组是否仍匹配当前地图尺寸。
+            /// </summary>
             public bool MatchesMap
             {
                 get
@@ -158,11 +179,17 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 将缓存标记为脏，使下一次 RegionType 查询触发完整重建。
+            /// </summary>
             public void MarkDirty()
             {
                 dirty = true;
             }
 
+            /// <summary>
+            /// 返回指定格子已涂色得到的 RegionType；缓存过期时会先重建。
+            /// </summary>
             public RegionType GetRegionType(IntVec3 c)
             {
                 if (dirty || !MatchesMap)
@@ -173,6 +200,9 @@ namespace FullyAutomaticOmniCrafter
                 return regionType != 0 ? (RegionType)regionType : buckets[0];
             }
 
+            /// <summary>
+            /// 重新扫描地图上的二代墙，构建组件图并完成 RegionType 贪心涂色。
+            /// </summary>
             private void Rebuild()
             {
                 // 重建分为五步：
@@ -192,6 +222,9 @@ namespace FullyAutomaticOmniCrafter
                 dirty = false;
             }
 
+            /// <summary>
+            /// 确保按地图格索引访问的缓存数组存在且长度正确。
+            /// </summary>
             private void EnsureArrays()
             {
                 int cellCount = map.cellIndices.NumGridCells;
@@ -203,6 +236,9 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 清空上一次重建留下的数组标记和临时列表。
+            /// </summary>
             private void ClearArrays()
             {
                 for (int i = 0; i < regionTypeByCell.Length; i++)
@@ -218,6 +254,9 @@ namespace FullyAutomaticOmniCrafter
                 colorOrder.Clear();
             }
 
+            /// <summary>
+            /// 从建筑列表中收集二代幻影墙，并记录每个占用格对应的墙体索引。
+            /// </summary>
             private void CollectWalls(List<Building> buildings)
             {
                 if (buildings == null)
@@ -252,6 +291,9 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 将相邻且规则签名相同的二代墙格合并为同一个涂色组件。
+            /// </summary>
             private void BuildComponents()
             {
                 // 组件是“规则签名相同且 4 邻接连通”的二代墙格集合。
@@ -318,6 +360,9 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 为相邻且规则签名不同的组件建立冲突边。
+            /// </summary>
             private void BuildEdges()
             {
                 // 组件图只记录“相邻且规则不同”的冲突。
@@ -351,6 +396,9 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 按组件度数降序进行线性贪心涂色，并优先使用较小的 RegionType 桶。
+            /// </summary>
             private void ColorComponents()
             {
                 // 线性贪心涂色：先处理邻居多的组件，通常能把颜色数压得很低。
@@ -391,6 +439,9 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 比较两个组件的涂色优先级：邻居多者优先，其次优先处理不能使用 18 的组件。
+            /// </summary>
             private int CompareComponentsForColoring(int a, int b)
             {
                 Component componentA = components[a];
@@ -406,6 +457,9 @@ namespace FullyAutomaticOmniCrafter
                 return componentA.firstCellIndex.CompareTo(componentB.firstCellIndex);
             }
 
+            /// <summary>
+            /// 从小到大返回第一个未被相邻组件占用的颜色桶索引。
+            /// </summary>
             private int FirstAvailableColor(bool[] used)
             {
                 for (int i = 0; i < used.Length; i++)
@@ -416,6 +470,9 @@ namespace FullyAutomaticOmniCrafter
                 return -1;
             }
 
+            /// <summary>
+            /// 在所有桶都被占用时，选择与相邻组件冲突数量最少的保底颜色。
+            /// </summary>
             private int LeastConflictingColor(Component component)
             {
                 // 正常情况下 14 个桶远多于平面邻接图需要的颜色数。
@@ -443,6 +500,9 @@ namespace FullyAutomaticOmniCrafter
                 return bestColor;
             }
 
+            /// <summary>
+            /// 把每个组件分配到的颜色桶写回到每个墙格的 RegionType 缓存数组。
+            /// </summary>
             private void ApplyColorsToCells()
             {
                 for (int i = 0; i < wallCells.Count; i++)
@@ -457,6 +517,9 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            /// <summary>
+            /// 读取二代幻影墙的通行规则签名；设置缺失时按默认签名 0 处理。
+            /// </summary>
             private static int GetWallSignature(Building_OmniPhantomWall2 wall)
             {
                 return wall.settings != null ? wall.settings.GetSignature() : 0;
