@@ -384,6 +384,7 @@
     <Compile Include="ModAssets.cs" />
     <Compile Include="OmniAutoSurgeon.cs" />
     <Compile Include="OmniCrafterMod.cs" />
+    <Compile Include="OmniForceFieldDome.cs" />
     <Compile Include="OmniPhantomWall.cs" />
     <Compile Include="OmniPhantomWall2.cs" />
     <Compile Include="OmniPhantomWall2_PassabilitySettings.cs" />
