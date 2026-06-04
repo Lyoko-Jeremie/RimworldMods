@@ -14,6 +14,27 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(RegionTypeUtility), nameof(RegionTypeUtility.GetExpectedRegionType))]
     public static class RegionTypeUtility_GetExpectedRegionType_Patch
     {
+        private static readonly RegionType[] PhantomWall2RegionTypeBuckets =
+        {
+            (RegionType)18,
+            (RegionType)34,
+            (RegionType)50,
+            (RegionType)66,
+            (RegionType)82,
+            (RegionType)98,
+            (RegionType)114,
+            (RegionType)130,
+            (RegionType)146,
+            (RegionType)162,
+            (RegionType)194,
+            (RegionType)210,
+            (RegionType)226,
+            (RegionType)242
+        };
+
+        private static readonly Dictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
+            new Dictionary<Map, PhantomWall2RegionColorCache>();
+
         public static void Postfix(IntVec3 c, Map map, ref RegionType __result)
         {
             // 只有当结果本来是 Normal（Standable 地块）才需要覆写
@@ -26,36 +47,374 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (edifice is Building_OmniPhantomWall2 wall2)
                 {
-                    // 根据签名动态生成 RegionType (18-255)
-                    // 这样做可以让 RegionMaker 自动根据 Type 不同进行分割，无需拦截 FloodFill
-                    int sig = wall2.settings.GetSignature();
-                    __result = GetRegionTypeForSignature(sig);
+                    // 按当前地图上的相邻规则组件贪心涂色，使用固定桶让 RegionMaker 自动分割。
+                    __result = GetRegionTypeForWall2Cell(map, c, wall2);
                 }
             }
         }
 
-        public static RegionType GetRegionTypeForSignature(int signature)
+        public static void NotifyPhantomWall2ColoringDirty(Map map)
         {
-            if (signature == 0) return Building_OmniPhantomWall.PhantomWallRegionType; // 兼容 1 代
-            
-            // 使用更分散的哈希处理
-            uint h = (uint)signature;
-            h ^= h >> 16;
-            h *= 0x85ebca6b;
-            h ^= h >> 13;
-            h *= 0xc2b2ae35;
-            h ^= h >> 16;
+            if (map == null)
+                return;
 
-            // 将签名映射到 20-255 范围
-            // 18 留给 1 代或签名 0
-            // 19 留给映射碰撞的保底
-            byte mapping = (byte)(20 + (h % 236));
-            return (RegionType)mapping;
+            GetPhantomWall2ColorCache(map).MarkDirty();
         }
 
         public static bool IsPhantomWallRegion(RegionType type)
         {
-            return (byte)type >= (byte)Building_OmniPhantomWall.PhantomWallRegionType && (byte)type <= 255;
+            for (int i = 0; i < PhantomWall2RegionTypeBuckets.Length; i++)
+            {
+                if (type == PhantomWall2RegionTypeBuckets[i])
+                    return true;
+            }
+            return type == Building_OmniPhantomWall.PhantomWallRegionType;
+        }
+
+        private static RegionType GetRegionTypeForWall2Cell(Map map, IntVec3 c, Building_OmniPhantomWall2 wall2)
+        {
+            if (map == null || wall2 == null)
+                return PhantomWall2RegionTypeBuckets[0];
+
+            return GetPhantomWall2ColorCache(map).GetRegionType(c);
+        }
+
+        private static PhantomWall2RegionColorCache GetPhantomWall2ColorCache(Map map)
+        {
+            PhantomWall2RegionColorCache cache;
+            if (!PhantomWall2ColorCaches.TryGetValue(map, out cache) || !cache.MatchesMap)
+            {
+                cache = new PhantomWall2RegionColorCache(map, PhantomWall2RegionTypeBuckets);
+                PhantomWall2ColorCaches[map] = cache;
+            }
+            return cache;
+        }
+
+        private sealed class PhantomWall2RegionColorCache
+        {
+            private readonly Map map;
+            private readonly RegionType[] buckets;
+            private readonly List<Building_OmniPhantomWall2> walls = new List<Building_OmniPhantomWall2>();
+            private readonly List<int> wallCells = new List<int>();
+            private readonly List<IntVec3> floodStack = new List<IntVec3>();
+            private readonly List<Component> components = new List<Component>();
+            private readonly List<int> colorOrder = new List<int>();
+
+            private int[] regionTypeByCell;
+            private int[] wallIndexByCell;
+            private int[] componentByCell;
+            private bool dirty = true;
+
+            public PhantomWall2RegionColorCache(Map map, RegionType[] buckets)
+            {
+                this.map = map;
+                this.buckets = buckets;
+            }
+
+            public bool MatchesMap
+            {
+                get
+                {
+                    return map != null
+                        && regionTypeByCell != null
+                        && regionTypeByCell.Length == map.cellIndices.NumGridCells;
+                }
+            }
+
+            public void MarkDirty()
+            {
+                dirty = true;
+            }
+
+            public RegionType GetRegionType(IntVec3 c)
+            {
+                if (dirty || !MatchesMap)
+                    Rebuild();
+
+                int index = map.cellIndices.CellToIndex(c);
+                int regionType = regionTypeByCell[index];
+                return regionType != 0 ? (RegionType)regionType : buckets[0];
+            }
+
+            private void Rebuild()
+            {
+                EnsureArrays();
+                ClearArrays();
+                CollectWalls(map.listerBuildings.allBuildingsColonist);
+                CollectWalls(map.listerBuildings.allBuildingsNonColonist);
+                BuildComponents();
+                BuildEdges();
+                ColorComponents();
+                ApplyColorsToCells();
+                dirty = false;
+            }
+
+            private void EnsureArrays()
+            {
+                int cellCount = map.cellIndices.NumGridCells;
+                if (regionTypeByCell == null || regionTypeByCell.Length != cellCount)
+                {
+                    regionTypeByCell = new int[cellCount];
+                    wallIndexByCell = new int[cellCount];
+                    componentByCell = new int[cellCount];
+                }
+            }
+
+            private void ClearArrays()
+            {
+                for (int i = 0; i < regionTypeByCell.Length; i++)
+                {
+                    regionTypeByCell[i] = 0;
+                    wallIndexByCell[i] = -1;
+                    componentByCell[i] = -1;
+                }
+                walls.Clear();
+                wallCells.Clear();
+                floodStack.Clear();
+                components.Clear();
+                colorOrder.Clear();
+            }
+
+            private void CollectWalls(List<Building> buildings)
+            {
+                if (buildings == null)
+                    return;
+
+                for (int i = 0; i < buildings.Count; i++)
+                {
+                    Building_OmniPhantomWall2 wall = buildings[i] as Building_OmniPhantomWall2;
+                    if (wall == null || wall.Destroyed || !wall.Spawned || wall.Map != map)
+                        continue;
+
+                    int wallIndex = walls.Count;
+                    bool hasCell = false;
+                    foreach (IntVec3 cell in wall.OccupiedRect())
+                    {
+                        if (!cell.InBounds(map) || cell.GetEdifice(map) != wall)
+                            continue;
+
+                        int cellIndex = map.cellIndices.CellToIndex(cell);
+                        if (wallIndexByCell[cellIndex] >= 0)
+                            continue;
+
+                        wallIndexByCell[cellIndex] = wallIndex;
+                        wallCells.Add(cellIndex);
+                        hasCell = true;
+                    }
+
+                    if (hasCell)
+                        walls.Add(wall);
+                }
+            }
+
+            private void BuildComponents()
+            {
+                for (int i = 0; i < wallCells.Count; i++)
+                {
+                    int rootIndex = wallCells[i];
+                    if (componentByCell[rootIndex] >= 0)
+                        continue;
+
+                    int wallIndex = wallIndexByCell[rootIndex];
+                    if (wallIndex < 0)
+                        continue;
+
+                    Component component = new Component
+                    {
+                        signature = GetWallSignature(walls[wallIndex]),
+                        firstCellIndex = rootIndex
+                    };
+                    int componentIndex = components.Count;
+                    components.Add(component);
+
+                    floodStack.Clear();
+                    componentByCell[rootIndex] = componentIndex;
+                    floodStack.Add(map.cellIndices.IndexToCell(rootIndex));
+
+                    while (floodStack.Count > 0)
+                    {
+                        int last = floodStack.Count - 1;
+                        IntVec3 cell = floodStack[last];
+                        floodStack.RemoveAt(last);
+
+                        int cellIndex = map.cellIndices.CellToIndex(cell);
+                        if (cellIndex < component.firstCellIndex)
+                            component.firstCellIndex = cellIndex;
+
+                        for (int dir = 0; dir < 4; dir++)
+                        {
+                            IntVec3 neighbor = cell + GenAdj.CardinalDirections[dir];
+                            if (!neighbor.InBounds(map))
+                                continue;
+
+                            int neighborIndex = map.cellIndices.CellToIndex(neighbor);
+                            int neighborWallIndex = wallIndexByCell[neighborIndex];
+                            if (neighborWallIndex >= 0)
+                            {
+                                if (componentByCell[neighborIndex] < 0
+                                    && GetWallSignature(walls[neighborWallIndex]) == component.signature)
+                                {
+                                    componentByCell[neighborIndex] = componentIndex;
+                                    floodStack.Add(neighbor);
+                                }
+                                continue;
+                            }
+
+                            Building edifice = neighbor.GetEdifice(map);
+                            if (edifice is Building_OmniPhantomWall && !(edifice is Building_OmniPhantomWall2))
+                            {
+                                // 一代幻影墙固定使用 18，贴边的二代组件不能再使用 18，避免被 flood-fill 合并。
+                                component.blocksFirstBucket = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            private void BuildEdges()
+            {
+                for (int i = 0; i < wallCells.Count; i++)
+                {
+                    int cellIndex = wallCells[i];
+                    int componentIndex = componentByCell[cellIndex];
+                    if (componentIndex < 0)
+                        continue;
+
+                    IntVec3 cell = map.cellIndices.IndexToCell(cellIndex);
+                    Component component = components[componentIndex];
+                    for (int dir = 0; dir < 4; dir++)
+                    {
+                        IntVec3 neighbor = cell + GenAdj.CardinalDirections[dir];
+                        if (!neighbor.InBounds(map))
+                            continue;
+
+                        int neighborComponentIndex = componentByCell[map.cellIndices.CellToIndex(neighbor)];
+                        if (neighborComponentIndex < 0 || neighborComponentIndex == componentIndex)
+                            continue;
+
+                        Component neighborComponent = components[neighborComponentIndex];
+                        if (neighborComponent.signature == component.signature)
+                            continue;
+
+                        component.neighbors.Add(neighborComponentIndex);
+                        neighborComponent.neighbors.Add(componentIndex);
+                    }
+                }
+            }
+
+            private void ColorComponents()
+            {
+                for (int i = 0; i < components.Count; i++)
+                {
+                    components[i].colorIndex = -1;
+                    colorOrder.Add(i);
+                }
+
+                colorOrder.Sort(CompareComponentsForColoring);
+                bool[] used = new bool[buckets.Length];
+
+                for (int i = 0; i < colorOrder.Count; i++)
+                {
+                    Component component = components[colorOrder[i]];
+                    for (int j = 0; j < used.Length; j++)
+                        used[j] = false;
+
+                    if (component.blocksFirstBucket)
+                        used[0] = true;
+
+                    foreach (int neighborIndex in component.neighbors)
+                    {
+                        int neighborColor = components[neighborIndex].colorIndex;
+                        if (neighborColor >= 0)
+                            used[neighborColor] = true;
+                    }
+
+                    int colorIndex = FirstAvailableColor(used);
+                    if (colorIndex < 0)
+                    {
+                        colorIndex = LeastConflictingColor(component);
+                        Log.Warning($"[OmniPhantomWall2] RegionType 桶池已耗尽，使用 {buckets[colorIndex]}，可能产生局部冲突。");
+                    }
+                    component.colorIndex = colorIndex;
+                }
+            }
+
+            private int CompareComponentsForColoring(int a, int b)
+            {
+                Component componentA = components[a];
+                Component componentB = components[b];
+                int degreeCompare = componentB.neighbors.Count.CompareTo(componentA.neighbors.Count);
+                if (degreeCompare != 0)
+                    return degreeCompare;
+
+                int blockCompare = componentB.blocksFirstBucket.CompareTo(componentA.blocksFirstBucket);
+                if (blockCompare != 0)
+                    return blockCompare;
+
+                return componentA.firstCellIndex.CompareTo(componentB.firstCellIndex);
+            }
+
+            private int FirstAvailableColor(bool[] used)
+            {
+                for (int i = 0; i < used.Length; i++)
+                {
+                    if (!used[i])
+                        return i;
+                }
+                return -1;
+            }
+
+            private int LeastConflictingColor(Component component)
+            {
+                int bestColor = component.blocksFirstBucket ? 1 : 0;
+                int bestConflicts = int.MaxValue;
+                for (int color = bestColor; color < buckets.Length; color++)
+                {
+                    int conflicts = 0;
+                    foreach (int neighborIndex in component.neighbors)
+                    {
+                        if (components[neighborIndex].colorIndex == color)
+                            conflicts++;
+                    }
+
+                    if (conflicts < bestConflicts)
+                    {
+                        bestConflicts = conflicts;
+                        bestColor = color;
+                        if (conflicts == 0)
+                            break;
+                    }
+                }
+                return bestColor;
+            }
+
+            private void ApplyColorsToCells()
+            {
+                for (int i = 0; i < wallCells.Count; i++)
+                {
+                    int cellIndex = wallCells[i];
+                    int componentIndex = componentByCell[cellIndex];
+                    if (componentIndex < 0)
+                        continue;
+
+                    Component component = components[componentIndex];
+                    regionTypeByCell[cellIndex] = (int)buckets[component.colorIndex];
+                }
+            }
+
+            private static int GetWallSignature(Building_OmniPhantomWall2 wall)
+            {
+                return wall.settings != null ? wall.settings.GetSignature() : 0;
+            }
+
+            private sealed class Component
+            {
+                public int signature;
+                public int firstCellIndex;
+                public int colorIndex = -1;
+                public bool blocksFirstBucket;
+                public readonly HashSet<int> neighbors = new HashSet<int>();
+            }
         }
     }
 
@@ -154,8 +513,8 @@ namespace FullyAutomaticOmniCrafter
             bool isPhantomA = RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(typeA);
             bool isPhantomB = RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(typeB);
 
-            // 如果两个都是幻影墙，且 RegionType 相同，则它们属于同一个房间
-            // 因为现在不同的签名已经被分配了不同的 RegionType，所以这里直接比对 type 即可
+            // 如果两个都是幻影墙，且 RegionType 相同，则它们属于同一个房间。
+            // 二代墙的涂色缓存会保证相邻的不同规则组件使用不同 RegionType。
             if (isPhantomA && isPhantomB)
             {
                 __result = (typeA == typeB);

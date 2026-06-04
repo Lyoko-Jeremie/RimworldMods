@@ -216,6 +216,19 @@ namespace FullyAutomaticOmniCrafter
         
         public OmniPhantomWall2_PassabilitySettings settings = new OmniPhantomWall2_PassabilitySettings();
 
+        public override void SpawnSetup(Map map, bool respawningAfterLoad)
+        {
+            base.SpawnSetup(map, respawningAfterLoad);
+            RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(map);
+        }
+
+        public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        {
+            Map map = Map;
+            RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(map);
+            base.DeSpawn(mode);
+        }
+
         public override void ExposeData()
         {
             base.ExposeData();
@@ -240,6 +253,8 @@ namespace FullyAutomaticOmniCrafter
             // 规则变化时只脏化当前格附近的区域，再重建 dirty 部分
             if (oldSig != newSig && Spawned)
             {
+                RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(Map);
+
                 // 先脏化
                 if (NotifyWalkabilityChangedInvoker != null)
                 {
@@ -597,6 +612,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 3. 立即强制重建所有区域和房间
             // RebuildAllRegionsAndRooms 内部会调用 map.regionDirtyer.SetAllDirty()
+            RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(map);
             map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
 
             ForceRePath(map);
