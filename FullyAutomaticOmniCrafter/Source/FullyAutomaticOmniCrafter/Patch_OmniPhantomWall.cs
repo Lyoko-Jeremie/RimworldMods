@@ -11,9 +11,35 @@ namespace FullyAutomaticOmniCrafter
 {
 
     // ── 区域类型补丁：让幻影墙形成真正的房间边界（不产生无用单格房间）───────
+    //
+    // 原版 RegionTypeUtility.GetExpectedRegionType 会把 Standable 建筑格判定为 Normal。
+    // 幻影墙必须保持 Standable，否则 PathGridJob 会把基础寻路成本写死为不可通行，
+    // 后续的 IPathFindCostProvider 无法再按 Pawn 下调成本。因此这里不改建筑通行性，
+    // 而是在 Region 系统层把幻影墙格替换成自定义 RegionType：
+    //
+    //   1. 自定义值带 Normal(2) 位 → RegionType.Passable() 仍为 true。
+    //   2. 自定义值不等于 Normal/Fence/ImpassableFreeAirExchange 的精确值 →
+    //      原版 ShouldBeInTheSameRoom 不会把它和普通房间合并。
+    //   3. 自定义值不等于 Portal → 不会退化成大量单格门 Region，
+    //      连续同类型幻影墙可以由 RegionMaker flood-fill 成多格 Region。
+    //
+    // 二代墙的规则可以动态变化。这里不再把“规则签名”直接 hash 到 RegionType，
+    // 而是先把地图上的二代墙按“相邻且规则相同”合并成组件，再给相邻且规则不同
+    // 的组件贪心涂色。涂色结果写入 cell -> RegionType 缓存，GetExpectedRegionType
+    // 只做 O(1) 查询，避免在 RegionMaker 重建时反复扫描全图。
     [HarmonyPatch(typeof(RegionTypeUtility), nameof(RegionTypeUtility.GetExpectedRegionType))]
     public static class RegionTypeUtility_GetExpectedRegionType_Patch
     {
+        // 二代墙固定使用这些桶，而不是生成任意 20..255 的值。
+        //
+        // 这些值都小于 255 且带 Normal(2) 位，所以：
+        //   • 对 RegionType.Passable() 来说可通行；
+        //   • 对原版房间合并逻辑来说不是 Normal/Fence 的精确值；
+        //   • 不等于 Portal，不会变成单格 Region。
+        //
+        // 桶按从小到大的顺序排列。涂色时总是取第一个可用桶，优先复用小数字，
+        // 只有局部邻接约束逼迫时才会使用更大的桶。18 与一代墙共用，
+        // 所以贴着一代墙的二代组件会主动禁用 18，避免 flood-fill 合并两代墙。
         private static readonly RegionType[] PhantomWall2RegionTypeBuckets =
         {
             (RegionType)18,
@@ -32,6 +58,8 @@ namespace FullyAutomaticOmniCrafter
             (RegionType)242
         };
 
+        // 每张地图独立缓存二代墙的涂色结果。Region 重建期间会频繁调用
+        // GetExpectedRegionType；缓存让大多数调用只需要一次数组索引。
         private static readonly Dictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
             new Dictionary<Map, PhantomWall2RegionColorCache>();
 
@@ -58,11 +86,15 @@ namespace FullyAutomaticOmniCrafter
             if (map == null)
                 return;
 
+            // 二代墙生成、移除、规则变化或强制重建时调用。
+            // 下一次 GetExpectedRegionType 查询二代墙格时会重新扫描并涂色。
             GetPhantomWall2ColorCache(map).MarkDirty();
         }
 
         public static bool IsPhantomWallRegion(RegionType type)
         {
+            // 只能识别明确保留给幻影墙的桶，避免把穹顶或其他 Mod 的
+            // 自定义 RegionType 误判为幻影墙房间。
             for (int i = 0; i < PhantomWall2RegionTypeBuckets.Length; i++)
             {
                 if (type == PhantomWall2RegionTypeBuckets[i])
@@ -76,6 +108,8 @@ namespace FullyAutomaticOmniCrafter
             if (map == null || wall2 == null)
                 return PhantomWall2RegionTypeBuckets[0];
 
+            // 这里不要现场计算邻接图。RegionMaker 会在 flood-fill 中重复调用
+            // GetExpectedRegionType，现场计算会变成 O(n^2) 甚至诱发重建递归。
             return GetPhantomWall2ColorCache(map).GetRegionType(c);
         }
 
@@ -92,6 +126,9 @@ namespace FullyAutomaticOmniCrafter
 
         private sealed class PhantomWall2RegionColorCache
         {
+            // regionTypeByCell: 最终给 RegionMaker 使用的 cell -> RegionType。
+            // wallIndexByCell: 只在 Rebuild 期间使用，用于 O(1) 判断某格是否二代墙。
+            // componentByCell: 只在 Rebuild 期间使用，用于把相同规则的相邻墙归入同一组件。
             private readonly Map map;
             private readonly RegionType[] buckets;
             private readonly List<Building_OmniPhantomWall2> walls = new List<Building_OmniPhantomWall2>();
@@ -138,6 +175,12 @@ namespace FullyAutomaticOmniCrafter
 
             private void Rebuild()
             {
+                // 重建分为五步：
+                //   1. 收集当前地图上的二代墙占用格；
+                //   2. flood-fill 出“相邻且规则相同”的组件；
+                //   3. 为相邻且规则不同的组件建冲突边；
+                //   4. 按度数降序贪心涂色，从小桶开始使用；
+                //   5. 把组件颜色写回 cell -> RegionType 数组。
                 EnsureArrays();
                 ClearArrays();
                 CollectWalls(map.listerBuildings.allBuildingsColonist);
@@ -180,6 +223,8 @@ namespace FullyAutomaticOmniCrafter
                 if (buildings == null)
                     return;
 
+                // 通过 listerBuildings 只扫描建筑列表，而不是遍历整张地图。
+                // 每个二代墙通常占一个格，但仍按 OccupiedRect 处理，兼容未来多格墙体。
                 for (int i = 0; i < buildings.Count; i++)
                 {
                     Building_OmniPhantomWall2 wall = buildings[i] as Building_OmniPhantomWall2;
@@ -209,6 +254,8 @@ namespace FullyAutomaticOmniCrafter
 
             private void BuildComponents()
             {
+                // 组件是“规则签名相同且 4 邻接连通”的二代墙格集合。
+                // 同组件必须拿同一个 RegionType，让 RegionMaker 把它们 flood-fill 成同一 Region。
                 for (int i = 0; i < wallCells.Count; i++)
                 {
                     int rootIndex = wallCells[i];
@@ -273,6 +320,8 @@ namespace FullyAutomaticOmniCrafter
 
             private void BuildEdges()
             {
+                // 组件图只记录“相邻且规则不同”的冲突。
+                // 这些组件必须使用不同 RegionType，否则 RegionMaker 会跨规则边界合并。
                 for (int i = 0; i < wallCells.Count; i++)
                 {
                     int cellIndex = wallCells[i];
@@ -304,6 +353,9 @@ namespace FullyAutomaticOmniCrafter
 
             private void ColorComponents()
             {
+                // 线性贪心涂色：先处理邻居多的组件，通常能把颜色数压得很低。
+                // 对每个组件从 buckets[0] 开始找第一个未被相邻已染色组件占用的桶，
+                // 因而会自然优先使用 18、34、50……较小的 RegionType。
                 for (int i = 0; i < components.Count; i++)
                 {
                     components[i].colorIndex = -1;
@@ -366,6 +418,9 @@ namespace FullyAutomaticOmniCrafter
 
             private int LeastConflictingColor(Component component)
             {
+                // 正常情况下 14 个桶远多于平面邻接图需要的颜色数。
+                // 如果未来出现非平面或异常邻接导致桶耗尽，选择冲突最少的桶并打 warning，
+                // 保证游戏不因无法分配 RegionType 而中断。
                 int bestColor = component.blocksFirstBucket ? 1 : 0;
                 int bestConflicts = int.MaxValue;
                 for (int color = bestColor; color < buckets.Length; color++)
