@@ -9,5 +9,6 @@
     <OmniForceFieldDome_RemoveRoof>Remove roof</OmniForceFieldDome_RemoveRoof>
     <OmniForceFieldDome_BuildRoofComplete>Dome roofing complete: built {0}, replaced {1}, skipped natural roofs {2}. Roof: {3}.</OmniForceFieldDome_BuildRoofComplete>
     <OmniForceFieldDome_RemoveRoofComplete>Dome roof removal complete: removed {0}.</OmniForceFieldDome_RemoveRoofComplete>
+    <OmniForceFieldDome_NetworkCells>Network coverage: {0} cells across {1} dome generators.</OmniForceFieldDome_NetworkCells>
 
 </LanguageData>
