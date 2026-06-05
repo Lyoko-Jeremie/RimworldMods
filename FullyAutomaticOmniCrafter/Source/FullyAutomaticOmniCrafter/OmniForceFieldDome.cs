@@ -214,14 +214,11 @@ namespace FullyAutomaticOmniCrafter
                 roofDefs.Insert(0, Props.RoofDefToUse);
             }
 
-            if (roofDefs.Count == 0)
-            {
-                Messages.Message(TranslateOrFallback("OmniForceFieldDome_NoRoofDefs", "No roof types are available."),
-                    parent, MessageTypeDefOf.RejectInput);
-                return;
-            }
-
             List<FloatMenuOption> options = new List<FloatMenuOption>();
+            options.Add(new FloatMenuOption(
+                TranslateOrFallback("OmniForceFieldDome_RemoveRoof", "Remove roof"),
+                RemoveRoofInDomeArea));
+
             for (int i = 0; i < roofDefs.Count; i++)
             {
                 RoofDef roof = roofDefs[i];
@@ -288,6 +285,42 @@ namespace FullyAutomaticOmniCrafter
                     replacedCount,
                     skippedNaturalCount,
                     RoofLabel(roof)),
+                parent,
+                MessageTypeDefOf.PositiveEvent);
+        }
+
+        private void RemoveRoofInDomeArea()
+        {
+            Map map = parent.Map;
+            if (map == null)
+            {
+                return;
+            }
+
+            int removedCount = 0;
+            CellRect rect = DomeRect;
+
+            foreach (IntVec3 c in rect.Cells)
+            {
+                if (!c.InBounds(map))
+                {
+                    continue;
+                }
+
+                RoofDef currentRoof = map.roofGrid.RoofAt(c);
+                if (currentRoof == null)
+                {
+                    continue;
+                }
+
+                map.roofGrid.SetRoof(c, null);
+                removedCount++;
+            }
+
+            Messages.Message(string.Format(
+                    TranslateOrFallback("OmniForceFieldDome_RemoveRoofComplete",
+                        "Dome roof removal complete: removed {0}."),
+                    removedCount),
                 parent,
                 MessageTypeDefOf.PositiveEvent);
         }
