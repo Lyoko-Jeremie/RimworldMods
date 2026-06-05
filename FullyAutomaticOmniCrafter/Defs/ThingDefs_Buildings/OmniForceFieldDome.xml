@@ -19,13 +19,13 @@
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
-            <texPath>Things/Building/Production/OmniRectangleEnergyDefenseField</texPath>
+            <texPath>Things/Building/Production/OmniForceFieldDome</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(1,1)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <size>(1,1)</size>
-        <uiIconPath>Things/Building/Production/OmniRectangleEnergyDefenseField</uiIconPath>
+        <uiIconPath>Things/Building/Production/OmniForceFieldDome</uiIconPath>
 
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
