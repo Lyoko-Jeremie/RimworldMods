@@ -630,6 +630,9 @@ namespace FullyAutomaticOmniCrafter
         private bool[] roomCellCache;
         private bool cacheDirty = true;
         private bool regionsDirty = true;
+        private const int SkyGlowDirtyTickInterval = 30;
+        private const float SkyGlowDirtyThreshold = 1f / 255f;
+        private float cachedSkyGlow = -1f;
 
         public OmniForceFieldDomeNetworkManager(Map map) : base(map)
         {
@@ -678,6 +681,10 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
+            if (map.IsHashIntervalTick(SkyGlowDirtyTickInterval))
+            {
+                DirtySkyLightDomeGlowIfNeeded();
+            }
             if (map.IsHashIntervalTick(GetEnvironmentTickInterval()))
             {
                 MaintainEnvironment();
@@ -951,6 +958,34 @@ namespace FullyAutomaticOmniCrafter
                    && a.maxX + 1 >= b.minX
                    && a.minZ <= b.maxZ + 1
                    && a.maxZ + 1 >= b.minZ;
+        }
+
+        private void DirtySkyLightDomeGlowIfNeeded()
+        {
+            if (map?.glowGrid == null || map.skyManager == null)
+            {
+                return;
+            }
+
+            float skyGlow = map.skyManager.CurSkyGlow;
+            if (cachedSkyGlow >= 0f && Mathf.Abs(cachedSkyGlow - skyGlow) < SkyGlowDirtyThreshold)
+            {
+                return;
+            }
+
+            cachedSkyGlow = skyGlow;
+            for (int i = 0; i < networks.Count; i++)
+            {
+                OmniForceFieldDomeNetwork network = networks[i];
+                for (int j = 0; j < network.Cells.Count; j++)
+                {
+                    IntVec3 c = network.Cells[j];
+                    if (AllowsSkyLightThroughRoof(c))
+                    {
+                        map.glowGrid.DirtyCell(c);
+                    }
+                }
+            }
         }
 
         private int GetEnvironmentTickInterval()
