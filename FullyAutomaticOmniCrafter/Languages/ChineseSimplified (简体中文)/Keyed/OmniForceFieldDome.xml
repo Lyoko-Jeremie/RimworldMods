@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-
     <OmniForceFieldDome_BuildRoof>生成穹顶屋顶</OmniForceFieldDome_BuildRoof>
     <OmniForceFieldDome_BuildRoofDesc>在当前穹顶发生器覆盖区域内生成选定类型的屋顶。</OmniForceFieldDome_BuildRoofDesc>
     <OmniForceFieldDome_Disabled>穹顶当前未启用。</OmniForceFieldDome_Disabled>
@@ -10,5 +9,12 @@
     <OmniForceFieldDome_BuildRoofComplete>穹顶屋顶生成完成：新建 {0}，替换 {1}，跳过天然岩顶 {2}。屋顶：{3}。</OmniForceFieldDome_BuildRoofComplete>
     <OmniForceFieldDome_RemoveRoofComplete>穹顶屋顶移除完成：移除 {0}。</OmniForceFieldDome_RemoveRoofComplete>
     <OmniForceFieldDome_NetworkCells>网络覆盖：{0} 格，连接 {1} 个穹顶发生器。</OmniForceFieldDome_NetworkCells>
-
+    <OmniForceFieldDome_GlowMode>穹顶照明：{0}</OmniForceFieldDome_GlowMode>
+    <OmniForceFieldDome_GlowModeDesc>选择此穹顶发生器在覆盖区域内的照明方式：灯光、太阳灯或不发光。</OmniForceFieldDome_GlowModeDesc>
+    <OmniForceFieldDome_SelectGlowMode>选择穹顶照明模式</OmniForceFieldDome_SelectGlowMode>
+    <OmniForceFieldDome_CurrentMode>（当前）</OmniForceFieldDome_CurrentMode>
+    <OmniForceFieldDome_GlowModeLamp>灯光模式</OmniForceFieldDome_GlowModeLamp>
+    <OmniForceFieldDome_GlowModeSunLamp>太阳灯模式</OmniForceFieldDome_GlowModeSunLamp>
+    <OmniForceFieldDome_GlowModeNone>不发光</OmniForceFieldDome_GlowModeNone>
+    <OmniForceFieldDome_UnknownRoof>未知</OmniForceFieldDome_UnknownRoof>
 </LanguageData>

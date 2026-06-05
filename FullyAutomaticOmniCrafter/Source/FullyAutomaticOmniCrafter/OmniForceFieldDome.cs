@@ -238,8 +238,9 @@ namespace FullyAutomaticOmniCrafter
 
             yield return new Command_Action
             {
-                defaultLabel = TranslateOrFallback("OmniForceFieldDome_GlowMode",
-                    "Dome light: " + GlowModeLabel(glowMode)),
+                defaultLabel = string.Format(
+                    TranslateOrFallback("OmniForceFieldDome_GlowMode", "Dome light: {0}"),
+                    GlowModeLabel(glowMode)),
                 defaultDesc = TranslateOrFallback("OmniForceFieldDome_GlowModeDesc",
                     "Choose whether this dome generator lights its covered area like a lamp, like a sun lamp, or stays dark."),
                 icon = OmniForceFieldDomeTex.IconGlowMode,
@@ -519,7 +520,7 @@ namespace FullyAutomaticOmniCrafter
         {
             if (roof == null)
             {
-                return "Unknown";
+                return TranslateOrFallback("OmniForceFieldDome_UnknownRoof", "Unknown");
             }
             string label = roof.LabelCap;
             return label.NullOrEmpty() ? roof.defName : label;

@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-
     <OmniForceFieldDome_BuildRoof>Build Dome Roof</OmniForceFieldDome_BuildRoof>
     <OmniForceFieldDome_BuildRoofDesc>Build the selected roof type across this dome generator's covered area.</OmniForceFieldDome_BuildRoofDesc>
     <OmniForceFieldDome_Disabled>The dome is disabled.</OmniForceFieldDome_Disabled>
@@ -10,5 +9,12 @@
     <OmniForceFieldDome_BuildRoofComplete>Dome roofing complete: built {0}, replaced {1}, skipped natural roofs {2}. Roof: {3}.</OmniForceFieldDome_BuildRoofComplete>
     <OmniForceFieldDome_RemoveRoofComplete>Dome roof removal complete: removed {0}.</OmniForceFieldDome_RemoveRoofComplete>
     <OmniForceFieldDome_NetworkCells>Network coverage: {0} cells across {1} dome generators.</OmniForceFieldDome_NetworkCells>
-
+    <OmniForceFieldDome_GlowMode>Dome light: {0}</OmniForceFieldDome_GlowMode>
+    <OmniForceFieldDome_GlowModeDesc>Choose whether this dome generator lights its covered area like a lamp, like a sun lamp, or stays dark.</OmniForceFieldDome_GlowModeDesc>
+    <OmniForceFieldDome_SelectGlowMode>Select dome light mode</OmniForceFieldDome_SelectGlowMode>
+    <OmniForceFieldDome_CurrentMode>(current)</OmniForceFieldDome_CurrentMode>
+    <OmniForceFieldDome_GlowModeLamp>Lamp mode</OmniForceFieldDome_GlowModeLamp>
+    <OmniForceFieldDome_GlowModeSunLamp>Sun lamp mode</OmniForceFieldDome_GlowModeSunLamp>
+    <OmniForceFieldDome_GlowModeNone>No light</OmniForceFieldDome_GlowModeNone>
+    <OmniForceFieldDome_UnknownRoof>Unknown</OmniForceFieldDome_UnknownRoof>
 </LanguageData>
