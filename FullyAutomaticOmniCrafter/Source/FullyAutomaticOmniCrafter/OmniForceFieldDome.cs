@@ -209,8 +209,8 @@ namespace FullyAutomaticOmniCrafter
     public class OmniForceFieldDomeNetworkManager : MapComponent
     {
         // 178 = Normal(2) | 自定义高位标志。它是 passable，但不会被原版
-        // ShouldBeInTheSameRoom 视为 Normal/Fence 的精确值，因此可以作为可通行的房间边界。
-        public const RegionType DomeBoundaryRegionType = (RegionType)178;
+        // ShouldBeInTheSameRoom 视为 Normal/Fence 的精确值，穹顶补丁会单独决定房间合并。
+        public const RegionType DomeRoomRegionType = (RegionType)178;
 
         private readonly List<CompOmniForceFieldDome> domes = new List<CompOmniForceFieldDome>();
         private readonly List<OmniForceFieldDomeNetwork> networks = new List<OmniForceFieldDomeNetwork>();
@@ -221,13 +221,13 @@ namespace FullyAutomaticOmniCrafter
 
         // 每个地图格到 network 的 O(1) 查询缓存；攻击、温度、真空等补丁会频繁查询它。
         private OmniForceFieldDomeNetwork[] networkCache;
-        private bool[] boundaryCache;
+        private bool[] roomCellCache;
         private bool cacheDirty = true;
 
         public OmniForceFieldDomeNetworkManager(Map map) : base(map)
         {
             networkCache = new OmniForceFieldDomeNetwork[map.cellIndices.NumGridCells];
-            boundaryCache = new bool[map.cellIndices.NumGridCells];
+            roomCellCache = new bool[map.cellIndices.NumGridCells];
         }
 
         public void Register(CompOmniForceFieldDome dome)
@@ -283,7 +283,7 @@ namespace FullyAutomaticOmniCrafter
             return TryGetNetworkAt(c, out network);
         }
 
-        public bool IsDomeBoundaryCell(IntVec3 c)
+        public bool IsDomeRoomCell(IntVec3 c)
         {
             if (!c.InBounds(map))
             {
@@ -293,7 +293,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 RebuildNetworks();
             }
-            return boundaryCache[map.cellIndices.CellToIndex(c)];
+            return roomCellCache[map.cellIndices.CellToIndex(c)];
         }
 
         public bool TryGetNetworkAt(IntVec3 c, out OmniForceFieldDomeNetwork network)
@@ -341,12 +341,12 @@ namespace FullyAutomaticOmniCrafter
             {
                 networkCache = new OmniForceFieldDomeNetwork[map.cellIndices.NumGridCells];
             }
-            if (boundaryCache == null || boundaryCache.Length != map.cellIndices.NumGridCells)
+            if (roomCellCache == null || roomCellCache.Length != map.cellIndices.NumGridCells)
             {
-                boundaryCache = new bool[map.cellIndices.NumGridCells];
+                roomCellCache = new bool[map.cellIndices.NumGridCells];
             }
             Array.Clear(networkCache, 0, networkCache.Length);
-            Array.Clear(boundaryCache, 0, boundaryCache.Length);
+            Array.Clear(roomCellCache, 0, roomCellCache.Length);
             networks.Clear();
 
             bool[] visited = new bool[domes.Count];
@@ -432,10 +432,10 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            MarkBoundaryCells(network);
+            MarkRoomCells(network);
         }
 
-        private void MarkBoundaryCells(OmniForceFieldDomeNetwork network)
+        private void MarkRoomCells(OmniForceFieldDomeNetwork network)
         {
             CompProperties_OmniForceFieldDome props = network.PrimaryProps;
             if (props == null || !props.formRoom)
@@ -445,23 +445,7 @@ namespace FullyAutomaticOmniCrafter
 
             for (int i = 0; i < network.Cells.Count; i++)
             {
-                IntVec3 c = network.Cells[i];
-                bool boundary = false;
-                for (int dir = 0; dir < 4; dir++)
-                {
-                    IntVec3 adj = c + GenAdj.CardinalDirections[dir];
-                    if (!adj.InBounds(map)
-                        || networkCache[map.cellIndices.CellToIndex(adj)] != network)
-                    {
-                        boundary = true;
-                        break;
-                    }
-                }
-
-                if (boundary)
-                {
-                    boundaryCache[map.cellIndices.CellToIndex(c)] = true;
-                }
+                roomCellCache[map.cellIndices.CellToIndex(network.Cells[i])] = true;
             }
         }
 
@@ -655,10 +639,34 @@ namespace FullyAutomaticOmniCrafter
             }
 
             OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
-            if (manager != null && manager.IsDomeBoundaryCell(c))
+            if (manager != null && manager.IsDomeRoomCell(c))
             {
-                __result = OmniForceFieldDomeNetworkManager.DomeBoundaryRegionType;
+                __result = OmniForceFieldDomeNetworkManager.DomeRoomRegionType;
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(RegionAndRoomUpdater), "ShouldBeInTheSameRoom")]
+    public static class Patch_OmniForceFieldDome_ShouldBeInTheSameRoom
+    {
+        public static bool Prefix(District a, District b, ref bool __result)
+        {
+            bool isDomeA = a.RegionType == OmniForceFieldDomeNetworkManager.DomeRoomRegionType;
+            bool isDomeB = b.RegionType == OmniForceFieldDomeNetworkManager.DomeRoomRegionType;
+
+            if (isDomeA && isDomeB)
+            {
+                __result = true;
+                return false;
+            }
+
+            if (isDomeA || isDomeB)
+            {
+                __result = false;
+                return false;
+            }
+
+            return true;
         }
     }
 
