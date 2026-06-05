@@ -11,6 +11,22 @@ using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter
 {
+    public enum OmniForceFieldDomeGlowMode
+    {
+        None,
+        Lamp,
+        SunLamp
+    }
+
+    [StaticConstructorOnStartup]
+    public static class OmniForceFieldDomeTex
+    {
+        public static readonly Texture2D IconGlowMode =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniForceFieldDome_GlowMode", false)
+            ?? TexCommand.DesirePower
+            ?? BaseContent.WhiteTex;
+    }
+
     /// <summary>
     /// 穹顶配置。继承矩形护盾配置，是为了直接复用宽高设置、绘制、投射物拦截和
     /// OmniInterceptorTracker 的保护区域缓存。
@@ -24,6 +40,7 @@ namespace FullyAutomaticOmniCrafter
         public bool supportRoof = true;
         public float roofSupportRadius = -1f;
         public bool allowPlantsUnderRoof = true;
+        public bool allowSkyLightThroughRoof = true;
 
         // 通过给穹顶外圈格赋予自定义 RegionType，把穹顶内外拆成不同 Room。
         public bool formRoom = true;
@@ -93,6 +110,10 @@ namespace FullyAutomaticOmniCrafter
         private float cachedNetworkWidth = -1f;
         private float cachedNetworkHeight = -1f;
         private bool cachedNetworkActive;
+        private OmniForceFieldDomeGlowMode cachedGlowMode = OmniForceFieldDomeGlowMode.None;
+        private OmniForceFieldDomeGlowMode glowMode = OmniForceFieldDomeGlowMode.None;
+
+        public OmniForceFieldDomeGlowMode GlowMode => glowMode;
 
         public float RoofSupportRadius
         {
@@ -120,6 +141,7 @@ namespace FullyAutomaticOmniCrafter
         {
             base.PostSpawnSetup(respawningAfterLoad);
             parent.Map.GetComponent<OmniForceFieldDomeNetworkManager>()?.Register(this);
+            DirtyGlowInDomeArea(parent.Map);
             RememberNetworkState();
         }
 
@@ -127,26 +149,38 @@ namespace FullyAutomaticOmniCrafter
         {
             base.PostMapInit();
             parent.Map?.GetComponent<OmniForceFieldDomeNetworkManager>()?.DirtyCache();
+            DirtyGlowInDomeArea(parent.Map);
         }
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
+            DirtyGlowInDomeArea(map);
             map.GetComponent<OmniForceFieldDomeNetworkManager>()?.Deregister(this);
             base.PostDeSpawn(map, mode);
         }
 
         public override void SetRadius(float newRadius)
         {
+            DirtyGlowInDomeArea(parent.Map);
             base.SetRadius(newRadius);
             parent.Map?.GetComponent<OmniForceFieldDomeNetworkManager>()?.DirtyCache();
+            DirtyGlowInDomeArea(parent.Map);
             RememberNetworkState();
         }
 
         public new void SetSize(float width, float height)
         {
+            DirtyGlowInDomeArea(parent.Map);
             base.SetSize(width, height);
             parent.Map?.GetComponent<OmniForceFieldDomeNetworkManager>()?.DirtyCache();
+            DirtyGlowInDomeArea(parent.Map);
             RememberNetworkState();
+        }
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref glowMode, "omniForceFieldDomeGlowMode", OmniForceFieldDomeGlowMode.None);
         }
 
         public override void CompTick()
@@ -201,6 +235,73 @@ namespace FullyAutomaticOmniCrafter
             }
 
             yield return buildRoof;
+
+            yield return new Command_Action
+            {
+                defaultLabel = TranslateOrFallback("OmniForceFieldDome_GlowMode",
+                    "Dome light: " + GlowModeLabel(glowMode)),
+                defaultDesc = TranslateOrFallback("OmniForceFieldDome_GlowModeDesc",
+                    "Choose whether this dome generator lights its covered area like a lamp, like a sun lamp, or stays dark."),
+                icon = OmniForceFieldDomeTex.IconGlowMode,
+                action = ShowGlowModeMenu
+            };
+        }
+
+        private void ShowGlowModeMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            AddGlowModeOption(options, OmniForceFieldDomeGlowMode.None);
+            AddGlowModeOption(options, OmniForceFieldDomeGlowMode.Lamp);
+            AddGlowModeOption(options, OmniForceFieldDomeGlowMode.SunLamp);
+
+            Find.WindowStack.Add(new FloatMenu(options,
+                TranslateOrFallback("OmniForceFieldDome_SelectGlowMode", "Select dome light mode")));
+        }
+
+        private void AddGlowModeOption(List<FloatMenuOption> options, OmniForceFieldDomeGlowMode mode)
+        {
+            OmniForceFieldDomeGlowMode selectedMode = mode;
+            string label = GlowModeLabel(selectedMode);
+            if (glowMode == selectedMode)
+            {
+                label += " " + TranslateOrFallback("OmniForceFieldDome_CurrentMode", "(current)");
+            }
+            options.Add(new FloatMenuOption(label, () => SetGlowModeForSelectedDomeAreas(selectedMode)));
+        }
+
+        private void SetGlowModeForSelectedDomeAreas(OmniForceFieldDomeGlowMode mode)
+        {
+            List<CompOmniForceFieldDome> domes = SelectedDomeComps();
+            for (int i = 0; i < domes.Count; i++)
+            {
+                domes[i].SetGlowMode(mode);
+            }
+        }
+
+        private void SetGlowMode(OmniForceFieldDomeGlowMode mode)
+        {
+            if (glowMode == mode)
+            {
+                return;
+            }
+
+            DirtyGlowInDomeArea(parent.Map);
+            glowMode = mode;
+            cachedGlowMode = glowMode;
+            DirtyGlowInDomeArea(parent.Map);
+        }
+
+        private static string GlowModeLabel(OmniForceFieldDomeGlowMode mode)
+        {
+            switch (mode)
+            {
+                case OmniForceFieldDomeGlowMode.Lamp:
+                    return TranslateOrFallback("OmniForceFieldDome_GlowModeLamp", "Lamp mode");
+                case OmniForceFieldDomeGlowMode.SunLamp:
+                    return TranslateOrFallback("OmniForceFieldDome_GlowModeSunLamp", "Sun lamp mode");
+                default:
+                    return TranslateOrFallback("OmniForceFieldDome_GlowModeNone", "No light");
+            }
         }
 
         private void ShowRoofBuildMenu()
@@ -378,19 +479,24 @@ namespace FullyAutomaticOmniCrafter
 
         private List<CompOmniForceFieldDome> SelectedActiveRoofDomes()
         {
+            return SelectedDomeComps(true);
+        }
+
+        private List<CompOmniForceFieldDome> SelectedDomeComps(bool activeOnly = false)
+        {
             List<CompOmniForceFieldDome> domes = new List<CompOmniForceFieldDome>();
 
             foreach (object obj in Find.Selector.SelectedObjects)
             {
                 ThingWithComps thing = obj as ThingWithComps;
                 CompOmniForceFieldDome dome = thing?.GetComp<CompOmniForceFieldDome>();
-                if (dome != null && dome.Active && !domes.Contains(dome))
+                if (dome != null && (!activeOnly || dome.Active) && !domes.Contains(dome))
                 {
                     domes.Add(dome);
                 }
             }
 
-            if (domes.Count == 0 && Active)
+            if (domes.Count == 0 && (!activeOnly || Active))
             {
                 domes.Add(this);
             }
@@ -440,8 +546,10 @@ namespace FullyAutomaticOmniCrafter
 
             if (cachedNetworkActive != Active
                 || !Mathf.Approximately(cachedNetworkWidth, Width)
-                || !Mathf.Approximately(cachedNetworkHeight, Height))
+                || !Mathf.Approximately(cachedNetworkHeight, Height)
+                || cachedGlowMode != glowMode)
             {
+                DirtyGlowInDomeArea(parent.Map);
                 // 尺寸和启用状态会改变网络连通性、屋顶范围和保护格缓存。
                 parent.Map.GetComponent<OmniForceFieldDomeNetworkManager>()?.DirtyCache();
                 RememberNetworkState();
@@ -453,6 +561,24 @@ namespace FullyAutomaticOmniCrafter
             cachedNetworkActive = Active;
             cachedNetworkWidth = Width;
             cachedNetworkHeight = Height;
+            cachedGlowMode = glowMode;
+        }
+
+        private void DirtyGlowInDomeArea(Map map)
+        {
+            if (map?.glowGrid == null)
+            {
+                return;
+            }
+
+            CellRect rect = DomeRect;
+            foreach (IntVec3 c in rect.Cells)
+            {
+                if (c.InBounds(map))
+                {
+                    map.glowGrid.DirtyCell(c);
+                }
+            }
         }
     }
 
@@ -608,6 +734,37 @@ namespace FullyAutomaticOmniCrafter
             return props != null;
         }
 
+        public bool TryGetDomeGlowAt(IntVec3 c, out float glow)
+        {
+            glow = 0f;
+            OmniForceFieldDomeNetwork network;
+            if (!TryGetNetworkAt(c, out network))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < network.Domes.Count; i++)
+            {
+                CompOmniForceFieldDome dome = network.Domes[i];
+                if (dome == null || !dome.Active || !dome.DomeRect.Contains(c))
+                {
+                    continue;
+                }
+
+                switch (dome.GlowMode)
+                {
+                    case OmniForceFieldDomeGlowMode.SunLamp:
+                        glow = Mathf.Max(glow, 1f);
+                        break;
+                    case OmniForceFieldDomeGlowMode.Lamp:
+                        glow = Mathf.Max(glow, 0.5f);
+                        break;
+                }
+            }
+
+            return glow > 0f;
+        }
+
         public bool IsProtectedFrom(Thing searcher, IntVec3 c)
         {
             OmniForceFieldDomeNetwork network;
@@ -652,7 +809,24 @@ namespace FullyAutomaticOmniCrafter
             }
 
             CompProperties_OmniForceFieldDome props;
-            return TryGetPropsAt(c, out props) && props.allowPlantsUnderRoof;
+            return TryGetPropsAt(c, out props) && props.allowPlantsUnderRoof && AllowsSkyLightThroughRoof(c);
+        }
+
+        public bool AllowsSkyLightThroughRoof(IntVec3 c)
+        {
+            if (!c.InBounds(map))
+            {
+                return false;
+            }
+
+            RoofDef roof = map.roofGrid.RoofAt(c);
+            if (roof == null || roof.isNatural || roof.isThickRoof)
+            {
+                return false;
+            }
+
+            CompProperties_OmniForceFieldDome props;
+            return TryGetPropsAt(c, out props) && props.allowSkyLightThroughRoof;
         }
 
         private void RebuildNetworks()
@@ -1054,6 +1228,221 @@ namespace FullyAutomaticOmniCrafter
                 // RoofGrid 有屋顶会让原版不再取天空光；这里把天空光补回来，实现“透光屋顶”。
                 __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
             }
+        }
+    }
+
+    public static class OmniForceFieldDomeSkyLightUtility
+    {
+        private static readonly AccessTools.FieldRef<GlowGrid, Map> MapField =
+            AccessTools.FieldRefAccess<GlowGrid, Map>("map");
+
+        public static bool AllowsSkyLightThroughRoof(IntVec3 c, Map map)
+        {
+            if (map == null || !c.InBounds(map))
+            {
+                return false;
+            }
+
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            return manager != null && manager.AllowsSkyLightThroughRoof(c);
+        }
+
+        public static bool AllowsSkyLightThroughRoof(int index, Map map)
+        {
+            if (map == null || index < 0 || index >= map.cellIndices.NumGridCells)
+            {
+                return false;
+            }
+
+            return AllowsSkyLightThroughRoof(map.cellIndices.IndexToCell(index), map);
+        }
+
+        public static Map GetMap(GlowGrid glowGrid)
+        {
+            return glowGrid == null ? null : MapField(glowGrid);
+        }
+
+        public static bool TryGetDomeGlow(IntVec3 c, Map map, out float glow)
+        {
+            glow = 0f;
+            if (map == null || !c.InBounds(map))
+            {
+                return false;
+            }
+
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            return manager != null && manager.TryGetDomeGlowAt(c, out glow);
+        }
+
+        public static bool TryGetDomeGlow(int index, Map map, out float glow)
+        {
+            glow = 0f;
+            if (map == null || index < 0 || index >= map.cellIndices.NumGridCells)
+            {
+                return false;
+            }
+
+            return TryGetDomeGlow(map.cellIndices.IndexToCell(index), map, out glow);
+        }
+
+        public static Color32 WithDomeGlow(Color32 color, float glow)
+        {
+            byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(glow * 255f), 0, 255);
+            if (light <= 0)
+            {
+                return color;
+            }
+
+            color.r = Math.Max(color.r, light);
+            color.g = Math.Max(color.g, light);
+            color.b = Math.Max(color.b, light);
+            color.a = Math.Max(color.a, light);
+            return color;
+        }
+
+        public static Color32 WithSkyGlow(Color32 color, Map map)
+        {
+            if (map == null)
+            {
+                return color;
+            }
+
+            byte sky = (byte)Mathf.Clamp(Mathf.RoundToInt(map.skyManager.CurSkyGlow * 255f), 0, 255);
+            if (sky <= 0)
+            {
+                return color;
+            }
+
+            color.r = Math.Max(color.r, sky);
+            color.g = Math.Max(color.g, sky);
+            color.b = Math.Max(color.b, sky);
+            color.a = Math.Max(color.a, sky);
+            return color;
+        }
+    }
+
+    [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.GroundGlowAt))]
+    public static class Patch_OmniForceFieldDome_GroundGlowAt
+    {
+        public static void Postfix(GlowGrid __instance, IntVec3 c, bool ignoreSky, ref float __result)
+        {
+            Map map = OmniForceFieldDomeSkyLightUtility.GetMap(__instance);
+            float domeGlow;
+            if (OmniForceFieldDomeSkyLightUtility.TryGetDomeGlow(c, map, out domeGlow))
+            {
+                __result = Mathf.Max(__result, domeGlow);
+            }
+
+            if (ignoreSky)
+            {
+                return;
+            }
+
+            if (OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(c, map))
+            {
+                __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.VisualGlowAt), new[] { typeof(IntVec3) })]
+    public static class Patch_OmniForceFieldDome_VisualGlowAtCell
+    {
+        public static void Postfix(GlowGrid __instance, IntVec3 c, ref Color32 __result)
+        {
+            Map map = OmniForceFieldDomeSkyLightUtility.GetMap(__instance);
+            float domeGlow;
+            if (OmniForceFieldDomeSkyLightUtility.TryGetDomeGlow(c, map, out domeGlow))
+            {
+                __result = OmniForceFieldDomeSkyLightUtility.WithDomeGlow(__result, domeGlow);
+            }
+
+            if (OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(c, map))
+            {
+                __result = OmniForceFieldDomeSkyLightUtility.WithSkyGlow(__result, map);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.VisualGlowAt), new[] { typeof(int) })]
+    public static class Patch_OmniForceFieldDome_VisualGlowAtIndex
+    {
+        public static void Postfix(GlowGrid __instance, int index, ref Color32 __result)
+        {
+            Map map = OmniForceFieldDomeSkyLightUtility.GetMap(__instance);
+            float domeGlow;
+            if (OmniForceFieldDomeSkyLightUtility.TryGetDomeGlow(index, map, out domeGlow))
+            {
+                __result = OmniForceFieldDomeSkyLightUtility.WithDomeGlow(__result, domeGlow);
+            }
+
+            if (OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(index, map))
+            {
+                __result = OmniForceFieldDomeSkyLightUtility.WithSkyGlow(__result, map);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(SectionLayer_IndoorMask), "HideCommon")]
+    public static class Patch_OmniForceFieldDome_IndoorMask
+    {
+        public static void Postfix(Map map, IntVec3 c, ref bool __result)
+        {
+            if (__result && OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(c, map))
+            {
+                __result = false;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPowerPlantSolar), "RoofedPowerOutputFactor", MethodType.Getter)]
+    public static class Patch_OmniForceFieldDome_SolarRoofedFactor
+    {
+        public static void Postfix(CompPowerPlantSolar __instance, ref float __result)
+        {
+            if (__instance?.parent?.Spawned != true || __instance.parent.Map == null)
+            {
+                return;
+            }
+
+            int cellCount = 0;
+            int blockedRoofCount = 0;
+            Map map = __instance.parent.Map;
+            foreach (IntVec3 c in __instance.parent.OccupiedRect())
+            {
+                cellCount++;
+                if (map.roofGrid.Roofed(c) && !OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(c, map))
+                {
+                    blockedRoofCount++;
+                }
+            }
+
+            if (cellCount > 0)
+            {
+                __result = Mathf.Max(__result, (float)(cellCount - blockedRoofCount) / cellCount);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PlaceWorker_NotUnderRoof), nameof(PlaceWorker_NotUnderRoof.AllowsPlacing))]
+    public static class Patch_OmniForceFieldDome_NotUnderRoofPlacement
+    {
+        public static void Postfix(BuildableDef checkingDef, IntVec3 loc, Rot4 rot, Map map, ref AcceptanceReport __result)
+        {
+            if (__result.Accepted || checkingDef == null || map == null)
+            {
+                return;
+            }
+
+            foreach (IntVec3 c in GenAdj.OccupiedRect(loc, rot, checkingDef.Size))
+            {
+                if (map.roofGrid.Roofed(c) && !OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(c, map))
+                {
+                    return;
+                }
+            }
+
+            __result = true;
         }
     }
 
