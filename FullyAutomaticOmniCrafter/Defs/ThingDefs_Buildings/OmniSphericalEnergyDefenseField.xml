@@ -69,7 +69,7 @@
         
         <comps>
             <li Class="FullyAutomaticOmniCrafter.CompProperties_OmniProjectileInterceptor">
-                <radius>10</radius>
+                <radius>11</radius>
                 <interceptGroundProjectiles>true</interceptGroundProjectiles>
                 <interceptAirProjectiles>true</interceptAirProjectiles>
                 <color>(0.3, 0.8, 1.0)</color> <!-- 天蓝色护盾 -->

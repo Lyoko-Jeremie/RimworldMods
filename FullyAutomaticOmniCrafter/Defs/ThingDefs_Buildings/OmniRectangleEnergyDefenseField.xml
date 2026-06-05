@@ -73,8 +73,8 @@
         
         <comps>
             <li Class="FullyAutomaticOmniCrafter.CompProperties_CompOmniRectangleProjectileInterceptor">
-                <width>10</width>
-                <height>10</height>
+                <width>11</width>
+                <height>11</height>
                 <interceptGroundProjectiles>true</interceptGroundProjectiles>
                 <interceptAirProjectiles>true</interceptAirProjectiles>
                 <color>(0.3, 0.8, 1.0)</color> <!-- 天蓝色护盾 -->
