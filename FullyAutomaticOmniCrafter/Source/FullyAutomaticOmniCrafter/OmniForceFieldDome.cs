@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -21,7 +23,7 @@ namespace FullyAutomaticOmniCrafter
         public RoofDef roofDef;
         public bool supportRoof = true;
         public float roofSupportRadius = -1f;
-        public bool transparentRoof = true;
+        public bool allowPlantsUnderRoof = true;
 
         // 通过给穹顶外圈格赋予自定义 RegionType，把穹顶内外拆成不同 Room。
         public bool formRoom = true;
@@ -637,6 +639,22 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
 
+        public bool AllowsPlantUnderRoof(IntVec3 c, ThingDef plantDef)
+        {
+            if (plantDef?.plant == null || !c.InBounds(map) || !map.roofGrid.Roofed(c))
+            {
+                return false;
+            }
+
+            if (plantDef.plant.diesToLight || plantDef.plant.cavePlant)
+            {
+                return false;
+            }
+
+            CompProperties_OmniForceFieldDome props;
+            return TryGetPropsAt(c, out props) && props.allowPlantsUnderRoof;
+        }
+
         private void RebuildNetworks()
         {
             if (networkCache == null || networkCache.Length != map.cellIndices.NumGridCells)
@@ -1008,13 +1026,13 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.GroundGlowAt))]
-    public static class Patch_OmniForceFieldDome_TransparentRoofGlow
+    // Dome roofs no longer alter global ground glow; plant growth has a narrow patch below.
+    public static class OmniForceFieldDomeGlobalGroundGlowNotPatched
     {
         private static readonly AccessTools.FieldRef<GlowGrid, Map> MapField =
             AccessTools.FieldRefAccess<GlowGrid, Map>("map");
 
-        public static void Postfix(GlowGrid __instance, IntVec3 c, bool ignoreSky, ref float __result)
+        private static void DisabledPostfix(GlowGrid __instance, IntVec3 c, bool ignoreSky, ref float __result)
         {
             if (ignoreSky)
             {
@@ -1029,13 +1047,180 @@ namespace FullyAutomaticOmniCrafter
 
             CompProperties_OmniForceFieldDome props;
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
-                && props.transparentRoof
+                && props.allowPlantsUnderRoof
                 && map.roofGrid.Roofed(c))
             {
                 __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
                 // RoofGrid 有屋顶会让原版不再取天空光；这里把天空光补回来，实现“透光屋顶”。
                 __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
             }
+        }
+    }
+
+    public static class OmniForceFieldDomePlantRoofUtility
+    {
+        private static readonly FieldInfo WantedPlantDefField =
+            AccessTools.Field(typeof(WorkGiver_Grower), "wantedPlantDef");
+        private static readonly MethodInfo RoofedMethod =
+            AccessTools.Method(typeof(GridsUtility), nameof(GridsUtility.Roofed), new[] { typeof(IntVec3), typeof(Map) });
+        private static readonly MethodInfo RoofedForPlantRoofBlockMethod =
+            AccessTools.Method(typeof(OmniForceFieldDomePlantRoofUtility), nameof(RoofedForPlantRoofBlock));
+        private static readonly MethodInfo ThingToInstallGetter =
+            AccessTools.PropertyGetter(typeof(Designator_Install), "ThingToInstall");
+
+        public static bool AllowsPlantUnderDomeRoof(IntVec3 c, Map map, ThingDef plantDef)
+        {
+            if (map == null || plantDef?.plant == null || !c.InBounds(map))
+            {
+                return false;
+            }
+
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            return manager != null && manager.AllowsPlantUnderRoof(c, plantDef);
+        }
+
+        public static bool RoofedForPlantRoofBlock(IntVec3 c, Map map, ThingDef plantDef)
+        {
+            return map != null && map.roofGrid.Roofed(c) && !AllowsPlantUnderDomeRoof(c, map, plantDef);
+        }
+
+        public static void DisableRoofInterferenceIfAllowed(ThingDef plantDef, IntVec3 c, Map map,
+            ref PlantRoofInterferenceState state)
+        {
+            if (!AllowsPlantUnderDomeRoof(c, map, plantDef) || plantDef?.plant == null || !plantDef.plant.interferesWithRoof)
+            {
+                return;
+            }
+
+            state.plant = plantDef.plant;
+            state.originalInterferesWithRoof = plantDef.plant.interferesWithRoof;
+            state.changed = true;
+            plantDef.plant.interferesWithRoof = false;
+        }
+
+        public static Exception RestoreRoofInterference(Exception exception, PlantRoofInterferenceState state)
+        {
+            if (state.changed && state.plant != null)
+            {
+                state.plant.interferesWithRoof = state.originalInterferesWithRoof;
+            }
+            return exception;
+        }
+
+        public static Thing GetThingToInstall(Designator_Install designator)
+        {
+            return ThingToInstallGetter?.Invoke(designator, null) as Thing;
+        }
+
+        public static IEnumerable<CodeInstruction> ReplaceSecondRoofedCallWithPlantAwareCheck(IEnumerable<CodeInstruction> instructions)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+            int roofedCallCount = 0;
+
+            for (int i = 0; i < codes.Count; i++)
+            {
+                CodeInstruction code = codes[i];
+                if (code.Calls(RoofedMethod))
+                {
+                    roofedCallCount++;
+                    if (roofedCallCount == 2)
+                    {
+                        yield return new CodeInstruction(OpCodes.Ldsfld, WantedPlantDefField);
+                        code = new CodeInstruction(OpCodes.Call, RoofedForPlantRoofBlockMethod);
+                    }
+                }
+
+                yield return code;
+            }
+        }
+
+        public struct PlantRoofInterferenceState
+        {
+            public PlantProperties plant;
+            public bool originalInterferesWithRoof;
+            public bool changed;
+        }
+    }
+
+    [HarmonyPatch(typeof(Plant), "GrowthRateFactor_Light", MethodType.Getter)]
+    public static class Patch_OmniForceFieldDome_PlantLightUnderRoof
+    {
+        public static void Postfix(Plant __instance, ref float __result)
+        {
+            if (__instance?.Spawned != true || __instance.Map == null)
+            {
+                return;
+            }
+
+            if (OmniForceFieldDomePlantRoofUtility.AllowsPlantUnderDomeRoof(__instance.Position, __instance.Map, __instance.def))
+            {
+                float skyLightFactor = PlantUtility.GrowthRateFactorFor_Light(__instance.def, __instance.Map.skyManager.CurSkyGlow);
+                __result = Mathf.Max(__result, skyLightFactor);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(WorkGiver_GrowerSow), nameof(WorkGiver_GrowerSow.JobOnCell))]
+    public static class Patch_OmniForceFieldDome_GrowerSowRoofCheck
+    {
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            return OmniForceFieldDomePlantRoofUtility.ReplaceSecondRoofedCallWithPlantAwareCheck(instructions);
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPlantable), nameof(CompPlantable.CanPlantAt))]
+    public static class Patch_OmniForceFieldDome_CompPlantableRoofCheck
+    {
+        public static void Prefix(CompPlantable __instance, IntVec3 cell, Map map,
+            ref OmniForceFieldDomePlantRoofUtility.PlantRoofInterferenceState __state)
+        {
+            OmniForceFieldDomePlantRoofUtility.DisableRoofInterferenceIfAllowed(__instance.Props.plantDefToSpawn, cell, map, ref __state);
+        }
+
+        public static Exception Finalizer(Exception __exception,
+            OmniForceFieldDomePlantRoofUtility.PlantRoofInterferenceState __state)
+        {
+            return OmniForceFieldDomePlantRoofUtility.RestoreRoofInterference(__exception, __state);
+        }
+    }
+
+    [HarmonyPatch(typeof(Designator_Replant), nameof(Designator_Replant.CanDesignateCell))]
+    public static class Patch_OmniForceFieldDome_DesignatorReplantRoofCheck
+    {
+        public static void Prefix(Designator_Replant __instance, IntVec3 c,
+            ref OmniForceFieldDomePlantRoofUtility.PlantRoofInterferenceState __state)
+        {
+            Plant plant = OmniForceFieldDomePlantRoofUtility.GetThingToInstall(__instance) as Plant;
+            OmniForceFieldDomePlantRoofUtility.DisableRoofInterferenceIfAllowed(plant?.def, c, __instance.Map, ref __state);
+        }
+
+        public static Exception Finalizer(Exception __exception,
+            OmniForceFieldDomePlantRoofUtility.PlantRoofInterferenceState __state)
+        {
+            return OmniForceFieldDomePlantRoofUtility.RestoreRoofInterference(__exception, __state);
+        }
+    }
+
+    [HarmonyPatch(typeof(WorkGiver_Replant), nameof(WorkGiver_Replant.JobOnThing))]
+    public static class Patch_OmniForceFieldDome_WorkGiverReplantRoofCheck
+    {
+        public static void Prefix(Thing t, ref OmniForceFieldDomePlantRoofUtility.PlantRoofInterferenceState __state)
+        {
+            Blueprint_Install blueprint = t as Blueprint_Install;
+            ThingDef plantDef = blueprint?.def.entityDefToBuild as ThingDef;
+            if (plantDef?.plant == null)
+            {
+                return;
+            }
+
+            OmniForceFieldDomePlantRoofUtility.DisableRoofInterferenceIfAllowed(plantDef, t.Position, t.Map, ref __state);
+        }
+
+        public static Exception Finalizer(Exception __exception,
+            OmniForceFieldDomePlantRoofUtility.PlantRoofInterferenceState __state)
+        {
+            return OmniForceFieldDomePlantRoofUtility.RestoreRoofInterference(__exception, __state);
         }
     }
 
