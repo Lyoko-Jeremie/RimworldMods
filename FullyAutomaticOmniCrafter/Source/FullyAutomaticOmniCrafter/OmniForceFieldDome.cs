@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -16,8 +17,11 @@ namespace FullyAutomaticOmniCrafter
     {
         // 能量屋顶：真实写入 RoofGrid，让游戏把穹顶格视为有屋顶；
         // 透光和防塌方行为在下方 Harmony 补丁中修正。
-        public bool applyRoof = true;
+        public bool applyRoof = false;
         public RoofDef roofDef;
+        public bool supportRoof = true;
+        public float roofSupportRadius = -1f;
+        public bool transparentRoof = true;
 
         // 通过给穹顶外圈格赋予自定义 RegionType，把穹顶内外拆成不同 Room。
         public bool formRoom = true;
@@ -88,6 +92,28 @@ namespace FullyAutomaticOmniCrafter
         private float cachedNetworkHeight = -1f;
         private bool cachedNetworkActive;
 
+        public float RoofSupportRadius
+        {
+            get
+            {
+                if (Props.roofSupportRadius > 0f)
+                {
+                    return Props.roofSupportRadius;
+                }
+                return Mathf.Sqrt(Width * Width + Height * Height);
+            }
+        }
+
+        public bool SupportsRoofAt(IntVec3 c)
+        {
+            return Props.supportRoof
+                   && Active
+                   && parent.Spawned
+                   && parent.Map != null
+                   && c.InBounds(parent.Map)
+                   && c.InHorDistOf(parent.Position, RoofSupportRadius);
+        }
+
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
@@ -149,6 +175,147 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
             return str;
+        }
+
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (Gizmo gizmo in base.CompGetGizmosExtra())
+            {
+                yield return gizmo;
+            }
+
+            Command_Action buildRoof = new Command_Action
+            {
+                defaultLabel = TranslateOrFallback("OmniForceFieldDome_BuildRoof", "Build dome roof"),
+                defaultDesc = TranslateOrFallback("OmniForceFieldDome_BuildRoofDesc",
+                    "Build the selected roof type across this dome generator's covered area."),
+                icon = CompAutoRooferTex.IconBuildRoof,
+                action = ShowRoofBuildMenu
+            };
+
+            if (!Active)
+            {
+                buildRoof.Disable(TranslateOrFallback("OmniForceFieldDome_Disabled", "The dome is disabled."));
+            }
+
+            yield return buildRoof;
+        }
+
+        private void ShowRoofBuildMenu()
+        {
+            List<RoofDef> roofDefs = DefDatabase<RoofDef>.AllDefsListForReading
+                .Where(IsSelectableRoofDef)
+                .OrderBy(def => def == Props.RoofDefToUse ? 0 : 1)
+                .ThenBy(def => RoofLabel(def))
+                .ToList();
+
+            if (!roofDefs.Contains(Props.RoofDefToUse))
+            {
+                roofDefs.Insert(0, Props.RoofDefToUse);
+            }
+
+            if (roofDefs.Count == 0)
+            {
+                Messages.Message(TranslateOrFallback("OmniForceFieldDome_NoRoofDefs", "No roof types are available."),
+                    parent, MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            for (int i = 0; i < roofDefs.Count; i++)
+            {
+                RoofDef roof = roofDefs[i];
+                string label = RoofMenuLabel(roof);
+                options.Add(new FloatMenuOption(label, () => BuildRoofInDomeArea(roof)));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options,
+                TranslateOrFallback("OmniForceFieldDome_SelectRoof", "Select roof type")));
+        }
+
+        private bool IsSelectableRoofDef(RoofDef roof)
+        {
+            return roof != null && (!roof.isNatural || roof == Props.RoofDefToUse);
+        }
+
+        private void BuildRoofInDomeArea(RoofDef roof)
+        {
+            Map map = parent.Map;
+            if (map == null || roof == null)
+            {
+                return;
+            }
+
+            int builtCount = 0;
+            int replacedCount = 0;
+            int skippedNaturalCount = 0;
+            CellRect rect = DomeRect;
+
+            foreach (IntVec3 c in rect.Cells)
+            {
+                if (!c.InBounds(map))
+                {
+                    continue;
+                }
+
+                RoofDef currentRoof = map.roofGrid.RoofAt(c);
+                if (currentRoof == roof)
+                {
+                    continue;
+                }
+
+                if (currentRoof != null && currentRoof.isNatural)
+                {
+                    skippedNaturalCount++;
+                    continue;
+                }
+
+                map.roofGrid.SetRoof(c, roof);
+                if (currentRoof == null)
+                {
+                    builtCount++;
+                }
+                else
+                {
+                    replacedCount++;
+                }
+            }
+
+            Messages.Message(string.Format(
+                    TranslateOrFallback("OmniForceFieldDome_BuildRoofComplete",
+                        "Dome roofing complete: built {0}, replaced {1}, skipped natural roofs {2}. Roof: {3}."),
+                    builtCount,
+                    replacedCount,
+                    skippedNaturalCount,
+                    RoofLabel(roof)),
+                parent,
+                MessageTypeDefOf.PositiveEvent);
+        }
+
+        private static string RoofMenuLabel(RoofDef roof)
+        {
+            string label = RoofLabel(roof);
+            string modName = roof.modContentPack?.Name;
+            if (modName.NullOrEmpty())
+            {
+                return label;
+            }
+            return label + " (" + modName + ")";
+        }
+
+        private static string RoofLabel(RoofDef roof)
+        {
+            if (roof == null)
+            {
+                return "Unknown";
+            }
+            string label = roof.LabelCap;
+            return label.NullOrEmpty() ? roof.defName : label;
+        }
+
+        private static string TranslateOrFallback(string key, string fallback)
+        {
+            return key.CanTranslate() ? (string)key.Translate() : fallback;
         }
 
         private void DirtyNetworkIfStateChanged()
@@ -340,6 +507,25 @@ namespace FullyAutomaticOmniCrafter
             return dome != null && dome.IsEnemy(searcher);
         }
 
+        public bool IsRoofSupportedByDome(IntVec3 c)
+        {
+            if (!c.InBounds(map))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < domes.Count; i++)
+            {
+                CompOmniForceFieldDome dome = domes[i];
+                if (dome != null && dome.SupportsRoofAt(c))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void RebuildNetworks()
         {
             if (networkCache == null || networkCache.Length != map.cellIndices.NumGridCells)
@@ -506,12 +692,6 @@ namespace FullyAutomaticOmniCrafter
                 for (int j = 0; j < network.Cells.Count; j++)
                 {
                     IntVec3 c = network.Cells[j];
-
-                    // 屋顶写入真实 RoofGrid，使雨雪/真空等原版系统首先把它当作有顶区域。
-                    if (props.applyRoof && props.RoofDefToUse != null && !map.roofGrid.Roofed(c))
-                    {
-                        map.roofGrid.SetRoof(c, props.RoofDefToUse);
-                    }
 
                     if (props.clearGas && map.gasGrid != null && map.gasGrid.AnyGasAt(c))
                     {
@@ -738,8 +918,10 @@ namespace FullyAutomaticOmniCrafter
 
             CompProperties_OmniForceFieldDome props;
             if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
-                && props.applyRoof)
+                && props.transparentRoof
+                && map.roofGrid.Roofed(c))
             {
+                __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
                 // RoofGrid 有屋顶会让原版不再取天空光；这里把天空光补回来，实现“透光屋顶”。
                 __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
             }
@@ -756,10 +938,10 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            CompProperties_OmniForceFieldDome props;
-            if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
-                && props.applyRoof)
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            if (manager != null && manager.IsRoofSupportedByDome(c))
             {
+                __result = true;
                 // 能量屋顶不依赖墙柱支撑，避免原版屋顶塌方扫描把它标记为坍塌。
                 __result = true;
             }
@@ -776,10 +958,10 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            CompProperties_OmniForceFieldDome props;
-            if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
-                && props.applyRoof)
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            if (manager != null && manager.IsRoofSupportedByDome(c))
             {
+                __result = true;
                 // 建造/维护屋顶时还会检查“是否连接到支撑物”，这里同样放行穹顶格。
                 __result = true;
             }

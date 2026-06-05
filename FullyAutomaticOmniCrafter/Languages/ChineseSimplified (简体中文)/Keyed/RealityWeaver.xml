@@ -40,4 +40,11 @@
     <RealityWeaver_CompleteAll>立即完成建造</RealityWeaver_CompleteAll>
     <RealityWeaver_CompleteAllDesc>立即完成目标区域内所有待建蓝图和施工框。此操作将正常扣除电力。</RealityWeaver_CompleteAllDesc>
 
+    <OmniForceFieldDome_BuildRoof>生成穹顶屋顶</OmniForceFieldDome_BuildRoof>
+    <OmniForceFieldDome_BuildRoofDesc>在当前穹顶发生器覆盖区域内生成选定类型的屋顶。</OmniForceFieldDome_BuildRoofDesc>
+    <OmniForceFieldDome_Disabled>穹顶当前未启用。</OmniForceFieldDome_Disabled>
+    <OmniForceFieldDome_NoRoofDefs>没有可用的屋顶类型。</OmniForceFieldDome_NoRoofDefs>
+    <OmniForceFieldDome_SelectRoof>选择屋顶类型</OmniForceFieldDome_SelectRoof>
+    <OmniForceFieldDome_BuildRoofComplete>穹顶屋顶生成完成：新建 {0}，替换 {1}，跳过天然岩顶 {2}。屋顶：{3}。</OmniForceFieldDome_BuildRoofComplete>
+
 </LanguageData>
