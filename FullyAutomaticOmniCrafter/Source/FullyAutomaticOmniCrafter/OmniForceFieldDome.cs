@@ -223,6 +223,7 @@ namespace FullyAutomaticOmniCrafter
         private OmniForceFieldDomeNetwork[] networkCache;
         private bool[] roomCellCache;
         private bool cacheDirty = true;
+        private bool regionsDirty = true;
 
         public OmniForceFieldDomeNetworkManager(Map map) : base(map)
         {
@@ -252,6 +253,7 @@ namespace FullyAutomaticOmniCrafter
         {
             // 延迟到下一次查询或 tick 重建，避免同一帧多次尺寸/开关变化反复重算。
             cacheDirty = true;
+            regionsDirty = true;
         }
 
         public override void MapComponentTick()
@@ -260,6 +262,9 @@ namespace FullyAutomaticOmniCrafter
             if (cacheDirty)
             {
                 RebuildNetworks();
+            }
+            if (regionsDirty)
+            {
                 RebuildRegionsAndRooms();
             }
             if (networks.Count == 0)
@@ -405,9 +410,10 @@ namespace FullyAutomaticOmniCrafter
 
         private void RebuildRegionsAndRooms()
         {
-            // 穹顶边界不是 Thing，不会触发原版区域 dirty 通知；必须主动重建 Room/Region。
+            // 穹顶虚拟房间格不是 Thing，不会触发原版区域 dirty 通知；必须主动重建 Room/Region。
             map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
             map.reachability.ClearCache();
+            regionsDirty = false;
         }
 
         private void CacheNetworkCells(OmniForceFieldDomeNetwork network)
