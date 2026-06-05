@@ -193,7 +193,7 @@ namespace FullyAutomaticOmniCrafter
                 action = ShowRoofBuildMenu
             };
 
-            if (!Active)
+            if (!AnySelectedRoofDomeActive())
             {
                 buildRoof.Disable(TranslateOrFallback("OmniForceFieldDome_Disabled", "The dome is disabled."));
             }
@@ -217,13 +217,13 @@ namespace FullyAutomaticOmniCrafter
             List<FloatMenuOption> options = new List<FloatMenuOption>();
             options.Add(new FloatMenuOption(
                 TranslateOrFallback("OmniForceFieldDome_RemoveRoof", "Remove roof"),
-                RemoveRoofInDomeArea));
+                RemoveRoofInSelectedDomeAreas));
 
             for (int i = 0; i < roofDefs.Count; i++)
             {
                 RoofDef roof = roofDefs[i];
                 string label = RoofMenuLabel(roof);
-                options.Add(new FloatMenuOption(label, () => BuildRoofInDomeArea(roof)));
+                options.Add(new FloatMenuOption(label, () => BuildRoofInSelectedDomeAreas(roof)));
             }
 
             Find.WindowStack.Add(new FloatMenu(options,
@@ -235,10 +235,9 @@ namespace FullyAutomaticOmniCrafter
             return roof != null && (!roof.isNatural || roof == Props.RoofDefToUse);
         }
 
-        private void BuildRoofInDomeArea(RoofDef roof)
+        private void BuildRoofInSelectedDomeAreas(RoofDef roof)
         {
-            Map map = parent.Map;
-            if (map == null || roof == null)
+            if (roof == null)
             {
                 return;
             }
@@ -246,6 +245,41 @@ namespace FullyAutomaticOmniCrafter
             int builtCount = 0;
             int replacedCount = 0;
             int skippedNaturalCount = 0;
+
+            List<CompOmniForceFieldDome> domes = SelectedActiveRoofDomes();
+            for (int i = 0; i < domes.Count; i++)
+            {
+                RoofBuildResult result = domes[i].BuildRoofInDomeArea(roof);
+                builtCount += result.builtCount;
+                replacedCount += result.replacedCount;
+                skippedNaturalCount += result.skippedNaturalCount;
+            }
+
+            if (domes.Count == 0)
+            {
+                return;
+            }
+
+            Messages.Message(string.Format(
+                    TranslateOrFallback("OmniForceFieldDome_BuildRoofComplete",
+                        "Dome roofing complete: built {0}, replaced {1}, skipped natural roofs {2}. Roof: {3}."),
+                    builtCount,
+                    replacedCount,
+                    skippedNaturalCount,
+                    RoofLabel(roof)),
+                parent,
+                MessageTypeDefOf.PositiveEvent);
+        }
+
+        private RoofBuildResult BuildRoofInDomeArea(RoofDef roof)
+        {
+            Map map = parent.Map;
+            if (map == null || roof == null)
+            {
+                return default(RoofBuildResult);
+            }
+
+            RoofBuildResult result = new RoofBuildResult();
             CellRect rect = DomeRect;
 
             foreach (IntVec3 c in rect.Cells)
@@ -263,38 +297,53 @@ namespace FullyAutomaticOmniCrafter
 
                 if (currentRoof != null && currentRoof.isNatural)
                 {
-                    skippedNaturalCount++;
+                    result.skippedNaturalCount++;
                     continue;
                 }
 
                 map.roofGrid.SetRoof(c, roof);
                 if (currentRoof == null)
                 {
-                    builtCount++;
+                    result.builtCount++;
                 }
                 else
                 {
-                    replacedCount++;
+                    result.replacedCount++;
                 }
             }
 
+            return result;
+        }
+
+        private void RemoveRoofInSelectedDomeAreas()
+        {
+            int removedCount = 0;
+
+            List<CompOmniForceFieldDome> domes = SelectedActiveRoofDomes();
+            for (int i = 0; i < domes.Count; i++)
+            {
+                removedCount += domes[i].RemoveRoofInDomeArea();
+            }
+
+            if (domes.Count == 0)
+            {
+                return;
+            }
+
             Messages.Message(string.Format(
-                    TranslateOrFallback("OmniForceFieldDome_BuildRoofComplete",
-                        "Dome roofing complete: built {0}, replaced {1}, skipped natural roofs {2}. Roof: {3}."),
-                    builtCount,
-                    replacedCount,
-                    skippedNaturalCount,
-                    RoofLabel(roof)),
+                    TranslateOrFallback("OmniForceFieldDome_RemoveRoofComplete",
+                        "Dome roof removal complete: removed {0}."),
+                    removedCount),
                 parent,
                 MessageTypeDefOf.PositiveEvent);
         }
 
-        private void RemoveRoofInDomeArea()
+        private int RemoveRoofInDomeArea()
         {
             Map map = parent.Map;
             if (map == null)
             {
-                return;
+                return 0;
             }
 
             int removedCount = 0;
@@ -317,12 +366,34 @@ namespace FullyAutomaticOmniCrafter
                 removedCount++;
             }
 
-            Messages.Message(string.Format(
-                    TranslateOrFallback("OmniForceFieldDome_RemoveRoofComplete",
-                        "Dome roof removal complete: removed {0}."),
-                    removedCount),
-                parent,
-                MessageTypeDefOf.PositiveEvent);
+            return removedCount;
+        }
+
+        private bool AnySelectedRoofDomeActive()
+        {
+            return SelectedActiveRoofDomes().Count > 0;
+        }
+
+        private List<CompOmniForceFieldDome> SelectedActiveRoofDomes()
+        {
+            List<CompOmniForceFieldDome> domes = new List<CompOmniForceFieldDome>();
+
+            foreach (object obj in Find.Selector.SelectedObjects)
+            {
+                ThingWithComps thing = obj as ThingWithComps;
+                CompOmniForceFieldDome dome = thing?.GetComp<CompOmniForceFieldDome>();
+                if (dome != null && dome.Active && !domes.Contains(dome))
+                {
+                    domes.Add(dome);
+                }
+            }
+
+            if (domes.Count == 0 && Active)
+            {
+                domes.Add(this);
+            }
+
+            return domes;
         }
 
         private static string RoofMenuLabel(RoofDef roof)
@@ -349,6 +420,13 @@ namespace FullyAutomaticOmniCrafter
         private static string TranslateOrFallback(string key, string fallback)
         {
             return key.CanTranslate() ? (string)key.Translate() : fallback;
+        }
+
+        private struct RoofBuildResult
+        {
+            public int builtCount;
+            public int replacedCount;
+            public int skippedNaturalCount;
         }
 
         private void DirtyNetworkIfStateChanged()
