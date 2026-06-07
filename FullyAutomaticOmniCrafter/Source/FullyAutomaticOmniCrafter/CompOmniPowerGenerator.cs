@@ -16,6 +16,10 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompOmniPowerGenerator
     {
-        
+    }
+
+    [StaticConstructorOnStartup]
+    public static class CompOmniPowerGeneratorTex
+    {
     }
 }
