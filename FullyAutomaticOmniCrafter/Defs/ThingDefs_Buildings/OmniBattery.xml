@@ -89,7 +89,7 @@
     </ThingDef>
 
     <ThingDef ParentName="OmniBattery">
-        <defName>OmniBattery_1x1</defName>
+        <defName>OmniBattery_mini</defName>
         <size>(1,1)</size>
         <graphicData>
             <drawSize>(1,1)</drawSize>
