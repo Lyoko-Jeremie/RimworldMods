@@ -372,6 +372,7 @@
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="CompManualEventTrigger.cs" />
+    <Compile Include="CompOmniPowerGenerator.cs" />
     <Compile Include="CompOmniProjectileInterceptor.cs" />
     <Compile Include="CompOmniRectangleProjectileInterceptor.cs" />
     <Compile Include="CompWeaponCreator.cs" />
