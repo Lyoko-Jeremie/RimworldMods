@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniBattery.label>Omni Battery</OmniBattery.label>
+    <!--  一种源自超维科技的无限容量电池，通过将电能转换回高维弦场，来将电能存储到高维虚空中，实现电能的无限存储。  -->
+    <OmniBattery.description>A Outerrealm Infinite Capacity Battery, converting electrical energy back to high-dimensional string fields to store energy in high-dimensional virtual space, achieving infinite energy storage.</OmniBattery.description>
+
+    <OmniBattery_mini.label>Omni Battery (Portable)</OmniBattery_mini.label>
+    <OmniBattery_mini.description>A Outerrealm Infinite Capacity Battery, converting electrical energy back to high-dimensional string fields to store energy in high-dimensional virtual space, achieving infinite energy storage.</OmniBattery_mini.description>
+
+    <OmniBattery_home.label>Omni Battery (Home)</OmniBattery_home.label>
+    <OmniBattery_home.description>A Outerrealm Infinite Capacity Battery, converting electrical energy back to high-dimensional string fields to store energy in high-dimensional virtual space, achieving infinite energy storage.</OmniBattery_home.description>
+
+</LanguageData>
