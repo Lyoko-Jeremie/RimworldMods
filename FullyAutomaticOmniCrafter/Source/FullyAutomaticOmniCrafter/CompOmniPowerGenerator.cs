@@ -84,7 +84,7 @@ namespace FullyAutomaticOmniCrafter
                         return GetBalancePower() + extraPower;
                     case OmniPowerMode.Infinite:
                         // 在Infinite模式下，直接提供无限大的电量。
-                        return float.PositiveInfinity;
+                        return float.MaxValue;
                     default:
                         return 0f;
                 }
