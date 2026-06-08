@@ -15,10 +15,12 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    [StaticConstructorOnStartup]
-    public static class CompOmniKillerTex
-    {
-    }
+    // [StaticConstructorOnStartup]
+    // public static class CompOmniKillerTex
+    // {
+    //     public static readonly Texture2D IconKillerUI =
+    //         ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport", true) ?? BaseContent.WhiteTex;
+    // }
     
     /// <summary>
     /// 一个防御建筑，通过破坏敌人所有身体部件，堆叠所有负面hediff，并kill杀死敌人的方式来杀死敌人。
@@ -35,6 +37,15 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompOmniKiller : ThingComp
     {
-        
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            yield return new Command_Action
+            {
+                defaultLabel = "OpenOmniKillerUI".Translate(),
+                defaultDesc = "OpenOmniKillerUIDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchReport"), // 暂时使用这个图标
+                action = () => Find.WindowStack.Add(new Dialog_CompOmniKiller(this))
+            };
+        }
     }
 }
