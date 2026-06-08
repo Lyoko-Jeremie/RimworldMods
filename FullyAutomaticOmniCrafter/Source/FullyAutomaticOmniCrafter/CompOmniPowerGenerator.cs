@@ -83,9 +83,8 @@ namespace FullyAutomaticOmniCrafter
                     case OmniPowerMode.AutoBalancePlus:
                         return GetBalancePower() + extraPower;
                     case OmniPowerMode.Infinite:
-                        // 在Infinite模式下，通过Tick直接给电池充能，
-                        // 基础输出功率保持平衡即可，避免电网显示异常。
-                        return GetBalancePower();
+                        // 在Infinite模式下，直接提供无限大的电量。
+                        return float.PositiveInfinity;
                     default:
                         return 0f;
                 }
@@ -125,19 +124,6 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 每帧执行的逻辑。
-        /// 在无限模式下，如果开关开启，则尝试填充电池。
-        /// </summary>
-        public override void CompTick()
-        {
-            base.CompTick();
-            if (mode == OmniPowerMode.Infinite && PowerNet != null && FlickUtility.WantsToBeOn(parent))
-            {
-                FillBatteries();
-            }
-        }
-
-        /// <summary>
         /// 更新实际的功率输出。
         /// 检查各种导致停机的状态（故障、燃料、开关等）。
         /// </summary>
@@ -159,23 +145,6 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        /// <summary>
-        /// 无限模式下的电池填充逻辑。
-        /// 仅填充普通电池，跳过 SmartInfiniteBattery 以免触发其容量膨胀逻辑。
-        /// </summary>
-        private void FillBatteries()
-        {
-            if (PowerNet == null) return;
-            foreach (var battery in PowerNet.batteryComps)
-            {
-                // 不给 SmartInfiniteBattery 充电，因为它有自适应容量逻辑，
-                // 强行填充会导致其认为电网有无限盈余，从而导致其存储上限异常膨胀。
-                if (battery is CompOmniCrafterSmartInfiniteBattery) continue;
-
-                // 直接将普通电池充满
-                battery.AddEnergy(battery.AmountCanAccept);
-            }
-        }
 
         /// <summary>
         /// 保存/读取存档数据。

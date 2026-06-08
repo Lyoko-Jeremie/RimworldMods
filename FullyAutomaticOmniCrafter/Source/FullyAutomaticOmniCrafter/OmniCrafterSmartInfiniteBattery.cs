@@ -84,7 +84,19 @@ namespace FullyAutomaticOmniCrafter
             // CurrentEnergyGainRate返回当tick产生或消耗的净能量 (Wd per tick)
             float surplusWdPerTick = this.PowerNet.CurrentEnergyGainRate();
 
-            if (surplusWdPerTick > 1e-6f)
+            // 如果电网中存在处于 Infinite 模式的发电机，我们不应该继续扩张容量，
+            // 否则会因为发电机输出的巨大电量导致容量无限增加。
+            bool hasInfiniteGenerator = false;
+            foreach (var cp in this.PowerNet.powerComps)
+            {
+                if (cp is CompOmniPowerGenerator gen && gen.mode == OmniPowerMode.Infinite && FlickUtility.WantsToBeOn(gen.parent))
+                {
+                    hasInfiniteGenerator = true;
+                    break;
+                }
+            }
+
+            if (surplusWdPerTick > 1e-6f && !hasInfiniteGenerator)
             {
                 this.isAbsorbing = true;
 
