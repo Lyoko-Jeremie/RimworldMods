@@ -197,11 +197,11 @@ namespace FullyAutomaticOmniCrafter
             str += "\n" + "OmniPower_Mode".Translate() + ": " + $"OmniPower_Mode_{mode}".Translate();
             if (mode == OmniPowerMode.Manual)
             {
-                str += "\n" + "OmniPower_ManualPower".Translate() + ": " + manualPower.ToString("F0") + " W";
+                str += "\n" + "OmniPower_ManualPower".Translate(manualPower.ToString("F0"));
             }
             else if (mode == OmniPowerMode.AutoBalancePlus)
             {
-                str += "\n" + "OmniPower_ExtraPower".Translate() + ": " + extraPower.ToString("F0") + " W";
+                str += "\n" + "OmniPower_ExtraPower".Translate(extraPower.ToString("F0"));
             }
             return str;
         }
@@ -246,7 +246,7 @@ namespace FullyAutomaticOmniCrafter
                     icon = CompOmniPowerGeneratorTex.IconAdjust,
                     action = delegate
                     {
-                        Find.WindowStack.Add(new Dialog_Slider(val => "OmniPower_ManualPower".Translate() + ": " + val + " W", 0, 100000, delegate(int val)
+                        Find.WindowStack.Add(new Dialog_Slider(val => "OmniPower_ManualPower".Translate(val), 0, 100000, delegate(int val)
                         {
                             manualPower = val;
                         }, (int)manualPower));
@@ -263,7 +263,7 @@ namespace FullyAutomaticOmniCrafter
                     icon = CompOmniPowerGeneratorTex.IconAdjust,
                     action = delegate
                     {
-                        Find.WindowStack.Add(new Dialog_Slider(val => "OmniPower_ExtraPower".Translate() + ": " + val + " W", 0, 100000, delegate(int val)
+                        Find.WindowStack.Add(new Dialog_Slider(val => "OmniPower_ExtraPower".Translate(val), 0, 100000, delegate(int val)
                         {
                             extraPower = val;
                         }, (int)extraPower));

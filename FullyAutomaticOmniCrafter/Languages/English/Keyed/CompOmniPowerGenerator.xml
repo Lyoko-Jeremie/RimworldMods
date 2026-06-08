@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OmniPower_Mode>Work Mode</OmniPower_Mode>
+  <OmniPower_Mode_Manual>Manual</OmniPower_Mode_Manual>
+  <OmniPower_Mode_AutoBalance>Auto Balance</OmniPower_Mode_AutoBalance>
+  <OmniPower_Mode_AutoBalancePlus>Auto Balance+</OmniPower_Mode_AutoBalancePlus>
+  <OmniPower_Mode_Infinite>Infinite</OmniPower_Mode_Infinite>
+  
+  <OmniPower_ManualPower>Manual Power: {0} W</OmniPower_ManualPower>
+  <OmniPower_ExtraPower>Extra Power: {0} W</OmniPower_ExtraPower>
+  
+  <OmniPower_SwitchMode>Switch Mode</OmniPower_SwitchMode>
+  <OmniPower_SwitchModeDesc>Switch the generator's working mode.</OmniPower_SwitchModeDesc>
+  
+  <OmniPower_AdjustManual>Adjust Manual Power</OmniPower_AdjustManual>
+  <OmniPower_AdjustExtra>Adjust Extra Power</OmniPower_AdjustExtra>
+</LanguageData>

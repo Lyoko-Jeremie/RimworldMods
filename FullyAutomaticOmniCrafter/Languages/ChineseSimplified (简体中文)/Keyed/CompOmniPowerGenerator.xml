@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OmniPower_Mode>工作模式</OmniPower_Mode>
+  <OmniPower_Mode_Manual>手动调节</OmniPower_Mode_Manual>
+  <OmniPower_Mode_AutoBalance>自动平衡</OmniPower_Mode_AutoBalance>
+  <OmniPower_Mode_AutoBalancePlus>自动平衡+</OmniPower_Mode_AutoBalancePlus>
+  <OmniPower_Mode_Infinite>无限能源</OmniPower_Mode_Infinite>
+  
+  <OmniPower_ManualPower>设定功率: {0} W</OmniPower_ManualPower>
+  <OmniPower_ExtraPower>额外功率: {0} W</OmniPower_ExtraPower>
+  
+  <OmniPower_SwitchMode>切换模式</OmniPower_SwitchMode>
+  <OmniPower_SwitchModeDesc>切换发电机的工作模式。</OmniPower_SwitchModeDesc>
+  
+  <OmniPower_AdjustManual>调整手动功率</OmniPower_AdjustManual>
+  <OmniPower_AdjustExtra>调整额外功率</OmniPower_AdjustExtra>
+</LanguageData>
