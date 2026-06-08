@@ -12,7 +12,7 @@
 
         <thingClass>Building</thingClass>
         <drawerType>MapMeshAndRealTime</drawerType>
-        <tickerType>Normal</tickerType>
+        <tickerType>Never</tickerType>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
         <designatorDropdown>OmniPowerGenerator_DropdownGroup</designatorDropdown>

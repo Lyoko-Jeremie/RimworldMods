@@ -215,10 +215,10 @@ namespace FullyAutomaticOmniCrafter
                     icon = CompOmniPowerGeneratorTex.IconAdjust,
                     action = delegate
                     {
-                        Find.WindowStack.Add(new Dialog_Slider(val => "OmniPower_ManualPower".Translate(val), 0, 100000, delegate(int val)
+                        Find.WindowStack.Add(new Dialog_OmniPowerAdjust("OmniPower_AdjustManual".Translate(), manualPower, 0, 100000, delegate(float val)
                         {
                             manualPower = val;
-                        }, (int)manualPower));
+                        }));
                     }
                 };
             }
@@ -232,10 +232,10 @@ namespace FullyAutomaticOmniCrafter
                     icon = CompOmniPowerGeneratorTex.IconAdjust,
                     action = delegate
                     {
-                        Find.WindowStack.Add(new Dialog_Slider(val => "OmniPower_ExtraPower".Translate(val), 0, 100000, delegate(int val)
+                        Find.WindowStack.Add(new Dialog_OmniPowerAdjust("OmniPower_AdjustExtra".Translate(), extraPower, 0, 100000, delegate(float val)
                         {
                             extraPower = val;
-                        }, (int)extraPower));
+                        }));
                     }
                 };
             }
