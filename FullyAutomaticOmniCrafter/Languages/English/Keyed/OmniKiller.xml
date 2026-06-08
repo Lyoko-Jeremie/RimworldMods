@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OpenOmniKillerUI>Open OmniKiller UI</OpenOmniKillerUI>
+  <OpenOmniKillerUIDesc>Open the OmniKiller control interface to batch process Pawns on the map.</OpenOmniKillerUIDesc>
+
+  <OmniKiller_Filters>Filters</OmniKiller_Filters>
+  <OmniKiller_Search>Search:</OmniKiller_Search>
+  <OmniKiller_FilterColonists>Colonists</OmniKiller_FilterColonists>
+  <OmniKiller_FilterPrisoners>Prisoners</OmniKiller_FilterPrisoners>
+  <OmniKiller_FilterAllies>Allies/Neutral Factions</OmniKiller_FilterAllies>
+  <OmniKiller_FilterEnemies>Hostile Factions</OmniKiller_FilterEnemies>
+  <OmniKiller_FilterNeutral>No Faction (Non-Animal)</OmniKiller_FilterNeutral>
+  <OmniKiller_FilterAnimals>Animals</OmniKiller_FilterAnimals>
+  <OmniKiller_FilterMechanoids>Mechanoids</OmniKiller_FilterMechanoids>
+  <OmniKiller_Refresh>Refresh</OmniKiller_Refresh>
+
+  <OmniKiller_Candidates>Candidates (Double-click to add)</OmniKiller_Candidates>
+  <OmniKiller_ExecutionList>Execution List (Double-click to remove)</OmniKiller_ExecutionList>
+  <OmniKiller_Actions>Actions</OmniKiller_Actions>
+
+  <OmniKiller_ApplyInfiniteDamage>Apply Infinite Damage</OmniKiller_ApplyInfiniteDamage>
+  <OmniKiller_StripEverything>Strip Everything</OmniKiller_StripEverything>
+  <OmniKiller_HarvestEverything>Harvest Everything</OmniKiller_HarvestEverything>
+  <OmniKiller_KillCommand>Kill Command</OmniKiller_KillCommand>
+  <OmniKiller_StackNegativeHediffs>Stack Negative Hediffs</OmniKiller_StackNegativeHediffs>
+  <OmniKiller_ClearExecutionList>Clear Execution List</OmniKiller_ClearExecutionList>
+</LanguageData>

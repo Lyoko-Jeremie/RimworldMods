@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OpenOmniKillerUI>打开 OmniKiller 界面</OpenOmniKillerUI>
+  <OpenOmniKillerUIDesc>打开万能屠杀者控制界面，批量处理地图上的 Pawn。</OpenOmniKillerUIDesc>
+
+  <OmniKiller_Filters>筛选条件</OmniKiller_Filters>
+  <OmniKiller_Search>搜索:</OmniKiller_Search>
+  <OmniKiller_FilterColonists>殖民者</OmniKiller_FilterColonists>
+  <OmniKiller_FilterPrisoners>囚犯</OmniKiller_FilterPrisoners>
+  <OmniKiller_FilterAllies>盟友/中立派系</OmniKiller_FilterAllies>
+  <OmniKiller_FilterEnemies>敌对派系</OmniKiller_FilterEnemies>
+  <OmniKiller_FilterNeutral>无派系(非动物)</OmniKiller_FilterNeutral>
+  <OmniKiller_FilterAnimals>动物</OmniKiller_FilterAnimals>
+  <OmniKiller_FilterMechanoids>机械族</OmniKiller_FilterMechanoids>
+  <OmniKiller_Refresh>刷新</OmniKiller_Refresh>
+
+  <OmniKiller_Candidates>候选列表 (双击添加)</OmniKiller_Candidates>
+  <OmniKiller_ExecutionList>待执行列表 (双击移除)</OmniKiller_ExecutionList>
+  <OmniKiller_Actions>批量操作</OmniKiller_Actions>
+
+  <OmniKiller_ApplyInfiniteDamage>施加无限爆炸伤害</OmniKiller_ApplyInfiniteDamage>
+  <OmniKiller_StripEverything>剥除所有物品</OmniKiller_StripEverything>
+  <OmniKiller_HarvestEverything>自动摘取所有器官</OmniKiller_HarvestEverything>
+  <OmniKiller_KillCommand>直接处死 (Kill)</OmniKiller_KillCommand>
+  <OmniKiller_StackNegativeHediffs>堆叠负面状态</OmniKiller_StackNegativeHediffs>
+  <OmniKiller_ClearExecutionList>清空列表</OmniKiller_ClearExecutionList>
+</LanguageData>
