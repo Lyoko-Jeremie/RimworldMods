@@ -292,6 +292,14 @@ namespace FullyAutomaticOmniCrafter
                     icon = FullyAutoOmniSurgeonTex.IconRepair,
                     action = () => { FullRepair(this.Occupant); }
                 };
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "FullyAutoOmniSurgeon_RepairAndHeal".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_RepairAndHealDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconRepair,
+                    action = () => { RepairAndHeal(this.Occupant); }
+                };
             }
             else if (this.selectedPawn != null)
             {
@@ -506,6 +514,9 @@ namespace FullyAutomaticOmniCrafter
                     // 但通常 isBad 指的是疾病、受伤等。
                     pawn.health.RemoveHediff(h);
                 }
+
+                Messages.Message("FullyAutoOmniSurgeon_RepairAndHealComplete".Translate(pawn.LabelShort),
+                    MessageTypeDefOf.TaskCompletion);
             }
             catch (Exception ex)
             {
