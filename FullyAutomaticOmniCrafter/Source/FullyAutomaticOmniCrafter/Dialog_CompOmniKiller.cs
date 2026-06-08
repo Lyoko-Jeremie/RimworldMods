@@ -294,15 +294,21 @@ namespace FullyAutomaticOmniCrafter
             if (listing.ButtonText("OmniKiller_StripEverything".Translate()))
             {
                 ApplyToAll(p => {
-                    p.inventory.DropAllNearPawn(p.Position);
-                    p.equipment.DropAllEquipment(p.Position);
-                    p.apparel.DropAll(p.Position);
+                    Map map = p.Map;
+                    IntVec3 pos = p.Position;
+                    if (map == null) return;
+                    p.inventory.DropAllNearPawn(pos);
+                    p.equipment.DropAllEquipment(pos);
+                    p.apparel.DropAll(pos);
                 });
             }
 
             if (listing.ButtonText("OmniKiller_HarvestEverything".Translate()))
             {
                 ApplyToAll(p => {
+                    Map map = p.Map;
+                    IntVec3 pos = p.Position;
+                    if (map == null) return;
                     var parts = p.RaceProps.body.AllParts.ToList();
                     foreach (var part in parts)
                     {
@@ -310,7 +316,7 @@ namespace FullyAutomaticOmniCrafter
                         if (part.def.spawnThingOnRemoved != null)
                         {
                             p.health.RestorePart(part); // 确保它是完整的
-                            GenSpawn.Spawn(part.def.spawnThingOnRemoved, p.Position, p.Map);
+                            GenSpawn.Spawn(part.def.spawnThingOnRemoved, pos, map);
                             p.health.AddHediff(HediffDefOf.MissingBodyPart, part);
                         }
                     }
