@@ -33,6 +33,7 @@ namespace FullyAutomaticOmniCrafter
     // ========================================================
     // 2. 逻辑类 (用于在游戏中实际执行渲染逻辑)
     // ========================================================
+    [StaticConstructorOnStartup]
     public class CompBreathingLight : ThingComp
     {
         private static readonly int SpeedPropertyId = Shader.PropertyToID("_Speed");

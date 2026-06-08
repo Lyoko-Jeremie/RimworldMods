@@ -37,6 +37,7 @@ namespace FullyAutomaticOmniCrafter
     /// <summary>
     /// 一个能量盾，阻挡任何形式的攻击，且阻止敌人通过但允许我方通过，敌人不会主动攻击能量盾内的目标 
     /// </summary>
+    [StaticConstructorOnStartup]
     public class CompOmniProjectileInterceptor : CompProjectileInterceptor
     {
         public new CompProperties_OmniProjectileInterceptor Props => (CompProperties_OmniProjectileInterceptor)props;

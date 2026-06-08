@@ -6,6 +6,7 @@ using System.IO;
 
 namespace FullyAutomaticOmniCrafter
 {
+    [StaticConstructorOnStartup]
     public static class ModAssets
     {
         private const string PackageId = "Jeremie.Fully.Automatic.OmniCrafter";
