@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
+using Verse.AI.Group;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
@@ -11,7 +12,7 @@ namespace FullyAutomaticOmniCrafter
     /// 提供一个控制界面，可以按照筛选条件列出地图上的所有pawn，并添加到处死列表中，来杀死指定的pawn。
     /// 这个控制界面由左中左中右右四个栏组成，左栏是筛选条件，中左栏是筛选出的pawn列表，中右栏是处死列表，右栏是操作栏。
     /// 双击可以将选中的pawn添加到处死列表中，或从处死列表中移除。
-    /// 筛选功能参见 OmniPhantomWall2_PassabilitySettings、OmniAutoSurgeonSurgery 的筛选条件，需要附加拼音搜索
+    /// 筛选功能参见 OmniPhantomWall2_PassabilitySettings、OmniAutoSurgeonSurgery 的筛选条件， ~需要附加拼音搜索~
     /// 操作栏包括如下的几个功能按钮：
     /// 1 施加 +Infinity 点 damage
     /// 2 剥夺身上的所有可剥夺的任何物品，包括穿戴、武器、防具、药剂、食物、资源等。放置在对象周边的地上。
@@ -21,23 +22,16 @@ namespace FullyAutomaticOmniCrafter
     public class Dialog_CompOmniKiller : Window
     {
         private readonly CompOmniKiller comp;
-        private string searchText = "";
         private Vector2 scrollPosCandidates;
         private Vector2 scrollPosExecution;
         
         private List<Pawn> candidates = new List<Pawn>();
         private List<Pawn> executionList = new List<Pawn>();
         
-        // 筛选条件
-        private bool filterColonists = true;
-        private bool filterPrisoners = true;
-        private bool filterAllies = true;
-        private bool filterEnemies = true;
-        private bool filterNeutral = true;
-        private bool filterAnimals = false;
-        private bool filterMechanoids = true;
+        // 筛选条件使用 OmniPhantomWall2_PassabilitySettings 的逻辑
+        private OmniPhantomWall2_PassabilitySettings settings = new OmniPhantomWall2_PassabilitySettings();
 
-        public override Vector2 InitialSize => new Vector2(1000f, 700f);
+        public override Vector2 InitialSize => new Vector2(1000f, 750f);
 
         public Dialog_CompOmniKiller(CompOmniKiller comp)
         {
@@ -53,36 +47,100 @@ namespace FullyAutomaticOmniCrafter
         {
             if (comp?.parent?.Map == null) return;
 
-            if (OmniCrafterMod.Settings.enablePinyinSearch)
-            {
-                PinyinSearchEngine.EnsureIndexed(comp.parent.Map.mapPawns.AllPawnsSpawned.Cast<Def>().ToList(), PinyinSource.SurgeryPawnKind);
-                PinyinSearchEngine.EnsureIndexed(DefDatabase<ThingDef>.AllDefsListForReading.Where(d => d.race != null).Cast<Def>().ToList(), PinyinSource.SurgeryPawnRace);
-            }
-
             candidates = comp.parent.Map.mapPawns.AllPawnsSpawned
                 .Where(p => !p.Dead && !executionList.Contains(p))
-                .Where(p =>
-                {
-                    if (filterColonists && p.IsColonist) return true;
-                    if (filterPrisoners && p.IsPrisonerOfColony) return true;
-                    if (filterAllies && p.Faction != null && !p.Faction.HostileTo(Faction.OfPlayer) && !p.IsColonist && !p.IsPrisonerOfColony) return true;
-                    if (filterEnemies && p.Faction != null && p.Faction.HostileTo(Faction.OfPlayer)) return true;
-                    if (filterNeutral && p.Faction == null && !p.RaceProps.Animal) return true;
-                    if (filterAnimals && p.RaceProps.Animal) return true;
-                    if (filterMechanoids && p.RaceProps.IsMechanoid) return true;
-                    return false;
-                })
-                .Where(p =>
-                {
-                    if (searchText.NullOrEmpty()) return true;
-                    string lower = searchText.ToLower();
-                    if (p.LabelCap.ToLower().Contains(lower)) return true;
-                    if (PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(p.def, lower, PinyinSource.SurgeryPawnRace)) return true;
-                    if (p.kindDef != null && PinyinSearchEngine.IsReady && PinyinSearchEngine.MatchesPinyin(p.kindDef, lower, PinyinSource.SurgeryPawnKind)) return true;
-                    return false;
-                })
+                .Where(p => CanPawnPass(p, settings))
                 .OrderBy(p => p.LabelCap)
                 .ToList();
+        }
+
+        private bool CanPawnPass(Pawn pawn, OmniPhantomWall2_PassabilitySettings s)
+        {
+            if (pawn == null) return false;
+            
+            // 白名单逻辑：满足任何一个启用的条件即返回 true
+            
+            // 敌对单位
+            if (s.allowHostiles && pawn.HostileTo(Faction.OfPlayer))
+                return true;
+            
+            // 玩家的囚犯
+            if (s.allowColonyPrisoners && pawn.IsPrisonerOfColony)
+                return true;
+            
+            // 任意囚犯 （包括其他派系的囚犯）
+            if (s.allowPrisoners && pawn.IsPrisoner)
+                return true;
+            
+            // 玩家单位
+            if (pawn.Faction == Faction.OfPlayer)
+            {
+                if (s.allowColonists && pawn.RaceProps.Humanlike)
+                    return true;
+                
+                if (s.allowEntities && pawn.RaceProps.IsAnomalyEntity)
+                    return true;
+
+                if (s.allowMechanoids && pawn.RaceProps.IsMechanoid)
+                    return true;
+                
+                if (s.allowDryad && pawn.RaceProps.Dryad)
+                    return true;
+
+                if (s.allowInsectoids && pawn.RaceProps.Insect)
+                    return true;
+                
+                if (pawn.RaceProps.Animal)
+                {
+                    if (s.allowRoamers && pawn.Roamer)
+                        return true;
+                    
+                    if (s.allowTrainableAnimals && pawn.RaceProps.trainability != null && pawn.RaceProps.trainability != TrainabilityDefOf.None)
+                        return true;
+
+                    if (s.allowPets)
+                        return true;
+                }
+            }
+            
+            // 商人 (Trader)
+            if (s.allowTraders &&
+                !pawn.HostileTo(Faction.OfPlayer) &&
+                pawn.Faction != null && pawn.Faction != Faction.OfPlayer &&
+                pawn.GetLord() != null)
+                return true;
+            
+            if (s.allowEntities && pawn.RaceProps.IsAnomalyEntity)
+                return true;
+
+            if (s.allowMechanoids && pawn.RaceProps.IsMechanoid)
+                return true;
+            
+            if (s.allowDryad && pawn.RaceProps.Dryad)
+                return true;
+
+            if (s.allowInsectoids && pawn.RaceProps.Insect)
+                return true;
+            
+            if (s.allowWildAnimals && pawn.RaceProps.Animal && pawn.Faction == null)
+                return true;
+
+            if (s.allowHumanlikes && pawn.RaceProps.Humanlike)
+                return true;
+
+            if (s.allowToolUsers && pawn.RaceProps.ToolUser)
+                return true;
+
+            if (s.allowFactioned && pawn.Faction != null)
+                return true;
+
+            if (s.allowLords && pawn.GetLord() != null)
+                return true;
+
+            if (s.allowUnfactions && pawn.Faction == null && pawn.GetLord() == null)
+                return true;
+
+            return false;
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -116,27 +174,35 @@ namespace FullyAutomaticOmniCrafter
             Text.Font = GameFont.Small;
             listing.Gap();
 
-            listing.Label("OmniKiller_Search".Translate());
-            string newSearch = Widgets.TextField(listing.GetRect(30f), searchText);
-            if (newSearch != searchText)
+            void DrawCheckbox(string labelKey, ref bool value)
             {
-                searchText = newSearch;
-                UpdateCandidates();
+                bool val = value;
+                listing.CheckboxLabeled(labelKey.Translate(), ref val);
+                if (val != value)
+                {
+                    value = val;
+                    UpdateCandidates();
+                }
             }
-            listing.Gap();
 
-            bool changed = false;
-            listing.CheckboxLabeled("OmniKiller_FilterColonists".Translate(), ref filterColonists);
-            listing.CheckboxLabeled("OmniKiller_FilterPrisoners".Translate(), ref filterPrisoners);
-            listing.CheckboxLabeled("OmniKiller_FilterAllies".Translate(), ref filterAllies);
-            listing.CheckboxLabeled("OmniKiller_FilterEnemies".Translate(), ref filterEnemies);
-            listing.CheckboxLabeled("OmniKiller_FilterNeutral".Translate(), ref filterNeutral);
-            listing.CheckboxLabeled("OmniKiller_FilterAnimals".Translate(), ref filterAnimals);
-            listing.CheckboxLabeled("OmniKiller_FilterMechanoids".Translate(), ref filterMechanoids);
-
-            if (listing.ButtonText("OmniKiller_Refresh".Translate())) changed = true;
-            
-            if (changed) UpdateCandidates();
+            DrawCheckbox("OPW_AllowColonists", ref settings.allowColonists);
+            DrawCheckbox("OPW_AllowPets", ref settings.allowPets);
+            DrawCheckbox("OPW_AllowRoamers", ref settings.allowRoamers);
+            DrawCheckbox("OPW_AllowTrainableAnimals", ref settings.allowTrainableAnimals);
+            DrawCheckbox("OPW_AllowDryad", ref settings.allowDryad);
+            DrawCheckbox("OPW_AllowTraders", ref settings.allowTraders);
+            DrawCheckbox("OPW_AllowPrisoners", ref settings.allowPrisoners);
+            DrawCheckbox("OPW_AllowColonyPrisoners", ref settings.allowColonyPrisoners);
+            DrawCheckbox("OPW_AllowWildAnimals", ref settings.allowWildAnimals);
+            DrawCheckbox("OPW_AllowEntities", ref settings.allowEntities);
+            DrawCheckbox("OPW_AllowHostiles", ref settings.allowHostiles);
+            DrawCheckbox("OPW_AllowMechanoids", ref settings.allowMechanoids);
+            DrawCheckbox("OPW_AllowInsectoids", ref settings.allowInsectoids);
+            DrawCheckbox("OPW_AllowFactioned", ref settings.allowFactioned);
+            DrawCheckbox("OPW_AllowLords", ref settings.allowLords);
+            DrawCheckbox("OPW_AllowHumanlikes", ref settings.allowHumanlikes);
+            DrawCheckbox("OPW_AllowToolUsers", ref settings.allowToolUsers);
+            DrawCheckbox("OPW_AllowUnfactions", ref settings.allowUnfactions);
 
             listing.End();
         }
@@ -157,19 +223,19 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < candidates.Count; i++)
             {
                 Pawn p = candidates[i];
-                Rect rowRect = new Rect(0, curY, viewRect.width, 28f);
+                Rect rowRect = new Rect(0, curY, viewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
                 
-                Widgets.Label(new Rect(5, curY, viewRect.width - 10, 28f), p.LabelCap);
+                Rect iconRect = new Rect(2, curY + 2, 26, 26);
+                Widgets.ThingIcon(iconRect, p);
+                
+                Widgets.Label(new Rect(32, curY, viewRect.width - 32, 30f), p.LabelCap);
                 
                 if (Widgets.ButtonInvisible(rowRect))
                 {
-                    if (Event.current.clickCount == 2)
-                    {
-                        executionList.Add(p);
-                        UpdateCandidates();
-                        SoundDefOf.Click.PlayOneShotOnCamera();
-                    }
+                    executionList.Add(p);
+                    UpdateCandidates();
+                    SoundDefOf.Click.PlayOneShotOnCamera();
                 }
                 curY += 30f;
             }
@@ -192,19 +258,19 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < executionList.Count; i++)
             {
                 Pawn p = executionList[i];
-                Rect rowRect = new Rect(0, curY, viewRect.width, 28f);
+                Rect rowRect = new Rect(0, curY, viewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
 
-                Widgets.Label(new Rect(5, curY, viewRect.width - 10, 28f), p.LabelCap);
+                Rect iconRect = new Rect(2, curY + 2, 26, 26);
+                Widgets.ThingIcon(iconRect, p);
+
+                Widgets.Label(new Rect(32, curY, viewRect.width - 32, 30f), p.LabelCap);
 
                 if (Widgets.ButtonInvisible(rowRect))
                 {
-                    if (Event.current.clickCount == 2)
-                    {
-                        executionList.Remove(p);
-                        UpdateCandidates();
-                        SoundDefOf.Click.PlayOneShotOnCamera();
-                    }
+                    executionList.Remove(p);
+                    UpdateCandidates();
+                    SoundDefOf.Click.PlayOneShotOnCamera();
                 }
                 curY += 30f;
             }
