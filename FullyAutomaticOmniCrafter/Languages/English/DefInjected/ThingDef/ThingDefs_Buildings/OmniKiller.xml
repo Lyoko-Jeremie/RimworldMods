@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <!--  万能消杀机  -->
+    <OmniKiller.label>Omni Killer</OmniKiller.label>
+    <!--  一种源自超维科技的消杀装置，通过操作目标的因果来施加各种不同的伤害，从而消灭目标，常用于消杀病毒和细菌。它由一个笃信进攻就是最好的防守的超维科技工程师设计，能够精准定位并消灭目标生命体。  -->
+    <OmniKiller.description>A device originating from Outerrealm Technology, capable of inflicting various types of damage by manipulating the causal relationships of targets, ultimately eliminating them. It is designed by a Outerrealm Technology engineer who believes that offense is the best defense.</OmniKiller.description>
+
+    <OmniKiller_mini.label>Omni Killer (Portable)</OmniKiller_mini.label>
+    <OmniKiller_mini.description>A device originating from Outerrealm Technology, capable of inflicting various types of damage by manipulating the causal relationships of targets, ultimately eliminating them. It is designed by a Outerrealm Technology engineer who believes that offense is the best defense.</OmniKiller_mini.description>
+
+    <OmniKiller_home.label>Omni Killer (Home Edition)</OmniKiller_home.label>
+    <OmniKiller_home.description>A device originating from Outerrealm Technology, capable of inflicting various types of damage by manipulating the causal relationships of targets, ultimately eliminating them. It is designed by a Outerrealm Technology engineer who believes that offense is the best defense.</OmniKiller_home.description>
+
+</LanguageData>

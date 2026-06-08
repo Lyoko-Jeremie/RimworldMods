@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniKiller.label>万能消杀机</OmniKiller.label>
+    <OmniKiller.description>一种源自超维科技的消杀装置，通过操作目标的因果来施加各种不同的伤害，从而消灭目标，常用于消杀病毒和细菌。它由一个笃信进攻就是最好的防守的超维科技工程师设计。</OmniKiller.description>
+
+    <OmniKiller_mini.label>万能消杀机 便携型</OmniKiller_mini.label>
+    <OmniKiller_mini.description>一种源自超维科技的消杀装置，通过操作目标的因果来施加各种不同的伤害，从而消灭目标，常用于消杀病毒和细菌。它由一个笃信进攻就是最好的防守的超维科技工程师设计。</OmniKiller_mini.description>
+
+    <OmniKiller_home.label>万能消杀机 家庭版</OmniKiller_home.label>
+    <OmniKiller_home.description>一种源自超维科技的消杀装置，通过操作目标的因果来施加各种不同的伤害，从而消灭目标，常用于消杀病毒和细菌。它由一个笃信进攻就是最好的防守的超维科技工程师设计。</OmniKiller_home.description>
+
+</LanguageData>
