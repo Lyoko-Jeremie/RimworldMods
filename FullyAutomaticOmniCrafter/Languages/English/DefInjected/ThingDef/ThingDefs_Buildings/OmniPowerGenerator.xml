@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniPowerGenerator.label>Omni Power Generator</OmniPowerGenerator.label>
+    <OmniPowerGenerator.description>A high-dimensional energy extraction device originating from Outerrealm technology, capable of extracting high-dimensional string fields from the void and gradually downgrading them to low-dimensional energy, providing infinite electrical power.</OmniPowerGenerator.description>
+
+    <OmniPowerGenerator_mini.label>Omni Power Generator - Portable</OmniPowerGenerator_mini.label>
+    <OmniPowerGenerator_mini.description>A high-dimensional energy extraction device originating from Outerrealm technology, capable of extracting high-dimensional string fields from the void and gradually downgrading them to low-dimensional energy, providing infinite electrical power.</OmniPowerGenerator_mini.description>
+
+    <OmniPowerGenerator_home.label>Omni Power Generator - Home Edition</OmniPowerGenerator_home.label>
+    <OmniPowerGenerator_home.description>A high-dimensional energy extraction device originating from Outerrealm technology, capable of extracting high-dimensional string fields from the void and gradually downgrading them to low-dimensional energy, providing infinite electrical power.</OmniPowerGenerator_home.description>
+
+</LanguageData>

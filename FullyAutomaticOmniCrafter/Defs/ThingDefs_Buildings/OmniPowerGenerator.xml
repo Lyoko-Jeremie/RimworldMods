@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>OmniPowerGenerator_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef ParentName="BuildingBase" Name="OmniPowerGenerator">
+        <defName>OmniPowerGenerator</defName>
+        <label>OmniPowerGenerator</label>
+        <description>description</description>
+
+        <thingClass>Building</thingClass>
+        <drawerType>MapMeshAndRealTime</drawerType>
+        <tickerType>Normal</tickerType>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>OmniPowerGenerator_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniPowerGenerator</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(5,5)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <size>(5,5)</size>
+        <uiIconPath>Things/Building/Production/OmniPowerGenerator</uiIconPath>
+
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+
+        <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
+
+        <costList>
+            <Steel>1</Steel>
+        </costList>
+
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
+        </statBases>
+
+        <building>
+            <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+<!--            <ai_neverTrashThis>true</ai_neverTrashThis>-->
+
+            <!-- 标记该建筑是否为"主体建筑"（地基级建筑），即占据地图格子的"正式"建筑。只有 Edifice 才能支撑屋顶 -->
+            <!-- 一个格子同时只能有一个 Edifice。如果新建筑是 Edifice，会替换并摧毁该格已有的 Edifice -->
+            <isEdifice>false</isEdifice>
+            <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
+<!--            <isInert>true</isInert>-->
+        </building>
+        <rotatable>false</rotatable>
+        <selectable>true</selectable>
+<!--        <placeWorkers>-->
+<!--            <li>PlaceWorker_ShowProjectileInterceptorRadius</li>-->
+<!--        </placeWorkers>-->
+
+        <comps>
+            <li Class="CompProperties_Flickable"/>
+            <li Class="CompProperties_Power">
+                <compClass>FullyAutomaticOmniCrafter.CompOmniPowerGenerator</compClass>
+                <basePowerConsumption>-1000</basePowerConsumption>
+                <transmitsPower>true</transmitsPower>
+            </li>
+        </comps>
+
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPowerGenerator">
+        <defName>OmniPowerGenerator_mini</defName>
+        <size>(1,1)</size>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+    </ThingDef>
+
+    <ThingDef ParentName="OmniPowerGenerator">
+        <defName>OmniPowerGenerator_home</defName>
+        <size>(3,3)</size>
+        <graphicData>
+            <drawSize>(3,3)</drawSize>
+        </graphicData>
+    </ThingDef>
+    
+</Defs>

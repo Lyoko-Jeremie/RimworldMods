@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <OmniPowerGenerator.label>万能发电机</OmniPowerGenerator.label>
+    <OmniPowerGenerator.description>一种源自超维科技的高维能量提取装置，通过从虚空中提取高维弦场，再逐步降级为低维能量，实现电能的无限供应。</OmniPowerGenerator.description>
+
+    <OmniPowerGenerator_mini.label>万能发电机 便携型</OmniPowerGenerator_mini.label>
+    <OmniPowerGenerator_mini.description>一种源自超维科技的高维能量提取装置，通过从虚空中提取高维弦场，再逐步降级为低维能量，实现电能的无限供应。</OmniPowerGenerator_mini.description>
+
+    <OmniPowerGenerator_home.label>万能发电机 家庭版</OmniPowerGenerator_home.label>
+    <OmniPowerGenerator_home.description>一种源自超维科技的高维能量提取装置，通过从虚空中提取高维弦场，再逐步降级为低维能量，实现电能的无限供应。</OmniPowerGenerator_home.description>
+
+</LanguageData>
