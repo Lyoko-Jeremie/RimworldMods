@@ -248,7 +248,7 @@ namespace FullyAutomaticOmniCrafter
     [StaticConstructorOnStartup]
     public static class CompOmniPowerGeneratorTex
     {
-        public static readonly Texture2D IconMode = ContentFinder<Texture2D>.Get("UI/Gizmos/OmniPower_Mode", true) ?? BaseContent.WhiteTex;
-        public static readonly Texture2D IconAdjust = ContentFinder<Texture2D>.Get("UI/Gizmos/OmniPower_Adjust", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconMode = ContentFinder<Texture2D>.Get("UI/Commands/OmniPower_Mode", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconAdjust = ContentFinder<Texture2D>.Get("UI/Commands/OmniPower_Adjust", true) ?? BaseContent.WhiteTex;
     }
 }
