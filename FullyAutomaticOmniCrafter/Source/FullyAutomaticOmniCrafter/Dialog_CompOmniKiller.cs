@@ -335,26 +335,20 @@ namespace FullyAutomaticOmniCrafter
                     var toRemove = p.health.hediffSet.hediffs.Where(h => h.def.isBad == false).ToList();
                     foreach (var h in toRemove) p.health.RemoveHediff(h);
                     
-                    // 添加负面效果
-                    p.health.AddHediff(HediffDefOf.BloodLoss, null, null);
-                    p.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.BloodLoss).Severity = 0.9f;
-
-                    if (HediffDefOf.FoodPoisoning != null)
+                    // 遍历数据库中所有的负面效果并全部添加
+                    foreach (var hediffDef in DefDatabase<HediffDef>.AllDefs)
                     {
-                        p.health.AddHediff(HediffDefOf.FoodPoisoning, null, null);
-                        p.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.FoodPoisoning).Severity = 1f;
-                    }
-                    if (HediffDefOf.Hypothermia != null)
-                    {
-                        p.health.AddHediff(HediffDefOf.Hypothermia, null, null);
-                        p.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.Hypothermia).Severity = 0.8f;
-                    }
-                    // 尝试添加毒性
-                    HediffDef toxic = DefDatabase<HediffDef>.GetNamedSilentFail("ToxicBuildup");
-                    if (toxic != null)
-                    {
-                        p.health.AddHediff(toxic, null, null);
-                        p.health.hediffSet.GetFirstHediffOfDef(toxic).Severity = 0.8f;
+                        if (hediffDef.isBad)
+                        {
+                            try
+                            {
+                                p.health.AddHediff(hediffDef, null, null);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Warning($"Warning adding negative hediff {hediffDef.defName} to {p.LabelShort}: {ex.Message}");
+                            }
+                        }
                     }
                 });
             }
