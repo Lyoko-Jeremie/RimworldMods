@@ -1,5 +1,25 @@
-﻿namespace FullyAutomaticOmniCrafter
+﻿using System.Collections.Generic;
+using System.Linq;
+using RimWorld;
+using UnityEngine;
+using Verse;
+
+namespace FullyAutomaticOmniCrafter
 {
+    public class CompProperties_CompOmniKiller : CompProperties
+    {
+        public CompProperties_CompOmniKiller()
+        {
+            // 绑定对应的 ThingComp 类
+            this.compClass = typeof(CompOmniKiller);
+        }
+    }
+
+    [StaticConstructorOnStartup]
+    public static class CompOmniKillerTex
+    {
+    }
+    
     /// <summary>
     /// 一个防御建筑，通过破坏敌人所有身体部件，堆叠所有负面hediff，并kill杀死敌人的方式来杀死敌人。
     /// 提供一个控制界面，可以按照筛选条件列出地图上的所有pawn，并添加到处死列表中，来杀死指定的pawn。
@@ -13,7 +33,7 @@
     /// 4 直接对对象使用 kill 指令
     /// 5 将所有负面hediff堆叠到对象身上，并且将所有正面hediff移除
     /// </summary>
-    public class CompOmniKiller
+    public class CompOmniKiller : ThingComp
     {
         
     }
