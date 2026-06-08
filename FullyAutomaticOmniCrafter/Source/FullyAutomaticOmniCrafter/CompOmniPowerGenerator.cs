@@ -65,7 +65,7 @@ namespace FullyAutomaticOmniCrafter
         /// - 手动：返回固定值。
         /// - 平衡：计算电网其他部分的净消耗。
         /// - 加上额外功率的平衡：平衡值 + 增量。
-        /// - 无限：返回平衡值（充能由FillBatteries处理）。
+        /// - 无限
         /// </summary>
         protected override float DesiredPowerOutput
         {
