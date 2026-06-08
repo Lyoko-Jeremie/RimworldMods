@@ -122,8 +122,20 @@ namespace FullyAutomaticOmniCrafter
             var tracker = __instance.Map.GetComponent<OmniInterceptorTracker>();
             if (tracker == null) return;
 
+            // 尝试获取派系信息
+            Thing searcher = null;
+            if (__instance.innerContainer != null && __instance.innerContainer.Count > 0)
+            {
+                searcher = __instance.innerContainer[0];
+                // 如果是 DropPodIncoming，内容物通常在 ActiveTransporter 里
+                if (searcher is ActiveTransporter at && at.Contents != null && at.Contents.innerContainer.Count > 0)
+                {
+                    searcher = at.Contents.innerContainer[0];
+                }
+            }
+
             // 检查落点是否受保护
-            if (tracker.IsCellProtected(__instance.Position, null, out var protector))
+            if (tracker.IsCellProtected(__instance.Position, searcher, out var protector))
             {
                 if (protector.interceptSkyfallers)
                 {
@@ -157,8 +169,12 @@ namespace FullyAutomaticOmniCrafter
 
             // 在目标位置附近寻找最近的落点
             var trackerLocal = map.GetComponent<OmniInterceptorTracker>();
-            if (CellFinder.TryFindRandomCellNear(targetCell, map, Mathf.CeilToInt(radius) + 10,
-                    c => c.InBounds(map) && (trackerLocal == null || !trackerLocal.IsCellProtected(c, null, out _)), out var foundCell))
+            if (CellFinder.TryFindRandomCellNear(targetCell, map, Mathf.CeilToInt(radius) + 15,
+                    c => c.InBounds(map) 
+                         && c.Standable(map) // 必须可以站立（排除墙壁、山岩）
+                         && !c.Roofed(map)   // 排除有屋顶的地方（空投仓不应落在屋顶下）
+                         && (trackerLocal == null || !trackerLocal.IsCellProtected(c, null, out _)), // 不在任何护盾保护范围内（保守起见，searcher传null检查是否有敌方护盾拦截，或者说不落在任何护盾里）
+                    out var foundCell))
             {
                 skyfaller.Position = foundCell;
                 Messages.Message("OmniInterceptor_SkyfallerRedirected".Translate(), skyfaller, MessageTypeDefOf.NeutralEvent);
