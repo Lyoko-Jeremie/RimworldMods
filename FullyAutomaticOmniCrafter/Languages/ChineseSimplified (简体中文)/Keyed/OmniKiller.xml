@@ -19,6 +19,7 @@
   <OmniKiller_Actions>批量操作</OmniKiller_Actions>
 
   <OmniKiller_ApplyInfiniteDamage>施加无限爆炸伤害</OmniKiller_ApplyInfiniteDamage>
+  <OmniKiller_DestroyAllParts>摧毁所有身体部位</OmniKiller_DestroyAllParts>
   <OmniKiller_StripEverything>剥除所有物品</OmniKiller_StripEverything>
   <OmniKiller_HarvestEverything>自动摘取所有器官</OmniKiller_HarvestEverything>
   <OmniKiller_KillCommand>直接处死 (Kill)</OmniKiller_KillCommand>

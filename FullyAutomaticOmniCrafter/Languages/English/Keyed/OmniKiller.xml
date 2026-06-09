@@ -19,6 +19,7 @@
   <OmniKiller_Actions>Actions</OmniKiller_Actions>
 
   <OmniKiller_ApplyInfiniteDamage>Apply Infinite Damage</OmniKiller_ApplyInfiniteDamage>
+  <OmniKiller_DestroyAllParts>Destroy All Body Parts</OmniKiller_DestroyAllParts>
   <OmniKiller_StripEverything>Strip Everything</OmniKiller_StripEverything>
   <OmniKiller_HarvestEverything>Harvest Everything</OmniKiller_HarvestEverything>
   <OmniKiller_KillCommand>Kill Command</OmniKiller_KillCommand>

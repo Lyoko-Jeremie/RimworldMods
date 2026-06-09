@@ -14,11 +14,12 @@ namespace FullyAutomaticOmniCrafter
     /// 双击可以将选中的pawn添加到处死列表中，或从处死列表中移除。
     /// 筛选功能参见 OmniPhantomWall2_PassabilitySettings、OmniAutoSurgeonSurgery 的筛选条件， ~需要附加拼音搜索~
     /// 操作栏包括如下的几个功能按钮：
-    /// 1 施加 +Infinity 点 damage
-    /// 2 剥夺身上的所有可剥夺的任何物品，包括穿戴、武器、防具、药剂、食物、资源等。放置在对象周边的地上。
-    /// 3 摘取所有可以摘取的器官和身体部件，放置在对象周边的地上。
-    /// 4 直接对对象使用 kill 指令
-    /// 5 将所有负面hediff堆叠到对象身上，并且将所有正面hediff移除
+    /// * 施加 +Infinity 点 damage
+    /// * 摧毁所有身体部位
+    /// * 剥夺身上的所有可剥夺的任何物品，包括穿戴、武器、防具、药剂、食物、资源等。放置在对象周边的地上。
+    /// * 摘取所有可以摘取的器官和身体部件，放置在对象周边的地上。
+    /// * 直接对对象使用 kill 指令
+    /// * 将所有负面hediff堆叠到对象身上，并且将所有正面hediff移除
     public class Dialog_CompOmniKiller : Window
     {
         private readonly CompOmniKiller comp;
@@ -290,6 +291,18 @@ namespace FullyAutomaticOmniCrafter
             if (listing.ButtonText("OmniKiller_ApplyInfiniteDamage".Translate()))
             {
                 ApplyToAll(p => p.TakeDamage(new DamageInfo(DamageDefOf.Bomb, 999999f)));
+            }
+
+            if (listing.ButtonText("OmniKiller_DestroyAllParts".Translate()))
+            {
+                ApplyToAll(p =>
+                {
+                    var parts = p.health.hediffSet.GetNotMissingParts().ToList();
+                    foreach (var part in parts)
+                    {
+                        p.health.AddHediff(HediffDefOf.MissingBodyPart, part);
+                    }
+                });
             }
             
             if (listing.ButtonText("OmniKiller_StripEverything".Translate()))
