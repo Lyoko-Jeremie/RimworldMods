@@ -21,10 +21,10 @@
         <graphicData>
             <texPath>Things/Building/Production/OmniBiosphere</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(5,5)</drawSize>
+            <drawSize>(1,1)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
-        <size>(5,5)</size>
+        <size>(1,1)</size>
         <uiIconPath>Things/Building/Production/OmniBiosphere</uiIconPath>
 
         <altitudeLayer>Building</altitudeLayer>
