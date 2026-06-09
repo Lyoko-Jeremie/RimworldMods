@@ -5,9 +5,9 @@
   
   <Biosphere_GrowthModeDesc>切换植物生长控制模式。</Biosphere_GrowthModeDesc>
   <Biosphere_GrowthMode_Normal>生长模式: 正常</Biosphere_GrowthMode_Normal>
-  <Biosphere_GrowthMode_Stop>生长模式: 停止</Biosphere_GrowthMode_Stop>
-  <Biosphere_GrowthMode_ClearWild>生长模式: 清除野生</Biosphere_GrowthMode_ClearWild>
-  <Biosphere_GrowthMode_ClearAll>生长模式: 清除所有</Biosphere_GrowthMode_ClearAll>
+  <Biosphere_GrowthMode_Forced>生长模式: 强制 (100%+)</Biosphere_GrowthMode_Forced>
+  <Biosphere_GrowthMode_Stopped>生长模式: 停止</Biosphere_GrowthMode_Stopped>
+  <Biosphere_GrowthMode_Cleared>生长模式: 清除</Biosphere_GrowthMode_Cleared>
 
   <Biosphere_ControlTemperature>温度控制</Biosphere_ControlTemperature>
   <Biosphere_ControlTemperatureDesc>启用或禁用选定区域内的温度强制控制。</Biosphere_ControlTemperatureDesc>

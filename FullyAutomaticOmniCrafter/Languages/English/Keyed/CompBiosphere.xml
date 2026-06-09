@@ -5,9 +5,9 @@
   
   <Biosphere_GrowthModeDesc>Switch plant growth control mode.</Biosphere_GrowthModeDesc>
   <Biosphere_GrowthMode_Normal>Growth: Normal</Biosphere_GrowthMode_Normal>
-  <Biosphere_GrowthMode_Stop>Growth: Stop</Biosphere_GrowthMode_Stop>
-  <Biosphere_GrowthMode_ClearWild>Growth: Clear Wild</Biosphere_GrowthMode_ClearWild>
-  <Biosphere_GrowthMode_ClearAll>Growth: Clear All</Biosphere_GrowthMode_ClearAll>
+  <Biosphere_GrowthMode_Forced>Growth: Forced (100%+)</Biosphere_GrowthMode_Forced>
+  <Biosphere_GrowthMode_Stopped>Growth: Stopped</Biosphere_GrowthMode_Stopped>
+  <Biosphere_GrowthMode_Cleared>Growth: Cleared</Biosphere_GrowthMode_Cleared>
 
   <Biosphere_ControlTemperature>Temp Control</Biosphere_ControlTemperature>
   <Biosphere_ControlTemperatureDesc>Enable or disable temperature control in the selected area.</Biosphere_ControlTemperatureDesc>
