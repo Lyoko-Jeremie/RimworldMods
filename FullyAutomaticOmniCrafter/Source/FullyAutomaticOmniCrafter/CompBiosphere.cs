@@ -59,7 +59,19 @@ namespace FullyAutomaticOmniCrafter
         public bool controlTemperature = false;
         public float targetTemperature = 21f;
         public bool ensureNoVacuum = false;
-        public LightingMode lightingMode = LightingMode.None;
+        private LightingMode _lightingMode = LightingMode.None;
+        public LightingMode lightingMode
+        {
+            get => _lightingMode;
+            set
+            {
+                if (_lightingMode != value)
+                {
+                    _lightingMode = value;
+                    DirtyGlowInArea(parent.Map);
+                }
+            }
+        }
 
         private Area selectedArea;
         private bool areaFound = false;
@@ -115,7 +127,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref controlTemperature, "controlTemperature", false);
             Scribe_Values.Look(ref targetTemperature, "targetTemperature", 21f);
             Scribe_Values.Look(ref ensureNoVacuum, "ensureNoVacuum", false);
-            Scribe_Values.Look(ref lightingMode, "lightingMode", LightingMode.None);
+            Scribe_Values.Look(ref _lightingMode, "lightingMode", LightingMode.None);
         }
 
         public override void PostDrawExtraSelectionOverlays()
@@ -137,15 +149,19 @@ namespace FullyAutomaticOmniCrafter
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
                     options.Add(new FloatMenuOption("None".Translate(), () =>
                     {
+                        DirtyGlowInArea(parent.Map); // Dirty old area
                         areaName = null;
                         RefreshArea();
+                        DirtyGlowInArea(parent.Map); // Dirty new area (none)
                     }));
                     foreach (Area area in parent.Map.areaManager.AllAreas)
                     {
                         options.Add(new FloatMenuOption(area.Label, () =>
                         {
+                            DirtyGlowInArea(parent.Map); // Dirty old area
                             areaName = area.Label;
                             RefreshArea();
+                            DirtyGlowInArea(parent.Map); // Dirty new area
                         }));
                     }
                     Find.WindowStack.Add(new FloatMenu(options));
@@ -230,12 +246,25 @@ namespace FullyAutomaticOmniCrafter
             ApplyEffects();
         }
         
+        private float cachedSkyGlow = -1f;
+        private const int SkyGlowDirtyTickInterval = 250;
+
         public override void CompTick()
         {
             base.CompTick();
             if (parent.IsHashIntervalTick(250)) // 每250tick执行一次
             {
                 ApplyEffects();
+            }
+
+            if (lightingMode != LightingMode.None && parent.IsHashIntervalTick(SkyGlowDirtyTickInterval))
+            {
+                float curSkyGlow = parent.Map.skyManager.CurSkyGlow;
+                if (Mathf.Abs(cachedSkyGlow - curSkyGlow) > 0.005f)
+                {
+                    cachedSkyGlow = curSkyGlow;
+                    DirtyGlowInArea(parent.Map);
+                }
             }
         }
 
@@ -287,6 +316,18 @@ namespace FullyAutomaticOmniCrafter
                             break;
                     }
                 }
+            }
+        }
+
+        public void DirtyGlowInArea(Map map)
+        {
+            if (map?.glowGrid == null) return;
+            Area area = SelectedArea;
+            if (area == null) return;
+
+            foreach (IntVec3 c in area.ActiveCells)
+            {
+                map.glowGrid.DirtyCell(c);
             }
         }
     }

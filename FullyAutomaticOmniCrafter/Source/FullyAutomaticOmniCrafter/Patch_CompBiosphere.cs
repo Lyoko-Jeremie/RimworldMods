@@ -152,10 +152,11 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)128);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)128);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)128);
-                    __result.a = (byte)Mathf.Max(__result.a, (byte)128);
+                    // 模仿灯光效果，稍微柔和一点
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)150);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)150);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)150);
+                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
                 }
             }
         }
@@ -182,10 +183,10 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)128);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)128);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)128);
-                    __result.a = (byte)Mathf.Max(__result.a, (byte)128);
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)150);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)150);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)150);
+                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
                 }
             }
         }
