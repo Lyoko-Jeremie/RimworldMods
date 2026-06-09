@@ -1155,6 +1155,7 @@ namespace FullyAutomaticOmniCrafter
                             if (plant.Growth < 1f)
                             {
                                 plant.Growth = 1f;
+                                plant.Map.mapDrawer.MapMeshDirty(plant.Position, MapMeshFlagDefOf.Things);
                             }
                             break;
                         case OmniForceFieldDomeGrowthMode.Cleared:

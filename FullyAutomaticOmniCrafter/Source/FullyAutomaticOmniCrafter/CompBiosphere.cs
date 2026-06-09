@@ -276,7 +276,7 @@ namespace FullyAutomaticOmniCrafter
                             if (plant.Growth < 1f)
                             {
                                 plant.Growth = 1f;
-                                // plant.RefreshRequired(); // 移除了不存在的方法
+                                plant.Map.mapDrawer.MapMeshDirty(plant.Position, MapMeshFlagDefOf.Things);
                             }
                             break;
                         case PlantGrowthMode.Stopped:
