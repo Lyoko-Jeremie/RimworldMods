@@ -26,5 +26,13 @@
 
     <VoidDeleter_ConfirmCleanFilth>确认要清理该区域内的所有污物吗？</VoidDeleter_ConfirmCleanFilth>
     <VoidDeleter_ConfirmFinishAll>确认要立即完成该区域内的所有任务吗？</VoidDeleter_ConfirmFinishAll>
+
+    <VoidDeleter_CleanGas>一键清理气体</VoidDeleter_CleanGas>
+    <VoidDeleter_CleanGasDesc>立即清理所选区域内的所有气体（如腐气、毒气、烟雾等）。如果未选择区域，则清理全图。</VoidDeleter_CleanGasDesc>
+    <VoidDeleter_ConfirmCleanGas>确认要清理该区域内的所有气体吗？</VoidDeleter_ConfirmCleanGas>
+
+    <VoidDeleter_CleanCorpses>一键清理尸体</VoidDeleter_CleanCorpses>
+    <VoidDeleter_CleanCorpsesDesc>立即清理所选区域内不在合法存储区中的尸体。如果未选择区域，则清理全图所有散落尸体。</VoidDeleter_CleanCorpsesDesc>
+    <VoidDeleter_ConfirmCleanCorpses>确认要清理该区域内不在存储区中的所有尸体吗？（该操作不可逆！）</VoidDeleter_ConfirmCleanCorpses>
 </LanguageData>
 
