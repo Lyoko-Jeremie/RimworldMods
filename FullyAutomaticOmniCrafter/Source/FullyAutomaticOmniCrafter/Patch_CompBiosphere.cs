@@ -12,6 +12,7 @@ namespace FullyAutomaticOmniCrafter
     public static class CompBiosphereManager
     {
         private static Dictionary<Map, List<CompBiosphere>> biosphereComps = new Dictionary<Map, List<CompBiosphere>>();
+        private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
 
         public static void Register(CompBiosphere comp)
         {
@@ -24,6 +25,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 biosphereComps[comp.parent.Map].Add(comp);
             }
+            UpdateAreaMapping(comp, null, comp.SelectedArea);
         }
 
         public static void Deregister(CompBiosphere comp, Map map)
@@ -31,6 +33,45 @@ namespace FullyAutomaticOmniCrafter
             if (map != null && biosphereComps.ContainsKey(map))
             {
                 biosphereComps[map].Remove(comp);
+            }
+            UpdateAreaMapping(comp, comp.SelectedArea, null);
+        }
+
+        public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea)
+        {
+            if (oldArea != null && areaToBiosphere.ContainsKey(oldArea))
+            {
+                areaToBiosphere[oldArea].Remove(comp);
+                if (areaToBiosphere[oldArea].Count == 0)
+                {
+                    areaToBiosphere.Remove(oldArea);
+                }
+            }
+
+            if (newArea != null)
+            {
+                if (!areaToBiosphere.ContainsKey(newArea))
+                {
+                    areaToBiosphere[newArea] = new List<CompBiosphere>();
+                }
+                if (!areaToBiosphere[newArea].Contains(comp))
+                {
+                    areaToBiosphere[newArea].Add(comp);
+                }
+            }
+        }
+
+        public static void NotifyAreaChanged(Area area, IntVec3 cell)
+        {
+            if (areaToBiosphere.TryGetValue(area, out var comps))
+            {
+                foreach (var comp in comps)
+                {
+                    if (comp.lightingMode != LightingMode.None)
+                    {
+                        area.Map.glowGrid.DirtyCell(cell);
+                    }
+                }
             }
         }
 
@@ -291,6 +332,15 @@ namespace FullyAutomaticOmniCrafter
                     return;
                 }
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(Area), "Set")]
+    public static class Patch_Area_Set
+    {
+        public static void Postfix(Area __instance, IntVec3 c)
+        {
+            CompBiosphereManager.NotifyAreaChanged(__instance, c);
         }
     }
 }

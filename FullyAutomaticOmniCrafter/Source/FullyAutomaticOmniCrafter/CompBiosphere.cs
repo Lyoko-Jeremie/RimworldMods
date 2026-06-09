@@ -90,6 +90,7 @@ namespace FullyAutomaticOmniCrafter
 
         public void RefreshArea()
         {
+            Area oldArea = selectedArea;
             areaFound = false;
             selectedArea = null;
             if (!string.IsNullOrEmpty(areaName) && parent.Map != null)
@@ -99,6 +100,10 @@ namespace FullyAutomaticOmniCrafter
                 {
                     areaFound = true;
                 }
+            }
+            if (oldArea != selectedArea)
+            {
+                CompBiosphereManager.UpdateAreaMapping(this, oldArea, selectedArea);
             }
         }
 
