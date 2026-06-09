@@ -93,7 +93,12 @@ namespace FullyAutomaticOmniCrafter
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
+            if (!respawningAfterLoad && string.IsNullOrEmpty(areaName) && parent.Map != null)
+            {
+                areaName = parent.Map.areaManager.Home.Label;
+            }
             CompBiosphereManager.Register(this);
+            RefreshArea();
         }
 
         public override void PostDestroy(DestroyMode mode, Map previousMap)
@@ -231,7 +236,7 @@ namespace FullyAutomaticOmniCrafter
         private void ApplyEffects()
         {
             Area area = SelectedArea;
-            if (area == null) return;
+            if (area == null || area.ActiveCells.Count() == 0) return;
 
             Map map = parent.Map;
             foreach (IntVec3 cell in area.ActiveCells)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -38,7 +39,8 @@ namespace FullyAutomaticOmniCrafter
             if (map == null || !biosphereComps.ContainsKey(map)) return null;
             foreach (var comp in biosphereComps[map])
             {
-                if (comp.SelectedArea != null && comp.SelectedArea[cell])
+                Area area = comp.SelectedArea;
+                if (area != null && area.ActiveCells.Count() > 0 && area[cell])
                 {
                     return comp;
                 }
@@ -100,15 +102,9 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(GlowGrid), "GameGlowAt")]
     public static class Patch_GlowGrid_GameGlowAt
     {
-        private static readonly Dictionary<GlowGrid, Map> glowGridMapCache = new Dictionary<GlowGrid, Map>();
-
-        public static void Postfix(GlowGrid __instance, IntVec3 c, bool ignoreSky, ref float __result)
+        public static void Postfix(GlowGrid __instance, IntVec3 c, ref float __result)
         {
-            if (!glowGridMapCache.TryGetValue(__instance, out Map map))
-            {
-                map = Find.Maps.FirstOrDefault(m => m.glowGrid == __instance);
-                if (map != null) glowGridMapCache[__instance] = map;
-            }
+            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
             if (map == null) return;
 
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
@@ -116,13 +112,185 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (biosphere.lightingMode == LightingMode.Sunlight)
                 {
-                    __result = 1f;
+                    __result = Mathf.Max(__result, 1f);
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
                     __result = Mathf.Max(__result, 0.5f);
                 }
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(GlowGrid), "GroundGlowAt")]
+    public static class Patch_GlowGrid_GroundGlowAt
+    {
+        public static void Postfix(GlowGrid __instance, IntVec3 c, bool ignoreSky, ref float __result)
+        {
+            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
+            if (map == null) return;
+
+            var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+            if (biosphere != null)
+            {
+                if (biosphere.lightingMode == LightingMode.Sunlight)
+                {
+                    if (ignoreSky)
+                    {
+                        __result = Mathf.Max(__result, 1f);
+                        return;
+                    }
+                    if (map.roofGrid.Roofed(c))
+                    {
+                        __result = Mathf.Max(__result, map.skyManager.CurSkyGlow);
+                    }
+                    __result = Mathf.Max(__result, 1f);
+                }
+                else if (biosphere.lightingMode == LightingMode.Light)
+                {
+                    __result = Mathf.Max(__result, 0.5f);
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.VisualGlowAt), new[] { typeof(IntVec3) })]
+    public static class Patch_GlowGrid_VisualGlowAtCell
+    {
+        public static void Postfix(GlowGrid __instance, IntVec3 c, ref Color32 __result)
+        {
+            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
+            if (map == null) return;
+
+            var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+            if (biosphere != null)
+            {
+                if (biosphere.lightingMode == LightingMode.Sunlight)
+                {
+                    // 强行把颜色拉满
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)255);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)255);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)255);
+                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
+                }
+                else if (biosphere.lightingMode == LightingMode.Light)
+                {
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)128);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)128);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)128);
+                    __result.a = (byte)Mathf.Max(__result.a, (byte)128);
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.VisualGlowAt), new[] { typeof(int) })]
+    public static class Patch_GlowGrid_VisualGlowAtIndex
+    {
+        public static void Postfix(GlowGrid __instance, int index, ref Color32 __result)
+        {
+            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
+            if (map == null) return;
+
+            IntVec3 c = map.cellIndices.IndexToCell(index);
+            var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+            if (biosphere != null)
+            {
+                if (biosphere.lightingMode == LightingMode.Sunlight)
+                {
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)255);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)255);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)255);
+                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
+                }
+                else if (biosphere.lightingMode == LightingMode.Light)
+                {
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)128);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)128);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)128);
+                    __result.a = (byte)Mathf.Max(__result.a, (byte)128);
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(SectionLayer_IndoorMask), "HideCommon")]
+    public static class Patch_Biosphere_IndoorMask
+    {
+        public static void Postfix(Map map, IntVec3 c, ref bool __result)
+        {
+            if (__result && map != null)
+            {
+                var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+                if (biosphere != null && biosphere.lightingMode == LightingMode.Sunlight)
+                {
+                    __result = false; // 取消室内阴影，让阳光看起来透进来
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Plant), "GrowthRateFactor_Light", MethodType.Getter)]
+    public static class Patch_Biosphere_PlantLight
+    {
+        public static void Postfix(Plant __instance, ref float __result)
+        {
+            if (!__instance.Spawned) return;
+            var biosphere = CompBiosphereManager.GetBiosphereAt(__instance.Map, __instance.Position);
+            if (biosphere != null && biosphere.lightingMode == LightingMode.Sunlight)
+            {
+                // 强制获得满光照生长率
+                __result = Mathf.Max(__result, 1f);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPowerPlantSolar), "RoofedPowerOutputFactor", MethodType.Getter)]
+    public static class Patch_Biosphere_SolarRoofedFactor
+    {
+        public static void Postfix(CompPowerPlantSolar __instance, ref float __result)
+        {
+            if (__instance?.parent?.Spawned != true) return;
+            Map map = __instance.parent.Map;
+            
+            int cellCount = 0;
+            int biosphereSunlightCount = 0;
+            foreach (IntVec3 c in __instance.parent.OccupiedRect())
+            {
+                cellCount++;
+                var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+                if (biosphere != null && biosphere.lightingMode == LightingMode.Sunlight)
+                {
+                    biosphereSunlightCount++;
+                }
+            }
+
+            if (cellCount > 0 && biosphereSunlightCount > 0)
+            {
+                // 计算受生物圈保护的比例
+                float factor = (float)biosphereSunlightCount / cellCount;
+                __result = Mathf.Max(__result, factor);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PlaceWorker_NotUnderRoof), nameof(PlaceWorker_NotUnderRoof.AllowsPlacing))]
+    public static class Patch_Biosphere_NotUnderRoofPlacement
+    {
+        public static void Postfix(BuildableDef checkingDef, IntVec3 loc, Rot4 rot, Map map, ref AcceptanceReport __result)
+        {
+            if (__result.Accepted || map == null) return;
+
+            foreach (IntVec3 c in GenAdj.OccupiedRect(loc, rot, checkingDef.Size))
+            {
+                var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+                if (biosphere == null || biosphere.lightingMode != LightingMode.Sunlight)
+                {
+                    return; // 只要有一个格没被覆盖且有屋顶，就维持原判
+                }
+            }
+
+            __result = true; // 全部被覆盖，允许放置
         }
     }
 
