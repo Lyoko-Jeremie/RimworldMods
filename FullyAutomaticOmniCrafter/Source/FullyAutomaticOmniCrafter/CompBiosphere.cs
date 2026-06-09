@@ -106,6 +106,12 @@ namespace FullyAutomaticOmniCrafter
             };
         }
 
+        public override void CompTickRare()
+        {
+            base.CompTickRare();
+            ApplyEffects();
+        }
+        
         public override void CompTick()
         {
             base.CompTick();
