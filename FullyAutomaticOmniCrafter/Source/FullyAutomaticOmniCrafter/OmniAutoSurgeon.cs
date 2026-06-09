@@ -279,10 +279,10 @@ namespace FullyAutomaticOmniCrafter
 
                 yield return new Command_Action
                 {
-                    defaultLabel = "FullyAutoOmniSurgeon_OpenPanel".Translate(),
-                    defaultDesc = "FullyAutoOmniSurgeon_OpenPanelDesc".Translate(),
-                    icon = FullyAutoOmniSurgeonTex.IconModifyDialog,
-                    action = () => { Find.WindowStack.Add(new Window_OmniAutoSurgeonUI(this.Occupant, this)); }
+                    defaultLabel = "FullyAutoOmniSurgeon_RepairAndHeal".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_RepairAndHealDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconRepair,
+                    action = () => { RepairAndHeal(this.Occupant); }
                 };
 
                 yield return new Command_Action
@@ -295,10 +295,10 @@ namespace FullyAutomaticOmniCrafter
 
                 yield return new Command_Action
                 {
-                    defaultLabel = "FullyAutoOmniSurgeon_RepairAndHeal".Translate(),
-                    defaultDesc = "FullyAutoOmniSurgeon_RepairAndHealDesc".Translate(),
-                    icon = FullyAutoOmniSurgeonTex.IconRepair,
-                    action = () => { RepairAndHeal(this.Occupant); }
+                    defaultLabel = "FullyAutoOmniSurgeon_OpenPanel".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_OpenPanelDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconModifyDialog,
+                    action = () => { Find.WindowStack.Add(new Window_OmniAutoSurgeonUI(this.Occupant, this)); }
                 };
             }
             else if (this.selectedPawn != null)
