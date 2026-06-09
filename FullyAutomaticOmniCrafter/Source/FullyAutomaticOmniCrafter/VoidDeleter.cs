@@ -82,6 +82,56 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        // ── Gas cleanup pass ──────────────────────────────────────────────────
+        private void ProcessGasCleanup()
+        {
+            if (_targetArea != null)
+            {
+                foreach (IntVec3 cell in _targetArea.ActiveCells)
+                {
+                    Map.gasGrid.SetDirect(cell, 0);
+                }
+            }
+            else
+            {
+                foreach (IntVec3 cell in Map.AllCells)
+                {
+                    Map.gasGrid.SetDirect(cell, 0);
+                }
+            }
+            Map.mapDrawer.WholeMapChanged(MapMeshFlagDefOf.Gas);
+        }
+
+        // ── Corpse cleanup pass ───────────────────────────────────────────────
+        private void ProcessCorpseCleanup()
+        {
+            IEnumerable<IntVec3> cells = (_targetArea != null) ? _targetArea.ActiveCells : Map.AllCells;
+            
+            foreach (IntVec3 cell in cells)
+            {
+                StorageSettings settings = null;
+                SlotGroup slotGroup = cell.GetSlotGroup(Map);
+                if (slotGroup != null && slotGroup.parent is ISlotGroupParent parent)
+                {
+                    settings = parent.GetStoreSettings();
+                }
+
+                List<Thing> list = cell.GetThingList(Map);
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    if (list[i] is Corpse corpse)
+                    {
+                        // 如果在存储区，且该存储区接受此尸体，则不清理
+                        if (settings != null && settings.filter.Allows(corpse))
+                        {
+                            continue;
+                        }
+                        corpse.Destroy(DestroyMode.Vanish);
+                    }
+                }
+            }
+        }
+
         // ── Deconstruct pass ───────────────────────────────────────────────────
         private void ProcessDeconstructions()
         {
@@ -548,6 +598,42 @@ namespace FullyAutomaticOmniCrafter
                         destructive: true));
                 }
             };
+
+            // ── 6. Clean Gas ──────────────────────────────────────────────────
+            yield return new Command_Action
+            {
+                defaultLabel = "VoidDeleter_CleanGas".Translate(),
+                defaultDesc = "VoidDeleter_CleanGasDesc".Translate(),
+                icon = VoidDeleterTex.IconCleanGas,
+                action = () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "VoidDeleter_ConfirmCleanGas".Translate(),
+                        () =>
+                        {
+                            ProcessGasCleanup();
+                        },
+                        destructive: true));
+                }
+            };
+
+            // ── 7. Clean Corpses ──────────────────────────────────────────────
+            yield return new Command_Action
+            {
+                defaultLabel = "VoidDeleter_CleanCorpses".Translate(),
+                defaultDesc = "VoidDeleter_CleanCorpsesDesc".Translate(),
+                icon = VoidDeleterTex.IconCleanCorpses,
+                action = () =>
+                {
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        "VoidDeleter_ConfirmCleanCorpses".Translate(),
+                        () =>
+                        {
+                            ProcessCorpseCleanup();
+                        },
+                        destructive: true));
+                }
+            };
         }
     }
 
@@ -579,6 +665,16 @@ namespace FullyAutomaticOmniCrafter
 
         public static readonly Texture2D IconCleanFilth =
             ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearFilth", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconCleanGas =
+            ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearGas", false)
+            ?? ContentFinder<Texture2D>.Get("UI/Designators/CleanFilth", false)
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconCleanCorpses =
+            ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearCorpses", false)
+            ?? ContentFinder<Texture2D>.Get("UI/Designators/Cremate", false)
             ?? BaseContent.WhiteTex;
     }
 }
