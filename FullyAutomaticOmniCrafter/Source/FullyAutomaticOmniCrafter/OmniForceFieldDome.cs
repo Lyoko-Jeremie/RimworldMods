@@ -18,12 +18,25 @@ namespace FullyAutomaticOmniCrafter
         SunLamp
     }
 
+    public enum OmniForceFieldDomeGrowthMode
+    {
+        Normal,
+        Forced,
+        Stopped,
+        Cleared
+    }
+
     [StaticConstructorOnStartup]
     public static class OmniForceFieldDomeTex
     {
         public static readonly Texture2D IconGlowMode =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniForceFieldDome_GlowMode", false)
             ?? TexCommand.DesirePower
+            ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconGrowthMode =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniForceFieldDome_GrowthMode", false)
+            ?? ContentFinder<Texture2D>.Get("UI/Designators/Harvest", false)
             ?? BaseContent.WhiteTex;
     }
 
@@ -112,8 +125,10 @@ namespace FullyAutomaticOmniCrafter
         private bool cachedNetworkActive;
         private OmniForceFieldDomeGlowMode cachedGlowMode = OmniForceFieldDomeGlowMode.None;
         private OmniForceFieldDomeGlowMode glowMode = OmniForceFieldDomeGlowMode.None;
+        private OmniForceFieldDomeGrowthMode growthMode = OmniForceFieldDomeGrowthMode.Normal;
 
         public OmniForceFieldDomeGlowMode GlowMode => glowMode;
+        public OmniForceFieldDomeGrowthMode GrowthMode => growthMode;
 
         public float RoofSupportRadius
         {
@@ -181,6 +196,7 @@ namespace FullyAutomaticOmniCrafter
         {
             base.PostExposeData();
             Scribe_Values.Look(ref glowMode, "omniForceFieldDomeGlowMode", OmniForceFieldDomeGlowMode.None);
+            Scribe_Values.Look(ref growthMode, "omniForceFieldDomeGrowthMode", OmniForceFieldDomeGrowthMode.Normal);
         }
 
         public override void CompTick()
@@ -246,6 +262,17 @@ namespace FullyAutomaticOmniCrafter
                 icon = OmniForceFieldDomeTex.IconGlowMode,
                 action = ShowGlowModeMenu
             };
+
+            yield return new Command_Action
+            {
+                defaultLabel = string.Format(
+                    TranslateOrFallback("OmniForceFieldDome_GrowthMode", "Plant growth: {0}"),
+                    GrowthModeLabel(growthMode)),
+                defaultDesc = TranslateOrFallback("OmniForceFieldDome_GrowthModeDesc",
+                    "Choose whether plants in the dome area grow normally, are forced to maturity, stop growing, or are cleared."),
+                icon = OmniForceFieldDomeTex.IconGrowthMode,
+                action = ShowGrowthModeMenu
+            };
         }
 
         private void ShowGlowModeMenu()
@@ -257,6 +284,54 @@ namespace FullyAutomaticOmniCrafter
 
             Find.WindowStack.Add(new FloatMenu(options,
                 TranslateOrFallback("OmniForceFieldDome_SelectGlowMode", "Select dome light mode")));
+        }
+
+        private void ShowGrowthModeMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            AddGrowthModeOption(options, OmniForceFieldDomeGrowthMode.Normal);
+            AddGrowthModeOption(options, OmniForceFieldDomeGrowthMode.Forced);
+            AddGrowthModeOption(options, OmniForceFieldDomeGrowthMode.Stopped);
+            AddGrowthModeOption(options, OmniForceFieldDomeGrowthMode.Cleared);
+
+            Find.WindowStack.Add(new FloatMenu(options,
+                TranslateOrFallback("OmniForceFieldDome_SelectGrowthMode", "Select plant growth mode")));
+        }
+
+        private void AddGrowthModeOption(List<FloatMenuOption> options, OmniForceFieldDomeGrowthMode mode)
+        {
+            OmniForceFieldDomeGrowthMode selectedMode = mode;
+            string label = GrowthModeLabel(selectedMode);
+            if (growthMode == selectedMode)
+            {
+                label += " " + TranslateOrFallback("OmniForceFieldDome_CurrentMode", "(current)");
+            }
+
+            options.Add(new FloatMenuOption(label, () => SetGrowthModeForSelectedDomeAreas(selectedMode)));
+        }
+
+        private void SetGrowthModeForSelectedDomeAreas(OmniForceFieldDomeGrowthMode mode)
+        {
+            List<CompOmniForceFieldDome> domes = SelectedDomeComps();
+            for (int i = 0; i < domes.Count; i++)
+            {
+                domes[i].SetGrowthMode(mode);
+            }
+        }
+
+        private void SetGrowthMode(OmniForceFieldDomeGrowthMode mode)
+        {
+            if (growthMode == mode)
+            {
+                return;
+            }
+
+            growthMode = mode;
+        }
+
+        private string GrowthModeLabel(OmniForceFieldDomeGrowthMode mode)
+        {
+            return TranslateOrFallback("Biosphere_GrowthMode_" + mode.ToString(), mode.ToString());
         }
 
         private void AddGlowModeOption(List<FloatMenuOption> options, OmniForceFieldDomeGlowMode mode)
@@ -1052,6 +1127,40 @@ namespace FullyAutomaticOmniCrafter
                     {
                         ExtinguishFiresAt(c);
                     }
+
+                    // 植物生长控制
+                    ApplyPlantGrowth(c, network);
+                }
+            }
+        }
+
+        private void ApplyPlantGrowth(IntVec3 cell, OmniForceFieldDomeNetwork network)
+        {
+            // 找到主穹顶组件来获取生长模式
+            CompOmniForceFieldDome primaryDome = network.Domes.FirstOrDefault();
+            if (primaryDome == null || primaryDome.GrowthMode == OmniForceFieldDomeGrowthMode.Normal)
+            {
+                return;
+            }
+
+            OmniForceFieldDomeGrowthMode growthMode = primaryDome.GrowthMode;
+            List<Thing> things = cell.GetThingList(map);
+            for (int i = things.Count - 1; i >= 0; i--)
+            {
+                if (things[i] is Plant plant)
+                {
+                    switch (growthMode)
+                    {
+                        case OmniForceFieldDomeGrowthMode.Forced:
+                            if (plant.Growth < 1f)
+                            {
+                                plant.Growth = 1f;
+                            }
+                            break;
+                        case OmniForceFieldDomeGrowthMode.Cleared:
+                            plant.Destroy();
+                            break;
+                    }
                 }
             }
         }
@@ -1729,6 +1838,50 @@ namespace FullyAutomaticOmniCrafter
             {
                 __result = false;
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(Plant), "Tick")]
+    public static class Patch_OmniForceFieldDome_PlantGrowthStopped
+    {
+        public static bool Prefix(Plant __instance)
+        {
+            if (!__instance.Spawned) return true;
+            Map map = __instance.Map;
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            if (manager != null && manager.TryGetNetworkAt(__instance.Position, out var network))
+            {
+                CompOmniForceFieldDome primaryDome = network.Domes.FirstOrDefault();
+                if (primaryDome != null && primaryDome.GrowthMode == OmniForceFieldDomeGrowthMode.Stopped)
+                {
+                    return false; // 停止生长
+                }
+            }
+
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(WildPlantSpawner), "CheckCellForWildPlant")]
+    public static class Patch_OmniForceFieldDome_WildPlantSpawner_CheckCellForWildPlant
+    {
+        public static bool Prefix(WildPlantSpawner __instance, IntVec3 c, ref bool __result)
+        {
+            Map map = (Map)AccessTools.Field(typeof(WildPlantSpawner), "map").GetValue(__instance);
+            if (map == null) return true;
+
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            if (manager != null && manager.TryGetNetworkAt(c, out var network))
+            {
+                CompOmniForceFieldDome primaryDome = network.Domes.FirstOrDefault();
+                if (primaryDome != null && primaryDome.GrowthMode == OmniForceFieldDomeGrowthMode.Cleared)
+                {
+                    __result = false;
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

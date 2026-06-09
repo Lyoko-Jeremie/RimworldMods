@@ -49,7 +49,7 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    [HarmonyPatch(typeof(Plant), "Tick")]
+    [HarmonyPatch(typeof(Plant), nameof(Plant.TickLong))]
     public static class Patch_Plant_Tick
     {
         public static bool Prefix(Plant __instance)
