@@ -16,7 +16,7 @@
 
   <Biosphere_LightingModeDesc>切换光照控制模式。</Biosphere_LightingModeDesc>
   <Biosphere_LightingMode_None>光照模式: 不改变</Biosphere_LightingMode_None>
-  <Biosphere_LightingMode_Light>光照模式: 灯光 (100%)</Biosphere_LightingMode_Light>
+  <Biosphere_LightingMode_Light>光照模式: 灯光 (50%)</Biosphere_LightingMode_Light>
   <Biosphere_LightingMode_Sunlight>光照模式: 太阳灯</Biosphere_LightingMode_Sunlight>
 
   <Biosphere_EnsureNoVacuum>排除真空</Biosphere_EnsureNoVacuum>

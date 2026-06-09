@@ -16,7 +16,7 @@
 
   <Biosphere_LightingModeDesc>Switch lighting control mode.</Biosphere_LightingModeDesc>
   <Biosphere_LightingMode_None>Light: Default</Biosphere_LightingMode_None>
-  <Biosphere_LightingMode_Light>Light: Lamps (100%)</Biosphere_LightingMode_Light>
+  <Biosphere_LightingMode_Light>Light: Lamps (50%)</Biosphere_LightingMode_Light>
   <Biosphere_LightingMode_Sunlight>Light: Sun Lamps</Biosphere_LightingMode_Sunlight>
 
   <Biosphere_EnsureNoVacuum>No Vacuum</Biosphere_EnsureNoVacuum>
