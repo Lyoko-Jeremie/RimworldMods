@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
 using UnityEngine;
@@ -29,6 +30,13 @@ namespace FullyAutomaticOmniCrafter
         Cleared     // 清除并阻止
     }
 
+    public enum LightingMode
+    {
+        None,       // 不改变
+        Light,      // 灯光
+        Sunlight    // 太阳灯
+    }
+
     /// <summary>
     /// 生物圈控制组件
     /// </summary>
@@ -39,8 +47,7 @@ namespace FullyAutomaticOmniCrafter
         public bool controlTemperature = false;
         public float targetTemperature = 21f;
         public bool ensureNoVacuum = false;
-        public bool ensureLight = false;
-        public bool ensureSunlight = false;
+        public LightingMode lightingMode = LightingMode.None;
 
         private Area selectedArea;
         private bool areaFound = false;
@@ -91,18 +98,106 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref controlTemperature, "controlTemperature", false);
             Scribe_Values.Look(ref targetTemperature, "targetTemperature", 21f);
             Scribe_Values.Look(ref ensureNoVacuum, "ensureNoVacuum", false);
-            Scribe_Values.Look(ref ensureLight, "ensureLight", false);
-            Scribe_Values.Look(ref ensureSunlight, "ensureSunlight", false);
+            Scribe_Values.Look(ref lightingMode, "lightingMode", LightingMode.None);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
+            // 1. 选择区域
             yield return new Command_Action
             {
-                defaultLabel = "OpenBiosphereUI".Translate(),
-                defaultDesc = "OpenBiosphereUIDesc".Translate(),
-                icon = CompBiosphereTex.IconBiosphereUI,
-                action = () => Find.WindowStack.Add(new Dialog_CompBiosphere(this))
+                defaultLabel = "Biosphere_SelectArea".Translate(),
+                defaultDesc = "Biosphere_SelectAreaDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Designators/ZoneCreate_Stockpile", true),
+                action = () =>
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+                    options.Add(new FloatMenuOption("None".Translate(), () =>
+                    {
+                        areaName = null;
+                        RefreshArea();
+                    }));
+                    foreach (Area area in parent.Map.areaManager.AllAreas)
+                    {
+                        options.Add(new FloatMenuOption(area.Label, () =>
+                        {
+                            areaName = area.Label;
+                            RefreshArea();
+                        }));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            };
+
+            // 2. 选择生长模式
+            yield return new Command_Action
+            {
+                defaultLabel = ("Biosphere_GrowthMode_" + growthMode.ToString()).Translate(),
+                defaultDesc = "Biosphere_GrowthModeDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Designators/Harvest", true),
+                action = () =>
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+                    foreach (PlantGrowthMode mode in Enum.GetValues(typeof(PlantGrowthMode)))
+                    {
+                        options.Add(new FloatMenuOption(("Biosphere_GrowthMode_" + mode.ToString()).Translate(), () =>
+                        {
+                            growthMode = mode;
+                        }));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            };
+
+            // 3. 是否启用+温度设置
+            yield return new Command_Toggle
+            {
+                defaultLabel = "Biosphere_ControlTemperature".Translate(),
+                defaultDesc = "Biosphere_ControlTemperatureDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Icons/Temperature", true),
+                isActive = () => controlTemperature,
+                toggleAction = () => controlTemperature = !controlTemperature
+            };
+
+            if (controlTemperature)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = targetTemperature.ToStringTemperature(),
+                    defaultDesc = "Biosphere_SetTemperatureDesc".Translate(),
+                    icon = ContentFinder<Texture2D>.Get("UI/Icons/Temperature", true),
+                    action = () => Find.WindowStack.Add(new Dialog_CompBiosphere_Temperature(this))
+                };
+            }
+
+            // 4. 光照模式
+            yield return new Command_Action
+            {
+                defaultLabel = ("Biosphere_LightingMode_" + lightingMode.ToString()).Translate(),
+                defaultDesc = "Biosphere_LightingModeDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Designators/SunLamp", true),
+                action = () =>
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+                    foreach (LightingMode mode in Enum.GetValues(typeof(LightingMode)))
+                    {
+                        options.Add(new FloatMenuOption(("Biosphere_LightingMode_" + mode.ToString()).Translate(), () =>
+                        {
+                            lightingMode = mode;
+                        }));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            };
+
+            // 5. 排除真空
+            yield return new Command_Toggle
+            {
+                defaultLabel = "Biosphere_EnsureNoVacuum".Translate(),
+                defaultDesc = "Biosphere_EnsureNoVacuumDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Icons/Atmosphere", true) ?? BaseContent.WhiteTex,
+                isActive = () => ensureNoVacuum,
+                toggleAction = () => ensureNoVacuum = !ensureNoVacuum
             };
         }
 

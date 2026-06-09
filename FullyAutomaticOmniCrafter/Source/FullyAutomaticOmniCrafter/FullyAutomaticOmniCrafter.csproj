@@ -381,7 +381,7 @@
     <Compile Include="DebugTools_PoisonFood.cs" />
     <Compile Include="Designator_PhantomWall2Passability.cs" />
     <Compile Include="Dialog_AutomatedCapturerSettings.cs" />
-    <Compile Include="Dialog_CompBiosphere.cs" />
+    <Compile Include="Dialog_CompBiosphere_Temperature.cs" />
     <Compile Include="Dialog_CompOmniKiller.cs" />
     <Compile Include="Dialog_OmniPowerAdjust.cs" />
     <Compile Include="OmniAutoScanner.cs" />

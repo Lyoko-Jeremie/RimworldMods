@@ -114,11 +114,11 @@ namespace FullyAutomaticOmniCrafter
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
             if (biosphere != null)
             {
-                if (biosphere.ensureSunlight)
+                if (biosphere.lightingMode == LightingMode.Sunlight)
                 {
                     __result = 1f;
                 }
-                else if (biosphere.ensureLight)
+                else if (biosphere.lightingMode == LightingMode.Light)
                 {
                     __result = Mathf.Max(__result, 0.5f);
                 }
