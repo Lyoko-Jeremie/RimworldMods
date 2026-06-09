@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <Biosphere_SelectArea>选择区域</Biosphere_SelectArea>
+  <Biosphere_SelectAreaDesc>选择此组件控制的活动区。</Biosphere_SelectAreaDesc>
+  
+  <Biosphere_GrowthModeDesc>切换植物生长控制模式。</Biosphere_GrowthModeDesc>
+  <Biosphere_GrowthMode_Normal>生长模式: 正常</Biosphere_GrowthMode_Normal>
+  <Biosphere_GrowthMode_Stop>生长模式: 停止</Biosphere_GrowthMode_Stop>
+  <Biosphere_GrowthMode_ClearWild>生长模式: 清除野生</Biosphere_GrowthMode_ClearWild>
+  <Biosphere_GrowthMode_ClearAll>生长模式: 清除所有</Biosphere_GrowthMode_ClearAll>
+
+  <Biosphere_ControlTemperature>温度控制</Biosphere_ControlTemperature>
+  <Biosphere_ControlTemperatureDesc>启用或禁用选定区域内的温度强制控制。</Biosphere_ControlTemperatureDesc>
+  <Biosphere_SetTemperatureDesc>设定选定区域内的目标温度。</Biosphere_SetTemperatureDesc>
+  <Biosphere_TargetTemperature>目标温度</Biosphere_TargetTemperature>
+
+  <Biosphere_LightingModeDesc>切换光照控制模式。</Biosphere_LightingModeDesc>
+  <Biosphere_LightingMode_None>光照模式: 不改变</Biosphere_LightingMode_None>
+  <Biosphere_LightingMode_Light>光照模式: 灯光 (100%)</Biosphere_LightingMode_Light>
+  <Biosphere_LightingMode_Sunlight>光照模式: 太阳灯</Biosphere_LightingMode_Sunlight>
+
+  <Biosphere_EnsureNoVacuum>排除真空</Biosphere_EnsureNoVacuum>
+  <Biosphere_EnsureNoVacuumDesc>强制将选定区域视为有屋顶（室内），防止真空导致的温度流失或减益。</Biosphere_EnsureNoVacuumDesc>
+</LanguageData>

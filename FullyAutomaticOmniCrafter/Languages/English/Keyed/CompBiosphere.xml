@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <Biosphere_SelectArea>Select Area</Biosphere_SelectArea>
+  <Biosphere_SelectAreaDesc>Select the area that this component will control.</Biosphere_SelectAreaDesc>
+  
+  <Biosphere_GrowthModeDesc>Switch plant growth control mode.</Biosphere_GrowthModeDesc>
+  <Biosphere_GrowthMode_Normal>Growth: Normal</Biosphere_GrowthMode_Normal>
+  <Biosphere_GrowthMode_Stop>Growth: Stop</Biosphere_GrowthMode_Stop>
+  <Biosphere_GrowthMode_ClearWild>Growth: Clear Wild</Biosphere_GrowthMode_ClearWild>
+  <Biosphere_GrowthMode_ClearAll>Growth: Clear All</Biosphere_GrowthMode_ClearAll>
+
+  <Biosphere_ControlTemperature>Temp Control</Biosphere_ControlTemperature>
+  <Biosphere_ControlTemperatureDesc>Enable or disable temperature control in the selected area.</Biosphere_ControlTemperatureDesc>
+  <Biosphere_SetTemperatureDesc>Set the target temperature for the selected area.</Biosphere_SetTemperatureDesc>
+  <Biosphere_TargetTemperature>Target Temp</Biosphere_TargetTemperature>
+
+  <Biosphere_LightingModeDesc>Switch lighting control mode.</Biosphere_LightingModeDesc>
+  <Biosphere_LightingMode_None>Light: Default</Biosphere_LightingMode_None>
+  <Biosphere_LightingMode_Light>Light: Lamps (100%)</Biosphere_LightingMode_Light>
+  <Biosphere_LightingMode_Sunlight>Light: Sun Lamps</Biosphere_LightingMode_Sunlight>
+
+  <Biosphere_EnsureNoVacuum>No Vacuum</Biosphere_EnsureNoVacuum>
+  <Biosphere_EnsureNoVacuumDesc>Force the selected area to be treated as roofed (indoors), preventing temperature loss or debuffs from vacuum.</Biosphere_EnsureNoVacuumDesc>
+</LanguageData>
