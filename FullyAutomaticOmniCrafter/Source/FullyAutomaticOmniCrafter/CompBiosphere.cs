@@ -19,19 +19,19 @@ namespace FullyAutomaticOmniCrafter
     public static class CompBiosphereTex
     {
         public static readonly Texture2D IconSelectArea =
-            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_SelectArea", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_SelectArea", false) ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconGrowthMode =
-            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_GrowthMode", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_GrowthMode", false) ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconTemperature =
-            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_Temperature", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_Temperature", false) ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconLightingMode =
-            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_LightingMode", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_LightingMode", false) ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconNoVacuum =
-            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_NoVacuum", true) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_NoVacuum", false) ?? BaseContent.WhiteTex;
     }
 
     public enum PlantGrowthMode
@@ -172,56 +172,56 @@ namespace FullyAutomaticOmniCrafter
                 }
             };
 
-            // // 3. 是否启用+温度设置
-            // yield return new Command_Toggle
-            // {
-            //     defaultLabel = "Biosphere_ControlTemperature".Translate(),
-            //     defaultDesc = "Biosphere_ControlTemperatureDesc".Translate(),
-            //     icon = CompBiosphereTex.IconTemperature,
-            //     isActive = () => controlTemperature,
-            //     toggleAction = () => controlTemperature = !controlTemperature
-            // };
-            //
-            // if (controlTemperature)
-            // {
-            //     yield return new Command_Action
-            //     {
-            //         defaultLabel = targetTemperature.ToStringTemperature(),
-            //         defaultDesc = "Biosphere_SetTemperatureDesc".Translate(),
-            //         icon = CompBiosphereTex.IconTemperature,
-            //         action = () => Find.WindowStack.Add(new Dialog_CompBiosphere_Temperature(this))
-            //     };
-            // }
-            //
-            // // 4. 光照模式
-            // yield return new Command_Action
-            // {
-            //     defaultLabel = ("Biosphere_LightingMode_" + lightingMode.ToString()).Translate(),
-            //     defaultDesc = "Biosphere_LightingModeDesc".Translate(),
-            //     icon = CompBiosphereTex.IconLightingMode,
-            //     action = () =>
-            //     {
-            //         List<FloatMenuOption> options = new List<FloatMenuOption>();
-            //         foreach (LightingMode mode in Enum.GetValues(typeof(LightingMode)))
-            //         {
-            //             options.Add(new FloatMenuOption(("Biosphere_LightingMode_" + mode.ToString()).Translate(), () =>
-            //             {
-            //                 lightingMode = mode;
-            //             }));
-            //         }
-            //         Find.WindowStack.Add(new FloatMenu(options));
-            //     }
-            // };
-            //
-            // // 5. 排除真空
-            // yield return new Command_Toggle
-            // {
-            //     defaultLabel = "Biosphere_EnsureNoVacuum".Translate(),
-            //     defaultDesc = "Biosphere_EnsureNoVacuumDesc".Translate(),
-            //     icon = CompBiosphereTex.IconNoVacuum,
-            //     isActive = () => ensureNoVacuum,
-            //     toggleAction = () => ensureNoVacuum = !ensureNoVacuum
-            // };
+            // 3. 是否启用+温度设置
+            yield return new Command_Toggle
+            {
+                defaultLabel = "Biosphere_ControlTemperature".Translate(),
+                defaultDesc = "Biosphere_ControlTemperatureDesc".Translate(),
+                icon = CompBiosphereTex.IconTemperature,
+                isActive = () => controlTemperature,
+                toggleAction = () => controlTemperature = !controlTemperature
+            };
+            
+            if (controlTemperature)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = targetTemperature.ToStringTemperature(),
+                    defaultDesc = "Biosphere_SetTemperatureDesc".Translate(),
+                    icon = CompBiosphereTex.IconTemperature,
+                    action = () => Find.WindowStack.Add(new Dialog_CompBiosphere_Temperature(this))
+                };
+            }
+            
+            // 4. 光照模式
+            yield return new Command_Action
+            {
+                defaultLabel = ("Biosphere_LightingMode_" + lightingMode.ToString()).Translate(),
+                defaultDesc = "Biosphere_LightingModeDesc".Translate(),
+                icon = CompBiosphereTex.IconLightingMode,
+                action = () =>
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+                    foreach (LightingMode mode in Enum.GetValues(typeof(LightingMode)))
+                    {
+                        options.Add(new FloatMenuOption(("Biosphere_LightingMode_" + mode.ToString()).Translate(), () =>
+                        {
+                            lightingMode = mode;
+                        }));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            };
+            
+            // 5. 排除真空
+            yield return new Command_Toggle
+            {
+                defaultLabel = "Biosphere_EnsureNoVacuum".Translate(),
+                defaultDesc = "Biosphere_EnsureNoVacuumDesc".Translate(),
+                icon = CompBiosphereTex.IconNoVacuum,
+                isActive = () => ensureNoVacuum,
+                toggleAction = () => ensureNoVacuum = !ensureNoVacuum
+            };
         }
 
         public override void CompTickRare()
