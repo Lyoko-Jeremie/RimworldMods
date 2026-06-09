@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <OpenOmniKillerUI>打开 OmniKiller 界面</OpenOmniKillerUI>
-  <OpenOmniKillerUIDesc>打开万能屠杀者控制界面，批量处理地图上的 Pawn。</OpenOmniKillerUIDesc>
+  <OpenOmniKillerUI>打开控制界面</OpenOmniKillerUI>
+  <OpenOmniKillerUIDesc>打开控制界面，批量处理地图上的 Pawn。</OpenOmniKillerUIDesc>
 
   <OmniKiller_Filters>筛选条件</OmniKiller_Filters>
   <OmniKiller_Search>搜索:</OmniKiller_Search>
