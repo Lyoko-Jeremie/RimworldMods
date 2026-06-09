@@ -369,6 +369,7 @@
     <Compile Include="CompAutoPainter.cs" />
     <Compile Include="CompAutoRoofer.cs" />
     <Compile Include="CompAutoSmoother.cs" />
+    <Compile Include="CompBiosphere.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="CompManualEventTrigger.cs" />
