@@ -106,7 +106,7 @@ namespace FullyAutomaticOmniCrafter
             // 1. 选择区域
             yield return new Command_Action
             {
-                defaultLabel = "Biosphere_SelectArea".Translate(),
+                defaultLabel = (string.IsNullOrEmpty(areaName) ? (string)"Biosphere_SelectArea".Translate() : areaName),
                 defaultDesc = "Biosphere_SelectAreaDesc".Translate(),
                 icon = ContentFinder<Texture2D>.Get("UI/Designators/ZoneCreate_Stockpile", true),
                 action = () =>
