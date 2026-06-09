@@ -118,6 +118,12 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref lightingMode, "lightingMode", LightingMode.None);
         }
 
+        public override void PostDrawExtraSelectionOverlays()
+        {
+            base.PostDrawExtraSelectionOverlays();
+            SelectedArea?.MarkForDraw();
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             // 1. 选择区域
