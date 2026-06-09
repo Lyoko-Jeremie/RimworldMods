@@ -29,13 +29,14 @@ namespace FullyAutomaticOmniCrafter
         private List<Pawn> executionList = new List<Pawn>();
         
         // 筛选条件使用 OmniPhantomWall2_PassabilitySettings 的逻辑
-        private OmniPhantomWall2_PassabilitySettings settings = new OmniPhantomWall2_PassabilitySettings();
+        private OmniPhantomWall2_PassabilitySettings settings;
 
         public override Vector2 InitialSize => new Vector2(1000f, 750f);
 
         public Dialog_CompOmniKiller(CompOmniKiller comp)
         {
             this.comp = comp;
+            this.settings = comp.filterSettings;
             this.doCloseButton = true;
             this.doCloseX = true;
             this.absorbInputAroundWindow = true;

@@ -37,6 +37,18 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompOmniKiller : ThingComp
     {
+        public OmniPhantomWall2_PassabilitySettings filterSettings = new OmniPhantomWall2_PassabilitySettings();
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Deep.Look(ref filterSettings, "filterSettings");
+            if (filterSettings == null)
+            {
+                filterSettings = new OmniPhantomWall2_PassabilitySettings();
+            }
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             yield return new Command_Action
