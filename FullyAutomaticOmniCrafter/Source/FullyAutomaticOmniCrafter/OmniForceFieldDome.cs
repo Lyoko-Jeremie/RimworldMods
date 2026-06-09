@@ -1862,8 +1862,8 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    [HarmonyPatch(typeof(WildPlantSpawner), "CheckCellForWildPlant")]
-    public static class Patch_OmniForceFieldDome_WildPlantSpawner_CheckCellForWildPlant
+    [HarmonyPatch(typeof(WildPlantSpawner), nameof(WildPlantSpawner.CheckSpawnWildPlantAt))]
+    public static class Patch_OmniForceFieldDome_WildPlantSpawner_CheckSpawnWildPlantAt
     {
         public static bool Prefix(WildPlantSpawner __instance, IntVec3 c, ref bool __result)
         {
