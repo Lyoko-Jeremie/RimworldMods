@@ -18,8 +18,20 @@ namespace FullyAutomaticOmniCrafter
     [StaticConstructorOnStartup]
     public static class CompBiosphereTex
     {
-        public static readonly Texture2D IconBiosphereUI =
-            ContentFinder<Texture2D>.Get("UI/Commands/IconBiosphereUI", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconSelectArea =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_SelectArea", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconGrowthMode =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_GrowthMode", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconTemperature =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_Temperature", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconLightingMode =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_LightingMode", true) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconNoVacuum =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_NoVacuum", true) ?? BaseContent.WhiteTex;
     }
 
     public enum PlantGrowthMode
@@ -108,7 +120,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = (string.IsNullOrEmpty(areaName) ? (string)"Biosphere_SelectArea".Translate() : areaName),
                 defaultDesc = "Biosphere_SelectAreaDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Designators/ZoneCreate_Stockpile", true),
+                icon = CompBiosphereTex.IconSelectArea,
                 action = () =>
                 {
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -134,7 +146,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = ("Biosphere_GrowthMode_" + growthMode.ToString()).Translate(),
                 defaultDesc = "Biosphere_GrowthModeDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Designators/Harvest", true),
+                icon = CompBiosphereTex.IconGrowthMode,
                 action = () =>
                 {
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -154,7 +166,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "Biosphere_ControlTemperature".Translate(),
                 defaultDesc = "Biosphere_ControlTemperatureDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Icons/Temperature", true),
+                icon = CompBiosphereTex.IconTemperature,
                 isActive = () => controlTemperature,
                 toggleAction = () => controlTemperature = !controlTemperature
             };
@@ -165,7 +177,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = targetTemperature.ToStringTemperature(),
                     defaultDesc = "Biosphere_SetTemperatureDesc".Translate(),
-                    icon = ContentFinder<Texture2D>.Get("UI/Icons/Temperature", true),
+                    icon = CompBiosphereTex.IconTemperature,
                     action = () => Find.WindowStack.Add(new Dialog_CompBiosphere_Temperature(this))
                 };
             }
@@ -175,7 +187,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = ("Biosphere_LightingMode_" + lightingMode.ToString()).Translate(),
                 defaultDesc = "Biosphere_LightingModeDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Designators/SunLamp", true),
+                icon = CompBiosphereTex.IconLightingMode,
                 action = () =>
                 {
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -195,7 +207,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "Biosphere_EnsureNoVacuum".Translate(),
                 defaultDesc = "Biosphere_EnsureNoVacuumDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Icons/Atmosphere", true) ?? BaseContent.WhiteTex,
+                icon = CompBiosphereTex.IconNoVacuum,
                 isActive = () => ensureNoVacuum,
                 toggleAction = () => ensureNoVacuum = !ensureNoVacuum
             };
