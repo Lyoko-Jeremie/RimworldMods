@@ -38,7 +38,7 @@
 18. 可以发出无限电能或者自动不足电网所需电能的万能发电机； OmniPowerGenerator
 19. 可以立即开始指定事件的事件发生器； ManualEventTrigger
 20. 可以制作出附带属性的武器的武器制造台（开发中）； OmniWeaponCreator
-
+21. 可以控制生活区或指定活动区的宜居性的万能生物圈； OmniBiosphere
 
 本 Mod 原名 [全自动万能制造机 FullyAutomaticOmniCrafter]
 
@@ -242,6 +242,15 @@ The currently available buildings are as follows:
 11. Omni Phantom Wall: Dynamically modifies rules to automatically block or allow passage based on customized settings; acting as an illusion to those permitted and an absolutely unbreakable, impassable barrier to those forbidden.
 12. AutoOmniTrap: Automatically or manually captures targets based on configured rules, pulling the captured entities into the area where the Omni Catcher is located.
 13. OmniAutoDetector: Detects Metalhorrors within the colony and automatically treats them, detects invisible entities and reveals them, and detects contaminated food and destroys it.
+14. OmniBattery: A battery with infinite capacity that can store unlimited energy.
+15. OmniPowerGenerator: Generates unlimited power from any source, including solar, wind, and nuclear energy.
+16. OmniExtractor: Extracts resources from any source, including asteroids, planets, and other celestial bodies.
+17. OmniRefinery: Refines any resource into any other resource, including metals, minerals, and chemicals.
+18. OmniAssembler: Assembles any item from any resource, including weapons, armor, and vehicles.
+19. OmniEventTrigger: Can immediately start an event generator for a specified event; ManualEventTrigger
+20. OmniWeaponCreator: Can create weapons with attributes; OmniWeaponCreator
+21. OmniBiosphere: Can control the habitability of living areas or specified activity areas; OmniBiosphere
+
 
 This Mod was originally named [FullyAutomaticOmniCrafter].
         
