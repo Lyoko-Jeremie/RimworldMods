@@ -412,7 +412,7 @@ namespace FullyAutomaticOmniCrafter
             tmpPawnsToRemove.Clear();
             foreach (Pawn pawn in pawnsGrantedHediff)
             {
-                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsCellWithinShield(pawn.Position, out _))
+                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsCellWithinShieldIgnoringDome(pawn.Position, out _))
                 {
                     tmpPawnsToRemove.Add(pawn);
                 }
@@ -433,21 +433,8 @@ namespace FullyAutomaticOmniCrafter
                     continue;
                 }
 
-                if (IsCellWithinShield(pawn.Position, out var protector))
+                if (IsCellWithinShieldIgnoringDome(pawn.Position, out var protector))
                 {
-                    // 排除 OmniForceFieldDome，它有自己的网络和 Hediff 维护逻辑
-                    if (protector is CompOmniForceFieldDome)
-                    {
-                        // 如果当前 Pawn 在 OmniForceFieldDome 内，但它之前是由此组件赋予的 Hediff，
-                        // 我们需要将其从本组件的维护列表中移除。
-                        // 因为它已经超出了非穹顶护盾的范围，或者进入了一个由穹顶接管的区域。
-                        if (pawnsGrantedHediff.Contains(pawn))
-                        {
-                            tmpPawnsToRemove.Add(pawn);
-                        }
-                        continue;
-                    }
-
                     CompProperties_OmniProjectileInterceptor props = protector.Props;
                     HediffDef hediffDef = props?.FriendlyHediffDefToUse;
                     if (props == null || !props.applyFriendlyHediff || hediffDef == null)
@@ -462,6 +449,42 @@ namespace FullyAutomaticOmniCrafter
                     pawnsGrantedHediff.Add(pawn);
                 }
             }
+        }
+
+        private bool IsCellWithinShieldIgnoringDome(IntVec3 c, out CompOmniProjectileInterceptor protector)
+        {
+            protector = null;
+            if (!c.InBounds(map)) return false;
+
+            if (cacheDirty)
+            {
+                RebuildCache();
+            }
+
+            // 1. 检查固定护盾 O(1)
+            var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
+            if (staticInter != null && staticInter.Active && !(staticInter is CompOmniForceFieldDome))
+            {
+                protector = staticInter;
+                return true;
+            }
+
+            // 2. 检查移动护盾 O(N_mobile)
+            int mobileCount = mobileInterceptors.Count;
+            if (mobileCount > 0)
+            {
+                for (int i = 0; i < mobileCount; i++)
+                {
+                    var inter = mobileInterceptors[i];
+                    if (inter.Active && !(inter is CompOmniForceFieldDome) && inter.IsCellInside(c))
+                    {
+                        protector = inter;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private void RemovePawnEffects(Pawn pawn)
