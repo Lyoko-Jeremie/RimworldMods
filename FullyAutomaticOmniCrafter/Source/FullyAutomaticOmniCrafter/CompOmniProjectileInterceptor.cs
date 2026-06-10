@@ -528,9 +528,8 @@ namespace FullyAutomaticOmniCrafter
         {
             base.MapComponentUpdate();
             
-            // 获取当前相机的视口范围（以格子为单位）
-            // 如果不在游戏运行状态，或者地图不是当前地图，则不执行视口检查绘制（安全保护）
-            if (Find.CurrentMap != map) return;
+            // 如果地图不是当前地图，或者正在查看世界地图（通过渲染模式判断），则不执行视口检查绘制
+            if (Find.CurrentMap != map || Current.ProgramState != ProgramState.Playing || Find.World.renderer.wantedMode != RimWorld.Planet.WorldRenderMode.None) return;
             
             CellRect viewRect = Find.CameraDriver.CurrentViewRect;
             
