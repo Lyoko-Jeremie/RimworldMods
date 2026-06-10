@@ -840,10 +840,10 @@ namespace FullyAutomaticOmniCrafter
                         glow = Mathf.Max(glow, 1f);
                         break;
                     case OmniForceFieldDomeGlowMode.Lamp:
-                        // 修正：Lamp模式下，亮度取 0.5f。
-                        // 这里不再在这里取 Max(skyGlow)，因为视觉上会有叠加问题。
-                        // 逻辑光照保持 0.5f，VisualGlowAt 补丁会处理环境光的显示。
-                        glow = Mathf.Max(glow, 0.5f);
+                        // 修正：Lamp模式下，亮度取 0.5f 和当前天空亮度的最大值。
+                        // 这样即使在白天且有屋顶的情况下，穹顶内也会像室外一样明亮（如果室外亮度 > 0.5f）。
+                        float skyGlow = map.skyManager.CurSkyGlow;
+                        glow = Mathf.Max(glow, Mathf.Max(0.5f, skyGlow));
                         break;
                 }
             }

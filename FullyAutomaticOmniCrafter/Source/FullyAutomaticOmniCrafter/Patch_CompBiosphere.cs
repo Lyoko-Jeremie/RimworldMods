@@ -303,7 +303,7 @@ namespace FullyAutomaticOmniCrafter
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
                     // 修复亮度问题：如果外部光照大于50%，按照外部亮度显示
-                    __result = Mathf.Max(__result, 0.5f);
+                    __result = Mathf.Max(__result, Mathf.Max(0.5f, map.skyManager.CurSkyGlow));
                 }
             }
         }
@@ -332,12 +332,16 @@ namespace FullyAutomaticOmniCrafter
                 {
                     // 修复亮度问题：如果外部光照充足（>= 50%），则不需要额外光照
                     // 如果外部光照不足，则将视觉亮度提升到至少 50%
-                    float ambient = c.Roofed(map) ? 0f : map.skyManager.CurSkyGlow;
-                    if (ambient < 0.5f)
+                    float skyGlow = map.skyManager.CurSkyGlow;
+                    float targetGlow = Mathf.Max(0.5f, skyGlow);
+                    float currentAmbient = c.Roofed(map) ? 0f : skyGlow;
+                    
+                    if (targetGlow > currentAmbient)
                     {
-                        __result.r = (byte)Mathf.Max(__result.r, (byte)127);
-                        __result.g = (byte)Mathf.Max(__result.g, (byte)127);
-                        __result.b = (byte)Mathf.Max(__result.b, (byte)127);
+                        byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(targetGlow * 255f), 0, 255);
+                        __result.r = (byte)Mathf.Max(__result.r, light);
+                        __result.g = (byte)Mathf.Max(__result.g, light);
+                        __result.b = (byte)Mathf.Max(__result.b, light);
                         __result.a = (byte)Mathf.Max(__result.a, (byte)255);
                     }
                 }
@@ -366,12 +370,16 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    float ambient = c.Roofed(map) ? 0f : map.skyManager.CurSkyGlow;
-                    if (ambient < 0.5f)
+                    float skyGlow = map.skyManager.CurSkyGlow;
+                    float targetGlow = Mathf.Max(0.5f, skyGlow);
+                    float currentAmbient = c.Roofed(map) ? 0f : skyGlow;
+
+                    if (targetGlow > currentAmbient)
                     {
-                        __result.r = (byte)Mathf.Max(__result.r, (byte)127);
-                        __result.g = (byte)Mathf.Max(__result.g, (byte)127);
-                        __result.b = (byte)Mathf.Max(__result.b, (byte)127);
+                        byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(targetGlow * 255f), 0, 255);
+                        __result.r = (byte)Mathf.Max(__result.r, light);
+                        __result.g = (byte)Mathf.Max(__result.g, light);
+                        __result.b = (byte)Mathf.Max(__result.b, light);
                         __result.a = (byte)Mathf.Max(__result.a, (byte)255);
                     }
                 }
