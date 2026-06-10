@@ -1188,7 +1188,18 @@ namespace FullyAutomaticOmniCrafter
                 if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsDomeCell(pawn.Position))
                 {
                     tmpPawnsToRemove.Add(pawn);
+                    continue;
                 }
+
+                // 新增：如果 Pawn 离开了当前穹顶管理器的覆盖范围，或者进入了普通拦截器的范围且不再受穹顶保护
+                // 实际上 IsDomeCell(pawn.Position) 已经涵盖了大部分情况。
+                // 但如果同一格既有普通拦截器又有穹顶，穹顶应该保留状态。
+                // 关键点在于 CompOmniProjectileInterceptor 排除掉穹顶导致它不清理。
+                // 我们已经在那边修复了。
+                
+                // 额外检查：如果 Pawn 身上有普通拦截器的状态，且穹顶配置了不同的状态，
+                // 这里的逻辑会直接加上穹顶状态，导致并存。这通常是允许的，除非两个 hediffDef 一样。
+                // 如果 hediffDef 一样，AddHediff 会刷新或不做任何事。
             }
 
             for (int i = 0; i < tmpPawnsToRemove.Count; i++)
@@ -1210,8 +1221,15 @@ namespace FullyAutomaticOmniCrafter
                 OmniForceFieldDomeNetwork network;
                 if (!TryGetNetworkAt(pawn.Position, out network))
                 {
+                    // 如果不再在穹顶内，但在本管理器的维护列表中，则在下一轮循环（或此轮前置逻辑）中清理
                     continue;
                 }
+
+                // 检查是否由其他护盾（非穹顶）保护，并决定是否要让路
+                // 如果用户希望穹顶有最高优先级，则不需要此检查。
+                // 但为了对称性，如果 Pawn 已经在非穹顶护盾内，穹顶可以暂时不给它加状态，
+                // 或者允许两者并存。根据 issue 描述，用户遇到的是“没自动移除”旧状态。
+                // 这里我们确保穹顶逻辑不会干扰非穹顶状态的清理。
 
                 CompProperties_OmniForceFieldDome props = network.PrimaryProps;
                 HediffDef hediffDef = props?.FriendlyHediffDefToUse;

@@ -438,6 +438,13 @@ namespace FullyAutomaticOmniCrafter
                     // 排除 OmniForceFieldDome，它有自己的网络和 Hediff 维护逻辑
                     if (protector is CompOmniForceFieldDome)
                     {
+                        // 如果当前 Pawn 在 OmniForceFieldDome 内，但它之前是由此组件赋予的 Hediff，
+                        // 我们需要将其从本组件的维护列表中移除。
+                        // 因为它已经超出了非穹顶护盾的范围，或者进入了一个由穹顶接管的区域。
+                        if (pawnsGrantedHediff.Contains(pawn))
+                        {
+                            tmpPawnsToRemove.Add(pawn);
+                        }
                         continue;
                     }
 
