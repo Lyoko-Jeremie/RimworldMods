@@ -1860,6 +1860,25 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    [HarmonyPatch(typeof(Plant), "Resting", MethodType.Getter)]
+    public static class Patch_OmniForceFieldDome_PlantResting
+    {
+        public static void Postfix(Plant __instance, ref bool __result)
+        {
+            if (!__result || !__instance.Spawned)
+            {
+                return;
+            }
+
+            Map map = __instance.Map;
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            if (manager != null && manager.TryGetDomeGlowAt(__instance.Position, out float glow) && glow >= 1f)
+            {
+                __result = false;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Plant), nameof(Plant.TickLong))]
     public static class Patch_OmniForceFieldDome_PlantGrowthStopped
     {
@@ -1901,6 +1920,41 @@ namespace FullyAutomaticOmniCrafter
             }
 
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPowerPlantSolar), "DesiredPowerOutput", MethodType.Getter)]
+    public static class Patch_OmniForceFieldDome_SolarPowerOutput
+    {
+        public static void Postfix(CompPowerPlantSolar __instance, ref float __result)
+        {
+            if (__instance?.parent?.Spawned != true || __instance.parent.Map == null)
+            {
+                return;
+            }
+
+            Map map = __instance.parent.Map;
+            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            if (manager == null)
+            {
+                return;
+            }
+
+            bool inDomeSunlight = false;
+            foreach (IntVec3 c in __instance.parent.OccupiedRect())
+            {
+                if (manager.TryGetDomeGlowAt(c, out float glow) && glow >= 1f)
+                {
+                    inDomeSunlight = true;
+                    break;
+                }
+            }
+
+            if (inDomeSunlight)
+            {
+                // 强制满太阳运行（负值表示发电）
+                __result = -__instance.Props.PowerConsumption;
+            }
         }
     }
 }
