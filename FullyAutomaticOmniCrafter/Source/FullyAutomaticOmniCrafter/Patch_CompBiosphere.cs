@@ -212,6 +212,20 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    [HarmonyPatch(typeof(Plant), "Resting", MethodType.Getter)]
+    public static class Patch_Plant_Resting
+    {
+        public static void Postfix(Plant __instance, ref bool __result)
+        {
+            if (!__result || !__instance.Spawned) return;
+            var biosphere = CompBiosphereManager.GetBiosphereAt(__instance.Map, __instance.Position);
+            if (biosphere != null && biosphere.lightingMode == LightingMode.Sunlight)
+            {
+                __result = false;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Plant), nameof(Plant.TickLong))]
     public static class Patch_Plant_Tick
     {
@@ -288,6 +302,7 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
+                    // 修复亮度问题：如果外部光照大于50%，按照外部亮度显示
                     __result = Mathf.Max(__result, 0.5f);
                 }
             }
@@ -315,10 +330,10 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    // 模仿灯光效果，稍微柔和一点
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)150);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)150);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)150);
+                    // 如果外部光照大于50% (约127)，则按照外部亮度显示
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)127);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)127);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)127);
                     __result.a = (byte)Mathf.Max(__result.a, (byte)255);
                 }
             }
@@ -346,9 +361,9 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)150);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)150);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)150);
+                    __result.r = (byte)Mathf.Max(__result.r, (byte)127);
+                    __result.g = (byte)Mathf.Max(__result.g, (byte)127);
+                    __result.b = (byte)Mathf.Max(__result.b, (byte)127);
                     __result.a = (byte)Mathf.Max(__result.a, (byte)255);
                 }
             }
@@ -382,6 +397,33 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 强制获得满光照生长率
                 __result = Mathf.Max(__result, 1f);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CompPowerPlantSolar), "DesiredPowerOutput", MethodType.Getter)]
+    public static class Patch_Biosphere_SolarPowerOutput
+    {
+        public static void Postfix(CompPowerPlantSolar __instance, ref float __result)
+        {
+            if (__instance?.parent?.Spawned != true) return;
+            Map map = __instance.parent.Map;
+
+            bool inBiosphereSunlight = false;
+            foreach (IntVec3 c in __instance.parent.OccupiedRect())
+            {
+                var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
+                if (biosphere != null && biosphere.lightingMode == LightingMode.Sunlight)
+                {
+                    inBiosphereSunlight = true;
+                    break;
+                }
+            }
+
+            if (inBiosphereSunlight)
+            {
+                // 强制满太阳运行（负值表示发电）
+                __result = -__instance.Props.PowerConsumption;
             }
         }
     }
