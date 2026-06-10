@@ -58,10 +58,63 @@ namespace FullyAutomaticOmniCrafter
     public class CompBiosphere : ThingComp
     {
         public string areaName = null; // 选定的活动区名称
-        public PlantGrowthMode growthMode = PlantGrowthMode.Normal;
-        public bool controlTemperature = false;
-        public float targetTemperature = 21f;
-        public bool ensureNoVacuum = false;
+        
+        private PlantGrowthMode _growthMode = PlantGrowthMode.Normal;
+        public PlantGrowthMode growthMode
+        {
+            get => _growthMode;
+            set
+            {
+                if (_growthMode != value)
+                {
+                    _growthMode = value;
+                    CompBiosphereManager.NotifySettingsChanged(this);
+                }
+            }
+        }
+
+        private bool _controlTemperature = false;
+        public bool controlTemperature
+        {
+            get => _controlTemperature;
+            set
+            {
+                if (_controlTemperature != value)
+                {
+                    _controlTemperature = value;
+                    CompBiosphereManager.NotifySettingsChanged(this);
+                }
+            }
+        }
+
+        private float _targetTemperature = 21f;
+        public float targetTemperature
+        {
+            get => _targetTemperature;
+            set
+            {
+                if (_targetTemperature != value)
+                {
+                    _targetTemperature = value;
+                    CompBiosphereManager.NotifySettingsChanged(this);
+                }
+            }
+        }
+
+        private bool _ensureNoVacuum = false;
+        public bool ensureNoVacuum
+        {
+            get => _ensureNoVacuum;
+            set
+            {
+                if (_ensureNoVacuum != value)
+                {
+                    _ensureNoVacuum = value;
+                    CompBiosphereManager.NotifySettingsChanged(this);
+                }
+            }
+        }
+
         private LightingMode _lightingMode = LightingMode.None;
         public LightingMode lightingMode
         {
@@ -72,6 +125,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     _lightingMode = value;
                     DirtyGlowInArea(parent.Map);
+                    CompBiosphereManager.NotifySettingsChanged(this);
                 }
             }
         }
@@ -131,10 +185,10 @@ namespace FullyAutomaticOmniCrafter
         {
             base.PostExposeData();
             Scribe_Values.Look(ref areaName, "areaName");
-            Scribe_Values.Look(ref growthMode, "growthMode", PlantGrowthMode.Normal);
-            Scribe_Values.Look(ref controlTemperature, "controlTemperature", false);
-            Scribe_Values.Look(ref targetTemperature, "targetTemperature", 21f);
-            Scribe_Values.Look(ref ensureNoVacuum, "ensureNoVacuum", false);
+            Scribe_Values.Look(ref _growthMode, "growthMode", PlantGrowthMode.Normal);
+            Scribe_Values.Look(ref _controlTemperature, "controlTemperature", false);
+            Scribe_Values.Look(ref _targetTemperature, "targetTemperature", 21f);
+            Scribe_Values.Look(ref _ensureNoVacuum, "ensureNoVacuum", false);
             Scribe_Values.Look(ref _lightingMode, "lightingMode", LightingMode.None);
         }
 
@@ -336,6 +390,25 @@ namespace FullyAutomaticOmniCrafter
             foreach (IntVec3 c in area.ActiveCells)
             {
                 map.glowGrid.DirtyCell(c);
+            }
+        }
+
+        private bool isSyncing = false;
+        public void SyncSettingsFrom(CompBiosphere other)
+        {
+            if (isSyncing) return;
+            isSyncing = true;
+            try
+            {
+                this.growthMode = other.growthMode;
+                this.controlTemperature = other.controlTemperature;
+                this.targetTemperature = other.targetTemperature;
+                this.ensureNoVacuum = other.ensureNoVacuum;
+                this.lightingMode = other.lightingMode;
+            }
+            finally
+            {
+                isSyncing = false;
             }
         }
     }

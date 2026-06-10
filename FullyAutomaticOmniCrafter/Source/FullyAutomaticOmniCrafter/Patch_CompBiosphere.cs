@@ -54,9 +54,31 @@ namespace FullyAutomaticOmniCrafter
                 {
                     areaToBiosphere[newArea] = new List<CompBiosphere>();
                 }
+                
+                // 如果区域已经有其他 Biosphere 控制，则同步设置
+                if (areaToBiosphere[newArea].Count > 0 && !areaToBiosphere[newArea].Contains(comp))
+                {
+                    comp.SyncSettingsFrom(areaToBiosphere[newArea][0]);
+                }
+
                 if (!areaToBiosphere[newArea].Contains(comp))
                 {
                     areaToBiosphere[newArea].Add(comp);
+                }
+            }
+        }
+
+        public static void NotifySettingsChanged(CompBiosphere source)
+        {
+            Area area = source.SelectedArea;
+            if (area != null && areaToBiosphere.TryGetValue(area, out var comps))
+            {
+                foreach (var comp in comps)
+                {
+                    if (comp != source)
+                    {
+                        comp.SyncSettingsFrom(source);
+                    }
                 }
             }
         }
