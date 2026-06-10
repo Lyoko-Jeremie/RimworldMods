@@ -27,6 +27,9 @@ namespace FullyAutomaticOmniCrafter
         public static readonly Texture2D IconTemperature =
             ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_Temperature", false) ?? BaseContent.WhiteTex;
 
+        public static readonly Texture2D IconTemperatureChange =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_IconTemperatureChange", false) ?? BaseContent.WhiteTex;
+
         public static readonly Texture2D IconLightingMode =
             ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_LightingMode", false) ?? BaseContent.WhiteTex;
 
@@ -209,7 +212,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     defaultLabel = targetTemperature.ToStringTemperature(),
                     defaultDesc = "Biosphere_SetTemperatureDesc".Translate(),
-                    icon = CompBiosphereTex.IconTemperature,
+                    icon = CompBiosphereTex.IconTemperatureChange,
                     action = () => Find.WindowStack.Add(new Dialog_CompBiosphere_Temperature(this))
                 };
             }
