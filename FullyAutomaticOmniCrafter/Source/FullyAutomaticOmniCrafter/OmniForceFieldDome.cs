@@ -70,10 +70,10 @@ namespace FullyAutomaticOmniCrafter
         public bool extinguishFire = true;
 
         // 默认复用状态分配终端已有的“OmniForceFieldDome_Protect”hediff；XML 可直接传 HediffDef 或 defName。
-        public bool applyFriendlyHediff = true;
+        public new bool applyFriendlyHediff = true;
         public HediffDef friendlyHediffDef;
-        public string friendlyHediffDefName = "OmniForceFieldDome_Protect";
-        public bool removeFriendlyHediffWhenLeaving = true;
+        public new string friendlyHediffDefName = "OmniForceFieldDome_Protect";
+        public new bool removeFriendlyHediffWhenLeaving = true;
 
         // 大区域穹顶可能覆盖很多格，维护逻辑按间隔执行以控制开销。
         public int environmentTickInterval = 250;
@@ -90,7 +90,7 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>
         /// 延迟解析 hediff，避免 DefDatabase 尚未完全加载时过早取值。
         /// </summary>
-        public HediffDef FriendlyHediffDefToUse
+        public new HediffDef FriendlyHediffDefToUse
         {
             get
             {
