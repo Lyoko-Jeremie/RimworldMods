@@ -435,6 +435,12 @@ namespace FullyAutomaticOmniCrafter
 
                 if (IsCellProtected(pawn.Position, pawn, out var protector))
                 {
+                    // 排除 OmniForceFieldDome，它有自己的网络和 Hediff 维护逻辑
+                    if (protector is CompOmniForceFieldDome)
+                    {
+                        continue;
+                    }
+
                     CompProperties_OmniProjectileInterceptor props = protector.Props;
                     HediffDef hediffDef = props?.FriendlyHediffDefToUse;
                     if (props == null || !props.applyFriendlyHediff || hediffDef == null)
@@ -460,7 +466,14 @@ namespace FullyAutomaticOmniCrafter
 
             for (int i = 0; i < allInterceptors.Count; i++)
             {
-                CompProperties_OmniProjectileInterceptor props = allInterceptors[i]?.Props;
+                var interceptor = allInterceptors[i];
+                // 排除 OmniForceFieldDome
+                if (interceptor == null || interceptor is CompOmniForceFieldDome)
+                {
+                    continue;
+                }
+
+                CompProperties_OmniProjectileInterceptor props = interceptor.Props;
                 HediffDef hediffDef = props?.FriendlyHediffDefToUse;
                 if (props == null || !props.removeFriendlyHediffWhenLeaving || hediffDef == null)
                 {
