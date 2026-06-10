@@ -29,7 +29,9 @@ namespace FullyAutomaticOmniCrafter
             
             listing.Label("Biosphere_TargetTemperature".Translate() + ": " + comp.targetTemperature.ToStringTemperature());
             
-            listing.TextFieldNumeric(ref comp.targetTemperature, ref tempBuffer, -100f, 100f);
+            float temp = comp.targetTemperature;
+            listing.TextFieldNumeric(ref temp, ref tempBuffer, -100f, 100f);
+            comp.targetTemperature = temp;
             
             if (listing.ButtonText("OK".Translate()))
             {

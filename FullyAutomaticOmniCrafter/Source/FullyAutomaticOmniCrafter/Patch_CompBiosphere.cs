@@ -14,6 +14,15 @@ namespace FullyAutomaticOmniCrafter
         private static Dictionary<Map, List<CompBiosphere>> biosphereComps = new Dictionary<Map, List<CompBiosphere>>();
         private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
 
+        public static List<CompBiosphere> GetCompsForMap(Map map)
+        {
+            if (map != null && biosphereComps.TryGetValue(map, out var list))
+            {
+                return list;
+            }
+            return null;
+        }
+
         public static void Register(CompBiosphere comp)
         {
             if (comp.parent.Map == null) return;

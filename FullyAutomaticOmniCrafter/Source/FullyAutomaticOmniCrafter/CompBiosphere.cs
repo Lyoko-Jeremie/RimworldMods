@@ -196,6 +196,15 @@ namespace FullyAutomaticOmniCrafter
         {
             base.PostDrawExtraSelectionOverlays();
             SelectedArea?.MarkForDraw();
+
+            var comps = CompBiosphereManager.GetCompsForMap(parent.Map);
+            if (comps != null)
+            {
+                foreach (var comp in comps)
+                {
+                    TargetHighlighter.Highlight(comp.parent);
+                }
+            }
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
