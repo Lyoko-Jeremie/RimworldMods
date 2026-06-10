@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
-<!--    <DesignatorDropdownGroupDef>-->
-<!--        <defName>OmniBiosphere_DropdownGroup</defName>-->
-<!--    </DesignatorDropdownGroupDef>-->
+    <DesignatorDropdownGroupDef>
+        <defName>OmniBiosphere_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
 
     <ThingDef ParentName="BuildingBase" Name="OmniBiosphere">
         <defName>OmniBiosphere</defName>
@@ -15,7 +15,7 @@
         <tickerType>Rare</tickerType>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
-<!--        <designatorDropdown>OmniBiosphere_DropdownGroup</designatorDropdown>-->
+        <designatorDropdown>OmniBiosphere_DropdownGroup</designatorDropdown>
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
