@@ -840,6 +840,9 @@ namespace FullyAutomaticOmniCrafter
                         glow = Mathf.Max(glow, 1f);
                         break;
                     case OmniForceFieldDomeGlowMode.Lamp:
+                        // 修正：Lamp模式下，亮度取 0.5f。
+                        // 这里不再在这里取 Max(skyGlow)，因为视觉上会有叠加问题。
+                        // 逻辑光照保持 0.5f，VisualGlowAt 补丁会处理环境光的显示。
                         glow = Mathf.Max(glow, 0.5f);
                         break;
                 }
@@ -1449,19 +1452,26 @@ namespace FullyAutomaticOmniCrafter
             return TryGetDomeGlow(map.cellIndices.IndexToCell(index), map, out glow);
         }
 
-        public static Color32 WithDomeGlow(Color32 color, float glow)
+        public static Color32 WithDomeGlow(Color32 color, float glow, IntVec3 c, Map map)
         {
-            byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(glow * 255f), 0, 255);
-            if (light <= 0)
-            {
-                return color;
-            }
+            if (glow <= 0f) return color;
 
+            // 只有当环境亮度不足时才添加光照效果
+            float ambient = (map != null && !c.Roofed(map)) ? map.skyManager.CurSkyGlow : 0f;
+            if (ambient >= glow) return color;
+
+            byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(glow * 255f), 0, 255);
             color.r = Math.Max(color.r, light);
             color.g = Math.Max(color.g, light);
             color.b = Math.Max(color.b, light);
             color.a = Math.Max(color.a, light);
             return color;
+        }
+
+        public static Color32 WithDomeGlow(Color32 color, float glow, int index, Map map)
+        {
+            if (map == null || index < 0 || index >= map.cellIndices.NumGridCells) return color;
+            return WithDomeGlow(color, glow, map.cellIndices.IndexToCell(index), map);
         }
 
         public static Color32 WithSkyGlow(Color32 color, Map map)
@@ -1518,7 +1528,7 @@ namespace FullyAutomaticOmniCrafter
             float domeGlow;
             if (OmniForceFieldDomeSkyLightUtility.TryGetDomeGlow(c, map, out domeGlow))
             {
-                __result = OmniForceFieldDomeSkyLightUtility.WithDomeGlow(__result, domeGlow);
+                __result = OmniForceFieldDomeSkyLightUtility.WithDomeGlow(__result, domeGlow, c, map);
             }
 
             if (OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(c, map))
@@ -1537,7 +1547,7 @@ namespace FullyAutomaticOmniCrafter
             float domeGlow;
             if (OmniForceFieldDomeSkyLightUtility.TryGetDomeGlow(index, map, out domeGlow))
             {
-                __result = OmniForceFieldDomeSkyLightUtility.WithDomeGlow(__result, domeGlow);
+                __result = OmniForceFieldDomeSkyLightUtility.WithDomeGlow(__result, domeGlow, index, map);
             }
 
             if (OmniForceFieldDomeSkyLightUtility.AllowsSkyLightThroughRoof(index, map))

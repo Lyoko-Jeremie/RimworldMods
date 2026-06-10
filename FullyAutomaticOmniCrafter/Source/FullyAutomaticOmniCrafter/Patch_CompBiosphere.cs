@@ -330,11 +330,16 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    // 如果外部光照大于50% (约127)，则按照外部亮度显示
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)127);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)127);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)127);
-                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
+                    // 修复亮度问题：如果外部光照充足（>= 50%），则不需要额外光照
+                    // 如果外部光照不足，则将视觉亮度提升到至少 50%
+                    float ambient = c.Roofed(map) ? 0f : map.skyManager.CurSkyGlow;
+                    if (ambient < 0.5f)
+                    {
+                        __result.r = (byte)Mathf.Max(__result.r, (byte)127);
+                        __result.g = (byte)Mathf.Max(__result.g, (byte)127);
+                        __result.b = (byte)Mathf.Max(__result.b, (byte)127);
+                        __result.a = (byte)Mathf.Max(__result.a, (byte)255);
+                    }
                 }
             }
         }
@@ -361,10 +366,14 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else if (biosphere.lightingMode == LightingMode.Light)
                 {
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)127);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)127);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)127);
-                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
+                    float ambient = c.Roofed(map) ? 0f : map.skyManager.CurSkyGlow;
+                    if (ambient < 0.5f)
+                    {
+                        __result.r = (byte)Mathf.Max(__result.r, (byte)127);
+                        __result.g = (byte)Mathf.Max(__result.g, (byte)127);
+                        __result.b = (byte)Mathf.Max(__result.b, (byte)127);
+                        __result.a = (byte)Mathf.Max(__result.a, (byte)255);
+                    }
                 }
             }
         }
