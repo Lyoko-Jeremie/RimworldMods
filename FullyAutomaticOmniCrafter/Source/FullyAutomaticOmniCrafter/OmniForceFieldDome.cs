@@ -1259,7 +1259,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 return false;
             }
-            return pawn.Faction == Faction.OfPlayer || pawn.HostFaction == Faction.OfPlayer || pawn.IsPrisonerOfColony;
+            return pawn.Faction == Faction.OfPlayer;
         }
     }
 

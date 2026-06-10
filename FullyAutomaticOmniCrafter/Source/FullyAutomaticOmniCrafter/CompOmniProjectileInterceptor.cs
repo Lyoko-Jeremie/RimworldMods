@@ -491,7 +491,7 @@ namespace FullyAutomaticOmniCrafter
         private static bool IsFriendlyPawn(Pawn pawn)
         {
             if (pawn == null) return false;
-            return pawn.Faction == Faction.OfPlayer || pawn.HostFaction == Faction.OfPlayer || pawn.IsPrisonerOfColony;
+            return pawn.Faction == Faction.OfPlayer;
         }
 
         public override void MapComponentUpdate()
