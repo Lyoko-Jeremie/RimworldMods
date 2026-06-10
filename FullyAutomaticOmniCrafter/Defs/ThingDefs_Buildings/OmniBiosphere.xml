@@ -21,10 +21,10 @@
         <graphicData>
             <texPath>Things/Building/Production/OmniBiosphere</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(1,1)</drawSize>
+            <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
-        <size>(1,1)</size>
+        <size>(3,3)</size>
         <uiIconPath>Things/Building/Production/OmniBiosphere</uiIconPath>
 
         <altitudeLayer>Building</altitudeLayer>
@@ -72,6 +72,16 @@
             <li Class="FullyAutomaticOmniCrafter.CompProperties_CompBiosphere"/>
         </comps>
 
+    </ThingDef>
+
+    <ThingDef ParentName="OmniBiosphere">
+        <defName>OmniBiosphere_mini</defName>
+        <label>Omni Biosphere mini</label>
+        <description>description</description>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+        <size>(1,1)</size>
     </ThingDef>
     
 </Defs>

@@ -163,5 +163,17 @@
         <label>Omni Force Field Dome Protect</label>
         <description>Omni Force Field Dome Protect</description>
     </HediffDef>
+
+    <HediffDef ParentName="StatusAllocationTerminal_SuperMan">
+        <defName>OmniEnergyDefenseField_Protect</defName>
+        <label>Omni Energy Defense Field Protect</label>
+        <description>Omni Energy Defense Field Protect</description>
+    </HediffDef>
+
+    <HediffDef ParentName="StatusAllocationTerminal_SuperMan">
+        <defName>OmniBiosphere_Protect</defName>
+        <label>Omni Biosphere Protect</label>
+        <description>Omni Biosphere Protect</description>
+    </HediffDef>
     
 </Defs>
