@@ -320,31 +320,14 @@ namespace FullyAutomaticOmniCrafter
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
             if (biosphere != null)
             {
-                if (biosphere.lightingMode == LightingMode.Sunlight)
-                {
-                    // 强行把颜色拉满
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)255);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)255);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)255);
-                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
-                }
-                else if (biosphere.lightingMode == LightingMode.Light)
-                {
-                    // 修复亮度问题：如果外部光照充足（>= 50%），则不需要额外光照
-                    // 如果外部光照不足，则将视觉亮度提升到至少 50%
-                    float skyGlow = map.skyManager.CurSkyGlow;
-                    float targetGlow = Mathf.Max(0.5f, skyGlow);
-                    float currentAmbient = c.Roofed(map) ? 0f : skyGlow;
-                    
-                    if (targetGlow > currentAmbient)
-                    {
-                        byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(targetGlow * 255f), 0, 255);
-                        __result.r = (byte)Mathf.Max(__result.r, light);
-                        __result.g = (byte)Mathf.Max(__result.g, light);
-                        __result.b = (byte)Mathf.Max(__result.b, light);
-                        __result.a = (byte)Mathf.Max(__result.a, (byte)255);
-                    }
-                }
+                // 直接获取逻辑亮度（GroundGlowAt），确保视觉与逻辑一致
+                float logicGlow = __instance.GroundGlowAt(c);
+                byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(logicGlow * 255f), 0, 255);
+
+                __result.r = (byte)Mathf.Max(__result.r, light);
+                __result.g = (byte)Mathf.Max(__result.g, light);
+                __result.b = (byte)Mathf.Max(__result.b, light);
+                __result.a = (byte)Mathf.Max(__result.a, (byte)255);
             }
         }
     }
@@ -361,28 +344,14 @@ namespace FullyAutomaticOmniCrafter
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
             if (biosphere != null)
             {
-                if (biosphere.lightingMode == LightingMode.Sunlight)
-                {
-                    __result.r = (byte)Mathf.Max(__result.r, (byte)255);
-                    __result.g = (byte)Mathf.Max(__result.g, (byte)255);
-                    __result.b = (byte)Mathf.Max(__result.b, (byte)255);
-                    __result.a = (byte)Mathf.Max(__result.a, (byte)255);
-                }
-                else if (biosphere.lightingMode == LightingMode.Light)
-                {
-                    float skyGlow = map.skyManager.CurSkyGlow;
-                    float targetGlow = Mathf.Max(0.5f, skyGlow);
-                    float currentAmbient = c.Roofed(map) ? 0f : skyGlow;
+                // 直接获取逻辑亮度（GroundGlowAt），确保视觉与逻辑一致
+                float logicGlow = __instance.GroundGlowAt(c);
+                byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(logicGlow * 255f), 0, 255);
 
-                    if (targetGlow > currentAmbient)
-                    {
-                        byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(targetGlow * 255f), 0, 255);
-                        __result.r = (byte)Mathf.Max(__result.r, light);
-                        __result.g = (byte)Mathf.Max(__result.g, light);
-                        __result.b = (byte)Mathf.Max(__result.b, light);
-                        __result.a = (byte)Mathf.Max(__result.a, (byte)255);
-                    }
-                }
+                __result.r = (byte)Mathf.Max(__result.r, light);
+                __result.g = (byte)Mathf.Max(__result.g, light);
+                __result.b = (byte)Mathf.Max(__result.b, light);
+                __result.a = (byte)Mathf.Max(__result.a, (byte)255);
             }
         }
     }

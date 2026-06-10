@@ -1461,10 +1461,6 @@ namespace FullyAutomaticOmniCrafter
         {
             if (glow <= 0f) return color;
 
-            // 只有当环境亮度不足时才添加光照效果
-            float ambient = (map != null && !c.Roofed(map)) ? map.skyManager.CurSkyGlow : 0f;
-            if (ambient >= glow) return color;
-
             byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(glow * 255f), 0, 255);
             color.r = Math.Max(color.r, light);
             color.g = Math.Max(color.g, light);
