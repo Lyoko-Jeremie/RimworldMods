@@ -1056,10 +1056,15 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < networks.Count; i++)
             {
                 OmniForceFieldDomeNetwork network = networks[i];
+                CompOmniForceFieldDome primaryDome = network.PrimaryDome;
+                bool forceDirtyAll = primaryDome != null && primaryDome.GlowMode == OmniForceFieldDomeGlowMode.Lamp;
+
                 for (int j = 0; j < network.Cells.Count; j++)
                 {
                     IntVec3 c = network.Cells[j];
-                    if (AllowsSkyLightThroughRoof(c))
+                    // 在 Lamp 模式下，即使被屋顶遮挡也需要刷新，因为补丁逻辑依赖于 roofed 判定和 skyGlow。
+                    // 实际上，只要补丁逻辑中用到了 skyGlow 且该单元格在穹顶范围内，就需要刷新。
+                    if (forceDirtyAll || AllowsSkyLightThroughRoof(c))
                     {
                         map.glowGrid.DirtyCell(c);
                     }

@@ -338,7 +338,8 @@ namespace FullyAutomaticOmniCrafter
         }
         
         private float cachedSkyGlow = -1f;
-        private const int SkyGlowDirtyTickInterval = 250;
+        private const int SkyGlowDirtyTickInterval = 30; // 降低到30tick，约0.5秒
+        private const float SkyGlowDirtyThreshold = 0.005f;
 
         public override void CompTick()
         {
@@ -351,7 +352,7 @@ namespace FullyAutomaticOmniCrafter
             if (lightingMode != LightingMode.None && parent.IsHashIntervalTick(SkyGlowDirtyTickInterval))
             {
                 float curSkyGlow = parent.Map.skyManager.CurSkyGlow;
-                if (Mathf.Abs(cachedSkyGlow - curSkyGlow) > 0.005f)
+                if (Mathf.Abs(cachedSkyGlow - curSkyGlow) > SkyGlowDirtyThreshold)
                 {
                     cachedSkyGlow = curSkyGlow;
                     DirtyGlowInArea(parent.Map);
