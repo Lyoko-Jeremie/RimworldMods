@@ -11,6 +11,25 @@ namespace FullyAutomaticOmniCrafter
     {
         public bool? isStatic;
 
+        // 默认复用状态分配终端已有的“OmniEnergyDefenseField_Protect”hediff；XML 可直接传 HediffDef 或 defName。
+        public bool applyFriendlyHediff = true;
+        public bool removeFriendlyHediffWhenLeaving = true;
+        public string friendlyHediffDefName = "OmniEnergyDefenseField_Protect";
+
+        private HediffDef friendlyHediffDefToUseCached;
+
+        public HediffDef FriendlyHediffDefToUse
+        {
+            get
+            {
+                if (friendlyHediffDefToUseCached == null && !friendlyHediffDefName.NullOrEmpty())
+                {
+                    friendlyHediffDefToUseCached = HediffDef.Named(friendlyHediffDefName);
+                }
+                return friendlyHediffDefToUseCached;
+            }
+        }
+
         public CompProperties_OmniProjectileInterceptor()
         {
             compClass = typeof(CompOmniProjectileInterceptor);
@@ -368,12 +387,98 @@ namespace FullyAutomaticOmniCrafter
     {
         private List<CompOmniProjectileInterceptor> staticInterceptors = new List<CompOmniProjectileInterceptor>();
         private List<CompOmniProjectileInterceptor> mobileInterceptors = new List<CompOmniProjectileInterceptor>();
+        private List<CompOmniProjectileInterceptor> allInterceptors = new List<CompOmniProjectileInterceptor>();
+        private HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
+        private static List<Pawn> tmpPawnsToRemove = new List<Pawn>();
         private CompOmniProjectileInterceptor[] cellCache;
         private bool cacheDirty = true;
 
         public OmniInterceptorTracker(Map map) : base(map)
         {
             cellCache = new CompOmniProjectileInterceptor[map.cellIndices.NumGridCells];
+        }
+
+        public override void MapComponentTick()
+        {
+            base.MapComponentTick();
+            if (map.IsHashIntervalTick(60))
+            {
+                MaintainPawnEffects();
+            }
+        }
+
+        private void MaintainPawnEffects()
+        {
+            tmpPawnsToRemove.Clear();
+            foreach (Pawn pawn in pawnsGrantedHediff)
+            {
+                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsCellProtected(pawn.Position, pawn, out _))
+                {
+                    tmpPawnsToRemove.Add(pawn);
+                }
+            }
+            for (int i = 0; i < tmpPawnsToRemove.Count; i++)
+            {
+                Pawn pawn = tmpPawnsToRemove[i];
+                pawnsGrantedHediff.Remove(pawn);
+                RemovePawnEffects(pawn);
+            }
+
+            IReadOnlyList<Pawn> pawns = map.mapPawns.AllPawnsSpawned;
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn == null || pawn.health == null || !IsFriendlyPawn(pawn))
+                {
+                    continue;
+                }
+
+                if (IsCellProtected(pawn.Position, pawn, out var protector))
+                {
+                    CompProperties_OmniProjectileInterceptor props = protector.Props;
+                    HediffDef hediffDef = props?.FriendlyHediffDefToUse;
+                    if (props == null || !props.applyFriendlyHediff || hediffDef == null)
+                    {
+                        continue;
+                    }
+
+                    if (pawn.health.hediffSet.GetFirstHediffOfDef(hediffDef) == null)
+                    {
+                        pawn.health.AddHediff(hediffDef);
+                    }
+                    pawnsGrantedHediff.Add(pawn);
+                }
+            }
+        }
+
+        private void RemovePawnEffects(Pawn pawn)
+        {
+            if (pawn == null || pawn.health == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < allInterceptors.Count; i++)
+            {
+                CompProperties_OmniProjectileInterceptor props = allInterceptors[i]?.Props;
+                HediffDef hediffDef = props?.FriendlyHediffDefToUse;
+                if (props == null || !props.removeFriendlyHediffWhenLeaving || hediffDef == null)
+                {
+                    continue;
+                }
+
+                Hediff hediff = pawn.health.hediffSet.GetFirstHediffOfDef(hediffDef);
+                if (hediff != null)
+                {
+                    pawn.health.RemoveHediff(hediff);
+                }
+            }
+        }
+
+        private static bool IsFriendlyPawn(Pawn pawn)
+        {
+            if (pawn == null) return false;
+            return pawn.Faction == Faction.OfPlayer || pawn.HostFaction == Faction.OfPlayer || pawn.IsPrisonerOfColony;
         }
 
         public override void MapComponentUpdate()
@@ -410,6 +515,10 @@ namespace FullyAutomaticOmniCrafter
 
         public void Register(CompOmniProjectileInterceptor interceptor)
         {
+            if (!allInterceptors.Contains(interceptor))
+            {
+                allInterceptors.Add(interceptor);
+            }
             if (interceptor.IsStatic)
             {
                 if (!staticInterceptors.Contains(interceptor))
@@ -429,6 +538,7 @@ namespace FullyAutomaticOmniCrafter
 
         public void Deregister(CompOmniProjectileInterceptor interceptor)
         {
+            allInterceptors.Remove(interceptor);
             if (interceptor.IsStatic)
             {
                 if (staticInterceptors.Remove(interceptor))

@@ -13,6 +13,8 @@ namespace FullyAutomaticOmniCrafter
     {
         private static Dictionary<Map, List<CompBiosphere>> biosphereComps = new Dictionary<Map, List<CompBiosphere>>();
         private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
+        private static HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
+        private static List<Pawn> tmpPawnsToRemove = new List<Pawn>();
 
         public static List<CompBiosphere> GetCompsForMap(Map map)
         {
@@ -118,6 +120,95 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
             return null;
+        }
+
+        public static void MaintainPawnEffects(Map map)
+        {
+            if (map == null || !biosphereComps.ContainsKey(map)) return;
+
+            tmpPawnsToRemove.Clear();
+            foreach (Pawn pawn in pawnsGrantedHediff)
+            {
+                if (pawn == null || !pawn.Spawned || pawn.Map != map || GetBiosphereAt(pawn.Map, pawn.Position) == null)
+                {
+                    tmpPawnsToRemove.Add(pawn);
+                }
+            }
+            for (int i = 0; i < tmpPawnsToRemove.Count; i++)
+            {
+                Pawn pawn = tmpPawnsToRemove[i];
+                pawnsGrantedHediff.Remove(pawn);
+                RemovePawnEffects(pawn, map);
+            }
+
+            IReadOnlyList<Pawn> pawns = map.mapPawns.AllPawnsSpawned;
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn == null || pawn.health == null || !IsFriendlyPawn(pawn))
+                {
+                    continue;
+                }
+
+                var biosphere = GetBiosphereAt(pawn.Map, pawn.Position);
+                if (biosphere != null)
+                {
+                    CompProperties_CompBiosphere props = biosphere.Props;
+                    HediffDef hediffDef = props?.FriendlyHediffDefToUse;
+                    if (props == null || !props.applyFriendlyHediff || hediffDef == null)
+                    {
+                        continue;
+                    }
+
+                    if (pawn.health.hediffSet.GetFirstHediffOfDef(hediffDef) == null)
+                    {
+                        pawn.health.AddHediff(hediffDef);
+                    }
+                    pawnsGrantedHediff.Add(pawn);
+                }
+            }
+        }
+
+        private static void RemovePawnEffects(Pawn pawn, Map map)
+        {
+            if (pawn == null || pawn.health == null || map == null || !biosphereComps.ContainsKey(map))
+            {
+                return;
+            }
+
+            foreach (var comp in biosphereComps[map])
+            {
+                CompProperties_CompBiosphere props = comp?.Props;
+                HediffDef hediffDef = props?.FriendlyHediffDefToUse;
+                if (props == null || !props.removeFriendlyHediffWhenLeaving || hediffDef == null)
+                {
+                    continue;
+                }
+
+                Hediff hediff = pawn.health.hediffSet.GetFirstHediffOfDef(hediffDef);
+                if (hediff != null)
+                {
+                    pawn.health.RemoveHediff(hediff);
+                }
+            }
+        }
+
+        private static bool IsFriendlyPawn(Pawn pawn)
+        {
+            if (pawn == null) return false;
+            return pawn.Faction == Faction.OfPlayer || pawn.HostFaction == Faction.OfPlayer || pawn.IsPrisonerOfColony;
+        }
+    }
+
+    [HarmonyPatch(typeof(Map), nameof(Map.MapPostTick))]
+    public static class Patch_Map_PostTick_Biosphere
+    {
+        public static void Postfix(Map __instance)
+        {
+            if (__instance.IsHashIntervalTick(60))
+            {
+                CompBiosphereManager.MaintainPawnEffects(__instance);
+            }
         }
     }
 

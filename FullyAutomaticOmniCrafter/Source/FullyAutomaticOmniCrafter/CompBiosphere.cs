@@ -9,6 +9,25 @@ namespace FullyAutomaticOmniCrafter
 {
     public class CompProperties_CompBiosphere : CompProperties
     {
+        // 默认复用状态分配终端已有的“OmniBiosphere_Protect”hediff；XML 可直接传 HediffDef 或 defName。
+        public bool applyFriendlyHediff = true;
+        public bool removeFriendlyHediffWhenLeaving = true;
+        public string friendlyHediffDefName = "OmniBiosphere_Protect";
+
+        private HediffDef friendlyHediffDefToUseCached;
+
+        public HediffDef FriendlyHediffDefToUse
+        {
+            get
+            {
+                if (friendlyHediffDefToUseCached == null && !friendlyHediffDefName.NullOrEmpty())
+                {
+                    friendlyHediffDefToUseCached = HediffDef.Named(friendlyHediffDefName);
+                }
+                return friendlyHediffDefToUseCached;
+            }
+        }
+
         public CompProperties_CompBiosphere()
         {
             this.compClass = typeof(CompBiosphere);
@@ -57,6 +76,7 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompBiosphere : ThingComp
     {
+        public CompProperties_CompBiosphere Props => (CompProperties_CompBiosphere)props;
         public string areaName = null; // 选定的活动区名称
         
         private PlantGrowthMode _growthMode = PlantGrowthMode.Normal;
