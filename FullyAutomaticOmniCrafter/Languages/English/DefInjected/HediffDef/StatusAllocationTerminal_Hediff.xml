@@ -10,4 +10,10 @@
     <OmniForceFieldDome_Protect.label>Force Field Dome Protect</OmniForceFieldDome_Protect.label>
     <OmniForceFieldDome_Protect.description>Force Field Dome Protect</OmniForceFieldDome_Protect.description>
 
+    <OmniEnergyDefenseField_Protect.label>Energy Defense Field Protect</OmniEnergyDefenseField_Protect.label>
+    <OmniEnergyDefenseField_Protect.description>Energy Defense Field Protect</OmniEnergyDefenseField_Protect.description>
+
+    <OmniBiosphere_Protect.label>Biosphere Protect</OmniBiosphere_Protect.label>
+    <OmniBiosphere_Protect.description>Biosphere Protect</OmniBiosphere_Protect.description>
+
 </LanguageData>

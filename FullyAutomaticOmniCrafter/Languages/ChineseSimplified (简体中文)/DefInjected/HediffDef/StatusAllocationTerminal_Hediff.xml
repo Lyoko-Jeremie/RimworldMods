@@ -10,4 +10,10 @@
     <OmniForceFieldDome_Protect.label>立场穹顶保护</OmniForceFieldDome_Protect.label>
     <OmniForceFieldDome_Protect.description>立场穹顶保护</OmniForceFieldDome_Protect.description>
 
+    <OmniEnergyDefenseField_Protect.label>能量护盾保护</OmniEnergyDefenseField_Protect.label>
+    <OmniEnergyDefenseField_Protect.description>能量护盾保护</OmniEnergyDefenseField_Protect.description>
+
+    <OmniBiosphere_Protect.label>生物圈保护</OmniBiosphere_Protect.label>
+    <OmniBiosphere_Protect.description>生物圈保护</OmniBiosphere_Protect.description>
+
 </LanguageData>
