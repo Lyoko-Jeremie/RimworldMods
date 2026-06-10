@@ -412,7 +412,7 @@ namespace FullyAutomaticOmniCrafter
             tmpPawnsToRemove.Clear();
             foreach (Pawn pawn in pawnsGrantedHediff)
             {
-                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsCellProtected(pawn.Position, pawn, out _))
+                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsCellWithinShield(pawn.Position, out _))
                 {
                     tmpPawnsToRemove.Add(pawn);
                 }
@@ -433,7 +433,7 @@ namespace FullyAutomaticOmniCrafter
                     continue;
                 }
 
-                if (IsCellProtected(pawn.Position, pawn, out var protector))
+                if (IsCellWithinShield(pawn.Position, out var protector))
                 {
                     // 排除 OmniForceFieldDome，它有自己的网络和 Hediff 维护逻辑
                     if (protector is CompOmniForceFieldDome)
@@ -643,6 +643,16 @@ namespace FullyAutomaticOmniCrafter
 
         public bool IsCellProtected(IntVec3 c, Thing searcher, out CompOmniProjectileInterceptor protector)
         {
+            return IsCellProtectedInternal(c, searcher, true, out protector);
+        }
+
+        public bool IsCellWithinShield(IntVec3 c, out CompOmniProjectileInterceptor protector)
+        {
+            return IsCellProtectedInternal(c, null, false, out protector);
+        }
+
+        private bool IsCellProtectedInternal(IntVec3 c, Thing searcher, bool checkHostility, out CompOmniProjectileInterceptor protector)
+        {
             protector = null;
             if (!c.InBounds(map)) return false;
 
@@ -653,25 +663,29 @@ namespace FullyAutomaticOmniCrafter
 
             // 1. 检查固定护盾缓存 O(1)
             var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
-            if (staticInter != null && staticInter.Active && staticInter.IsEnemy(searcher))
+            if (staticInter != null && staticInter.Active)
             {
-                protector = staticInter;
-                return true;
+                if (!checkHostility || staticInter.IsEnemy(searcher))
+                {
+                    protector = staticInter;
+                    return true;
+                }
             }
 
             // 2. 检查移动护盾 O(N_mobile)
-            // 只有当存在移动护盾时才进行检查
             int mobileCount = mobileInterceptors.Count;
             if (mobileCount > 0)
             {
                 for (int i = 0; i < mobileCount; i++)
                 {
                     var inter = mobileInterceptors[i];
-                    // 先检查 Active 属性（通常比几何判定快）
-                    if (inter.Active && inter.IsCellInside(c) && inter.IsEnemy(searcher))
+                    if (inter.Active && inter.IsCellInside(c))
                     {
-                        protector = inter;
-                        return true;
+                        if (!checkHostility || inter.IsEnemy(searcher))
+                        {
+                            protector = inter;
+                            return true;
+                        }
                     }
                 }
             }
