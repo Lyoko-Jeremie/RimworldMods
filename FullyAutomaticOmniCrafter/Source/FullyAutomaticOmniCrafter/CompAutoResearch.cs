@@ -45,7 +45,7 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            ResearchProjectDef currentProj = Traverse.Create(Find.ResearchManager).Field("currentProj").GetValue<ResearchProjectDef>();
+            ResearchProjectDef currentProj = Find.ResearchManager.GetProject();
             if (currentProj == null || currentProj.IsFinished)
             {
                 return;
@@ -66,7 +66,9 @@ namespace FullyAutomaticOmniCrafter
             if (consumedWd > 0)
             {
                 float pointsToGained = consumedWd * ratio;
-                Find.ResearchManager.ResearchPerformed(pointsToGained, null);
+                // 使用 AddProgress 绕过 ResearchPerformed 中的 0.00825 倍率，
+                // 使得 config 中的 researchPoints 直接对应 UI 上的研究点数。
+                Find.ResearchManager.AddProgress(currentProj, pointsToGained, null);
             }
         }
 
@@ -124,7 +126,7 @@ namespace FullyAutomaticOmniCrafter
 
         public override string CompInspectStringExtra()
         {
-            ResearchProjectDef currentProj = Traverse.Create(Find.ResearchManager).Field("currentProj").GetValue<ResearchProjectDef>();
+            ResearchProjectDef currentProj = Find.ResearchManager.GetProject();
             if (currentProj != null)
             {
                 return "OmniCrafter_AutoResearching".Translate(currentProj.LabelCap);
