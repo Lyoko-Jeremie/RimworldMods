@@ -9,6 +9,9 @@ namespace FullyAutomaticOmniCrafter
 {
     public class CompProperties_AutoResearch : CompProperties
     {
+        public float energyCost = 1f;
+        public float researchPoints = 100f;
+
         public CompProperties_AutoResearch()
         {
             this.compClass = typeof(CompAutoResearch);
@@ -27,7 +30,6 @@ namespace FullyAutomaticOmniCrafter
         public CompProperties_AutoResearch Props => (CompProperties_AutoResearch)props;
         private CompPowerTrader powerComp;
 
-        // 在建筑生成时获取其电力组件
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
@@ -38,19 +40,96 @@ namespace FullyAutomaticOmniCrafter
         {
             base.CompTick();
 
-            // 检查：如果建筑有电力组件且当前没电，则停止工作
             if (powerComp != null && !powerComp.PowerOn)
             {
                 return;
             }
 
-            // 获取游戏当前选定的研究项目
-            ResearchProjectDef currentProj = Find.ResearchManager.currentProj;
+            ResearchProjectDef currentProj = Traverse.Create(Find.ResearchManager).Field("currentProj").GetValue<ResearchProjectDef>();
+            if (currentProj == null || currentProj.IsFinished)
+            {
+                return;
+            }
+
+            float pointsNeeded = currentProj.baseCost - Find.ResearchManager.GetProgress(currentProj);
+            if (pointsNeeded <= 0) return;
+
+            float ratio = Props.researchPoints / Mathf.Max(Props.energyCost, 0.0001f);
+            float energyNeededWd = pointsNeeded / ratio;
+            
+            // 每 tick 最多消耗多少电量？如果太快可能一瞬间吸干。
+            // 假设每 tick 最多消耗 10 Wd (即 600,000 W 功率)
+            float maxEnergyPerTickWd = 10f; 
+            float energyToConsumeWd = Mathf.Min(energyNeededWd, maxEnergyPerTickWd);
+
+            float consumedWd = ConsumeEnergyFromNet(energyToConsumeWd);
+            if (consumedWd > 0)
+            {
+                float pointsToGained = consumedWd * ratio;
+                Find.ResearchManager.ResearchPerformed(pointsToGained, null);
+            }
+        }
+
+        private float ConsumeEnergyFromNet(float amountWd)
+        {
+            PowerNet net = this.parent.GetComp<CompPower>()?.PowerNet;
+            if (net == null) return 0f;
+
+            float remaining = amountWd;
+
+            // 1. CompMatterEnergyConverterBattery
+            remaining -= DrawFromBatteries<CompMatterEnergyConverterBattery>(net, remaining);
+            if (remaining <= 0.0001f) return amountWd;
+
+            // 2. CompOmniCrafterSmartInfiniteBattery
+            remaining -= DrawFromBatteries<CompOmniCrafterSmartInfiniteBattery>(net, remaining);
+            if (remaining <= 0.0001f) return amountWd;
+
+            // 3. CompPowerBattery (Normal)
+            remaining -= DrawFromBatteries<CompPowerBattery>(net, remaining, (b) => 
+                !(b is CompMatterEnergyConverterBattery) && !(b is CompOmniCrafterSmartInfiniteBattery));
+
+            return amountWd - remaining;
+        }
+
+        private float DrawFromBatteries<T>(PowerNet net, float amountWd, System.Predicate<T> filter = null) where T : CompPowerBattery
+        {
+            float drawn = 0f;
+            foreach (var comp in net.batteryComps)
+            {
+                if (comp is T battery && (filter == null || filter(battery)))
+                {
+                    float canDraw = GetStoredEnergy(battery);
+                    float toDraw = Mathf.Min(amountWd - drawn, canDraw);
+                    if (toDraw > 0)
+                    {
+                        battery.DrawPower(toDraw);
+                        drawn += toDraw;
+                    }
+                }
+                if (drawn >= amountWd - 0.0001f) break;
+            }
+            return drawn;
+        }
+
+        private float GetStoredEnergy(CompPowerBattery battery)
+        {
+            // 对于我们的特殊电池，由于有补丁拦截了 StoredEnergy getter（比如开关关闭时），
+            // 我们需要确定是否应该直接读取字段。
+            // 但如果是在电网中，batteryComps 通常是连接着的。
+            // 不过 CompOmniCrafterSmartInfiniteBattery 的补丁在开关关闭时会返回 0。
+            // 我们这里遵循补丁逻辑即可，如果它说没电（因为关了），那我们就不抽。
+            return battery.StoredEnergy;
+        }
+
+        public override string CompInspectStringExtra()
+        {
+            ResearchProjectDef currentProj = Traverse.Create(Find.ResearchManager).Field("currentProj").GetValue<ResearchProjectDef>();
             if (currentProj != null)
             {
-                // TODO 先计算还需要多少研究点数，再计算需要扣除的电量，再扣除电量，最后增加研究点数
-
+                return "OmniCrafter_AutoResearching".Translate(currentProj.LabelCap);
             }
+            return base.CompInspectStringExtra();
         }
     }
 }
