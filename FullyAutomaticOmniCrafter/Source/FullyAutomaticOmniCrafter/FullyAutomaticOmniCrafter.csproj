@@ -367,6 +367,7 @@
     <Compile Include="AutoRepair.cs" />
     <Compile Include="CompAutomatedCapturer.cs" />
     <Compile Include="CompAutoPainter.cs" />
+    <Compile Include="CompAutoResearch.cs" />
     <Compile Include="CompAutoRoofer.cs" />
     <Compile Include="CompAutoSmoother.cs" />
     <Compile Include="CompBiosphere.cs" />
