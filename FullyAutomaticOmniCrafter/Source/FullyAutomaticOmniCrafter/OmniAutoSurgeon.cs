@@ -1134,10 +1134,15 @@ namespace FullyAutomaticOmniCrafter
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(64f, parts.Count * 34f));
 
             Widgets.BeginScrollView(outRect, ref leftScrollPos, viewRect);
-            float curY = 0f;
-            for (int i = 0; i < parts.Count; i++)
+            
+            float rowHeight = 34f;
+            int firstIndex = Mathf.Max(0, Mathf.FloorToInt(leftScrollPos.y / rowHeight));
+            int lastIndex = Mathf.Min(parts.Count, Mathf.CeilToInt((leftScrollPos.y + outRect.height) / rowHeight));
+
+            for (int i = firstIndex; i < lastIndex; i++)
             {
                 BodyPartRecord part = parts[i];
+                float curY = i * rowHeight;
                 Rect rowRect = new Rect(0f, curY, viewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
 
@@ -1158,8 +1163,6 @@ namespace FullyAutomaticOmniCrafter
                 {
                     OpenRemoveOperationMenuForPart(part);
                 }
-
-                curY += 34f;
             }
             Widgets.EndScrollView();
         }
@@ -1200,9 +1203,13 @@ namespace FullyAutomaticOmniCrafter
             Rect listViewRect = new Rect(0f, 0f, listOutRect.width - 16f, Mathf.Max(60f, workingOperations.Count * 34f));
             Widgets.BeginScrollView(listOutRect, ref rightScrollPos, listViewRect);
 
-            float curY = 0f;
-            for (int i = 0; i < workingOperations.Count; i++)
+            float rowHeight = 34f;
+            int firstIndex = Mathf.Max(0, Mathf.FloorToInt(rightScrollPos.y / rowHeight));
+            int lastIndex = Mathf.Min(workingOperations.Count, Mathf.CeilToInt((rightScrollPos.y + listOutRect.height) / rowHeight));
+
+            for (int i = firstIndex; i < lastIndex; i++)
             {
+                float curY = i * rowHeight;
                 Rect rowRect = new Rect(0f, curY, listViewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
 
@@ -1230,9 +1237,10 @@ namespace FullyAutomaticOmniCrafter
                     workingOperations.RemoveAt(i);
                     i--;
                     SyncOperations();
+                    // Since we removed an element, we should break and re-render next frame or adjust indices.
+                    // But in RimWorld UI, it's safer to break if the list changes during iteration.
+                    break;
                 }
-
-                curY += 34f;
             }
             Widgets.EndScrollView();
 
@@ -1547,10 +1555,14 @@ namespace FullyAutomaticOmniCrafter
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(40f, cached.Count * 34f));
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
 
-            float y = 0f;
-            for (int i = 0; i < cached.Count; i++)
+            float rowHeight = 34f;
+            int firstIndex = Mathf.Max(0, Mathf.FloorToInt(scrollPos.y / rowHeight));
+            int lastIndex = Mathf.Min(cached.Count, Mathf.CeilToInt((scrollPos.y + outRect.height) / rowHeight));
+
+            for (int i = firstIndex; i < lastIndex; i++)
             {
                 RecipeCandidate c = cached[i];
+                float y = i * rowHeight;
                 Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
                 Widgets.Label(new Rect(6f, y + 5f, viewRect.width - 12f, 22f), c.label);
@@ -1559,7 +1571,6 @@ namespace FullyAutomaticOmniCrafter
                     onSelected?.Invoke(OmniSurgeonOperation.CreateRecipe(c.recipe, c.part));
                     Close();
                 }
-                y += 34f;
             }
             Widgets.EndScrollView();
         }
@@ -1648,10 +1659,14 @@ namespace FullyAutomaticOmniCrafter
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(40f, cached.Count * 34f));
             Widgets.BeginScrollView(outRect, ref scrollPos, viewRect);
 
-            float y = 0f;
-            for (int i = 0; i < cached.Count; i++)
+            float rowHeight = 34f;
+            int firstIndex = Mathf.Max(0, Mathf.FloorToInt(scrollPos.y / rowHeight));
+            int lastIndex = Mathf.Min(cached.Count, Mathf.CeilToInt((scrollPos.y + outRect.height) / rowHeight));
+
+            for (int i = firstIndex; i < lastIndex; i++)
             {
                 HediffDef def = cached[i];
+                float y = i * rowHeight;
                 Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
                 Widgets.Label(new Rect(6f, y + 5f, viewRect.width - 12f, 22f), def.LabelCap);
@@ -1659,7 +1674,6 @@ namespace FullyAutomaticOmniCrafter
                 {
                     OpenPartMenu(def);
                 }
-                y += 34f;
             }
 
             Widgets.EndScrollView();
