@@ -40,7 +40,7 @@ namespace FullyAutomaticOmniCrafter
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref active, "active", false);
+            Scribe_Values.Look(ref active, "active", true);
         }
         
         public override void CompTick()
@@ -145,10 +145,10 @@ namespace FullyAutomaticOmniCrafter
 
             yield return new Command_Toggle
             {
-                defaultLabel = "OmniCrafter_AutoResearch_Pause".Translate(),
-                defaultDesc = "OmniCrafter_AutoResearch_PauseDesc".Translate(),
+                defaultLabel = "OmniCrafter_AutoResearch_Active".Translate(),
+                defaultDesc = "OmniCrafter_AutoResearch_ActiveDesc".Translate(),
                 icon = AutoResearchTex.IconModifyDialog,
-                isActive = () => !active,
+                isActive = () => active,
                 toggleAction = () => active = !active
             };
         }
@@ -172,7 +172,7 @@ namespace FullyAutomaticOmniCrafter
     public static class AutoResearchTex
     {
         public static readonly Texture2D IconModifyDialog =
-            ContentFinder<Texture2D>.Get("UI/Commands/AutoResearch_Pause", true) ??
+            ContentFinder<Texture2D>.Get("UI/Commands/AutoResearch_Active", true) ??
             BaseContent.WhiteTex;
     }
 }
