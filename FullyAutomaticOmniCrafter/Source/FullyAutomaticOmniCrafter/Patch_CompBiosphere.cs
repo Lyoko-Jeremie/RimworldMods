@@ -13,6 +13,7 @@ namespace FullyAutomaticOmniCrafter
     {
         private static Dictionary<Map, List<CompBiosphere>> biosphereComps = new Dictionary<Map, List<CompBiosphere>>();
         private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
+        private static Dictionary<Map, CompBiosphere[]> biosphereGrid = new Dictionary<Map, CompBiosphere[]>();
         private static HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
         private static List<Pawn> tmpPawnsToRemove = new List<Pawn>();
 
@@ -28,15 +29,23 @@ namespace FullyAutomaticOmniCrafter
         public static void Register(CompBiosphere comp)
         {
             if (comp.parent.Map == null) return;
-            if (!biosphereComps.ContainsKey(comp.parent.Map))
+            Map map = comp.parent.Map;
+            if (!biosphereComps.ContainsKey(map))
             {
-                biosphereComps[comp.parent.Map] = new List<CompBiosphere>();
+                biosphereComps[map] = new List<CompBiosphere>();
             }
-            if (!biosphereComps[comp.parent.Map].Contains(comp))
+            if (!biosphereComps[map].Contains(comp))
             {
-                biosphereComps[comp.parent.Map].Add(comp);
+                biosphereComps[map].Add(comp);
             }
             UpdateAreaMapping(comp, null, comp.SelectedArea);
+            
+            // 注册时，如果区域不为空，则重建网格
+            Area area = comp.SelectedArea;
+            if (area != null)
+            {
+                RebuildGridForArea(map, area);
+            }
         }
 
         public static void Deregister(CompBiosphere comp, Map map)
@@ -46,6 +55,13 @@ namespace FullyAutomaticOmniCrafter
                 biosphereComps[map].Remove(comp);
             }
             UpdateAreaMapping(comp, comp.SelectedArea, null);
+
+            // 注销时，重建受影响区域的网格
+            Area area = comp.SelectedArea;
+            if (map != null && area != null)
+            {
+                RebuildGridForArea(map, area);
+            }
         }
 
         public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea)
@@ -77,6 +93,50 @@ namespace FullyAutomaticOmniCrafter
                     areaToBiosphere[newArea].Add(comp);
                 }
             }
+
+            // 当区域映射变化时，需要重建旧区域和新区域的网格缓存
+            Map map = comp.parent.Map;
+            if (map != null)
+            {
+                if (oldArea != null) RebuildGridForArea(map, oldArea);
+                if (newArea != null) RebuildGridForArea(map, newArea);
+            }
+        }
+
+        public static void RebuildGridForArea(Map map, Area area)
+        {
+            if (map == null || area == null) return;
+            foreach (IntVec3 cell in area.ActiveCells)
+            {
+                RebuildGridForCell(map, cell);
+            }
+        }
+
+        public static void RebuildGridForCell(Map map, IntVec3 cell)
+        {
+            if (map == null) return;
+            if (!biosphereGrid.TryGetValue(map, out var grid))
+            {
+                grid = new CompBiosphere[map.cellIndices.NumGridCells];
+                biosphereGrid[map] = grid;
+            }
+
+            int index = map.cellIndices.CellToIndex(cell);
+            grid[index] = null;
+
+            if (biosphereComps.TryGetValue(map, out var comps))
+            {
+                // 优先级策略：列表后面的（较新注册的）覆盖前面的
+                for (int i = comps.Count - 1; i >= 0; i--)
+                {
+                    var comp = comps[i];
+                    if (comp.parent.Spawned && comp.SelectedArea != null && comp.SelectedArea[cell])
+                    {
+                        grid[index] = comp;
+                        break;
+                    }
+                }
+            }
         }
 
         public static void NotifySettingsChanged(CompBiosphere source)
@@ -96,6 +156,12 @@ namespace FullyAutomaticOmniCrafter
 
         public static void NotifyAreaChanged(Area area, IntVec3 cell)
         {
+            // 当区域内的格点发生变化（Area.Set），重建该格点的网格缓存
+            if (area.Map != null)
+            {
+                RebuildGridForCell(area.Map, cell);
+            }
+
             if (areaToBiosphere.TryGetValue(area, out var comps))
             {
                 foreach (var comp in comps)
@@ -110,13 +176,13 @@ namespace FullyAutomaticOmniCrafter
 
         public static CompBiosphere GetBiosphereAt(Map map, IntVec3 cell)
         {
-            if (map == null || !biosphereComps.ContainsKey(map)) return null;
-            foreach (var comp in biosphereComps[map])
+            if (map == null) return null;
+            if (biosphereGrid.TryGetValue(map, out var grid))
             {
-                Area area = comp.SelectedArea;
-                if (area != null && area.ActiveCells.Count() > 0 && area[cell])
+                int index = map.cellIndices.CellToIndex(cell);
+                if (index >= 0 && index < grid.Length)
                 {
-                    return comp;
+                    return grid[index];
                 }
             }
             return null;
@@ -239,6 +305,10 @@ namespace FullyAutomaticOmniCrafter
                 {
                     return false; // 停止生长
                 }
+                if (biosphere.growthMode == PlantGrowthMode.Forced)
+                {
+                    __instance.Growth = 1f; // 强制维持满生长
+                }
             }
             return true;
         }
@@ -247,10 +317,12 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(WildPlantSpawner), nameof(WildPlantSpawner.CheckSpawnWildPlantAt))]
     public static class Patch_WildPlantSpawner_CheckSpawnWildPlantAt
     {
+        private static readonly AccessTools.FieldRef<WildPlantSpawner, Map> MapField = 
+            AccessTools.FieldRefAccess<WildPlantSpawner, Map>("map");
+
         public static bool Prefix(WildPlantSpawner __instance, IntVec3 c, ref bool __result)
         {
-            // 通过 AccessTools 获取私有字段 map
-            Map map = (Map)AccessTools.Field(typeof(WildPlantSpawner), "map").GetValue(__instance);
+            Map map = MapField(__instance);
             if (map == null) return true;
 
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
@@ -279,9 +351,13 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.GroundGlowAt))]
     public static class Patch_GlowGrid_GroundGlowAt
     {
+        // 预定义字段引用以消除反射开销
+        private static readonly AccessTools.FieldRef<GlowGrid, Map> MapField = 
+            AccessTools.FieldRefAccess<GlowGrid, Map>("map");
+
         public static void Postfix(GlowGrid __instance, IntVec3 c, bool ignoreSky, ref float __result)
         {
-            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
+            Map map = MapField(__instance);
             if (map == null) return;
 
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
@@ -312,9 +388,12 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.VisualGlowAt), new[] { typeof(IntVec3) })]
     public static class Patch_GlowGrid_VisualGlowAtCell
     {
+        private static readonly AccessTools.FieldRef<GlowGrid, Map> MapField = 
+            AccessTools.FieldRefAccess<GlowGrid, Map>("map");
+
         public static void Postfix(GlowGrid __instance, IntVec3 c, ref Color32 __result)
         {
-            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
+            Map map = MapField(__instance);
             if (map == null) return;
 
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
@@ -335,9 +414,12 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(GlowGrid), nameof(GlowGrid.VisualGlowAt), new[] { typeof(int) })]
     public static class Patch_GlowGrid_VisualGlowAtIndex
     {
+        private static readonly AccessTools.FieldRef<GlowGrid, Map> MapField = 
+            AccessTools.FieldRefAccess<GlowGrid, Map>("map");
+
         public static void Postfix(GlowGrid __instance, int index, ref Color32 __result)
         {
-            Map map = (Map)AccessTools.Field(typeof(GlowGrid), "map").GetValue(__instance);
+            Map map = MapField(__instance);
             if (map == null) return;
 
             IntVec3 c = map.cellIndices.IndexToCell(index);

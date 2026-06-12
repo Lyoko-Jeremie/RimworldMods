@@ -89,6 +89,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     _growthMode = value;
                     CompBiosphereManager.NotifySettingsChanged(this);
+                    ApplyEffects(); // 变更时立即生效一次
                 }
             }
         }
@@ -103,6 +104,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     _controlTemperature = value;
                     CompBiosphereManager.NotifySettingsChanged(this);
+                    ApplyEffects(); // 变更时立即生效一次
                 }
             }
         }
@@ -117,6 +119,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     _targetTemperature = value;
                     CompBiosphereManager.NotifySettingsChanged(this);
+                    ApplyEffects(); // 变更时立即生效一次
                 }
             }
         }
@@ -131,6 +134,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     _ensureNoVacuum = value;
                     CompBiosphereManager.NotifySettingsChanged(this);
+                    ApplyEffects(); // 变更时立即生效一次
                 }
             }
         }
@@ -146,6 +150,7 @@ namespace FullyAutomaticOmniCrafter
                     _lightingMode = value;
                     DirtyGlowInArea(parent.Map);
                     CompBiosphereManager.NotifySettingsChanged(this);
+                    ApplyEffects(); // 变更时立即生效一次
                 }
             }
         }
@@ -193,6 +198,7 @@ namespace FullyAutomaticOmniCrafter
             }
             CompBiosphereManager.Register(this);
             RefreshArea();
+            ApplyEffects(); // 生成时执行一次全量同步
         }
 
         public override void PostDestroy(DestroyMode mode, Map previousMap)
@@ -334,7 +340,7 @@ namespace FullyAutomaticOmniCrafter
         public override void CompTickRare()
         {
             base.CompTickRare();
-            ApplyEffects();
+            // 移除原本每250tick的 ApplyEffects() 全量遍历，改为事件驱动触发。
         }
         
         private float cachedSkyGlow = -1f;
@@ -344,11 +350,8 @@ namespace FullyAutomaticOmniCrafter
         public override void CompTick()
         {
             base.CompTick();
-            if (parent.IsHashIntervalTick(250)) // 每250tick执行一次
-            {
-                ApplyEffects();
-            }
-
+            // 移除原本每250tick的 ApplyEffects() 全量遍历，改为事件驱动触发。
+            
             if (lightingMode != LightingMode.None && parent.IsHashIntervalTick(SkyGlowDirtyTickInterval))
             {
                 float curSkyGlow = parent.Map.skyManager.CurSkyGlow;
@@ -435,6 +438,7 @@ namespace FullyAutomaticOmniCrafter
                 this.targetTemperature = other.targetTemperature;
                 this.ensureNoVacuum = other.ensureNoVacuum;
                 this.lightingMode = other.lightingMode;
+                // 注意：属性 Setter 内部已经调用了 ApplyEffects()
             }
             finally
             {
