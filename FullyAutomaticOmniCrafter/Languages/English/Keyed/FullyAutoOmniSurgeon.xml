@@ -37,4 +37,49 @@
   <FullyAutoOmniSurgeon_FilterEnemies>Enemies</FullyAutoOmniSurgeon_FilterEnemies>
   <FullyAutoOmniSurgeon_FilterDomesticAnimals>Domestic Animals</FullyAutoOmniSurgeon_FilterDomesticAnimals>
   <FullyAutoOmniSurgeon_FilterWildAnimals>Wild Animals</FullyAutoOmniSurgeon_FilterWildAnimals>
+  <FullyAutoOmniSurgeon_SpecialOps>Special Operations</FullyAutoOmniSurgeon_SpecialOps>
+  <FullyAutoOmniSurgeon_RepairAndHeal_Simple>Repair and Heal (Keep Implants)</FullyAutoOmniSurgeon_RepairAndHeal_Simple>
+  <FullyAutoOmniSurgeon_RemoveAllImplants>Remove All Implants and Repair</FullyAutoOmniSurgeon_RemoveAllImplants>
+  <FullyAutoOmniSurgeon_TendAllWounds>Tend All Wounds (Best Quality)</FullyAutoOmniSurgeon_TendAllWounds>
+  <FullyAutoOmniSurgeon_RemoveAnesthesia>Remove Anesthesia</FullyAutoOmniSurgeon_RemoveAnesthesia>
+  <FullyAutoOmniSurgeon_PartStatusTitle>Body Part Status (Quick Add)</FullyAutoOmniSurgeon_PartStatusTitle>
+  <FullyAutoOmniSurgeon_AddImplantShort>+Install</FullyAutoOmniSurgeon_AddImplantShort>
+  <FullyAutoOmniSurgeon_RemoveImplantShort>+Remove</FullyAutoOmniSurgeon_RemoveImplantShort>
+  <FullyAutoOmniSurgeon_SearchAddSurgery>Search and Add Surgery</FullyAutoOmniSurgeon_SearchAddSurgery>
+  <FullyAutoOmniSurgeon_SearchAddImplant>Search and Add Implant</FullyAutoOmniSurgeon_SearchAddImplant>
+  <FullyAutoOmniSurgeon_ExecuteTemplate>Execute Operation Template</FullyAutoOmniSurgeon_ExecuteTemplate>
+  <FullyAutoOmniSurgeon_ClearList>Clear</FullyAutoOmniSurgeon_ClearList>
+  <FullyAutoOmniSurgeon_EmptyListMessage>Operation list is empty.</FullyAutoOmniSurgeon_EmptyListMessage>
+  <FullyAutoOmniSurgeon_UnknownSurgery>Unknown surgery</FullyAutoOmniSurgeon_UnknownSurgery>
+  <FullyAutoOmniSurgeon_InstallHediff>Install {0}</FullyAutoOmniSurgeon_InstallHediff>
+  <FullyAutoOmniSurgeon_RemoveHediff>Remove {0}</FullyAutoOmniSurgeon_RemoveHediff>
+  <FullyAutoOmniSurgeon_UnknownOperation>Unknown Operation</FullyAutoOmniSurgeon_UnknownOperation>
+  <FullyAutoOmniSurgeon_PinyinSearch>Enable Pinyin Search</FullyAutoOmniSurgeon_PinyinSearch>
+  <FullyAutoOmniSurgeon_NotSpecifiedPart>Not specified part</FullyAutoOmniSurgeon_NotSpecifiedPart>
+  <FullyAutoOmniSurgeon_MissingSurgery>Missing surgery: {0}</FullyAutoOmniSurgeon_MissingSurgery>
+  <FullyAutoOmniSurgeon_Unknown>Unknown</FullyAutoOmniSurgeon_Unknown>
+  <FullyAutoOmniSurgeon_InstallArrow>Install {0} -&gt; {1}</FullyAutoOmniSurgeon_InstallArrow>
+  <FullyAutoOmniSurgeon_RemoveArrow>Remove {0} &lt;- {1}</FullyAutoOmniSurgeon_RemoveArrow>
+  <FullyAutoOmniSurgeon_RemoveLabel>Remove: {0}</FullyAutoOmniSurgeon_RemoveLabel>
+  <FullyAutoOmniSurgeon_NotMatchedPart> (No matching part)</FullyAutoOmniSurgeon_NotMatchedPart>
+  <FullyAutoOmniSurgeon_PinyinEnabledMessage>Pinyin search enabled for surgeries.</FullyAutoOmniSurgeon_PinyinEnabledMessage>
+  <FullyAutoOmniSurgeon_AddSurgeryTitle>Add Surgery Operation</FullyAutoOmniSurgeon_AddSurgeryTitle>
+  <FullyAutoOmniSurgeon_PinyinSearchEnabled>Pinyin Search: Enabled</FullyAutoOmniSurgeon_PinyinSearchEnabled>
+  <FullyAutoOmniSurgeon_EnablePinyinSearch>Enable Pinyin Search</FullyAutoOmniSurgeon_EnablePinyinSearch>
+  <FullyAutoOmniSurgeon_AddImplantTitle>Add Implant Operation</FullyAutoOmniSurgeon_AddImplantTitle>
+  <FullyAutoOmniSurgeon_PinyinEnabledMessageImplant>Pinyin search enabled for implants.</FullyAutoOmniSurgeon_PinyinEnabledMessageImplant>
+  <FullyAutoOmniSurgeon_SelectPartFor>Select body part for: {0}</FullyAutoOmniSurgeon_SelectPartFor>
+  <FullyAutoOmniSurgeon_TemplateName>Template Name</FullyAutoOmniSurgeon_TemplateName>
+  <FullyAutoOmniSurgeon_NoAvailableParts>No available body parts.</FullyAutoOmniSurgeon_NoAvailableParts>
+  <FullyAutoOmniSurgeon_RaceRestricted_Simple> (Race Restricted)</FullyAutoOmniSurgeon_RaceRestricted_Simple>
+  <FullyAutoOmniSurgeon_InvalidOperation>Invalid operation</FullyAutoOmniSurgeon_InvalidOperation>
+  <FullyAutoOmniSurgeon_RecipeNotFound>Recipe not found</FullyAutoOmniSurgeon_RecipeNotFound>
+  <FullyAutoOmniSurgeon_BodyPartMissing>Body part missing</FullyAutoOmniSurgeon_BodyPartMissing>
+  <FullyAutoOmniSurgeon_ImplantOrPartMissing>Implant or part missing</FullyAutoOmniSurgeon_ImplantOrPartMissing>
+  <FullyAutoOmniSurgeon_TargetHediffMissing>Target hediff missing</FullyAutoOmniSurgeon_TargetHediffMissing>
+  <FullyAutoOmniSurgeon_OperationsExecuted>Executed {0} operations.</FullyAutoOmniSurgeon_OperationsExecuted>
+  <FullyAutoOmniSurgeon_ExecutionResult>Execution complete: Success {0}, Failed {1}. {2}</FullyAutoOmniSurgeon_ExecutionResult>
+  <FullyAutoOmniSurgeon_LastError>Last error: </FullyAutoOmniSurgeon_LastError>
+  <FullyAutoOmniSurgeon_NoImplantsToAdd>No implants to add.</FullyAutoOmniSurgeon_NoImplantsToAdd>
+  <FullyAutoOmniSurgeon_LabelWithPart>{0} ({1})</FullyAutoOmniSurgeon_LabelWithPart>
 </LanguageData>

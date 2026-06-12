@@ -766,7 +766,7 @@ namespace FullyAutomaticOmniCrafter
             failReason = null;
             if (pawn == null || operation == null)
             {
-                failReason = "Invalid operation";
+                failReason = "FullyAutoOmniSurgeon_InvalidOperation".Translate();
                 return false;
             }
 
@@ -780,13 +780,13 @@ namespace FullyAutomaticOmniCrafter
                         RecipeDef recipe = DefDatabase<RecipeDef>.GetNamedSilentFail(operation.recipeDefName);
                         if (recipe == null || recipe.Worker == null)
                         {
-                            failReason = "Recipe not found";
+                            failReason = "FullyAutoOmniSurgeon_RecipeNotFound".Translate();
                             return false;
                         }
 
                         if (recipe.targetsBodyPart && part == null)
                         {
-                            failReason = "Body part missing";
+                            failReason = "FullyAutoOmniSurgeon_BodyPartMissing".Translate();
                             return false;
                         }
 
@@ -838,7 +838,7 @@ namespace FullyAutomaticOmniCrafter
                         HediffDef hediff = DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName);
                         if (hediff == null || part == null)
                         {
-                            failReason = "Implant or part missing";
+                            failReason = "FullyAutoOmniSurgeon_ImplantOrPartMissing".Translate();
                             return false;
                         }
 
@@ -850,7 +850,7 @@ namespace FullyAutomaticOmniCrafter
                         HediffDef hediff = DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName);
                         if (part == null)
                         {
-                            failReason = "Body part missing";
+                            failReason = "FullyAutoOmniSurgeon_BodyPartMissing".Translate();
                             return false;
                         }
 
@@ -858,7 +858,7 @@ namespace FullyAutomaticOmniCrafter
                             h.Part == part && (hediff == null || h.def == hediff));
                         if (target == null)
                         {
-                            failReason = "Target hediff missing";
+                            failReason = "FullyAutoOmniSurgeon_TargetHediffMissing".Translate();
                             return false;
                         }
 
@@ -1082,25 +1082,25 @@ namespace FullyAutomaticOmniCrafter
                 Find.WindowStack.Add(new FloatMenu(options));
             }
 
-            if (Widgets.ButtonText(new Rect(x - 292f, toolbarY, 136f, 28f), "特殊操作"))
+            if (Widgets.ButtonText(new Rect(x - 292f, toolbarY, 136f, 28f), "FullyAutoOmniSurgeon_SpecialOps".Translate()))
             {
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
-                options.Add(new FloatMenuOption("修复损伤/医疗受伤 (保留植入物)", delegate
+                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_RepairAndHeal_Simple".Translate(), delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRepairAndHeal());
                     SyncOperations();
                 }));
-                options.Add(new FloatMenuOption("卸载所有植入物并修复身体", delegate
+                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_RemoveAllImplants".Translate(), delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRemoveAllImplantsAndRepair());
                     SyncOperations();
                 }));
-                options.Add(new FloatMenuOption("包扎所有伤口 (最高质量)", delegate
+                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_TendAllWounds".Translate(), delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateTendAllWounds());
                     SyncOperations();
                 }));
-                options.Add(new FloatMenuOption("移除麻醉状态", delegate
+                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_RemoveAnesthesia".Translate(), delegate
                 {
                     workingOperations.Add(OmniSurgeonOperation.CreateRemoveAnesthesia());
                     SyncOperations();
@@ -1126,7 +1126,7 @@ namespace FullyAutomaticOmniCrafter
         private void DrawLeftColumn(Rect rect)
         {
             Text.Anchor = TextAnchor.MiddleLeft;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 28f), "身体部位状态（快速加入操作）");
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 28f), "FullyAutoOmniSurgeon_PartStatusTitle".Translate());
             Text.Anchor = TextAnchor.UpperLeft;
 
             Rect outRect = new Rect(rect.x, rect.y + 30f, rect.width, rect.height - 30f);
@@ -1153,13 +1153,13 @@ namespace FullyAutomaticOmniCrafter
                 string status = GetPartStatus(part);
                 Widgets.Label(new Rect(214f, curY + 5f, 260f, 24f), status);
 
-                if (Widgets.ButtonText(new Rect(viewRect.width - 160f, curY + 2f, 74f, 26f), "+植入"))
+                if (Widgets.ButtonText(new Rect(viewRect.width - 160f, curY + 2f, 74f, 26f), "FullyAutoOmniSurgeon_AddImplantShort".Translate()))
                 {
                     OpenInstallOperationMenuForPart(part);
                 }
 
                 bool canRemove = pawn.health.hediffSet.hediffs.Any(h => h.Part == part && (h.def.countsAsAddedPartOrImplant || h.def.addedPartProps != null));
-                if (canRemove && Widgets.ButtonText(new Rect(viewRect.width - 82f, curY + 2f, 78f, 26f), "+移除"))
+                if (canRemove && Widgets.ButtonText(new Rect(viewRect.width - 82f, curY + 2f, 78f, 26f), "FullyAutoOmniSurgeon_RemoveImplantShort".Translate()))
                 {
                     OpenRemoveOperationMenuForPart(part);
                 }
@@ -1172,7 +1172,7 @@ namespace FullyAutomaticOmniCrafter
             float y = rect.y;
             float topButtonWidth = (rect.width - 8f) * 0.5f;
 
-            if (Widgets.ButtonText(new Rect(rect.x, y, topButtonWidth, 30f), "搜索并添加手术"))
+            if (Widgets.ButtonText(new Rect(rect.x, y, topButtonWidth, 30f), "FullyAutoOmniSurgeon_SearchAddSurgery".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_AddRecipeOperation(pawn, delegate(OmniSurgeonOperation op)
                 {
@@ -1184,7 +1184,7 @@ namespace FullyAutomaticOmniCrafter
                 }));
             }
 
-            if (Widgets.ButtonText(new Rect(rect.x + topButtonWidth + 8f, y, topButtonWidth, 30f), "搜索并添加植入"))
+            if (Widgets.ButtonText(new Rect(rect.x + topButtonWidth + 8f, y, topButtonWidth, 30f), "FullyAutoOmniSurgeon_SearchAddImplant".Translate()))
             {
                 Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_AddImplantOperation(pawn, delegate(OmniSurgeonOperation op)
                 {
@@ -1246,12 +1246,12 @@ namespace FullyAutomaticOmniCrafter
 
             Rect bottomRect = new Rect(rect.x, rect.yMax - 36f, rect.width, 32f);
             float executeWidth = rect.width * 0.62f;
-            if (Widgets.ButtonText(new Rect(bottomRect.x, bottomRect.y, executeWidth, bottomRect.height), "执行操作模板"))
+            if (Widgets.ButtonText(new Rect(bottomRect.x, bottomRect.y, executeWidth, bottomRect.height), "FullyAutoOmniSurgeon_ExecuteTemplate".Translate()))
             {
                 ExecuteWorkingOperations();
             }
 
-            if (Widgets.ButtonText(new Rect(bottomRect.x + executeWidth + 8f, bottomRect.y, rect.width - executeWidth - 8f, bottomRect.height), "清空"))
+            if (Widgets.ButtonText(new Rect(bottomRect.x + executeWidth + 8f, bottomRect.y, rect.width - executeWidth - 8f, bottomRect.height), "FullyAutoOmniSurgeon_ClearList".Translate()))
             {
                 workingOperations.Clear();
                 SyncOperations();
@@ -1262,7 +1262,7 @@ namespace FullyAutomaticOmniCrafter
         {
             if (workingOperations.Count == 0)
             {
-                Messages.Message("操作列表为空。", MessageTypeDefOf.RejectInput, false);
+                Messages.Message("FullyAutoOmniSurgeon_EmptyListMessage".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -1286,11 +1286,12 @@ namespace FullyAutomaticOmniCrafter
 
             if (failed == 0)
             {
-                Messages.Message($"已执行 {success} 项操作。", MessageTypeDefOf.TaskCompletion, false);
+                Messages.Message("FullyAutoOmniSurgeon_OperationsExecuted".Translate(success), MessageTypeDefOf.TaskCompletion, false);
             }
             else
             {
-                Messages.Message($"执行完成: 成功 {success}，失败 {failed}。{(lastError.NullOrEmpty() ? string.Empty : "最后错误: " + lastError)}", MessageTypeDefOf.CautionInput, false);
+                string errorPart = lastError.NullOrEmpty() ? string.Empty : "FullyAutoOmniSurgeon_LastError".Translate().ToString() + lastError;
+                Messages.Message("FullyAutoOmniSurgeon_ExecutionResult".Translate(success, failed, errorPart), MessageTypeDefOf.CautionInput, false);
             }
         }
 
@@ -1307,7 +1308,7 @@ namespace FullyAutomaticOmniCrafter
                 bool restricted = Building_FullyAutoOmniSurgeon.IsRestrictedFor(pawn, def, part);
                 if (restricted)
                 {
-                    label = "<color=red>" + label + "（受种族限制）</color>";
+                    label = "<color=red>" + label + "FullyAutoOmniSurgeon_RaceRestricted_Simple".Translate() + "</color>";
                 }
 
                 HediffDef localDef = def;
@@ -1320,7 +1321,7 @@ namespace FullyAutomaticOmniCrafter
 
             if (options.Count == 0)
             {
-                Messages.Message("没有可添加的植入物。", MessageTypeDefOf.RejectInput, false);
+                Messages.Message("FullyAutoOmniSurgeon_NoImplantsToAdd".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -1337,10 +1338,10 @@ namespace FullyAutomaticOmniCrafter
             List<FloatMenuOption> options = new List<FloatMenuOption>();
             for (int i = 0; i < removable.Count; i++)
             {
-                Hediff local = removable[i];
-                options.Add(new FloatMenuOption("移除: " + local.LabelCap, delegate
+                HediffDef hediff = removable[i].def;
+                options.Add(new FloatMenuOption("FullyAutoOmniSurgeon_RemoveLabel".Translate(removable[i].LabelCap), delegate
                 {
-                    workingOperations.Add(OmniSurgeonOperation.CreateRemove(local.def, part));
+                    workingOperations.Add(OmniSurgeonOperation.CreateRemove(hediff, part));
                     SyncOperations();
                 }));
             }
@@ -1350,7 +1351,7 @@ namespace FullyAutomaticOmniCrafter
         private string GetPartStatus(BodyPartRecord part)
         {
             List<Hediff> hediffs = pawn.health.hediffSet.hediffs.Where(h => h.Part == part && h.Visible).ToList();
-            if (hediffs.Count == 0) return "正常";
+            if (hediffs.Count == 0) return "FullyAutoOmniSurgeon_StatusNormal".Translate();
             return string.Join(", ", hediffs.Select(h => h.LabelCap).ToArray());
         }
 
@@ -1371,46 +1372,46 @@ namespace FullyAutomaticOmniCrafter
             if (operation == null) return "<null>";
 
             BodyPartRecord part = surgeon.ResolvePart(pawn, operation);
-            string partName = part != null ? part.LabelCap : (operation.partLabel ?? operation.partDefName ?? "未指定部位");
+            string partName = part != null ? part.LabelCap : (operation.partLabel ?? operation.partDefName ?? "FullyAutoOmniSurgeon_NotSpecifiedPart".Translate().ToString());
 
             if (operation.operationType == OmniSurgeonOperationType.Recipe)
             {
                 RecipeDef recipe = DefDatabase<RecipeDef>.GetNamedSilentFail(operation.recipeDefName);
-                if (recipe == null) return "手术缺失: " + operation.recipeDefName;
+                if (recipe == null) return "FullyAutoOmniSurgeon_MissingSurgery".Translate(operation.recipeDefName);
                 string label = recipe.Worker != null ? recipe.Worker.GetLabelWhenUsedOn(pawn, part).ToString() : recipe.LabelCap.ToString();
-                if (recipe.targetsBodyPart) label += " (" + partName + ")";
+                if (recipe.targetsBodyPart) label = "FullyAutoOmniSurgeon_LabelWithPart".Translate(label, partName);
                 return label;
             }
 
             if (operation.operationType == OmniSurgeonOperationType.RepairAndHeal)
             {
-                return "修复损伤/医疗受伤";
+                return "FullyAutoOmniSurgeon_RepairAndHeal_Simple".Translate();
             }
             if (operation.operationType == OmniSurgeonOperationType.RemoveAllImplantsAndRepair)
             {
-                return "卸载所有植入物并修复身体";
+                return "FullyAutoOmniSurgeon_RemoveAllImplants".Translate();
             }
             if (operation.operationType == OmniSurgeonOperationType.TendAllWounds)
             {
-                return "包扎所有伤口 (最高质量)";
+                return "FullyAutoOmniSurgeon_TendAllWounds".Translate();
             }
             if (operation.operationType == OmniSurgeonOperationType.RemoveAnesthesia)
             {
-                return "移除麻醉状态";
+                return "FullyAutoOmniSurgeon_RemoveAnesthesia".Translate();
             }
 
             HediffDef h = !operation.hediffDefName.NullOrEmpty() ? DefDatabase<HediffDef>.GetNamedSilentFail(operation.hediffDefName) : null;
-            string hLabel = h != null ? h.LabelCap.ToString() : (operation.hediffDefName ?? "未知");
+            string hLabel = h != null ? h.LabelCap.ToString() : (operation.hediffDefName ?? "FullyAutoOmniSurgeon_Unknown".Translate().ToString());
             if (operation.operationType == OmniSurgeonOperationType.InstallImplant)
             {
-                return "安装 " + hLabel + " -> " + partName;
+                return "FullyAutoOmniSurgeon_InstallArrow".Translate(hLabel, partName);
             }
             if (operation.operationType == OmniSurgeonOperationType.RemoveImplant)
             {
-                return "移除 " + hLabel + " <- " + partName;
+                return "FullyAutoOmniSurgeon_RemoveArrow".Translate(hLabel, partName);
             }
 
-            return "未知操作";
+            return "FullyAutoOmniSurgeon_UnknownOperation".Translate();
         }
     }
 
@@ -1474,17 +1475,17 @@ namespace FullyAutomaticOmniCrafter
                         }
                         catch
                         {
-                            opLabel = !recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "Unknown surgery");
+                            opLabel = !recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "FullyAutoOmniSurgeon_UnknownSurgery".Translate());
                         }
 
-                        string label = opLabel + " (" + part.LabelCap + ")";
+                        string label = "FullyAutoOmniSurgeon_LabelWithPart".Translate(opLabel, part.LabelCap);
                         if (!MatchesSearch(recipe, label, lower)) continue;
                         cached.Add(new RecipeCandidate { recipe = recipe, part = part, label = label });
                     }
 
                     if (!anyPart)
                     {
-                        string fallbackLabel = (!recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "Unknown surgery")) + " (未匹配部位)";
+                        string fallbackLabel = (!recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "FullyAutoOmniSurgeon_UnknownSurgery".Translate().ToString())) + "FullyAutoOmniSurgeon_NotMatchedPart".Translate();
                         if (MatchesSearch(recipe, fallbackLabel, lower))
                         {
                             cached.Add(new RecipeCandidate { recipe = recipe, part = null, label = fallbackLabel });
@@ -1500,7 +1501,7 @@ namespace FullyAutomaticOmniCrafter
                     }
                     catch
                     {
-                        label = !recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "Unknown surgery");
+                        label = !recipe.label.NullOrEmpty() ? recipe.label.CapitalizeFirst() : (recipe.defName ?? "FullyAutoOmniSurgeon_UnknownSurgery".Translate().ToString());
                     }
 
                     if (!MatchesSearch(recipe, label, lower)) continue;
@@ -1526,13 +1527,13 @@ namespace FullyAutomaticOmniCrafter
             PinyinSearchEngine.EnsureIndexed(DefDatabase<RecipeDef>.AllDefsListForReading, PinyinSource.SurgeryRecipe);
             pinyinSearchEnabled = true;
             RebuildCache();
-            Messages.Message("手术搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);
+            Messages.Message("FullyAutoOmniSurgeon_PinyinEnabledMessage".Translate(), MessageTypeDefOf.TaskCompletion, false);
         }
 
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "添加手术操作");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "FullyAutoOmniSurgeon_AddSurgeryTitle".Translate());
             Text.Font = GameFont.Small;
 
             string newSearch = Widgets.TextField(new Rect(0f, 38f, inRect.width, 30f), searchText);
@@ -1542,7 +1543,7 @@ namespace FullyAutomaticOmniCrafter
                 RebuildCache();
             }
 
-            string pinyinButtonLabel = pinyinSearchEnabled ? "拼音搜索: 已启用" : "启用拼音搜索";
+            string pinyinButtonLabel = pinyinSearchEnabled ? "FullyAutoOmniSurgeon_PinyinSearchEnabled".Translate().ToString() : "FullyAutoOmniSurgeon_EnablePinyinSearch".Translate().ToString();
             if (Widgets.ButtonText(new Rect(0f, 74f, 180f, 28f), pinyinButtonLabel))
             {
                 if (!pinyinSearchEnabled)
@@ -1630,13 +1631,13 @@ namespace FullyAutomaticOmniCrafter
             PinyinSearchEngine.EnsureIndexed(DefDatabase<HediffDef>.AllDefsListForReading, PinyinSource.SurgeryImplant);
             pinyinSearchEnabled = true;
             RebuildCache();
-            Messages.Message("植入搜索已启用拼音匹配。", MessageTypeDefOf.TaskCompletion, false);
+            Messages.Message("FullyAutoOmniSurgeon_PinyinEnabledMessageImplant".Translate(), MessageTypeDefOf.TaskCompletion, false);
         }
 
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "添加植入操作（先选植入物，再选部位）");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "FullyAutoOmniSurgeon_AddImplantTitle".Translate());
             Text.Font = GameFont.Small;
 
             string newSearch = Widgets.TextField(new Rect(0f, 38f, inRect.width, 30f), searchText);
@@ -1646,7 +1647,7 @@ namespace FullyAutomaticOmniCrafter
                 RebuildCache();
             }
 
-            string pinyinButtonLabel = pinyinSearchEnabled ? "拼音搜索: 已启用" : "启用拼音搜索";
+            string pinyinButtonLabel = pinyinSearchEnabled ? "FullyAutoOmniSurgeon_PinyinSearchEnabled".Translate().ToString() : "FullyAutoOmniSurgeon_EnablePinyinSearch".Translate().ToString();
             if (Widgets.ButtonText(new Rect(0f, 74f, 180f, 28f), pinyinButtonLabel))
             {
                 if (!pinyinSearchEnabled)
@@ -1684,7 +1685,7 @@ namespace FullyAutomaticOmniCrafter
             List<BodyPartRecord> parts = pawn.health.hediffSet.GetNotMissingParts().ToList();
             if (parts.Count == 0)
             {
-                Messages.Message("没有可用部位。", MessageTypeDefOf.RejectInput, false);
+                Messages.Message("FullyAutoOmniSurgeon_NoAvailableParts".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -1696,7 +1697,7 @@ namespace FullyAutomaticOmniCrafter
                 bool restricted = Building_FullyAutoOmniSurgeon.IsRestrictedFor(pawn, hediff, part);
                 if (restricted)
                 {
-                    label = "<color=red>" + label + "（受种族限制）</color>";
+                    label = "<color=red>" + label + "FullyAutoOmniSurgeon_RaceRestricted_Simple".Translate() + "</color>";
                 }
 
                 BodyPartRecord localPart = part;

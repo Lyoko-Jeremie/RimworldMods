@@ -37,4 +37,49 @@
   <FullyAutoOmniSurgeon_FilterEnemies>敌人</FullyAutoOmniSurgeon_FilterEnemies>
   <FullyAutoOmniSurgeon_FilterDomesticAnimals>家养动物</FullyAutoOmniSurgeon_FilterDomesticAnimals>
   <FullyAutoOmniSurgeon_FilterWildAnimals>野生动物</FullyAutoOmniSurgeon_FilterWildAnimals>
+  <FullyAutoOmniSurgeon_SpecialOps>特殊操作</FullyAutoOmniSurgeon_SpecialOps>
+  <FullyAutoOmniSurgeon_RepairAndHeal_Simple>修复损伤/医疗受伤 (保留植入物)</FullyAutoOmniSurgeon_RepairAndHeal_Simple>
+  <FullyAutoOmniSurgeon_RemoveAllImplants>卸载所有植入物并修复身体</FullyAutoOmniSurgeon_RemoveAllImplants>
+  <FullyAutoOmniSurgeon_TendAllWounds>包扎所有伤口 (最高质量)</FullyAutoOmniSurgeon_TendAllWounds>
+  <FullyAutoOmniSurgeon_RemoveAnesthesia>移除麻醉状态</FullyAutoOmniSurgeon_RemoveAnesthesia>
+  <FullyAutoOmniSurgeon_PartStatusTitle>身体部位状态（快速加入操作）</FullyAutoOmniSurgeon_PartStatusTitle>
+  <FullyAutoOmniSurgeon_AddImplantShort>+植入</FullyAutoOmniSurgeon_AddImplantShort>
+  <FullyAutoOmniSurgeon_RemoveImplantShort>+移除</FullyAutoOmniSurgeon_RemoveImplantShort>
+  <FullyAutoOmniSurgeon_SearchAddSurgery>搜索并添加手术</FullyAutoOmniSurgeon_SearchAddSurgery>
+  <FullyAutoOmniSurgeon_SearchAddImplant>搜索并添加植入</FullyAutoOmniSurgeon_SearchAddImplant>
+  <FullyAutoOmniSurgeon_ExecuteTemplate>执行操作模板</FullyAutoOmniSurgeon_ExecuteTemplate>
+  <FullyAutoOmniSurgeon_ClearList>清空</FullyAutoOmniSurgeon_ClearList>
+  <FullyAutoOmniSurgeon_EmptyListMessage>操作列表为空。</FullyAutoOmniSurgeon_EmptyListMessage>
+  <FullyAutoOmniSurgeon_UnknownSurgery>未知手术</FullyAutoOmniSurgeon_UnknownSurgery>
+  <FullyAutoOmniSurgeon_InstallHediff>植入 {0}</FullyAutoOmniSurgeon_InstallHediff>
+  <FullyAutoOmniSurgeon_RemoveHediff>移除 {0}</FullyAutoOmniSurgeon_RemoveHediff>
+  <FullyAutoOmniSurgeon_UnknownOperation>未知操作</FullyAutoOmniSurgeon_UnknownOperation>
+  <FullyAutoOmniSurgeon_PinyinSearch>开启拼音搜索</FullyAutoOmniSurgeon_PinyinSearch>
+  <FullyAutoOmniSurgeon_NotSpecifiedPart>未指定部位</FullyAutoOmniSurgeon_NotSpecifiedPart>
+  <FullyAutoOmniSurgeon_MissingSurgery>手术缺失: {0}</FullyAutoOmniSurgeon_MissingSurgery>
+  <FullyAutoOmniSurgeon_Unknown>未知</FullyAutoOmniSurgeon_Unknown>
+  <FullyAutoOmniSurgeon_InstallArrow>安装 {0} -&gt; {1}</FullyAutoOmniSurgeon_InstallArrow>
+  <FullyAutoOmniSurgeon_RemoveArrow>移除 {0} &lt;- {1}</FullyAutoOmniSurgeon_RemoveArrow>
+  <FullyAutoOmniSurgeon_RemoveLabel>移除: {0}</FullyAutoOmniSurgeon_RemoveLabel>
+  <FullyAutoOmniSurgeon_NotMatchedPart> (未匹配部位)</FullyAutoOmniSurgeon_NotMatchedPart>
+  <FullyAutoOmniSurgeon_PinyinEnabledMessage>手术搜索已启用拼音匹配。</FullyAutoOmniSurgeon_PinyinEnabledMessage>
+  <FullyAutoOmniSurgeon_AddSurgeryTitle>添加手术操作</FullyAutoOmniSurgeon_AddSurgeryTitle>
+  <FullyAutoOmniSurgeon_PinyinSearchEnabled>拼音搜索: 已启用</FullyAutoOmniSurgeon_PinyinSearchEnabled>
+  <FullyAutoOmniSurgeon_EnablePinyinSearch>启用拼音搜索</FullyAutoOmniSurgeon_EnablePinyinSearch>
+  <FullyAutoOmniSurgeon_AddImplantTitle>添加植入操作</FullyAutoOmniSurgeon_AddImplantTitle>
+  <FullyAutoOmniSurgeon_PinyinEnabledMessageImplant>植入搜索已启用拼音匹配。</FullyAutoOmniSurgeon_PinyinEnabledMessageImplant>
+  <FullyAutoOmniSurgeon_SelectPartFor>选择植入部位: {0}</FullyAutoOmniSurgeon_SelectPartFor>
+  <FullyAutoOmniSurgeon_TemplateName>模板名称</FullyAutoOmniSurgeon_TemplateName>
+  <FullyAutoOmniSurgeon_NoAvailableParts>没有可用部位。</FullyAutoOmniSurgeon_NoAvailableParts>
+  <FullyAutoOmniSurgeon_RaceRestricted_Simple>（受种族限制）</FullyAutoOmniSurgeon_RaceRestricted_Simple>
+  <FullyAutoOmniSurgeon_InvalidOperation>无效操作</FullyAutoOmniSurgeon_InvalidOperation>
+  <FullyAutoOmniSurgeon_RecipeNotFound>找不到手术</FullyAutoOmniSurgeon_RecipeNotFound>
+  <FullyAutoOmniSurgeon_BodyPartMissing>部位缺失</FullyAutoOmniSurgeon_BodyPartMissing>
+  <FullyAutoOmniSurgeon_ImplantOrPartMissing>植入物或部位缺失</FullyAutoOmniSurgeon_ImplantOrPartMissing>
+  <FullyAutoOmniSurgeon_TargetHediffMissing>目标健康状态缺失</FullyAutoOmniSurgeon_TargetHediffMissing>
+  <FullyAutoOmniSurgeon_OperationsExecuted>已执行 {0} 项操作。</FullyAutoOmniSurgeon_OperationsExecuted>
+  <FullyAutoOmniSurgeon_ExecutionResult>执行完成: 成功 {0}，失败 {1}。{2}</FullyAutoOmniSurgeon_ExecutionResult>
+  <FullyAutoOmniSurgeon_LastError>最后错误: </FullyAutoOmniSurgeon_LastError>
+  <FullyAutoOmniSurgeon_NoImplantsToAdd>没有可添加的植入物。</FullyAutoOmniSurgeon_NoImplantsToAdd>
+  <FullyAutoOmniSurgeon_LabelWithPart>{0} ({1})</FullyAutoOmniSurgeon_LabelWithPart>
 </LanguageData>
