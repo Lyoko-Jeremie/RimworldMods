@@ -29,7 +29,7 @@ namespace FullyAutomaticOmniCrafter
     {
         public CompProperties_AutoResearch Props => (CompProperties_AutoResearch)props;
         private CompPowerTrader powerComp;
-        private bool paused = true;
+        private bool active = false;
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -40,14 +40,14 @@ namespace FullyAutomaticOmniCrafter
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref paused, "paused", true);
+            Scribe_Values.Look(ref active, "active", false);
         }
         
         public override void CompTick()
         {
             base.CompTick();
 
-            if (paused)
+            if (active)
             {
                 return;
             }
@@ -148,14 +148,14 @@ namespace FullyAutomaticOmniCrafter
                 defaultLabel = "OmniCrafter_AutoResearch_Pause".Translate(),
                 defaultDesc = "OmniCrafter_AutoResearch_PauseDesc".Translate(),
                 icon = AutoResearchTex.IconModifyDialog,
-                isActive = () => !paused,
-                toggleAction = () => paused = !paused
+                isActive = () => !active,
+                toggleAction = () => active = !active
             };
         }
 
         public override string CompInspectStringExtra()
         {
-            if (paused)
+            if (!active)
             {
                 return "OmniCrafter_AutoResearch_Paused".Translate();
             }
