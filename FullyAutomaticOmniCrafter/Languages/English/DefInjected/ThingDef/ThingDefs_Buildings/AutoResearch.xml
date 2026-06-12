@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <AutoResearch.label>Auto Research</AutoResearch.label>
+<!--  一种超维科技在入驻土著宇宙时常用的建筑。可以自动破解土著宇宙的核心规则，快速研究当地的科技。  -->
+    <AutoResearch.description>A building used by the Outerrealm technology when it enters the indigenous universe. It can automatically crack the core rules of the indigenous universe and quickly research local technologies.</AutoResearch.description>
+
+    <AutoResearch_mini.label>Auto Research (Portable)</AutoResearch_mini.label>
+    <AutoResearch_mini.description>A portable building used by the Outerrealm technology when it enters the indigenous universe. It can automatically crack the core rules of the indigenous universe and quickly research local technologies.</AutoResearch_mini.description>
+
+</LanguageData>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <AutoResearch.label>自动研究仪</AutoResearch.label>
+    <AutoResearch.description>一种超维科技在入驻土著宇宙时常用的建筑。可以自动破解土著宇宙的核心规则，快速研究当地的科技。</AutoResearch.description>
+
+    <AutoResearch_mini.label>自动研究仪（便携版）</AutoResearch_mini.label>
+    <AutoResearch_mini.description>一种超维科技在入驻土著宇宙时常用的建筑。可以自动破解土著宇宙的核心规则，快速研究当地的科技。</AutoResearch_mini.description>
+
+</LanguageData>
