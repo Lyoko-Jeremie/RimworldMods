@@ -10,7 +10,7 @@
         <label>AutoResearch</label>
         <description>description</description>
 
-        <tickerType>Rare</tickerType>
+        <tickerType>Normal</tickerType>
 
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
         <designatorDropdown>AutoResearch_DropdownGroup</designatorDropdown>
@@ -59,7 +59,14 @@
         </thingCategories>
 
         <comps>
-            <li Class="FullyAutomaticOmniCrafter.CompProperties_AutomatedCapturer"/>
+            <li Class="CompProperties_Flickable"/>
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>100</basePowerConsumption>
+                <shortCircuitInRain>false</shortCircuitInRain>
+            </li>
+            
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_AutoResearch"/>
         </comps>
 
         <building>

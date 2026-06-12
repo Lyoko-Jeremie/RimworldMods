@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+    <OmniCrafter_AutoResearching>Auto Researching: {0}</OmniCrafter_AutoResearching>
+    <OmniCrafter_AutoResearch_Paused>Auto Research Paused</OmniCrafter_AutoResearch_Paused>
+    <OmniCrafter_AutoResearch_Pause>Pause Research</OmniCrafter_AutoResearch_Pause>
+    <OmniCrafter_AutoResearch_PauseDesc>Toggle auto research on/off.</OmniCrafter_AutoResearch_PauseDesc>
+
+</LanguageData>

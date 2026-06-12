@@ -29,16 +29,28 @@ namespace FullyAutomaticOmniCrafter
     {
         public CompProperties_AutoResearch Props => (CompProperties_AutoResearch)props;
         private CompPowerTrader powerComp;
+        private bool paused = true;
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
             powerComp = this.parent.GetComp<CompPowerTrader>();
         }
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref paused, "paused", true);
+        }
         
         public override void CompTick()
         {
             base.CompTick();
+
+            if (paused)
+            {
+                return;
+            }
 
             if (powerComp != null && !powerComp.PowerOn)
             {
@@ -124,8 +136,29 @@ namespace FullyAutomaticOmniCrafter
             return battery.StoredEnergy;
         }
 
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (Gizmo g in base.CompGetGizmosExtra())
+            {
+                yield return g;
+            }
+
+            yield return new Command_Toggle
+            {
+                defaultLabel = "OmniCrafter_AutoResearch_Pause".Translate(),
+                defaultDesc = "OmniCrafter_AutoResearch_PauseDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Widgets/DesiresMet"), // 使用一个内置图标，通常研究用的图标或开关图标
+                isActive = () => !paused,
+                toggleAction = () => paused = !paused
+            };
+        }
+
         public override string CompInspectStringExtra()
         {
+            if (paused)
+            {
+                return "OmniCrafter_AutoResearch_Paused".Translate();
+            }
             ResearchProjectDef currentProj = Find.ResearchManager.GetProject();
             if (currentProj != null)
             {
