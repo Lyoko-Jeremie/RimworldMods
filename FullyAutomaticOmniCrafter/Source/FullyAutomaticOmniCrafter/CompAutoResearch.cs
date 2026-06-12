@@ -147,7 +147,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 defaultLabel = "OmniCrafter_AutoResearch_Pause".Translate(),
                 defaultDesc = "OmniCrafter_AutoResearch_PauseDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Widgets/DesiresMet"), // 使用一个内置图标，通常研究用的图标或开关图标
+                icon = AutoResearchTex.IconModifyDialog,
                 isActive = () => !paused,
                 toggleAction = () => paused = !paused
             };
@@ -166,5 +166,13 @@ namespace FullyAutomaticOmniCrafter
             }
             return base.CompInspectStringExtra();
         }
+    }
+    
+    [StaticConstructorOnStartup]
+    public static class AutoResearchTex
+    {
+        public static readonly Texture2D IconModifyDialog =
+            ContentFinder<Texture2D>.Get("UI/Commands/AutoResearch_Pause", true) ??
+            BaseContent.WhiteTex;
     }
 }
