@@ -5,7 +5,7 @@
   <FullyAutoOmniSurgeon_FullRepair>Full Automatic Repair</FullyAutoOmniSurgeon_FullRepair>
   <FullyAutoOmniSurgeon_FullRepairDesc>One-click repair of all injuries, diseases, addictions, and missing parts (restore to native).</FullyAutoOmniSurgeon_FullRepairDesc>
   <FullyAutoOmniSurgeon_RepairAndHeal>Repair and Heal</FullyAutoOmniSurgeon_RepairAndHeal>
-  <FullyAutoOmniSurgeon_RepairAndHealDesc>One-click repair of all injuries, diseases, addictions, and missing parts, while keeping existing implants and bionics.</FullyAutoOmniSurgeon_RepairAndHealDesc>
+  <FullyAutoOmniSurgeon_RepairAndHealDesc>One-click repair of all injuries, diseases, addictions, and missing parts, while keeping existing implants and bionics (include RJW organs).</FullyAutoOmniSurgeon_RepairAndHealDesc>
   <FullyAutoOmniSurgeon_Eject>Eject</FullyAutoOmniSurgeon_Eject>
   <FullyAutoOmniSurgeon_EjectDesc>Eject the occupant from the pod.</FullyAutoOmniSurgeon_EjectDesc>
   <FullyAutoOmniSurgeon_FullRepairComplete>Fully automatic repair completed for {0}.</FullyAutoOmniSurgeon_FullRepairComplete>

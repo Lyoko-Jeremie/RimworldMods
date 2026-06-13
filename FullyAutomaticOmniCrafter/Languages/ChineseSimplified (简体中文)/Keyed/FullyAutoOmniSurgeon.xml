@@ -5,7 +5,7 @@
   <FullyAutoOmniSurgeon_FullRepair>全自动修复</FullyAutoOmniSurgeon_FullRepair>
   <FullyAutoOmniSurgeon_FullRepairDesc>一键修复所有损伤、疾病、成瘾和缺失部位（恢复原生）。</FullyAutoOmniSurgeon_FullRepairDesc>
   <FullyAutoOmniSurgeon_RepairAndHeal>医疗与肢体恢复</FullyAutoOmniSurgeon_RepairAndHeal>
-  <FullyAutoOmniSurgeon_RepairAndHealDesc>一键修复所有损伤、疾病、成瘾和缺失部位，但保留现有的植入物和义体。</FullyAutoOmniSurgeon_RepairAndHealDesc>
+  <FullyAutoOmniSurgeon_RepairAndHealDesc>一键修复所有损伤、疾病、成瘾和缺失部位，但保留现有的植入物和义体（包括RJW器官）。</FullyAutoOmniSurgeon_RepairAndHealDesc>
   <FullyAutoOmniSurgeon_Eject>弹出</FullyAutoOmniSurgeon_Eject>
   <FullyAutoOmniSurgeon_EjectDesc>将舱内人员弹出。</FullyAutoOmniSurgeon_EjectDesc>
   <FullyAutoOmniSurgeon_FullRepairComplete>已完成对 {0} 的全自动修复。</FullyAutoOmniSurgeon_FullRepairComplete>
