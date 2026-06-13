@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Excluded>
+    <exclude>Tools</exclude>
+    <exclude>Source\OuterrealmTechRobot\.idea</exclude>
+    <exclude>Source\OuterrealmTechRobot\.vs</exclude>
+    <exclude>Source\OuterrealmTechRobot\obj</exclude>
+    <exclude>Source\OuterrealmTechRobot\packages</exclude>
+  </Excluded>
+</Configuration>
