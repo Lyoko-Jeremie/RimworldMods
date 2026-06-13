@@ -10,6 +10,26 @@ namespace FullyAutomaticOmniCrafter
     // 自定义的全局地图状态类
     public class GameCondition_JoySoothe : GameCondition
     {
+        private static HediffDef cachedHediffDef;
+
+        private static readonly AccessTools.FieldRef<JoyToleranceSet, DefMap<JoyKindDef, float>> tolerancesRef =
+            AccessTools.FieldRefAccess<JoyToleranceSet, DefMap<JoyKindDef, float>>("tolerances");
+
+        private static readonly AccessTools.FieldRef<JoyToleranceSet, DefMap<JoyKindDef, bool>> boredRef =
+            AccessTools.FieldRefAccess<JoyToleranceSet, DefMap<JoyKindDef, bool>>("bored");
+
+        private static HediffDef HediffDefSoothe
+        {
+            get
+            {
+                if (cachedHediffDef == null)
+                {
+                    cachedHediffDef = DefDatabase<HediffDef>.GetNamed("Hediff_Omni_JoySootheVisual");
+                }
+                return cachedHediffDef;
+            }
+        }
+
         // 游戏引擎会每一刻（Tick）调用这个方法
         public override void GameConditionTick()
         {
@@ -30,18 +50,28 @@ namespace FullyAutomaticOmniCrafter
         {
             // 获取我们在 XML 里定义的无副作用 Hediff
             // ../../Defs/HediffDef/Hediff_JoyResetInterference.xml
-            HediffDef hediffDef = DefDatabase<HediffDef>.GetNamed("Hediff_Omni_JoySootheVisual");
+            HediffDef hediffDef = HediffDefSoothe;
 
             // 遍历地图上活动的殖民者
             foreach (Pawn p in map.mapPawns.FreeColonistsSpawned)
             {
                 if (p.needs != null && p.needs.joy != null)
                 {
-                    // 1. 清空厌倦度 (使用 Harmony 绕过私有访问)
-                    var tolerancesMap = Traverse.Create(p.needs.joy.tolerances).Field("tolerances").GetValue<DefMap<JoyKindDef, float>>();
-                    if (tolerancesMap != null)
+                    // 1. 清空厌倦度 (使用 cached FieldRef 优化性能)
+                    var tolerances = p.needs.joy.tolerances;
+                    if (tolerances != null)
                     {
-                        tolerancesMap.SetAll(0f);
+                        var tolerancesMap = tolerancesRef(tolerances);
+                        if (tolerancesMap != null)
+                        {
+                            tolerancesMap.SetAll(0f);
+                        }
+
+                        var boredMap = boredRef(tolerances);
+                        if (boredMap != null)
+                        {
+                            boredMap.SetAll(false);
+                        }
                     }
 
                     // 2. 添加或刷新状态图标 (Hediff)
@@ -63,15 +93,5 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
         }
-    }
-    
-    /// <summary>
-    /// 娱乐类型厌倦度心灵干扰器
-    ///
-    /// 在连接电源时，产生心灵干扰状态，清空当前地图上所有我方pawn的娱乐类型厌倦度，包括宠物和殖民者
-    /// </summary>
-    public class CompJoyToleranceCleanWave
-    {
-        
     }
 }
