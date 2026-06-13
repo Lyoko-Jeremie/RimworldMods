@@ -6,7 +6,6 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
-    
     // 自定义的全局地图状态类
     public class GameCondition_JoySoothe : GameCondition
     {
@@ -26,6 +25,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     cachedHediffDef = DefDatabase<HediffDef>.GetNamed("Hediff_Omni_JoySootheVisual");
                 }
+
                 return cachedHediffDef;
             }
         }
@@ -53,42 +53,46 @@ namespace FullyAutomaticOmniCrafter
             HediffDef hediffDef = HediffDefSoothe;
 
             // 遍历地图上活动的殖民者
-            foreach (Pawn p in map.mapPawns.FreeColonistsSpawned)
+            // foreach (Pawn p in map.mapPawns.FreeColonistsSpawned)
+            foreach (Pawn p in map.mapPawns.AllPawnsSpawned)
             {
-                if (p.needs != null && p.needs.joy != null)
+                if (p.Faction == Faction.OfPlayer && (p.RaceProps.Humanlike || p.RaceProps.Animal))
                 {
-                    // 1. 清空厌倦度 (使用 cached FieldRef 优化性能)
-                    var tolerances = p.needs.joy.tolerances;
-                    if (tolerances != null)
+                    if (p.needs != null && p.needs.joy != null)
                     {
-                        var tolerancesMap = tolerancesRef(tolerances);
-                        if (tolerancesMap != null)
+                        // 1. 清空厌倦度 (使用 cached FieldRef 优化性能)
+                        var tolerances = p.needs.joy.tolerances;
+                        if (tolerances != null)
                         {
-                            tolerancesMap.SetAll(0f);
+                            var tolerancesMap = tolerancesRef(tolerances);
+                            if (tolerancesMap != null)
+                            {
+                                tolerancesMap.SetAll(0f);
+                            }
+
+                            var boredMap = boredRef(tolerances);
+                            if (boredMap != null)
+                            {
+                                boredMap.SetAll(false);
+                            }
                         }
 
-                        var boredMap = boredRef(tolerances);
-                        if (boredMap != null)
+                        // 2. 添加或刷新状态图标 (Hediff)
+                        Hediff hediff = p.health.hediffSet.GetFirstHediffOfDef(hediffDef);
+                        if (hediff == null)
                         {
-                            boredMap.SetAll(false);
+                            // 如果没有状态，则加上
+                            hediff = p.health.AddHediff(hediffDef);
                         }
-                    }
 
-                    // 2. 添加或刷新状态图标 (Hediff)
-                    Hediff hediff = p.health.hediffSet.GetFirstHediffOfDef(hediffDef);
-                    if (hediff == null)
-                    {
-                        // 如果没有状态，则加上
-                        hediff = p.health.AddHediff(hediffDef);
-                    }
-                    
-                    // 3. 刷新状态的剩余时间 (防止状态消失)
-                    // 我们给状态设置 600 刻的倒计时。由于我们每 250 刻刷新一次，所以只要机器开着，状态永远不会断。
-                    // 一旦机器关机，右下角的地图状态结束，Hediff 就会在 600 刻（几秒钟）后自然消失。
-                    HediffComp_Disappears disappearsComp = hediff.TryGetComp<HediffComp_Disappears>();
-                    if (disappearsComp != null)
-                    {
-                        disappearsComp.ticksToDisappear = 600;
+                        // 3. 刷新状态的剩余时间 (防止状态消失)
+                        // 我们给状态设置 600 刻的倒计时。由于我们每 250 刻刷新一次，所以只要机器开着，状态永远不会断。
+                        // 一旦机器关机，右下角的地图状态结束，Hediff 就会在 600 刻（几秒钟）后自然消失。
+                        HediffComp_Disappears disappearsComp = hediff.TryGetComp<HediffComp_Disappears>();
+                        if (disappearsComp != null)
+                        {
+                            disappearsComp.ticksToDisappear = 600;
+                        }
                     }
                 }
             }
