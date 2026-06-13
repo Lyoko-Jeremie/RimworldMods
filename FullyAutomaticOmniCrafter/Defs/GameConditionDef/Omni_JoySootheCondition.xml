@@ -23,7 +23,7 @@
         <defName>GameConditionDef_Omni_JoySootheCondition</defName>
         <!-- 这里绑定你写的 C# 核心类 -->
         <conditionClass>FullyAutomaticOmniCrafter.GameCondition_JoySoothe</conditionClass>
-        <label>心灵抚慰 (娱乐)</label>
+        <label>心灵抚慰 (如听仙乐耳暂明)</label>
         <description>地图上的情绪协调仪正在运转。一股温和的波动抹平了殖民者的无聊感，他们暂时不会对任何娱乐感到厌倦了。</description>
         <endMessage>情绪协调仪已停止工作，无聊感可能会再次蔓延。</endMessage>
     </GameConditionDef>
