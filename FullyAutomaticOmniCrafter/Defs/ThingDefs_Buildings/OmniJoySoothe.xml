@@ -71,7 +71,7 @@
             <!-- 3. 触发地图状态组件：我们在上一节设计的全局状态 -->
             <li Class="CompProperties_CausesGameCondition">
                 <conditionDef>GameConditionDef_Omni_JoySootheCondition</conditionDef>
-                <compClass>CompCauseGameCondition</compClass>
+                <compClass>FullyAutomaticOmniCrafter.CompCauseGameCondition_Power</compClass>
                 <worldRange>0</worldRange>
             </li>
         </comps>

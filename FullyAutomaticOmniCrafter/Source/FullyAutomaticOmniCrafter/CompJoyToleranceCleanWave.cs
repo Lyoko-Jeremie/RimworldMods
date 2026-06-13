@@ -98,4 +98,26 @@ namespace FullyAutomaticOmniCrafter
             }
         }
     }
+
+    // 新增：受电源控制的地图状态触发组件
+    public class CompCauseGameCondition_Power : CompCauseGameCondition
+    {
+        public override bool Active
+        {
+            get
+            {
+                // 首先检查父类的 Active 状态（处理初始化延迟等逻辑）
+                if (!base.Active)
+                {
+                    return false;
+                }
+
+                // 获取建筑的电源组件
+                CompPowerTrader powerTrader = this.parent.GetComp<CompPowerTrader>();
+                
+                // 如果有电源组件，则检查是否通电；如果没有（防御性编程），则默认激活
+                return powerTrader == null || powerTrader.PowerOn;
+            }
+        }
+    }
 }
