@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <AlienRace.ThingDef_AlienRace ParentName="BasePawn">
+        <defName>ArtificialMaid</defName>
+        <label>artificial maid</label>
+        <description>A highly advanced artificial maid designed for perfection. She has unlimited work efficiency, no needs, no risk of mental break, and an indestructible body.</description>
+        <alienRace>
+            <generalSettings>
+                <maleGenderProbability>0</maleGenderProbability>
+                <immuneToAge>true</immuneToAge>
+                <canLayDown>true</canLayDown>
+                <maxDamageForSocialfight>0</maxDamageForSocialfight>
+                <alienPartGenerator>
+                    <headTypes>
+                        <li>Female_AverageNormal</li>
+                        <li>Female_AveragePointy</li>
+                        <li>Female_AverageWide</li>
+                        <li>Female_NarrowNormal</li>
+                        <li>Female_NarrowPointy</li>
+                        <li>Female_NarrowWide</li>
+                    </headTypes>
+                    <bodyTypes>
+                        <li>Female</li>
+                    </bodyTypes>
+                </alienPartGenerator>
+            </generalSettings>
+            <graphicPaths>
+                <body>Things/Pawn/Humanlike/Bodies/</body>
+                <head>Things/Pawn/Humanlike/Heads/</head>
+                <skinShader>CutoutSkin</skinShader>
+            </graphicPaths>
+            <thoughtSettings>
+                <cannotReceiveThoughtsAtAll>true</cannotReceiveThoughtsAtAll>
+            </thoughtSettings>
+            <raceRestriction>
+                <blackEndoGenes>
+                    <li MayRequire="Ludeon.RimWorld.Biotech">IncapableOfViolence</li>
+                </blackEndoGenes>
+            </raceRestriction>
+        </alienRace>
+        <statBases>
+            <MarketValue>100000</MarketValue>
+            <MoveSpeed>100</MoveSpeed>
+            <Flammability>0</Flammability>
+            <ComfyTemperatureMin>-273</ComfyTemperatureMin>
+            <ComfyTemperatureMax>10000</ComfyTemperatureMax>
+            <LeatherAmount>0</LeatherAmount>
+            <MeatAmount>0</MeatAmount>
+            <PsychicSensitivity>1.0</PsychicSensitivity>
+            <ToxicResistance>1</ToxicResistance>
+            <MaxHitPoints>99999</MaxHitPoints>
+            <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+            <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+            <ArmorRating_Heat>10000</ArmorRating_Heat>
+            <Insulation_Cold>10000</Insulation_Cold>
+            <Insulation_Heat>10000</Insulation_Heat>
+            <EquipDelay>0</EquipDelay>
+            <WorkSpeedGlobal>999999</WorkSpeedGlobal>
+            <CarryingCapacity>10000000</CarryingCapacity>
+            <MentalBreakThreshold>0</MentalBreakThreshold>
+        </statBases>
+        <race>
+            <thinkTreeMain>Humanlike</thinkTreeMain>
+            <thinkTreeConstant>HumanlikeConstant</thinkTreeConstant>
+            <intelligence>Humanlike</intelligence>
+            <makesFootprints>true</makesFootprints>
+            <lifeExpectancy>10000</lifeExpectancy>
+            <nameCategory>HumanStandard</nameCategory>
+            <body>Human</body>
+            <baseBodySize>1</baseBodySize>
+            <baseHealthScale>100</baseHealthScale>
+            <foodType>None</foodType>
+            <gestationPeriodDays>30</gestationPeriodDays>
+            <litterSizeCurve>
+                <points>
+                    <li>(0.5, 0)</li>
+                    <li>(1, 1)</li>
+                    <li>(1.01, 0)</li>
+                </points>
+            </litterSizeCurve>
+            <lifeStageAges>
+                <li>
+                    <def>HumanlikeAdult</def>
+                    <minAge>0</minAge>
+                </li>
+            </lifeStageAges>
+            <soundMeleeDodge>Pawn_MeleeDodge</soundMeleeDodge>
+            <specialShadowData>
+                <volume>(0.3, 0.8, 0.4)</volume>
+                <offset>(0,0,-0.3)</offset>
+            </specialShadowData>
+            <ageGenerationCurve>
+                <points>
+                    <li>(18,0)</li>
+                    <li>(20,100)</li>
+                    <li>(30,100)</li>
+                    <li>(40,0)</li>
+                </points>
+            </ageGenerationCurve>
+            <hediffGiverSets>
+                <li>OrganicStandard</li>
+                <li>Human</li>
+            </hediffGiverSets>
+            <needsProperties>
+                <foodNeedNotHandledByFood>true</foodNeedNotHandledByFood>
+            </needsProperties>
+        </race>
+        <comps>
+            <li Class="OuterrealmTechRobot.CompProperties_ArtificialMaid" />
+        </comps>
+    </AlienRace.ThingDef_AlienRace>
+</Defs>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <FabricateArtificialMaid.label>fabricate artificial maid</FabricateArtificialMaid.label>
+  <FabricateArtificialMaid.description>Fabricate an Artificial Maid. Requires advanced components and materials.</FabricateArtificialMaid.description>
+  <FabricateArtificialMaid.jobString>Fabricating artificial maid.</FabricateArtificialMaid.jobString>
+</LanguageData>

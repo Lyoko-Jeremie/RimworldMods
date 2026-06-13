@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <ThingDef ParentName="BuildingBase">
+        <defName>OmniArtificialMaidFabricator</defName>
+        <label>artificial maid fabricator</label>
+        <description>A highly advanced assembly station designed to fabricate Artificial Maids. It uses nanotechnology to weave ultratech components into a perfect humanoid form.</description>
+        <thingClass>Building</thingClass>
+        <graphicData>
+            <texPath>Things/Building/Production/FabricationBench</texPath>
+            <graphicClass>Graphic_Multi</graphicClass>
+            <drawSize>(3.5,1.5)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <castEdgeShadows>true</castEdgeShadows>
+        <staticSunShadowHeight>0.20</staticSunShadowHeight>
+        <costList>
+            <Steel>200</Steel>
+            <Plasteel>100</Plasteel>
+            <ComponentIndustrial>10</ComponentIndustrial>
+            <ComponentSpacer>5</ComponentSpacer>
+        </costList>
+        <altitudeLayer>Building</altitudeLayer>
+        <fillPercent>0.5</fillPercent>
+        <useHitPoints>True</useHitPoints>
+        <statBases>
+            <WorkToBuild>5000</WorkToBuild>
+            <MaxHitPoints>300</MaxHitPoints>
+            <Flammability>0.5</Flammability>
+            <Cleanliness>-2</Cleanliness>
+        </statBases>
+        <size>(3,2)</size>
+        <designationCategory>Production</designationCategory>
+        <passability>PassThroughOnly</passability>
+        <pathCost>50</pathCost>
+        <hasInteractionCell>True</hasInteractionCell>
+        <interactionCellOffset>(0,0,-1)</interactionCellOffset>
+        <surfaceType>Item</surfaceType>
+        <constructionSkillPrerequisite>10</constructionSkillPrerequisite>
+        <recipes>
+            <li>FabricateArtificialMaid</li>
+        </recipes>
+        <inspectorTabs>
+            <li>ITab_Bills</li>
+        </inspectorTabs>
+        <comps>
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>350</basePowerConsumption>
+            </li>
+            <li Class="CompProperties_Flickable" />
+        </comps>
+        <building>
+            <spawnShadows>true</spawnShadows>
+        </building>
+    </ThingDef>
+</Defs>

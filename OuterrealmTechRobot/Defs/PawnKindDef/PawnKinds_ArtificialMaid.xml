@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <PawnKindDef ParentName="BasePlayerPawnKind">
+        <defName>ArtificialMaidKind</defName>
+        <label>artificial maid</label>
+        <race>ArtificialMaid</race>
+        <combatPower>9999</combatPower>
+        <isFighter>true</isFighter>
+        <apparelIgnoreSeasons>true</apparelIgnoreSeasons>
+        <forceNormalGearQuality>true</forceNormalGearQuality>
+        <apparelAllowHeadgearChance>1.0</apparelAllowHeadgearChance>
+        <apparelTags>
+            <li>IndustrialBasic</li>
+            <li>IndustrialAdvanced</li>
+            <li>IndustrialMilitaryBasic</li>
+            <li>IndustrialMilitaryAdvanced</li>
+            <li>IndustrialMilitaryHelmet</li>
+            <li>IndustrialMilitaryArmor</li>
+            <li>IndustrialMilitaryArmorAdvanced</li>
+            <li>SpacerMilitary</li>
+        </apparelTags>
+        <apparelRequired>
+            <li>Apparel_PowerArmor</li>
+            <li>Apparel_PowerArmorHelmet</li>
+        </apparelRequired>
+        <apparelMoney>
+            <min>5000</min>
+            <max>10000</max>
+        </apparelMoney>
+        <weaponTags>
+            <li>IndustrialGunAdvanced</li>
+            <li>SpacerGun</li>
+        </weaponTags>
+        <weaponMoney>
+            <min>5000</min>
+            <max>10000</max>
+        </weaponMoney>
+        <techHediffsMoney>
+            <min>2000</min>
+            <max>5000</max>
+        </techHediffsMoney>
+        <techHediffsTags>
+            <li>Advanced</li>
+        </techHediffsTags>
+        <techHediffsChance>0.5</techHediffsChance>
+        <initialWillRange>0~0</initialWillRange>
+        <initialResistanceRange>0~0</initialResistanceRange>
+    </PawnKindDef>
+</Defs>
