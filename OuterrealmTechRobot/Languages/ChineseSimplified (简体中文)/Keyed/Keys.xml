@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>人造女仆 {0} 已成功制造。</ArtificialMaidFabricated>
+    <ArtificialMaid_NotEnoughPower>存储电量不足。制造需要连接的网络中至少有 {0} Wd 的存储电量。</ArtificialMaid_NotEnoughPower>
 </LanguageData>

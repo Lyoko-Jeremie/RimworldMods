@@ -3,7 +3,7 @@
     <ThingDef ParentName="BuildingBase">
         <defName>OmniArtificialMaidFabricator</defName>
         <label>artificial maid fabricator</label>
-        <description>A highly advanced assembly station designed to fabricate Artificial Maids. It uses nanotechnology to weave ultratech components into a perfect humanoid form.</description>
+        <description>A highly advanced assembly station designed to fabricate Artificial Maids. It uses nanotechnology to weave energy into a perfect humanoid form. The fabrication process consumes a massive amount of stored electrical energy.</description>
         <thingClass>Building</thingClass>
         <graphicData>
             <texPath>Things/Building/Production/FabricationBench</texPath>

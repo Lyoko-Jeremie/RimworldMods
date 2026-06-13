@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace OuterrealmTechRobot
@@ -88,8 +90,24 @@ namespace OuterrealmTechRobot
 
     public class RecipeWorker_FabricateArtificialMaid : RecipeWorker
     {
+        public const float PowerRequired = 10000f;
+
         public override void Notify_IterationCompleted(Pawn billDoer, List<Thing> ingredients)
         {
+            // 获取工作台
+            Thing bench = billDoer.CurJob?.targetA.Thing;
+            CompPowerTrader powerTrader = bench?.TryGetComp<CompPowerTrader>();
+            PowerNet net = powerTrader?.PowerNet;
+
+            if (net == null || net.CurrentStoredEnergy() < PowerRequired)
+            {
+                Messages.Message("ArtificialMaid_NotEnoughPower".Translate(PowerRequired), MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            // 扣除电量
+            ConsumePowerFromNet(net, PowerRequired);
+
             base.Notify_IterationCompleted(billDoer, ingredients);
             PawnGenerationRequest request = new PawnGenerationRequest(
                 PawnKindDef.Named("ArtificialMaidKind"),
@@ -137,6 +155,28 @@ namespace OuterrealmTechRobot
             }
 
             Messages.Message("ArtificialMaidFabricated".Translate(pawn.LabelShort), pawn, MessageTypeDefOf.PositiveEvent);
+        }
+
+        private void ConsumePowerFromNet(PowerNet net, float amount)
+        {
+            if (net == null || amount <= 0) return;
+
+            float totalStored = net.CurrentStoredEnergy();
+            if (totalStored <= 0) return;
+
+            var batteries = net.batteryComps;
+            float actualToDraw = amount;
+            if (actualToDraw > totalStored) actualToDraw = totalStored;
+
+            foreach (var battery in batteries)
+            {
+                if (battery.StoredEnergy > 0)
+                {
+                    float proportion = battery.StoredEnergy / totalStored;
+                    float drawAmount = actualToDraw * proportion;
+                    battery.DrawPower(drawAmount);
+                }
+            }
         }
     }
 }

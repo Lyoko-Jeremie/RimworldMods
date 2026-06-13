@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>Artificial Maid {0} has been successfully fabricated.</ArtificialMaidFabricated>
+    <ArtificialMaid_NotEnoughPower>Insufficient stored electrical energy. Requires {0} Wd of stored power in the connected power net.</ArtificialMaid_NotEnoughPower>
 </LanguageData>

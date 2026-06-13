@@ -3,45 +3,12 @@
     <RecipeDef>
         <defName>FabricateArtificialMaid</defName>
         <label>fabricate artificial maid</label>
-        <description>Fabricate an Artificial Maid. Requires advanced components and materials.</description>
+        <description>Fabricate an Artificial Maid. Requires 10,000 Wd of stored electrical energy.</description>
         <jobString>Fabricating artificial maid.</jobString>
         <workAmount>10000</workAmount>
         <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
         <effectWorking>Cremate</effectWorking>
         <soundWorking>Recipe_Cremate</soundWorking>
-        <ingredients>
-            <li>
-                <filter>
-                    <thingDefs>
-                        <li>Plasteel</li>
-                    </thingDefs>
-                </filter>
-                <count>50</count>
-            </li>
-            <li>
-                <filter>
-                    <thingDefs>
-                        <li>ComponentSpacer</li>
-                    </thingDefs>
-                </filter>
-                <count>5</count>
-            </li>
-            <li>
-                <filter>
-                    <thingDefs>
-                        <li>Hyperweave</li>
-                    </thingDefs>
-                </filter>
-                <count>20</count>
-            </li>
-        </ingredients>
-        <fixedIngredientFilter>
-            <thingDefs>
-                <li>Plasteel</li>
-                <li>ComponentSpacer</li>
-                <li>Hyperweave</li>
-            </thingDefs>
-        </fixedIngredientFilter>
         <recipeUsers>
             <li>OmniArtificialMaidFabricator</li>
         </recipeUsers>

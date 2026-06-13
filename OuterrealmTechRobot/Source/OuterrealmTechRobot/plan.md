@@ -6,7 +6,7 @@
 
 ## 1. 核心种族定义 (ThingDef)
 *   **基础原型**: `Human` (ThingDef)
-*   **种族名称**: `SuperAndroid`
+*   **种族名称**: `ArtificialMaid`
 *   **生成规则**: `natural` 为 false，不会在野外或袭击中自然出现。
 *   **外观与装备**: 使用人类身体模型，完全支持所有人类装备和防具。
 

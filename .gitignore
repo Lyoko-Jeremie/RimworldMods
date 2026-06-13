@@ -108,6 +108,8 @@ fabric.properties
 !FullyAutomaticGrowingZone/**/*
 !FullyAutomaticOmniCrafter/
 !FullyAutomaticOmniCrafter/**/*
+!OuterrealmTechRobot/
+!OuterrealmTechRobot/**/*
 !.gitignore
 
 !readme.md
