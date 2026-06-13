@@ -17,7 +17,7 @@ namespace FullyAutomaticOmniCrafter
     /// 示例 XML:
     /// ```
     /// <comps>
-    ///   <li Class="FullyAutomaticOmniCrafter.CompProperties_Battery">
+    ///   <li Class="CompProperties_Battery">
     ///     <compClass>FullyAutomaticOmniCrafter.CompOmniPowerBattery</compClass>
     ///     <storedEnergyMax>1000</storedEnergyMax> <!-- 初始显示容量，开启后会被 targetCapacity 覆盖 -->
     ///     <efficiency>1.0</efficiency>
