@@ -34,7 +34,7 @@
             </thoughtSettings>
             <raceRestriction>
                 <blackGeneList>
-                    <li MayRequire="Ludeon.RimWorld.Biotech">IncapableOfViolence</li>
+                    <li MayRequire="Ludeon.RimWorld.Biotech">ViolenceDisabled</li>
                 </blackGeneList>
             </raceRestriction>
         </alienRace>
