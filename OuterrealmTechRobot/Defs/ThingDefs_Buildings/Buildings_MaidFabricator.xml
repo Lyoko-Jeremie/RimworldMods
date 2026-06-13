@@ -49,8 +49,5 @@
             </li>
             <li Class="CompProperties_Flickable" />
         </comps>
-        <building>
-            <spawnShadows>true</spawnShadows>
-        </building>
     </ThingDef>
 </Defs>

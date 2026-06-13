@@ -33,9 +33,9 @@
                 <cannotReceiveThoughtsAtAll>true</cannotReceiveThoughtsAtAll>
             </thoughtSettings>
             <raceRestriction>
-                <blackEndoGenes>
+                <blackGeneList>
                     <li MayRequire="Ludeon.RimWorld.Biotech">IncapableOfViolence</li>
-                </blackEndoGenes>
+                </blackGeneList>
             </raceRestriction>
         </alienRace>
         <statBases>
@@ -101,9 +101,6 @@
                 <li>OrganicStandard</li>
                 <li>Human</li>
             </hediffGiverSets>
-            <needsProperties>
-                <foodNeedNotHandledByFood>true</foodNeedNotHandledByFood>
-            </needsProperties>
         </race>
         <comps>
             <li Class="OuterrealmTechRobot.CompProperties_ArtificialMaid" />
