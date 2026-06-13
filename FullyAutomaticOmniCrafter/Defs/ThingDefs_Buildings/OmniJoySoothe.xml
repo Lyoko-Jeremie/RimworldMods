@@ -69,7 +69,7 @@
             <li Class="CompProperties_Flickable" />
 
             <!-- 3. 触发地图状态组件：我们在上一节设计的全局状态 -->
-            <li Class="CompProperties_CauseGameCondition">
+            <li Class="CompProperties_CausesGameCondition">
                 <conditionDef>GameConditionDef_Omni_JoySootheCondition</conditionDef>
                 <compClass>CompCauseGameCondition</compClass>
                 <worldRange>0</worldRange>
