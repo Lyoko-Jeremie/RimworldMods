@@ -148,6 +148,25 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref partDefName, "partDefName");
             Scribe_Values.Look(ref partLabel, "partLabel");
         }
+
+        public bool IsValid()
+        {
+            switch (operationType)
+            {
+                case OmniSurgeonOperationType.Recipe:
+                    return !recipeDefName.NullOrEmpty() && DefDatabase<RecipeDef>.GetNamed(recipeDefName, false) != null;
+                case OmniSurgeonOperationType.InstallImplant:
+                case OmniSurgeonOperationType.RemoveImplant:
+                    return !hediffDefName.NullOrEmpty() && DefDatabase<HediffDef>.GetNamed(hediffDefName, false) != null;
+                case OmniSurgeonOperationType.RepairAndHeal:
+                case OmniSurgeonOperationType.RemoveAllImplantsAndRepair:
+                case OmniSurgeonOperationType.TendAllWounds:
+                case OmniSurgeonOperationType.RemoveAnesthesia:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     public class SurgeryTemplate : IExposable
@@ -253,6 +272,23 @@ namespace FullyAutomaticOmniCrafter
 
             Scribe_Collections.Look(ref lastOperations, "lastOperations", LookMode.Deep);
             if (lastOperations == null) lastOperations = new List<OmniSurgeonOperation>();
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                // 读档后检查并移除不存在的手术（可能由于Mod列表变更）
+                lastOperations.RemoveAll(op => !op.IsValid());
+                if (templates != null)
+                {
+                    foreach (var template in templates)
+                    {
+                        if (template.operations != null)
+                        {
+                            template.operations.RemoveAll(op => !op.IsValid());
+                        }
+                    }
+                }
+            }
+
             // 注意：selectedPawn 已经在 base.ExposeData() 中处理了。
             // 为了兼容旧存档，我们可以保留对 selectedPawn 的显式加载逻辑，但通常 base 已经做了。
             // 如果 base.ExposeData 没有处理，我们需要手动处理。
