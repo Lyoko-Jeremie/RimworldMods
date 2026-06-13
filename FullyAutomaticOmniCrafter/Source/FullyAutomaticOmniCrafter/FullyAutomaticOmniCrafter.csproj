@@ -373,6 +373,7 @@
     <Compile Include="CompBiosphere.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
+    <Compile Include="CompJoyToleranceCleanWave.cs" />
     <Compile Include="CompManualEventTrigger.cs" />
     <Compile Include="CompOmniKiller.cs" />
     <Compile Include="CompOmniPowerBattery.cs" />
