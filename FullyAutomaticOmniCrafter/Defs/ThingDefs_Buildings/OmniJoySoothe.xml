@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>OmniJoySoothe_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef ParentName="BuildingBase" Name="OmniJoySoothe">
+        <defName>OmniJoySoothe</defName>
+        <label>OmniJoySoothe</label>
+        <description>description</description>
+
+        <thingClass>Building</thingClass>
+        <drawerType>MapMeshAndRealTime</drawerType>
+        <tickerType>Normal</tickerType>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>OmniJoySoothe_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniJoySoothe</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(5,5)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <size>(5,5)</size>
+        <uiIconPath>Things/Building/Production/OmniJoySoothe</uiIconPath>
+
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+
+        <useStuffTerrainAffordance>false</useStuffTerrainAffordance>
+
+        <costList>
+            <Steel>1</Steel>
+        </costList>
+
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
+        </statBases>
+
+        <rotatable>false</rotatable>
+        <selectable>true</selectable>
+
+        <comps>
+            <!-- 1. 电源组件：赋予建筑耗电和断电判定的能力 -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>100</basePowerConsumption> <!-- 设定耗电量为500瓦 -->
+            </li>
+
+            <!-- 2. 开关组件：在游戏里生成一个“允许开关”的手形图标 UI -->
+            <li Class="CompProperties_Flickable" />
+
+            <!-- 3. 触发地图状态组件：我们在上一节设计的全局状态 -->
+            <li Class="CompProperties_CauseGameCondition">
+                <conditionDef>GameConditionDef_Omni_JoySootheCondition</conditionDef>
+                <compClass>CompCauseGameCondition</compClass>
+                <worldRange>0</worldRange>
+            </li>
+        </comps>
+
+    </ThingDef>
+
+    <ThingDef ParentName="OmniJoySoothe">
+        <defName>OmniJoySoothe_mini</defName>
+        <size>(1,1)</size>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+    </ThingDef>
+
+    <ThingDef ParentName="OmniJoySoothe">
+        <defName>OmniJoySoothe_home</defName>
+        <size>(3,3)</size>
+        <graphicData>
+            <drawSize>(3,3)</drawSize>
+        </graphicData>
+    </ThingDef>
+    
+</Defs>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <!-- 1. 无副作用的个人状态 (小人健康面板里显示的 Buff) -->
+    <HediffDef>
+        <defName>Hediff_Omni_JoySootheVisual</defName>
+        <label>如听仙乐耳暂明</label>
+        <description>受到情绪协调仪的安抚，所有对重复娱乐活动的厌倦感都被一扫而空。内心充满了对事物的新鲜感。</description>
+        <hediffClass>HediffWithComps</hediffClass>
+        <defaultLabelColor>(0.5, 0.8, 1.0)</defaultLabelColor> <!-- 设定一个好看的浅蓝色 -->
+        <isBad>false</isBad> <!-- 声明这不是负面状态 -->
+        <comps>
+            <!-- 让这个状态在没有被机器刷新的情况下自动消失 -->
+            <li Class="HediffCompProperties_Disappears">
+                <disappearsAfterTicks>600</disappearsAfterTicks>
+                <showRemainingTime>false</showRemainingTime> <!-- 不在面板里显示倒计时，显得更自然 -->
+            </li>
+        </comps>
+    </HediffDef>
+
+    <!-- 2. 右下角的全局状态 (类似太阳耀斑、心灵抚慰的提示) -->
+    <GameConditionDef>
+        <defName>GameConditionDef_Omni_JoySootheCondition</defName>
+        <!-- 这里绑定你写的 C# 核心类 -->
+        <conditionClass>FullyAutomaticOmniCrafter.GameCondition_JoySoothe</conditionClass>
+        <label>心灵抚慰 (娱乐)</label>
+        <description>地图上的情绪协调仪正在运转。一股温和的波动抹平了殖民者的无聊感，他们暂时不会对任何娱乐感到厌倦了。</description>
+        <endMessage>情绪协调仪已停止工作，无聊感可能会再次蔓延。</endMessage>
+    </GameConditionDef>
+    
+</Defs>
