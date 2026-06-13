@@ -19,9 +19,10 @@ namespace FullyAutomaticOmniCrafter
 
             foreach (CompPowerBattery battery in net.batteryComps)
             {
-                // 处理本 Mod 的两种无限容量电池
+                // 处理本 Mod 的无限容量电池
                 if (battery is FullyAutomaticOmniCrafter.CompOmniCrafterSmartInfiniteBattery
-                    || battery is FullyAutomaticOmniCrafter.CompMatterEnergyConverterBattery)
+                    || battery is FullyAutomaticOmniCrafter.CompMatterEnergyConverterBattery
+                    || battery is FullyAutomaticOmniCrafter.CompOmniPowerBattery)
                 {
                     // 直接读取私有字段 storedEnergy，绕过 StoredEnergy 属性（可能被 Harmony 拦截返回 0）
                     float currentEnergy = Traverse.Create(battery).Field("storedEnergy").GetValue<float>();

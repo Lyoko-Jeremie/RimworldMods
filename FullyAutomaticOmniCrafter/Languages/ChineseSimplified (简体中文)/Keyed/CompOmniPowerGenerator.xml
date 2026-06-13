@@ -15,4 +15,11 @@
   <OmniPower_AdjustManual>调整手动功率</OmniPower_AdjustManual>
   <OmniPower_AdjustExtra>调整额外功率</OmniPower_AdjustExtra>
   <OmniPower_InputValue>输入数值</OmniPower_InputValue>
+
+  <OmniPower_InfiniteBattery_Label>无限容量电池</OmniPower_InfiniteBattery_Label>
+  <OmniPower_InfiniteBattery_Desc>开启后，电池将锁定在设定的电量值，且永远保持满电状态，同时屏蔽短路等负面特性。</OmniPower_InfiniteBattery_Desc>
+  <OmniPower_InfiniteBattery_On>已开启</OmniPower_InfiniteBattery_On>
+  <OmniPower_InfiniteBattery_Off>已关闭</OmniPower_InfiniteBattery_Off>
+  <OmniPower_InfiniteBattery_Status>无限电池: {0}</OmniPower_InfiniteBattery_Status>
+  <OmniPower_InfiniteBattery_SetCapacity>设置目标容量</OmniPower_InfiniteBattery_SetCapacity>
 </LanguageData>

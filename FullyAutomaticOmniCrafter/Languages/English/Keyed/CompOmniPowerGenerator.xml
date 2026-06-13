@@ -15,4 +15,11 @@
   <OmniPower_AdjustManual>Adjust Manual Power</OmniPower_AdjustManual>
   <OmniPower_AdjustExtra>Adjust Extra Power</OmniPower_AdjustExtra>
   <OmniPower_InputValue>Input Value</OmniPower_InputValue>
+
+  <OmniPower_InfiniteBattery_Label>Infinite Battery</OmniPower_InfiniteBattery_Label>
+  <OmniPower_InfiniteBattery_Desc>When enabled, the battery will be locked at the set power level and will always stay fully charged, while shielding negative features such as short circuits.</OmniPower_InfiniteBattery_Desc>
+  <OmniPower_InfiniteBattery_On>Enabled</OmniPower_InfiniteBattery_On>
+  <OmniPower_InfiniteBattery_Off>Disabled</OmniPower_InfiniteBattery_Off>
+  <OmniPower_InfiniteBattery_Status>Infinite Battery: {0}</OmniPower_InfiniteBattery_Status>
+  <OmniPower_InfiniteBattery_SetCapacity>Set Target Capacity</OmniPower_InfiniteBattery_SetCapacity>
 </LanguageData>
