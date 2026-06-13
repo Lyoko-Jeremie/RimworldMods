@@ -83,6 +83,9 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompMatterEnergyConverterBattery : CompPowerBattery
     {
+        private static readonly AccessTools.FieldRef<CompPowerBattery, float> StoredEnergyField =
+            AccessTools.FieldRefAccess<CompPowerBattery, float>("storedEnergy");
+
         private const float BaseCapacity = 1000f;
 
         // ── 初始化：克隆 props 防止污染全局 XML 配置 ─────────────────────────────
@@ -98,7 +101,7 @@ namespace FullyAutomaticOmniCrafter
             CloneProps(initialMax);
 
             // 重载后将容量与储存电量同步（高于 BaseCapacity 时容量 == 储量，低于则保持地板）
-            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            float realStored = StoredEnergyField(this);
             if (this.props is CompProperties_Battery currentProps)
                 currentProps.storedEnergyMax = Mathf.Max(BaseCapacity, realStored);
         }
@@ -143,7 +146,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void EnsureCapacity()
         {
-            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            float realStored = StoredEnergyField(this);
             // 容量始终与已存储电量同步：高于 BaseCapacity 时跟随缩减，低于则保持 BaseCapacity 地板
             ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, realStored);
         }
@@ -158,19 +161,18 @@ namespace FullyAutomaticOmniCrafter
         public void AddEnergyDirect(float energy)
         {
             if (energy <= 0f) return;
-            var storedField = Traverse.Create(this).Field("storedEnergy");
-            float realStored = storedField.GetValue<float>();
+            float realStored = StoredEnergyField(this);
             float newStored = realStored + energy;
             // 同步扩展容量，使容量 == 新储量（始终满电）
             ((CompProperties_Battery)this.props).storedEnergyMax = Mathf.Max(BaseCapacity, newStored);
             // 直接写字段，绕过 AmountCanAccept 钳制
-            storedField.SetValue(newStored);
+            StoredEnergyField(this) = newStored;
         }
 
         // // ── 信息栏 ───────────────────────────────────────────────────────────────
         // public override string CompInspectStringExtra()
         // {
-        //     float stored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+        //     float stored = StoredEnergyField(this);
         //     string energyStr = stored >= 1_000_000_000f
         //         ? stored.ToString("N0") + " Wd"
         //         : base.CompInspectStringExtra()

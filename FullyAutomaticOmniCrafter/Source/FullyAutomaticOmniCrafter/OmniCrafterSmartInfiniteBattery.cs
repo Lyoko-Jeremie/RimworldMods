@@ -8,6 +8,9 @@ namespace FullyAutomaticOmniCrafter
 {
     public class CompOmniCrafterSmartInfiniteBattery : CompPowerBattery
     {
+        private static readonly AccessTools.FieldRef<CompPowerBattery, float> StoredEnergyField =
+            AccessTools.FieldRefAccess<CompPowerBattery, float>("storedEnergy");
+
         // 维持UI美观的基础容量下限
         private const float BaseCapacity = 1000f;
 
@@ -31,7 +34,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 重新加载后，确保 storedEnergyMax 不低于已存储电量
             // 防止 UpdateCapacity 在首次 Tick 前期间因容量上限过低而触发意外钳制
-            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            float realStored = StoredEnergyField(this);
             if (realStored > ((CompProperties_Battery)this.props).storedEnergyMax)
             {
                 ((CompProperties_Battery)this.props).storedEnergyMax = realStored;
@@ -149,7 +152,7 @@ namespace FullyAutomaticOmniCrafter
                         () =>
                         {
                             // 直接读取私有字段，绕过开关拦截补丁，确保无论开关状态都能清空
-                            float realStored = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+                            float realStored = StoredEnergyField(this);
                             if (realStored > 0f)
                                 this.DrawPower(realStored);
                         }
@@ -173,7 +176,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 获取真实储电量，绕过Harmony补丁的隐藏效果
-            float realStoredEnergy = Traverse.Create(this).Field("storedEnergy").GetValue<float>();
+            float realStoredEnergy = StoredEnergyField(this);
 
             if (realStoredEnergy >= 1000000000f)
             {

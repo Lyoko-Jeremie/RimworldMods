@@ -34,6 +34,9 @@ namespace FullyAutomaticOmniCrafter
 
         private CompProperties_Battery cachedProps;
 
+        private static readonly AccessTools.FieldRef<CompPowerBattery, float> StoredEnergyField =
+            AccessTools.FieldRefAccess<CompPowerBattery, float>("storedEnergy");
+
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
@@ -81,12 +84,12 @@ namespace FullyAutomaticOmniCrafter
             if (isEnabled)
             {
                 p.storedEnergyMax = targetCapacity;
-                Traverse.Create(this).Field("storedEnergy").SetValue(targetCapacity);
+                StoredEnergyField(this) = targetCapacity;
             }
             else
             {
                 p.storedEnergyMax = 0f;
-                Traverse.Create(this).Field("storedEnergy").SetValue(0f);
+                StoredEnergyField(this) = 0f;
             }
         }
 
