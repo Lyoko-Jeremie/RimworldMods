@@ -19,3 +19,14 @@ i18n语言目录在 `../../Languages` ，源代码中需要参与显示的硬编
 2. 采用性能更好的算法
 3. 避免频繁执行反射操作
 
+## 代码规范
+
+### 图片材质需要预加载
+```csharp
+    [StaticConstructorOnStartup]
+    public static class XXXXXXXXTex
+    {
+        public static readonly Texture2D IconXxxxxxx =
+            ContentFinder<Texture2D>.Get("UI/Commands/Xxxxxxxx", false) ?? BaseContent.WhiteTex;
+    }
+```
