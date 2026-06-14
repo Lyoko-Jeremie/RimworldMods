@@ -9,9 +9,6 @@
         <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
         <effectWorking>Cremate</effectWorking>
         <soundWorking>Recipe_Cremate</soundWorking>
-        <recipeUsers>
-            <li>OmniArtificialMaidFabricator</li>
-        </recipeUsers>
         <workerClass>OuterrealmTechRobot.RecipeWorker_FabricateArtificialMaid</workerClass>
     </RecipeDef>
 </Defs>
