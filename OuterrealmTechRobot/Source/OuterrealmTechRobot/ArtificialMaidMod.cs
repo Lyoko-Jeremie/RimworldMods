@@ -44,10 +44,15 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null) return;
 
-            // 情绪保持最高
-            if (Pawn.needs?.mood != null)
+            // 保持各种需求最高
+            if (Pawn.needs != null)
             {
-                Pawn.needs.mood.CurLevel = 1.0f;
+                if (Pawn.needs.mood != null) Pawn.needs.mood.CurLevel = 1.0f;
+                if (Pawn.needs.rest != null) Pawn.needs.rest.CurLevel = 1.0f;
+                if (Pawn.needs.joy != null) Pawn.needs.joy.CurLevel = 1.0f;
+                if (Pawn.needs.beauty != null) Pawn.needs.beauty.CurLevel = 1.0f;
+                if (Pawn.needs.comfort != null) Pawn.needs.comfort.CurLevel = 1.0f;
+                if (Pawn.needs.outdoors != null) Pawn.needs.outdoors.CurLevel = 1.0f;
             }
 
             // 血源质保持最高
@@ -85,6 +90,30 @@ namespace OuterrealmTechRobot
                 return false;
             }
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn), "CombinedDisabledWorkTags", MethodType.Getter)]
+    public static class Patch_Pawn_CombinedDisabledWorkTags
+    {
+        public static void Postfix(Pawn __instance, ref WorkTags __result)
+        {
+            if (__instance.def.defName == "ArtificialMaid")
+            {
+                __result = WorkTags.None;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.GetDisabledWorkTypes))]
+    public static class Patch_Pawn_GetDisabledWorkTypes
+    {
+        public static void Postfix(Pawn __instance, List<WorkTypeDef> __result)
+        {
+            if (__instance.def.defName == "ArtificialMaid")
+            {
+                __result.Clear();
+            }
         }
     }
 
@@ -145,12 +174,13 @@ namespace OuterrealmTechRobot
             Pawn pawn = PawnGenerator.GeneratePawn(request);
             GenSpawn.Spawn(pawn, billDoer.Position, billDoer.Map);
             
-            // 确保技能全满
+            // 确保技能全满且双火
             if (pawn.skills != null)
             {
                 foreach (var skill in pawn.skills.skills)
                 {
                     skill.Level = 99;
+                    skill.passion = Passion.Major;
                 }
             }
 

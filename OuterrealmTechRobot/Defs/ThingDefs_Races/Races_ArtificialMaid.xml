@@ -71,6 +71,8 @@
             <baseBodySize>1</baseBodySize>
             <baseHealthScale>100</baseHealthScale>
             <foodType>None</foodType>
+            <needsRest>false</needsRest>
+            <alwaysAwake>true</alwaysAwake>
             <gestationPeriodDays>30</gestationPeriodDays>
             <litterSizeCurve>
                 <points>
