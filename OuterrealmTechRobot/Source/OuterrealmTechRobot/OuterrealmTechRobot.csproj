@@ -64,6 +64,7 @@
     <ProjectReference Include="..\..\..\..\..\..\..\..\RimworldCodeIL\AlienRaces\Source\AlienRace\AlienRace\AlienRace.csproj">
       <Project>{e74e552b-b48e-4672-8ca6-df18e5366928}</Project>
       <Name>AlienRace</Name>
+      <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\..\..\FullyAutomaticOmniCrafter\Source\FullyAutomaticOmniCrafter\FullyAutomaticOmniCrafter.csproj">
       <Project>{49ff93c8-14c8-4dad-9172-0bba7fbce395}</Project>
