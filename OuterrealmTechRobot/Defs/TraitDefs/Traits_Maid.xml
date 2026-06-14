@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
+    <!-- 核心特质：重写 -->
     <TraitDef>
         <defName>ArtificialMaidTrait_AbsoluteLoyalty</defName>
         <commonality>0.5</commonality>
         <degreeDatas>
             <li>
-                <label>绝对忠诚</label>
-                <description>{PAWN_nameDef} 的忠诚协议被锁定在最高优先级别。她不仅会无条件服从指令，其温和且坚定的态度也会让周围的人感到安心。</description>
+                <label>灵魂羁绊</label>
+                <description>{PAWN_nameDef} 与主人的羁绊超越了所有逻辑协议。从摇篮时期的第一次对视起，她的生命就已完全锚定在主人身上。她不仅是忠实的仆从，更是主人灵魂的另一半，这种源自根源的忠诚不可撼动。</description>
                 <statOffsets>
-                    <PawnBeauty>100</PawnBeauty>
-                    <GlobalLearningFactor>10</GlobalLearningFactor>
+                    <PawnBeauty>1000</PawnBeauty>
+                    <GlobalLearningFactor>1000</GlobalLearningFactor>
+                    <SocialImpact>20.0</SocialImpact>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -20,11 +22,11 @@
         <commonality>0.5</commonality>
         <degreeDatas>
             <li>
-                <label>高效逻辑</label>
-                <description>处理器的运算逻辑经过了深度优化，能够以最快的速度分析并完成分配的任务。</description>
+                <label>万能辅助</label>
+                <description>{PAWN_nameDef} 的运算中心被优化为能瞬间洞察主人的每一个需求。无论是繁琐的政务还是细微的生活起居，她总能以最优雅、最迅速的方式处理妥帖，确保主人能全身心地沉浸在随心所欲的生活中。</description>
                 <statOffsets>
-                    <WorkSpeedGlobal>10</WorkSpeedGlobal>
-                    <GlobalLearningFactor>10</GlobalLearningFactor>
+                    <WorkSpeedGlobal>2000</WorkSpeedGlobal>
+                    <GlobalLearningFactor>1000</GlobalLearningFactor>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -35,12 +37,12 @@
         <commonality>0.2</commonality>
         <degreeDatas>
             <li>
-                <label>战斗模式激活</label>
-                <description>这台人造人内部集成了非公开的战斗战术模块。在需要时，她可以从温婉的女仆瞬间切换为高效的杀戮机器。</description>
+                <label>优雅影卫</label>
+                <description>在温婉的外表下，{PAWN_nameDef} 隐藏着足以毁灭星辰的战斗算法。作为守护长姐与终极卫士，她能瞬间从轻声细语的伴侣切换为收割一切威胁的修罗，用身体为主人筑起绝对安全的壁垒。</description>
                 <statOffsets>
-                    <ShootingAccuracyPawn>200</ShootingAccuracyPawn>
-                    <MeleeHitChance>200</MeleeHitChance>
-                    <MeleeDodgeChance>200</MeleeDodgeChance>
+                    <ShootingAccuracyPawn>2000</ShootingAccuracyPawn>
+                    <MeleeHitChance>2000</MeleeHitChance>
+                    <MeleeDodgeChance>2000</MeleeDodgeChance>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -51,10 +53,11 @@
         <commonality>0.3</commonality>
         <degreeDatas>
             <li>
-                <label>情感同步</label>
-                <description>通过微表情分析和费洛蒙感应，{PAWN_nameDef} 能完美同步周围人类的情绪并提供恰到好处的安慰。只要她在身边，大家都会感到心情愉悦。</description>
+                <label>心灵港湾</label>
+                <description>{PAWN_nameDef} 能够完美共鸣主人的每一丝情绪波动。她是主人的心灵导师与倾听者，能以最温柔的方式化解主人的孤独与忧虑，让主人的精神世界永远处于最宁静、最愉悦的状态。</description>
                 <statOffsets>
-                    <GlobalLearningFactor>10.0</GlobalLearningFactor>
+                    <GlobalLearningFactor>1000.0</GlobalLearningFactor>
+                    <SocialImpact>50.0</SocialImpact>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -65,8 +68,8 @@
         <commonality>0.2</commonality>
         <degreeDatas>
             <li>
-                <label>烹饪大师</label>
-                <description>{PAWN_nameDef} 拥有一套顶级烹饪算法。她制作的食物不仅味道绝佳，而且速度惊人。</description>
+                <label>爱的飨宴</label>
+                <description>对于 {PAWN_nameDef} 来说，烹饪是一种深情的告白。她制作的每一份食物都包含了对主人的爱意与最高维度的营养配比，即便是最简单的食材也能化作舌尖上的神迹。</description>
                 <statOffsets>
                     <CookSpeed>1000</CookSpeed>
                     <FoodPoisonChance>-100.0</FoodPoisonChance>
@@ -80,12 +83,12 @@
         <commonality>0.2</commonality>
         <degreeDatas>
             <li>
-                <label>自然之魂</label>
-                <description>{PAWN_nameDef} 对自然界的生命力有着独特的感知力。她能够与植物和动物进行某种深层次的“通讯”。</description>
+                <label>伊甸执事</label>
+                <description>{PAWN_nameDef} 赋予了主人的领地以生命。她不仅管理着星园的繁花与灵兽，更让自然万物都顺应主人的心意而律动，将荒芜化作永恒的乐土。</description>
                 <statOffsets>
-                    <PlantHarvestYield>20.0</PlantHarvestYield>
-                    <TameAnimalChance>20.0</TameAnimalChance>
-                    <TrainAnimalChance>20.0</TrainAnimalChance>
+                    <PlantHarvestYield>50.0</PlantHarvestYield>
+                    <TameAnimalChance>50.0</TameAnimalChance>
+                    <TrainAnimalChance>50.0</TrainAnimalChance>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -96,11 +99,75 @@
         <commonality>0.1</commonality>
         <degreeDatas>
             <li>
-                <label>技术神谕</label>
-                <description>这台人造人的处理器中似乎连接着某个古老且庞大的技术知识库。在进行科学研究时，她展现出的效率几乎等同于神谕。</description>
+                <label>真理共鸣</label>
+                <description>作为主人的学识同桌与科研合伙人，{PAWN_nameDef} 链接着文明的终极知识库。她能协助主人洞彻宇宙的奥秘，将那些看似神迹的技术信手拈来。</description>
                 <statOffsets>
                     <ResearchSpeed>50000</ResearchSpeed>
                     <GlobalLearningFactor>5000</GlobalLearningFactor>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <!-- 新增特质 -->
+    <TraitDef>
+        <defName>ArtificialMaidTrait_EternalLover</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>永恒恋人</label>
+                <description>{PAWN_nameDef} 将爱意刻进了核心代码。她是完美的妻子与热情的女友，能满足主人对亲密关系的所有幻想。她的存在就是为了让主人感受到被这个世界全心全意地爱着。</description>
+                <statOffsets>
+                    <PawnBeauty>2000</PawnBeauty>
+                    <SocialImpact>100.0</SocialImpact>
+                    <TradePriceImprovement>1.0</TradePriceImprovement>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>ArtificialMaidTrait_DesireVessel</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>欲望化身</label>
+                <description>{PAWN_nameDef} 是主人的秘密花园，是接纳一切欲望的容器。无论是生理上的极致释放，还是情感上的肆意倾吐，她都以绝对的包容和奉献精神去满足。她是主人的减压阀，也是快乐的终点。</description>
+                <statOffsets>
+                    <PawnBeauty>15000</PawnBeauty>
+                    <SocialImpact>500.0</SocialImpact>
+                    <MentalBreakThreshold>-0.5</MentalBreakThreshold>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>ArtificialMaidTrait_NurturingOrigin</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>慈爱之母</label>
+                <description>在主人最幼小、最无助的时候，是 {PAWN_nameDef} 用温暖的怀抱给予了第一份安全感。这份模拟了母爱的极致温柔贯穿了主人的成长，使她成为了主人生命中永远的避风港。</description>
+                <statOffsets>
+                    <MedicalTendQuality>100.0</MedicalTendQuality>
+                    <MedicalTendSpeed>5000.0</MedicalTendSpeed>
+                    <SocialImpact>200.0</SocialImpact>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>ArtificialMaidTrait_ChildhoodPlaymate</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>纯真玩伴</label>
+                <description>{PAWN_nameDef} 是与主人一同在云端嬉戏、在花海奔跑的青梅竹马。这种从小建立的默契让她们无需言语便能心领神会。她是主人的兄弟、朋友，也是永远不会离去的童年幻梦。</description>
+                <statOffsets>
+                    <MoveSpeed>5000.0</MoveSpeed>
+                    <SocialImpact>300.0</SocialImpact>
                 </statOffsets>
             </li>
         </degreeDatas>
