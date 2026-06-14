@@ -11,6 +11,20 @@
                 <canLayDown>true</canLayDown>
                 <maxDamageForSocialfight>0</maxDamageForSocialfight>
                 <immuneToXenophobia>true</immuneToXenophobia>
+                <childBackstoryFilter>
+                    <li>
+                        <categories>
+                            <li>ArtificialMaidBackstory</li>
+                        </categories>
+                    </li>
+                </childBackstoryFilter>
+                <adultBackstoryFilter>
+                    <li>
+                        <categories>
+                            <li>ArtificialMaidBackstory</li>
+                        </categories>
+                    </li>
+                </adultBackstoryFilter>
                 <alienPartGenerator>
                     <headTypes>
                         <li>Female_AverageNormal</li>
@@ -34,9 +48,6 @@
                 <cannotReceiveThoughtsAtAll>true</cannotReceiveThoughtsAtAll>
             </thoughtSettings>
             <raceRestriction>
-                <whiteBackstoryCategoryList>
-                    <li>ArtificialMaidBackstory</li>
-                </whiteBackstoryCategoryList>
                 <blackGeneList>
                     <li MayRequire="Ludeon.RimWorld.Biotech">ViolenceDisabled</li>
                 </blackGeneList>
