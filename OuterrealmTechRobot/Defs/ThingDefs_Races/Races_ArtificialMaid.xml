@@ -39,25 +39,36 @@
             </raceRestriction>
         </alienRace>
         <statBases>
-            <MarketValue>100000</MarketValue>
-            <MoveSpeed>100</MoveSpeed>
-            <Flammability>0</Flammability>
-            <ComfyTemperatureMin>-273</ComfyTemperatureMin>
-            <ComfyTemperatureMax>10000</ComfyTemperatureMax>
-            <LeatherAmount>0</LeatherAmount>
-            <MeatAmount>0</MeatAmount>
-            <PsychicSensitivity>1.0</PsychicSensitivity>
-            <ToxicResistance>1</ToxicResistance>
-            <MaxHitPoints>99999</MaxHitPoints>
-            <ArmorRating_Sharp>10000</ArmorRating_Sharp>
-            <ArmorRating_Blunt>10000</ArmorRating_Blunt>
-            <ArmorRating_Heat>10000</ArmorRating_Heat>
-            <Insulation_Cold>10000</Insulation_Cold>
-            <Insulation_Heat>10000</Insulation_Heat>
-            <EquipDelay>0</EquipDelay>
-            <WorkSpeedGlobal>999999</WorkSpeedGlobal>
-            <CarryingCapacity>10000000</CarryingCapacity>
-            <MentalBreakThreshold>0</MentalBreakThreshold>
+            <MarketValue>100000</MarketValue> <!-- 市场价值 -->
+            <MoveSpeed>1000</MoveSpeed> <!-- 移动速度 -->
+            <CrawlSpeed>1000</CrawlSpeed> <!-- 爬行速度 -->
+            <Flammability>0</Flammability> <!-- 易燃性 -->
+            <ComfyTemperatureMin>-273</ComfyTemperatureMin> <!-- 最低舒适温度 -->
+            <ComfyTemperatureMax>10000</ComfyTemperatureMax> <!-- 最高舒适温度 -->
+            <LeatherAmount>0</LeatherAmount> <!-- 皮革产量 -->
+            <MeatAmount>0</MeatAmount> <!-- 肉产量 -->
+            <PsychicSensitivity>1.0</PsychicSensitivity> <!-- 精神敏感度 -->
+            <ToxicResistance>1</ToxicResistance> <!-- 毒素抗性 -->
+            <MaxHitPoints>99999</MaxHitPoints> <!-- 最大生命值 -->
+            <ArmorRating_Sharp>10</ArmorRating_Sharp> <!-- 利器护甲 (1000%) -->
+            <ArmorRating_Blunt>10</ArmorRating_Blunt> <!-- 钝器护甲 (1000%) -->
+            <ArmorRating_Heat>10</ArmorRating_Heat> <!-- 热能护甲 (1000%) -->
+            <Insulation_Cold>10000</Insulation_Cold> <!-- 抗寒绝缘 -->
+            <Insulation_Heat>10000</Insulation_Heat> <!-- 抗热绝缘 -->
+            <EquipDelay>0</EquipDelay> <!-- 装备延迟 -->
+            <WorkSpeedGlobal>999999</WorkSpeedGlobal> <!-- 全局工作速度 -->
+            <CarryingCapacity>10000000</CarryingCapacity> <!-- 搬运能力 -->
+            <MentalBreakThreshold>0</MentalBreakThreshold> <!-- 崩溃临界值 -->
+            <PainShockThreshold>0</PainShockThreshold> <!-- 疼痛休克临界值 -->
+            <MeditationFocusGain>10</MeditationFocusGain> <!-- 冥想效率 (1000%) -->
+            <ImmunityGainSpeed>10</ImmunityGainSpeed> <!-- 免疫速度 (1000%) -->
+            <MeleeDamageFactor>1000</MeleeDamageFactor> <!-- 近战伤害倍率 (100,000%) -->
+            <MeleeArmorPenetration>1000</MeleeArmorPenetration> <!-- 近战护盾穿透 (100,000%) -->
+            <MeleeDodgeChance>10</MeleeDodgeChance> <!-- 近战闪避 (1000%) -->
+            <MortarMissRadiusFactor>0</MortarMissRadiusFactor> <!-- 迫击炮偏移系数 (0) -->
+            <ShootingAccuracyPawn>10</ShootingAccuracyPawn> <!-- 射击精度 (1000%) -->
+            <AimingDelayFactor>0.01</AimingDelayFactor> <!-- 瞄准时间 (1%) -->
+            <PawnBeauty>100</PawnBeauty> <!-- 魅力 (100) -->
         </statBases>
         <race>
             <thinkTreeMain>Humanlike</thinkTreeMain>
