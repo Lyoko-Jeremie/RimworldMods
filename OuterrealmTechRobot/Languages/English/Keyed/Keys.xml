@@ -2,4 +2,6 @@
 <LanguageData>
     <ArtificialMaidFabricated>Artificial Maid {0} has been successfully fabricated.</ArtificialMaidFabricated>
     <ArtificialMaid_NotEnoughPower>Insufficient stored electrical energy. Requires {0} Wd of stored power in the connected power net.</ArtificialMaid_NotEnoughPower>
+    <ArtificialMaid_InterruptedDeath>[ArtificialMaid] {0} intercepted death call and repaired itself.</ArtificialMaid_InterruptedDeath>
+    <ArtificialMaid_Resurrected>[ArtificialMaid] {0} has been automatically restored from death.</ArtificialMaid_Resurrected>
 </LanguageData>

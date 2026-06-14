@@ -114,7 +114,7 @@ namespace OuterrealmTechRobot
             if (__instance.def.defName == "ArtificialMaid")
             {
                 __instance.health.Reset();
-                Log.Message($"[ArtificialMaid] {__instance.LabelShort} 拦截了死亡调用并已修复自身。");
+                Log.Message("ArtificialMaid_InterruptedDeath".Translate(__instance.LabelShort));
                 return false;
             }
             return true;
@@ -147,7 +147,7 @@ namespace OuterrealmTechRobot
                     invisibleStun = false
                 });
                 pawn.health.Reset();
-                Log.Message($"[ArtificialMaid] {pawn.LabelShort} 已从死亡中全自动修复。");
+                Log.Message("ArtificialMaid_Resurrected".Translate(pawn.LabelShort));
             }
         }
 
