@@ -4,7 +4,7 @@
         <defName>OmniArtificialMaidFabricator</defName>
         <label>artificial maid fabricator</label>
         <description>A highly advanced assembly station designed to fabricate Artificial Maids. It uses nanotechnology to weave energy into a perfect humanoid form. The fabrication process consumes a massive amount of stored electrical energy.</description>
-        <thingClass>Building</thingClass>
+        <thingClass>Building_WorkTable</thingClass>
 
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
@@ -46,9 +46,9 @@
         <recipes>
             <li>FabricateArtificialMaid</li>
         </recipes>
-<!--        <inspectorTabs>-->
-<!--            <li>ITab_Bills</li>-->
-<!--        </inspectorTabs>-->
+        <inspectorTabs>
+            <li>ITab_Bills</li>
+        </inspectorTabs>
         <comps>
             <li Class="CompProperties_Power">
                 <compClass>CompPowerTrader</compClass>
