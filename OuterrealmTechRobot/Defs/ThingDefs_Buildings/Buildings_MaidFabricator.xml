@@ -5,43 +5,50 @@
         <label>artificial maid fabricator</label>
         <description>A highly advanced assembly station designed to fabricate Artificial Maids. It uses nanotechnology to weave energy into a perfect humanoid form. The fabrication process consumes a massive amount of stored electrical energy.</description>
         <thingClass>Building</thingClass>
+
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
         <graphicData>
-            <texPath>Things/Building/Production/FabricationBench</texPath>
-            <graphicClass>Graphic_Multi</graphicClass>
-            <drawSize>(3.5,1.5)</drawSize>
+            <texPath>Things/Building/Production/OmniCrafter2_l</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
-        <castEdgeShadows>true</castEdgeShadows>
-        <staticSunShadowHeight>0.20</staticSunShadowHeight>
+        <uiIconPath>Things/Building/Production/OmniCrafter2_l</uiIconPath>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+        <size>(3,3)</size>
         <costList>
             <Steel>200</Steel>
-            <Plasteel>100</Plasteel>
-            <ComponentIndustrial>10</ComponentIndustrial>
-            <ComponentSpacer>5</ComponentSpacer>
         </costList>
-        <altitudeLayer>Building</altitudeLayer>
-        <fillPercent>0.5</fillPercent>
-        <useHitPoints>True</useHitPoints>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
         <statBases>
-            <WorkToBuild>5000</WorkToBuild>
-            <MaxHitPoints>300</MaxHitPoints>
-            <Flammability>0.5</Flammability>
-            <Cleanliness>-2</Cleanliness>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
         </statBases>
-        <size>(3,2)</size>
-        <designationCategory>Production</designationCategory>
-        <passability>PassThroughOnly</passability>
-        <pathCost>50</pathCost>
+        
+        
         <hasInteractionCell>True</hasInteractionCell>
-        <interactionCellOffset>(0,0,-1)</interactionCellOffset>
+        <interactionCellOffset>(0,0,-2)</interactionCellOffset>
         <surfaceType>Item</surfaceType>
         <constructionSkillPrerequisite>10</constructionSkillPrerequisite>
         <recipes>
             <li>FabricateArtificialMaid</li>
         </recipes>
-        <inspectorTabs>
-            <li>ITab_Bills</li>
-        </inspectorTabs>
+<!--        <inspectorTabs>-->
+<!--            <li>ITab_Bills</li>-->
+<!--        </inspectorTabs>-->
         <comps>
             <li Class="CompProperties_Power">
                 <compClass>CompPowerTrader</compClass>
