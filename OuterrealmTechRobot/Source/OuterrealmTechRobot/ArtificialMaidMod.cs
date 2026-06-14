@@ -52,7 +52,7 @@ namespace OuterrealmTechRobot
             // 检查是否有“情感同步”特性
             if (Pawn.story?.traits != null)
             {
-                var traitDef = TraitDef.Named("MaidTrait_EmotionalSynchrony");
+                var traitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
                 if (Pawn.story.traits.HasTrait(traitDef))
                 {
                     // 获取周围 10 格内的 Pawn
@@ -339,13 +339,56 @@ namespace OuterrealmTechRobot
                 null, // validatorPreGear (装备前验证器)
                 null, // validatorPostGear (装备后验证器)
                 null, // forcedTraits (强制特质)
-                null, // prohibitedTraits (禁止特质)
+                DefDatabase<TraitDef>.AllDefs.Where(t => !t.defName.StartsWith("ArtificialMaidTrait_")).ToList(), // prohibitedTraits (禁止特质)
                 null, // minChanceToRedressWorldPawn (重新打扮世界Pawn的最小概率)
                 null, // fixedBiologicalAge (固定生理年龄)
                 null, // fixedChronologicalAge (固定实际年龄)
                 Gender.Female
             );
             Pawn pawn = PawnGenerator.GeneratePawn(request);
+
+            // 强制背景限制 (虽然XML已有过滤，但这里做最终确保)
+            if (pawn.story != null)
+            {
+                if (pawn.story.Childhood != null && !pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                {
+                    pawn.story.Childhood = DefDatabase<BackstoryDef>.AllDefs
+                        .Where(b => b.slot == BackstorySlot.Childhood && b.spawnCategories.Contains("ArtificialMaidBackstory"))
+                        .RandomElement();
+                }
+                if (pawn.story.Adulthood != null && !pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                {
+                    pawn.story.Adulthood = DefDatabase<BackstoryDef>.AllDefs
+                        .Where(b => b.slot == BackstorySlot.Adulthood && b.spawnCategories.Contains("ArtificialMaidBackstory"))
+                        .RandomElement();
+                }
+            }
+
+            // 强制特质限制
+            if (pawn.story?.traits != null)
+            {
+                // 移除所有不符合要求的特质
+                var allTraits = pawn.story.traits.allTraits.ToList();
+                foreach (var trait in allTraits)
+                {
+                    if (!trait.def.defName.StartsWith("ArtificialMaidTrait_"))
+                    {
+                        pawn.story.traits.RemoveTrait(trait);
+                    }
+                }
+
+                // 如果没有任何特质，随机给一个符合要求的
+                if (pawn.story.traits.allTraits.Count == 0)
+                {
+                    var maidTraitDef = DefDatabase<TraitDef>.AllDefs
+                        .Where(t => t.defName.StartsWith("ArtificialMaidTrait_"))
+                        .RandomElementByWeight(t => t.GetGenderSpecificCommonality(pawn.gender));
+                    if (maidTraitDef != null)
+                    {
+                        pawn.story.traits.GainTrait(new Trait(maidTraitDef));
+                    }
+                }
+            }
 
             // 清理所有初始状态，确保刚制造出来时是完美状态
             pawn.health.Reset();

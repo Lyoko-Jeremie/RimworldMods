@@ -53,5 +53,8 @@
             </li>
         </backstoryFilters>
         <preventIdeo>true</preventIdeo>
+        <forcedTraits>
+            <li>ArtificialMaidTrait_AbsoluteLoyalty</li>
+        </forcedTraits>
     </PawnKindDef>
 </Defs>

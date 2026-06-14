@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
     <TraitDef>
-        <defName>MaidTrait_AbsoluteLoyalty</defName>
+        <defName>ArtificialMaidTrait_AbsoluteLoyalty</defName>
         <commonality>0.5</commonality>
         <degreeDatas>
             <li>
@@ -16,7 +16,7 @@
     </TraitDef>
 
     <TraitDef>
-        <defName>MaidTrait_EfficientLogic</defName>
+        <defName>ArtificialMaidTrait_EfficientLogic</defName>
         <commonality>0.5</commonality>
         <degreeDatas>
             <li>
@@ -31,7 +31,7 @@
     </TraitDef>
 
     <TraitDef>
-        <defName>MaidTrait_CombatMode</defName>
+        <defName>ArtificialMaidTrait_CombatMode</defName>
         <commonality>0.2</commonality>
         <degreeDatas>
             <li>
@@ -47,7 +47,7 @@
     </TraitDef>
 
     <TraitDef>
-        <defName>MaidTrait_EmotionalSynchrony</defName>
+        <defName>ArtificialMaidTrait_EmotionalSynchrony</defName>
         <commonality>0.3</commonality>
         <degreeDatas>
             <li>
