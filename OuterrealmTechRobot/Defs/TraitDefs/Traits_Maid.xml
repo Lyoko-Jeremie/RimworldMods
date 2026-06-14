@@ -8,8 +8,8 @@
                 <label>绝对忠诚</label>
                 <description>{PAWN_nameDef} 的忠诚协议被锁定在最高优先级别。她不仅会无条件服从指令，其温和且坚定的态度也会让周围的人感到安心。</description>
                 <statOffsets>
-                    <PawnBeauty>1</PawnBeauty>
-                    <GlobalLearningFactor>0.5</GlobalLearningFactor>
+                    <PawnBeauty>100</PawnBeauty>
+                    <GlobalLearningFactor>10</GlobalLearningFactor>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -23,8 +23,8 @@
                 <label>高效逻辑</label>
                 <description>处理器的运算逻辑经过了深度优化，能够以最快的速度分析并完成分配的任务。</description>
                 <statOffsets>
-                    <WorkSpeedGlobal>0.5</WorkSpeedGlobal>
-                    <GlobalLearningFactor>0.5</GlobalLearningFactor>
+                    <WorkSpeedGlobal>10</WorkSpeedGlobal>
+                    <GlobalLearningFactor>10</GlobalLearningFactor>
                 </statOffsets>
             </li>
         </degreeDatas>
