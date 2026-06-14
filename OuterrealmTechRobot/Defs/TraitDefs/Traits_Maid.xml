@@ -9,7 +9,7 @@
                 <description>{PAWN_nameDef} 的忠诚协议被锁定在最高优先级别。她不仅会无条件服从指令，其温和且坚定的态度也会让周围的人感到安心。</description>
                 <statOffsets>
                     <PawnBeauty>1</PawnBeauty>
-                    <SocialLearningFactor>0.5</SocialLearningFactor>
+                    <GlobalLearningFactor>0.5</GlobalLearningFactor>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -54,7 +54,7 @@
                 <label>情感同步</label>
                 <description>通过微表情分析和费洛蒙感应，{PAWN_nameDef} 能完美同步周围人类的情绪并提供恰到好处的安慰。只要她在身边，大家都会感到心情愉悦。</description>
                 <statOffsets>
-                    <SocialLearningFactor>10.0</SocialLearningFactor>
+                    <GlobalLearningFactor>10.0</GlobalLearningFactor>
                 </statOffsets>
             </li>
         </degreeDatas>
