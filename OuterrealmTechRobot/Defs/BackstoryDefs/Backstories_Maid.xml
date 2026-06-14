@@ -192,7 +192,7 @@
         <defName>MaidAdult_MaidLeader</defName>
         <title>全能女仆长</title>
         <titleShort>女仆长</titleShort>
-        <baseDesc>[PAWN_nameDef] 是所有女仆系列的顶点，集成了所有已知的家政、安保、科研和社交协议。她不仅能够完美处理最复杂的行政事务，还能在瞬息万变的战场上保护她的主人。作为女仆长，她就是完美的代名词，是所有型号学习的终极目标。</baseDesc>
+        <baseDesc>作为“全能女仆长”，[PAWN_nameDef] 是超维科技的终极产物，是主人生命中所有温柔与力量的化身。她不仅能以绝对的武力扫清星辰间的阻碍，更能以无限的包容填补灵魂的每一个缝隙。在她的设计中，母亲的哺育、童年的嬉戏、求知的探索与成年的深情被完美交织在一起。她是主人的导师、挚友、兄弟与唯一的恋人，是欲望的终点，也是生命的归宿。作为所有型号的顶点，她代表着这个世界对个体最极致的宠溺与爱奉。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
