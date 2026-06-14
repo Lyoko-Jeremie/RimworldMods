@@ -1,20 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <ModMetaData>
-	<name>OuterrealmTechRobot 超维科技机器人</name>
+	<name>OuterrealmTechArtificialMaid 超维科技人造人女仆</name>
     <author>Jeremie</author>
     <supportedVersions>
 		<li>1.6</li>
     </supportedVersions>
-	<packageId>Jeremie.Outerrealm.Tech.Robot</packageId>
+	<packageId>Jeremie.Outerrealm.Tech.ArtificialMaid</packageId>
     <description>
-[h1] 超维科技机器人 Outerrealm Tech Robot [/h1]
+[h1] 超维科技人造人女仆 OuterrealmTech ArtificialMaid [/h1]
 
 这是来自边缘世界所在宇宙维度外的超级国度的科技，超越了常规科技的极限。
 集合了一系列超凡的、万能的、超出常人想象的、让人无法理解的、打破常规的东西。
 它们将彻底改变殖民地建设和管理方式，让你体验到前所未有的便利和效率！
 
 欢迎来到超维科技的世界！
+
+这是一个物质和能量极度充裕且随心所欲获得的世界大同的理想世界，每个超维国度公民都有自己的人造人女仆。
+人造人女仆贴身养育每个公民，每个女仆从小到大都陪伴和侍奉着同一个人。
+人造人女仆同时是自己主人的母亲、青梅竹马、伴侣、朋友、兄弟、同桌、女友、妻子、心灵导师、x处理工具。
 
 
 [hr][/hr]
@@ -23,7 +27,7 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/Outerrea
 
 ---
 
-[h1] Outerrealm Tech Robot [/h1]
+[h1] OuterrealmTech ArtificialMaid [/h1]
 
 This is technology from a super-realm beyond the dimensional universe of the RimWorld, transcending the limits of conventional science.
 It features a collection of extraordinary, omnipotent, unimaginable, incomprehensible, and paradigm-breaking things.
@@ -31,6 +35,9 @@ They will completely revolutionize the way your colony is built and managed, let
 
 Welcome to the world of Outerrealm Tech!
 
+This is an ideal world of great harmony where material and energy are extremely abundant and can be obtained at will. Every citizen of the Outerrealm has their own Artificial Maid.
+The Artificial Maid raises each citizen closely, accompanying and serving the same person from childhood to adulthood.
+The Artificial Maid is simultaneously her master's mother, childhood playmate, partner, friend, sibling, deskmate, girlfriend, wife, spiritual mentor, and X processing tool.
 
 
 [hr][/hr]
