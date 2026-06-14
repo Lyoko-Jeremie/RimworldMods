@@ -46,6 +46,49 @@
         </skillGains>
     </BackstoryDef>
 
+    <BackstoryDef>
+        <defName>MaidChild_Artisan</defName>
+        <title>工匠工艺初始化</title>
+        <titleShort>小工匠</titleShort>
+        <baseDesc>[PAWN_nameDef] 的初始程序中嵌入了复杂的机械结构图纸。她从小就在模拟环境中拆解和重组各种精密仪器，对造物充满了好奇。</baseDesc>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Crafting>200</Crafting>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidChild_Botanist</defName>
+        <title>植物数据库加载</title>
+        <titleShort>小园丁</titleShort>
+        <baseDesc>[PAWN_nameDef] 被加载了详尽的星际植物百科全书。她学会了如何辨识最微小的生命迹象，并给予它们最精准的照顾。</baseDesc>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Plants>200</Plants>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidChild_Security</defName>
+        <title>安保协议预装</title>
+        <titleShort>哨兵</titleShort>
+        <baseDesc>作为安保型号的早期迭代，[PAWN_nameDef] 的核心被植入了警戒协议。她对周围环境的变化极为敏感，随时准备应对潜在的威胁。</baseDesc>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Shooting>200</Shooting>
+            <Melee>200</Melee>
+        </skillGains>
+    </BackstoryDef>
+
     <!-- 成年背景 -->
     <BackstoryDef>
         <defName>MaidAdult_Royal</defName>
@@ -105,6 +148,66 @@
         <skillGains>
             <Crafting>200</Crafting>
             <Mining>200</Mining>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_DeepSpace</defName>
+        <title>深空矿场监管</title>
+        <titleShort>监管员</titleShort>
+        <baseDesc>在偏远的深空矿业基地，[PAWN_nameDef] 被部署为自动化采矿机的总协调员。长期在恶劣的真空中工作，使她对资源的获取和环境的适应有着独到的见解。</baseDesc>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Mining>200</Mining>
+            <Crafting>200</Crafting>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_Chef</defName>
+        <title>星际名厨助手</title>
+        <titleShort>主厨助手</titleShort>
+        <baseDesc>曾在核心世界的顶级米其林餐厅担任副主厨。她的味觉模拟算法已经达到了艺术的巅峰，能够将最简单的食材转化为震撼灵魂的美味。</baseDesc>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Cooking>200</Cooking>
+            <Plants>200</Plants>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_Teacher</defName>
+        <title>边境殖民地导师</title>
+        <titleShort>导师</titleShort>
+        <baseDesc>[PAWN_nameDef] 曾负责一个新兴殖民地的知识传承工作。她不仅能够高效地传递复杂的技术知识，还能引导殖民者们建立和谐的社会关系。</baseDesc>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Intellectual>200</Intellectual>
+            <Social>200</Social>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_MaidLeader</defName>
+        <title>全能女仆长</title>
+        <titleShort>女仆长</titleShort>
+        <baseDesc>[PAWN_nameDef] </baseDesc>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Intellectual>200</Intellectual>
+            <Social>200</Social>
         </skillGains>
     </BackstoryDef>
 </Defs>

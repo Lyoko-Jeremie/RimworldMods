@@ -27,4 +27,28 @@
   <MaidAdult_Scavenger.title>Guardian of the Abandoned City</MaidAdult_Scavenger.title>
   <MaidAdult_Scavenger.titleShort>Guardian</MaidAdult_Scavenger.titleShort>
   <MaidAdult_Scavenger.baseDescription>Due to her owner's disappearance, [PAWN_nameDef] operated alone for years in a deserted city. She not only learned to scavenge for resources but also mastered the repair of various machinery.</MaidAdult_Scavenger.baseDescription>
+
+  <MaidChild_Artisan.title>Artisan Initialization</MaidChild_Artisan.title>
+  <MaidChild_Artisan.titleShort>Little Artisan</MaidChild_Artisan.titleShort>
+  <MaidChild_Artisan.baseDescription>Complex mechanical diagrams were embedded in [PAWN_nameDef]'s initial programming. Since her "birth", she has been dismantling and reassembling various precision instruments in simulated environments, filled with curiosity about creation.</MaidChild_Artisan.baseDescription>
+
+  <MaidChild_Botanist.title>Botanical Database Loading</MaidChild_Botanist.title>
+  <MaidChild_Botanist.titleShort>Little Gardener</MaidChild_Botanist.titleShort>
+  <MaidChild_Botanist.baseDescription>[PAWN_nameDef] was loaded with a detailed interstellar botanical encyclopedia. She learned how to identify the smallest signs of life and give them the most precise care.</MaidChild_Botanist.baseDescription>
+
+  <MaidChild_Security.title>Security Protocol Pre-installation</MaidChild_Security.title>
+  <MaidChild_Security.titleShort>Sentry</MaidChild_Security.titleShort>
+  <MaidChild_Security.baseDescription>As an early iteration of the security model, alert protocols were implanted into [PAWN_nameDef]'s core. She is extremely sensitive to changes in the surrounding environment, always ready to respond to potential threats.</MaidChild_Security.baseDescription>
+
+  <MaidAdult_DeepSpace.title>Deep Space Mine Supervisor</MaidAdult_DeepSpace.title>
+  <MaidAdult_DeepSpace.titleShort>Supervisor</MaidAdult_DeepSpace.titleShort>
+  <MaidAdult_DeepSpace.baseDescription>In a remote deep-space mining base, [PAWN_nameDef] was deployed as the general coordinator of automated mining machines. Working in the harsh vacuum for long periods has given her unique insights into resource acquisition and environmental adaptation.</MaidAdult_DeepSpace.baseDescription>
+
+  <MaidAdult_Chef.title>Interstellar Chef Assistant</MaidAdult_Chef.title>
+  <MaidAdult_Chef.titleShort>Sous-chef</MaidAdult_Chef.titleShort>
+  <MaidAdult_Chef.baseDescription>Once served as a sous-chef in a top Michelin-starred restaurant on a core world. Her taste simulation algorithms have reached the pinnacle of art, capable of transforming the simplest ingredients into soul-stirring delicacies.</MaidAdult_Chef.baseDescription>
+
+  <MaidAdult_Teacher.title>Frontier Colony Mentor</MaidAdult_Teacher.title>
+  <MaidAdult_Teacher.titleShort>Mentor</MaidAdult_Teacher.titleShort>
+  <MaidAdult_Teacher.baseDescription>[PAWN_nameDef] was responsible for knowledge transmission in an emerging colony. She not only efficiently transmits complex technical knowledge but also guides colonists in establishing harmonious social relationships.</MaidAdult_Teacher.baseDescription>
 </LanguageData>

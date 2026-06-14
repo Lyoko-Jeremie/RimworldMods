@@ -11,4 +11,13 @@
 
   <ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.label>emotional synchrony</ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.label>
   <ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.description>Through micro-expression analysis and pheromone sensing, {PAWN_nameDef} can perfectly synchronize with the emotions of surrounding humans and provide just the right comfort. As long as she is around, everyone will feel happy.</ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.label>culinary master</ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.label>
+  <ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.description>{PAWN_nameDef} possesses a set of top-tier culinary algorithms. The food she produces not only tastes excellent but is also made at an incredible speed.</ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_NatureSoul.degreeDatas.0.label>nature soul</ArtificialMaidTrait_NatureSoul.degreeDatas.0.label>
+  <ArtificialMaidTrait_NatureSoul.degreeDatas.0.description>{PAWN_nameDef} has a unique perception of the vitality of the natural world. She is able to engage in some kind of deep "communication" with plants and animals.</ArtificialMaidTrait_NatureSoul.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.label>technological oracle</ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.label>
+  <ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.description>This artificial person's processor seems to be connected to some ancient and massive technical knowledge base. When conducting scientific research, the efficiency she demonstrates is almost equivalent to an oracle.</ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.description>
 </LanguageData>

@@ -59,4 +59,50 @@
             </li>
         </degreeDatas>
     </TraitDef>
+
+    <TraitDef>
+        <defName>ArtificialMaidTrait_CulinaryMaster</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>烹饪大师</label>
+                <description>{PAWN_nameDef} 拥有一套顶级烹饪算法。她制作的食物不仅味道绝佳，而且速度惊人。</description>
+                <statOffsets>
+                    <CookSpeed>1000</CookSpeed>
+                    <FoodPoisonChance>-100.0</FoodPoisonChance>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>ArtificialMaidTrait_NatureSoul</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>自然之魂</label>
+                <description>{PAWN_nameDef} 对自然界的生命力有着独特的感知力。她能够与植物和动物进行某种深层次的“通讯”。</description>
+                <statOffsets>
+                    <PlantHarvestYield>20.0</PlantHarvestYield>
+                    <TameAnimalChance>20.0</TameAnimalChance>
+                    <TrainAnimalChance>20.0</TrainAnimalChance>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>ArtificialMaidTrait_TechnologicalOracle</defName>
+        <commonality>0.1</commonality>
+        <degreeDatas>
+            <li>
+                <label>技术神谕</label>
+                <description>这台人造人的处理器中似乎连接着某个古老且庞大的技术知识库。在进行科学研究时，她展现出的效率几乎等同于神谕。</description>
+                <statOffsets>
+                    <ResearchSpeed>50000</ResearchSpeed>
+                    <GlobalLearningFactor>5000</GlobalLearningFactor>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
 </Defs>
