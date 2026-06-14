@@ -37,6 +37,17 @@ namespace OuterrealmTechRobot
             if (this.parent.IsHashIntervalTick(60))
             {
                 this.ReplenishResources();
+                this.EnsureRecoveryHediff();
+            }
+        }
+
+        private void EnsureRecoveryHediff()
+        {
+            if (Pawn == null || Pawn.Dead) return;
+            var def = HediffDef.Named("ArtificialMaidRecovery");
+            if (!Pawn.health.hediffSet.HasHediff(def))
+            {
+                Pawn.health.AddHediff(def);
             }
         }
 
@@ -88,6 +99,91 @@ namespace OuterrealmTechRobot
             {
                 absorbed = true;
                 return false;
+            }
+            return true;
+        }
+    }
+
+    // Method 1: Intercept Pawn.Kill
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.Kill))]
+    public static class Patch_Pawn_Kill
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn __instance)
+        {
+            if (__instance.def.defName == "ArtificialMaid")
+            {
+                __instance.health.Reset();
+                Log.Message($"[ArtificialMaid] {__instance.LabelShort} 拦截了死亡调用并已修复自身。");
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // Method 2: Automatic Resurrection Hediff Logic
+    public class Hediff_ArtificialMaidRecovery : HediffWithComps
+    {
+        public override void PostTick()
+        {
+            base.PostTick();
+            if (pawn.IsHashIntervalTick(250))
+            {
+                this.ManualTickRare();
+            }
+        }
+
+        public void ManualTickRare()
+        {
+            if (pawn.Dead)
+            {
+                ResurrectionUtility.TryResurrect(pawn, new ResurrectionParams
+                {
+                    gettingScarsChance = 0f,
+                    canKidnap = false,
+                    canTimeoutOrFlee = false,
+                    useAvoidGridSmart = true,
+                    canSteal = false,
+                    invisibleStun = false
+                });
+                pawn.health.Reset();
+                Log.Message($"[ArtificialMaid] {pawn.LabelShort} 已从死亡中全自动修复。");
+            }
+        }
+
+        public override bool ShouldRemove => false;
+    }
+
+    // Method 2 Supplemental: Patch Corpse to trigger recovery if dead
+    [HarmonyPatch(typeof(Corpse), nameof(Corpse.TickRare))]
+    public static class Patch_Corpse_TickRare
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Corpse __instance)
+        {
+            Pawn pawn = __instance.InnerPawn;
+            if (pawn != null && pawn.def.defName == "ArtificialMaid")
+            {
+                var hediff = pawn.health.hediffSet.GetFirstHediff<Hediff_ArtificialMaidRecovery>();
+                hediff?.ManualTickRare();
+            }
+        }
+    }
+
+    // Method 3: Strengthening - Patch CheckForStateChange to prevent death state
+    [HarmonyPatch(typeof(Pawn_HealthTracker), "CheckForStateChange")]
+    public static class Patch_Pawn_HealthTracker_CheckForStateChange
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn_HealthTracker __instance, Pawn ___pawn)
+        {
+            if (___pawn != null && ___pawn.def.defName == "ArtificialMaid")
+            {
+                if (__instance.ShouldBeDead())
+                {
+                    __instance.Reset();
+                    return false;
+                }
             }
             return true;
         }
