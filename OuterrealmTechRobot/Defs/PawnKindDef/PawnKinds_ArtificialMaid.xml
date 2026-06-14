@@ -36,13 +36,13 @@
             <max>10000</max>
         </weaponMoney>
         <techHediffsMoney>
-            <min>2000</min>
-            <max>5000</max>
+            <min>0</min>
+            <max>0</max>
         </techHediffsMoney>
         <techHediffsTags>
             <li>Advanced</li>
         </techHediffsTags>
-        <techHediffsChance>0.5</techHediffsChance>
+        <techHediffsChance>0</techHediffsChance>
         <initialWillRange>0~0</initialWillRange>
         <initialResistanceRange>0~0</initialResistanceRange>
     </PawnKindDef>

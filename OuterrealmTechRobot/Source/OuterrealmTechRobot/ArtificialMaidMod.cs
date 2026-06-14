@@ -301,6 +301,10 @@ namespace OuterrealmTechRobot
                 Gender.Female
             );
             Pawn pawn = PawnGenerator.GeneratePawn(request);
+
+            // 清理所有初始状态，确保刚制造出来时是完美状态
+            pawn.health.Reset();
+
             GenSpawn.Spawn(pawn, billDoer.Position, billDoer.Map);
             
             // 确保技能全满且双火
