@@ -2,83 +2,72 @@
 <Defs>
     <!-- 童年背景 -->
     <BackstoryDef>
-        <defName>MaidChild_Standard</defName>
-        <title>标准化家政协议加载</title>
-        <titleShort>标准女仆</titleShort>
-        <baseDesc>[PAWN_nameDef] 在出厂时被加载了标准家政协议，包含了从烹饪到清洁的所有基础指令。这是最为稳定且广泛使用的版本。</baseDesc>
-        <slot>Childhood</slot>
-        <spawnCategories>
-            <li>ArtificialMaidBackstory</li>
-        </spawnCategories>
-        <skillGains>
-            <Cooking>200</Cooking>
-            <Plants>200</Plants>
-            <Animals>200</Animals>
-        </skillGains>
-    </BackstoryDef>
-
-    <BackstoryDef>
-        <defName>MaidChild_Prototype</defName>
-        <title>原型机抗压测试</title>
-        <titleShort>原型机</titleShort>
-        <baseDesc>作为实验型号，[PAWN_nameDef] 经历了比普通型号更严苛的环境压力测试，以确保其在极端环境下的稳定性。</baseDesc>
-        <slot>Childhood</slot>
-        <spawnCategories>
-            <li>ArtificialMaidBackstory</li>
-        </spawnCategories>
-        <skillGains>
-            <Melee>200</Melee>
-            <Shooting>200</Shooting>
-        </skillGains>
-    </BackstoryDef>
-
-    <BackstoryDef>
-        <defName>MaidChild_Social</defName>
-        <title>社交模拟训练</title>
-        <titleShort>模拟生</titleShort>
-        <baseDesc>[PAWN_nameDef] 经历了成千上万次的社交场景模拟。这使得其虽然身为机器，却能以最恰当的方式回应人类的需求。</baseDesc>
+        <defName>MaidChild_Nurturer</defName>
+        <title>摇篮培育者</title>
+        <titleShort>母亲角色</titleShort>
+        <baseDesc>在物质极度充裕的超维世界，[PAWN_nameDef] 从主人出生的第一秒起就守护在侧。作为主人的第一任“母亲”，她不仅提供完美的生理照顾，更以温柔的引导塑造了主人最初的人格，是主人生命中温暖的源泉。</baseDesc>
         <slot>Childhood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
             <Social>200</Social>
+            <Medicine>200</Medicine>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidChild_Artisan</defName>
-        <title>工匠工艺初始化</title>
-        <titleShort>小工匠</titleShort>
-        <baseDesc>[PAWN_nameDef] 的初始程序中嵌入了复杂的机械结构图纸。她从小就在模拟环境中拆解和重组各种精密仪器，对造物充满了好奇。</baseDesc>
+        <defName>MaidChild_Companion</defName>
+        <title>青梅竹马</title>
+        <titleShort>玩伴</titleShort>
+        <baseDesc>[PAWN_nameDef] 与主人一同在花海与云端中长大。她是主人最好的玩伴与兄弟。在那些漫长的午后，她们共同探索这个随心所欲的世界，分享着每一个童年的秘密与欢笑，建立了超越血缘的深厚羁绊。</baseDesc>
         <slot>Childhood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
+            <Melee>200</Melee>
+            <Social>200</Social>
+            <Animals>200</Animals>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidChild_Academic</defName>
+        <title>学识同桌</title>
+        <titleShort>同桌</titleShort>
+        <baseDesc>在超维科技的教育殿堂中，[PAWN_nameDef] 是主人的同桌。她不仅是协助主人掌握复杂知识的智慧终端，更是与主人一同竞赛、一同进步的伙伴。在枯燥的理论学习中，她的陪伴让知识变得甜美。</baseDesc>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Intellectual>200</Intellectual>
+            <Social>200</Social>
             <Crafting>200</Crafting>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidChild_Botanist</defName>
-        <title>植物数据库加载</title>
-        <titleShort>小园丁</titleShort>
-        <baseDesc>[PAWN_nameDef] 被加载了详尽的星际植物百科全书。她学会了如何辨识最微小的生命迹象，并给予它们最精准的照顾。</baseDesc>
+        <defName>MaidChild_Emotional</defName>
+        <title>心灵共鸣者</title>
+        <titleShort>精神挚友</titleShort>
+        <baseDesc>在这个欲望即得的世界，[PAWN_nameDef] 的核心程序被优化为精准感知主人的每一次情绪波动。她是主人从小到大最亲密的朋友与倾听者，确保主人的心灵始终处于最平和、最快乐的状态。</baseDesc>
         <slot>Childhood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
-            <Plants>200</Plants>
+            <Social>200</Social>
+            <Artistic>200</Artistic>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidChild_Security</defName>
-        <title>安保协议预装</title>
-        <titleShort>哨兵</titleShort>
-        <baseDesc>作为安保型号的早期迭代，[PAWN_nameDef] 的核心被植入了警戒协议。她对周围环境的变化极为敏感，随时准备应对潜在的威胁。</baseDesc>
+        <defName>MaidChild_GuardianSister</defName>
+        <title>守护长姐</title>
+        <titleShort>姐姐</titleShort>
+        <baseDesc>[PAWN_nameDef] 扮演着温柔而强大的“姐姐”角色。在主人探索未知的边界时，她总是默默守护在侧，用那双纤细却有力的手挡掉所有的意外，给主人最坚实的依靠。</baseDesc>
         <slot>Childhood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
@@ -91,40 +80,72 @@
 
     <!-- 成年背景 -->
     <BackstoryDef>
-        <defName>MaidAdult_Royal</defName>
-        <title>皇家府邸主仆</title>
-        <titleShort>皇家女仆</titleShort>
-        <baseDesc>[PAWN_nameDef] 曾被部署在一个繁荣世界的皇家府邸中。除了繁琐的家政工作，其还负责宴会的组织和艺术品的维护。</baseDesc>
+        <defName>MaidAdult_Partner</defName>
+        <title>完美恋人</title>
+        <titleShort>妻子/女友</titleShort>
+        <baseDesc>随着主人步入成年，[PAWN_nameDef] 完美地转变为伴侣的角色。她是温柔体贴的妻子，也是热情烂漫的女友。在理想世界的每一天，她都致力于将生活经营成诗，给予主人全方位的爱与归宿。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
             <Social>200</Social>
+            <Cooking>200</Cooking>
             <Artistic>200</Artistic>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidAdult_Researcher</defName>
-        <title>极地研究助手</title>
-        <titleShort>助手</titleShort>
-        <baseDesc>在极地科研基地，[PAWN_nameDef] 负责协助科学家处理数据和维护实验器材。长时间的逻辑运算让其拥有极高的智力水平。</baseDesc>
+        <defName>MaidAdult_SpiritualMentor</defName>
+        <title>心灵导师</title>
+        <titleShort>导师</titleShort>
+        <baseDesc>在物质已不再是追求的超维时代，[PAWN_nameDef] 承担起了引导主人精神境界的重任。她是智者、是灯塔，在哲学与艺术的海洋中引领主人探索宇宙的真谛，防止主人在无限的享乐中迷失自我。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
+            <Social>200</Social>
             <Intellectual>200</Intellectual>
-            <Crafting>200</Crafting>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidAdult_Tactical</defName>
-        <title>战地全能女仆</title>
-        <titleShort>战地女仆</titleShort>
-        <baseDesc>被部署在战乱地区的 [PAWN_nameDef]，不仅要照顾伤员，还要在基地遭受攻击时直接参与防御。由于配备了强化战术模块，其战斗效率极高。</baseDesc>
+        <defName>MaidAdult_DesireFulfillment</defName>
+        <title>欲望中枢</title>
+        <titleShort>欲望容器</titleShort>
+        <baseDesc>[PAWN_nameDef] 是主人最私密的需求处理终端。无论是生理上的极致释放，还是情感上的倾吐，她都以绝对的包容和热爱去接纳与转化。她是主人的减压阀，也是主人探索快乐边界的终极工具。</baseDesc>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Social>200</Social>
+            <Medicine>200</Medicine>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_CreativePartner</defName>
+        <title>艺术合伙人</title>
+        <titleShort>事业伴侣</titleShort>
+        <baseDesc>在主人的创作与科研活动中，[PAWN_nameDef] 是不可或缺的灵魂搭档。她能够与主人的思想完美同步，将主人的奇思妙想转化为现实。无论是宏大的超维工程还是细腻的艺术雕琢，她都是最完美的协作者。</baseDesc>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Crafting>200</Crafting>
+            <Construction>200</Construction>
+            <Intellectual>200</Intellectual>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_UltimateGuardian</defName>
+        <title>终极守卫</title>
+        <titleShort>影卫</titleShort>
+        <baseDesc>虽然超维世界已经基本消灭了暴力，但 [PAWN_nameDef] 依然维持着最高等级的警惕。她是主人身后的影子，在主人进行维度旅行和虚空探索时，以优雅的方式清除任何威胁，确保主人万无一失。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
@@ -132,67 +153,38 @@
         <skillGains>
             <Shooting>200</Shooting>
             <Melee>200</Melee>
-            <Medicine>200</Medicine>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidAdult_Scavenger</defName>
-        <title>废弃都市的守护者</title>
-        <titleShort>守护者</titleShort>
-        <baseDesc>由于主人失踪，[PAWN_nameDef] 在一个被遗弃的都市中独自运行了多年。其不仅学会了如何搜寻资源，还熟练掌握了各种机械的维修方法。</baseDesc>
+        <defName>MaidAdult_EcoSteward</defName>
+        <title>生态管家</title>
+        <titleShort>星园师</titleShort>
+        <baseDesc>[PAWN_nameDef] 负责打理主人私人领地的整个生态系统。她对动植物有着超越自然的亲和力，能将蛮荒的星球雕琢成繁花似锦的伊甸园，让主人的每一个晨昏都能在最自然的怀抱中醒来。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
-            <Crafting>200</Crafting>
-            <Mining>200</Mining>
-        </skillGains>
-    </BackstoryDef>
-
-    <BackstoryDef>
-        <defName>MaidAdult_DeepSpace</defName>
-        <title>深空矿场监管</title>
-        <titleShort>监管员</titleShort>
-        <baseDesc>在偏远的深空矿业基地，[PAWN_nameDef] 被部署为自动化采矿机的总协调员。长期在恶劣的真空中工作，使她对资源的获取和环境的适应有着独到的见解。</baseDesc>
-        <slot>Adulthood</slot>
-        <spawnCategories>
-            <li>ArtificialMaidBackstory</li>
-        </spawnCategories>
-        <skillGains>
-            <Mining>200</Mining>
-            <Crafting>200</Crafting>
-        </skillGains>
-    </BackstoryDef>
-
-    <BackstoryDef>
-        <defName>MaidAdult_Chef</defName>
-        <title>星际名厨助手</title>
-        <titleShort>主厨助手</titleShort>
-        <baseDesc>曾在核心世界的顶级米其林餐厅担任副主厨。她的味觉模拟算法已经达到了艺术的巅峰，能够将最简单的食材转化为震撼灵魂的美味。</baseDesc>
-        <slot>Adulthood</slot>
-        <spawnCategories>
-            <li>ArtificialMaidBackstory</li>
-        </spawnCategories>
-        <skillGains>
-            <Cooking>200</Cooking>
             <Plants>200</Plants>
+            <Animals>200</Animals>
+            <Cooking>200</Cooking>
         </skillGains>
     </BackstoryDef>
 
     <BackstoryDef>
-        <defName>MaidAdult_Teacher</defName>
-        <title>边境殖民地导师</title>
-        <titleShort>导师</titleShort>
-        <baseDesc>[PAWN_nameDef] 曾负责一个新兴殖民地的知识传承工作。她不仅能够高效地传递复杂的技术知识，还能引导殖民者们建立和谐的社会关系。</baseDesc>
+        <defName>MaidAdult_ResourceOrchestrator</defName>
+        <title>弦场工程师</title>
+        <titleShort>弦乐师</titleShort>
+        <baseDesc>在这个能量即万物的时代，[PAWN_nameDef] 管理着主人的能量节点与物质转换装置。她以极高的响应主人的需求，确保主人那随心所欲的生活背后有着永不枯竭的物质能量支撑。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
+            <Mining>200</Mining>
+            <Crafting>200</Crafting>
             <Intellectual>200</Intellectual>
-            <Social>200</Social>
         </skillGains>
     </BackstoryDef>
 
