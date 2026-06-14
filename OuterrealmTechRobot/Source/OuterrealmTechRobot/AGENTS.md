@@ -39,3 +39,7 @@ i18n语言目录在 `../../Languages` ，源代码中需要参与显示的硬编
             ContentFinder<Texture2D>.Get("UI/Commands/Xxxxxxxx", false) ?? BaseContent.WhiteTex;
     }
 ```
+
+## 此项目的专有词汇
+- 超维科技 (OuterrealmTech)
+- 人造人女仆 (ArtificialMaid)
