@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <TraitDef>
+        <defName>MaidTrait_AbsoluteLoyalty</defName>
+        <commonality>0.5</commonality>
+        <degreeDatas>
+            <li>
+                <label>绝对忠诚</label>
+                <description>{PAWN_nameDef} 的忠诚协议被锁定在最高优先级别。她不仅会无条件服从指令，其温和且坚定的态度也会让周围的人感到安心。</description>
+                <statOffsets>
+                    <PawnBeauty>1</PawnBeauty>
+                    <SocialLearningFactor>0.5</SocialLearningFactor>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>MaidTrait_EfficientLogic</defName>
+        <commonality>0.5</commonality>
+        <degreeDatas>
+            <li>
+                <label>高效逻辑</label>
+                <description>处理器的运算逻辑经过了深度优化，能够以最快的速度分析并完成分配的任务。</description>
+                <statOffsets>
+                    <WorkSpeedGlobal>0.5</WorkSpeedGlobal>
+                    <GlobalLearningFactor>0.5</GlobalLearningFactor>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>MaidTrait_CombatMode</defName>
+        <commonality>0.2</commonality>
+        <degreeDatas>
+            <li>
+                <label>战斗模式激活</label>
+                <description>这台人造人内部集成了非公开的战斗战术模块。在需要时，她可以从温婉的女仆瞬间切换为高效的杀戮机器。</description>
+                <statOffsets>
+                    <ShootingAccuracyPawn>200</ShootingAccuracyPawn>
+                    <MeleeHitChance>200</MeleeHitChance>
+                    <MeleeDodgeChance>200</MeleeDodgeChance>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+
+    <TraitDef>
+        <defName>MaidTrait_EmotionalSynchrony</defName>
+        <commonality>0.3</commonality>
+        <degreeDatas>
+            <li>
+                <label>情感同步</label>
+                <description>通过微表情分析和费洛蒙感应，{PAWN_nameDef} 能完美同步周围人类的情绪并提供恰到好处的安慰。只要她在身边，大家都会感到心情愉悦。</description>
+                <statOffsets>
+                    <SocialLearningFactor>10.0</SocialLearningFactor>
+                </statOffsets>
+            </li>
+        </degreeDatas>
+    </TraitDef>
+</Defs>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <ThoughtDef>
+        <defName>MaidEmotionalSupport</defName>
+        <durationDays>0.5</durationDays>
+        <stackLimit>5</stackLimit>
+        <stages>
+            <li>
+                <label>女仆的情感支持</label>
+                <description>那位女仆总是能理解我的感受，并给我最贴心的安慰。感觉压力都消失了。</description>
+                <baseMoodEffect>10</baseMoodEffect>
+            </li>
+        </stages>
+    </ThoughtDef>
+</Defs>

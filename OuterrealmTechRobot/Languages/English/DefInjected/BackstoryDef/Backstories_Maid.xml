@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <MaidChild_Standard.title>Standard Housekeeping Protocol</MaidChild_Standard.title>
+  <MaidChild_Standard.titleShort>Standard Maid</MaidChild_Standard.titleShort>
+  <MaidChild_Standard.baseDescription>[PAWN_nameDef] was loaded with standard housekeeping protocols upon fabrication, covering all basic instructions from cooking to cleaning. This is the most stable and widely used version.</MaidChild_Standard.baseDescription>
+
+  <MaidChild_Prototype.title>Prototype Stress Testing</MaidChild_Prototype.title>
+  <MaidChild_Prototype.titleShort>Prototype</MaidChild_Prototype.titleShort>
+  <MaidChild_Prototype.baseDescription>As an experimental model, [PAWN_nameDef] underwent more rigorous environmental stress testing than standard models to ensure stability in extreme conditions.</MaidChild_Prototype.baseDescription>
+
+  <MaidChild_Social.title>Social Simulation Training</MaidChild_Social.title>
+  <MaidChild_Social.titleShort>Simulator</MaidChild_Social.titleShort>
+  <MaidChild_Social.baseDescription>[PAWN_nameDef] underwent thousands of social scenario simulations. This allows her, despite being a machine, to respond to human needs in the most appropriate manner.</MaidChild_Social.baseDescription>
+
+  <MaidAdult_Royal.title>Royal Manor Maid</MaidAdult_Royal.title>
+  <MaidAdult_Royal.titleShort>Royal Maid</MaidAdult_Royal.titleShort>
+  <MaidAdult_Royal.baseDescription>[PAWN_nameDef] was once deployed in a royal manor on a glitterworld. In addition to tedious housekeeping, she was responsible for banquet organization and artwork maintenance.</MaidAdult_Royal.baseDescription>
+
+  <MaidAdult_Researcher.title>Polar Research Assistant</MaidAdult_Researcher.title>
+  <MaidAdult_Researcher.titleShort>Assistant</MaidAdult_Researcher.titleShort>
+  <MaidAdult_Researcher.baseDescription>At a polar research base, [PAWN_nameDef] was responsible for assisting scientists with data processing and experimental equipment maintenance. Long periods of logical computation have given her a high level of intelligence.</MaidAdult_Researcher.baseDescription>
+
+  <MaidAdult_Tactical.title>Multi-role Tactical Maid</MaidAdult_Tactical.title>
+  <MaidAdult_Tactical.titleShort>Tactical Maid</MaidAdult_Tactical.titleShort>
+  <MaidAdult_Tactical.baseDescription>Deployed in conflict zones, [PAWN_nameDef] not only cared for the wounded but also directly participated in defense when the base was attacked. Equipped with enhanced tactical modules, her combat efficiency is extremely high.</MaidAdult_Tactical.baseDescription>
+
+  <MaidAdult_Scavenger.title>Guardian of the Abandoned City</MaidAdult_Scavenger.title>
+  <MaidAdult_Scavenger.titleShort>Guardian</MaidAdult_Scavenger.titleShort>
+  <MaidAdult_Scavenger.baseDescription>Due to her owner's disappearance, [PAWN_nameDef] operated alone for years in a deserted city. She not only learned to scavenge for resources but also mastered the repair of various machinery.</MaidAdult_Scavenger.baseDescription>
+</LanguageData>

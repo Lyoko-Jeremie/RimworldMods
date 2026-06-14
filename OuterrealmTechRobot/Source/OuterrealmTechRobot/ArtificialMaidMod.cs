@@ -39,6 +39,33 @@ namespace OuterrealmTechRobot
                 this.ReplenishResources();
                 this.EnsureRecoveryHediff();
             }
+            if (this.parent.IsHashIntervalTick(250))
+            {
+                this.ApplyEmotionalSupport();
+            }
+        }
+
+        private void ApplyEmotionalSupport()
+        {
+            if (Pawn == null || Pawn.Dead || !Pawn.Spawned) return;
+
+            // 检查是否有“情感同步”特性
+            if (Pawn.story?.traits != null)
+            {
+                var traitDef = TraitDef.Named("MaidTrait_EmotionalSynchrony");
+                if (Pawn.story.traits.HasTrait(traitDef))
+                {
+                    // 获取周围 10 格内的 Pawn
+                    float radius = 10f;
+                    foreach (var thing in GenRadial.RadialDistinctThingsAround(Pawn.Position, Pawn.Map, radius, true))
+                    {
+                        if (thing is Pawn other && other != Pawn && other.RaceProps.Humanlike && other.Faction == Pawn.Faction)
+                        {
+                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(ThoughtDef.Named("MaidEmotionalSupport"), Pawn);
+                        }
+                    }
+                }
+            }
         }
 
         private void EnsureRecoveryHediff()

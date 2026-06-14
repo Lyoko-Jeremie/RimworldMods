@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <MaidTrait_AbsoluteLoyalty.degreeDatas.0.label>absolute loyalty</MaidTrait_AbsoluteLoyalty.degreeDatas.0.label>
+  <MaidTrait_AbsoluteLoyalty.degreeDatas.0.description>{PAWN_nameDef}'s loyalty protocol is locked at the highest priority level. She not only obeys orders unconditionally, but her gentle and firm attitude also puts those around her at ease.</MaidTrait_AbsoluteLoyalty.degreeDatas.0.description>
+
+  <MaidTrait_EfficientLogic.degreeDatas.0.label>efficient logic</MaidTrait_EfficientLogic.degreeDatas.0.label>
+  <MaidTrait_EfficientLogic.degreeDatas.0.description>The processor's operation logic has been deeply optimized, enabling it to analyze and complete assigned tasks at the fastest speed.</MaidTrait_EfficientLogic.degreeDatas.0.description>
+
+  <MaidTrait_CombatMode.degreeDatas.0.label>combat mode active</MaidTrait_CombatMode.degreeDatas.0.label>
+  <MaidTrait_CombatMode.degreeDatas.0.description>This artificial person has undisclosed combat tactical modules integrated inside. When necessary, she can instantly switch from a gentle maid to an efficient killing machine.</MaidTrait_CombatMode.degreeDatas.0.description>
+
+  <MaidTrait_EmotionalSynchrony.degreeDatas.0.label>emotional synchrony</MaidTrait_EmotionalSynchrony.degreeDatas.0.label>
+  <MaidTrait_EmotionalSynchrony.degreeDatas.0.description>Through micro-expression analysis and pheromone sensing, {PAWN_nameDef} can perfectly synchronize with the emotions of surrounding humans and provide just the right comfort. As long as she is around, everyone will feel happy.</MaidTrait_EmotionalSynchrony.degreeDatas.0.description>
+</LanguageData>

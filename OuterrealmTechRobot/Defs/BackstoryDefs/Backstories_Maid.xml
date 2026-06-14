@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <!-- 童年背景 -->
+    <BackstoryDef>
+        <defName>MaidChild_Standard</defName>
+        <title>标准化家政协议加载</title>
+        <titleShort>标准女仆</titleShort>
+        <baseDescription>[PAWN_nameDef] 在出厂时被加载了标准家政协议，包含了从烹饪到清洁的所有基础指令。这是最为稳定且广泛使用的版本。</baseDescription>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Cooking>200</Cooking>
+            <Plants>200</Plants>
+            <Animals>200</Animals>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidChild_Prototype</defName>
+        <title>原型机抗压测试</title>
+        <titleShort>原型机</titleShort>
+        <baseDescription>作为实验型号，[PAWN_nameDef] 经历了比普通型号更严苛的环境压力测试，以确保其在极端环境下的稳定性。</baseDescription>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Melee>200</Melee>
+            <Shooting>200</Shooting>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidChild_Social</defName>
+        <title>社交模拟训练</title>
+        <titleShort>模拟生</titleShort>
+        <baseDescription>[PAWN_nameDef] 经历了成千上万次的社交场景模拟。这使得其虽然身为机器，却能以最恰当的方式回应人类的需求。</baseDescription>
+        <slot>Childhood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Social>200</Social>
+        </skillGains>
+    </BackstoryDef>
+
+    <!-- 成年背景 -->
+    <BackstoryDef>
+        <defName>MaidAdult_Royal</defName>
+        <title>皇家府邸主仆</title>
+        <titleShort>皇家女仆</titleShort>
+        <baseDescription>[PAWN_nameDef] 曾被部署在一个繁荣世界的皇家府邸中。除了繁琐的家政工作，其还负责宴会的组织和艺术品的维护。</baseDescription>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Social>200</Social>
+            <Artistic>200</Artistic>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_Researcher</defName>
+        <title>极地研究助手</title>
+        <titleShort>助手</titleShort>
+        <baseDescription>在极地科研基地，[PAWN_nameDef] 负责协助科学家处理数据和维护实验器材。长时间的逻辑运算让其拥有极高的智力水平。</baseDescription>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Intellectual>200</Intellectual>
+            <Crafting>200</Crafting>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_Tactical</defName>
+        <title>战地全能女仆</title>
+        <titleShort>战地女仆</titleShort>
+        <baseDescription>被部署在战乱地区的 [PAWN_nameDef]，不仅要照顾伤员，还要在基地遭受攻击时直接参与防御。由于配备了强化战术模块，其战斗效率极高。</baseDescription>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Shooting>200</Shooting>
+            <Melee>200</Melee>
+            <Medicine>200</Medicine>
+        </skillGains>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>MaidAdult_Scavenger</defName>
+        <title>废弃都市的守护者</title>
+        <titleShort>守护者</titleShort>
+        <baseDescription>由于主人失踪，[PAWN_nameDef] 在一个被遗弃的都市中独自运行了多年。其不仅学会了如何搜寻资源，还熟练掌握了各种机械的维修方法。</baseDescription>
+        <slot>Adulthood</slot>
+        <spawnCategories>
+            <li>ArtificialMaidBackstory</li>
+        </spawnCategories>
+        <skillGains>
+            <Crafting>200</Crafting>
+            <Mining>200</Mining>
+        </skillGains>
+    </BackstoryDef>
+</Defs>

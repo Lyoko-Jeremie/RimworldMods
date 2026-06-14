@@ -11,6 +11,9 @@
                 <canLayDown>true</canLayDown>
                 <maxDamageForSocialfight>0</maxDamageForSocialfight>
                 <immuneToXenophobia>true</immuneToXenophobia>
+                <whiteBackstoryCategoryList>
+                    <li>ArtificialMaidBackstory</li>
+                </whiteBackstoryCategoryList>
                 <alienPartGenerator>
                     <headTypes>
                         <li>Female_AverageNormal</li>
