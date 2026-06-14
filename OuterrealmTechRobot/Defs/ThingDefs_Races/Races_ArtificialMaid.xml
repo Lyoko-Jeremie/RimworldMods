@@ -63,6 +63,7 @@
             <thinkTreeMain>Humanlike</thinkTreeMain>
             <thinkTreeConstant>HumanlikeConstant</thinkTreeConstant>
             <intelligence>Humanlike</intelligence>
+            <renderTree>Humanlike</renderTree>
             <makesFootprints>true</makesFootprints>
             <lifeExpectancy>10000</lifeExpectancy>
             <nameCategory>HumanStandard</nameCategory>
@@ -80,7 +81,7 @@
             </litterSizeCurve>
             <lifeStageAges>
                 <li>
-                    <def>HumanlikeAdult</def>
+                    <def>ArtificialMaidLifeStage</def>
                     <minAge>0</minAge>
                 </li>
             </lifeStageAges>
