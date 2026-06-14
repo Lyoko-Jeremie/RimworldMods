@@ -236,7 +236,7 @@ namespace FullyAutomaticOmniCrafter
     public class Building_FullyAutoOmniSurgeon : Building_Enterable, IThingHolderWithDrawnPawn
     {
         public List<SurgeryTemplate> templates => OmniCrafterMod.Settings.globalSurgeryTemplates;
-        public List<OmniSurgeonOperation> lastOperations => OmniCrafterMod.Settings.globalLastOperations;
+        public List<OmniSurgeonOperation> lastOperations = new List<OmniSurgeonOperation>();
 
         public Pawn Occupant => innerContainer.FirstOrDefault() as Pawn;
 
@@ -270,13 +270,13 @@ namespace FullyAutomaticOmniCrafter
             
             // 为了向前兼容，读取旧存档中的数据并合并到全局设置中
             List<SurgeryTemplate> localTemplates = null;
-            List<OmniSurgeonOperation> localLastOps = null;
 
             if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
                 Scribe_Collections.Look(ref localTemplates, "templates", LookMode.Deep);
-                Scribe_Collections.Look(ref localLastOps, "lastOperations", LookMode.Deep);
+                Scribe_Collections.Look(ref lastOperations, "lastOperations", LookMode.Deep);
             }
+            if (lastOperations == null) lastOperations = new List<OmniSurgeonOperation>();
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -288,13 +288,6 @@ namespace FullyAutomaticOmniCrafter
                         {
                             templates.Add(t);
                         }
-                    }
-                }
-                if (localLastOps != null && localLastOps.Count > 0 && lastOperations.Count == 0)
-                {
-                    foreach (var op in localLastOps)
-                    {
-                        lastOperations.Add(op);
                     }
                 }
             }
@@ -1105,7 +1098,6 @@ namespace FullyAutomaticOmniCrafter
             {
                 surgeon.lastOperations.Add(op.Clone());
             }
-            OmniCrafterMod.Instance.WriteSettings();
         }
 
         public override void DoWindowContents(Rect inRect)
