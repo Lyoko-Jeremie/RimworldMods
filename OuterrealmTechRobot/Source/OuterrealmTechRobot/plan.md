@@ -141,6 +141,41 @@
         </equippedStatOffsets>
 ```
 
+```xml
+           <li Class="AutoBlink.HediffCompProperties_AutoBlink">
+                <minDistanceToBlink>5</minDistanceToBlink>
+                <maxDistanceToBlink>300</maxDistanceToBlink>
+                <blinkIntervalTicks>60</blinkIntervalTicks>
+                <delayAfterEligibleTicks>40</delayAfterEligibleTicks>
+                <cellsBeforeTarget>1</cellsBeforeTarget>
+                <postBlinkStanceTicks>30</postBlinkStanceTicks>
+                <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
+                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
+                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
+                <playerFactionOnly>false</playerFactionOnly>
+                <excludedJobDefs>
+                    <!-- 闲逛时 -->
+                    <li>GotoWander</li>
+                    <!-- 被携带搬运时 -->
+                    <li>Carried</li>
+                </excludedJobDefs>
+                <drawGizmo>true</drawGizmo>
+                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>
+                <preBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Small</li>
+                </preBlinkSoundDefs>
+                <preBlinkEffecterDefs>
+                    <li>Skip_Entry</li>
+                </preBlinkEffecterDefs>
+                <postBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Exit_Small</li>
+                </postBlinkSoundDefs>
+                <postBlinkEffecterDefs>
+                    <li>Skip_ExitNoDelay</li>
+                </postBlinkEffecterDefs>
+            </li>
+```
+
 ## 7. 基于 Humanoid Alien Races (HAR) 的具体实现思考
 
 为了实现 Artificial Maid，我们将利用 HAR 提供的强大 XML 配置能力来简化开发并确保与原版及其他 Mod 的兼容性。
