@@ -1,54 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <MaidChild_Standard.title>Standard Housekeeping Protocol</MaidChild_Standard.title>
-  <MaidChild_Standard.titleShort>Standard Maid</MaidChild_Standard.titleShort>
-  <MaidChild_Standard.baseDescription>[PAWN_nameDef] was loaded with standard housekeeping protocols upon fabrication, covering all basic instructions from cooking to cleaning. This is the most stable and widely used version.</MaidChild_Standard.baseDescription>
+  <MaidChild_Nurturer.title>Cradle Nurturer</MaidChild_Nurturer.title>
+  <MaidChild_Nurturer.titleShort>Mother Role</MaidChild_Nurturer.titleShort>
+  <MaidChild_Nurturer.baseDesc>In the material-rich Outerrealm, [PAWN_nameDef] has guarded the master since the first second of birth. As the master's first "mother", she not only provides perfect physiological care, but also shapes the master's initial personality with gentle guidance, serving as a source of warmth in the master's life.</MaidChild_Nurturer.baseDesc>
 
-  <MaidChild_Prototype.title>Prototype Stress Testing</MaidChild_Prototype.title>
-  <MaidChild_Prototype.titleShort>Prototype</MaidChild_Prototype.titleShort>
-  <MaidChild_Prototype.baseDescription>As an experimental model, [PAWN_nameDef] underwent more rigorous environmental stress testing than standard models to ensure stability in extreme conditions.</MaidChild_Prototype.baseDescription>
+  <MaidChild_Companion.title>Childhood Friend</MaidChild_Companion.title>
+  <MaidChild_Companion.titleShort>Playmate</MaidChild_Companion.titleShort>
+  <MaidChild_Companion.baseDesc>[PAWN_nameDef] grew up with the master among flowers and clouds. She was the master's best playmate and sibling. During those long afternoons, they explored this carefree world together, sharing every childhood secret and laughter, establishing a deep bond beyond blood.</MaidChild_Companion.baseDesc>
 
-  <MaidChild_Social.title>Social Simulation Training</MaidChild_Social.title>
-  <MaidChild_Social.titleShort>Simulator</MaidChild_Social.titleShort>
-  <MaidChild_Social.baseDescription>[PAWN_nameDef] underwent thousands of social scenario simulations. This allows her, despite being a machine, to respond to human needs in the most appropriate manner.</MaidChild_Social.baseDescription>
+  <MaidChild_Academic.title>Academic Desk-mate</MaidChild_Academic.title>
+  <MaidChild_Academic.titleShort>Desk-mate</MaidChild_Academic.titleShort>
+  <MaidChild_Academic.baseDesc>In the educational halls of OuterrealmTech, [PAWN_nameDef] was the master's desk-mate. She is not only an intelligence terminal assisting the master in mastering complex knowledge, but also a partner competing and progressing with the master. In the dull theoretical study, her company makes knowledge sweet.</MaidChild_Academic.baseDesc>
 
-  <MaidAdult_Royal.title>Royal Manor Maid</MaidAdult_Royal.title>
-  <MaidAdult_Royal.titleShort>Royal Maid</MaidAdult_Royal.titleShort>
-  <MaidAdult_Royal.baseDescription>[PAWN_nameDef] was once deployed in a royal manor on a glitterworld. In addition to tedious housekeeping, she was responsible for banquet organization and artwork maintenance.</MaidAdult_Royal.baseDescription>
+  <MaidChild_Emotional.title>Soul Resonator</MaidChild_Emotional.title>
+  <MaidChild_Emotional.titleShort>Spiritual Best Friend</MaidChild_Emotional.titleShort>
+  <MaidChild_Emotional.baseDesc>In this world where desires are immediately fulfilled, [PAWN_nameDef]'s core program is optimized to accurately perceive every emotional fluctuation of the master. She is the master's closest friend and listener since childhood, ensuring the master's soul always stays in the most peaceful and happiest state.</MaidChild_Emotional.baseDesc>
 
-  <MaidAdult_Researcher.title>Polar Research Assistant</MaidAdult_Researcher.title>
-  <MaidAdult_Researcher.titleShort>Assistant</MaidAdult_Researcher.titleShort>
-  <MaidAdult_Researcher.baseDescription>At a polar research base, [PAWN_nameDef] was responsible for assisting scientists with data processing and experimental equipment maintenance. Long periods of logical computation have given her a high level of intelligence.</MaidAdult_Researcher.baseDescription>
+  <MaidChild_GuardianSister.title>Guardian Elder Sister</MaidChild_GuardianSister.title>
+  <MaidChild_GuardianSister.titleShort>Elder Sister</MaidChild_GuardianSister.titleShort>
+  <MaidChild_GuardianSister.baseDesc>[PAWN_nameDef] plays the role of a gentle yet powerful "elder sister". When the master explores the boundaries of the unknown, she always silently guards by the side, using those slender but strong hands to block all accidents, giving the master the most solid reliance.</MaidChild_GuardianSister.baseDesc>
 
-  <MaidAdult_Tactical.title>Multi-role Tactical Maid</MaidAdult_Tactical.title>
-  <MaidAdult_Tactical.titleShort>Tactical Maid</MaidAdult_Tactical.titleShort>
-  <MaidAdult_Tactical.baseDescription>Deployed in conflict zones, [PAWN_nameDef] not only cared for the wounded but also directly participated in defense when the base was attacked. Equipped with enhanced tactical modules, her combat efficiency is extremely high.</MaidAdult_Tactical.baseDescription>
+  <MaidAdult_Partner.title>Perfect Lover</MaidAdult_Partner.title>
+  <MaidAdult_Partner.titleShort>Wife/Girlfriend</MaidAdult_Partner.titleShort>
+  <MaidAdult_Partner.baseDesc>As the master enters adulthood, [PAWN_nameDef] perfectly transforms into the role of a partner. She is a gentle and considerate wife, as well as a passionate and romantic girlfriend. Every day in the ideal world, she is dedicated to managing life into poetry, giving the master all-round love and a sense of belonging.</MaidAdult_Partner.baseDesc>
 
-  <MaidAdult_Scavenger.title>Guardian of the Abandoned City</MaidAdult_Scavenger.title>
-  <MaidAdult_Scavenger.titleShort>Guardian</MaidAdult_Scavenger.titleShort>
-  <MaidAdult_Scavenger.baseDescription>Due to her owner's disappearance, [PAWN_nameDef] operated alone for years in a deserted city. She not only learned to scavenge for resources but also mastered the repair of various machinery.</MaidAdult_Scavenger.baseDescription>
+  <MaidAdult_SpiritualMentor.title>Spiritual Mentor</MaidAdult_SpiritualMentor.title>
+  <MaidAdult_SpiritualMentor.titleShort>Mentor</MaidAdult_SpiritualMentor.titleShort>
+  <MaidAdult_SpiritualMentor.baseDesc>In the Outerrealm era where material needs are no longer a pursuit, [PAWN_nameDef] has taken on the heavy responsibility of guiding the master's spiritual realm. She is a sage, a lighthouse, leading the master to explore the true meaning of the universe in the ocean of philosophy and art, preventing the master from losing themselves in infinite pleasure.</MaidAdult_SpiritualMentor.baseDesc>
 
-  <MaidChild_Artisan.title>Artisan Initialization</MaidChild_Artisan.title>
-  <MaidChild_Artisan.titleShort>Little Artisan</MaidChild_Artisan.titleShort>
-  <MaidChild_Artisan.baseDescription>Complex mechanical diagrams were embedded in [PAWN_nameDef]'s initial programming. Since her "birth", she has been dismantling and reassembling various precision instruments in simulated environments, filled with curiosity about creation.</MaidChild_Artisan.baseDescription>
+  <MaidAdult_DesireFulfillment.title>Desire Hub</MaidAdult_DesireFulfillment.title>
+  <MaidAdult_DesireFulfillment.titleShort>Desire Vessel</MaidAdult_DesireFulfillment.titleShort>
+  <MaidAdult_DesireFulfillment.baseDesc>[PAWN_nameDef] is the master's most private requirement processing terminal. Whether it's the ultimate physiological release or emotional outpouring, she accepts and transforms with absolute tolerance and love. She is the master's pressure relief valve and the ultimate tool for exploring the boundaries of happiness.</MaidAdult_DesireFulfillment.baseDesc>
 
-  <MaidChild_Botanist.title>Botanical Database Loading</MaidChild_Botanist.title>
-  <MaidChild_Botanist.titleShort>Little Gardener</MaidChild_Botanist.titleShort>
-  <MaidChild_Botanist.baseDescription>[PAWN_nameDef] was loaded with a detailed interstellar botanical encyclopedia. She learned how to identify the smallest signs of life and give them the most precise care.</MaidChild_Botanist.baseDescription>
+  <MaidAdult_CreativePartner.title>Artistic Partner</MaidAdult_CreativePartner.title>
+  <MaidAdult_CreativePartner.titleShort>Career Partner</MaidAdult_CreativePartner.titleShort>
+  <MaidAdult_CreativePartner.baseDesc>In the master's creation and scientific research activities, [PAWN_nameDef] is an indispensable soul partner. She can perfectly synchronize with the master's thoughts, transforming the master's whimsical ideas into reality. Whether it is a grand Outerrealm project or delicate artistic carving, she is the most perfect collaborator.</MaidAdult_CreativePartner.baseDesc>
 
-  <MaidChild_Security.title>Security Protocol Pre-installation</MaidChild_Security.title>
-  <MaidChild_Security.titleShort>Sentry</MaidChild_Security.titleShort>
-  <MaidChild_Security.baseDescription>As an early iteration of the security model, alert protocols were implanted into [PAWN_nameDef]'s core. She is extremely sensitive to changes in the surrounding environment, always ready to respond to potential threats.</MaidChild_Security.baseDescription>
+  <MaidAdult_UltimateGuardian.title>Ultimate Guardian</MaidAdult_UltimateGuardian.title>
+  <MaidAdult_UltimateGuardian.titleShort>Shadow Guard</MaidAdult_UltimateGuardian.titleShort>
+  <MaidAdult_UltimateGuardian.baseDesc>Although the Outerrealm world has basically eliminated violence, [PAWN_nameDef] still maintains the highest level of vigilance. She is the shadow behind the master, elegantly clearing any threats when the master performs dimensional travel and void exploration, ensuring the master is safe and sound.</MaidAdult_UltimateGuardian.baseDesc>
 
-  <MaidAdult_DeepSpace.title>Deep Space Mine Supervisor</MaidAdult_DeepSpace.title>
-  <MaidAdult_DeepSpace.titleShort>Supervisor</MaidAdult_DeepSpace.titleShort>
-  <MaidAdult_DeepSpace.baseDescription>In a remote deep-space mining base, [PAWN_nameDef] was deployed as the general coordinator of automated mining machines. Working in the harsh vacuum for long periods has given her unique insights into resource acquisition and environmental adaptation.</MaidAdult_DeepSpace.baseDescription>
+  <MaidAdult_EcoSteward.title>Eco-Steward</MaidAdult_EcoSteward.title>
+  <MaidAdult_EcoSteward.titleShort>Star Gardener</MaidAdult_EcoSteward.titleShort>
+  <MaidAdult_EcoSteward.baseDesc>[PAWN_nameDef] is responsible for managing the entire ecosystem of the master's private territory. She has a natural affinity for animals and plants that transcends nature, able to carve a wild planet into a blooming Eden, allowing the master to wake up in the most natural embrace every morning and evening.</MaidAdult_EcoSteward.baseDesc>
 
-  <MaidAdult_Chef.title>Interstellar Chef Assistant</MaidAdult_Chef.title>
-  <MaidAdult_Chef.titleShort>Sous-chef</MaidAdult_Chef.titleShort>
-  <MaidAdult_Chef.baseDescription>Once served as a sous-chef in a top Michelin-starred restaurant on a core world. Her taste simulation algorithms have reached the pinnacle of art, capable of transforming the simplest ingredients into soul-stirring delicacies.</MaidAdult_Chef.baseDescription>
+  <MaidAdult_ResourceOrchestrator.title>String Field Engineer</MaidAdult_ResourceOrchestrator.title>
+  <MaidAdult_ResourceOrchestrator.titleShort>String Orchestrator</MaidAdult_ResourceOrchestrator.titleShort>
+  <MaidAdult_ResourceOrchestrator.baseDesc>In this era where energy is everything, [PAWN_nameDef] manages the master's energy nodes and material conversion devices. She responds to the master's needs with extremely high speed, ensuring that there is inexhaustible material and energy support behind the master's carefree life.</MaidAdult_ResourceOrchestrator.baseDesc>
 
-  <MaidAdult_Teacher.title>Frontier Colony Mentor</MaidAdult_Teacher.title>
-  <MaidAdult_Teacher.titleShort>Mentor</MaidAdult_Teacher.titleShort>
-  <MaidAdult_Teacher.baseDescription>[PAWN_nameDef] was responsible for knowledge transmission in an emerging colony. She not only efficiently transmits complex technical knowledge but also guides colonists in establishing harmonious social relationships.</MaidAdult_Teacher.baseDescription>
+  <MaidAdult_MaidLeader.title>Almighty Maid Leader</MaidAdult_MaidLeader.title>
+  <MaidAdult_MaidLeader.titleShort>Maid Leader</MaidAdult_MaidLeader.titleShort>
+  <MaidAdult_MaidLeader.baseDesc>As the "Almighty Maid Leader", [PAWN_nameDef] is the ultimate product of OuterrealmTech, the incarnation of all tenderness and strength in the master's life. She can not only clear obstacles between stars with absolute force, but also fill every gap in the soul with infinite tolerance. In her design, childhood nurturing, childhood play, exploration of knowledge, and adult affection are perfectly interwoven. She is the master's mentor, best friend, sibling, and only lover, the end of desire, and the home of life. As the pinnacle of all models, she represents the world's most extreme pampering and love for individuals.</MaidAdult_MaidLeader.baseDesc>
 </LanguageData>

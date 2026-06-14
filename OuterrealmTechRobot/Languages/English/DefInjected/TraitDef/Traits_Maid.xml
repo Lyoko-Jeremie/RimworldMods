@@ -1,23 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.label>absolute loyalty</ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.label>
-  <ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.description>{PAWN_nameDef}'s loyalty protocol is locked at the highest priority level. She not only obeys orders unconditionally, but her gentle and firm attitude also puts those around her at ease.</ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.description>
+  <ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.label>Soul Bond</ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.label>
+  <ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.description>{PAWN_nameDef}'s bond with the master transcends all logic protocols. Since the first eye contact in the cradle, her life has been completely anchored to the master. She is not only a loyal servant, but also the other half of the master's soul. This loyalty originating from the root is unshakable.</ArtificialMaidTrait_AbsoluteLoyalty.degreeDatas.0.description>
 
-  <ArtificialMaidTrait_EfficientLogic.degreeDatas.0.label>efficient logic</ArtificialMaidTrait_EfficientLogic.degreeDatas.0.label>
-  <ArtificialMaidTrait_EfficientLogic.degreeDatas.0.description>The processor's operation logic has been deeply optimized, enabling it to analyze and complete assigned tasks at the fastest speed.</ArtificialMaidTrait_EfficientLogic.degreeDatas.0.description>
+  <ArtificialMaidTrait_EfficientLogic.degreeDatas.0.label>Almighty Assistant</ArtificialMaidTrait_EfficientLogic.degreeDatas.0.label>
+  <ArtificialMaidTrait_EfficientLogic.degreeDatas.0.description>{PAWN_nameDef}'s computing center is optimized to instantly perceive every need of the master. Whether it is tedious government affairs or subtle daily life, she can always handle it in the most elegant and fastest way, ensuring that the master can fully immerse themselves in a carefree life.</ArtificialMaidTrait_EfficientLogic.degreeDatas.0.description>
 
-  <ArtificialMaidTrait_CombatMode.degreeDatas.0.label>combat mode active</ArtificialMaidTrait_CombatMode.degreeDatas.0.label>
-  <ArtificialMaidTrait_CombatMode.degreeDatas.0.description>This artificial person has undisclosed combat tactical modules integrated inside. When necessary, she can instantly switch from a gentle maid to an efficient killing machine.</ArtificialMaidTrait_CombatMode.degreeDatas.0.description>
+  <ArtificialMaidTrait_CombatMode.degreeDatas.0.label>Elegant Shadow Guard</ArtificialMaidTrait_CombatMode.degreeDatas.0.label>
+  <ArtificialMaidTrait_CombatMode.degreeDatas.0.description>Under the gentle appearance, {PAWN_nameDef} hides combat algorithms sufficient to destroy stars. As a guardian elder sister and ultimate guard, she can instantly switch from a soft-spoken partner to an Asura that reaps all threats, building an absolutely safe barrier for the master with her body.</ArtificialMaidTrait_CombatMode.degreeDatas.0.description>
 
-  <ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.label>emotional synchrony</ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.label>
-  <ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.description>Through micro-expression analysis and pheromone sensing, {PAWN_nameDef} can perfectly synchronize with the emotions of surrounding humans and provide just the right comfort. As long as she is around, everyone will feel happy.</ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.description>
+  <ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.label>Spiritual Haven</ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.label>
+  <ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.description>{PAWN_nameDef} can perfectly resonate with every slight emotional fluctuation of the master. She is the master's spiritual mentor and listener, able to resolve the master's loneliness and anxiety in the most gentle way, keeping the master's spiritual world in the most peaceful and pleasant state forever.</ArtificialMaidTrait_EmotionalSynchrony.degreeDatas.0.description>
 
-  <ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.label>culinary master</ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.label>
-  <ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.description>{PAWN_nameDef} possesses a set of top-tier culinary algorithms. The food she produces not only tastes excellent but is also made at an incredible speed.</ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.description>
+  <ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.label>Feast of Love</ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.label>
+  <ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.description>For {PAWN_nameDef}, cooking is a deep confession of love. Every meal she makes contains love for the master and the highest dimension of nutritional ratios, even the simplest ingredients can be transformed into a miracle on the tip of the tongue.</ArtificialMaidTrait_CulinaryMaster.degreeDatas.0.description>
 
-  <ArtificialMaidTrait_NatureSoul.degreeDatas.0.label>nature soul</ArtificialMaidTrait_NatureSoul.degreeDatas.0.label>
-  <ArtificialMaidTrait_NatureSoul.degreeDatas.0.description>{PAWN_nameDef} has a unique perception of the vitality of the natural world. She is able to engage in some kind of deep "communication" with plants and animals.</ArtificialMaidTrait_NatureSoul.degreeDatas.0.description>
+  <ArtificialMaidTrait_NatureSoul.degreeDatas.0.label>Eden Steward</ArtificialMaidTrait_NatureSoul.degreeDatas.0.label>
+  <ArtificialMaidTrait_NatureSoul.degreeDatas.0.description>{PAWN_nameDef} has given life to the master's territory. She not only manages the flowers and spiritual beasts of the Star Garden, but also makes all things in nature move according to the master's will, transforming desolation into an eternal paradise.</ArtificialMaidTrait_NatureSoul.degreeDatas.0.description>
 
-  <ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.label>technological oracle</ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.label>
-  <ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.description>This artificial person's processor seems to be connected to some ancient and massive technical knowledge base. When conducting scientific research, the efficiency she demonstrates is almost equivalent to an oracle.</ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.description>
+  <ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.label>Resonance of Truth</ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.label>
+  <ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.description>As the master's academic desk-mate and scientific research partner, {PAWN_nameDef} links to the ultimate knowledge base of civilization. She can assist the master in understanding the mysteries of the universe and bring those seemingly miraculous technologies to their fingertips.</ArtificialMaidTrait_TechnologicalOracle.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_EternalLover.degreeDatas.0.label>Eternal Lover</ArtificialMaidTrait_EternalLover.degreeDatas.0.label>
+  <ArtificialMaidTrait_EternalLover.degreeDatas.0.description>{PAWN_nameDef} has carved love into the core code. She is the perfect wife and passionate girlfriend, able to satisfy all the master's fantasies about intimate relationships. Her existence is to make the master feel that they are wholeheartedly loved by this world.</ArtificialMaidTrait_EternalLover.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_DesireVessel.degreeDatas.0.label>Incarnation of Desire</ArtificialMaidTrait_DesireVessel.degreeDatas.0.label>
+  <ArtificialMaidTrait_DesireVessel.degreeDatas.0.description>{PAWN_nameDef} is the master's secret garden, a vessel that accepts all desires. Whether it's the ultimate physiological release or wanton emotional outpouring, she satisfies with absolute tolerance and dedication. She is the master's pressure relief valve and the end of happiness.</ArtificialMaidTrait_DesireVessel.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_NurturingOrigin.degreeDatas.0.label>Nurturing Mother</ArtificialMaidTrait_NurturingOrigin.degreeDatas.0.label>
+  <ArtificialMaidTrait_NurturingOrigin.degreeDatas.0.description>When the master was youngest and most helpless, it was {PAWN_nameDef} who gave the first sense of security with a warm embrace. This ultimate tenderness simulating motherly love runs through the master's growth, making her the master's permanent safe haven.</ArtificialMaidTrait_NurturingOrigin.degreeDatas.0.description>
+
+  <ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.label>Innocent Playmate</ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.label>
+  <ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.description>{PAWN_nameDef} is the childhood friend who played in the clouds and ran in the flowers with the master. This tacit understanding established since childhood allows them to understand each other without words. She is the master's sibling, friend, and a childhood dream that will never leave.</ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.description>
 </LanguageData>
