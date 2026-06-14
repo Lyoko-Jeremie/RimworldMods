@@ -200,14 +200,24 @@
         <defName>MaidAdult_MaidLeader</defName>
         <title>全能女仆长</title>
         <titleShort>女仆长</titleShort>
-        <baseDesc>[PAWN_nameDef] </baseDesc>
+        <baseDesc>[PAWN_nameDef] 是所有女仆系列的顶点，集成了所有已知的家政、安保、科研和社交协议。她不仅能够完美处理最复杂的行政事务，还能在瞬息万变的战场上保护她的主人。作为女仆长，她就是完美的代名词，是所有型号学习的终极目标。</baseDesc>
         <slot>Adulthood</slot>
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
         <skillGains>
-            <Intellectual>200</Intellectual>
+            <Shooting>200</Shooting>
+            <Melee>200</Melee>
+            <Construction>200</Construction>
+            <Mining>200</Mining>
+            <Cooking>200</Cooking>
+            <Plants>200</Plants>
+            <Animals>200</Animals>
+            <Crafting>200</Crafting>
+            <Artistic>200</Artistic>
+            <Medicine>200</Medicine>
             <Social>200</Social>
+            <Intellectual>200</Intellectual>
         </skillGains>
     </BackstoryDef>
 </Defs>
