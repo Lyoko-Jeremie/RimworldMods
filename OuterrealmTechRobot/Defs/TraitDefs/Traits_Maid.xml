@@ -120,7 +120,7 @@
                 <statOffsets>
                     <PawnBeauty>2000</PawnBeauty>
                     <SocialImpact>100.0</SocialImpact>
-                    <TradePriceImprovement>1.0</TradePriceImprovement>
+                    <TradePriceImprovement>100.0</TradePriceImprovement>
                 </statOffsets>
             </li>
         </degreeDatas>
@@ -136,7 +136,7 @@
                 <statOffsets>
                     <PawnBeauty>15000</PawnBeauty>
                     <SocialImpact>500.0</SocialImpact>
-                    <MentalBreakThreshold>-0.5</MentalBreakThreshold>
+                    <MentalBreakThreshold>-100</MentalBreakThreshold>
                 </statOffsets>
             </li>
         </degreeDatas>
