@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <WorkGiverDef>
+        <defName>DoBills_OmniArtificialMaidFabricator</defName>
+        <label>fabricate at artificial maid fabricator</label>
+        <giverClass>WorkGiver_DoBill</giverClass>
+        <workType>Crafting</workType>
+        <priorityInType>100</priorityInType>
+        <fixedBillGiverDefs>
+            <li>OmniArtificialMaidFabricator</li>
+        </fixedBillGiverDefs>
+        <verb>fabricate at</verb>
+        <gerund>fabricating at</gerund>
+        <requiredCapacities>
+            <li>Manipulation</li>
+        </requiredCapacities>
+        <prioritizeSustains>true</prioritizeSustains>
+    </WorkGiverDef>
+</Defs>

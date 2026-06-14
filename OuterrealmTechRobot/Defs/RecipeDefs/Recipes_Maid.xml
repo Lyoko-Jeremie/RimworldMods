@@ -9,6 +9,9 @@
         <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
         <effectWorking>Cremate</effectWorking>
         <soundWorking>Recipe_Cremate</soundWorking>
+        <ingredients />
+        <fixedIngredientFilter />
+        <defaultIngredientFilter />
         <workerClass>OuterrealmTechRobot.RecipeWorker_FabricateArtificialMaid</workerClass>
     </RecipeDef>
 </Defs>
