@@ -42,7 +42,7 @@
         <hasInteractionCell>True</hasInteractionCell>
         <interactionCellOffset>(0,0,-2)</interactionCellOffset>
         <surfaceType>Item</surfaceType>
-        <constructionSkillPrerequisite>10</constructionSkillPrerequisite>
+        <constructionSkillPrerequisite>1</constructionSkillPrerequisite>
         <recipes>
             <li>FabricateArtificialMaid</li>
         </recipes>

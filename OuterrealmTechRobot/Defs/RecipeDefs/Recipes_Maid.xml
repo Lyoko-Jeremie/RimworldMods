@@ -5,7 +5,7 @@
         <label>fabricate artificial maid</label>
         <description>Fabricate an Artificial Maid. Requires 10,000 Wd of stored electrical energy.</description>
         <jobString>Fabricating artificial maid.</jobString>
-        <workAmount>10000</workAmount>
+        <workAmount>1</workAmount>
         <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
         <effectWorking>Cremate</effectWorking>
         <soundWorking>Recipe_Cremate</soundWorking>
