@@ -55,6 +55,12 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null) return;
 
+            // 清除文化
+            if (ModsConfig.IdeologyActive && Pawn.ideo != null && Pawn.ideo.Ideo != null)
+            {
+                Pawn.ideo.SetIdeo(null);
+            }
+
             // 保持各种需求最高
             if (Pawn.needs != null)
             {
@@ -84,6 +90,18 @@ namespace OuterrealmTechRobot
             {
                 Pawn.psychicEntropy.RemoveAllEntropy();
                 Pawn.psychicEntropy.RechargePsyfocus();
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn), "ShouldHaveIdeo", MethodType.Getter)]
+    public static class Patch_Pawn_ShouldHaveIdeo
+    {
+        public static void Postfix(Pawn __instance, ref bool __result)
+        {
+            if (__instance.def.defName == "ArtificialMaid")
+            {
+                __result = false;
             }
         }
     }

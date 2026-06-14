@@ -45,5 +45,6 @@
         <techHediffsChance>0</techHediffsChance>
         <initialWillRange>0~0</initialWillRange>
         <initialResistanceRange>0~0</initialResistanceRange>
+        <preventIdeo>true</preventIdeo>
     </PawnKindDef>
 </Defs>
