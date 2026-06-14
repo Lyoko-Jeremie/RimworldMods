@@ -53,7 +53,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
