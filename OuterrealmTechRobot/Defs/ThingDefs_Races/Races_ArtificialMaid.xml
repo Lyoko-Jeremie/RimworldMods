@@ -10,8 +10,7 @@
                 <immuneToAge>true</immuneToAge>
                 <canLayDown>true</canLayDown>
                 <maxDamageForSocialfight>0</maxDamageForSocialfight>
-                <canJoinIdeo>false</canJoinIdeo>
-                <notXenophobe>true</notXenophobe>
+                <immuneToXenophobia>true</immuneToXenophobia>
                 <alienPartGenerator>
                     <headTypes>
                         <li>Female_AverageNormal</li>
