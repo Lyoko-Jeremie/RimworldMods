@@ -149,6 +149,38 @@ namespace OuterrealmTechRobot
                 pawn.health.Reset();
                 Log.Message("ArtificialMaid_Resurrected".Translate(pawn.LabelShort));
             }
+            else
+            {
+                // 修复伤害和肢体缺失
+                bool changed = false;
+
+                // 恢复缺失的肢体
+                var missingParts = pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+                if (missingParts.Count > 0)
+                {
+                    foreach (var mp in missingParts)
+                    {
+                        pawn.health.RestorePart(mp.Part);
+                    }
+                    changed = true;
+                }
+
+                // 治愈所有伤口（包括永久性伤害）
+                var hediffs = pawn.health.hediffSet.hediffs;
+                for (int i = hediffs.Count - 1; i >= 0; i--)
+                {
+                    if (hediffs[i] is Hediff_Injury injury)
+                    {
+                        pawn.health.RemoveHediff(injury);
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    pawn.health.Notify_HediffChanged(null);
+                }
+            }
         }
 
         public override bool ShouldRemove => false;
