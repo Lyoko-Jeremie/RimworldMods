@@ -235,8 +235,8 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class Building_FullyAutoOmniSurgeon : Building_Enterable, IThingHolderWithDrawnPawn
     {
-        public List<SurgeryTemplate> templates = new List<SurgeryTemplate>();
-        public List<OmniSurgeonOperation> lastOperations = new List<OmniSurgeonOperation>();
+        public List<SurgeryTemplate> templates => OmniCrafterMod.Settings.globalSurgeryTemplates;
+        public List<OmniSurgeonOperation> lastOperations => OmniCrafterMod.Settings.globalLastOperations;
 
         public Pawn Occupant => innerContainer.FirstOrDefault() as Pawn;
 
@@ -267,12 +267,38 @@ namespace FullyAutomaticOmniCrafter
             // innerContainer 已经在 base.ExposeData() 中处理了（如果它是 Building_Enterable）
             // 但 Building_Enterable 使用的是 Scribe_Deep.Look<ThingOwner>(ref this.innerContainer, "innerContainer", (object) this);
             // 我们的类目前没有重写 innerContainer 字段，所以直接用父类的即可。
-            Scribe_Collections.Look(ref templates, "templates", LookMode.Deep);
-            if (templates == null) templates = new List<SurgeryTemplate>();
+            
+            // 为了向前兼容，读取旧存档中的数据并合并到全局设置中
+            List<SurgeryTemplate> localTemplates = null;
+            List<OmniSurgeonOperation> localLastOps = null;
 
-            Scribe_Collections.Look(ref lastOperations, "lastOperations", LookMode.Deep);
-            if (lastOperations == null) lastOperations = new List<OmniSurgeonOperation>();
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                Scribe_Collections.Look(ref localTemplates, "templates", LookMode.Deep);
+                Scribe_Collections.Look(ref localLastOps, "lastOperations", LookMode.Deep);
+            }
 
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                if (localTemplates != null)
+                {
+                    foreach (var t in localTemplates)
+                    {
+                        if (!templates.Any(gt => gt.templateName == t.templateName))
+                        {
+                            templates.Add(t);
+                        }
+                    }
+                }
+                if (localLastOps != null && localLastOps.Count > 0 && lastOperations.Count == 0)
+                {
+                    foreach (var op in localLastOps)
+                    {
+                        lastOperations.Add(op);
+                    }
+                }
+            }
+            
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 // 读档后检查并移除不存在的手术（可能由于Mod列表变更）
@@ -735,6 +761,7 @@ namespace FullyAutomaticOmniCrafter
 
             existing.operations = operations.Select(o => o.Clone()).ToList();
             existing.partToBionicMap.Clear();
+            OmniCrafterMod.Instance.WriteSettings();
         }
 
         public BodyPartRecord ResolvePart(Pawn pawn, OmniSurgeonOperation operation)
@@ -1038,6 +1065,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             templates.Add(template);
+            OmniCrafterMod.Instance.WriteSettings();
         }
     }
 
@@ -1077,6 +1105,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 surgeon.lastOperations.Add(op.Clone());
             }
+            OmniCrafterMod.Instance.WriteSettings();
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -1113,6 +1142,15 @@ namespace FullyAutomaticOmniCrafter
                             surgeon.ApplyTemplate(pawn, localTemplate);
                         }
                         SyncOperations();
+                    }, extraPartWidth: 30f, extraPartOnGUI: delegate(Rect rect)
+                    {
+                        if (Widgets.ButtonImage(new Rect(rect.xMax - 25f, rect.y + (rect.height - 20f) / 2f, 20f, 20f), Verse.TexButton.Delete))
+                        {
+                            surgeon.templates.Remove(localTemplate);
+                            OmniCrafterMod.Instance.WriteSettings();
+                            return true;
+                        }
+                        return false;
                     }));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));

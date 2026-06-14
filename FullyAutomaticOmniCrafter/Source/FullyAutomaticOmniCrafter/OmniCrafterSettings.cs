@@ -8,6 +8,8 @@ namespace FullyAutomaticOmniCrafter
     public class OmniCrafterSettings : ModSettings
     {
         public List<string> globalFavorites = new List<string>();
+        public List<SurgeryTemplate> globalSurgeryTemplates = new List<SurgeryTemplate>();
+        public List<OmniSurgeonOperation> globalLastOperations = new List<OmniSurgeonOperation>();
 
         /// <summary>
         /// 是否启用拼音搜索（支持全拼和首字母缩写）。
@@ -56,6 +58,12 @@ namespace FullyAutomaticOmniCrafter
             base.ExposeData();
             Scribe_Collections.Look(ref globalFavorites, "globalFavorites", LookMode.Value);
             if (globalFavorites == null) globalFavorites = new List<string>();
+
+            Scribe_Collections.Look(ref globalSurgeryTemplates, "globalSurgeryTemplates", LookMode.Deep);
+            if (globalSurgeryTemplates == null) globalSurgeryTemplates = new List<SurgeryTemplate>();
+
+            Scribe_Collections.Look(ref globalLastOperations, "globalLastOperations", LookMode.Deep);
+            if (globalLastOperations == null) globalLastOperations = new List<OmniSurgeonOperation>();
             Scribe_Values.Look(ref enablePinyinSearch, "enablePinyinSearch", false);
             if (Scribe.mode == LoadSaveMode.LoadingVars) enablePinyinSearch = false;
             Scribe_Values.Look(ref powerCostA, "powerCostA", 0f);
