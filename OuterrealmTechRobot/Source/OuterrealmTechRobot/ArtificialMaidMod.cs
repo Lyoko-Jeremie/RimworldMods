@@ -114,7 +114,7 @@ namespace OuterrealmTechRobot
             if (__instance.def.defName == "ArtificialMaid")
             {
                 __instance.health.Reset();
-                Log.Message("ArtificialMaid_InterruptedDeath".Translate(__instance.LabelShort));
+                Find.LetterStack.ReceiveLetter("ArtificialMaid_DeathLetter_Label".Translate(), "ArtificialMaid_DeathLetter_Text".Translate(__instance.LabelShort), LetterDefOf.Death, __instance);
                 return false;
             }
             return true;
@@ -147,7 +147,7 @@ namespace OuterrealmTechRobot
                     invisibleStun = false
                 });
                 pawn.health.Reset();
-                Log.Message("ArtificialMaid_Resurrected".Translate(pawn.LabelShort));
+                Find.LetterStack.ReceiveLetter("ArtificialMaid_ResurrectionLetter_Label".Translate(), "ArtificialMaid_ResurrectionLetter_Text".Translate(pawn.LabelShort), LetterDefOf.PositiveEvent, pawn);
             }
             else
             {
@@ -179,6 +179,7 @@ namespace OuterrealmTechRobot
                 if (changed)
                 {
                     pawn.health.Notify_HediffChanged(null);
+                    Messages.Message("ArtificialMaid_RepairMessage".Translate(pawn.LabelShort), pawn, MessageTypeDefOf.PositiveEvent);
                 }
             }
         }

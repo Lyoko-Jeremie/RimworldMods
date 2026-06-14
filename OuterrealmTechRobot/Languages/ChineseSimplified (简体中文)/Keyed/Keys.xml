@@ -2,6 +2,9 @@
 <LanguageData>
     <ArtificialMaidFabricated>人造女仆 {0} 已成功制造。</ArtificialMaidFabricated>
     <ArtificialMaid_NotEnoughPower>存储电量不足。制造需要连接的网络中至少有 {0} Wd 的存储电量。</ArtificialMaid_NotEnoughPower>
-    <ArtificialMaid_InterruptedDeath>[ArtificialMaid] {0} 拦截了死亡调用并已修复自身。</ArtificialMaid_InterruptedDeath>
-    <ArtificialMaid_Resurrected>[ArtificialMaid] {0} 已从死亡中全自动修复。</ArtificialMaid_Resurrected>
+    <ArtificialMaid_DeathLetter_Label>系统崩溃</ArtificialMaid_DeathLetter_Label>
+    <ArtificialMaid_DeathLetter_Text>人造女仆 {0} 的核心逻辑系统已崩溃。它将尝试进入自动修复序列。</ArtificialMaid_DeathLetter_Text>
+    <ArtificialMaid_ResurrectionLetter_Label>重启完成</ArtificialMaid_ResurrectionLetter_Label>
+    <ArtificialMaid_ResurrectionLetter_Text>人造女仆 {0} 已完成自我修复并重新启动系统。</ArtificialMaid_ResurrectionLetter_Text>
+    <ArtificialMaid_RepairMessage>人造女仆 {0} 正在执行身体修复程序。</ArtificialMaid_RepairMessage>
 </LanguageData>
