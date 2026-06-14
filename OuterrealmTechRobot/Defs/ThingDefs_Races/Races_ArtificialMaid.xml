@@ -49,14 +49,14 @@
             <MeatAmount>0</MeatAmount> <!-- 肉产量 -->
             <PsychicSensitivity>1.0</PsychicSensitivity> <!-- 精神敏感度 -->
             <ToxicResistance>1</ToxicResistance> <!-- 毒素抗性 -->
-            <MaxHitPoints>99999</MaxHitPoints> <!-- 最大生命值 -->
+            <MaxHitPoints>9999999</MaxHitPoints> <!-- 最大生命值 -->
             <ArmorRating_Sharp>10</ArmorRating_Sharp> <!-- 利器护甲 (1000%) -->
             <ArmorRating_Blunt>10</ArmorRating_Blunt> <!-- 钝器护甲 (1000%) -->
             <ArmorRating_Heat>10</ArmorRating_Heat> <!-- 热能护甲 (1000%) -->
             <Insulation_Cold>10000</Insulation_Cold> <!-- 抗寒绝缘 -->
             <Insulation_Heat>10000</Insulation_Heat> <!-- 抗热绝缘 -->
             <EquipDelay>0</EquipDelay> <!-- 装备延迟 -->
-            <WorkSpeedGlobal>999999</WorkSpeedGlobal> <!-- 全局工作速度 -->
+            <WorkSpeedGlobal>9999999</WorkSpeedGlobal> <!-- 全局工作速度 -->
             <CarryingCapacity>10000000</CarryingCapacity> <!-- 搬运能力 -->
             <MentalBreakThreshold>0</MentalBreakThreshold> <!-- 崩溃临界值 -->
             <PainShockThreshold>0</PainShockThreshold> <!-- 疼痛休克临界值 -->
