@@ -118,6 +118,16 @@ namespace OuterrealmTechRobot
                 Pawn.psychicEntropy.RemoveAllEntropy();
                 Pawn.psychicEntropy.RechargePsyfocus();
             }
+
+            // 保持技能不低于 99 且双火
+            if (Pawn.skills != null)
+            {
+                foreach (var skill in Pawn.skills.skills)
+                {
+                    if (skill.Level < 99) skill.Level = 99;
+                    if (skill.passion != Passion.Major) skill.passion = Passion.Major;
+                }
+            }
         }
     }
 
