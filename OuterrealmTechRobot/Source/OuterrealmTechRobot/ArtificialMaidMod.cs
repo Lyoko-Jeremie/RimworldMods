@@ -23,7 +23,8 @@ namespace OuterrealmTechRobot
     public static class ArtificialMaidTex
     {
         public static readonly Texture2D IconModifyMaid =
-            ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.BadTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.WhiteTex; 
+        // BaseContent.BadTex
     }
 
     public class CompProperties_ArtificialMaid : CompProperties
