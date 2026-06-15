@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <GeneDef>
+        <defName>ArtificialMaid_Core</defName>
+        <label>artificial maid core</label>
+        <description>The core gene of an artificial maid. It enforces their appearance and grants them superior combat capabilities.</description>
+        <iconPath>UI/Icons/Genes/Gene_MeleeDamage_More</iconPath>
+        <displayCategory>ArtificialMaid</displayCategory>
+        <displayOrderInCategory>1</displayOrderInCategory>
+        <skinColorOverride>(250, 240, 240)</skinColorOverride>
+        <statOffsets>
+            <MeleeHitChance>20</MeleeHitChance>
+            <MeleeDodgeChance>20</MeleeDodgeChance>
+            <ShootingAccuracyPawn>20</ShootingAccuracyPawn>
+        </statOffsets>
+        <statFactors>
+            <IncomingDamageFactor>0.01</IncomingDamageFactor>
+            <MeleeDamageFactor>10</MeleeDamageFactor>
+            <MoveSpeed>2000</MoveSpeed>
+            <WorkSpeedGlobal>2000</WorkSpeedGlobal>
+        </statFactors>
+        <exclusionTags>
+            <li>ArtificialMaidCore</li>
+        </exclusionTags>
+        
+        <!-- 3. 保证“只有女仆能有”的核心设置 -->
+        <canGenerateInGeneSet>false</canGenerateInGeneSet> <!-- 绝对不会在商人的基因包或任务奖励中刷出 -->
+        <biostatArc>1</biostatArc> <!-- 设置为阿奇特(Archite)基因。原版机制下，阿奇特基因【无法被基因提取器提取】。这完美防止了玩家抓一个女仆抽基因给小人注射 -->
+        <biostatCpx>0</biostatCpx> <!-- 复杂度 -->
+        <biostatMet>0</biostatMet> <!-- 代谢率 -->
+
+        <!-- 杂项 -->
+        <selectionWeight>0</selectionWeight> <!-- 权重为0，防止随机生成 -->
+    </GeneDef>
+</Defs>

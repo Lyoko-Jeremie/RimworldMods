@@ -38,6 +38,9 @@
                         <li>Female</li>
                     </bodyTypes>
                 </alienPartGenerator>
+                <forcedRaceGeneList>
+                    <li>ArtificialMaid_Core</li>
+                </forcedRaceGeneList>
             </generalSettings>
             <graphicPaths>
                 <body>Things/Pawn/Humanlike/Bodies/</body>
@@ -48,6 +51,9 @@
                 <cannotReceiveThoughtsAtAll>true</cannotReceiveThoughtsAtAll>
             </thoughtSettings>
             <raceRestriction>
+                <whiteGeneList>
+                    <li>ArtificialMaid_Core</li>
+                </whiteGeneList>
                 <blackGeneList>
                     <li MayRequire="Ludeon.RimWorld.Biotech">ViolenceDisabled</li>
                 </blackGeneList>

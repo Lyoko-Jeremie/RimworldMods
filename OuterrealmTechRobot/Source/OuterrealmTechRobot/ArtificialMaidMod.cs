@@ -47,6 +47,7 @@ namespace OuterrealmTechRobot
                 this.ReplenishResources();
                 this.EnsureRecoveryHediff();
                 this.AutoConvertFaction();
+                this.EnsureCoreGene();
             }
 
             if (this.parent.IsHashIntervalTick(250))
@@ -77,6 +78,16 @@ namespace OuterrealmTechRobot
                         }
                     }
                 }
+            }
+        }
+
+        public void EnsureCoreGene()
+        {
+            if (!ModsConfig.BiotechActive || Pawn == null || Pawn.genes == null) return;
+            var geneDef = DefDatabase<GeneDef>.GetNamed("ArtificialMaid_Core");
+            if (!Pawn.genes.HasGene(geneDef))
+            {
+                Pawn.genes.AddGene(geneDef, false);
             }
         }
 
@@ -669,6 +680,37 @@ namespace OuterrealmTechRobot
             }));
 
             Find.WindowStack.Add(new FloatMenu(list));
+        }
+    }
+    [HarmonyPatch(typeof(Pawn_GeneTracker), "AddGene", new System.Type[] { typeof(GeneDef), typeof(bool) })]
+    public static class Patch_Pawn_GeneTracker_AddGene
+    {
+        public static bool Prefix(Pawn_GeneTracker __instance, GeneDef geneDef)
+        {
+            if (geneDef.defName == "ArtificialMaid_Core")
+            {
+                if (__instance.pawn?.def?.defName != "ArtificialMaid")
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn_GeneTracker), "RemoveGene")]
+    public static class Patch_Pawn_GeneTracker_RemoveGene
+    {
+        public static bool Prefix(Pawn_GeneTracker __instance, Gene gene)
+        {
+            if (gene.def.defName == "ArtificialMaid_Core")
+            {
+                if (__instance.pawn?.def?.defName == "ArtificialMaid")
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }
