@@ -35,8 +35,8 @@ namespace FullyAutomaticOmniCrafter
         {
             base.GameConditionTick();
 
-            // 为了不卡顿，我们每 250 刻（游戏里大约十几分钟）执行一次实际逻辑
-            if (Find.TickManager.TicksGame % 250 == 0)
+            // 为了不卡顿，我们每 250 刻执行一次实际逻辑
+            if (Find.TickManager.TicksGame % (250 * 2 * 2) == 0)
             {
                 // 遍历受到该状态影响的所有地图
                 foreach (Map map in this.AffectedMaps)
@@ -91,7 +91,7 @@ namespace FullyAutomaticOmniCrafter
                         HediffComp_Disappears disappearsComp = hediff.TryGetComp<HediffComp_Disappears>();
                         if (disappearsComp != null)
                         {
-                            disappearsComp.ticksToDisappear = 600;
+                            disappearsComp.ticksToDisappear = 60000;
                         }
                     }
                 }
@@ -114,7 +114,7 @@ namespace FullyAutomaticOmniCrafter
 
                 // 获取建筑的电源组件
                 CompPowerTrader powerTrader = this.parent.GetComp<CompPowerTrader>();
-                
+
                 // 如果有电源组件，则检查是否通电；如果没有（防御性编程），则默认激活
                 return powerTrader == null || powerTrader.PowerOn;
             }

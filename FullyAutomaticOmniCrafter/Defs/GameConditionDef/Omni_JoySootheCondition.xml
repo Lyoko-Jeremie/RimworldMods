@@ -12,7 +12,7 @@
         <comps>
             <!-- 让这个状态在没有被机器刷新的情况下自动消失 -->
             <li Class="HediffCompProperties_Disappears">
-                <disappearsAfterTicks>600</disappearsAfterTicks>
+                <disappearsAfterTicks>60000</disappearsAfterTicks>
                 <showRemainingTime>false</showRemainingTime> <!-- 不在面板里显示倒计时，显得更自然 -->
             </li>
         </comps>
