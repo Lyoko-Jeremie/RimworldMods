@@ -776,7 +776,15 @@ namespace OuterrealmTechRobot
             {
                 if (!_active.HasValue)
                 {
-                    _active = ModsConfig.IsActive("rimjobworld");
+                    _active = ModsConfig.IsActive("rim.job.world");
+                    if (!_active.Value)
+                    {
+                        Log.Warning("RJW is not find.");
+                    } 
+                    else
+                    {
+                        Log.Message("RJW is find.");
+                    }
                 }
                 return _active.Value;
             }
@@ -792,6 +800,14 @@ namespace OuterrealmTechRobot
                 if (type != null)
                 {
                     _sexualizeMethod = AccessTools.Method(type, "sexualize_pawn");
+                    if (_sexualizeMethod == null)
+                    {
+                        Log.Error("RJW: Sexualize method not found.");
+                    }
+                }
+                else
+                {
+                    Log.Error("RJW: Sexualizer type not found.");
                 }
             }
 
@@ -811,8 +827,12 @@ namespace OuterrealmTechRobot
             // 2. 初始化反射缓存
             if (_compSexPartType == null) _compSexPartType = AccessTools.TypeByName("rjw.HediffComp_SexPart");
             if (_genitalFamilyType == null) _genitalFamilyType = AccessTools.TypeByName("rjw.GenitalFamily");
-
-            if (_compSexPartType == null || _genitalFamilyType == null) return;
+            
+            if (_compSexPartType == null || _genitalFamilyType == null)
+            {
+                Log.Error("RJW: HediffComp_SexPart or GenitalFamily type not found.");
+                return;
+            }
 
             if (_genitalFamilyField == null)
             {
@@ -820,6 +840,14 @@ namespace OuterrealmTechRobot
                 if (defType != null)
                 {
                     _genitalFamilyField = AccessTools.Field(defType, "genitalFamily");
+                    if (_genitalFamilyField == null)
+                    {
+                        Log.Error("RJW: GenitalFamily field not found.");
+                    }
+                }
+                else
+                {
+                    Log.Error("RJW: HediffDef_SexPart type not found.");
                 }
             }
 
