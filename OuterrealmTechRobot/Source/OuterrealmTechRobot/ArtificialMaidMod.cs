@@ -821,13 +821,10 @@ namespace OuterrealmTechRobot
         {
             if (!Active || pawn == null) return;
 
-            // 1. 先确保基础生成逻辑执行
-            Sexualize(pawn);
-
-            // 2. 初始化反射缓存
+            // 1. 初始化反射缓存
             if (_compSexPartType == null) _compSexPartType = AccessTools.TypeByName("rjw.HediffComp_SexPart");
             if (_genitalFamilyType == null) _genitalFamilyType = AccessTools.TypeByName("rjw.GenitalFamily");
-            
+
             if (_compSexPartType == null || _genitalFamilyType == null)
             {
                 Log.Error("RJW: HediffComp_SexPart or GenitalFamily type not found.");
@@ -853,13 +850,37 @@ namespace OuterrealmTechRobot
 
             if (_genitalFamilyField == null) return;
 
-            // 3. 准备枚举值对比
+            // 2. 检查是否已经有性器官，避免重复生成
+            bool hasOrgans = false;
+            foreach (var h in pawn.health.hediffSet.hediffs)
+            {
+                if (h is HediffWithComps hwc && hwc.comps != null)
+                {
+                    foreach (var c in hwc.comps)
+                    {
+                        if (_compSexPartType.IsAssignableFrom(c.GetType()))
+                        {
+                            hasOrgans = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasOrgans) break;
+            }
+
+            if (!hasOrgans)
+            {
+                // 3. 只有没有器官时才调用基础生成逻辑
+                Sexualize(pawn);
+            }
+
+            // 4. 强制设置/修复器官属性
+            // 准备枚举值对比
             object breastsEnum = System.Enum.Parse(_genitalFamilyType, "Breasts");
             object vaginaEnum = System.Enum.Parse(_genitalFamilyType, "Vagina");
             object anusEnum = System.Enum.Parse(_genitalFamilyType, "Anus");
 
-            // 4. 遍历并强制设置属性
-            // 使用 ToList() 防止在遍历时修改列表导致的异常
+            // 遍历并强制设置属性
             foreach (var hediff in pawn.health.hediffSet.hediffs.ToList())
             {
                 bool hasComp = false;
