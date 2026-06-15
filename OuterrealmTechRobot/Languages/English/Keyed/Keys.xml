@@ -7,4 +7,18 @@
     <ArtificialMaid_ResurrectionLetter_Label>Reboot Complete</ArtificialMaid_ResurrectionLetter_Label>
     <ArtificialMaid_ResurrectionLetter_Text>Artificial Maid {0} has completed self-repair and rebooted its system.</ArtificialMaid_ResurrectionLetter_Text>
     <ArtificialMaid_RepairMessage>Artificial Maid {0} is performing body repair procedures.</ArtificialMaid_RepairMessage>
+
+    <ModifyArtificialMaidLabel>Modify Artificial Maid</ModifyArtificialMaidLabel>
+    <ModifyArtificialMaidDesc>Modify the backstory and traits of an Artificial Maid on this map, and perform auto-fix.</ModifyArtificialMaidDesc>
+    <NoArtificialMaidFound>No Artificial Maid found on map</NoArtificialMaidFound>
+    <ModifyChildhoodLabel>Modify Childhood Backstory</ModifyChildhoodLabel>
+    <ModifyAdulthoodLabel>Modify Adulthood Backstory</ModifyAdulthoodLabel>
+    <ModifyTraitsLabel>Modify Traits</ModifyTraitsLabel>
+    <AutofixReplenishLabel>Auto-fix and Replenish</AutofixReplenishLabel>
+    <ArtificialMaidFixedMessage>{0} fixed and replenished.</ArtificialMaidFixedMessage>
+    <ArtificialMaidBackstoryUpdated>Updated {0}'s {1} backstory to {2}.</ArtificialMaidBackstoryUpdated>
+    <ArtificialMaidAlreadyHasTrait>{0} already has this trait.</ArtificialMaidAlreadyHasTrait>
+    <ArtificialMaidTraitAdded>Added {0} to {1}.</ArtificialMaidTraitAdded>
+    <ClearArtificialMaidTraitsLabel>--- Clear All Artificial Maid Traits ---</ClearArtificialMaidTraitsLabel>
+    <ArtificialMaidTraitsCleared>Cleared all Artificial Maid traits from {0}.</ArtificialMaidTraitsCleared>
 </LanguageData>

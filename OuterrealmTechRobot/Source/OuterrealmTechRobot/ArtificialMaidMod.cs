@@ -68,7 +68,7 @@ namespace OuterrealmTechRobot
             }
         }
 
-        private void EnsureRecoveryHediff()
+        public void EnsureRecoveryHediff()
         {
             if (Pawn == null || Pawn.Dead) return;
             var def = HediffDef.Named("ArtificialMaidRecovery");
@@ -78,7 +78,7 @@ namespace OuterrealmTechRobot
             }
         }
 
-        private void ReplenishResources()
+        public void ReplenishResources()
         {
             if (Pawn == null) return;
 
@@ -438,6 +438,130 @@ namespace OuterrealmTechRobot
                     battery.DrawPower(drawAmount);
                 }
             }
+        }
+    }
+
+    public class CompProperties_ArtificialMaidTerminal : CompProperties
+    {
+        public CompProperties_ArtificialMaidTerminal()
+        {
+            this.compClass = typeof(CompArtificialMaidTerminal);
+        }
+    }
+
+    public class CompArtificialMaidTerminal : ThingComp
+    {
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (var g in base.CompGetGizmosExtra()) yield return g;
+
+            yield return new Command_Action
+            {
+                defaultLabel = "ModifyArtificialMaidLabel".Translate(),
+                defaultDesc = "ModifyArtificialMaidDesc".Translate(),
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.BadTex,
+                action = delegate
+                {
+                    List<FloatMenuOption> list = new List<FloatMenuOption>();
+                    foreach (Pawn pawn in this.parent.Map.mapPawns.AllPawnsSpawned)
+                    {
+                        if (pawn.def.defName == "ArtificialMaid")
+                        {
+                            Pawn localPawn = pawn;
+                            list.Add(new FloatMenuOption(localPawn.LabelCap, delegate
+                            {
+                                OpenModificationMenu(localPawn);
+                            }));
+                        }
+                    }
+                    if (list.Count == 0)
+                    {
+                        list.Add(new FloatMenuOption("NoArtificialMaidFound".Translate(), null));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(list));
+                }
+            };
+        }
+
+        private void OpenModificationMenu(Pawn pawn)
+        {
+            List<FloatMenuOption> list = new List<FloatMenuOption>();
+
+            list.Add(new FloatMenuOption("ModifyChildhoodLabel".Translate(), delegate
+            {
+                OpenBackstoryMenu(pawn, BackstorySlot.Childhood);
+            }));
+
+            list.Add(new FloatMenuOption("ModifyAdulthoodLabel".Translate(), delegate
+            {
+                OpenBackstoryMenu(pawn, BackstorySlot.Adulthood);
+            }));
+
+            list.Add(new FloatMenuOption("ModifyTraitsLabel".Translate(), delegate
+            {
+                OpenTraitMenu(pawn);
+            }));
+
+            list.Add(new FloatMenuOption("AutofixReplenishLabel".Translate(), delegate
+            {
+                var comp = pawn.TryGetComp<CompArtificialMaid>();
+                if (comp != null)
+                {
+                    comp.ReplenishResources();
+                    comp.EnsureRecoveryHediff();
+                    Messages.Message("ArtificialMaidFixedMessage".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                }
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(list));
+        }
+
+        private void OpenBackstoryMenu(Pawn pawn, BackstorySlot slot)
+        {
+            List<FloatMenuOption> list = new List<FloatMenuOption>();
+            var backstories = DefDatabase<BackstoryDef>.AllDefs
+                .Where(b => b.slot == slot && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+
+            foreach (var bs in backstories)
+            {
+                list.Add(new FloatMenuOption(bs.title, delegate
+                {
+                    if (slot == BackstorySlot.Childhood) pawn.story.Childhood = bs;
+                    else pawn.story.Adulthood = bs;
+                    Messages.Message("ArtificialMaidBackstoryUpdated".Translate(pawn.LabelShort, slot.ToString(), bs.title), MessageTypeDefOf.PositiveEvent);
+                }));
+            }
+            Find.WindowStack.Add(new FloatMenu(list));
+        }
+
+        private void OpenTraitMenu(Pawn pawn)
+        {
+            List<FloatMenuOption> list = new List<FloatMenuOption>();
+            var traits = DefDatabase<TraitDef>.AllDefs
+                .Where(t => t.defName.StartsWith("ArtificialMaidTrait_"));
+
+            foreach (var trait in traits)
+            {
+                list.Add(new FloatMenuOption(trait.degreeDatas[0].label, delegate
+                {
+                    if (pawn.story.traits.HasTrait(trait))
+                    {
+                        Messages.Message("ArtificialMaidAlreadyHasTrait".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
+                        return;
+                    }
+                    pawn.story.traits.GainTrait(new Trait(trait));
+                    Messages.Message("ArtificialMaidTraitAdded".Translate(trait.degreeDatas[0].label, pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                }));
+            }
+
+            list.Add(new FloatMenuOption("ClearArtificialMaidTraitsLabel".Translate(), delegate
+            {
+                var toRemove = pawn.story.traits.allTraits.Where(t => t.def.defName.StartsWith("ArtificialMaidTrait_")).ToList();
+                foreach (var t in toRemove) pawn.story.traits.RemoveTrait(t);
+                Messages.Message("ArtificialMaidTraitsCleared".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(list));
         }
     }
 }

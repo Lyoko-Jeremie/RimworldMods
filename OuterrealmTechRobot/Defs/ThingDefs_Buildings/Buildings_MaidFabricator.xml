@@ -55,6 +55,7 @@
                 <basePowerConsumption>350</basePowerConsumption>
             </li>
             <li Class="CompProperties_Flickable" />
+            <li Class="OuterrealmTechRobot.CompProperties_ArtificialMaidTerminal" />
         </comps>
     </ThingDef>
 </Defs>

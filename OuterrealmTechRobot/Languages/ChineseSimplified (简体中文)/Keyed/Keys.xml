@@ -7,4 +7,18 @@
     <ArtificialMaid_ResurrectionLetter_Label>重启完成</ArtificialMaid_ResurrectionLetter_Label>
     <ArtificialMaid_ResurrectionLetter_Text>人造女仆 {0} 已完成自我修复并重新启动系统。</ArtificialMaid_ResurrectionLetter_Text>
     <ArtificialMaid_RepairMessage>人造女仆 {0} 正在执行身体修复程序。</ArtificialMaid_RepairMessage>
+
+    <ModifyArtificialMaidLabel>修改人造人女仆</ModifyArtificialMaidLabel>
+    <ModifyArtificialMaidDesc>修改地图上指定人造人女仆的背景故事和特质，并执行自动修复。</ModifyArtificialMaidDesc>
+    <NoArtificialMaidFound>地图上未发现人造人女仆</NoArtificialMaidFound>
+    <ModifyChildhoodLabel>修改童年背景</ModifyChildhoodLabel>
+    <ModifyAdulthoodLabel>修改成年背景</ModifyAdulthoodLabel>
+    <ModifyTraitsLabel>修改特质</ModifyTraitsLabel>
+    <AutofixReplenishLabel>自动修复并补充资源</AutofixReplenishLabel>
+    <ArtificialMaidFixedMessage>{0} 已修复并补充资源。</ArtificialMaidFixedMessage>
+    <ArtificialMaidBackstoryUpdated>已将 {0} 的 {1} 背景更新为 {2}。</ArtificialMaidBackstoryUpdated>
+    <ArtificialMaidAlreadyHasTrait>{0} 已经拥有该特质。</ArtificialMaidAlreadyHasTrait>
+    <ArtificialMaidTraitAdded>已向 {1} 添加特质 {0}。</ArtificialMaidTraitAdded>
+    <ClearArtificialMaidTraitsLabel>--- 清除所有人造人女仆特质 ---</ClearArtificialMaidTraitsLabel>
+    <ArtificialMaidTraitsCleared>已清除 {0} 的所有人造人女仆特质。</ArtificialMaidTraitsCleared>
 </LanguageData>
