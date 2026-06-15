@@ -212,6 +212,22 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null) return;
 
+            // 修复所有损伤和缺失
+            var missingParts = Pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+            foreach (var part in missingParts)
+            {
+                Pawn.health.RestorePart(part.Part);
+            }
+
+            for (int i = Pawn.health.hediffSet.hediffs.Count - 1; i >= 0; i--)
+            {
+                var hediff = Pawn.health.hediffSet.hediffs[i];
+                if (hediff is Hediff_Injury || hediff.def.isBad || hediff.def.IsAddiction || hediff.def.chronic)
+                {
+                    Pawn.health.RemoveHediff(hediff);
+                }
+            }
+
             // 清除文化
             if (ModsConfig.IdeologyActive && Pawn.ideo != null && Pawn.ideo.Ideo != null)
             {
@@ -419,7 +435,7 @@ namespace OuterrealmTechRobot
         {
             if (___pawn != null && ___pawn.def.defName == "ArtificialMaid")
             {
-                if (__instance.ShouldBeDead())
+                if (__instance.ShouldBeDead() || __instance.ShouldBeDowned())
                 {
                     __instance.Reset();
                     return false;
@@ -450,6 +466,21 @@ namespace OuterrealmTechRobot
             if (__instance.def.defName == "ArtificialMaid")
             {
                 __result.Clear();
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PawnCapacitiesHandler), "GetLevel")]
+    public static class Patch_PawnCapacitiesHandler_GetLevel
+    {
+        public static void Postfix(PawnCapacitiesHandler __instance, PawnCapacityDef capacity, ref float __result, Pawn ___pawn)
+        {
+            if (___pawn?.def?.defName == "ArtificialMaid" && !___pawn.Dead)
+            {
+                if (__result < 2.0f)
+                {
+                    __result = 2.0f;
+                }
             }
         }
     }
