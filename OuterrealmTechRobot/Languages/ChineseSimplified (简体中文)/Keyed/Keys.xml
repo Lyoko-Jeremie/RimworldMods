@@ -21,4 +21,6 @@
     <ArtificialMaidTraitAdded>已向 {1} 添加特质 {0}。</ArtificialMaidTraitAdded>
     <ClearArtificialMaidTraitsLabel>--- 清除所有人造人女仆特质 ---</ClearArtificialMaidTraitsLabel>
     <ArtificialMaidTraitsCleared>已清除 {0} 的所有人造人女仆特质。</ArtificialMaidTraitsCleared>
+    <ArtificialMaidRecruitedLabel>发现人造人女仆</ArtificialMaidRecruitedLabel>
+    <ArtificialMaidRecruitedText>在地图上发现了一个非本派系的人造人女仆 {0}。由于其内置的底层安全协议，她已自动归化至您的派系，并执行了全身修复程序。</ArtificialMaidRecruitedText>
 </LanguageData>

@@ -46,6 +46,7 @@ namespace OuterrealmTechRobot
             {
                 this.ReplenishResources();
                 this.EnsureRecoveryHediff();
+                this.AutoConvertFaction();
             }
 
             if (this.parent.IsHashIntervalTick(250))
@@ -200,6 +201,21 @@ namespace OuterrealmTechRobot
                     if (skill.Level < 99) skill.Level = 99;
                     if (skill.passion != Passion.Major) skill.passion = Passion.Major;
                 }
+            }
+        }
+
+        private void AutoConvertFaction()
+        {
+            if (Pawn == null || Pawn.Dead || !Pawn.Spawned) return;
+            if (Pawn.Faction != Faction.OfPlayer)
+            {
+                Pawn.SetFaction(Faction.OfPlayer);
+                this.FullRepair();
+                this.EnsureRecoveryHediff();
+
+                string label = "ArtificialMaidRecruitedLabel".Translate(Pawn.LabelShort);
+                string text = "ArtificialMaidRecruitedText".Translate(Pawn.LabelShort);
+                Find.LetterStack.ReceiveLetter(label, text, LetterDefOf.PositiveEvent, Pawn);
             }
         }
     }
