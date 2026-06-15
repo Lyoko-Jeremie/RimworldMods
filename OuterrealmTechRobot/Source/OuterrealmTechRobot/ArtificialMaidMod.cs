@@ -23,8 +23,7 @@ namespace OuterrealmTechRobot
     public static class ArtificialMaidTex
     {
         public static readonly Texture2D IconModifyMaid =
-            ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.WhiteTex; 
-        // BaseContent.BadTex
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ModifyMaid", false) ?? BaseContent.WhiteTex; 
     }
 
     public class CompProperties_ArtificialMaid : CompProperties
@@ -769,6 +768,7 @@ namespace OuterrealmTechRobot
         private static System.Type _compSexPartType;
         private static System.Type _genitalFamilyType;
         private static FieldInfo _genitalFamilyField;
+        private static FieldInfo _baseSizeField;
 
         public static bool Active
         {
@@ -850,6 +850,11 @@ namespace OuterrealmTechRobot
 
             if (_genitalFamilyField == null) return;
 
+            if (_baseSizeField == null)
+            {
+                _baseSizeField = AccessTools.Field(_compSexPartType, "baseSize");
+            }
+
             // 2. 检查是否已经有性器官，避免重复生成
             bool hasOrgans = false;
             foreach (var h in pawn.health.hediffSet.hediffs)
@@ -883,36 +888,40 @@ namespace OuterrealmTechRobot
             // 遍历并强制设置属性
             foreach (var hediff in pawn.health.hediffSet.hediffs.ToList())
             {
-                bool hasComp = false;
+                object sexPartComp = null;
                 if (hediff is HediffWithComps hwc && hwc.comps != null)
                 {
                     foreach (var c in hwc.comps)
                     {
                         if (_compSexPartType.IsAssignableFrom(c.GetType()))
                         {
-                            hasComp = true;
+                            sexPartComp = c;
                             break;
                         }
                     }
                 }
 
-                if (hasComp)
+                if (sexPartComp != null)
                 {
                     object family = _genitalFamilyField.GetValue(hediff.def);
 
                     if (family != null)
                     {
+                        float bodySize = pawn.BodySize;
                         if (family.Equals(breastsEnum))
                         {
                             hediff.Severity = 1.2f; // Massive (RJW 阶段：Enormous 1.0, Massive 1.2)
+                            if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 1.2f * bodySize);
                         }
                         else if (family.Equals(vaginaEnum))
                         {
                             hediff.Severity = 0.25f; // Tight (RJW 阶段：Micro 0.01, Tight 0.20, Average 0.40)
+                            if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
                         }
                         else if (family.Equals(anusEnum))
                         {
                             hediff.Severity = 0.25f; // Tight
+                            if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
                         }
                     }
                 }
