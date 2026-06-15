@@ -9,6 +9,6 @@
             <li>ArtificialMaid_Core</li>
         </genes>
         <inheritable>false</inheritable>
-        <selectionWeight>0</selectionWeight>
+        <factionlessGenerationWeight>0</factionlessGenerationWeight>
     </XenotypeDef>
 </Defs>
