@@ -94,7 +94,7 @@ namespace OuterrealmTechRobot
                 }
                 
                 var coreGeneDef = DefDatabase<GeneDef>.GetNamed("ArtificialMaid_Core");
-                if (!Pawn.genes.HasGene(coreGeneDef))
+                if (!Pawn.genes.HasActiveGene(coreGeneDef))
                 {
                     Pawn.genes.AddGene(coreGeneDef, false);
                 }
