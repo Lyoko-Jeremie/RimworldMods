@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <XenotypeDef>
+        <defName>ArtificialMaidXenotype</defName>
+        <label>artificial maid</label>
+        <description>An artificial maid xenotype. They are perfectly crafted beings with pale skin and incredible combat prowess.</description>
+        <iconPath>UI/Icons/Genes/Gene_MeleeDamage_More</iconPath>
+        <genes>
+            <li>ArtificialMaid_Core</li>
+        </genes>
+        <inheritable>false</inheritable>
+        <selectionWeight>0</selectionWeight>
+    </XenotypeDef>
+</Defs>

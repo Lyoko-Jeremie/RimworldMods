@@ -26,6 +26,7 @@
                     </li>
                 </adultBackstoryFilter>
                 <alienPartGenerator>
+                    <useSkinColor>true</useSkinColor>
                     <headTypes>
                         <li>Female_AverageNormal</li>
                         <li>Female_AveragePointy</li>
@@ -51,6 +52,9 @@
                 <cannotReceiveThoughtsAtAll>true</cannotReceiveThoughtsAtAll>
             </thoughtSettings>
             <raceRestriction>
+                <xenotypeWhitelist>
+                    <li>ArtificialMaidXenotype</li>
+                </xenotypeWhitelist>
                 <whiteGeneList>
                     <li>ArtificialMaid_Core</li>
                 </whiteGeneList>

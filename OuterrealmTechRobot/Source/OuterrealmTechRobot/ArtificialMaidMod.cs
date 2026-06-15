@@ -47,7 +47,7 @@ namespace OuterrealmTechRobot
                 this.ReplenishResources();
                 this.EnsureRecoveryHediff();
                 this.AutoConvertFaction();
-                this.EnsureCoreGene();
+                this.EnsureMaidProperties();
             }
 
             if (this.parent.IsHashIntervalTick(250))
@@ -81,13 +81,53 @@ namespace OuterrealmTechRobot
             }
         }
 
-        public void EnsureCoreGene()
+        public void EnsureMaidProperties()
         {
-            if (!ModsConfig.BiotechActive || Pawn == null || Pawn.genes == null) return;
-            var geneDef = DefDatabase<GeneDef>.GetNamed("ArtificialMaid_Core");
-            if (!Pawn.genes.HasGene(geneDef))
+            if (Pawn == null) return;
+            
+            if (ModsConfig.BiotechActive && Pawn.genes != null)
             {
-                Pawn.genes.AddGene(geneDef, false);
+                var xenotypeDef = DefDatabase<XenotypeDef>.GetNamed("ArtificialMaidXenotype");
+                if (Pawn.genes.Xenotype != xenotypeDef)
+                {
+                    Pawn.genes.SetXenotype(xenotypeDef);
+                }
+                
+                var coreGeneDef = DefDatabase<GeneDef>.GetNamed("ArtificialMaid_Core");
+                if (!Pawn.genes.HasGene(coreGeneDef))
+                {
+                    Pawn.genes.AddGene(coreGeneDef, false);
+                }
+            }
+            
+            this.EnsureSkinColor();
+        }
+
+        public void EnsureSkinColor()
+        {
+            if (Pawn == null || Pawn.story == null) return;
+            
+            // 确保肤色锁定为 Pale (250, 240, 240)
+            Color pale = new Color(250f / 255f, 240f / 255f, 240f / 255f);
+            
+            bool changed = false;
+            if (Pawn.story.skinColorOverride == null || !Pawn.story.skinColorOverride.Value.IndistinguishableFrom(pale))
+            {
+                Pawn.story.skinColorOverride = pale;
+                changed = true;
+            }
+            
+            // HAR 可能会使用 SkinColorBase，所以也强制它
+            if (!Pawn.story.SkinColorBase.IndistinguishableFrom(pale))
+            {
+                Pawn.story.SkinColorBase = pale;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                // 强制刷新渲染
+                Pawn.Drawer.renderer.SetAllGraphicsDirty();
             }
         }
 
@@ -161,6 +201,9 @@ namespace OuterrealmTechRobot
                 Pawn.needs.AddOrRemoveNeedsAsAppropriate();
             }
             this.ReplenishResources();
+            this.EnsureRecoveryHediff();
+            this.AutoConvertFaction();
+            this.EnsureMaidProperties();
         }
 
         public void ReplenishResources()
@@ -617,7 +660,6 @@ namespace OuterrealmTechRobot
                 if (comp != null)
                 {
                     comp.FullRepair();
-                    comp.EnsureRecoveryHediff();
                     Messages.Message("ArtificialMaidFixedMessage".Translate(pawn.LabelShort),
                         MessageTypeDefOf.PositiveEvent);
                 }

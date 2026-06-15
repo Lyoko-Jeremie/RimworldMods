@@ -53,6 +53,12 @@
             </li>
         </backstoryFilters>
         <preventIdeo>true</preventIdeo>
+        <xenotypeSet>
+            <xenotypeChances>
+                <ArtificialMaidXenotype>1</ArtificialMaidXenotype>
+            </xenotypeChances>
+        </xenotypeSet>
+        <useFactionXenotypes>false</useFactionXenotypes>
         <forcedTraits>
             <li>ArtificialMaidTrait_AbsoluteLoyalty</li>
         </forcedTraits>
