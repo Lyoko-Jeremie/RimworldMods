@@ -89,6 +89,68 @@ namespace OuterrealmTechRobot
             }
         }
 
+        public void FullRepair()
+        {
+            if (Pawn == null) return;
+
+            // 1. 修复所有损伤和缺失
+            // 先恢复所有缺失部位
+            var missingParts = Pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+            foreach (var part in missingParts)
+            {
+                Pawn.health.RestorePart(part.Part);
+            }
+
+            // 移除所有坏的 Hediff
+            List<Hediff> toRemove = new List<Hediff>();
+            foreach (var hediff in Pawn.health.hediffSet.hediffs)
+            {
+                if (hediff is Hediff_Injury || hediff.def.isBad ||
+                    hediff.def.IsAddiction || hediff.def.chronic)
+                {
+                    toRemove.Add(hediff);
+                }
+            }
+            foreach (var hediff in toRemove)
+            {
+                Pawn.health.RemoveHediff(hediff);
+            }
+
+            // 2. 去除不属于 ArtificialMaid 的特质
+            if (Pawn.story?.traits != null)
+            {
+                var traitsToRemove = Pawn.story.traits.allTraits
+                    .Where(t => !t.def.defName.StartsWith("ArtificialMaidTrait_"))
+                    .ToList();
+                foreach (var trait in traitsToRemove)
+                {
+                    Pawn.story.traits.RemoveTrait(trait);
+                }
+            }
+
+            // 3. 替换不属于 ArtificialMaid 的背景故事
+            if (Pawn.story != null)
+            {
+                if (Pawn.story.Childhood != null && !Pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                {
+                    Pawn.story.Childhood = DefDatabase<BackstoryDef>.AllDefs
+                        .FirstOrDefault(b => b.slot == BackstorySlot.Childhood && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+                }
+                if (Pawn.story.Adulthood != null && !Pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                {
+                    Pawn.story.Adulthood = DefDatabase<BackstoryDef>.AllDefs
+                        .FirstOrDefault(b => b.slot == BackstorySlot.Adulthood && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+                }
+            }
+
+            // 4. 修正需求系统和技能系统
+            if (Pawn.needs != null)
+            {
+                Pawn.needs.AddOrRemoveNeedsAsAppropriate();
+            }
+            this.ReplenishResources();
+        }
+
         public void ReplenishResources()
         {
             if (Pawn == null) return;
@@ -527,7 +589,7 @@ namespace OuterrealmTechRobot
                 var comp = pawn.TryGetComp<CompArtificialMaid>();
                 if (comp != null)
                 {
-                    comp.ReplenishResources();
+                    comp.FullRepair();
                     comp.EnsureRecoveryHediff();
                     Messages.Message("ArtificialMaidFixedMessage".Translate(pawn.LabelShort),
                         MessageTypeDefOf.PositiveEvent);
