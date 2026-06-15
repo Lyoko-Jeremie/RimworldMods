@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+    <Hediff_Omni_JoySootheVisual.label>As if hearing heavenly music</Hediff_Omni_JoySootheVisual.label>
+    <Hediff_Omni_JoySootheVisual.description>Soothed by the Mood Harmonizer, all weariness from repeated recreation is swept away. \n\n"Like celestial music clearing the ear."</Hediff_Omni_JoySootheVisual.description>
+
+    <GameConditionDef_Omni_JoySootheCondition.label>Mind Soothing (Celestial clarity) </GameConditionDef_Omni_JoySootheCondition.label>
+    <GameConditionDef_Omni_JoySootheCondition.description>The Mood Harmonizer on this map is active. A gentle wave eases the colonists' sense of boredom, and they temporarily will not tire of any recreation.</GameConditionDef_Omni_JoySootheCondition.description>
+    <GameConditionDef_Omni_JoySootheCondition.endMessage>The Mood Harmonizer has stopped. Boredom may begin to spread again.</GameConditionDef_Omni_JoySootheCondition.endMessage>
+
+</LanguageData>
