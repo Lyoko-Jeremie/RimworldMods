@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <rjw.RaceGroupDef MayRequire="rimjobworld">
+        <defName>ArtificialMaid_RJW_Group</defName>
+        <raceNames>
+            <li>ArtificialMaid</li>
+        </raceNames>
+        <anuses>
+            <li>Anus</li>
+        </anuses>
+        <femaleBreasts>
+            <li>Breasts</li>
+        </femaleBreasts>
+        <femaleGenitals>
+            <li>Vagina</li>
+        </femaleGenitals>
+        <maleBreasts>
+            <li>Breasts</li>
+        </maleBreasts>
+        <!-- ArtificialMaid 虽固定女性，但为了严谨性保留通用定义 -->
+    </rjw.RaceGroupDef>
+</Defs>
