@@ -18,14 +18,14 @@ namespace OuterrealmTechRobot
             Log.Message("ArtificialMaidMod initialized.");
         }
     }
-    
+
     [StaticConstructorOnStartup]
     public static class ArtificialMaidTex
     {
         public static readonly Texture2D IconModifyMaid =
             ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.BadTex;
     }
-    
+
     public class CompProperties_ArtificialMaid : CompProperties
     {
         public CompProperties_ArtificialMaid()
@@ -46,6 +46,7 @@ namespace OuterrealmTechRobot
                 this.ReplenishResources();
                 this.EnsureRecoveryHediff();
             }
+
             if (this.parent.IsHashIntervalTick(250))
             {
                 this.ApplyEmotionalSupport();
@@ -66,9 +67,11 @@ namespace OuterrealmTechRobot
                     float radius = 10f;
                     foreach (var thing in GenRadial.RadialDistinctThingsAround(Pawn.Position, Pawn.Map, radius, true))
                     {
-                        if (thing is Pawn other && other != Pawn && other.RaceProps.Humanlike && other.Faction == Pawn.Faction)
+                        if (thing is Pawn other && other != Pawn && other.RaceProps.Humanlike &&
+                            other.Faction == Pawn.Faction)
                         {
-                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(ThoughtDef.Named("MaidEmotionalSupport"), Pawn);
+                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(
+                                ThoughtDef.Named("MaidEmotionalSupport"), Pawn);
                         }
                     }
                 }
@@ -118,7 +121,7 @@ namespace OuterrealmTechRobot
                     }
                 }
             }
-            
+
             // 精神熵消除
             if (ModsConfig.RoyaltyActive && Pawn.psychicEntropy != null)
             {
@@ -162,6 +165,7 @@ namespace OuterrealmTechRobot
                 absorbed = true;
                 return false;
             }
+
             return true;
         }
     }
@@ -176,9 +180,11 @@ namespace OuterrealmTechRobot
             if (__instance.def.defName == "ArtificialMaid")
             {
                 __instance.health.Reset();
-                Find.LetterStack.ReceiveLetter("ArtificialMaid_DeathLetter_Label".Translate(), "ArtificialMaid_DeathLetter_Text".Translate(__instance.LabelShort), LetterDefOf.Death, __instance);
+                Find.LetterStack.ReceiveLetter("ArtificialMaid_DeathLetter_Label".Translate(),
+                    "ArtificialMaid_DeathLetter_Text".Translate(__instance.LabelShort), LetterDefOf.Death, __instance);
                 return false;
             }
+
             return true;
         }
     }
@@ -209,7 +215,9 @@ namespace OuterrealmTechRobot
                     invisibleStun = false
                 });
                 pawn.health.Reset();
-                Find.LetterStack.ReceiveLetter("ArtificialMaid_ResurrectionLetter_Label".Translate(), "ArtificialMaid_ResurrectionLetter_Text".Translate(pawn.LabelShort), LetterDefOf.PositiveEvent, pawn);
+                Find.LetterStack.ReceiveLetter("ArtificialMaid_ResurrectionLetter_Label".Translate(),
+                    "ArtificialMaid_ResurrectionLetter_Text".Translate(pawn.LabelShort), LetterDefOf.PositiveEvent,
+                    pawn);
             }
             else
             {
@@ -224,6 +232,7 @@ namespace OuterrealmTechRobot
                     {
                         pawn.health.RestorePart(mp.Part);
                     }
+
                     changed = true;
                 }
 
@@ -241,7 +250,8 @@ namespace OuterrealmTechRobot
                 if (changed)
                 {
                     pawn.health.Notify_HediffChanged(null);
-                    Messages.Message("ArtificialMaid_RepairMessage".Translate(pawn.LabelShort), pawn, MessageTypeDefOf.PositiveEvent);
+                    Messages.Message("ArtificialMaid_RepairMessage".Translate(pawn.LabelShort), pawn,
+                        MessageTypeDefOf.PositiveEvent);
                 }
             }
         }
@@ -280,6 +290,7 @@ namespace OuterrealmTechRobot
                     return false;
                 }
             }
+
             return true;
         }
     }
@@ -321,7 +332,8 @@ namespace OuterrealmTechRobot
 
             if (net == null || net.CurrentStoredEnergy() < PowerRequired)
             {
-                Messages.Message("ArtificialMaid_NotEnoughPower".Translate(PowerRequired), MessageTypeDefOf.RejectInput);
+                Messages.Message("ArtificialMaid_NotEnoughPower".Translate(PowerRequired),
+                    MessageTypeDefOf.RejectInput);
                 return;
             }
 
@@ -356,7 +368,8 @@ namespace OuterrealmTechRobot
                 null, // validatorPreGear (装备前验证器)
                 null, // validatorPostGear (装备后验证器)
                 null, // forcedTraits (强制特质)
-                DefDatabase<TraitDef>.AllDefs.Where(t => !t.defName.StartsWith("ArtificialMaidTrait_")).ToList(), // prohibitedTraits (禁止特质)
+                DefDatabase<TraitDef>.AllDefs.Where(t => !t.defName.StartsWith("ArtificialMaidTrait_"))
+                    .ToList(), // prohibitedTraits (禁止特质)
                 null, // minChanceToRedressWorldPawn (重新打扮世界Pawn的最小概率)
                 null, // fixedBiologicalAge (固定生理年龄)
                 null, // fixedChronologicalAge (固定实际年龄)
@@ -367,16 +380,21 @@ namespace OuterrealmTechRobot
             // 强制背景限制 (虽然XML已有过滤，但这里做最终确保)
             if (pawn.story != null)
             {
-                if (pawn.story.Childhood != null && !pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                if (pawn.story.Childhood != null &&
+                    !pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory"))
                 {
                     pawn.story.Childhood = DefDatabase<BackstoryDef>.AllDefs
-                        .Where(b => b.slot == BackstorySlot.Childhood && b.spawnCategories.Contains("ArtificialMaidBackstory"))
+                        .Where(b => b.slot == BackstorySlot.Childhood &&
+                                    b.spawnCategories.Contains("ArtificialMaidBackstory"))
                         .RandomElement();
                 }
-                if (pawn.story.Adulthood != null && !pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory"))
+
+                if (pawn.story.Adulthood != null &&
+                    !pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory"))
                 {
                     pawn.story.Adulthood = DefDatabase<BackstoryDef>.AllDefs
-                        .Where(b => b.slot == BackstorySlot.Adulthood && b.spawnCategories.Contains("ArtificialMaidBackstory"))
+                        .Where(b => b.slot == BackstorySlot.Adulthood &&
+                                    b.spawnCategories.Contains("ArtificialMaidBackstory"))
                         .RandomElement();
                 }
             }
@@ -411,7 +429,7 @@ namespace OuterrealmTechRobot
             pawn.health.Reset();
 
             GenSpawn.Spawn(pawn, billDoer.Position, billDoer.Map);
-            
+
             // 确保技能全满且双火
             if (pawn.skills != null)
             {
@@ -422,7 +440,8 @@ namespace OuterrealmTechRobot
                 }
             }
 
-            Messages.Message("ArtificialMaidFabricated".Translate(pawn.LabelShort), pawn, MessageTypeDefOf.PositiveEvent);
+            Messages.Message("ArtificialMaidFabricated".Translate(pawn.LabelShort), pawn,
+                MessageTypeDefOf.PositiveEvent);
         }
 
         private void ConsumePowerFromNet(PowerNet net, float amount)
@@ -475,16 +494,16 @@ namespace OuterrealmTechRobot
                         if (pawn.def.defName == "ArtificialMaid")
                         {
                             Pawn localPawn = pawn;
-                            list.Add(new FloatMenuOption(localPawn.LabelCap, delegate
-                            {
-                                OpenModificationMenu(localPawn);
-                            }));
+                            list.Add(new FloatMenuOption(localPawn.LabelCap,
+                                delegate { OpenModificationMenu(localPawn); }));
                         }
                     }
+
                     if (list.Count == 0)
                     {
                         list.Add(new FloatMenuOption("NoArtificialMaidFound".Translate(), null));
                     }
+
                     Find.WindowStack.Add(new FloatMenu(list));
                 }
             };
@@ -494,20 +513,13 @@ namespace OuterrealmTechRobot
         {
             List<FloatMenuOption> list = new List<FloatMenuOption>();
 
-            list.Add(new FloatMenuOption("ModifyChildhoodLabel".Translate(), delegate
-            {
-                OpenBackstoryMenu(pawn, BackstorySlot.Childhood);
-            }));
+            list.Add(new FloatMenuOption("ModifyChildhoodLabel".Translate(),
+                delegate { OpenBackstoryMenu(pawn, BackstorySlot.Childhood); }));
 
-            list.Add(new FloatMenuOption("ModifyAdulthoodLabel".Translate(), delegate
-            {
-                OpenBackstoryMenu(pawn, BackstorySlot.Adulthood);
-            }));
+            list.Add(new FloatMenuOption("ModifyAdulthoodLabel".Translate(),
+                delegate { OpenBackstoryMenu(pawn, BackstorySlot.Adulthood); }));
 
-            list.Add(new FloatMenuOption("ModifyTraitsLabel".Translate(), delegate
-            {
-                OpenTraitMenu(pawn);
-            }));
+            list.Add(new FloatMenuOption("ModifyTraitsLabel".Translate(), delegate { OpenTraitMenu(pawn); }));
 
             list.Add(new FloatMenuOption("AutofixReplenishLabel".Translate(), delegate
             {
@@ -516,7 +528,8 @@ namespace OuterrealmTechRobot
                 {
                     comp.ReplenishResources();
                     comp.EnsureRecoveryHediff();
-                    Messages.Message("ArtificialMaidFixedMessage".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                    Messages.Message("ArtificialMaidFixedMessage".Translate(pawn.LabelShort),
+                        MessageTypeDefOf.PositiveEvent);
                 }
             }));
 
@@ -535,9 +548,12 @@ namespace OuterrealmTechRobot
                 {
                     if (slot == BackstorySlot.Childhood) pawn.story.Childhood = bs;
                     else pawn.story.Adulthood = bs;
-                    Messages.Message("ArtificialMaidBackstoryUpdated".Translate(pawn.LabelShort, slot.ToString(), bs.title), MessageTypeDefOf.PositiveEvent);
+                    Messages.Message(
+                        "ArtificialMaidBackstoryUpdated".Translate(pawn.LabelShort, slot.ToString(), bs.title),
+                        MessageTypeDefOf.PositiveEvent);
                 }));
             }
+
             Find.WindowStack.Add(new FloatMenu(list));
         }
 
@@ -553,19 +569,24 @@ namespace OuterrealmTechRobot
                 {
                     if (pawn.story.traits.HasTrait(trait))
                     {
-                        Messages.Message("ArtificialMaidAlreadyHasTrait".Translate(pawn.LabelShort), MessageTypeDefOf.RejectInput);
+                        Messages.Message("ArtificialMaidAlreadyHasTrait".Translate(pawn.LabelShort),
+                            MessageTypeDefOf.RejectInput);
                         return;
                     }
+
                     pawn.story.traits.GainTrait(new Trait(trait));
-                    Messages.Message("ArtificialMaidTraitAdded".Translate(trait.degreeDatas[0].label, pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                    Messages.Message("ArtificialMaidTraitAdded".Translate(trait.degreeDatas[0].label, pawn.LabelShort),
+                        MessageTypeDefOf.PositiveEvent);
                 }));
             }
 
             list.Add(new FloatMenuOption("ClearArtificialMaidTraitsLabel".Translate(), delegate
             {
-                var toRemove = pawn.story.traits.allTraits.Where(t => t.def.defName.StartsWith("ArtificialMaidTrait_")).ToList();
+                var toRemove = pawn.story.traits.allTraits.Where(t => t.def.defName.StartsWith("ArtificialMaidTrait_"))
+                    .ToList();
                 foreach (var t in toRemove) pawn.story.traits.RemoveTrait(t);
-                Messages.Message("ArtificialMaidTraitsCleared".Translate(pawn.LabelShort), MessageTypeDefOf.PositiveEvent);
+                Messages.Message("ArtificialMaidTraitsCleared".Translate(pawn.LabelShort),
+                    MessageTypeDefOf.PositiveEvent);
             }));
 
             Find.WindowStack.Add(new FloatMenu(list));
