@@ -3,7 +3,7 @@
     <GeneCategoryDef>
         <defName>ArtificialMaid</defName>
         <label>Artificial Maid</label>
-        <displayPriorityInXenotype>1000</displayPriorityInXenotype>
-        <displayPriorityInGenepack>1000</displayPriorityInGenepack>
+        <displayPriorityInXenotype>1100</displayPriorityInXenotype>
+        <displayPriorityInGenepack>1100</displayPriorityInGenepack>
     </GeneCategoryDef>
 </Defs>
