@@ -4,7 +4,7 @@
     <Hediff_Omni_JoySootheVisual.label>如听仙乐耳暂明</Hediff_Omni_JoySootheVisual.label>
     <Hediff_Omni_JoySootheVisual.description>受到情绪协调仪的安抚，所有对重复娱乐活动的厌倦感都被一扫而空。内心充满了对事物的新鲜感。</Hediff_Omni_JoySootheVisual.description>
 
-    <GameConditionDef_Omni_JoySootheCondition.label>心灵抚慰(如听仙乐耳暂明)</GameConditionDef_Omni_JoySootheCondition.label>
+    <GameConditionDef_Omni_JoySootheCondition.label>心灵抚慰 (如听仙乐耳暂明)</GameConditionDef_Omni_JoySootheCondition.label>
     <GameConditionDef_Omni_JoySootheCondition.description>地图上的情绪协调仪正在运转。一股温和的波动抹平了殖民者的无聊感，他们暂时不会对任何娱乐感到厌倦了。</GameConditionDef_Omni_JoySootheCondition.description>
     <GameConditionDef_Omni_JoySootheCondition.endMessage>情绪协调仪已停止工作，无聊感可能会再次蔓延。</GameConditionDef_Omni_JoySootheCondition.endMessage>
 
