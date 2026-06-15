@@ -13,7 +13,7 @@ namespace OuterrealmTechRobot
     {
         static ArtificialMaidMod()
         {
-            var harmony = new Harmony("Jeremie.Outerrealm.Tech.Robot");
+            var harmony = new Harmony("Jeremie.Outerrealm.Tech.ArtificialMaid");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
             Log.Message("ArtificialMaidMod initialized.");
         }
