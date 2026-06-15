@@ -18,7 +18,14 @@ namespace OuterrealmTechRobot
             Log.Message("ArtificialMaidMod initialized.");
         }
     }
-
+    
+    [StaticConstructorOnStartup]
+    public static class ArtificialMaidTex
+    {
+        public static readonly Texture2D IconModifyMaid =
+            ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.BadTex;
+    }
+    
     public class CompProperties_ArtificialMaid : CompProperties
     {
         public CompProperties_ArtificialMaid()
@@ -459,7 +466,7 @@ namespace OuterrealmTechRobot
             {
                 defaultLabel = "ModifyArtificialMaidLabel".Translate(),
                 defaultDesc = "ModifyArtificialMaidDesc".Translate(),
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/ModifyMaid", false) ?? BaseContent.BadTex,
+                icon = ArtificialMaidTex.IconModifyMaid,
                 action = delegate
                 {
                     List<FloatMenuOption> list = new List<FloatMenuOption>();
