@@ -98,6 +98,16 @@ namespace OuterrealmTechRobot
                     Pawn.genes.AddGene(coreGeneDef, false);
                 }
             }
+
+            // 确保情感同步特性
+            if (Pawn.story?.traits != null)
+            {
+                var traitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
+                if (!Pawn.story.traits.HasTrait(traitDef))
+                {
+                    Pawn.story.traits.GainTrait(new Trait(traitDef));
+                }
+            }
             
             this.EnsureSkinColor();
         }
@@ -167,7 +177,7 @@ namespace OuterrealmTechRobot
                 Pawn.health.RemoveHediff(hediff);
             }
 
-            // 2. 去除不属于 ArtificialMaid 的特质
+            // 2. 去除不属于 ArtificialMaid 的特质并确保情感同步特性
             if (Pawn.story?.traits != null)
             {
                 var traitsToRemove = Pawn.story.traits.allTraits
@@ -176,6 +186,12 @@ namespace OuterrealmTechRobot
                 foreach (var trait in traitsToRemove)
                 {
                     Pawn.story.traits.RemoveTrait(trait);
+                }
+
+                var syncTraitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
+                if (!Pawn.story.traits.HasTrait(syncTraitDef))
+                {
+                    Pawn.story.traits.GainTrait(new Trait(syncTraitDef));
                 }
             }
 
@@ -578,12 +594,19 @@ namespace OuterrealmTechRobot
                     }
                 }
 
-                // 如果没有任何特质，随机给一个符合要求的
-                if (pawn.story.traits.allTraits.Count == 0)
+                // 确保有“情感同步”特性 (ArtificialMaidTrait_EmotionalSynchrony)
+                var syncTraitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
+                if (!pawn.story.traits.HasTrait(syncTraitDef))
+                {
+                    pawn.story.traits.GainTrait(new Trait(syncTraitDef));
+                }
+
+                // 如果除了情感同步之外没有其他特质，随机再给一个符合要求的特质
+                if (pawn.story.traits.allTraits.Count <= 1)
                 {
                     var maidTraitDef = DefDatabase<TraitDef>.AllDefs
-                        .Where(t => t.defName.StartsWith("ArtificialMaidTrait_"))
-                        .RandomElementByWeight(t => t.GetGenderSpecificCommonality(pawn.gender));
+                        .Where(t => t.defName.StartsWith("ArtificialMaidTrait_") && t != syncTraitDef)
+                        .RandomElementByWeightWithDefault(t => t.GetGenderSpecificCommonality(pawn.gender), 0f);
                     if (maidTraitDef != null)
                     {
                         pawn.story.traits.GainTrait(new Trait(maidTraitDef));
