@@ -19,14 +19,14 @@ namespace OuterrealmTechRobot
         public static XenotypeDef ArtificialMaidXenotype;
         [MayRequireBiotech]
         public static GeneDef ArtificialMaid_Core;
-
-        public static BackstoryDef MaidChildhood;
-        public static BackstoryDef MaidAdulthood;
     }
 
     [StaticConstructorOnStartup]
     public static class ArtificialMaidMod
     {
+        public static BackstoryDef MaidChildhood;
+        public static BackstoryDef MaidAdulthood;
+
         static ArtificialMaidMod()
         {
             var harmony = new Harmony("Jeremie.Outerrealm.Tech.ArtificialMaid");
@@ -49,7 +49,7 @@ namespace OuterrealmTechRobot
                         }
                         if (found)
                         {
-                            ArtificialMaidDefOf.MaidChildhood = b;
+                            MaidChildhood = b;
                             break;
                         }
                     }
@@ -70,7 +70,7 @@ namespace OuterrealmTechRobot
                         }
                         if (found)
                         {
-                            ArtificialMaidDefOf.MaidAdulthood = b;
+                            MaidAdulthood = b;
                             break;
                         }
                     }
@@ -278,7 +278,7 @@ namespace OuterrealmTechRobot
 
                     if (!isMaidBackstory)
                     {
-                        Pawn.story.Childhood = ArtificialMaidDefOf.MaidChildhood;
+                        Pawn.story.Childhood = ArtificialMaidMod.MaidChildhood;
                     }
                 }
 
@@ -299,7 +299,7 @@ namespace OuterrealmTechRobot
 
                     if (!isMaidBackstory)
                     {
-                        Pawn.story.Adulthood = ArtificialMaidDefOf.MaidAdulthood;
+                        Pawn.story.Adulthood = ArtificialMaidMod.MaidAdulthood;
                     }
                 }
             }
