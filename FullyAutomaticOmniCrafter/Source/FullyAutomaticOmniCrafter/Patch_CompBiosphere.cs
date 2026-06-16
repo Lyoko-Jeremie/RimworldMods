@@ -545,27 +545,27 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    // 真空处理 (如果有 SOS2 等 Mod，可能需要额外的 Patch)
-    // 这里 Patch Room.OpenRoofCount 使其始终认为有屋顶（如果 biosphere.ensureNoVacuum）
-    // 这能防止原版中的“室外”判定，从而保持氧气/温度。
-    [HarmonyPatch(typeof(Room), nameof(Room.OpenRoofCount), MethodType.Getter)]
-    public static class Patch_Room_OpenRoofCount
-    {
-        public static void Postfix(Room __instance, ref int __result)
-        {
-            if (__result == 0 || __instance.Map == null) return;
-            // 只要房间内有一个 cell 在 biosphere 保护下且开启了 ensureNoVacuum
-            foreach (IntVec3 cell in __instance.Cells)
-            {
-                var biosphere = CompBiosphereManager.GetBiosphereAt(__instance.Map, cell);
-                if (biosphere != null && biosphere.ensureNoVacuum)
-                {
-                    __result = 0; // 伪装成完全封闭
-                    return;
-                }
-            }
-        }
-    }
+    // // 真空处理 (如果有 SOS2 等 Mod，可能需要额外的 Patch)
+    // // 这里 Patch Room.OpenRoofCount 使其始终认为有屋顶（如果 biosphere.ensureNoVacuum）
+    // // 这能防止原版中的“室外”判定，从而保持氧气/温度。
+    // [HarmonyPatch(typeof(Room), nameof(Room.OpenRoofCount), MethodType.Getter)]
+    // public static class Patch_Room_OpenRoofCount
+    // {
+    //     public static void Postfix(Room __instance, ref int __result)
+    //     {
+    //         if (__result == 0 || __instance.Map == null) return;
+    //         // 只要房间内有一个 cell 在 biosphere 保护下且开启了 ensureNoVacuum
+    //         foreach (IntVec3 cell in __instance.Cells)
+    //         {
+    //             var biosphere = CompBiosphereManager.GetBiosphereAt(__instance.Map, cell);
+    //             if (biosphere != null && biosphere.ensureNoVacuum)
+    //             {
+    //                 __result = 0; // 伪装成完全封闭
+    //                 return;
+    //             }
+    //         }
+    //     }
+    // }
 
     [HarmonyPatch(typeof(Area), "Set")]
     public static class Patch_Area_Set

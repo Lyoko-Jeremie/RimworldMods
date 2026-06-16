@@ -124,20 +124,20 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        private bool _ensureNoVacuum = false;
-        public bool ensureNoVacuum
-        {
-            get => _ensureNoVacuum;
-            set
-            {
-                if (_ensureNoVacuum != value)
-                {
-                    _ensureNoVacuum = value;
-                    CompBiosphereManager.NotifySettingsChanged(this);
-                    ApplyEffects(); // 变更时立即生效一次
-                }
-            }
-        }
+        // private bool _ensureNoVacuum = false;
+        // public bool ensureNoVacuum
+        // {
+        //     get => _ensureNoVacuum;
+        //     set
+        //     {
+        //         if (_ensureNoVacuum != value)
+        //         {
+        //             _ensureNoVacuum = value;
+        //             CompBiosphereManager.NotifySettingsChanged(this);
+        //             ApplyEffects(); // 变更时立即生效一次
+        //         }
+        //     }
+        // }
 
         private LightingMode _lightingMode = LightingMode.None;
         public LightingMode lightingMode
@@ -214,7 +214,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref _growthMode, "growthMode", PlantGrowthMode.Normal);
             Scribe_Values.Look(ref _controlTemperature, "controlTemperature", false);
             Scribe_Values.Look(ref _targetTemperature, "targetTemperature", 21f);
-            Scribe_Values.Look(ref _ensureNoVacuum, "ensureNoVacuum", false);
+            // Scribe_Values.Look(ref _ensureNoVacuum, "ensureNoVacuum", false);
             Scribe_Values.Look(ref _lightingMode, "lightingMode", LightingMode.None);
         }
 
@@ -326,15 +326,15 @@ namespace FullyAutomaticOmniCrafter
                 }
             };
             
-            // 5. 排除真空
-            yield return new Command_Toggle
-            {
-                defaultLabel = "Biosphere_EnsureNoVacuum".Translate(),
-                defaultDesc = "Biosphere_EnsureNoVacuumDesc".Translate(),
-                icon = CompBiosphereTex.IconNoVacuum,
-                isActive = () => ensureNoVacuum,
-                toggleAction = () => ensureNoVacuum = !ensureNoVacuum
-            };
+            // // 5. 排除真空
+            // yield return new Command_Toggle
+            // {
+            //     defaultLabel = "Biosphere_EnsureNoVacuum".Translate(),
+            //     defaultDesc = "Biosphere_EnsureNoVacuumDesc".Translate(),
+            //     icon = CompBiosphereTex.IconNoVacuum,
+            //     isActive = () => ensureNoVacuum,
+            //     toggleAction = () => ensureNoVacuum = !ensureNoVacuum
+            // };
         }
 
         public override void CompTickRare()
@@ -436,7 +436,7 @@ namespace FullyAutomaticOmniCrafter
                 this.growthMode = other.growthMode;
                 this.controlTemperature = other.controlTemperature;
                 this.targetTemperature = other.targetTemperature;
-                this.ensureNoVacuum = other.ensureNoVacuum;
+                // this.ensureNoVacuum = other.ensureNoVacuum;
                 this.lightingMode = other.lightingMode;
                 // 注意：属性 Setter 内部已经调用了 ApplyEffects()
             }
