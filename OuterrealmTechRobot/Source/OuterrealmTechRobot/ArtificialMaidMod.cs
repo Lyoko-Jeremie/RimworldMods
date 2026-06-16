@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using RimWorld;
@@ -35,10 +34,47 @@ namespace OuterrealmTechRobot
             
             LongEventHandler.ExecuteWhenFinished(() =>
             {
-                ArtificialMaidDefOf.MaidChildhood = DefDatabase<BackstoryDef>.AllDefs
-                    .FirstOrDefault(b => b.slot == BackstorySlot.Childhood && b.spawnCategories != null && b.spawnCategories.Contains("ArtificialMaidBackstory"));
-                ArtificialMaidDefOf.MaidAdulthood = DefDatabase<BackstoryDef>.AllDefs
-                    .FirstOrDefault(b => b.slot == BackstorySlot.Adulthood && b.spawnCategories != null && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+                foreach (var b in DefDatabase<BackstoryDef>.AllDefs)
+                {
+                    if (b.slot == BackstorySlot.Childhood && b.spawnCategories != null)
+                    {
+                        bool found = false;
+                        for (int i = 0; i < b.spawnCategories.Count; i++)
+                        {
+                            if (b.spawnCategories[i] == "ArtificialMaidBackstory")
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found)
+                        {
+                            ArtificialMaidDefOf.MaidChildhood = b;
+                            break;
+                        }
+                    }
+                }
+
+                foreach (var b in DefDatabase<BackstoryDef>.AllDefs)
+                {
+                    if (b.slot == BackstorySlot.Adulthood && b.spawnCategories != null)
+                    {
+                        bool found = false;
+                        for (int i = 0; i < b.spawnCategories.Count; i++)
+                        {
+                            if (b.spawnCategories[i] == "ArtificialMaidBackstory")
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found)
+                        {
+                            ArtificialMaidDefOf.MaidAdulthood = b;
+                            break;
+                        }
+                    }
+                }
             });
 
             Log.Message("ArtificialMaidMod initialized.");
@@ -182,8 +218,7 @@ namespace OuterrealmTechRobot
 
             // 1. 修复所有损伤和缺失
             // 先恢复所有缺失部位
-            var missingParts = Pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
-            foreach (var part in missingParts)
+            foreach (var part in Pawn.health.hediffSet.GetMissingPartsCommonAncestors())
             {
                 Pawn.health.RestorePart(part.Part);
             }
@@ -223,16 +258,49 @@ namespace OuterrealmTechRobot
                 }
             }
 
-            // 3. 替换不属于 ArtificialMaid 的背景故事
+            // 替换不属于 ArtificialMaid 的背景故事
             if (Pawn.story != null)
             {
-                if (Pawn.story.Childhood != null && (Pawn.story.Childhood.spawnCategories == null || !Pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory")))
+                if (Pawn.story.Childhood != null)
                 {
-                    Pawn.story.Childhood = ArtificialMaidDefOf.MaidChildhood;
+                    bool isMaidBackstory = false;
+                    if (Pawn.story.Childhood.spawnCategories != null)
+                    {
+                        for (int i = 0; i < Pawn.story.Childhood.spawnCategories.Count; i++)
+                        {
+                            if (Pawn.story.Childhood.spawnCategories[i] == "ArtificialMaidBackstory")
+                            {
+                                isMaidBackstory = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isMaidBackstory)
+                    {
+                        Pawn.story.Childhood = ArtificialMaidDefOf.MaidChildhood;
+                    }
                 }
-                if (Pawn.story.Adulthood != null && (Pawn.story.Adulthood.spawnCategories == null || !Pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory")))
+
+                if (Pawn.story.Adulthood != null)
                 {
-                    Pawn.story.Adulthood = ArtificialMaidDefOf.MaidAdulthood;
+                    bool isMaidBackstory = false;
+                    if (Pawn.story.Adulthood.spawnCategories != null)
+                    {
+                        for (int i = 0; i < Pawn.story.Adulthood.spawnCategories.Count; i++)
+                        {
+                            if (Pawn.story.Adulthood.spawnCategories[i] == "ArtificialMaidBackstory")
+                            {
+                                isMaidBackstory = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isMaidBackstory)
+                    {
+                        Pawn.story.Adulthood = ArtificialMaidDefOf.MaidAdulthood;
+                    }
                 }
             }
 
@@ -255,13 +323,9 @@ namespace OuterrealmTechRobot
             if (Pawn == null) return;
 
             // 修复所有损伤和缺失
-            if (Pawn.health.hediffSet.GetMissingPartsCommonAncestors().Any())
+            foreach (var mp in Pawn.health.hediffSet.GetMissingPartsCommonAncestors())
             {
-                var missingParts = Pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
-                foreach (var part in missingParts)
-                {
-                    Pawn.health.RestorePart(part.Part);
-                }
+                Pawn.health.RestorePart(mp.Part);
             }
 
             var hediffs = Pawn.health.hediffSet.hediffs;
@@ -422,14 +486,15 @@ namespace OuterrealmTechRobot
                 bool changed = false;
 
                 // 恢复缺失的肢体
-                var missingParts = pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
-                if (missingParts.Count > 0)
+                bool missingFound = false;
+                foreach (var mp in pawn.health.hediffSet.GetMissingPartsCommonAncestors())
                 {
-                    foreach (var mp in missingParts)
-                    {
-                        pawn.health.RestorePart(mp.Part);
-                    }
+                    pawn.health.RestorePart(mp.Part);
+                    missingFound = true;
+                }
 
+                if (missingFound)
+                {
                     changed = true;
                 }
 
@@ -553,6 +618,15 @@ namespace OuterrealmTechRobot
             ConsumePowerFromNet(net, PowerRequired);
 
             base.Notify_IterationCompleted(billDoer, ingredients);
+            List<TraitDef> prohibitedTraits = new List<TraitDef>();
+            foreach (var t in DefDatabase<TraitDef>.AllDefs)
+            {
+                if (t.defName != null && !t.defName.StartsWith("ArtificialMaidTrait_"))
+                {
+                    prohibitedTraits.Add(t);
+                }
+            }
+
             PawnGenerationRequest request = new PawnGenerationRequest(
                 PawnKindDef.Named("ArtificialMaidKind"),
                 billDoer.Faction,
@@ -580,8 +654,7 @@ namespace OuterrealmTechRobot
                 null, // validatorPreGear (装备前验证器)
                 null, // validatorPostGear (装备后验证器)
                 null, // forcedTraits (强制特质)
-                DefDatabase<TraitDef>.AllDefs.Where(t => !t.defName.StartsWith("ArtificialMaidTrait_"))
-                    .ToList(), // prohibitedTraits (禁止特质)
+                prohibitedTraits, // prohibitedTraits (禁止特质)
                 null, // minChanceToRedressWorldPawn (重新打扮世界Pawn的最小概率)
                 null, // fixedBiologicalAge (固定生理年龄)
                 null, // fixedChronologicalAge (固定实际年龄)
@@ -592,22 +665,82 @@ namespace OuterrealmTechRobot
             // 强制背景限制 (虽然XML已有过滤，但这里做最终确保)
             if (pawn.story != null)
             {
-                if (pawn.story.Childhood != null &&
-                    !pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                if (pawn.story.Childhood != null)
                 {
-                    pawn.story.Childhood = DefDatabase<BackstoryDef>.AllDefs
-                        .Where(b => b.slot == BackstorySlot.Childhood &&
-                                    b.spawnCategories.Contains("ArtificialMaidBackstory"))
-                        .RandomElement();
+                    bool isMaidBackstory = false;
+                    if (pawn.story.Childhood.spawnCategories != null)
+                    {
+                        for (int i = 0; i < pawn.story.Childhood.spawnCategories.Count; i++)
+                        {
+                            if (pawn.story.Childhood.spawnCategories[i] == "ArtificialMaidBackstory")
+                            {
+                                isMaidBackstory = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isMaidBackstory)
+                    {
+                        List<BackstoryDef> possibleChildhoods = new List<BackstoryDef>();
+                        foreach (var b in DefDatabase<BackstoryDef>.AllDefs)
+                        {
+                            if (b.slot == BackstorySlot.Childhood && b.spawnCategories != null)
+                            {
+                                for (int i = 0; i < b.spawnCategories.Count; i++)
+                                {
+                                    if (b.spawnCategories[i] == "ArtificialMaidBackstory")
+                                    {
+                                        possibleChildhoods.Add(b);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (possibleChildhoods.Count > 0)
+                        {
+                            pawn.story.Childhood = possibleChildhoods.RandomElement();
+                        }
+                    }
                 }
 
-                if (pawn.story.Adulthood != null &&
-                    !pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                if (pawn.story.Adulthood != null)
                 {
-                    pawn.story.Adulthood = DefDatabase<BackstoryDef>.AllDefs
-                        .Where(b => b.slot == BackstorySlot.Adulthood &&
-                                    b.spawnCategories.Contains("ArtificialMaidBackstory"))
-                        .RandomElement();
+                    bool isMaidBackstory = false;
+                    if (pawn.story.Adulthood.spawnCategories != null)
+                    {
+                        for (int i = 0; i < pawn.story.Adulthood.spawnCategories.Count; i++)
+                        {
+                            if (pawn.story.Adulthood.spawnCategories[i] == "ArtificialMaidBackstory")
+                            {
+                                isMaidBackstory = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isMaidBackstory)
+                    {
+                        List<BackstoryDef> possibleAdulthoods = new List<BackstoryDef>();
+                        foreach (var b in DefDatabase<BackstoryDef>.AllDefs)
+                        {
+                            if (b.slot == BackstorySlot.Adulthood && b.spawnCategories != null)
+                            {
+                                for (int i = 0; i < b.spawnCategories.Count; i++)
+                                {
+                                    if (b.spawnCategories[i] == "ArtificialMaidBackstory")
+                                    {
+                                        possibleAdulthoods.Add(b);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (possibleAdulthoods.Count > 0)
+                        {
+                            pawn.story.Adulthood = possibleAdulthoods.RandomElement();
+                        }
+                    }
                 }
             }
 
@@ -615,10 +748,11 @@ namespace OuterrealmTechRobot
             if (pawn.story?.traits != null)
             {
                 // 移除所有不符合要求的特质
-                var allTraits = pawn.story.traits.allTraits.ToList();
-                foreach (var trait in allTraits)
+                var allTraits = pawn.story.traits.allTraits;
+                for (int i = allTraits.Count - 1; i >= 0; i--)
                 {
-                    if (!trait.def.defName.StartsWith("ArtificialMaidTrait_"))
+                    var trait = allTraits[i];
+                    if (trait.def != null && !trait.def.defName.StartsWith("ArtificialMaidTrait_"))
                     {
                         pawn.story.traits.RemoveTrait(trait);
                     }
@@ -633,12 +767,22 @@ namespace OuterrealmTechRobot
                 // 如果除了情感同步之外没有其他特质，随机再给一个符合要求的特质
                 if (pawn.story.traits.allTraits.Count <= 1)
                 {
-                    var maidTraitDef = DefDatabase<TraitDef>.AllDefs
-                        .Where(t => t.defName.StartsWith("ArtificialMaidTrait_") && t != ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony)
-                        .RandomElementByWeightWithDefault(t => t.GetGenderSpecificCommonality(pawn.gender), 0f);
-                    if (maidTraitDef != null)
+                    List<TraitDef> possibleTraits = new List<TraitDef>();
+                    foreach (var t in DefDatabase<TraitDef>.AllDefs)
                     {
-                        pawn.story.traits.GainTrait(new Trait(maidTraitDef));
+                        if (t.defName != null && t.defName.StartsWith("ArtificialMaidTrait_") && t != ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony)
+                        {
+                            possibleTraits.Add(t);
+                        }
+                    }
+
+                    if (possibleTraits.Count > 0)
+                    {
+                        TraitDef maidTraitDef = possibleTraits.RandomElementByWeightWithDefault(t => t.GetGenderSpecificCommonality(pawn.gender), 0f);
+                        if (maidTraitDef != null)
+                        {
+                            pawn.story.traits.GainTrait(new Trait(maidTraitDef));
+                        }
                     }
                 }
             }
@@ -759,19 +903,32 @@ namespace OuterrealmTechRobot
         private void OpenBackstoryMenu(Pawn pawn, BackstorySlot slot)
         {
             List<FloatMenuOption> list = new List<FloatMenuOption>();
-            var backstories = DefDatabase<BackstoryDef>.AllDefs
-                .Where(b => b.slot == slot && b.spawnCategories.Contains("ArtificialMaidBackstory"));
-
-            foreach (var bs in backstories)
+            foreach (var bs in DefDatabase<BackstoryDef>.AllDefs)
             {
-                list.Add(new FloatMenuOption(bs.title, delegate
+                if (bs.slot == slot && bs.spawnCategories != null)
                 {
-                    if (slot == BackstorySlot.Childhood) pawn.story.Childhood = bs;
-                    else pawn.story.Adulthood = bs;
-                    Messages.Message(
-                        "ArtificialMaidBackstoryUpdated".Translate(pawn.LabelShort, slot.ToString(), bs.title),
-                        MessageTypeDefOf.PositiveEvent);
-                }));
+                    bool found = false;
+                    for (int i = 0; i < bs.spawnCategories.Count; i++)
+                    {
+                        if (bs.spawnCategories[i] == "ArtificialMaidBackstory")
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        list.Add(new FloatMenuOption(bs.title, delegate
+                        {
+                            if (slot == BackstorySlot.Childhood) pawn.story.Childhood = bs;
+                            else pawn.story.Adulthood = bs;
+                            Messages.Message(
+                                "ArtificialMaidBackstoryUpdated".Translate(pawn.LabelShort, slot.ToString(), bs.title),
+                                MessageTypeDefOf.PositiveEvent);
+                        }));
+                    }
+                }
             }
 
             Find.WindowStack.Add(new FloatMenu(list));
@@ -780,31 +937,37 @@ namespace OuterrealmTechRobot
         private void OpenTraitMenu(Pawn pawn)
         {
             List<FloatMenuOption> list = new List<FloatMenuOption>();
-            var traits = DefDatabase<TraitDef>.AllDefs
-                .Where(t => t.defName.StartsWith("ArtificialMaidTrait_"));
-
-            foreach (var trait in traits)
+            foreach (var trait in DefDatabase<TraitDef>.AllDefs)
             {
-                list.Add(new FloatMenuOption(trait.degreeDatas[0].label, delegate
+                if (trait.defName != null && trait.defName.StartsWith("ArtificialMaidTrait_"))
                 {
-                    if (pawn.story.traits.HasTrait(trait))
+                    list.Add(new FloatMenuOption(trait.degreeDatas[0].label, delegate
                     {
-                        Messages.Message("ArtificialMaidAlreadyHasTrait".Translate(pawn.LabelShort),
-                            MessageTypeDefOf.RejectInput);
-                        return;
-                    }
+                        if (pawn.story.traits.HasTrait(trait))
+                        {
+                            Messages.Message("ArtificialMaidAlreadyHasTrait".Translate(pawn.LabelShort),
+                                MessageTypeDefOf.RejectInput);
+                            return;
+                        }
 
-                    pawn.story.traits.GainTrait(new Trait(trait));
-                    Messages.Message("ArtificialMaidTraitAdded".Translate(trait.degreeDatas[0].label, pawn.LabelShort),
-                        MessageTypeDefOf.PositiveEvent);
-                }));
+                        pawn.story.traits.GainTrait(new Trait(trait));
+                        Messages.Message("ArtificialMaidTraitAdded".Translate(trait.degreeDatas[0].label, pawn.LabelShort),
+                            MessageTypeDefOf.PositiveEvent);
+                    }));
+                }
             }
 
             list.Add(new FloatMenuOption("ClearArtificialMaidTraitsLabel".Translate(), delegate
             {
-                var toRemove = pawn.story.traits.allTraits.Where(t => t.def.defName.StartsWith("ArtificialMaidTrait_"))
-                    .ToList();
-                foreach (var t in toRemove) pawn.story.traits.RemoveTrait(t);
+                var allTraits = pawn.story.traits.allTraits;
+                for (int i = allTraits.Count - 1; i >= 0; i--)
+                {
+                    var t = allTraits[i];
+                    if (t.def != null && t.def.defName != null && t.def.defName.StartsWith("ArtificialMaidTrait_"))
+                    {
+                        pawn.story.traits.RemoveTrait(t);
+                    }
+                }
                 Messages.Message("ArtificialMaidTraitsCleared".Translate(pawn.LabelShort),
                     MessageTypeDefOf.PositiveEvent);
             }));
@@ -969,8 +1132,10 @@ namespace OuterrealmTechRobot
             object anusEnum = System.Enum.Parse(_genitalFamilyType, "Anus");
 
             // 遍历并强制设置属性
-            foreach (var hediff in pawn.health.hediffSet.hediffs.ToList())
+            var hediffs = pawn.health.hediffSet.hediffs;
+            for (int i = hediffs.Count - 1; i >= 0; i--)
             {
+                var hediff = hediffs[i];
                 object sexPartComp = null;
                 if (hediff is HediffWithComps hwc && hwc.comps != null)
                 {
