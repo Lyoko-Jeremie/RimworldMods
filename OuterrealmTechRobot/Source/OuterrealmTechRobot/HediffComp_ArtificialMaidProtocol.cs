@@ -42,8 +42,13 @@ namespace OuterrealmTechRobot
             var mapComp = pawn.Map?.GetComponent<ArtificialMaidMapComponent>();
             if (mapComp != null)
             {
-                mapComp.RegisterMaid(pawn);
                 maidCount = mapComp.MaidCount;
+                // 如果计数器为 0 (极端情况，例如 SpawnSetup 没被调用或被其他 mod 覆盖)，则补充注册
+                if (maidCount == 0)
+                {
+                    mapComp.RegisterMaid(pawn);
+                    maidCount = mapComp.MaidCount;
+                }
             }
 
             // 2. 核心逻辑判断

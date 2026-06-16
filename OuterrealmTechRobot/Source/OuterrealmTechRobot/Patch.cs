@@ -5,16 +5,44 @@ using Verse;
 
 namespace OuterrealmTechRobot
 {
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.SpawnSetup))]
+    public static class Patch_Pawn_SpawnSetup
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance, Map map)
+        {
+            if (map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                var mapComp = map.GetComponent<ArtificialMaidMapComponent>();
+                mapComp?.RegisterMaid(__instance);
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.DeSpawn))]
     public static class Patch_Pawn_DeSpawn
     {
         [HarmonyPrefix]
         public static void Prefix(Pawn __instance)
         {
-            if (__instance.Map != null)
+            if (__instance.Map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
                 mapComp?.UnregisterMaid(__instance);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Thing), nameof(Thing.Destroy))]
+    public static class Patch_Thing_Destroy
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Thing __instance)
+        {
+            if (__instance is Pawn pawn && pawn.Map != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                var mapComp = pawn.Map.GetComponent<ArtificialMaidMapComponent>();
+                mapComp?.UnregisterMaid(pawn);
             }
         }
     }
@@ -57,6 +85,13 @@ namespace OuterrealmTechRobot
         {
             if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
+                // 被 Kill 时也尝试注销，确保计数准确（即使它不死）
+                if (__instance.Map != null)
+                {
+                    var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
+                    mapComp?.UnregisterMaid(__instance);
+                }
+
                 __instance.health.Reset();
                 Find.LetterStack.ReceiveLetter("ArtificialMaid_DeathLetter_Label".Translate(),
                     "ArtificialMaid_DeathLetter_Text".Translate(__instance.LabelShort), LetterDefOf.Death, __instance);
