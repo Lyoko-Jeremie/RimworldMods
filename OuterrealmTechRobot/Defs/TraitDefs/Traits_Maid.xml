@@ -166,7 +166,7 @@
                 <label>纯真玩伴</label>
                 <description>{PAWN_nameDef} 是与主人一同在云端嬉戏、在花海奔跑的青梅竹马。这种从小建立的默契让她们无需言语便能心领神会。她是主人的兄弟、朋友，也是永远不会离去的童年幻梦。</description>
                 <statOffsets>
-                    <MoveSpeed>5000.0</MoveSpeed>
+                    <MoveSpeed>500.0</MoveSpeed>
                     <SocialImpact>300.0</SocialImpact>
                 </statOffsets>
             </li>
