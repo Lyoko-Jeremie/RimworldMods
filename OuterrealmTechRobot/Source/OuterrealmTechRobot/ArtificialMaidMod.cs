@@ -8,6 +8,28 @@ using Verse;
 
 namespace OuterrealmTechRobot
 {
+    [DefOf]
+    public static class ArtificialMaidDefOf
+    {
+        static ArtificialMaidDefOf()
+        {
+            DefOfHelper.EnsureInitializedInCtor(typeof(ArtificialMaidDefOf));
+        }
+
+        public static ThingDef ArtificialMaid;
+        public static TraitDef ArtificialMaidTrait_EmotionalSynchrony;
+        public static ThoughtDef MaidEmotionalSupport;
+        public static HediffDef ArtificialMaidRecovery;
+
+        [MayRequireBiotech]
+        public static XenotypeDef ArtificialMaidXenotype;
+        [MayRequireBiotech]
+        public static GeneDef ArtificialMaid_Core;
+
+        public static BackstoryDef MaidChildhood;
+        public static BackstoryDef MaidAdulthood;
+    }
+
     [StaticConstructorOnStartup]
     public static class ArtificialMaidMod
     {
@@ -15,6 +37,15 @@ namespace OuterrealmTechRobot
         {
             var harmony = new Harmony("Jeremie.Outerrealm.Tech.ArtificialMaid");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+            
+            LongEventHandler.ExecuteWhenFinished(() =>
+            {
+                ArtificialMaidDefOf.MaidChildhood = DefDatabase<BackstoryDef>.AllDefs
+                    .FirstOrDefault(b => b.slot == BackstorySlot.Childhood && b.spawnCategories != null && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+                ArtificialMaidDefOf.MaidAdulthood = DefDatabase<BackstoryDef>.AllDefs
+                    .FirstOrDefault(b => b.slot == BackstorySlot.Adulthood && b.spawnCategories != null && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+            });
+
             Log.Message("ArtificialMaidMod initialized.");
         }
     }
@@ -22,8 +53,10 @@ namespace OuterrealmTechRobot
     [StaticConstructorOnStartup]
     public static class ArtificialMaidTex
     {
+        public static readonly Color PaleSkinColor = new Color(250f / 255f, 240f / 255f, 240f / 255f);
+
         public static readonly Texture2D IconModifyMaid =
-            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ModifyMaid", false) ?? BaseContent.WhiteTex; 
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ModifyMaid", false) ?? BaseContent.WhiteTex;
     }
 
     public class CompProperties_ArtificialMaid : CompProperties
@@ -57,24 +90,22 @@ namespace OuterrealmTechRobot
 
         private void ApplyEmotionalSupport()
         {
-            if (Pawn == null || Pawn.Dead || !Pawn.Spawned) return;
+            if (Pawn == null || !Pawn.Spawned || Pawn.Dead) return;
 
             // 检查是否有“情感同步”特性
-            if (Pawn.story?.traits != null)
+            if (Pawn.story?.traits != null && Pawn.story.traits.HasTrait(ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony))
             {
-                var traitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
-                if (Pawn.story.traits.HasTrait(traitDef))
+                // 获取周围 10 格内的 Pawn
+                float radius = 10f;
+                IntVec3 pos = Pawn.Position;
+                Map map = Pawn.Map;
+                Faction faction = Pawn.Faction;
+                
+                foreach (var thing in GenRadial.RadialDistinctThingsAround(pos, map, radius, true))
                 {
-                    // 获取周围 10 格内的 Pawn
-                    float radius = 10f;
-                    foreach (var thing in GenRadial.RadialDistinctThingsAround(Pawn.Position, Pawn.Map, radius, true))
+                    if (thing is Pawn other && other != Pawn && other.Faction == faction && other.RaceProps.Humanlike)
                     {
-                        if (thing is Pawn other && other != Pawn && other.RaceProps.Humanlike &&
-                            other.Faction == Pawn.Faction)
-                        {
-                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(
-                                ThoughtDef.Named("MaidEmotionalSupport"), Pawn);
-                        }
+                        other.needs?.mood?.thoughts?.memories?.TryGainMemory(ArtificialMaidDefOf.MaidEmotionalSupport, Pawn);
                     }
                 }
             }
@@ -86,14 +117,14 @@ namespace OuterrealmTechRobot
             
             if (ModsConfig.BiotechActive && Pawn.genes != null)
             {
-                var xenotypeDef = DefDatabase<XenotypeDef>.GetNamed("ArtificialMaidXenotype");
-                if (Pawn.genes.Xenotype != xenotypeDef)
+                var xenotypeDef = ArtificialMaidDefOf.ArtificialMaidXenotype;
+                if (xenotypeDef != null && Pawn.genes.Xenotype != xenotypeDef)
                 {
                     Pawn.genes.SetXenotype(xenotypeDef);
                 }
                 
-                var coreGeneDef = DefDatabase<GeneDef>.GetNamed("ArtificialMaid_Core");
-                if (!Pawn.genes.HasActiveGene(coreGeneDef))
+                var coreGeneDef = ArtificialMaidDefOf.ArtificialMaid_Core;
+                if (coreGeneDef != null && !Pawn.genes.HasActiveGene(coreGeneDef))
                 {
                     Pawn.genes.AddGene(coreGeneDef, false);
                 }
@@ -102,8 +133,8 @@ namespace OuterrealmTechRobot
             // 确保情感同步特性
             if (Pawn.story?.traits != null)
             {
-                var traitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
-                if (!Pawn.story.traits.HasTrait(traitDef))
+                var traitDef = ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony;
+                if (traitDef != null && !Pawn.story.traits.HasTrait(traitDef))
                 {
                     Pawn.story.traits.GainTrait(new Trait(traitDef));
                 }
@@ -114,10 +145,10 @@ namespace OuterrealmTechRobot
 
         public void EnsureSkinColor()
         {
-            if (Pawn == null || Pawn.story == null) return;
+            if (Pawn?.story == null) return;
             
             // 确保肤色锁定为 Pale (250, 240, 240)
-            Color pale = new Color(250f / 255f, 240f / 255f, 240f / 255f);
+            Color pale = ArtificialMaidTex.PaleSkinColor;
             
             bool changed = false;
             if (Pawn.story.skinColorOverride == null || !Pawn.story.skinColorOverride.Value.IndistinguishableFrom(pale))
@@ -143,8 +174,8 @@ namespace OuterrealmTechRobot
         public void EnsureRecoveryHediff()
         {
             if (Pawn == null || Pawn.Dead) return;
-            var def = HediffDef.Named("ArtificialMaidRecovery");
-            if (!Pawn.health.hediffSet.HasHediff(def))
+            var def = ArtificialMaidDefOf.ArtificialMaidRecovery;
+            if (def != null && !Pawn.health.hediffSet.HasHediff(def))
             {
                 Pawn.health.AddHediff(def);
             }
@@ -180,16 +211,18 @@ namespace OuterrealmTechRobot
             // 2. 去除不属于 ArtificialMaid 的特质并确保情感同步特性
             if (Pawn.story?.traits != null)
             {
-                var traitsToRemove = Pawn.story.traits.allTraits
-                    .Where(t => !t.def.defName.StartsWith("ArtificialMaidTrait_"))
-                    .ToList();
-                foreach (var trait in traitsToRemove)
+                var traits = Pawn.story.traits.allTraits;
+                for (int i = traits.Count - 1; i >= 0; i--)
                 {
-                    Pawn.story.traits.RemoveTrait(trait);
+                    var trait = traits[i];
+                    if (trait.def != null && !trait.def.defName.StartsWith("ArtificialMaidTrait_"))
+                    {
+                        Pawn.story.traits.RemoveTrait(trait);
+                    }
                 }
 
-                var syncTraitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
-                if (!Pawn.story.traits.HasTrait(syncTraitDef))
+                var syncTraitDef = ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony;
+                if (syncTraitDef != null && !Pawn.story.traits.HasTrait(syncTraitDef))
                 {
                     Pawn.story.traits.GainTrait(new Trait(syncTraitDef));
                 }
@@ -198,15 +231,13 @@ namespace OuterrealmTechRobot
             // 3. 替换不属于 ArtificialMaid 的背景故事
             if (Pawn.story != null)
             {
-                if (Pawn.story.Childhood != null && !Pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                if (Pawn.story.Childhood != null && (Pawn.story.Childhood.spawnCategories == null || !Pawn.story.Childhood.spawnCategories.Contains("ArtificialMaidBackstory")))
                 {
-                    Pawn.story.Childhood = DefDatabase<BackstoryDef>.AllDefs
-                        .FirstOrDefault(b => b.slot == BackstorySlot.Childhood && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+                    Pawn.story.Childhood = ArtificialMaidDefOf.MaidChildhood;
                 }
-                if (Pawn.story.Adulthood != null && !Pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory"))
+                if (Pawn.story.Adulthood != null && (Pawn.story.Adulthood.spawnCategories == null || !Pawn.story.Adulthood.spawnCategories.Contains("ArtificialMaidBackstory")))
                 {
-                    Pawn.story.Adulthood = DefDatabase<BackstoryDef>.AllDefs
-                        .FirstOrDefault(b => b.slot == BackstorySlot.Adulthood && b.spawnCategories.Contains("ArtificialMaidBackstory"));
+                    Pawn.story.Adulthood = ArtificialMaidDefOf.MaidAdulthood;
                 }
             }
 
@@ -229,15 +260,19 @@ namespace OuterrealmTechRobot
             if (Pawn == null) return;
 
             // 修复所有损伤和缺失
-            var missingParts = Pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
-            foreach (var part in missingParts)
+            if (Pawn.health.hediffSet.GetMissingPartsCommonAncestors().Any())
             {
-                Pawn.health.RestorePart(part.Part);
+                var missingParts = Pawn.health.hediffSet.GetMissingPartsCommonAncestors().ToList();
+                foreach (var part in missingParts)
+                {
+                    Pawn.health.RestorePart(part.Part);
+                }
             }
 
-            for (int i = Pawn.health.hediffSet.hediffs.Count - 1; i >= 0; i--)
+            var hediffs = Pawn.health.hediffSet.hediffs;
+            for (int i = hediffs.Count - 1; i >= 0; i--)
             {
-                var hediff = Pawn.health.hediffSet.hediffs[i];
+                var hediff = hediffs[i];
                 if (hediff is Hediff_Injury || hediff.def.isBad || hediff.def.IsAddiction || hediff.def.chronic)
                 {
                     Pawn.health.RemoveHediff(hediff);
@@ -313,7 +348,7 @@ namespace OuterrealmTechRobot
     {
         public static void Postfix(Pawn __instance, ref bool __result)
         {
-            if (__instance.def.defName == "ArtificialMaid")
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 __result = false;
             }
@@ -327,7 +362,7 @@ namespace OuterrealmTechRobot
         public static bool Prefix(Pawn __instance, ref DamageInfo dinfo, out bool absorbed)
         {
             absorbed = false;
-            if (__instance.def.defName == "ArtificialMaid")
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 absorbed = true;
                 return false;
@@ -344,7 +379,7 @@ namespace OuterrealmTechRobot
         [HarmonyPrefix]
         public static bool Prefix(Pawn __instance)
         {
-            if (__instance.def.defName == "ArtificialMaid")
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 __instance.health.Reset();
                 Find.LetterStack.ReceiveLetter("ArtificialMaid_DeathLetter_Label".Translate(),
@@ -434,7 +469,7 @@ namespace OuterrealmTechRobot
         public static void Postfix(Corpse __instance)
         {
             Pawn pawn = __instance.InnerPawn;
-            if (pawn != null && pawn.def.defName == "ArtificialMaid")
+            if (pawn != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 var hediff = pawn.health.hediffSet.GetFirstHediff<Hediff_ArtificialMaidRecovery>();
                 hediff?.ManualTickRare();
@@ -449,7 +484,7 @@ namespace OuterrealmTechRobot
         [HarmonyPrefix]
         public static bool Prefix(Pawn_HealthTracker __instance, Pawn ___pawn)
         {
-            if (___pawn != null && ___pawn.def.defName == "ArtificialMaid")
+            if (___pawn != null && ___pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 if (__instance.ShouldBeDead() || __instance.ShouldBeDowned())
                 {
@@ -467,7 +502,7 @@ namespace OuterrealmTechRobot
     {
         public static void Postfix(Pawn __instance, ref WorkTags __result)
         {
-            if (__instance.def.defName == "ArtificialMaid")
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 __result = WorkTags.None;
             }
@@ -479,7 +514,7 @@ namespace OuterrealmTechRobot
     {
         public static void Postfix(Pawn __instance, List<WorkTypeDef> __result)
         {
-            if (__instance.def.defName == "ArtificialMaid")
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 __result.Clear();
             }
@@ -491,7 +526,7 @@ namespace OuterrealmTechRobot
     {
         public static void Postfix(PawnCapacitiesHandler __instance, PawnCapacityDef capacity, ref float __result, Pawn ___pawn)
         {
-            if (___pawn?.def?.defName == "ArtificialMaid" && !___pawn.Dead)
+            if (___pawn != null && ___pawn.def == ArtificialMaidDefOf.ArtificialMaid && !___pawn.Dead)
             {
                 if (__result < 2.0f)
                 {
@@ -595,17 +630,16 @@ namespace OuterrealmTechRobot
                 }
 
                 // 确保有“情感同步”特性 (ArtificialMaidTrait_EmotionalSynchrony)
-                var syncTraitDef = TraitDef.Named("ArtificialMaidTrait_EmotionalSynchrony");
-                if (!pawn.story.traits.HasTrait(syncTraitDef))
+                if (!pawn.story.traits.HasTrait(ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony))
                 {
-                    pawn.story.traits.GainTrait(new Trait(syncTraitDef));
+                    pawn.story.traits.GainTrait(new Trait(ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony));
                 }
 
                 // 如果除了情感同步之外没有其他特质，随机再给一个符合要求的特质
                 if (pawn.story.traits.allTraits.Count <= 1)
                 {
                     var maidTraitDef = DefDatabase<TraitDef>.AllDefs
-                        .Where(t => t.defName.StartsWith("ArtificialMaidTrait_") && t != syncTraitDef)
+                        .Where(t => t.defName.StartsWith("ArtificialMaidTrait_") && t != ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony)
                         .RandomElementByWeightWithDefault(t => t.GetGenderSpecificCommonality(pawn.gender), 0f);
                     if (maidTraitDef != null)
                     {
@@ -683,7 +717,7 @@ namespace OuterrealmTechRobot
                     List<FloatMenuOption> list = new List<FloatMenuOption>();
                     foreach (Pawn pawn in this.parent.Map.mapPawns.AllPawnsSpawned)
                     {
-                        if (pawn.def.defName == "ArtificialMaid")
+                        if (pawn.def == ArtificialMaidDefOf.ArtificialMaid)
                         {
                             Pawn localPawn = pawn;
                             list.Add(new FloatMenuOption(localPawn.LabelCap,
@@ -788,9 +822,9 @@ namespace OuterrealmTechRobot
     {
         public static bool Prefix(Pawn_GeneTracker __instance, GeneDef geneDef)
         {
-            if (geneDef.defName == "ArtificialMaid_Core")
+            if (geneDef == ArtificialMaidDefOf.ArtificialMaid_Core)
             {
-                if (__instance.pawn?.def?.defName != "ArtificialMaid")
+                if (__instance.pawn != null && __instance.pawn.def != ArtificialMaidDefOf.ArtificialMaid)
                 {
                     return false;
                 }
@@ -804,9 +838,9 @@ namespace OuterrealmTechRobot
     {
         public static bool Prefix(Pawn_GeneTracker __instance, Gene gene)
         {
-            if (gene.def.defName == "ArtificialMaid_Core")
+            if (gene.def == ArtificialMaidDefOf.ArtificialMaid_Core)
             {
-                if (__instance.pawn?.def?.defName == "ArtificialMaid")
+                if (__instance.pawn != null && __instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
                 {
                     return false;
                 }
