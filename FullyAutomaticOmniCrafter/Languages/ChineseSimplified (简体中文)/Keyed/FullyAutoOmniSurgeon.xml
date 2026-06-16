@@ -82,4 +82,7 @@
   <FullyAutoOmniSurgeon_LastError>最后错误: </FullyAutoOmniSurgeon_LastError>
   <FullyAutoOmniSurgeon_NoImplantsToAdd>没有可添加的植入物。</FullyAutoOmniSurgeon_NoImplantsToAdd>
   <FullyAutoOmniSurgeon_LabelWithPart>{0} ({1})</FullyAutoOmniSurgeon_LabelWithPart>
+  <FullyAutoOmniSurgeon_ConfirmBatchAdd>确认添加所选 ({0})</FullyAutoOmniSurgeon_ConfirmBatchAdd>
+  <FullyAutoOmniSurgeon_SelectAll>全选</FullyAutoOmniSurgeon_SelectAll>
+  <FullyAutoOmniSurgeon_DeselectAll>取消全选</FullyAutoOmniSurgeon_DeselectAll>
 </LanguageData>

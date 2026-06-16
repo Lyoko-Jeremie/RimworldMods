@@ -82,4 +82,7 @@
   <FullyAutoOmniSurgeon_LastError>Last error: </FullyAutoOmniSurgeon_LastError>
   <FullyAutoOmniSurgeon_NoImplantsToAdd>No implants to add.</FullyAutoOmniSurgeon_NoImplantsToAdd>
   <FullyAutoOmniSurgeon_LabelWithPart>{0} ({1})</FullyAutoOmniSurgeon_LabelWithPart>
+  <FullyAutoOmniSurgeon_ConfirmBatchAdd>Confirm Batch Add ({0})</FullyAutoOmniSurgeon_ConfirmBatchAdd>
+  <FullyAutoOmniSurgeon_SelectAll>Select All</FullyAutoOmniSurgeon_SelectAll>
+  <FullyAutoOmniSurgeon_DeselectAll>Deselect All</FullyAutoOmniSurgeon_DeselectAll>
 </LanguageData>

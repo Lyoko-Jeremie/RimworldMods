@@ -1486,6 +1486,7 @@ namespace FullyAutomaticOmniCrafter
         private readonly Pawn pawn;
         private readonly Action<OmniSurgeonOperation> onSelected;
         private readonly List<RecipeCandidate> cached = new List<RecipeCandidate>();
+        private readonly HashSet<RecipeCandidate> selectedCandidates = new HashSet<RecipeCandidate>();
         private string searchText = string.Empty;
         private Vector2 scrollPos;
         private static bool pinyinSearchEnabled;
@@ -1495,6 +1496,23 @@ namespace FullyAutomaticOmniCrafter
             public RecipeDef recipe;
             public BodyPartRecord part;
             public string label;
+
+            public override bool Equals(object obj)
+            {
+                if (!(obj is RecipeCandidate other)) return false;
+                return recipe == other.recipe && part == other.part && label == other.label;
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hashCode = (recipe != null ? recipe.GetHashCode() : 0);
+                    hashCode = (hashCode * 397) ^ (part != null ? part.GetHashCode() : 0);
+                    hashCode = (hashCode * 397) ^ (label != null ? label.GetHashCode() : 0);
+                    return hashCode;
+                }
+            }
         }
 
         public override Vector2 InitialSize => new Vector2(760f, 700f);
@@ -1609,12 +1627,38 @@ namespace FullyAutomaticOmniCrafter
                 RebuildCache();
             }
 
+            float yOffset = 74f;
             string pinyinButtonLabel = pinyinSearchEnabled ? "FullyAutoOmniSurgeon_PinyinSearchEnabled".Translate().ToString() : "FullyAutoOmniSurgeon_EnablePinyinSearch".Translate().ToString();
-            if (Widgets.ButtonText(new Rect(0f, 74f, 180f, 28f), pinyinButtonLabel))
+            if (Widgets.ButtonText(new Rect(0f, yOffset, 180f, 28f), pinyinButtonLabel))
             {
                 if (!pinyinSearchEnabled)
                 {
                     TryEnablePinyinSearch();
+                }
+            }
+
+            if (Widgets.ButtonText(new Rect(190f, yOffset, 120f, 28f), "FullyAutoOmniSurgeon_SelectAll".Translate()))
+            {
+                foreach (var c in cached)
+                {
+                    selectedCandidates.Add(c);
+                }
+            }
+            if (Widgets.ButtonText(new Rect(320f, yOffset, 120f, 28f), "FullyAutoOmniSurgeon_DeselectAll".Translate()))
+            {
+                selectedCandidates.Clear();
+            }
+
+            if (selectedCandidates.Count > 0)
+            {
+                string confirmLabel = "FullyAutoOmniSurgeon_ConfirmBatchAdd".Translate(selectedCandidates.Count);
+                if (Widgets.ButtonText(new Rect(inRect.width - 200f, yOffset, 200f, 28f), confirmLabel))
+                {
+                    foreach (var c in selectedCandidates)
+                    {
+                        onSelected?.Invoke(OmniSurgeonOperation.CreateRecipe(c.recipe, c.part));
+                    }
+                    Close();
                 }
             }
 
@@ -1632,11 +1676,27 @@ namespace FullyAutomaticOmniCrafter
                 float y = i * rowHeight;
                 Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
                 if (Mouse.IsOver(rowRect)) Widgets.DrawHighlight(rowRect);
-                Widgets.Label(new Rect(6f, y + 5f, viewRect.width - 12f, 22f), c.label);
+
+                bool selected = selectedCandidates.Contains(c);
+                bool newSelected = selected;
+                Widgets.Checkbox(new Vector2(6f, y + 4f), ref newSelected);
+                if (newSelected != selected)
+                {
+                    if (newSelected) selectedCandidates.Add(c);
+                    else selectedCandidates.Remove(c);
+                }
+
+                Widgets.Label(new Rect(36f, y + 5f, viewRect.width - 42f, 22f), c.label);
                 if (Widgets.ButtonInvisible(rowRect))
                 {
-                    onSelected?.Invoke(OmniSurgeonOperation.CreateRecipe(c.recipe, c.part));
-                    Close();
+                    if (selectedCandidates.Contains(c))
+                    {
+                        selectedCandidates.Remove(c);
+                    }
+                    else
+                    {
+                        selectedCandidates.Add(c);
+                    }
                 }
             }
             Widgets.EndScrollView();
