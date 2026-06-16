@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <IncidentDef>
+        <defName>IncidentWorker_ArtificialMaidEscort</defName>
+        <label>人造人女仆护送队</label>
+        <category>Special</category>
+        <targetTags>
+            <li>Map_PlayerHome</li>
+        </targetTags>
+        <workerClass>OuterrealmTechRobot.IncidentWorker_ArtificialMaidEscort</workerClass>
+        <baseChance>1.2</baseChance> <!-- 触发权重，可以参考原版事件 -->
+        <letterLabel>护送队抵达</letterLabel>
+        <letterDef>PositiveEvent</letterDef>
+    </IncidentDef>
+</Defs>
