@@ -126,8 +126,8 @@ namespace OuterrealmTechRobot
             // 检查是否有“情感同步”特性
             if (Pawn.story?.traits != null && Pawn.story.traits.HasTrait(ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony))
             {
-                // 获取周围 10 格内的 Pawn
-                float radius = 10f;
+                // 获取周围 50 格内的 Pawn
+                float radius = 50f;
                 IntVec3 pos = Pawn.Position;
                 Map map = Pawn.Map;
                 Faction faction = Pawn.Faction;
