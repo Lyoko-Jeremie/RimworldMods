@@ -70,7 +70,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArtificialMaidMod.cs" />
+    <Compile Include="CompArtificialMaid.cs" />
+    <Compile Include="CompArtificialMaidTerminal.cs" />
+    <Compile Include="HediffComp_MaidProtocol.cs" />
+    <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
+    <Compile Include="Patch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RecipeWorker_FabricateArtificialMaid.cs" />
+    <Compile Include="RJWCompatibility.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
