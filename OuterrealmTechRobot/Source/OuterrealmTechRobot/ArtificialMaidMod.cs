@@ -11,11 +11,6 @@ namespace OuterrealmTechRobot
     [DefOf]
     public static class ArtificialMaidDefOf
     {
-        static ArtificialMaidDefOf()
-        {
-            DefOfHelper.EnsureInitializedInCtor(typeof(ArtificialMaidDefOf));
-        }
-
         public static ThingDef ArtificialMaid;
         public static TraitDef ArtificialMaidTrait_EmotionalSynchrony;
         public static ThoughtDef MaidEmotionalSupport;
