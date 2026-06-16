@@ -5,6 +5,20 @@ using Verse;
 
 namespace OuterrealmTechRobot
 {
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.DeSpawn))]
+    public static class Patch_Pawn_DeSpawn
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Pawn __instance)
+        {
+            if (__instance.Map != null)
+            {
+                var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
+                mapComp?.UnregisterMaid(__instance);
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn), "ShouldHaveIdeo", MethodType.Getter)]
     public static class Patch_Pawn_ShouldHaveIdeo
     {

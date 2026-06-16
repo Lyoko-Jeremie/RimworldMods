@@ -69,6 +69,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
     <Compile Include="CompArtificialMaid.cs" />
     <Compile Include="CompArtificialMaidTerminal.cs" />
