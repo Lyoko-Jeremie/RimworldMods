@@ -1,10 +1,33 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using HarmonyLib;
 using RimWorld;
 using Verse;
 
 namespace OuterrealmTechRobot
 {
+    [HarmonyPatch(typeof(MassUtility), nameof(MassUtility.Capacity))]
+    public static class Patch_MassUtility_Capacity
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn p, ref float __result, StringBuilder explanation)
+        {
+            if (p != null && p.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                if (__result < 999999f)
+                {
+                    __result = 999999f;
+                    if (explanation != null)
+                    {
+                        if (explanation.Length > 0)
+                            explanation.AppendLine();
+                        explanation.Append($"  - {p.LabelShortCap} (ArtificialMaid): {999999f.ToStringMassOffset()}");
+                    }
+                }
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.SpawnSetup))]
     public static class Patch_Pawn_SpawnSetup
     {
