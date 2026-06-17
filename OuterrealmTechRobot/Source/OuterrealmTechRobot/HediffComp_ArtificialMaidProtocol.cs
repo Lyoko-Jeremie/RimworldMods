@@ -52,17 +52,19 @@ namespace OuterrealmTechRobot
             }
 
             // 2. 核心逻辑判断
-            // 判断当前状态：是否真正闲置
-            // CurJob == null: 没活干
-            // Wait_Wander: 正在漫无目的地走
-            // IsIdle: 逻辑层面的闲置
-            bool isIdle = (pawn.CurJob == null || pawn.CurJob.def == JobDefOf.Wait_Wander || pawn.mindState.IsIdle);
+            // 判定当前状态：
+            // - isIdleTag: 逻辑层面的闲置（根据 lastJobTag == Idle 判定，涵盖游荡移动和等待）
+            // - isWaitingIdle: 真正的等待闲置（没活干，或者正在原地游荡等待）
+            Job curJob = pawn.CurJob;
+            bool isIdleTag = pawn.mindState.IsIdle;
+            bool isMoving = pawn.pather != null && pawn.pather.Moving;
+            bool isWaitingIdle = (curJob == null || curJob.def == JobDefOf.Wait_Wander || (isIdleTag && !isMoving));
 
-            if (isIdle)
+            if (isWaitingIdle)
             {
-                // 【积极抢先】打断闲置状态。
-                // 仅在真的闲置时触发重新寻找 Job
-                if (pawn.CurJob != null)
+                // 【积极抢先】打断正在进行的闲置等待。
+                // 仅在真的原地闲置时触发重新寻找 Job
+                if (curJob != null)
                 {
                     pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
                 }
@@ -70,9 +72,14 @@ namespace OuterrealmTechRobot
                 // 【自适应退避】因为被唤醒后依然闲置（说明没活干），增加下次扫描的间隔时间
                 currentInterval = Math.Min(currentInterval + IdlePenalty, MaxInterval);
             }
+            else if (isIdleTag && isMoving)
+            {
+                // 【游荡保护】如果正在游荡的移动过程中，不要打断，也不重置间隔。
+                // 这样可以避免“走走停停”的现象，让女仆能流畅地完成游荡。
+            }
             else
             {
-                // 【敏锐模式】正在干活中！将间隔重置为最小，这样她手头工作一干完就能立刻接下一个
+                // 【敏锐模式】正在干活中（非闲置任务）！将间隔重置为最小，这样她手头工作一干完就能立刻接下一个
                 // 注意：这里重置的是下一次“检查”的间隔，而不是立刻检查
                 currentInterval = MinInterval;
             }
