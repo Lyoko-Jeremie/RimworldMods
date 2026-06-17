@@ -690,12 +690,25 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class OmniForceFieldDomeNetworkManager : MapComponent
     {
+        private static Map lastMap;
+        private static OmniForceFieldDomeNetworkManager lastManager;
+
+        public static OmniForceFieldDomeNetworkManager GetInstance(Map map)
+        {
+            if (map == null) return null;
+            if (map == lastMap) return lastManager;
+            lastMap = map;
+            lastManager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            return lastManager;
+        }
+
         // 178 = Normal(2) | 自定义高位标志。它是 passable，但不会被原版
         // ShouldBeInTheSameRoom 视为 Normal/Fence 的精确值，穹顶补丁会单独决定房间合并。
         public const RegionType DomeRoomRegionType = (RegionType)178;
 
         private readonly List<CompOmniForceFieldDome> domes = new List<CompOmniForceFieldDome>();
-        private readonly List<OmniForceFieldDomeNetwork> networks = new List<OmniForceFieldDomeNetwork>();
+        private bool cacheDirty = true;
+        private bool regionsDirty = true;
 
         // 只移除本 manager 曾经授予的 hediff，避免误删玩家通过其他系统添加的同类状态。
         private readonly HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
@@ -704,8 +717,7 @@ namespace FullyAutomaticOmniCrafter
         // 每个地图格到 network 的 O(1) 查询缓存；攻击、温度、真空等补丁会频繁查询它。
         private OmniForceFieldDomeNetwork[] networkCache;
         private bool[] roomCellCache;
-        private bool cacheDirty = true;
-        private bool regionsDirty = true;
+        private List<OmniForceFieldDomeNetwork> networks = new List<OmniForceFieldDomeNetwork>();
         private const int SkyGlowDirtyTickInterval = 30;
         private const float SkyGlowDirtyThreshold = 1f / 255f;
         private float cachedSkyGlow = -1f;
@@ -779,28 +791,23 @@ namespace FullyAutomaticOmniCrafter
 
         public bool IsDomeRoomCell(IntVec3 c)
         {
-            if (!c.InBounds(map))
+            if (networks.Count == 0 || !c.InBounds(map))
             {
                 return false;
             }
-            if (cacheDirty)
-            {
-                RebuildNetworks();
-            }
+            // 性能优化：不再在此处同步触发 RebuildNetworks。
+            // 高频查询（如温度补丁）中，即使缓存稍旧也比卡死整个主线程强。
             return roomCellCache[map.cellIndices.CellToIndex(c)];
         }
 
         public bool TryGetNetworkAt(IntVec3 c, out OmniForceFieldDomeNetwork network)
         {
             network = null;
-            if (!c.InBounds(map))
+            if (networks.Count == 0 || !c.InBounds(map))
             {
                 return false;
             }
-            if (cacheDirty)
-            {
-                RebuildNetworks();
-            }
+            // 同上，性能优化。
             network = networkCache[map.cellIndices.CellToIndex(c)];
             return network != null;
         }
@@ -917,17 +924,10 @@ namespace FullyAutomaticOmniCrafter
 
         private void RebuildNetworks()
         {
-            if (networkCache == null || networkCache.Length != map.cellIndices.NumGridCells)
-            {
-                networkCache = new OmniForceFieldDomeNetwork[map.cellIndices.NumGridCells];
-            }
-            if (roomCellCache == null || roomCellCache.Length != map.cellIndices.NumGridCells)
-            {
-                roomCellCache = new bool[map.cellIndices.NumGridCells];
-            }
-            Array.Clear(networkCache, 0, networkCache.Length);
-            Array.Clear(roomCellCache, 0, roomCellCache.Length);
-            networks.Clear();
+            int numCells = map.cellIndices.NumGridCells;
+            var newNetworkCache = new OmniForceFieldDomeNetwork[numCells];
+            var newRoomCellCache = new bool[numCells];
+            var newNetworks = new List<OmniForceFieldDomeNetwork>();
 
             bool[] visited = new bool[domes.Count];
             for (int i = 0; i < domes.Count; i++)
@@ -976,10 +976,14 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
 
-                CacheNetworkCells(network);
-                networks.Add(network);
+                CacheNetworkCells(network, newNetworkCache, newRoomCellCache);
+                newNetworks.Add(network);
             }
 
+            // 原子化更新引用，确保高频查询看到的要么是全旧的，要么是全新的。
+            networkCache = newNetworkCache;
+            roomCellCache = newRoomCellCache;
+            networks = newNetworks;
             cacheDirty = false;
         }
 
@@ -991,7 +995,7 @@ namespace FullyAutomaticOmniCrafter
             regionsDirty = false;
         }
 
-        private void CacheNetworkCells(OmniForceFieldDomeNetwork network)
+        private void CacheNetworkCells(OmniForceFieldDomeNetwork network, OmniForceFieldDomeNetwork[] cache, bool[] roomCache)
         {
             // 将合并后的所有矩形投影到格缓存。重叠格只记录一次。
             HashSet<IntVec3> seenCells = new HashSet<IntVec3>();
@@ -1008,15 +1012,15 @@ namespace FullyAutomaticOmniCrafter
                             continue;
                         }
                         network.Cells.Add(c);
-                        networkCache[map.cellIndices.CellToIndex(c)] = network;
+                        cache[map.cellIndices.CellToIndex(c)] = network;
                     }
                 }
             }
 
-            MarkRoomCells(network);
+            MarkRoomCells(network, roomCache);
         }
 
-        private void MarkRoomCells(OmniForceFieldDomeNetwork network)
+        private void MarkRoomCells(OmniForceFieldDomeNetwork network, bool[] roomCache)
         {
             CompProperties_OmniForceFieldDome props = network.PrimaryProps;
             if (props == null || !props.formRoom)
@@ -1026,7 +1030,7 @@ namespace FullyAutomaticOmniCrafter
 
             for (int i = 0; i < network.Cells.Count; i++)
             {
-                roomCellCache[map.cellIndices.CellToIndex(network.Cells[i])] = true;
+                roomCache[map.cellIndices.CellToIndex(network.Cells[i])] = true;
             }
         }
 
@@ -1299,7 +1303,7 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager != null && manager.IsDomeRoomCell(c))
             {
                 __result = OmniForceFieldDomeNetworkManager.DomeRoomRegionType;
@@ -1342,7 +1346,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             CompProperties_OmniForceFieldDome props;
-            if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
+            if (OmniForceFieldDomeNetworkManager.GetInstance(map).TryGetPropsAt(c, out props)
                 && props.maintainTemperature)
             {
                 // 直接覆盖单格温度查询结果，让穹顶像独立恒温房间，但不污染 Room.Temperature。
@@ -1363,7 +1367,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             CompProperties_OmniForceFieldDome props;
-            if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(cell, out props)
+            if (OmniForceFieldDomeNetworkManager.GetInstance(map).TryGetPropsAt(cell, out props)
                 && props.blockVacuum)
             {
                 // 真空伤害、真空顾虑等逻辑最终都会查询 GetVacuum，这里统一归零。
@@ -1392,7 +1396,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             CompProperties_OmniForceFieldDome props;
-            if (map.GetComponent<OmniForceFieldDomeNetworkManager>().TryGetPropsAt(c, out props)
+            if (OmniForceFieldDomeNetworkManager.GetInstance(map).TryGetPropsAt(c, out props)
                 && props.allowPlantsUnderRoof
                 && map.roofGrid.Roofed(c))
             {
@@ -1415,7 +1419,7 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             return manager != null && manager.AllowsSkyLightThroughRoof(c);
         }
 
@@ -1442,7 +1446,7 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             return manager != null && manager.TryGetDomeGlowAt(c, out glow);
         }
 
@@ -1639,7 +1643,7 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             return manager != null && manager.AllowsPlantUnderRoof(c, plantDef);
         }
 
@@ -1798,7 +1802,7 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager != null && manager.IsRoofSupportedByDome(c))
             {
                 __result = true;
@@ -1818,7 +1822,7 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager != null && manager.IsRoofSupportedByDome(c))
             {
                 __result = true;
@@ -1844,7 +1848,7 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager == null)
             {
                 return;
@@ -1882,7 +1886,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             Map map = __instance.Map;
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager != null && manager.TryGetDomeGlowAt(__instance.Position, out float glow) && glow >= 1f)
             {
                 __result = false;
@@ -1897,7 +1901,7 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!__instance.Spawned) return true;
             Map map = __instance.Map;
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager != null && manager.TryGetNetworkAt(__instance.Position, out var network))
             {
                 CompOmniForceFieldDome primaryDome = network.Domes.FirstOrDefault();
@@ -1919,7 +1923,7 @@ namespace FullyAutomaticOmniCrafter
             Map map = (Map)AccessTools.Field(typeof(WildPlantSpawner), "map").GetValue(__instance);
             if (map == null) return true;
 
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager != null && manager.TryGetNetworkAt(c, out var network))
             {
                 CompOmniForceFieldDome primaryDome = network.Domes.FirstOrDefault();
@@ -1945,7 +1949,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             Map map = __instance.parent.Map;
-            OmniForceFieldDomeNetworkManager manager = map.GetComponent<OmniForceFieldDomeNetworkManager>();
+            OmniForceFieldDomeNetworkManager manager = OmniForceFieldDomeNetworkManager.GetInstance(map);
             if (manager == null)
             {
                 return;
