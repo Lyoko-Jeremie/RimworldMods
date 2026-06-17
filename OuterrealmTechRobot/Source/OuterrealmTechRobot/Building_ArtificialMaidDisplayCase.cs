@@ -183,7 +183,11 @@ namespace OuterrealmTechRobot
                     defaultLabel = "CommandPodEject".Translate(),
                     defaultDesc = "CommandPodEjectDesc".Translate(),
                     icon = ArtificialMaidTex.IconPodEject,
-                    action = () => EjectContents()
+                    action = delegate
+                    {
+                        autoHibernate = false;
+                        EjectContents();
+                    }
                 };
             }
         }
