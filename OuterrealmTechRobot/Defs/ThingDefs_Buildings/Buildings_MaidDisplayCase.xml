@@ -12,6 +12,7 @@
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
         <altitudeLayer>Building</altitudeLayer>
+        <drawerType>MapMeshAndRealTime</drawerType>
         <passability>PassThroughOnly</passability>
         <pathCost>50</pathCost>
         <blockWind>true</blockWind>

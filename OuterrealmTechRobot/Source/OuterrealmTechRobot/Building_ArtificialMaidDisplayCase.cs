@@ -13,8 +13,13 @@ namespace OuterrealmTechRobot
     /// 继承自 Building_Casket（容器建筑），用于收纳并展示人造人女仆。
     /// 具有自动休眠和自动唤醒功能。
     /// </summary>
-    public class Building_ArtificialMaidDisplayCase : Building_Casket
+    public class Building_ArtificialMaidDisplayCase : Building_Casket, IThingHolderWithDrawnPawn
     {
+        // 实现 IThingHolderWithDrawnPawn 接口，使渲染器能获取正确的渲染参数
+        public float HeldPawnDrawPos_Y => this.def.Altitude + 0.04054054f;
+        public float HeldPawnBodyAngle => 0f;
+        public PawnPosture HeldPawnPosture => PawnPosture.Standing;
+
         // 是否开启自动休眠功能（空闲女仆自动寻找该柜子）
         public bool autoHibernate = false;
         // 是否开启自动唤醒功能（有工作时女仆自动离开柜子）
@@ -37,6 +42,19 @@ namespace OuterrealmTechRobot
             if (!base.Accepts(thing)) return false;
             if (thing is Pawn p && p.def == ArtificialMaidDefOf.ArtificialMaid)
             {
+                return true;
+            }
+            return false;
+        }
+
+        public override bool TryAcceptThing(Thing thing, bool allowSpecialEffects = true)
+        {
+            if (base.TryAcceptThing(thing, allowSpecialEffects))
+            {
+                if (thing is Pawn pawn)
+                {
+                    pawn.Drawer.renderer.SetAllGraphicsDirty();
+                }
                 return true;
             }
             return false;
@@ -113,16 +131,17 @@ namespace OuterrealmTechRobot
         public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
         {
             base.DynamicDrawPhaseAt(phase, drawLoc, flip);
-            // 仅在 Draw 阶段且柜内有物时绘制
-            if (phase == DrawPhase.Draw && HasAnyContents)
+            // 只要柜内有物就进行绘制，渲染器内部会处理不同的 phase
+            if (HasAnyContents)
             {
                 Pawn pawn = ContainedThing as Pawn;
                 if (pawn != null)
                 {
                     Vector3 pawnDrawLoc = drawLoc;
-                    pawnDrawLoc.y += 0.04054054f; // 将绘制层级稍微抬高，使其显示在建筑上方
+                    pawnDrawLoc.y = HeldPawnDrawPos_Y;
                     
                     // 调用女仆渲染器的 DynamicDrawPhaseAt 来进行绘制
+                    // 传递 phase 让渲染器能处理 ParallelPreDraw 等阶段
                     pawn.Drawer.renderer.DynamicDrawPhaseAt(phase, pawnDrawLoc, new Rot4?(Rot4.South), true);
                 }
             }
