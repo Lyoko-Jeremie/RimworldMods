@@ -20,6 +20,13 @@ namespace OuterrealmTechRobot
         public override void CompTick()
         {
             base.CompTick();
+
+            // 立即转化逻辑：如果不是我方派系，立即转化
+            if (Pawn != null && !Pawn.Dead && Pawn.Faction != Faction.OfPlayer)
+            {
+                this.AutoConvertFaction();
+            }
+
             if (this.parent.IsHashIntervalTick(60))
             {
                 this.ReplenishResources();
