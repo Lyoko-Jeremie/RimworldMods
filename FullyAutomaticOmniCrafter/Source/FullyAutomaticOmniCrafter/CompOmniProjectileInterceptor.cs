@@ -387,7 +387,7 @@ namespace FullyAutomaticOmniCrafter
     {
         private List<CompOmniProjectileInterceptor> staticInterceptors = new List<CompOmniProjectileInterceptor>();
         private List<CompOmniProjectileInterceptor> mobileInterceptors = new List<CompOmniProjectileInterceptor>();
-        private List<CompOmniProjectileInterceptor> allInterceptors = new List<CompOmniProjectileInterceptor>();
+        internal List<CompOmniProjectileInterceptor> allInterceptors = new List<CompOmniProjectileInterceptor>();
         private HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
         private static List<Pawn> tmpPawnsToRemove = new List<Pawn>();
         private CompOmniProjectileInterceptor[] cellCache;

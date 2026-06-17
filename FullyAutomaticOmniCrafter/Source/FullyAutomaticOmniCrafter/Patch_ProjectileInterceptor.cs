@@ -58,12 +58,23 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Pawn_PathFollower), "CostToMoveIntoCell", typeof(Pawn), typeof(IntVec3))]
     public static class Patch_Pawn_PathFollower_CostToMoveIntoCell
     {
+        private static Map cachedMap;
+        private static OmniInterceptorTracker cachedTracker;
+
         public static void Postfix(Pawn pawn, IntVec3 c, ref float __result)
         {
-            if (__result >= 10000f || pawn?.Map == null) return;
+            if (__result >= 10000f) return;
 
-            var tracker = pawn.Map.GetComponent<OmniInterceptorTracker>();
-            if (tracker != null && tracker.IsCellProtected(c, pawn, out _))
+            Map map = pawn.Map;
+            if (map == null) return;
+
+            if (map != cachedMap)
+            {
+                cachedMap = map;
+                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+            }
+
+            if (cachedTracker != null && cachedTracker.allInterceptors.Count > 0 && cachedTracker.IsCellProtected(c, pawn, out _))
             {
                 __result = 10000f;
             }
