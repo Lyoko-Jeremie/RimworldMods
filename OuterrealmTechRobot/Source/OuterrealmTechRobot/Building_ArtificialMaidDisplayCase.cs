@@ -90,6 +90,25 @@ namespace OuterrealmTechRobot
         {
             if (pawn.MapHeld == null) return false;
 
+            // 优化：如果女仆没有任何启用的工作类型，且基本需求（食物、休息等）都在安全阈值内，则跳过重型的思维树检查。
+            // 大多数女仆在柜子里时，玩家更关心的是她们是否有“工作”。
+            if (pawn.workSettings != null && !pawn.workSettings.WorkGiversInOrderNormal.Any() && !pawn.workSettings.WorkGiversInOrderEmergency.Any())
+            {
+                // 如果没有工作，检查需求。如果需求也满足，则直接返回。
+                if (pawn.needs != null)
+                {
+                    bool needImmediateAttention = false;
+                    if (pawn.needs.food != null && pawn.needs.food.CurLevelPercentage < 0.1f) needImmediateAttention = true;
+                    if (pawn.needs.rest != null && pawn.needs.rest.CurLevelPercentage < 0.1f) needImmediateAttention = true;
+                    
+                    if (!needImmediateAttention) return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             // 临时设置女仆位置到柜子处，以便思维树能正确检索附近的工作（很多 JobGiver 依赖位置）
             IntVec3 oldPos = pawn.Position;
             pawn.SetPositionDirect(this.Position);
@@ -112,7 +131,7 @@ namespace OuterrealmTechRobot
                         def != JobDefOf.Wait_MaintainPosture && 
                         def != JobDefOf.Wait_SafeTemperature && 
                         def != JobDefOf.Wait_Wander &&
-                        !def.defName.Contains("Wander") &&
+                        def != JobDefOf.GotoWander &&
                         (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase))
                     {
                         return true;
