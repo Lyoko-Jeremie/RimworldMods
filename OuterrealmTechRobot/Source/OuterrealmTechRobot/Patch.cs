@@ -37,7 +37,7 @@ namespace OuterrealmTechRobot
         {
             if (map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                var mapComp = map.GetComponent<ArtificialMaidMapComponent>();
+                var mapComp = ArtificialMaidMapComponent.Get(map);
                 mapComp?.RegisterMaid(__instance);
             }
         }
@@ -51,7 +51,7 @@ namespace OuterrealmTechRobot
         {
             if (__instance.Map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
+                var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
                 mapComp?.UnregisterMaid(__instance);
             }
         }
@@ -65,7 +65,7 @@ namespace OuterrealmTechRobot
         {
             if (__instance.Map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
+                var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
                 mapComp?.UnregisterMaid(__instance);
             }
         }
@@ -112,7 +112,7 @@ namespace OuterrealmTechRobot
                 // 被 Kill 时也尝试注销，确保计数准确（即使它不死）
                 if (__instance.Map != null)
                 {
-                    var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
+                    var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
                     mapComp?.UnregisterMaid(__instance);
                 }
 
