@@ -246,8 +246,8 @@ namespace OuterrealmTechRobot
                 t => 
                 {
                     var dc = (Building_ArtificialMaidDisplayCase)t;
-                    // 展示柜必须开启了自动休眠、当前为空且属于同一派系
-                    return dc.autoHibernate && !dc.HasAnyContents && dc.Faction == pawn.Faction;
+                    // 展示柜必须开启了自动休眠、当前为空且属于同一派系，并且可以被该女仆预留
+                    return dc.autoHibernate && !dc.HasAnyContents && dc.Faction == pawn.Faction && pawn.CanReserve(dc);
                 }
             );
 
