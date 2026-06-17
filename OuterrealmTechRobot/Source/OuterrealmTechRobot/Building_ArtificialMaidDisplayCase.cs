@@ -20,6 +20,8 @@ namespace OuterrealmTechRobot
         public float HeldPawnBodyAngle => 0f;
         public PawnPosture HeldPawnPosture => PawnPosture.Standing;
 
+        public override int OpenTicks => 1;
+        
         // 是否开启自动休眠功能（空闲女仆自动寻找该柜子）
         public bool autoHibernate = false;
         // 是否开启自动唤醒功能（有工作时女仆自动离开柜子）
@@ -152,15 +154,8 @@ namespace OuterrealmTechRobot
         /// </summary>
         public override IEnumerable<Gizmo> GetGizmos()
         {
-            // 返回父类的默认按钮（如拆除等），但过滤掉基类自带的“打开”或“弹出”按钮
-            foreach (var g in base.GetGizmos())
-            {
-                if (g is Command cmd && (cmd.defaultLabel == "Open".Translate()/* || cmd.defaultLabel == "CommandPodEject".Translate()*/))
-                {
-                    continue;
-                }
-                yield return g;
-            }
+            // 返回父类的默认按钮
+            foreach (var g in base.GetGizmos()) yield return g;
 
             // 自动休眠切换开关
             yield return new Command_Toggle
