@@ -90,7 +90,11 @@ namespace OuterrealmTechRobot
         {
             // 确保建筑已生成且 Pawn 所在环境有效
             Map map = this.Map;
-            if (pawn == null || map == null) return false;
+            if (pawn == null || map == null)
+            {
+                // Log.Message("AnyJobFor (pawn == null || map == null)");
+                return false;
+            }
 
             // 优化：如果女仆没有任何启用的工作类型，且基本需求（食物、休息等）都在安全阈值内，则跳过重型的思维树检查。
             // 大多数女仆在柜子里时，玩家更关心的是她们是否有“工作”。
@@ -105,10 +109,15 @@ namespace OuterrealmTechRobot
                         if (pawn.needs.food != null && pawn.needs.food.CurLevelPercentage < 0.1f) needImmediateAttention = true;
                         if (pawn.needs.rest != null && pawn.needs.rest.CurLevelPercentage < 0.1f) needImmediateAttention = true;
                         
-                        if (!needImmediateAttention) return false;
+                        if (!needImmediateAttention)
+                        {
+                            // Log.Message("AnyJobFor (!needImmediateAttention)");
+                            return false;
+                        }
                     }
                     else
                     {
+                        // Log.Message("AnyJobFor !(pawn.needs != null)");
                         return false;
                     }
                 }
@@ -144,10 +153,17 @@ namespace OuterrealmTechRobot
                             def != JobDefOf.GotoWander &&
                             (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase))
                         {
+                            // Log.Message("AnyJobFor true");
                             return true;
                         }
+                        // Log.Message("AnyJobFor false");
                     }
+                    // Log.Message("AnyJobFor !(thinkResult.IsValid && thinkResult.Job != null)");
                 }
+                // else
+                // {
+                //     Log.Message("AnyJobFor !(pawn.thinker != null && pawn.thinker.MainThinkNodeRoot != null)");
+                // }
             }
             catch (Exception ex)
             {
@@ -159,6 +175,7 @@ namespace OuterrealmTechRobot
                 // 恢复状态
                 MapIndexOrStateField.SetValue(pawn, oldMapIndex);
                 pawn.SetPositionDirect(oldPos);
+                // Log.Message("AnyJobFor finally");
             }
 
             return false;

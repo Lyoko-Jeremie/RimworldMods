@@ -5,6 +5,7 @@
         <label>artificial maid display case</label>
         <description>A specialized display case designed to house and temporarily deactivate idle Artificial Maids. It keeps them in a state of stasis to conserve energy and reduce cognitive overhead, while remaining visually pleasing for display. It can be configured to automatically hibernate idle maids and wake them when work is available.</description>
         <thingClass>OuterrealmTechRobot.Building_ArtificialMaidDisplayCase</thingClass>
+        <tickerType>Normal</tickerType>
         <graphicData>
             <texPath>Things/Building/Production/OmniCrafter2_l</texPath>
             <graphicClass>Graphic_Single</graphicClass>
