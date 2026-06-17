@@ -17,6 +17,84 @@ namespace OuterrealmTechRobot
     {
         private Pawn Pawn => (Pawn)this.parent;
 
+        public string serialNumber;
+        public int manufactureTick = -1;
+        public int joinPlayerTick = -1;
+        public bool isDuplicate = false;
+        public int originPawnId = -1;
+        public int originSerialNumber = -1;
+
+        public override void PostPostMake()
+        {
+            base.PostPostMake();
+            if (string.IsNullOrEmpty(serialNumber))
+            {
+                serialNumber = GenerateSerialNumber();
+                manufactureTick = Find.TickManager.TicksGame;
+            }
+        }
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref serialNumber, "serialNumber");
+            Scribe_Values.Look(ref manufactureTick, "manufactureTick", -1);
+            Scribe_Values.Look(ref joinPlayerTick, "joinPlayerTick", -1);
+            Scribe_Values.Look(ref isDuplicate, "isDuplicate", false);
+            Scribe_Values.Look(ref originPawnId, "originPawnId", -1);
+            Scribe_Values.Look(ref originSerialNumber, "originSerialNumber", -1);
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                if (string.IsNullOrEmpty(serialNumber))
+                {
+                    serialNumber = GenerateSerialNumber();
+                    if (manufactureTick < 0) manufactureTick = Find.TickManager.TicksGame;
+                }
+            }
+        }
+
+        public override void Notify_DuplicatedFrom(Pawn source)
+        {
+            base.Notify_DuplicatedFrom(source);
+            isDuplicate = true;
+            originPawnId = source.thingIDNumber;
+            originSerialNumber = source.originSerialNumber;
+            // 复制体生成新的序列号以便区分
+            serialNumber = GenerateSerialNumber();
+            manufactureTick = Find.TickManager.TicksGame;
+        }
+
+        private string GenerateSerialNumber()
+        {
+            return $"AM-{Rand.Range(1000, 9999)}-{Rand.Range(1000, 9999)}"; // + Find.TickManager.TicksGame last 4 number
+        }
+
+        public override string CompInspectStringExtra()
+        {
+            string str = base.CompInspectStringExtra();
+            if (!string.IsNullOrEmpty(str)) str += "\n";
+
+            string duplicateSuffix = isDuplicate ? " (" + (string)"ArtificialMaidDuplicate".Translate() + ")" : "";
+            str += (string)"ArtificialMaidSerialNumber".Translate() + ": " + serialNumber + duplicateSuffix;
+            if (manufactureTick > 0)
+            {
+                str += "\n" + (string)"ArtificialMaidManufactureDate".Translate() + ": " + GetDateString(manufactureTick);
+            }
+            if (joinPlayerTick > 0)
+            {
+                str += "\n" + (string)"ArtificialMaidJoinDate".Translate() + ": " + GetDateString(joinPlayerTick);
+            }
+            return str;
+        }
+
+        private string GetDateString(int tick)
+        {
+            if (tick < 0) return "Unknown";
+            long absTicks = (long)GenDate.TickGameToAbs(tick);
+            return GenDate.DateReadoutStringAt(absTicks, Vector2.zero);
+        }
+
         public override void CompTick()
         {
             base.CompTick();
@@ -332,6 +410,12 @@ namespace OuterrealmTechRobot
             if (Pawn.Faction != Faction.OfPlayer)
             {
                 Pawn.SetFaction(Faction.OfPlayer);
+
+                if (joinPlayerTick < 0)
+                {
+                    joinPlayerTick = Find.TickManager.TicksGame;
+                }
+
                 this.FullRepair();
                 this.EnsureRecoveryHediff();
 

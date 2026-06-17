@@ -25,4 +25,9 @@
     <ArtificialMaidRecruitedText>An Artificial Maid {0} from another faction was found on the map. Due to internal security protocols, she has automatically switched to your faction and performed a full body repair.</ArtificialMaidRecruitedText>
     <TeleportArtificialMaidLabel>Teleport to Terminal</TeleportArtificialMaidLabel>
     <ArtificialMaidTeleportedMessage>{0} teleported to Terminal.</ArtificialMaidTeleportedMessage>
+
+    <ArtificialMaidSerialNumber>Serial Number</ArtificialMaidSerialNumber>
+    <ArtificialMaidManufactureDate>Manufacture Date</ArtificialMaidManufactureDate>
+    <ArtificialMaidJoinDate>Recruitment Date</ArtificialMaidJoinDate>
+    <ArtificialMaidDuplicate>Duplicate</ArtificialMaidDuplicate>
 </LanguageData>

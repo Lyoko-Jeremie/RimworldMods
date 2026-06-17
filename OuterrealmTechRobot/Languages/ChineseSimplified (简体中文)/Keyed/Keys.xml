@@ -25,4 +25,9 @@
     <ArtificialMaidRecruitedText>在地图上发现了一个非本派系的人造人女仆 {0}。由于其内置的底层安全协议，她已自动归化至您的派系，并执行了全身修复程序。</ArtificialMaidRecruitedText>
     <TeleportArtificialMaidLabel>传送到终端</TeleportArtificialMaidLabel>
     <ArtificialMaidTeleportedMessage>已将 {0} 传送到终端。</ArtificialMaidTeleportedMessage>
+
+    <ArtificialMaidSerialNumber>出厂序列号</ArtificialMaidSerialNumber>
+    <ArtificialMaidManufactureDate>制造日期</ArtificialMaidManufactureDate>
+    <ArtificialMaidJoinDate>归化日期</ArtificialMaidJoinDate>
+    <ArtificialMaidDuplicate>复制体</ArtificialMaidDuplicate>
 </LanguageData>
