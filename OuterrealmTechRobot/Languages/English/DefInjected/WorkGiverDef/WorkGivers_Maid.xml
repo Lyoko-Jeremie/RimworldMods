@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <DoBillsOmniArtificialMaidFabricator.label>fabricate at artificial maid fabricator</DoBillsOmniArtificialMaidFabricator.label>
-  <DoBillsOmniArtificialMaidFabricator.verb>fabricate at</DoBillsOmniArtificialMaidFabricator.verb>
-  <DoBillsOmniArtificialMaidFabricator.gerund>fabricating at</DoBillsOmniArtificialMaidFabricator.gerund>
+  <DoBills_OmniArtificialMaidFabricator.label>fabricate at artificial maid fabricator</DoBills_OmniArtificialMaidFabricator.label>
+  <DoBills_OmniArtificialMaidFabricator.verb>fabricate at</DoBills_OmniArtificialMaidFabricator.verb>
+  <DoBills_OmniArtificialMaidFabricator.gerund>fabricating at</DoBills_OmniArtificialMaidFabricator.gerund>
 </LanguageData>
