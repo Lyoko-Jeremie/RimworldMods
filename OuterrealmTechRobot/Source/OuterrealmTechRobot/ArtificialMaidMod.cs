@@ -95,6 +95,10 @@ namespace OuterrealmTechRobot
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_AutoHibernate", false) ?? 
             BaseContent.WhiteTex;
 
+        public static readonly Texture2D IconImmediateHibernate =
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ImmediateHibernate", false) ??
+            IconAutoHibernate;
+
         public static readonly Texture2D IconAutoWake =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_AutoWake", false) ?? 
             BaseContent.WhiteTex;

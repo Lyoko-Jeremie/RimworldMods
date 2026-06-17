@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace OuterrealmTechRobot
 {
@@ -445,6 +446,39 @@ namespace OuterrealmTechRobot
                     isActive = () => allowAutoHibernate,
                     toggleAction = () => allowAutoHibernate = !allowAutoHibernate,
                     icon = ArtificialMaidTex.IconAutoHibernate
+                };
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "ImmediateHibernateLabel".Translate(),
+                    defaultDesc = "ImmediateHibernateDesc".Translate(),
+                    icon = ArtificialMaidTex.IconImmediateHibernate,
+                    action = () =>
+                    {
+                        Building_ArtificialMaidDisplayCase displayCase = (Building_ArtificialMaidDisplayCase)GenClosest.ClosestThingReachable(
+                            Pawn.Position, Pawn.Map,
+                            ThingRequest.ForDef(ArtificialMaidDefOf.ArtificialMaidDisplayCase),
+                            PathEndMode.InteractionCell,
+                            TraverseParms.For(Pawn),
+                            9999f,
+                            t =>
+                            {
+                                var dc = (Building_ArtificialMaidDisplayCase)t;
+                                return !dc.HasAnyContents && dc.Faction == Pawn.Faction && Pawn.CanReserve(dc);
+                            }
+                        );
+
+                        if (displayCase != null)
+                        {
+                            displayCase.autoWake = false;
+                            Job job = JobMaker.MakeJob(ArtificialMaidDefOf.EnterDisplayCase, displayCase);
+                            Pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                        }
+                        else
+                        {
+                            Messages.Message("NoEmptyDisplayCaseFound".Translate(), MessageTypeDefOf.RejectInput, false);
+                        }
+                    }
                 };
             }
         }

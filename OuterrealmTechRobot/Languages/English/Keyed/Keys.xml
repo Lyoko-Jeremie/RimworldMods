@@ -45,4 +45,8 @@
 
     <ArtificialMaidDisplayCaseEject>Wake up Artificial Maid</ArtificialMaidDisplayCaseEject>
     <ArtificialMaidDisplayCaseEjectDesc>Manually wake up and eject the Artificial Maid from the display case.</ArtificialMaidDisplayCaseEjectDesc>
+
+    <ImmediateHibernateLabel>Hibernate Immediately</ImmediateHibernateLabel>
+    <ImmediateHibernateDesc>Force this maid to stop working and immediately enter the nearest empty display case, and disable auto-wake for that case.</ImmediateHibernateDesc>
+    <NoEmptyDisplayCaseFound>No empty display case found.</NoEmptyDisplayCaseFound>
 </LanguageData>
