@@ -7,6 +7,11 @@ using Verse;
 
 namespace FullyAutomaticOmniCrafter
 {
+    /// <summary>
+    /// 全自动手术台的手术执行上下文。
+    /// 使用 ThreadStatic 确保多线程安全，并通过 IDisposable 模式管理手术状态的生命周期。
+    /// 进入上下文时会自动挂载高频补丁，退出时自动卸载。
+    /// </summary>
     public static class OmniAutoSurgeonSurgeryContext
     {
         [ThreadStatic]
@@ -19,6 +24,7 @@ namespace FullyAutomaticOmniCrafter
 
         public static IDisposable Enter(Building_FullyAutoOmniSurgeon surgeon)
         {
+            Patch_HighFrequency_Manual.PatchHighFrequencyMethods(OmniCrafterMod.HarmonyInstance);
             activeDepth++;
             CurrentSurgeon = surgeon;
             return new Scope();
@@ -33,7 +39,11 @@ namespace FullyAutomaticOmniCrafter
                 if (disposed) return;
                 disposed = true;
                 if (activeDepth > 0) activeDepth--;
-                if (activeDepth == 0) CurrentSurgeon = null;
+                if (activeDepth == 0)
+                {
+                    CurrentSurgeon = null;
+                }
+                Patch_HighFrequency_Manual.UnpatchHighFrequencyMethods(OmniCrafterMod.HarmonyInstance);
             }
         }
     }

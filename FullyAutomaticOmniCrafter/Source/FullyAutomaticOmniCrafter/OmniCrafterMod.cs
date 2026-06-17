@@ -8,6 +8,7 @@ namespace FullyAutomaticOmniCrafter
     public class OmniCrafterMod : Mod
     {
         public static OmniCrafterMod Instance { get; private set; }
+        public static HarmonyLib.Harmony HarmonyInstance { get; private set; }
 
         public static OmniCrafterSettings Settings;
         private Vector2 _scrollPos = Vector2.zero;
@@ -33,9 +34,8 @@ namespace FullyAutomaticOmniCrafter
             Settings = GetSettings<OmniCrafterSettings>();
             
             // HarmonyLib.Harmony.DEBUG = true;
-
-            HarmonyLib.Harmony harmony = new HarmonyLib.Harmony("Jeremie.Fully.Automatic.OmniCrafter");
-            harmony.PatchAll();
+            HarmonyInstance = new HarmonyLib.Harmony("Jeremie.Fully.Automatic.OmniCrafter");
+            HarmonyInstance.PatchAll();
         }
 
         // ── Formula evaluation ────────────────────────────────────────────────
