@@ -26,7 +26,7 @@
                 <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
                 <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
                 <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
-                <playerFactionOnly>false</playerFactionOnly>
+                <playerFactionOnly>true</playerFactionOnly>
                 <excludedJobDefs>
                     <!-- 闲逛时 -->
                     <li>GotoWander</li>
@@ -133,7 +133,7 @@
                 <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
                 <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
                 <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
-                <playerFactionOnly>false</playerFactionOnly>
+                <playerFactionOnly>true</playerFactionOnly>
                 <excludedJobDefs>
                     <!-- 闲逛时 -->
                     <li>GotoWander</li>
