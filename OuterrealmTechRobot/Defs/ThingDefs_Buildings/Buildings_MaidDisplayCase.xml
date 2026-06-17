@@ -37,11 +37,6 @@
         <hasInteractionCell>true</hasInteractionCell>
         <interactionCellOffset>(0,0,-1)</interactionCellOffset>
         <comps>
-            <li Class="CompProperties_Power">
-                <compClass>CompPowerTrader</compClass>
-                <basePowerConsumption>50</basePowerConsumption>
-            </li>
-            <li Class="CompProperties_Flickable" />
         </comps>
     </ThingDef>
 </Defs>
