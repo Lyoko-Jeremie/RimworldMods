@@ -70,8 +70,9 @@ namespace OuterrealmTechRobot
         protected override void Tick()
         {
             base.Tick();
-            // 每 250 Tick（约 4 秒）检查一次是否需要自动唤醒
-            if (this.IsHashIntervalTick(250))
+            // 性能优化：将自动唤醒的检查间隔从 250 Tick 增加到 1000 Tick（约 16.7 秒）
+            // 在拥有几十个展示柜的情况下，减少每帧执行重型思维树扫描的频率。
+            if (this.IsHashIntervalTick(1000))
             {
                 if (autoWake && HasAnyContents)
                 {
@@ -94,35 +95,27 @@ namespace OuterrealmTechRobot
             Map map = this.Map;
             if (pawn == null || map == null)
             {
-                // Log.Message("AnyJobFor (pawn == null || map == null)");
                 return false;
             }
 
             // 优化：如果女仆没有任何启用的工作类型，且基本需求（食物、休息等）都在安全阈值内，则跳过重型的思维树检查。
             // 大多数女仆在柜子里时，玩家更关心的是她们是否有“工作”。
-            if (pawn.workSettings != null && pawn.workSettings.EverWork)
+            
+            bool hasWork = pawn.workSettings != null && pawn.workSettings.EverWork && 
+                           (pawn.workSettings.WorkGiversInOrderNormal.Any() || pawn.workSettings.WorkGiversInOrderEmergency.Any());
+
+            // 检查需求。如果极其饥饿或极其疲劳，无论是否有工作都应该考虑唤醒
+            bool needImmediateAttention = false;
+            if (pawn.needs != null)
             {
-                if (!pawn.workSettings.WorkGiversInOrderNormal.Any() && !pawn.workSettings.WorkGiversInOrderEmergency.Any())
-                {
-                    // 如果没有工作，检查需求。如果需求也满足，则直接返回。
-                    if (pawn.needs != null)
-                    {
-                        bool needImmediateAttention = false;
-                        if (pawn.needs.food != null && pawn.needs.food.CurLevelPercentage < 0.1f) needImmediateAttention = true;
-                        if (pawn.needs.rest != null && pawn.needs.rest.CurLevelPercentage < 0.1f) needImmediateAttention = true;
-                        
-                        if (!needImmediateAttention)
-                        {
-                            // Log.Message("AnyJobFor (!needImmediateAttention)");
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        // Log.Message("AnyJobFor !(pawn.needs != null)");
-                        return false;
-                    }
-                }
+                if (pawn.needs.food != null && pawn.needs.food.CurLevelPercentage < 0.1f) needImmediateAttention = true;
+                if (pawn.needs.rest != null && pawn.needs.rest.CurLevelPercentage < 0.1f) needImmediateAttention = true;
+            }
+
+            // 如果既没有开启的工作设置，也不急需照顾（饥饿/疲劳），则直接跳过昂贵的思维树扫描
+            if (!hasWork && !needImmediateAttention)
+            {
+                return false;
             }
 
             // 临时设置女仆位置到柜子的交互格，以便思维树能正确检索附近的工作（很多 JobGiver 依赖位置）
@@ -138,7 +131,8 @@ namespace OuterrealmTechRobot
 
             // 确保 Pawn 的必要组件已初始化。在 RimWorld 1.6 中，某些 JobGiver（如 FoodUtility）会访问 roping 等组件，
             // 如果女仆从未在地图上真正生成过（例如从旧版本加载或直接在容器中创建），这些组件可能为 null，导致 faked 状态下发生空指针异常。
-            if (pawn.roping == null)
+            // 优化：只有在关键组件缺失时才尝试添加组件。
+            if (pawn.health == null || pawn.mindState == null || pawn.roping == null)
             {
                 try
                 {
