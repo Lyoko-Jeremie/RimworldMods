@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <JobDef>
+        <defName>EnterDisplayCase</defName>
+        <driverClass>OuterrealmTechRobot.JobDriver_EnterDisplayCase</driverClass>
+        <reportString>entering display case.</reportString>
+        <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+    </JobDef>
+</Defs>

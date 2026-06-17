@@ -13,6 +13,8 @@ namespace OuterrealmTechRobot
         public static TraitDef ArtificialMaidTrait_EmotionalSynchrony;
         public static ThoughtDef MaidEmotionalSupport;
         public static HediffDef ArtificialMaidRecovery;
+        public static ThingDef ArtificialMaidDisplayCase;
+        public static JobDef EnterDisplayCase;
 
         [MayRequireBiotech] public static XenotypeDef ArtificialMaidXenotype;
         [MayRequireBiotech] public static GeneDef ArtificialMaid_Core;

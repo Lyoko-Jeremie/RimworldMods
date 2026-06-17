@@ -31,4 +31,9 @@
     <ArtificialMaidJoinDate>Recruitment Date</ArtificialMaidJoinDate>
     <ArtificialMaidDuplicate>Duplicate</ArtificialMaidDuplicate>
     <ArtificialMaidOriginSerialNumber>Original Serial Number</ArtificialMaidOriginSerialNumber>
+
+    <AutoHibernateLabel>Auto-Hibernate</AutoHibernateLabel>
+    <AutoHibernateDesc>If enabled, idle artificial maids will automatically seek this display case for hibernation.</AutoHibernateDesc>
+    <AutoWakeLabel>Auto-Wake</AutoWakeLabel>
+    <AutoWakeDesc>If enabled, the occupant will automatically wake up when work is detected on the map.</AutoWakeDesc>
 </LanguageData>

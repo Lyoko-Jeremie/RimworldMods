@@ -71,6 +71,7 @@
   <ItemGroup>
     <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
+    <Compile Include="Building_ArtificialMaidDisplayCase.cs" />
     <Compile Include="CompArtificialMaid.cs" />
     <Compile Include="CompArtificialMaidTerminal.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
