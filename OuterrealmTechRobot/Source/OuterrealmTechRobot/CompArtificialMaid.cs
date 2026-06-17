@@ -266,7 +266,21 @@ namespace OuterrealmTechRobot
             // 保持各种需求最高
             if (Pawn.needs != null)
             {
-                if (Pawn.needs.mood != null) Pawn.needs.mood.CurLevel = 1.0f;
+                if (Pawn.needs.mood != null)
+                {
+                    Pawn.needs.mood.CurLevel = 1.0f;
+                    if (Pawn.needs.mood.thoughts != null && Pawn.needs.mood.thoughts.memories != null)
+                    {
+                        var memories = Pawn.needs.mood.thoughts.memories.Memories;
+                        for (int i = memories.Count - 1; i >= 0; i--)
+                        {
+                            if (memories[i].MoodOffset() < 0)
+                            {
+                                Pawn.needs.mood.thoughts.memories.RemoveMemory(memories[i]);
+                            }
+                        }
+                    }
+                }
                 if (Pawn.needs.rest != null) Pawn.needs.rest.CurLevel = 1.0f;
                 if (Pawn.needs.joy != null) Pawn.needs.joy.CurLevel = 1.0f;
                 if (Pawn.needs.beauty != null) Pawn.needs.beauty.CurLevel = 1.0f;

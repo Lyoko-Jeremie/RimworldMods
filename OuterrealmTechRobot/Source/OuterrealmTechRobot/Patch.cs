@@ -291,4 +291,22 @@ namespace OuterrealmTechRobot
             return true;
         }
     }
+
+    [HarmonyPatch(typeof(ThoughtHandler), nameof(ThoughtHandler.GetDistinctMoodThoughtGroups))]
+    public static class Patch_ThoughtHandler_GetDistinctMoodThoughtGroups
+    {
+        public static void Postfix(ThoughtHandler __instance, List<Thought> outThoughts)
+        {
+            if (__instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                for (int i = outThoughts.Count - 1; i >= 0; i--)
+                {
+                    if (__instance.MoodOffsetOfGroup(outThoughts[i]) < 0)
+                    {
+                        outThoughts.RemoveAt(i);
+                    }
+                }
+            }
+        }
+    }
 }

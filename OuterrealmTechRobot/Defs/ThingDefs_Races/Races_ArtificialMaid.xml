@@ -48,7 +48,7 @@
                 <skinShader>CutoutSkin</skinShader>
             </graphicPaths>
             <thoughtSettings>
-                <cannotReceiveThoughtsAtAll>true</cannotReceiveThoughtsAtAll>
+                <cannotReceiveThoughtsAtAll>false</cannotReceiveThoughtsAtAll>
             </thoughtSettings>
             <raceRestriction>
                 <whiteXenotypeList>
