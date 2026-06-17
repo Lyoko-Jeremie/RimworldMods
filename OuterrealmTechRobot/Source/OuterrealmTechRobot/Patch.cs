@@ -320,14 +320,13 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(Fire), nameof(Fire.TakeDamage))]
-    public static class Patch_Fire_TakeDamage
+    [HarmonyPatch(typeof(DamageWorker_Extinguish), nameof(DamageWorker_Extinguish.Apply))]
+    public static class Patch_DamageWorker_Extinguish_Apply
     {
         [HarmonyPrefix]
-        public static void Prefix(Fire __instance, ref DamageInfo dinfo)
+        public static void Prefix(ref DamageInfo dinfo)
         {
-            if (dinfo.Def == DamageDefOf.Extinguish && dinfo.Instigator is Pawn pawn &&
-                pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            if (dinfo.Instigator is Pawn pawn && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 // 人造人女仆灭火速度极大提升
                 dinfo.SetAmount(999999f);
