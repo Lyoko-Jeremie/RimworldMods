@@ -6,17 +6,18 @@
     <description>A specialized transport box for an Artificial Maid. It contains a deactivated maid in a state of suspended animation, ready to be reactivated upon opening.</description>
     <thingClass>OuterrealmTechRobot.ArtificialMaidTransportBox</thingClass>
     <graphicData>
-      <texPath>Things/Item/Health/Xenogerm</texPath>
+      <texPath>Things/Item/ArtificialMaid/ArtificialMaidTransportBox</texPath>
       <graphicClass>Graphic_Single</graphicClass>
     </graphicData>
     <resourceReadoutPriority>Middle</resourceReadoutPriority>
     <stackLimit>1</stackLimit>
     <useHitPoints>true</useHitPoints>
     <statBases>
-      <MaxHitPoints>100</MaxHitPoints>
+      <MaxHitPoints>99999999</MaxHitPoints>
       <MarketValue>2000</MarketValue>
       <Mass>10</Mass>
-      <Flammability>0.5</Flammability>
+      <Beauty>100</Beauty>
+      <Flammability>0</Flammability>
     </statBases>
     <thingCategories>
       <li>ItemsMisc</li>
