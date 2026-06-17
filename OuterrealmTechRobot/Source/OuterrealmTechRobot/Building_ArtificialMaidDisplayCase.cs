@@ -214,6 +214,7 @@ namespace OuterrealmTechRobot
                 if (!pod.HasAnyContents)
                 {
                     // 将女仆存入容器
+                    actor.DeSpawnOrDeselect();
                     pod.TryAcceptThing(actor);
                 }
             };
