@@ -17,7 +17,7 @@ namespace OuterrealmTechRobot
             this.FailOnDespawnedOrNull(TargetIndex.A);
             yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.Touch);
             
-            yield return Toils_General.Wait(100).WithProgressBarToilDelay(TargetIndex.A);
+            yield return Toils_General.Wait(30).WithProgressBarToilDelay(TargetIndex.A);
 
             Toil unpack = new Toil();
             unpack.initAction = delegate
