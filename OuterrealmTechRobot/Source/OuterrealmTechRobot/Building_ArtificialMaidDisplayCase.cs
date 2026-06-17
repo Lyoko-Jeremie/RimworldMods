@@ -136,6 +136,20 @@ namespace OuterrealmTechRobot
             sbyte oldMapIndex = MapIndexOrStateRef(pawn);
             MapIndexOrStateRef(pawn) = (sbyte)map.Index;
 
+            // 确保 Pawn 的必要组件已初始化。在 RimWorld 1.6 中，某些 JobGiver（如 FoodUtility）会访问 roping 等组件，
+            // 如果女仆从未在地图上真正生成过（例如从旧版本加载或直接在容器中创建），这些组件可能为 null，导致 faked 状态下发生空指针异常。
+            if (pawn.roping == null)
+            {
+                try
+                {
+                    PawnComponentsUtility.AddComponentsForSpawn(pawn);
+                }
+                catch (Exception ex)
+                {
+                    Log.ErrorOnce("[OuterrealmTech] Failed to add components for " + pawn.LabelShort + ": " + ex, 6654322);
+                }
+            }
+
             try
             {
                 // 我们使用女仆的思维树来查看她是否会执行除“等待”或“漫步”之外的任何动作。
