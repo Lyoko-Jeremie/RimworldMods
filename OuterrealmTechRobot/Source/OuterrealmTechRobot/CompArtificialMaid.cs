@@ -22,7 +22,7 @@ namespace OuterrealmTechRobot
         public int joinPlayerTick = -1;
         public bool isDuplicate = false;
         public int originPawnId = -1;
-        public int originSerialNumber = -1;
+        public string originSerialNumber;
 
         public override void PostPostMake()
         {
@@ -42,7 +42,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref joinPlayerTick, "joinPlayerTick", -1);
             Scribe_Values.Look(ref isDuplicate, "isDuplicate", false);
             Scribe_Values.Look(ref originPawnId, "originPawnId", -1);
-            Scribe_Values.Look(ref originSerialNumber, "originSerialNumber", -1);
+            Scribe_Values.Look(ref originSerialNumber, "originSerialNumber");
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -59,7 +59,11 @@ namespace OuterrealmTechRobot
             base.Notify_DuplicatedFrom(source);
             isDuplicate = true;
             originPawnId = source.thingIDNumber;
-            originSerialNumber = source.originSerialNumber;
+            CompArtificialMaid sourceComp = source.TryGetComp<CompArtificialMaid>();
+            if (sourceComp != null)
+            {
+                originSerialNumber = sourceComp.serialNumber;
+            }
             // 复制体生成新的序列号以便区分
             serialNumber = GenerateSerialNumber();
             manufactureTick = Find.TickManager.TicksGame;
@@ -67,7 +71,8 @@ namespace OuterrealmTechRobot
 
         private string GenerateSerialNumber()
         {
-            return $"AM-{Rand.Range(1000, 9999)}-{Rand.Range(1000, 9999)}"; // + Find.TickManager.TicksGame last 4 number
+            int tickLastFour = Find.TickManager.TicksGame % 10000;
+            return $"AM-{Rand.Range(1000, 9999)}-{Rand.Range(1000, 9999)}-{tickLastFour:D4}";
         }
 
         public override string CompInspectStringExtra()
@@ -77,6 +82,10 @@ namespace OuterrealmTechRobot
 
             string duplicateSuffix = isDuplicate ? " (" + (string)"ArtificialMaidDuplicate".Translate() + ")" : "";
             str += (string)"ArtificialMaidSerialNumber".Translate() + ": " + serialNumber + duplicateSuffix;
+            if (isDuplicate && !string.IsNullOrEmpty(originSerialNumber))
+            {
+                str += "\n" + (string)"ArtificialMaidOriginSerialNumber".Translate() + ": " + originSerialNumber;
+            }
             if (manufactureTick > 0)
             {
                 str += "\n" + (string)"ArtificialMaidManufactureDate".Translate() + ": " + GetDateString(manufactureTick);

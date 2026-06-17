@@ -30,4 +30,5 @@
     <ArtificialMaidManufactureDate>制造日期</ArtificialMaidManufactureDate>
     <ArtificialMaidJoinDate>归化日期</ArtificialMaidJoinDate>
     <ArtificialMaidDuplicate>复制体</ArtificialMaidDuplicate>
+    <ArtificialMaidOriginSerialNumber>原始序列号</ArtificialMaidOriginSerialNumber>
 </LanguageData>
