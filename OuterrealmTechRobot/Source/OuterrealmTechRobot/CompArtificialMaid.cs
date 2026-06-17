@@ -141,24 +141,29 @@ namespace OuterrealmTechRobot
 
         private void ApplyEmotionalSupport()
         {
-            if (Pawn == null || !Pawn.Spawned || Pawn.Dead) return;
+            if (Pawn == null || !Pawn.Spawned || Pawn.Dead || Pawn.Map == null) return;
 
             // 检查是否有“情感同步”特性
             if (Pawn.story?.traits != null &&
                 Pawn.story.traits.HasTrait(ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony))
             {
-                // 获取周围 50 格内的 Pawn
-                float radius = 50f;
+                // 性能优化：不再使用 GenRadial.RadialDistinctThingsAround 扫描大量格子（半径 50 覆盖约 7800+ 格子），
+                // 而是直接遍历地图上本派系的 Pawn（通常只有几十个），显著降低计算开销。
+                float radiusSq = 50f * 50f;
                 IntVec3 pos = Pawn.Position;
                 Map map = Pawn.Map;
                 Faction faction = Pawn.Faction;
 
-                foreach (var thing in GenRadial.RadialDistinctThingsAround(pos, map, radius, true))
+                var list = map.mapPawns.SpawnedPawnsInFaction(faction);
+                if (list != null)
                 {
-                    if (thing is Pawn other && other != Pawn && other.Faction == faction && other.RaceProps.Humanlike)
+                    for (int i = 0; i < list.Count; i++)
                     {
-                        other.needs?.mood?.thoughts?.memories?.TryGainMemory(ArtificialMaidDefOf.MaidEmotionalSupport,
-                            Pawn);
+                        Pawn other = list[i];
+                        if (other != Pawn && other.RaceProps.Humanlike && other.Position.DistanceToSquared(pos) <= radiusSq)
+                        {
+                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(ArtificialMaidDefOf.MaidEmotionalSupport, Pawn);
+                        }
                     }
                 }
             }
