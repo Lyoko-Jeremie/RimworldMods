@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <JobDef>
+    <defName>PackArtificialMaid</defName>
+    <driverClass>OuterrealmTechRobot.JobDriver_PackArtificialMaid</driverClass>
+    <reportString>packing into transport box.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+
+  <JobDef>
+    <defName>UnpackArtificialMaid</defName>
+    <driverClass>OuterrealmTechRobot.JobDriver_UnpackArtificialMaid</driverClass>
+    <reportString>unpacking artificial maid.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+</Defs>

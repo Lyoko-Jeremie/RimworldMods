@@ -71,12 +71,16 @@
   <ItemGroup>
     <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
+    <Compile Include="ArtificialMaidTransportBox.cs" />
     <Compile Include="Building_ArtificialMaidDisplayCase.cs" />
     <Compile Include="CompArtificialMaid.cs" />
+    <Compile Include="CompArtificialMaidPacker.cs" />
     <Compile Include="CompArtificialMaidTerminal.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
     <Compile Include="IncidentWorker_ArtificialMaidEscort.cs" />
+    <Compile Include="JobDriver_PackArtificialMaid.cs" />
+    <Compile Include="JobDriver_UnpackArtificialMaid.cs" />
     <Compile Include="Patch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RecipeWorker_FabricateArtificialMaid.cs" />

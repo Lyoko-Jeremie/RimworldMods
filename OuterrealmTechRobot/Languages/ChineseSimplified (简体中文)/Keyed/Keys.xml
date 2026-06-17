@@ -49,4 +49,12 @@
     <ImmediateHibernateLabel>立即休眠</ImmediateHibernateLabel>
     <ImmediateHibernateDesc>强制该女仆停止工作并立即进入最近的一个空展示柜，并将该展示柜设定为不自动唤醒。</ImmediateHibernateDesc>
     <NoEmptyDisplayCaseFound>未找到空置的展示柜。</NoEmptyDisplayCaseFound>
+
+    <PackArtificialMaid>打包为人造人女仆运输箱</PackArtificialMaid>
+    <CannotPackArtificialMaid>无法打包</CannotPackArtificialMaid>
+    <UnpackArtificialMaid>打开运输箱并重启女仆</UnpackArtificialMaid>
+    <CannotUnpackArtificialMaid>无法打开</CannotUnpackArtificialMaid>
+    <ContainsArtificialMaid>内容物：{0}</ContainsArtificialMaid>
+    <ArtificialMaidPacked>人造人女仆 {0} 已被打包进运输箱。</ArtificialMaidPacked>
+    <ArtificialMaidUnpacked>人造人女仆 {0} 已重新启动。</ArtificialMaidUnpacked>
 </LanguageData>

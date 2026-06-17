@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <ThingDef ParentName="ResourceBase">
+    <defName>ArtificialMaidTransportBox</defName>
+    <label>artificial maid transport box</label>
+    <description>A specialized transport box for an Artificial Maid. It contains a deactivated maid in a state of suspended animation, ready to be reactivated upon opening.</description>
+    <thingClass>OuterrealmTechRobot.ArtificialMaidTransportBox</thingClass>
+    <graphicData>
+      <texPath>Things/Item/Health/Xenogerm</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <resourceReadoutPriority>Middle</resourceReadoutPriority>
+    <stackLimit>1</stackLimit>
+    <useHitPoints>true</useHitPoints>
+    <statBases>
+      <MaxHitPoints>100</MaxHitPoints>
+      <MarketValue>2000</MarketValue>
+      <Mass>10</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <thingCategories>
+      <li>ItemsMisc</li>
+    </thingCategories>
+    <tradeTags>
+      <li>ExoticMisc</li>
+    </tradeTags>
+    <comps>
+      <li Class="CompProperties_Forbiddable"/>
+    </comps>
+  </ThingDef>
+</Defs>

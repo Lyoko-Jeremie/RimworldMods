@@ -15,6 +15,9 @@ namespace OuterrealmTechRobot
         public static HediffDef ArtificialMaidRecovery;
         public static ThingDef ArtificialMaidDisplayCase;
         public static JobDef EnterDisplayCase;
+        public static ThingDef ArtificialMaidTransportBox;
+        public static JobDef PackArtificialMaid;
+        public static JobDef UnpackArtificialMaid;
 
         [MayRequireBiotech] public static XenotypeDef ArtificialMaidXenotype;
         [MayRequireBiotech] public static GeneDef ArtificialMaid_Core;

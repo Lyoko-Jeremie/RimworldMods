@@ -49,4 +49,12 @@
     <ImmediateHibernateLabel>Hibernate Immediately</ImmediateHibernateLabel>
     <ImmediateHibernateDesc>Force this maid to stop working and immediately enter the nearest empty display case, and disable auto-wake for that case.</ImmediateHibernateDesc>
     <NoEmptyDisplayCaseFound>No empty display case found.</NoEmptyDisplayCaseFound>
+
+    <PackArtificialMaid>Pack into transport box</PackArtificialMaid>
+    <CannotPackArtificialMaid>Cannot pack</CannotPackArtificialMaid>
+    <UnpackArtificialMaid>Unpack and restart maid</UnpackArtificialMaid>
+    <CannotUnpackArtificialMaid>Cannot unpack</CannotUnpackArtificialMaid>
+    <ContainsArtificialMaid>Contains: {0}</ContainsArtificialMaid>
+    <ArtificialMaidPacked>Artificial Maid {0} has been packed into transport box.</ArtificialMaidPacked>
+    <ArtificialMaidUnpacked>Artificial Maid {0} has been restarted.</ArtificialMaidUnpacked>
 </LanguageData>
