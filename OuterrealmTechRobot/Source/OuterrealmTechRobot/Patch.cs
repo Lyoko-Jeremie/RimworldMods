@@ -235,6 +235,22 @@ namespace OuterrealmTechRobot
             return true;
         }
     }
+
+    [HarmonyPatch(typeof(StaggerHandler), nameof(StaggerHandler.StaggerFor))]
+    public static class Patch_StaggerHandler_StaggerFor
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(StaggerHandler __instance, ref bool __result)
+        {
+            if (__instance.parent != null && __instance.parent.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __result = false;
+                return false;
+            }
+
+            return true;
+        }
+    }
     
     [HarmonyPatch(typeof(Pawn_PathFollower), "CostToMoveIntoCell", typeof(Pawn), typeof(IntVec3))]
     public static class Patch_Pawn_PathFollower_CostToMoveIntoCell
