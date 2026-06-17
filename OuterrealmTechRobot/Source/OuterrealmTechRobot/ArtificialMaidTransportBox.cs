@@ -15,7 +15,7 @@ namespace OuterrealmTechRobot
             innerContainer = new ThingOwner<Thing>(this);
         }
 
-        public IThingHolder ParentHolder => base.ParentHolder;
+        public new IThingHolder ParentHolder => base.ParentHolder;
 
         public ThingOwner GetDirectlyHeldThings() => innerContainer;
 
