@@ -2,6 +2,7 @@ using RimWorld;
 using Verse;
 using Verse.AI;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace OuterrealmTechRobot
 {
@@ -27,6 +28,34 @@ namespace OuterrealmTechRobot
         {
             base.ExposeData();
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
+        }
+
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            foreach (var g in base.GetGizmos()) yield return g;
+
+            if (innerContainer.Count > 0)
+            {
+                Thing containedThing = innerContainer[0];
+                Command_Action selectContained = new Command_Action();
+                selectContained.defaultLabel = "CommandSelectContainedPawn".Translate(containedThing.LabelCap);
+                selectContained.defaultDesc = "CommandSelectContainedPawnDesc".Translate();
+                
+                if (containedThing is Pawn pawn)
+                {
+                    selectContained.icon = (Texture)PortraitsCache.Get(pawn, new Vector2(75f, 75f), Rot4.South);
+                }
+                else
+                {
+                    selectContained.icon = containedThing.def.uiIcon;
+                }
+                
+                selectContained.action = () =>
+                {
+                    CameraJumper.TryJumpAndSelect(containedThing);
+                };
+                yield return selectContained;
+            }
         }
 
         public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)

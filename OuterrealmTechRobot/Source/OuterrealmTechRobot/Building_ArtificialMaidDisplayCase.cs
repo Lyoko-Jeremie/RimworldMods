@@ -285,6 +285,15 @@ namespace OuterrealmTechRobot
             // 如果柜内有物且属于玩家派系，显示手动弹出按钮
             if (HasAnyContents && Faction == Faction.OfPlayer)
             {
+                Thing containedThing = innerContainer[0];
+                yield return new Command_Action
+                {
+                    defaultLabel = "CommandSelectContainedPawn".Translate(containedThing.LabelCap),
+                    defaultDesc = "CommandSelectContainedPawnDesc".Translate(),
+                    icon = (containedThing is Pawn pawn) ? (Texture)PortraitsCache.Get(pawn, new Vector2(75f, 75f), Rot4.South) : containedThing.def.uiIcon,
+                    action = () => CameraJumper.TryJumpAndSelect(containedThing)
+                };
+
                 yield return new Command_Action
                 {
                     defaultLabel = "ArtificialMaidDisplayCaseEject".Translate(),
