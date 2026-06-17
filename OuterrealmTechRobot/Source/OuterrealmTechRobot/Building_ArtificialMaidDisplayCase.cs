@@ -143,7 +143,7 @@ namespace OuterrealmTechRobot
                 defaultDesc = "AutoHibernateDesc".Translate(),
                 isActive = () => autoHibernate,
                 toggleAction = () => autoHibernate = !autoHibernate,
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/AutoHibernate", false) ?? BaseContent.WhiteTex
+                icon = ArtificialMaidTex.IconAutoHibernate
             };
 
             // 自动唤醒切换开关
@@ -153,7 +153,7 @@ namespace OuterrealmTechRobot
                 defaultDesc = "AutoWakeDesc".Translate(),
                 isActive = () => autoWake,
                 toggleAction = () => autoWake = !autoWake,
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/AutoWake", false) ?? BaseContent.WhiteTex
+                icon = ArtificialMaidTex.IconAutoWake
             };
             
             // 如果柜内有物且属于玩家派系，显示手动弹出按钮
@@ -163,7 +163,7 @@ namespace OuterrealmTechRobot
                 {
                     defaultLabel = "CommandPodEject".Translate(),
                     defaultDesc = "CommandPodEjectDesc".Translate(),
-                    icon = ContentFinder<Texture2D>.Get("UI/Commands/PodEject"),
+                    icon = ArtificialMaidTex.IconPodEject,
                     action = () => EjectContents()
                 };
             }
