@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -15,6 +16,8 @@ namespace OuterrealmTechRobot
     /// </summary>
     public class Building_ArtificialMaidDisplayCase : Building_Casket, IThingHolderWithDrawnPawn
     {
+        private static readonly FieldInfo MapIndexOrStateField = typeof(Thing).GetField("mapIndexOrState", BindingFlags.Instance | BindingFlags.NonPublic);
+
         // 实现 IThingHolderWithDrawnPawn 接口，使渲染器能获取正确的渲染参数
         public float HeldPawnDrawPos_Y => this.def.Altitude + 0.04054054f;
         public float HeldPawnBodyAngle => 0f;
@@ -90,6 +93,10 @@ namespace OuterrealmTechRobot
             // 临时设置女仆位置到柜子处，以便思维树能正确检索附近的工作（很多 JobGiver 依赖位置）
             IntVec3 oldPos = pawn.Position;
             pawn.SetPositionDirect(this.Position);
+            
+            // 备份并临时修改 Spawned 状态和 Map 引用，以绕过 Reachability 和 Map 检查
+            sbyte oldMapIndex = (sbyte)MapIndexOrStateField.GetValue(pawn);
+            MapIndexOrStateField.SetValue(pawn, (sbyte)pawn.MapHeld.Index);
 
             try
             {
@@ -119,7 +126,8 @@ namespace OuterrealmTechRobot
             }
             finally
             {
-                // 无论如何都要恢复位置
+                // 恢复状态
+                MapIndexOrStateField.SetValue(pawn, oldMapIndex);
                 pawn.SetPositionDirect(oldPos);
             }
 
