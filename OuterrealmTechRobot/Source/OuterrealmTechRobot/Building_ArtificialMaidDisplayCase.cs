@@ -95,7 +95,7 @@ namespace OuterrealmTechRobot
             catch (Exception ex)
             {
                 // 如果女仆处于无效状态，寻找工作可能会抛出错误，虽然在这里不太可能发生。
-                Log.ErrorOnce("Error during auto-wake job search for " + pawn.LabelShort + ": " + ex.Message, 54321);
+                Log.ErrorOnce("Error during auto-wake job search for " + pawn.LabelShort + ": " + ex.Message, 6654321);
             }
             finally
             {
