@@ -40,6 +40,19 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref autoWake, "autoWake", false);
         }
 
+        public override void SpawnSetup(Map map, bool respawningAfterLoad)
+        {
+            base.SpawnSetup(map, respawningAfterLoad);
+            ArtificialMaidMapComponent.Get(map)?.RegisterDisplayCase(this);
+        }
+
+        public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        {
+            Map map = this.Map;
+            base.DeSpawn(mode);
+            ArtificialMaidMapComponent.Get(map)?.UnregisterDisplayCase(this);
+        }
+
         /// <summary>
         /// 确定该容器是否接受指定的物品。
         /// 仅限人造人女仆进入。
@@ -70,9 +83,9 @@ namespace OuterrealmTechRobot
         protected override void Tick()
         {
             base.Tick();
-            // 性能优化：将自动唤醒的检查间隔从 250 Tick 增加到 1000 Tick（约 16.7 秒）
-            // 在拥有几十个展示柜的情况下，减少每帧执行重型思维树扫描的频率。
-            if (this.IsHashIntervalTick(1000))
+            // 性能优化：动态调整自动唤醒的检查间隔。
+            // 根据地图上展示柜的数量增加间隔，以平滑大规模部署时的 CPU 负载。
+            if (this.IsHashIntervalTick(GetDynamicTickInterval()))
             {
                 if (autoWake && HasAnyContents)
                 {
@@ -84,6 +97,33 @@ namespace OuterrealmTechRobot
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 根据地图上同类展示柜的数量获取动态 Tick 间隔。
+        /// 建筑越多，单个建筑检查工作的频率越低，从而保证总体性能。
+        /// </summary>
+        private int GetDynamicTickInterval()
+        {
+            Map map = this.Map;
+            if (map == null) return 1000;
+
+            int count = 1;
+            var comp = ArtificialMaidMapComponent.Get(map);
+            if (comp != null)
+            {
+                count = comp.DisplayCaseCount;
+            }
+            else
+            {
+                // 回退逻辑：如果组件未初始化，则使用原有的统计方式
+                count = map.listerThings.ThingsOfDef(this.def).Count;
+            }
+
+            // 基础间隔 250 Ticks (约 4s)
+            // 每个额外建筑增加 50 Ticks
+            // 最大上限 2500 Ticks (约 42s)
+            return Mathf.Clamp(250 + (count - 1) * 50, 250, 2500);
         }
 
         /// <summary>
