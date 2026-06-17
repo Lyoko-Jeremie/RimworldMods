@@ -75,8 +75,14 @@ namespace OuterrealmTechRobot
             }
             else if (isIdle && isMoving)
             {
-                // 【游荡保护】如果正在游荡的移动过程中，不要打断，也不重置间隔。
-                // 这样可以避免“走走停停”的现象，让女仆能流畅地完成游荡。
+                // 【游荡保护 + 紧急打断】
+                // 如果正在游荡移动，为了避免“走走停停”，我们不盲目打断。
+                // 但是，如果此时出现了“真正的任务”（如灭火、救人、工作），我们需要立即打断游荡。
+                if (HasRealWork(pawn))
+                {
+                    pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
+                    currentInterval = MinInterval;
+                }
             }
             else
             {
@@ -91,6 +97,40 @@ namespace OuterrealmTechRobot
             
             // 基础间隔 + 数量惩罚 + 随机抖动（防止同步效应）
             ticksUntilNextCheck = currentInterval + popPenalty + Rand.RangeInclusive(-5, 5);
+        }
+
+        /// <summary>
+        /// 深度检查是否有真实的工作可做（排除游荡和等待）
+        /// </summary>
+        private bool HasRealWork(Pawn pawn)
+        {
+            if (pawn.thinker?.MainThinkNodeRoot == null) return false;
+
+            try
+            {
+                // 使用思维树预判下一个任务
+                ThinkResult thinkResult = pawn.thinker.MainThinkNodeRoot.TryIssueJobPackage(pawn, new JobIssueParams());
+                if (thinkResult.IsValid && thinkResult.Job != null)
+                {
+                    JobDef def = thinkResult.Job.def;
+                    // 排除非工作性任务（与展示柜检测逻辑一致）
+                    if (def != JobDefOf.Wait &&
+                        def != JobDefOf.Wait_MaintainPosture &&
+                        def != JobDefOf.Wait_SafeTemperature &&
+                        def != JobDefOf.Wait_Wander &&
+                        def != JobDefOf.GotoWander &&
+                        (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 忽略检查期间的异常，确保不跳红字
+            }
+
+            return false;
         }
 
 
