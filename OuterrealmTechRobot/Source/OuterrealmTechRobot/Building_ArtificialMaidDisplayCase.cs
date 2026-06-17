@@ -287,8 +287,8 @@ namespace OuterrealmTechRobot
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "CommandPodEject".Translate(),
-                    defaultDesc = "CommandPodEjectDesc".Translate(),
+                    defaultLabel = "ArtificialMaidDisplayCaseEject".Translate(),
+                    defaultDesc = "ArtificialMaidDisplayCaseEjectDesc".Translate(),
                     icon = ArtificialMaidTex.IconPodEject,
                     action = delegate
                     {

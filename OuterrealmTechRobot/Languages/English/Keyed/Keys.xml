@@ -42,4 +42,7 @@
 
     <EnterDisplayCase>Enter display case</EnterDisplayCase>
     <CannotEnterDisplayCase>Cannot enter display case</CannotEnterDisplayCase>
+
+    <ArtificialMaidDisplayCaseEject>Wake up Artificial Maid</ArtificialMaidDisplayCaseEject>
+    <ArtificialMaidDisplayCaseEjectDesc>Manually wake up and eject the Artificial Maid from the display case.</ArtificialMaidDisplayCaseEjectDesc>
 </LanguageData>

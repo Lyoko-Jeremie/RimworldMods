@@ -42,4 +42,7 @@
 
     <EnterDisplayCase>进入展示柜</EnterDisplayCase>
     <CannotEnterDisplayCase>无法进入展示柜</CannotEnterDisplayCase>
+
+    <ArtificialMaidDisplayCaseEject>唤醒人造人女仆</ArtificialMaidDisplayCaseEject>
+    <ArtificialMaidDisplayCaseEjectDesc>手动唤醒并弹出展示柜中的人造人女仆。</ArtificialMaidDisplayCaseEjectDesc>
 </LanguageData>
