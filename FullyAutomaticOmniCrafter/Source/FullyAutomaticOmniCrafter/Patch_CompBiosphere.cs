@@ -14,6 +14,7 @@ namespace FullyAutomaticOmniCrafter
         private static Dictionary<Map, List<CompBiosphere>> biosphereComps = new Dictionary<Map, List<CompBiosphere>>();
         private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
         private static Dictionary<Map, CompBiosphere[]> biosphereGrid = new Dictionary<Map, CompBiosphere[]>();
+        private static Dictionary<Map, int> mapVacuumProtectionCount = new Dictionary<Map, int>();
         private static HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
         private static List<Pawn> tmpPawnsToRemove = new List<Pawn>();
 
@@ -46,6 +47,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 RebuildGridForArea(map, area);
             }
+            RecalculateVacuumProtectionCount(map);
         }
 
         public static void Deregister(CompBiosphere comp, Map map)
@@ -62,6 +64,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 RebuildGridForArea(map, area);
             }
+            RecalculateVacuumProtectionCount(map);
         }
 
         public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea)
@@ -152,6 +155,10 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+            if (source.parent.Map != null)
+            {
+                RecalculateVacuumProtectionCount(source.parent.Map);
+            }
         }
 
         public static void NotifyAreaChanged(Area area, IntVec3 cell)
@@ -186,6 +193,29 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
             return null;
+        }
+
+        public static bool AnyBiosphereHasVacuumProtection(Map map)
+        {
+            if (map == null) return false;
+            return mapVacuumProtectionCount.TryGetValue(map, out int count) && count > 0;
+        }
+
+        public static void RecalculateVacuumProtectionCount(Map map)
+        {
+            if (map == null) return;
+            int count = 0;
+            if (biosphereComps.TryGetValue(map, out var list))
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i].ensureNoVacuum && list[i].parent.Spawned)
+                    {
+                        count++;
+                    }
+                }
+            }
+            mapVacuumProtectionCount[map] = count;
         }
 
         public static void MaintainPawnEffects(Map map)
@@ -551,19 +581,44 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Room), nameof(Room.OpenRoofCount), MethodType.Getter)]
     public static class Patch_Room_OpenRoofCount
     {
+        private static Dictionary<int, bool> protectedRoomsCache = new Dictionary<int, bool>();
+        private static int lastCacheTick = -1;
+
         public static void Postfix(Room __instance, ref int __result)
         {
             if (__result == 0 || __instance.Map == null) return;
+
+            // 优化1：地图级快筛。如果没有 Biosphere 开启真空保护，直接返回。
+            if (!CompBiosphereManager.AnyBiosphereHasVacuumProtection(__instance.Map)) return;
+
+            // 优化2：同 Tick 结果缓存。避免在单帧内对同一个房间进行多次重复计算。
+            int currentTick = Find.TickManager.TicksGame;
+            if (currentTick != lastCacheTick)
+            {
+                protectedRoomsCache.Clear();
+                lastCacheTick = currentTick;
+            }
+
+            if (protectedRoomsCache.TryGetValue(__instance.ID, out bool isProtected))
+            {
+                if (isProtected) __result = 0;
+                return;
+            }
+
             // 只要房间内有一个 cell 在 biosphere 保护下且开启了 ensureNoVacuum
+            isProtected = false;
             foreach (IntVec3 cell in __instance.Cells)
             {
                 var biosphere = CompBiosphereManager.GetBiosphereAt(__instance.Map, cell);
                 if (biosphere != null && biosphere.ensureNoVacuum)
                 {
-                    __result = 0; // 伪装成完全封闭
-                    return;
+                    isProtected = true;
+                    break;
                 }
             }
+
+            protectedRoomsCache[__instance.ID] = isProtected;
+            if (isProtected) __result = 0;
         }
     }
 
