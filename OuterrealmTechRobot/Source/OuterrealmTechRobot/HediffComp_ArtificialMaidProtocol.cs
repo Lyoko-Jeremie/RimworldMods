@@ -39,7 +39,7 @@ namespace OuterrealmTechRobot
 
             // 1. 获取地图女仆数量
             int maidCount = 1;
-            var mapComp = pawn.Map?.GetComponent<ArtificialMaidMapComponent>();
+            var mapComp = ArtificialMaidMapComponent.Get(pawn.Map);
             if (mapComp != null)
             {
                 maidCount = mapComp.MaidCount;
