@@ -69,6 +69,19 @@ namespace OuterrealmTechRobot
                 }
             }));
 
+            list.Add(new FloatMenuOption("TeleportArtificialMaidLabel".Translate(), delegate
+            {
+                pawn.Position = this.parent.Position;
+                pawn.pather.StopDead();
+                if (pawn.pather.nextCell.IsValid)
+                {
+                    pawn.pather.nextCell = pawn.Position;
+                }
+
+                Messages.Message("ArtificialMaidTeleportedMessage".Translate(pawn.LabelShort),
+                    MessageTypeDefOf.PositiveEvent);
+            }));
+
             Find.WindowStack.Add(new FloatMenu(list));
         }
 
