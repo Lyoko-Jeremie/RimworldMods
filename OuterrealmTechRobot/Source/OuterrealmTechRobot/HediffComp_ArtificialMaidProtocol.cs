@@ -58,7 +58,8 @@ namespace OuterrealmTechRobot
             Job curJob = pawn.CurJob;
             bool isIdleTag = pawn.mindState.IsIdle;
             bool isMoving = pawn.pather != null && pawn.pather.Moving;
-            bool isWaitingIdle = (curJob == null || curJob.def == JobDefOf.Wait_Wander || (isIdleTag && !isMoving));
+            bool isIdle = (curJob == null || curJob.def == JobDefOf.Wait_Wander || isIdleTag);
+            bool isWaitingIdle = isIdle && !isMoving;
 
             if (isWaitingIdle)
             {
@@ -72,7 +73,7 @@ namespace OuterrealmTechRobot
                 // 【自适应退避】因为被唤醒后依然闲置（说明没活干），增加下次扫描的间隔时间
                 currentInterval = Math.Min(currentInterval + IdlePenalty, MaxInterval);
             }
-            else if (isIdleTag && isMoving)
+            else if (isIdle && isMoving)
             {
                 // 【游荡保护】如果正在游荡的移动过程中，不要打断，也不重置间隔。
                 // 这样可以避免“走走停停”的现象，让女仆能流畅地完成游荡。
