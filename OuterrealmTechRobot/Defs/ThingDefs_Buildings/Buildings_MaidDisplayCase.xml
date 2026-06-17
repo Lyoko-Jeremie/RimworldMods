@@ -14,9 +14,10 @@
         <altitudeLayer>Building</altitudeLayer>
         <drawerType>MapMeshAndRealTime</drawerType>
         <passability>PassThroughOnly</passability>
-        <pathCost>50</pathCost>
-        <blockWind>true</blockWind>
-        <castEdgeShadows>true</castEdgeShadows>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
         <statBases>

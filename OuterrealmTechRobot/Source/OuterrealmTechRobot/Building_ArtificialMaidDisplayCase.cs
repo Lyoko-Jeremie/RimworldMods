@@ -88,60 +88,71 @@ namespace OuterrealmTechRobot
         /// </summary>
         private bool AnyJobFor(Pawn pawn)
         {
-            if (pawn.MapHeld == null) return false;
+            // 确保建筑已生成且 Pawn 所在环境有效
+            Map map = this.Map;
+            if (pawn == null || map == null) return false;
 
             // 优化：如果女仆没有任何启用的工作类型，且基本需求（食物、休息等）都在安全阈值内，则跳过重型的思维树检查。
             // 大多数女仆在柜子里时，玩家更关心的是她们是否有“工作”。
-            if (pawn.workSettings != null && !pawn.workSettings.WorkGiversInOrderNormal.Any() && !pawn.workSettings.WorkGiversInOrderEmergency.Any())
+            if (pawn.workSettings != null && pawn.workSettings.EverWork)
             {
-                // 如果没有工作，检查需求。如果需求也满足，则直接返回。
-                if (pawn.needs != null)
+                if (!pawn.workSettings.WorkGiversInOrderNormal.Any() && !pawn.workSettings.WorkGiversInOrderEmergency.Any())
                 {
-                    bool needImmediateAttention = false;
-                    if (pawn.needs.food != null && pawn.needs.food.CurLevelPercentage < 0.1f) needImmediateAttention = true;
-                    if (pawn.needs.rest != null && pawn.needs.rest.CurLevelPercentage < 0.1f) needImmediateAttention = true;
-                    
-                    if (!needImmediateAttention) return false;
-                }
-                else
-                {
-                    return false;
+                    // 如果没有工作，检查需求。如果需求也满足，则直接返回。
+                    if (pawn.needs != null)
+                    {
+                        bool needImmediateAttention = false;
+                        if (pawn.needs.food != null && pawn.needs.food.CurLevelPercentage < 0.1f) needImmediateAttention = true;
+                        if (pawn.needs.rest != null && pawn.needs.rest.CurLevelPercentage < 0.1f) needImmediateAttention = true;
+                        
+                        if (!needImmediateAttention) return false;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
             }
 
-            // 临时设置女仆位置到柜子处，以便思维树能正确检索附近的工作（很多 JobGiver 依赖位置）
+            // 临时设置女仆位置到柜子的交互格，以便思维树能正确检索附近的工作（很多 JobGiver 依赖位置）
+            // 使用交互格（InteractionCell）比使用建筑中心位置更可靠，因为中心位置可能是不可通行的，会导致可达性检查失败。
             IntVec3 oldPos = pawn.Position;
-            pawn.SetPositionDirect(this.Position);
+            IntVec3 searchPos = this.InteractionCell;
+            if (!searchPos.InBounds(map)) searchPos = this.Position;
+            pawn.SetPositionDirect(searchPos);
             
             // 备份并临时修改 Spawned 状态和 Map 引用，以绕过 Reachability 和 Map 检查
             sbyte oldMapIndex = (sbyte)MapIndexOrStateField.GetValue(pawn);
-            MapIndexOrStateField.SetValue(pawn, (sbyte)pawn.MapHeld.Index);
+            MapIndexOrStateField.SetValue(pawn, (sbyte)map.Index);
 
             try
             {
                 // 我们使用女仆的思维树来查看她是否会执行除“等待”或“漫步”之外的任何动作。
                 // 注意：我们使用的是 MainThinkNodeRoot，它包含了所有的工作提供者（WorkGiver）。
-                ThinkResult thinkResult = pawn.thinker.MainThinkNodeRoot.TryIssueJobPackage(pawn, new JobIssueParams());
-                
-                if (thinkResult.IsValid && thinkResult.Job != null)
+                if (pawn.thinker != null && pawn.thinker.MainThinkNodeRoot != null)
                 {
-                    JobDef def = thinkResult.Job.def;
-                    // 检查这是否是一个“真实的”工作（排除空闲和进入展示柜的任务）
-                    if (def != JobDefOf.Wait && 
-                        def != JobDefOf.Wait_MaintainPosture && 
-                        def != JobDefOf.Wait_SafeTemperature && 
-                        def != JobDefOf.Wait_Wander &&
-                        def != JobDefOf.GotoWander &&
-                        (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase))
+                    ThinkResult thinkResult = pawn.thinker.MainThinkNodeRoot.TryIssueJobPackage(pawn, new JobIssueParams());
+                    
+                    if (thinkResult.IsValid && thinkResult.Job != null)
                     {
-                        return true;
+                        JobDef def = thinkResult.Job.def;
+                        // 检查这是否是一个“真实的”工作（排除空闲和进入展示柜的任务）
+                        if (def != JobDefOf.Wait && 
+                            def != JobDefOf.Wait_MaintainPosture && 
+                            def != JobDefOf.Wait_SafeTemperature && 
+                            def != JobDefOf.Wait_Wander &&
+                            def != JobDefOf.GotoWander &&
+                            (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase))
+                        {
+                            return true;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // 如果女仆处于无效状态，寻找工作可能会抛出错误，虽然在这里不太可能发生。
-                Log.ErrorOnce("Error during auto-wake job search for " + pawn.LabelShort + ": " + ex.Message, 6654321);
+                // 如果女仆处于无效状态，寻找工作可能会抛出错误。
+                Log.ErrorOnce("[OuterrealmTech] Error during auto-wake job search for " + pawn.LabelShort + ": " + ex, 6654321);
             }
             finally
             {
