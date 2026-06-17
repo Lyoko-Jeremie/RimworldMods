@@ -60,7 +60,7 @@ namespace OuterrealmTechRobot
 
             list.Add(new FloatMenuOption("AutofixReplenishLabel".Translate(), delegate
             {
-                var comp = pawn.TryGetComp<CompArtificialMaid>();
+                var comp = CompArtificialMaid.GetCompCached(pawn);
                 if (comp != null)
                 {
                     comp.FullRepair();

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -15,6 +16,14 @@ namespace OuterrealmTechRobot
 
     public class CompArtificialMaid : ThingComp
     {
+        private static readonly ConditionalWeakTable<Pawn, CompArtificialMaid> cache = new ConditionalWeakTable<Pawn, CompArtificialMaid>();
+
+        public static CompArtificialMaid GetCompCached(Pawn pawn)
+        {
+            if (pawn == null) return null;
+            return cache.GetValue(pawn, p => p.TryGetComp<CompArtificialMaid>());
+        }
+
         private Pawn Pawn => (Pawn)this.parent;
 
         public string serialNumber;
@@ -61,7 +70,7 @@ namespace OuterrealmTechRobot
             base.Notify_DuplicatedFrom(source);
             isDuplicate = true;
             originPawnId = source.thingIDNumber;
-            CompArtificialMaid sourceComp = source.TryGetComp<CompArtificialMaid>();
+            CompArtificialMaid sourceComp = GetCompCached(source);
             if (sourceComp != null)
             {
                 originSerialNumber = sourceComp.serialNumber;

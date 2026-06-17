@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -16,7 +17,8 @@ namespace OuterrealmTechRobot
     /// </summary>
     public class Building_ArtificialMaidDisplayCase : Building_Casket, IThingHolderWithDrawnPawn
     {
-        private static readonly FieldInfo MapIndexOrStateField = typeof(Thing).GetField("mapIndexOrState", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly AccessTools.FieldRef<Thing, sbyte> MapIndexOrStateRef = 
+            AccessTools.FieldRefAccess<Thing, sbyte>("mapIndexOrState");
 
         // 实现 IThingHolderWithDrawnPawn 接口，使渲染器能获取正确的渲染参数
         public float HeldPawnDrawPos_Y => this.def.Altitude + 0.04054054f;
@@ -131,8 +133,8 @@ namespace OuterrealmTechRobot
             pawn.SetPositionDirect(searchPos);
             
             // 备份并临时修改 Spawned 状态和 Map 引用，以绕过 Reachability 和 Map 检查
-            sbyte oldMapIndex = (sbyte)MapIndexOrStateField.GetValue(pawn);
-            MapIndexOrStateField.SetValue(pawn, (sbyte)map.Index);
+            sbyte oldMapIndex = MapIndexOrStateRef(pawn);
+            MapIndexOrStateRef(pawn) = (sbyte)map.Index;
 
             try
             {
@@ -173,7 +175,7 @@ namespace OuterrealmTechRobot
             finally
             {
                 // 恢复状态
-                MapIndexOrStateField.SetValue(pawn, oldMapIndex);
+                MapIndexOrStateRef(pawn) = oldMapIndex;
                 pawn.SetPositionDirect(oldPos);
                 // Log.Message("AnyJobFor finally");
             }
@@ -346,7 +348,7 @@ namespace OuterrealmTechRobot
             if (pawn.def != ArtificialMaidDefOf.ArtificialMaid) return null;
 
             // 检查女仆自身的自动休眠设置
-            CompArtificialMaid comp = pawn.TryGetComp<CompArtificialMaid>();
+            CompArtificialMaid comp = CompArtificialMaid.GetCompCached(pawn);
             if (comp != null && !comp.allowAutoHibernate)
             {
                 return null;
