@@ -36,4 +36,7 @@
     <AutoHibernateDesc>启用后，空闲的人造人女仆将自动寻找此展示柜进行休眠。</AutoHibernateDesc>
     <AutoWakeLabel>自动唤醒</AutoWakeLabel>
     <AutoWakeDesc>启用后，展示柜中的人造人女仆在地图上有工作可做时会自动唤醒。</AutoWakeDesc>
+
+    <EnterDisplayCase>进入展示柜</EnterDisplayCase>
+    <CannotEnterDisplayCase>无法进入展示柜</CannotEnterDisplayCase>
 </LanguageData>

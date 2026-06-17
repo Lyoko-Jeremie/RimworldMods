@@ -187,7 +187,38 @@ namespace OuterrealmTechRobot
                 };
             }
         }
-        
+
+        /// <summary>
+        /// 获取选中女仆时的右键菜单选项。
+        /// </summary>
+        public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
+        {
+            foreach (var opt in base.GetFloatMenuOptions(selPawn)) yield return opt;
+
+            // 仅限人造人女仆
+            if (selPawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                // 展示柜必须为空
+                if (!HasAnyContents)
+                {
+                    // 检查路径是否可达
+                    if (!selPawn.CanReach(this, PathEndMode.InteractionCell, Danger.Deadly))
+                    {
+                        yield return new FloatMenuOption("CannotEnterDisplayCase".Translate() + ": " + "NoPath".Translate().CapitalizeFirst(), null);
+                    }
+                    else
+                    {
+                        // 添加进入展示柜的选项
+                        yield return FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption("EnterDisplayCase".Translate(), () =>
+                        {
+                            Job job = JobMaker.MakeJob(ArtificialMaidDefOf.EnterDisplayCase, this);
+                            selPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                        }), selPawn, this);
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// 弹出容器内的所有内容。
         /// </summary>
