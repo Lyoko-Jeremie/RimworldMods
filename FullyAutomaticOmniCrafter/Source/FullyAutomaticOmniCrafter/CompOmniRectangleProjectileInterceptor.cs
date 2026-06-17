@@ -45,6 +45,10 @@ namespace FullyAutomaticOmniCrafter
         private float? widthOverride;
         private float? heightOverride;
 
+        private CellRect? cachedOccupiedRect;
+        private List<IntVec3> cachedOccupiedCells;
+        private IntVec3 lastPosition = IntVec3.Invalid;
+
         public float Width => widthOverride ?? Props.width ?? 1f;
         public float Height => heightOverride ?? Props.height ?? 1f;
 
@@ -54,20 +58,38 @@ namespace FullyAutomaticOmniCrafter
         {
             get
             {
-                Vector3 myPos = parent.Position.ToVector3Shifted();
-                float halfW = Width / 2f;
-                float halfH = Height / 2f;
-                // 使用更精确的浮点数边界判定，确保细微变化能反映在格子上
-                int minX = Mathf.RoundToInt(myPos.x - halfW);
-                int maxX = Mathf.RoundToInt(myPos.x + halfW - 1f);
-                int minZ = Mathf.RoundToInt(myPos.z - halfH);
-                int maxZ = Mathf.RoundToInt(myPos.z + halfH - 1f);
-                
-                // 确保至少占一格，且处理宽度小于1的情况
-                if (maxX < minX) maxX = minX;
-                if (maxZ < minZ) maxZ = minZ;
-                
-                return new CellRect(minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
+                if (cachedOccupiedRect == null || parent.Position != lastPosition)
+                {
+                    lastPosition = parent.Position;
+                    Vector3 myPos = parent.Position.ToVector3Shifted();
+                    float halfW = Width / 2f;
+                    float halfH = Height / 2f;
+                    // 使用更精确的浮点数边界判定，确保细微变化能反映在格子上
+                    int minX = Mathf.RoundToInt(myPos.x - halfW);
+                    int maxX = Mathf.RoundToInt(myPos.x + halfW - 1f);
+                    int minZ = Mathf.RoundToInt(myPos.z - halfH);
+                    int maxZ = Mathf.RoundToInt(myPos.z + halfH - 1f);
+
+                    // 确保至少占一格，且处理宽度小于1的情况
+                    if (maxX < minX) maxX = minX;
+                    if (maxZ < minZ) maxZ = minZ;
+
+                    cachedOccupiedRect = new CellRect(minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
+                    cachedOccupiedCells = null;
+                }
+                return cachedOccupiedRect.Value;
+            }
+        }
+
+        private List<IntVec3> OccupiedCells
+        {
+            get
+            {
+                if (cachedOccupiedCells == null)
+                {
+                    cachedOccupiedCells = new List<IntVec3>(OccupiedRect.Cells);
+                }
+                return cachedOccupiedCells;
             }
         }
 
@@ -129,14 +151,12 @@ namespace FullyAutomaticOmniCrafter
             {
                 edgeColor.a *= currentAlpha;
             }
-            GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), edgeColor);
+            GenDraw.DrawFieldEdges(OccupiedCells, edgeColor);
 
             if (isSelected)
             {
                 // 绘制选中时的白框，使用最高亮度
-                GenDraw.DrawFieldEdges(new List<IntVec3>(OccupiedRect.Cells), Color.white);
-                // 强制重绘选中的范围圈，即使是在暂停时
-                parent.Map.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
+                GenDraw.DrawFieldEdges(OccupiedCells, Color.white);
             }
         }
 
@@ -144,6 +164,8 @@ namespace FullyAutomaticOmniCrafter
         {
             widthOverride = width;
             heightOverride = height;
+            cachedOccupiedRect = null;
+            cachedOccupiedCells = null;
             parent.Map?.GetComponent<OmniInterceptorTracker>()?.DirtyCache();
         }
 
