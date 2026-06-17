@@ -345,6 +345,13 @@ namespace OuterrealmTechRobot
             // 仅适用于人造人女仆
             if (pawn.def != ArtificialMaidDefOf.ArtificialMaid) return null;
 
+            // 检查女仆自身的自动休眠设置
+            CompArtificialMaid comp = pawn.TryGetComp<CompArtificialMaid>();
+            if (comp != null && !comp.allowAutoHibernate)
+            {
+                return null;
+            }
+
             // 仅在女仆空闲且有展示柜开启了自动休眠功能时，才寻找并进入展示柜。
 
             // 寻找最近的可用展示柜

@@ -23,6 +23,7 @@ namespace OuterrealmTechRobot
         public bool isDuplicate = false;
         public int originPawnId = -1;
         public string originSerialNumber;
+        public bool allowAutoHibernate = true;
 
         public override void PostPostMake()
         {
@@ -43,6 +44,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref isDuplicate, "isDuplicate", false);
             Scribe_Values.Look(ref originPawnId, "originPawnId", -1);
             Scribe_Values.Look(ref originSerialNumber, "originSerialNumber");
+            Scribe_Values.Look(ref allowAutoHibernate, "allowAutoHibernate", true);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -410,6 +412,26 @@ namespace OuterrealmTechRobot
                     if (skill.Level < 99) skill.Level = 99;
                     if (skill.passion != Passion.Major) skill.passion = Passion.Major;
                 }
+            }
+        }
+
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            foreach (Gizmo g in base.CompGetGizmosExtra())
+            {
+                yield return g;
+            }
+
+            if (Pawn.Faction == Faction.OfPlayer)
+            {
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "AllowAutoHibernateLabel".Translate(),
+                    defaultDesc = "AllowAutoHibernateDesc".Translate(),
+                    isActive = () => allowAutoHibernate,
+                    toggleAction = () => allowAutoHibernate = !allowAutoHibernate,
+                    icon = ArtificialMaidTex.IconAutoHibernate
+                };
             }
         }
 

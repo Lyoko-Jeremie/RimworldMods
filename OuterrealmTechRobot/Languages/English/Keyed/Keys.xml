@@ -37,6 +37,9 @@
     <AutoWakeLabel>Auto-Wake</AutoWakeLabel>
     <AutoWakeDesc>If enabled, the occupant will automatically wake up when work is detected on the map.</AutoWakeDesc>
 
+    <AllowAutoHibernateLabel>Auto-Hibernate</AllowAutoHibernateLabel>
+    <AllowAutoHibernateDesc>If enabled, this maid will automatically seek a display case for hibernation when idle.</AllowAutoHibernateDesc>
+
     <EnterDisplayCase>Enter display case</EnterDisplayCase>
     <CannotEnterDisplayCase>Cannot enter display case</CannotEnterDisplayCase>
 </LanguageData>
