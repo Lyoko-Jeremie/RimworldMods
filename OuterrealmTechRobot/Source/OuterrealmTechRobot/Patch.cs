@@ -57,16 +57,16 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(Thing), nameof(Thing.Destroy))]
-    public static class Patch_Thing_Destroy
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.Destroy))]
+    public static class Patch_Pawn_Destroy
     {
         [HarmonyPrefix]
-        public static void Prefix(Thing __instance)
+        public static void Prefix(Pawn __instance)
         {
-            if (__instance is Pawn pawn && pawn.Map != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            if (__instance.Map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                var mapComp = pawn.Map.GetComponent<ArtificialMaidMapComponent>();
-                mapComp?.UnregisterMaid(pawn);
+                var mapComp = __instance.Map.GetComponent<ArtificialMaidMapComponent>();
+                mapComp?.UnregisterMaid(__instance);
             }
         }
     }
@@ -187,13 +187,12 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(PawnCapacitiesHandler), "GetLevel")]
-    public static class Patch_PawnCapacitiesHandler_GetLevel
+    [HarmonyPatch(typeof(PawnCapacityUtility), nameof(PawnCapacityUtility.CalculateCapacityLevel))]
+    public static class Patch_PawnCapacityUtility_CalculateCapacityLevel
     {
-        public static void Postfix(PawnCapacitiesHandler __instance, PawnCapacityDef capacity, ref float __result,
-            Pawn ___pawn)
+        public static void Postfix(HediffSet diffSet, ref float __result)
         {
-            if (___pawn != null && ___pawn.def == ArtificialMaidDefOf.ArtificialMaid && !___pawn.Dead)
+            if (diffSet.pawn != null && diffSet.pawn.def == ArtificialMaidDefOf.ArtificialMaid && !diffSet.pawn.Dead)
             {
                 if (__result < 2.0f)
                 {
@@ -236,6 +235,7 @@ namespace OuterrealmTechRobot
             return true;
         }
     }
+    
     [HarmonyPatch(typeof(Pawn_PathFollower), "CostToMoveIntoCell", typeof(Pawn), typeof(IntVec3))]
     public static class Patch_Pawn_PathFollower_CostToMoveIntoCell
     {
@@ -292,20 +292,14 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(ThoughtHandler), nameof(ThoughtHandler.GetDistinctMoodThoughtGroups))]
-    public static class Patch_ThoughtHandler_GetDistinctMoodThoughtGroups
+    [HarmonyPatch(typeof(ThoughtHandler), nameof(ThoughtHandler.GetAllMoodThoughts))]
+    public static class Patch_ThoughtHandler_GetAllMoodThoughts
     {
         public static void Postfix(ThoughtHandler __instance, List<Thought> outThoughts)
         {
             if (__instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                for (int i = outThoughts.Count - 1; i >= 0; i--)
-                {
-                    if (__instance.MoodOffsetOfGroup(outThoughts[i]) < 0)
-                    {
-                        outThoughts.RemoveAt(i);
-                    }
-                }
+                outThoughts.RemoveAll(t => t.MoodOffset() < 0);
             }
         }
     }
