@@ -15,6 +15,7 @@ namespace FullyAutomaticOmniCrafter
         private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
         private static Dictionary<Map, CompBiosphere[]> biosphereGrid = new Dictionary<Map, CompBiosphere[]>();
         private static Dictionary<Map, int> mapVacuumProtectionCount = new Dictionary<Map, int>();
+        private static Dictionary<Map, int> mapTemperatureControlCount = new Dictionary<Map, int>();
         private static HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
         private static List<Pawn> tmpPawnsToRemove = new List<Pawn>();
 
@@ -48,6 +49,7 @@ namespace FullyAutomaticOmniCrafter
                 RebuildGridForArea(map, area);
             }
             RecalculateVacuumProtectionCount(map);
+            RecalculateTemperatureControlCount(map);
         }
 
         public static void Deregister(CompBiosphere comp, Map map)
@@ -65,6 +67,7 @@ namespace FullyAutomaticOmniCrafter
                 RebuildGridForArea(map, area);
             }
             RecalculateVacuumProtectionCount(map);
+            RecalculateTemperatureControlCount(map);
         }
 
         public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea)
@@ -158,6 +161,7 @@ namespace FullyAutomaticOmniCrafter
             if (source.parent.Map != null)
             {
                 RecalculateVacuumProtectionCount(source.parent.Map);
+                RecalculateTemperatureControlCount(source.parent.Map);
             }
         }
 
@@ -184,7 +188,7 @@ namespace FullyAutomaticOmniCrafter
         public static CompBiosphere GetBiosphereAt(Map map, IntVec3 cell)
         {
             if (map == null) return null;
-            if (biosphereGrid.TryGetValue(map, out var grid))
+            if (TryGetGrid(map, out var grid))
             {
                 int index = map.cellIndices.CellToIndex(cell);
                 if (index >= 0 && index < grid.Length)
@@ -195,10 +199,53 @@ namespace FullyAutomaticOmniCrafter
             return null;
         }
 
+        private static Map lastMap;
+        private static CompBiosphere[] lastGrid;
+
+        private static bool TryGetGrid(Map map, out CompBiosphere[] grid)
+        {
+            if (map == lastMap && lastGrid != null)
+            {
+                grid = lastGrid;
+                return true;
+            }
+
+            if (biosphereGrid.TryGetValue(map, out grid))
+            {
+                lastMap = map;
+                lastGrid = grid;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Map lastVacuumMap;
+        private static bool lastVacuumValue;
+
         public static bool AnyBiosphereHasVacuumProtection(Map map)
         {
             if (map == null) return false;
-            return mapVacuumProtectionCount.TryGetValue(map, out int count) && count > 0;
+            if (map == lastVacuumMap) return lastVacuumValue;
+
+            bool value = mapVacuumProtectionCount.TryGetValue(map, out int count) && count > 0;
+            lastVacuumMap = map;
+            lastVacuumValue = value;
+            return value;
+        }
+
+        private static Map lastTempControlMap;
+        private static bool lastTempControlValue;
+
+        public static bool AnyBiosphereHasTemperatureControl(Map map)
+        {
+            if (map == null) return false;
+            if (map == lastTempControlMap) return lastTempControlValue;
+
+            bool value = mapTemperatureControlCount.TryGetValue(map, out int count) && count > 0;
+            lastTempControlMap = map;
+            lastTempControlValue = value;
+            return value;
         }
 
         public static void RecalculateVacuumProtectionCount(Map map)
@@ -216,6 +263,25 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
             mapVacuumProtectionCount[map] = count;
+            if (map == lastVacuumMap) lastVacuumValue = (count > 0);
+        }
+
+        public static void RecalculateTemperatureControlCount(Map map)
+        {
+            if (map == null) return;
+            int count = 0;
+            if (biosphereComps.TryGetValue(map, out var list))
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i].controlTemperature && list[i].parent.Spawned)
+                    {
+                        count++;
+                    }
+                }
+            }
+            mapTemperatureControlCount[map] = count;
+            if (map == lastTempControlMap) lastTempControlValue = (count > 0);
         }
 
         public static void MaintainPawnEffects(Map map)
@@ -370,6 +436,8 @@ namespace FullyAutomaticOmniCrafter
     {
         public static void Postfix(IntVec3 c, Map map, ref float __result)
         {
+            if (!CompBiosphereManager.AnyBiosphereHasTemperatureControl(map)) return;
+
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
             if (biosphere != null && biosphere.controlTemperature)
             {
