@@ -152,8 +152,15 @@ namespace OuterrealmTechRobot
         /// </summary>
         public override IEnumerable<Gizmo> GetGizmos()
         {
-            // 返回父类的默认按钮（如拆除等）
-            foreach (var g in base.GetGizmos()) yield return g;
+            // 返回父类的默认按钮（如拆除等），但过滤掉基类自带的“打开”或“弹出”按钮
+            foreach (var g in base.GetGizmos())
+            {
+                if (g is Command cmd && (cmd.defaultLabel == "Open".Translate()/* || cmd.defaultLabel == "CommandPodEject".Translate()*/))
+                {
+                    continue;
+                }
+                yield return g;
+            }
 
             // 自动休眠切换开关
             yield return new Command_Toggle
