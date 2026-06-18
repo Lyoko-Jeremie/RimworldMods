@@ -45,6 +45,26 @@ namespace OuterrealmTechRobot
                 serialNumber = GenerateSerialNumber();
                 manufactureTick = Find.TickManager.TicksGame;
             }
+            EnsureMechanitorCapabilities();
+        }
+
+        public override void PostSpawnSetup(bool respawningAfterLoad)
+        {
+            base.PostSpawnSetup(respawningAfterLoad);
+            EnsureMechanitorCapabilities();
+        }
+
+        private void EnsureMechanitorCapabilities()
+        {
+            if (!ModsConfig.BiotechActive) return;
+            if (Pawn.Faction != null && Pawn.Faction.IsPlayer && Pawn.health != null)
+            {
+                if (!Pawn.health.hediffSet.HasHediff(HediffDefOf.MechlinkImplant))
+                {
+                    Pawn.health.AddHediff(HediffDefOf.MechlinkImplant, Pawn.health.hediffSet.GetBrain());
+                    PawnComponentsUtility.AddAndRemoveDynamicComponents(Pawn);
+                }
+            }
         }
 
         public override void PostExposeData()
@@ -67,6 +87,7 @@ namespace OuterrealmTechRobot
                     serialNumber = GenerateSerialNumber();
                     if (manufactureTick < 0) manufactureTick = Find.TickManager.TicksGame;
                 }
+                EnsureMechanitorCapabilities();
             }
         }
 
@@ -631,6 +652,7 @@ namespace OuterrealmTechRobot
 
                 this.FullRepair();
                 this.EnsureRecoveryHediff();
+                this.EnsureMechanitorCapabilities();
 
                 string label = "ArtificialMaidRecruitedLabel".Translate(Pawn.LabelShort);
                 string text = "ArtificialMaidRecruitedText".Translate(Pawn.LabelShort);
