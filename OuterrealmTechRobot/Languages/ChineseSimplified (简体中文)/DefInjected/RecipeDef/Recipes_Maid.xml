@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-  <FabricateArtificialMaid.label>制造人造女仆</FabricateArtificialMaid.label>
-  <FabricateArtificialMaid.description>制造一个人造女仆。需要消耗大量存储的电量。</FabricateArtificialMaid.description>
-  <FabricateArtificialMaid.jobString>正在制造人造女仆。</FabricateArtificialMaid.jobString>
+  <FabricateArtificialMaid.label>制造人造人女仆</FabricateArtificialMaid.label>
+  <FabricateArtificialMaid.description>制造一个人造人女仆。需要消耗大量存储的电量。</FabricateArtificialMaid.description>
+  <FabricateArtificialMaid.jobString>正在制造人造人女仆。</FabricateArtificialMaid.jobString>
 </LanguageData>
