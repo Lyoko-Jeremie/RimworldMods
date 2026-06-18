@@ -534,31 +534,6 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(CompAbilityEffect_ConsumeLeap), nameof(CompAbilityEffect_ConsumeLeap.AICanTargetNow))]
-    public static class Patch_CompAbilityEffect_ConsumeLeap_AICanTargetNow
-    {
-        [HarmonyPostfix]
-        public static void Postfix(LocalTargetInfo target, ref bool __result)
-        {
-            if (__result && target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
-            {
-                __result = false;
-            }
-        }
-    }
-
-    [HarmonyPatch(typeof(CompAbilityEffect_ConsumeLeap), nameof(CompAbilityEffect_ConsumeLeap.Valid))]
-    public static class Patch_CompAbilityEffect_ConsumeLeap_Valid
-    {
-        [HarmonyPostfix]
-        public static void Postfix(LocalTargetInfo target, ref bool __result)
-        {
-            if (__result && target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
-            {
-                __result = false;
-            }
-        }
-    }
     [HarmonyPatch(typeof(KidnappedPawnsTracker), nameof(KidnappedPawnsTracker.Kidnap))]
     public static class Patch_KidnappedPawnsTracker_Kidnap
     {
@@ -576,14 +551,13 @@ namespace OuterrealmTechRobot
     [HarmonyPatch(typeof(CompDevourer), nameof(CompDevourer.StartDigesting))]
     public static class Patch_CompDevourer_StartDigesting
     {
-        [HarmonyPrefix]
-        public static bool Prefix(LocalTargetInfo target)
+        [HarmonyPostfix]
+        public static void Postfix(CompDevourer __instance, LocalTargetInfo target)
         {
             if (target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                return false;
+                __instance.Pawn?.Kill(null);
             }
-            return true;
         }
     }
 }
