@@ -205,7 +205,7 @@
                 <minDistanceToBlink>5</minDistanceToBlink>
                 <maxDistanceToBlink>3000</maxDistanceToBlink>
                 <blinkIntervalTicks>30</blinkIntervalTicks>
-                <delayAfterEligibleTicks>20</delayAfterEligibleTicks>
+                <delayAfterEligibleTicks>0</delayAfterEligibleTicks>
                 <cellsBeforeTarget>1</cellsBeforeTarget>
                 <postBlinkStanceTicks>30</postBlinkStanceTicks>
                 <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
