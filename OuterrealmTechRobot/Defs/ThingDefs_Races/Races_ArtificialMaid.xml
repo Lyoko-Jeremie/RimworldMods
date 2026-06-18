@@ -98,6 +98,9 @@
             <MechRemoteShieldEnergy>250000</MechRemoteShieldEnergy> <!-- 远程机械盾能量加成 -->
             <MechFormingSpeed>12000</MechFormingSpeed> <!-- 机械体妊娠/制造速度 -->
             <WorkSpeedGlobalOffsetMech>+110000</WorkSpeedGlobalOffsetMech> <!-- 受控机械体的全局工作速度偏移 -->
+            <StudyEfficiency>1000000</StudyEfficiency> <!-- 异象研究效率 -->
+            <EntityStudyRate>1000000</EntityStudyRate> <!-- 异象研究速度 -->
+            <ActivitySuppressionRate>1000000</ActivitySuppressionRate> <!-- 异象压制速度 -->
         </statBases>
         <tools>
             <li>

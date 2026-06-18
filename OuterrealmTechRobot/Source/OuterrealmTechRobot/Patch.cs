@@ -420,7 +420,7 @@ namespace OuterrealmTechRobot
                     defName == "PsychicRitualQuality" ||
                     defName == "PsychicRitualQualityOffset")
                 {
-                    __result *= 100f;
+                    __result *= 1000000f;
                 }
             }
         }
@@ -434,7 +434,7 @@ namespace OuterrealmTechRobot
         {
             if (studier != null && studier.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                studyAmount *= 100f;
+                studyAmount *= 1000000f;
             }
         }
     }
@@ -447,7 +447,7 @@ namespace OuterrealmTechRobot
         {
             if (studier != null && studier.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                knowledgeAmount *= 100f;
+                knowledgeAmount *= 1000000f;
             }
         }
     }
@@ -461,8 +461,8 @@ namespace OuterrealmTechRobot
             Pawn invoker = psychicRitual.assignments.FirstAssignedPawn(__instance.invokerRole);
             if (invoker != null && invoker.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                __instance.hoursUntilOutcome *= 0.01f;
-                __instance.hoursUntilHoraxEffect *= 0.01f;
+                __instance.hoursUntilOutcome *= 0.000001f;
+                __instance.hoursUntilHoraxEffect *= 0.000001f;
             }
         }
     }
@@ -570,6 +570,56 @@ namespace OuterrealmTechRobot
             if (target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 __instance.Pawn?.Kill(null);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(JobDriver_ActivateMonolith), "MakeNewToils")]
+    public static class Patch_JobDriver_ActivateMonolith_MakeNewToils
+    {
+        [HarmonyPostfix]
+        public static void Postfix(JobDriver_ActivateMonolith __instance, ref IEnumerable<Toil> __result)
+        {
+            if (__instance.pawn != null && __instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __result = ModifyToils(__result);
+            }
+        }
+
+        private static IEnumerable<Toil> ModifyToils(IEnumerable<Toil> toils)
+        {
+            foreach (var toil in toils)
+            {
+                if (toil.defaultDuration > 1)
+                {
+                    toil.defaultDuration = 1;
+                }
+                yield return toil;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(JobDriver_InteractThing), "MakeNewToils")]
+    public static class Patch_JobDriver_InteractThing_MakeNewToils
+    {
+        [HarmonyPostfix]
+        public static void Postfix(JobDriver_InteractThing __instance, ref IEnumerable<Toil> __result)
+        {
+            if (__instance.pawn != null && __instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __result = ModifyToils(__result);
+            }
+        }
+
+        private static IEnumerable<Toil> ModifyToils(IEnumerable<Toil> toils)
+        {
+            foreach (var toil in toils)
+            {
+                if (toil.defaultDuration > 10)
+                {
+                    toil.defaultDuration = 10;
+                }
+                yield return toil;
             }
         }
     }
