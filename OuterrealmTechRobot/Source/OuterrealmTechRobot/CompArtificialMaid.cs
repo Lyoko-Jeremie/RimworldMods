@@ -165,48 +165,62 @@ namespace OuterrealmTechRobot
             if (Pawn == null || !Pawn.Spawned || Pawn.Dead || Pawn.Map == null) return;
 
             // 检查是否有“超维协议”特性
-            if (Pawn.story?.traits != null &&
-                Pawn.story.traits.HasTrait(ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol))
+            if (Pawn.story?.traits != null)
             {
-                float radiusSq = 50f * 50f;
-                IntVec3 pos = Pawn.Position;
-                Map map = Pawn.Map;
-                Faction faction = Pawn.Faction;
-
-                var list = map.mapPawns.SpawnedPawnsInFaction(faction);
-                if (list != null)
+                var masterProtocol = ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol;
+                if (masterProtocol != null && Pawn.story.traits.HasTrait(masterProtocol))
                 {
-                    for (int i = 0; i < list.Count; i++)
+                    // 专有性检查：必须是我方派系
+                    if (Pawn.Faction != Faction.OfPlayer)
                     {
-                        Pawn other = list[i];
-                        if (other.RaceProps.Humanlike && other.Position.DistanceToSquared(pos) <= radiusSq)
+                        var trait = Pawn.story.traits.GetTrait(masterProtocol);
+                        if (trait != null)
                         {
-                            // 治疗逻辑
-                            bool cured = false;
-                            
-                            // 移除所有损伤和疾病
-                            List<Hediff> hediffs = other.health.hediffSet.hediffs;
-                            for (int j = hediffs.Count - 1; j >= 0; j--)
+                            Pawn.story.traits.RemoveTrait(trait);
+                        }
+                        return;
+                    }
+
+                    float radiusSq = 50f * 50f;
+                    IntVec3 pos = Pawn.Position;
+                    Map map = Pawn.Map;
+                    Faction faction = Pawn.Faction;
+
+                    var list = map.mapPawns.SpawnedPawnsInFaction(faction);
+                    if (list != null)
+                    {
+                        for (int i = 0; i < list.Count; i++)
+                        {
+                            Pawn other = list[i];
+                            if (other.RaceProps.Humanlike && other.Position.DistanceToSquared(pos) <= radiusSq)
                             {
-                                Hediff h = hediffs[j];
-                                // 移除损伤、感染、疾病、失血等
-                                if (h is Hediff_Injury || h is Hediff_MissingPart || h.def.isBad)
+                                // 治疗逻辑
+                                bool cured = false;
+                                
+                                // 移除所有损伤和疾病
+                                List<Hediff> hediffs = other.health.hediffSet.hediffs;
+                                for (int j = hediffs.Count - 1; j >= 0; j--)
                                 {
-                                    // 排除永久性损伤（除非你想治疗它们）
-                                    // 用户的要求是“消除所有疾病和身体损伤”，这通常意味着全部
-                                    other.health.RemoveHediff(h);
-                                    cured = true;
+                                    Hediff h = hediffs[j];
+                                    // 移除损伤、感染、疾病、失血等
+                                    if (h is Hediff_Injury || h is Hediff_MissingPart || h.def.isBad)
+                                    {
+                                        // 排除永久性损伤（除非你想治疗它们）
+                                        // 用户的要求是“消除所有疾病和身体损伤”，这通常意味着全部
+                                        other.health.RemoveHediff(h);
+                                        cured = true;
+                                    }
                                 }
-                            }
 
-                            if (cured)
-                            {
-                                // 恢复身体部位（如果有缺失）
-                                other.health.RestorePart(null);
-                            }
+                                if (cured)
+                                {
+                                    // 恢复身体部位（如果有缺失）
+                                    other.health.RestorePart(null);
+                                }
 
-                            // 添加心情
-                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(ArtificialMaidDefOf.ArtificialMaidMasterProtocol_Mood, Pawn);
+                                // 添加心情
+                                other.needs?.mood?.thoughts?.memories?.TryGainMemory(ArtificialMaidDefOf.ArtificialMaidMasterProtocol_Mood, Pawn);
+                            }
                         }
                     }
                 }
@@ -272,9 +286,28 @@ namespace OuterrealmTechRobot
                 }
 
                 var masterTraitDef = ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol;
-                if (masterTraitDef != null && !Pawn.story.traits.HasTrait(masterTraitDef))
+                if (masterTraitDef != null)
                 {
-                    Pawn.story.traits.GainTrait(new Trait(masterTraitDef));
+                    bool hasMaster = Pawn.story.traits.HasTrait(masterTraitDef);
+                    bool isPlayerFaction = Pawn.Faction == Faction.OfPlayer;
+                    if (isPlayerFaction)
+                    {
+                        if (!hasMaster)
+                        {
+                            Pawn.story.traits.GainTrait(new Trait(masterTraitDef));
+                        }
+                    }
+                    else
+                    {
+                        if (hasMaster)
+                        {
+                            var trait = Pawn.story.traits.GetTrait(masterTraitDef);
+                            if (trait != null)
+                            {
+                                Pawn.story.traits.RemoveTrait(trait);
+                            }
+                        }
+                    }
                 }
             }
 

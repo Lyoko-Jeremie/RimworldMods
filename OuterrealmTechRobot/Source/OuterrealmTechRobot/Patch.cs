@@ -454,19 +454,43 @@ namespace OuterrealmTechRobot
         }
     }
 
-    // 确保“超维协议”特质专属于我方人造人
-    [HarmonyPatch(typeof(Pawn), "Tick")]
-    public static class Patch_Pawn_Tick_ExclusiveTraitCheck
+    [HarmonyPatch(typeof(TraitSet), nameof(TraitSet.GainTrait))]
+    public static class Patch_TraitSet_GainTrait_ExclusiveCheck
+    {
+        private static readonly AccessTools.FieldRef<TraitSet, Pawn> PawnField =
+            AccessTools.FieldRefAccess<TraitSet, Pawn>("pawn");
+
+        [HarmonyPrefix]
+        public static bool Prefix(TraitSet __instance, Trait trait)
+        {
+            if (trait?.def == ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol)
+            {
+                Pawn pawn = PawnField(__instance);
+                if (pawn == null) return true;
+
+                bool isMaid = pawn.def == ArtificialMaidDefOf.ArtificialMaid || pawn.GetComp<CompArtificialMaid>() != null;
+                bool isPlayerFaction = pawn.Faction == Faction.OfPlayer;
+
+                if (!isMaid || !isPlayerFaction)
+                {
+                    return false; // 拦截非法持有
+                }
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.SpawnSetup))]
+    public static class Patch_Pawn_SpawnSetup_ExclusiveTraitCheck
     {
         [HarmonyPostfix]
         public static void Postfix(Pawn __instance)
         {
-            if (__instance.IsHashIntervalTick(250) && __instance.story?.traits != null)
+            if (__instance.story?.traits != null)
             {
                 var traitDef = ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol;
                 if (traitDef != null && __instance.story.traits.HasTrait(traitDef))
                 {
-                    // 检查是否为合法持有者：必须是人造人且属于玩家派系
                     bool isMaid = __instance.def == ArtificialMaidDefOf.ArtificialMaid || __instance.GetComp<CompArtificialMaid>() != null;
                     bool isPlayerFaction = __instance.Faction == Faction.OfPlayer;
 
