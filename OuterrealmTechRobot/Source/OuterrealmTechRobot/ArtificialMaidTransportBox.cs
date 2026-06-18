@@ -36,25 +36,11 @@ namespace OuterrealmTechRobot
 
             if (innerContainer.Count > 0)
             {
-                Thing containedThing = innerContainer[0];
-                Command_Action selectContained = new Command_Action();
-                selectContained.defaultLabel = (containedThing is Pawn ? "CommandSelectContainedPawn" : "CommandSelectContainedThing").Translate((NamedArgument)containedThing);
-                selectContained.defaultDesc = (containedThing is Pawn ? "CommandSelectContainedPawnDesc" : "CommandSelectContainedThingDesc").Translate();
-                
-                if (containedThing is Pawn pawn)
+                Gizmo selectGizmo = ContainingSelectionUtility.SelectCarriedThingGizmo(this, innerContainer[0]);
+                if (selectGizmo != null)
                 {
-                    selectContained.icon = (Texture)PortraitsCache.Get(pawn, new Vector2(75f, 75f), Rot4.South);
+                    yield return selectGizmo;
                 }
-                else
-                {
-                    selectContained.icon = containedThing.def.uiIcon;
-                }
-                
-                selectContained.action = () =>
-                {
-                    CameraJumper.TryJumpAndSelect(containedThing);
-                };
-                yield return selectContained;
             }
         }
 

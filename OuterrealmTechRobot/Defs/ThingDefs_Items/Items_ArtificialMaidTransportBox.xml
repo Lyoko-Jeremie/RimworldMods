@@ -5,6 +5,7 @@
     <label>artificial maid transport box</label>
     <description>A specialized transport box for an Artificial Maid. It contains a deactivated maid in a state of suspended animation, ready to be reactivated upon opening.</description>
     <thingClass>OuterrealmTechRobot.ArtificialMaidTransportBox</thingClass>
+    <containedPawnsSelectable>true</containedPawnsSelectable>
     <graphicData>
       <texPath>Things/Item/ArtificialMaid/ArtificialMaidTransportBox</texPath>
       <graphicClass>Graphic_Single</graphicClass>
