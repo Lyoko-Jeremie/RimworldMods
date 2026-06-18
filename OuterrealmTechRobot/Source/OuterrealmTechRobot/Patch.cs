@@ -4,6 +4,7 @@ using HarmonyLib;
 using RimWorld;
 using Verse;
 using Verse.AI;
+using Verse.AI.Group;
 
 namespace OuterrealmTechRobot
 {
@@ -381,6 +382,74 @@ namespace OuterrealmTechRobot
                 {
                     __instance.job.takeInventoryDelay = 0;
                 }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(StatWorker), nameof(StatWorker.GetValueUnfinalized))]
+    public static class Patch_StatWorker_GetValueUnfinalized
+    {
+        private static readonly AccessTools.FieldRef<StatWorker, StatDef> StatRef =
+            AccessTools.FieldRefAccess<StatWorker, StatDef>("stat");
+
+        [HarmonyPostfix]
+        public static void Postfix(StatWorker __instance, StatRequest req, ref float __result)
+        {
+            if (req.HasThing && req.Thing is Pawn pawn && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                StatDef stat = StatRef(__instance);
+                if (stat == null) return;
+
+                string defName = stat.defName;
+                if (defName == "EntityStudyRate" ||
+                    defName == "StudyEfficiency" ||
+                    defName == "ActivitySuppressionRate" ||
+                    defName == "PsychicRitualQuality" ||
+                    defName == "PsychicRitualQualityOffset")
+                {
+                    __result *= 100f;
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(StudyManager), nameof(StudyManager.Study))]
+    public static class Patch_StudyManager_Study
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Pawn studier, ref float studyAmount)
+        {
+            if (studier != null && studier.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                studyAmount *= 100f;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(StudyManager), nameof(StudyManager.StudyAnomaly))]
+    public static class Patch_StudyManager_StudyAnomaly
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Pawn studier, ref float knowledgeAmount)
+        {
+            if (studier != null && studier.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                knowledgeAmount *= 100f;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PsychicRitualToil_InvokeHorax), nameof(PsychicRitualToil_InvokeHorax.Start))]
+    public static class Patch_PsychicRitualToil_InvokeHorax_Start
+    {
+        [HarmonyPrefix]
+        public static void Prefix(PsychicRitualToil_InvokeHorax __instance, PsychicRitual psychicRitual)
+        {
+            Pawn invoker = psychicRitual.assignments.FirstAssignedPawn(__instance.invokerRole);
+            if (invoker != null && invoker.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __instance.hoursUntilOutcome *= 0.01f;
+                __instance.hoursUntilHoraxEffect *= 0.01f;
             }
         }
     }
