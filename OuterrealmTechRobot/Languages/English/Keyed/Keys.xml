@@ -59,4 +59,8 @@
     <ArtificialMaidUnpacked>Artificial Maid {0} has been restarted.</ArtificialMaidUnpacked>
     <EnableHealingProtocolLabel>Enable Healing Protocol</EnableHealingProtocolLabel>
     <EnableHealingProtocolDesc>If enabled, this artificial maid will continuously provide disease treatment for master.</EnableHealingProtocolDesc>
+
+    <EnableHuntModeLabel>Enable Hunt Mode</EnableHuntModeLabel>
+    <EnableHuntModeDesc>If enabled, this artificial maid will automatically teleport to and melee attack all hostile units on the map until no enemies remain or the mode is manually disabled. The mode will automatically disable if no targets are found for a while.</EnableHuntModeDesc>
+    <HuntModeAutoDisabled>Artificial Maid {0} has automatically disabled Hunt Mode (no targets found).</HuntModeAutoDisabled>
 </LanguageData>

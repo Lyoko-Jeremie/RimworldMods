@@ -35,6 +35,8 @@ namespace OuterrealmTechRobot
         public string originSerialNumber;
         public bool allowAutoHibernate = true;
         public bool enableHealingProtocol = false;
+        public bool enableHuntMode = false;
+        public int lastEnemyFoundTick = -1;
         public bool hostileResponseInitialized = false;
 
         public override void PostPostMake()
@@ -78,6 +80,8 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref originSerialNumber, "originSerialNumber");
             Scribe_Values.Look(ref allowAutoHibernate, "allowAutoHibernate", true);
             Scribe_Values.Look(ref enableHealingProtocol, "enableHealingProtocol", false);
+            Scribe_Values.Look(ref enableHuntMode, "enableHuntMode", false);
+            Scribe_Values.Look(ref lastEnemyFoundTick, "lastEnemyFoundTick", -1);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
@@ -168,6 +172,14 @@ namespace OuterrealmTechRobot
                 }
             }
 
+            if (this.parent.IsHashIntervalTick(30))
+            {
+                if (enableHuntMode)
+                {
+                    this.ApplyHuntMode();
+                }
+            }
+
             if (this.parent.IsHashIntervalTick(60))
             {
                 this.ReplenishResources();
@@ -184,6 +196,89 @@ namespace OuterrealmTechRobot
                     this.ApplyHealingProtocol();
                 }
             }
+        }
+
+        private void ApplyHuntMode()
+        {
+            if (Pawn == null || !Pawn.Spawned || Pawn.Dead || Pawn.Map == null) return;
+
+            // 如果已经有关联的攻击Job且目标也是存活的敌对目标，则不需要重新寻敌（除非需要瞬移）
+            if (Pawn.CurJob != null && (Pawn.CurJob.def == JobDefOf.AttackMelee || Pawn.CurJob.def == JobDefOf.AttackStatic))
+            {
+                var currentTarget = Pawn.CurJob.targetA.Thing as Pawn;
+                if (currentTarget != null && !currentTarget.Dead && currentTarget.HostileTo(Pawn))
+                {
+                    lastEnemyFoundTick = Find.TickManager.TicksGame;
+                    
+                    // 检查是否需要瞬移到该目标身边
+                    if (Pawn.Position.DistanceToSquared(currentTarget.Position) > 10f * 10f)
+                    {
+                        TryBlinkToTarget(currentTarget);
+                    }
+                    return;
+                }
+            }
+
+            // 寻敌逻辑
+            Pawn enemy = (Pawn)AttackTargetFinder.BestAttackTarget(Pawn, TargetScanFlags.NeedThreat, t => t is Pawn p && p.HostileTo(Pawn) && !p.Downed, 0f, 9999f);
+            
+            if (enemy != null)
+            {
+                lastEnemyFoundTick = Find.TickManager.TicksGame;
+                
+                // 距离判断，决定是否瞬移
+                if (Pawn.Position.DistanceToSquared(enemy.Position) > 5f * 5f)
+                {
+                    if (TryBlinkToTarget(enemy))
+                    {
+                        // 瞬移成功后立即攻击
+                        Job job = JobMaker.MakeJob(JobDefOf.AttackMelee, enemy);
+                        Pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                        return;
+                    }
+                }
+                
+                // 正常攻击
+                Job attackJob = JobMaker.MakeJob(JobDefOf.AttackMelee, enemy);
+                Pawn.jobs.TryTakeOrderedJob(attackJob, JobTag.Misc);
+            }
+            else
+            {
+                // 检查超时自动关闭
+                if (lastEnemyFoundTick > 0 && Find.TickManager.TicksGame - lastEnemyFoundTick > 3000)
+                {
+                    enableHuntMode = false;
+                    Messages.Message("HuntModeAutoDisabled".Translate(Pawn.LabelShort), Pawn, MessageTypeDefOf.NeutralEvent);
+                }
+            }
+        }
+
+        private bool TryBlinkToTarget(Pawn target)
+        {
+            var blinkComp = Pawn.GetComp<AutoBlink.CompAutoBlink>();
+            if (blinkComp == null) return false;
+
+            // 检查冷却
+            if (Find.TickManager.TicksGame - blinkComp.lastBlinkTick < blinkComp.Props.blinkIntervalTicks) return false;
+
+            // 寻找落脚点
+            IntVec3 cell = IntVec3.Invalid;
+            foreach (var adj in GenAdj.AdjacentCells8WayRandomized())
+            {
+                IntVec3 c = target.Position + adj;
+                if (c.InBounds(Pawn.Map) && c.Standable(Pawn.Map) && !c.Filled(Pawn.Map))
+                {
+                    cell = c;
+                    break;
+                }
+            }
+
+            if (cell.IsValid)
+            {
+                blinkComp.BlinkToCellDirect(cell);
+                return true;
+            }
+            return false;
         }
 
         private void ApplyHealingProtocol()
@@ -595,6 +690,22 @@ namespace OuterrealmTechRobot
                     isActive = () => enableHealingProtocol,
                     toggleAction = () => enableHealingProtocol = !enableHealingProtocol,
                     icon = ArtificialMaidTex.IconHealingProtocol
+                };
+
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "EnableHuntModeLabel".Translate(),
+                    defaultDesc = "EnableHuntModeDesc".Translate(),
+                    isActive = () => enableHuntMode,
+                    toggleAction = () =>
+                    {
+                        enableHuntMode = !enableHuntMode;
+                        if (enableHuntMode)
+                        {
+                            lastEnemyFoundTick = Find.TickManager.TicksGame;
+                        }
+                    },
+                    icon = ArtificialMaidTex.IconHuntMode
                 };
 
                 yield return new Command_Action

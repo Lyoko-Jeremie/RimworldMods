@@ -59,4 +59,8 @@
     <ArtificialMaidUnpacked>人造人女仆 {0} 已重新启动。</ArtificialMaidUnpacked>
     <EnableHealingProtocolLabel>启用治疗协议</EnableHealingProtocolLabel>
     <EnableHealingProtocolDesc>启用后，人造人女仆将持续为主人提供治疗服务。</EnableHealingProtocolDesc>
+
+    <EnableHuntModeLabel>启用猎杀模式</EnableHuntModeLabel>
+    <EnableHuntModeDesc>启用后，人造人女仆将自动瞬移并近战攻击地图上的所有敌对单位，直到没有敌人或手动关闭。如果长时间没有发现目标，将自动关闭该模式。</EnableHuntModeDesc>
+    <HuntModeAutoDisabled>人造人女仆 {0} 已自动关闭猎杀模式（未发现目标）。</HuntModeAutoDisabled>
 </LanguageData>
