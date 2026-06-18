@@ -39,6 +39,19 @@ namespace OuterrealmTechRobot
         public int lastEnemyFoundTick = -1;
         public bool hostileResponseInitialized = false;
 
+        private AutoBlink.CompAutoBlink _cachedBlinkComp;
+        private AutoBlink.CompAutoBlink BlinkComp
+        {
+            get
+            {
+                if (_cachedBlinkComp == null && Pawn != null)
+                {
+                    _cachedBlinkComp = Pawn.GetComp<AutoBlink.CompAutoBlink>();
+                }
+                return _cachedBlinkComp;
+            }
+        }
+
         public override void PostPostMake()
         {
             base.PostPostMake();
@@ -255,7 +268,7 @@ namespace OuterrealmTechRobot
 
         private bool TryBlinkToTarget(Pawn target)
         {
-            var blinkComp = Pawn.GetComp<AutoBlink.CompAutoBlink>();
+            var blinkComp = BlinkComp;
             if (blinkComp == null) return false;
 
             // 检查冷却
