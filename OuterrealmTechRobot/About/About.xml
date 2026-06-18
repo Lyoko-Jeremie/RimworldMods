@@ -92,5 +92,10 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/Outerrea
 			<steamWorkshopUrl>https://steamcommunity.com/sharedfiles/filedetails/?id=839005762</steamWorkshopUrl>
 			<downloadUrl>https://github.com/RimWorld-CCL-Reborn/AlienRaces</downloadUrl>
 		</li>
+		 <li>
+		 	<packageId>rabiosus.autoblink</packageId>
+		 	<displayName>AutoBlink</displayName>
+		 	<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>
+		 </li>
 	</modDependencies>
 </ModMetaData>
