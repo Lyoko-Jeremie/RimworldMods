@@ -190,7 +190,7 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null || !Pawn.Spawned || Pawn.Dead || Pawn.Map == null) return;
 
-            // 检查是否有“超维协议”特性
+            // 检查是否有“超维治疗协议”特性
             if (Pawn.story?.traits != null)
             {
                 var masterProtocol = ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol;
@@ -218,7 +218,7 @@ namespace OuterrealmTechRobot
                         for (int i = 0; i < list.Count; i++)
                         {
                             Pawn other = list[i];
-                            if (other.RaceProps.Humanlike && other.Position.DistanceToSquared(pos) <= radiusSq)
+                            if (other.Position.DistanceToSquared(pos) <= radiusSq)
                             {
                                 // 治疗逻辑
                                 
