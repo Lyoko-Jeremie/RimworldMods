@@ -351,8 +351,8 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(JobDriver_TakeInventory), nameof(JobDriver_TakeInventory.Notify_Starting))]
-    public static class Patch_JobDriver_TakeInventory_Notify_Starting
+    [HarmonyPatch(typeof(JobDriver_TakeInventory), nameof(JobDriver_TakeInventory.TryMakePreToilReservations))]
+    public static class Patch_JobDriver_TakeInventory_TryMakePreToilReservations
     {
         [HarmonyPostfix]
         public static void Postfix(JobDriver_TakeInventory __instance)
