@@ -34,6 +34,7 @@ namespace OuterrealmTechRobot
         public int originPawnId = -1;
         public string originSerialNumber;
         public bool allowAutoHibernate = true;
+        public bool enableHealingProtocol = false;
         public bool hostileResponseInitialized = false;
 
         public override void PostPostMake()
@@ -56,6 +57,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref originPawnId, "originPawnId", -1);
             Scribe_Values.Look(ref originSerialNumber, "originSerialNumber");
             Scribe_Values.Look(ref allowAutoHibernate, "allowAutoHibernate", true);
+            Scribe_Values.Look(ref enableHealingProtocol, "enableHealingProtocol", false);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
@@ -156,7 +158,10 @@ namespace OuterrealmTechRobot
             if (this.parent.IsHashIntervalTick(250))
             {
                 this.ApplyEmotionalSupport();
-                this.ApplyHealingProtocol();
+                if (enableHealingProtocol)
+                {
+                    this.ApplyHealingProtocol();
+                }
             }
         }
 
@@ -558,6 +563,15 @@ namespace OuterrealmTechRobot
                     isActive = () => allowAutoHibernate,
                     toggleAction = () => allowAutoHibernate = !allowAutoHibernate,
                     icon = ArtificialMaidTex.IconAutoHibernate
+                };
+
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "EnableHealingProtocolLabel".Translate(),
+                    defaultDesc = "EnableHealingProtocolDesc".Translate(),
+                    isActive = () => enableHealingProtocol,
+                    toggleAction = () => enableHealingProtocol = !enableHealingProtocol,
+                    icon = ArtificialMaidTex.IconHealingProtocol
                 };
 
                 yield return new Command_Action
