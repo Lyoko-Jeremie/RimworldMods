@@ -506,4 +506,84 @@ namespace OuterrealmTechRobot
             }
         }
     }
+
+    [HarmonyPatch(typeof(KidnapAIUtility), nameof(KidnapAIUtility.TryFindGoodKidnapVictim))]
+    public static class Patch_KidnapAIUtility_TryFindGoodKidnapVictim
+    {
+        [HarmonyPostfix]
+        public static void Postfix(ref bool __result, ref Pawn victim)
+        {
+            if (__result && victim != null && victim.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                victim = null;
+                __result = false;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(KidnapAIUtility), nameof(KidnapAIUtility.ReachableWoundedGuest))]
+    public static class Patch_KidnapAIUtility_ReachableWoundedGuest
+    {
+        [HarmonyPostfix]
+        public static void Postfix(ref Pawn __result)
+        {
+            if (__result != null && __result.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __result = null;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CompAbilityEffect_ConsumeLeap), nameof(CompAbilityEffect_ConsumeLeap.AICanTargetNow))]
+    public static class Patch_CompAbilityEffect_ConsumeLeap_AICanTargetNow
+    {
+        [HarmonyPostfix]
+        public static void Postfix(LocalTargetInfo target, ref bool __result)
+        {
+            if (__result && target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __result = false;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CompAbilityEffect_ConsumeLeap), nameof(CompAbilityEffect_ConsumeLeap.Valid))]
+    public static class Patch_CompAbilityEffect_ConsumeLeap_Valid
+    {
+        [HarmonyPostfix]
+        public static void Postfix(LocalTargetInfo target, ref bool __result)
+        {
+            if (__result && target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                __result = false;
+            }
+        }
+    }
+    [HarmonyPatch(typeof(KidnappedPawnsTracker), nameof(KidnappedPawnsTracker.Kidnap))]
+    public static class Patch_KidnappedPawnsTracker_Kidnap
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn pawn)
+        {
+            if (pawn != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(CompDevourer), nameof(CompDevourer.StartDigesting))]
+    public static class Patch_CompDevourer_StartDigesting
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(LocalTargetInfo target)
+        {
+            if (target.Pawn != null && target.Pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
 }
