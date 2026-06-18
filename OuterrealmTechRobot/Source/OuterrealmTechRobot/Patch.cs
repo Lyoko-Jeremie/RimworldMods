@@ -44,6 +44,19 @@ namespace OuterrealmTechRobot
         }
     }
 
+    [HarmonyPatch(typeof(PawnUtility), nameof(PawnUtility.ForceWait))]
+    public static class Patch_PawnUtility_ForceWait
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Pawn pawn, ref int ticks)
+        {
+            if (ticks <= 0 && pawn != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                ticks = 1;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.DeSpawn))]
     public static class Patch_Pawn_DeSpawn
     {
