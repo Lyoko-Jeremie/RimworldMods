@@ -333,4 +333,38 @@ namespace OuterrealmTechRobot
             }
         }
     }
+
+    [HarmonyPatch(typeof(JobDriver_Wear), nameof(JobDriver_Wear.Notify_Starting))]
+    public static class Patch_JobDriver_Wear_Notify_Starting
+    {
+        private static readonly AccessTools.FieldRef<JobDriver_Wear, int> DurationRef =
+            AccessTools.FieldRefAccess<JobDriver_Wear, int>("duration");
+
+        [HarmonyPostfix]
+        public static void Postfix(JobDriver_Wear __instance)
+        {
+            if (__instance.pawn != null && __instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                // 穿戴物品时间缩短为 1 tick
+                DurationRef(__instance) = 1;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(JobDriver_TakeInventory), nameof(JobDriver_TakeInventory.Notify_Starting))]
+    public static class Patch_JobDriver_TakeInventory_Notify_Starting
+    {
+        [HarmonyPostfix]
+        public static void Postfix(JobDriver_TakeInventory __instance)
+        {
+            if (__instance.pawn != null && __instance.pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                // 拾取物品延迟缩短为 0
+                if (__instance.job != null)
+                {
+                    __instance.job.takeInventoryDelay = 0;
+                }
+            }
+        }
+    }
 }

@@ -80,6 +80,7 @@
             <Insulation_Cold>10000</Insulation_Cold> <!-- 抗寒绝缘 -->
             <Insulation_Heat>10000</Insulation_Heat> <!-- 抗热绝缘 -->
             <EquipDelay>0</EquipDelay> <!-- 装备延迟 -->
+            <EquipSpeed>100</EquipSpeed> <!-- 装备速度 (10,000%) -->
             <WorkSpeedGlobal>9999999</WorkSpeedGlobal> <!-- 全局工作速度 -->
             <CarryingCapacity>999999</CarryingCapacity> <!-- 搬运能力 -->
             <MentalBreakThreshold>0</MentalBreakThreshold> <!-- 崩溃临界值 -->
