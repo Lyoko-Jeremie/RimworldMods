@@ -172,4 +172,16 @@
             </li>
         </degreeDatas>
     </TraitDef>
+
+    <!-- 专有特质：超维治疗协议 -->
+    <TraitDef>
+        <defName>ArtificialMaidTrait_MasterProtocol</defName>
+        <commonality>0</commonality>
+        <degreeDatas>
+            <li>
+                <label>超维治疗协议</label>
+                <description>{PAWN_nameDef} 运行着来自超维科技的核心协议。作为最高等级的人造人女仆，她不仅能完美照顾主人的起居，还能通过隐藏在高维空间中的纳米机器人阵列，自动治愈周围同伴的一切损伤。她的存在，就是主人最坚实的后盾。</description>
+            </li>
+        </degreeDatas>
+    </TraitDef>
 </Defs>

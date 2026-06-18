@@ -32,4 +32,7 @@
 
   <ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.label>Innocent Playmate</ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.label>
   <ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.description>{PAWN_nameDef} is the childhood friend who played in the clouds and ran in the flowers with the master. This tacit understanding established since childhood allows them to understand each other without words. She is the master's sibling, friend, and a childhood dream that will never leave.</ArtificialMaidTrait_ChildhoodPlaymate.degreeDatas.0.description>
+  
+  <ArtificialMaidTrait_MasterProtocol.degreeDatas.0.label>Outerrealm healing Protocol</ArtificialMaidTrait_MasterProtocol.degreeDatas.0.label>
+  <ArtificialMaidTrait_MasterProtocol.degreeDatas.0.description>{PAWN_nameDef} runs the core protocol from Outerrealm Tech. As the highest-level Artificial Maid, she not only takes perfect care of the master's daily life, but also automatically heals all injuries of nearby companions through a Outerrealm space nano-robot array. Her existence is the solid backing of the master.</ArtificialMaidTrait_MasterProtocol.degreeDatas.0.description>
 </LanguageData>

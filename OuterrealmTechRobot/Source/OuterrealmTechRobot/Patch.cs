@@ -453,4 +453,33 @@ namespace OuterrealmTechRobot
             }
         }
     }
+
+    // 确保“超维协议”特质专属于我方人造人
+    [HarmonyPatch(typeof(Pawn), "Tick")]
+    public static class Patch_Pawn_Tick_ExclusiveTraitCheck
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance)
+        {
+            if (__instance.IsHashIntervalTick(250) && __instance.story?.traits != null)
+            {
+                var traitDef = ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol;
+                if (traitDef != null && __instance.story.traits.HasTrait(traitDef))
+                {
+                    // 检查是否为合法持有者：必须是人造人且属于玩家派系
+                    bool isMaid = __instance.def == ArtificialMaidDefOf.ArtificialMaid || __instance.GetComp<CompArtificialMaid>() != null;
+                    bool isPlayerFaction = __instance.Faction == Faction.OfPlayer;
+
+                    if (!isMaid || !isPlayerFaction)
+                    {
+                        var trait = __instance.story.traits.GetTrait(traitDef);
+                        if (trait != null)
+                        {
+                            __instance.story.traits.RemoveTrait(trait);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

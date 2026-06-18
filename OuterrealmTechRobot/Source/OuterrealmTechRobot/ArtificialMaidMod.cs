@@ -11,7 +11,9 @@ namespace OuterrealmTechRobot
     {
         public static ThingDef ArtificialMaid;
         public static TraitDef ArtificialMaidTrait_EmotionalSynchrony;
+        public static TraitDef ArtificialMaidTrait_MasterProtocol;
         public static ThoughtDef MaidEmotionalSupport;
+        public static ThoughtDef ArtificialMaidMasterProtocol_Mood;
         public static HediffDef ArtificialMaidRecovery;
         public static ThingDef ArtificialMaidDisplayCase;
         public static JobDef EnterDisplayCase;

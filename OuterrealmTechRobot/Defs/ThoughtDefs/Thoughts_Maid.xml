@@ -12,4 +12,17 @@
             </li>
         </stages>
     </ThoughtDef>
+
+    <ThoughtDef>
+        <defName>ArtificialMaidMasterProtocol_Mood</defName>
+        <durationDays>1</durationDays>
+        <stackLimit>1</stackLimit>
+        <stages>
+            <li>
+                <label>超维协议庇护</label>
+                <description>在超维科技的纳米阵列庇护下，我感到前所未有的安心。身体的伤痛在瞬间消失，精神也得到了极大的振奋。</description>
+                <baseMoodEffect>20</baseMoodEffect>
+            </li>
+        </stages>
+    </ThoughtDef>
 </Defs>

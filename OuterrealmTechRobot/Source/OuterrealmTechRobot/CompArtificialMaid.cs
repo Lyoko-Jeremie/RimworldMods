@@ -156,6 +156,60 @@ namespace OuterrealmTechRobot
             if (this.parent.IsHashIntervalTick(250))
             {
                 this.ApplyEmotionalSupport();
+                this.ApplyHealingProtocol();
+            }
+        }
+
+        private void ApplyHealingProtocol()
+        {
+            if (Pawn == null || !Pawn.Spawned || Pawn.Dead || Pawn.Map == null) return;
+
+            // 检查是否有“超维协议”特性
+            if (Pawn.story?.traits != null &&
+                Pawn.story.traits.HasTrait(ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol))
+            {
+                float radiusSq = 50f * 50f;
+                IntVec3 pos = Pawn.Position;
+                Map map = Pawn.Map;
+                Faction faction = Pawn.Faction;
+
+                var list = map.mapPawns.SpawnedPawnsInFaction(faction);
+                if (list != null)
+                {
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        Pawn other = list[i];
+                        if (other.RaceProps.Humanlike && other.Position.DistanceToSquared(pos) <= radiusSq)
+                        {
+                            // 治疗逻辑
+                            bool cured = false;
+                            
+                            // 移除所有损伤和疾病
+                            List<Hediff> hediffs = other.health.hediffSet.hediffs;
+                            for (int j = hediffs.Count - 1; j >= 0; j--)
+                            {
+                                Hediff h = hediffs[j];
+                                // 移除损伤、感染、疾病、失血等
+                                if (h is Hediff_Injury || h is Hediff_MissingPart || h.def.isBad)
+                                {
+                                    // 排除永久性损伤（除非你想治疗它们）
+                                    // 用户的要求是“消除所有疾病和身体损伤”，这通常意味着全部
+                                    other.health.RemoveHediff(h);
+                                    cured = true;
+                                }
+                            }
+
+                            if (cured)
+                            {
+                                // 恢复身体部位（如果有缺失）
+                                other.health.RestorePart(null);
+                            }
+
+                            // 添加心情
+                            other.needs?.mood?.thoughts?.memories?.TryGainMemory(ArtificialMaidDefOf.ArtificialMaidMasterProtocol_Mood, Pawn);
+                        }
+                    }
+                }
             }
         }
 
@@ -215,6 +269,12 @@ namespace OuterrealmTechRobot
                 if (traitDef != null && !Pawn.story.traits.HasTrait(traitDef))
                 {
                     Pawn.story.traits.GainTrait(new Trait(traitDef));
+                }
+
+                var masterTraitDef = ArtificialMaidDefOf.ArtificialMaidTrait_MasterProtocol;
+                if (masterTraitDef != null && !Pawn.story.traits.HasTrait(masterTraitDef))
+                {
+                    Pawn.story.traits.GainTrait(new Trait(masterTraitDef));
                 }
             }
 
