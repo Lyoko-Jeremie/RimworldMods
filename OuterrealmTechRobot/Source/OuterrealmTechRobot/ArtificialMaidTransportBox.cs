@@ -38,8 +38,8 @@ namespace OuterrealmTechRobot
             {
                 Thing containedThing = innerContainer[0];
                 Command_Action selectContained = new Command_Action();
-                selectContained.defaultLabel = "CommandSelectContainedPawn".Translate(containedThing.LabelCap);
-                selectContained.defaultDesc = "CommandSelectContainedPawnDesc".Translate();
+                selectContained.defaultLabel = (containedThing is Pawn ? "CommandSelectContainedPawn" : "CommandSelectContainedThing").Translate((NamedArgument)containedThing);
+                selectContained.defaultDesc = (containedThing is Pawn ? "CommandSelectContainedPawnDesc" : "CommandSelectContainedThingDesc").Translate();
                 
                 if (containedThing is Pawn pawn)
                 {

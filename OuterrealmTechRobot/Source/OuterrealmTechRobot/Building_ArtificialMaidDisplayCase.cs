@@ -288,8 +288,8 @@ namespace OuterrealmTechRobot
                 Thing containedThing = innerContainer[0];
                 yield return new Command_Action
                 {
-                    defaultLabel = "CommandSelectContainedPawn".Translate(containedThing.LabelCap),
-                    defaultDesc = "CommandSelectContainedPawnDesc".Translate(),
+                    defaultLabel = (containedThing is Pawn ? "CommandSelectContainedPawn" : "CommandSelectContainedThing").Translate((NamedArgument)containedThing),
+                    defaultDesc = (containedThing is Pawn ? "CommandSelectContainedPawnDesc" : "CommandSelectContainedThingDesc").Translate(),
                     icon = (containedThing is Pawn pawn) ? (Texture)PortraitsCache.Get(pawn, new Vector2(75f, 75f), Rot4.South) : containedThing.def.uiIcon,
                     action = () => CameraJumper.TryJumpAndSelect(containedThing)
                 };
