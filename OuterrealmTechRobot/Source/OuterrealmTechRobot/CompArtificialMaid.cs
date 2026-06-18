@@ -34,6 +34,7 @@ namespace OuterrealmTechRobot
         public int originPawnId = -1;
         public string originSerialNumber;
         public bool allowAutoHibernate = true;
+        public bool hostileResponseInitialized = false;
 
         public override void PostPostMake()
         {
@@ -55,6 +56,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref originPawnId, "originPawnId", -1);
             Scribe_Values.Look(ref originSerialNumber, "originSerialNumber");
             Scribe_Values.Look(ref allowAutoHibernate, "allowAutoHibernate", true);
+            Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -120,10 +122,27 @@ namespace OuterrealmTechRobot
         {
             base.CompTick();
 
-            // 立即转化逻辑：如果不是我方派系，立即转化
-            if (Pawn != null && !Pawn.Dead && Pawn.Faction != Faction.OfPlayer)
+            if (Pawn != null && !Pawn.Dead)
             {
-                this.AutoConvertFaction();
+                // 初始反应设置
+                if (!hostileResponseInitialized && Pawn.playerSettings != null)
+                {
+                    if (Pawn.Faction == Faction.OfPlayer)
+                    {
+                        Pawn.playerSettings.hostilityResponse = HostilityResponseMode.Attack;
+                    }
+                    else
+                    {
+                        Pawn.playerSettings.hostilityResponse = HostilityResponseMode.Flee;
+                    }
+                    hostileResponseInitialized = true;
+                }
+
+                // 立即转化逻辑：如果不是我方派系，立即转化
+                if (Pawn.Faction != Faction.OfPlayer)
+                {
+                    this.AutoConvertFaction();
+                }
             }
 
             if (this.parent.IsHashIntervalTick(60))
@@ -489,6 +508,12 @@ namespace OuterrealmTechRobot
             if (Pawn.Faction != Faction.OfPlayer)
             {
                 Pawn.SetFaction(Faction.OfPlayer);
+
+                // 转为我方时初始设置为反击
+                if (Pawn.playerSettings != null)
+                {
+                    Pawn.playerSettings.hostilityResponse = HostilityResponseMode.Attack;
+                }
 
                 if (joinPlayerTick < 0)
                 {
