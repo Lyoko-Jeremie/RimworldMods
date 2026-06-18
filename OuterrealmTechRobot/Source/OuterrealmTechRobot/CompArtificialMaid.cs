@@ -200,27 +200,29 @@ namespace OuterrealmTechRobot
                             if (other.RaceProps.Humanlike && other.Position.DistanceToSquared(pos) <= radiusSq)
                             {
                                 // 治疗逻辑
-                                bool cured = false;
                                 
-                                // 移除所有损伤和疾病
+                                // 1. 恢复缺失部位
+                                var missingParts = other.health.hediffSet.GetMissingPartsCommonAncestors();
+                                if (missingParts.Count > 0)
+                                {
+                                    for (int j = missingParts.Count - 1; j >= 0; j--)
+                                    {
+                                        other.health.RestorePart(missingParts[j].Part);
+                                    }
+                                }
+
+                                // 2. 移除所有损伤和疾病
                                 List<Hediff> hediffs = other.health.hediffSet.hediffs;
                                 for (int j = hediffs.Count - 1; j >= 0; j--)
                                 {
                                     Hediff h = hediffs[j];
                                     // 移除损伤、感染、疾病、失血等
-                                    if (h is Hediff_Injury || h is Hediff_MissingPart || h.def.isBad)
+                                    if (h is Hediff_Injury || h.def.isBad)
                                     {
                                         // 排除永久性损伤（除非你想治疗它们）
                                         // 用户的要求是“消除所有疾病和身体损伤”，这通常意味着全部
                                         other.health.RemoveHediff(h);
-                                        cured = true;
                                     }
-                                }
-
-                                if (cured)
-                                {
-                                    // 恢复身体部位（如果有缺失）
-                                    other.health.RestorePart(null);
                                 }
 
                                 // 添加心情
