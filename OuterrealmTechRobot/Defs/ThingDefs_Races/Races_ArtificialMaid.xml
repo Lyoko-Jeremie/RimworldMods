@@ -91,7 +91,7 @@
             <ShootingAccuracyPawn>10</ShootingAccuracyPawn> <!-- 射击精度 (1000%) -->
             <AimingDelayFactor>0.01</AimingDelayFactor> <!-- 瞄准时间 (1%) -->
             <PawnBeauty>100</PawnBeauty> <!-- 魅力 (100) -->
-            <MechBandwidth>200</MechBandwidth> <!-- 机械带宽 -->
+            <MechBandwidth>1000</MechBandwidth> <!-- 机械带宽 -->
             <MechControlGroups>15</MechControlGroups> <!-- 机械控制组数量 -->
             <MechRepairSpeed>1000</MechRepairSpeed> <!-- 机械体修理速度 -->
             <SubcoreEncodingSpeed>1000</SubcoreEncodingSpeed> <!-- 次级核心编码/扫描速度 -->
