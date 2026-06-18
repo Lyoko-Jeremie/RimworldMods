@@ -95,6 +95,11 @@
       <Name>AlienRace</Name>
       <Private>False</Private>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\..\..\..\..\..\RimworldCodeIL\AutoBlink\AutoBlink.csproj">
+      <Project>{cc632b70-0bb3-4770-868c-06ef32b3f4b2}</Project>
+      <Name>AutoBlink</Name>
+      <Private>False</Private>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\FullyAutomaticOmniCrafter\Source\FullyAutomaticOmniCrafter\FullyAutomaticOmniCrafter.csproj">
       <Project>{49ff93c8-14c8-4dad-9172-0bba7fbce395}</Project>
       <Name>FullyAutomaticOmniCrafter</Name>
