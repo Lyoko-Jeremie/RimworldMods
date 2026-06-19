@@ -21,4 +21,8 @@
 
   <Biosphere_EnsureNoVacuum>排除真空</Biosphere_EnsureNoVacuum>
   <Biosphere_EnsureNoVacuumDesc>强制将选定区域视为有屋顶（室内），防止真空导致的温度流失或减益。</Biosphere_EnsureNoVacuumDesc>
+  
+  <Biosphere_ForceRefreshGlow>强制刷新光照</Biosphere_ForceRefreshGlow>
+  <Biosphere_ForceRefreshGlowDesc>强制重新计算全图的光照缓存和视觉效果。当光照显示异常时使用。</Biosphere_ForceRefreshGlowDesc>
+  <Biosphere_GlowRefreshed>光照已强制刷新</Biosphere_GlowRefreshed>
 </LanguageData>

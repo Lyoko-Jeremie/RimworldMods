@@ -21,4 +21,8 @@
 
   <Biosphere_EnsureNoVacuum>No Vacuum</Biosphere_EnsureNoVacuum>
   <Biosphere_EnsureNoVacuumDesc>Force the selected area to be treated as roofed (indoors), preventing temperature loss or debuffs from vacuum.</Biosphere_EnsureNoVacuumDesc>
+
+  <Biosphere_ForceRefreshGlow>Force Refresh Glow</Biosphere_ForceRefreshGlow>
+  <Biosphere_ForceRefreshGlowDesc>Force recalculate the lighting cache and visual effects for the entire map. Use this when lighting display is abnormal.</Biosphere_ForceRefreshGlowDesc>
+  <Biosphere_GlowRefreshed>Lighting cache has been force refreshed.</Biosphere_GlowRefreshed>
 </LanguageData>

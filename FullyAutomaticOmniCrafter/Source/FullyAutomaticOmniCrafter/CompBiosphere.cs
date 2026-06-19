@@ -54,6 +54,9 @@ namespace FullyAutomaticOmniCrafter
 
         public static readonly Texture2D IconNoVacuum =
             ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_NoVacuum", false) ?? BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconForceRefresh =
+            ContentFinder<Texture2D>.Get("UI/Commands/CompBiosphere_ForceRefresh", false) ?? BaseContent.WhiteTex;
     }
 
     public enum PlantGrowthMode
@@ -149,6 +152,11 @@ namespace FullyAutomaticOmniCrafter
                 {
                     _lightingMode = value;
                     DirtyGlowInArea(parent.Map);
+                    // 额外触发一次地图重绘
+                    if (parent.Map != null)
+                    {
+                        parent.Map.mapDrawer.WholeMapChanged((ulong)MapMeshFlagDefOf.GroundGlow);
+                    }
                     CompBiosphereManager.NotifySettingsChanged(this);
                     ApplyEffects(); // 变更时立即生效一次
                 }
@@ -334,6 +342,18 @@ namespace FullyAutomaticOmniCrafter
                 icon = CompBiosphereTex.IconNoVacuum,
                 isActive = () => ensureNoVacuum,
                 toggleAction = () => ensureNoVacuum = !ensureNoVacuum
+            };
+
+            // 6. 强制刷新光照 (针对全图)
+            yield return new Command_Action
+            {
+                defaultLabel = "Biosphere_ForceRefreshGlow".Translate(),
+                defaultDesc = "Biosphere_ForceRefreshGlowDesc".Translate(),
+                icon = CompBiosphereTex.IconForceRefresh,
+                action = () =>
+                {
+                    CompBiosphereManager.ForceRefreshAllGlow(parent.Map);
+                }
             };
         }
 

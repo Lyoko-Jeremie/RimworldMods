@@ -58,19 +58,28 @@ namespace FullyAutomaticOmniCrafter
             {
                 biosphereComps[map].Remove(comp);
             }
-            UpdateAreaMapping(comp, comp.SelectedArea, null);
-
-            // 注销时，重建受影响区域的网格
-            Area area = comp.SelectedArea;
-            if (map != null && area != null)
+            
+            // 注意：此时 comp.SelectedArea 可能已经返回 null 了（因为 parent.Map 可能已清除）
+            // 我们应该直接清理所有关联过此 comp 的 Area
+            var areasToUpdate = new List<Area>();
+            foreach (var kvp in areaToBiosphere)
             {
-                RebuildGridForArea(map, area);
+                if (kvp.Value.Contains(comp))
+                {
+                    areasToUpdate.Add(kvp.Key);
+                }
             }
+
+            foreach (var area in areasToUpdate)
+            {
+                UpdateAreaMapping(comp, area, null, map);
+            }
+
             RecalculateVacuumProtectionCount(map);
             RecalculateTemperatureControlCount(map);
         }
 
-        public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea)
+        public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea, Map map = null)
         {
             if (oldArea != null && areaToBiosphere.ContainsKey(oldArea))
             {
@@ -101,11 +110,11 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 当区域映射变化时，需要重建旧区域和新区域的网格缓存
-            Map map = comp.parent.Map;
-            if (map != null)
+            Map targetMap = map ?? comp.parent.Map;
+            if (targetMap != null)
             {
-                if (oldArea != null) RebuildGridForArea(map, oldArea);
-                if (newArea != null) RebuildGridForArea(map, newArea);
+                if (oldArea != null) RebuildGridForArea(targetMap, oldArea);
+                if (newArea != null) RebuildGridForArea(targetMap, newArea);
             }
         }
 
@@ -115,6 +124,7 @@ namespace FullyAutomaticOmniCrafter
             foreach (IntVec3 cell in area.ActiveCells)
             {
                 RebuildGridForCell(map, cell);
+                map.glowGrid.DirtyCell(cell);
             }
         }
 
@@ -143,6 +153,23 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+        }
+
+        public static void ForceRefreshAllGlow(Map map)
+        {
+            if (map?.glowGrid == null) return;
+            
+            // 标记全图格点为脏
+            foreach (var cell in map.AllCells)
+            {
+                map.glowGrid.DirtyCell(cell);
+            }
+            
+            // 强制重绘地图
+            map.mapDrawer.WholeMapChanged((ulong)MapMeshFlagDefOf.GroundGlow);
+            map.mapDrawer.WholeMapChanged((ulong)MapMeshFlagDefOf.Things);
+            
+            Messages.Message("Biosphere_GlowRefreshed".Translate(), MessageTypeDefOf.TaskCompletion, false);
         }
 
         public static void NotifySettingsChanged(CompBiosphere source)
