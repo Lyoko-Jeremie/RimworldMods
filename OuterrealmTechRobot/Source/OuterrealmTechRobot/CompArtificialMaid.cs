@@ -595,6 +595,7 @@ namespace OuterrealmTechRobot
             this.EnsureRecoveryHediff();
             this.AutoConvertFaction();
             this.EnsureMaidProperties();
+            this.EnsureMechanitorCapabilities();
 
             // RJW 支持：修复/确保性器官存在
             RJWCompatibility.InitializeMaidOrgans(Pawn);
@@ -780,7 +781,6 @@ namespace OuterrealmTechRobot
 
                 this.FullRepair();
                 this.EnsureRecoveryHediff();
-                this.EnsureMechanitorCapabilities();
 
                 string label = "ArtificialMaidRecruitedLabel".Translate(Pawn.LabelShort);
                 string text = "ArtificialMaidRecruitedText".Translate(Pawn.LabelShort);
