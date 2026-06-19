@@ -118,8 +118,8 @@ namespace OuterrealmTechRobot
                         def != JobDefOf.Wait_MaintainPosture &&
                         def != JobDefOf.Wait_SafeTemperature &&
                         def != JobDefOf.Wait_Wander &&
-                        def != JobDefOf.GotoWander &&
-                        (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase))
+                        def != JobDefOf.GotoWander /*&&
+                        (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase)*/)
                     {
                         return true;
                     }
