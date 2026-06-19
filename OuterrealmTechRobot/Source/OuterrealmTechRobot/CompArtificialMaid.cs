@@ -398,6 +398,9 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null) return;
 
+            // 确保机械师能力
+            this.EnsureMechanitorCapabilities();
+
             if (ModsConfig.BiotechActive && Pawn.genes != null)
             {
                 var xenotypeDef = ArtificialMaidDefOf.ArtificialMaidXenotype;

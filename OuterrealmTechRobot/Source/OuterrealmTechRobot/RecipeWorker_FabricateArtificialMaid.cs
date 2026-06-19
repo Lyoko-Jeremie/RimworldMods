@@ -203,6 +203,16 @@ namespace OuterrealmTechRobot
             // 清理所有初始状态，确保刚制造出来时是完美状态
             pawn.health.Reset();
 
+            // 补上机械师能力 (Biotech)
+            if (ModsConfig.BiotechActive && pawn.health != null)
+            {
+                if (!pawn.health.hediffSet.HasHediff(HediffDefOf.MechlinkImplant))
+                {
+                    pawn.health.AddHediff(HediffDefOf.MechlinkImplant, pawn.health.hediffSet.GetBrain());
+                    PawnComponentsUtility.AddAndRemoveDynamicComponents(pawn);
+                }
+            }
+
             // RJW 支持：添加性器官
             RJWCompatibility.InitializeMaidOrgans(pawn);
 
