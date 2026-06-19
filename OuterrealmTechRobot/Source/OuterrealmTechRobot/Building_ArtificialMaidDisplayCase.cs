@@ -160,6 +160,8 @@ namespace OuterrealmTechRobot
 
             // 临时设置女仆位置到柜子的交互格，以便思维树能正确检索附近的工作（很多 JobGiver 依赖位置）
             // 使用交互格（InteractionCell）比使用建筑中心位置更可靠，因为中心位置可能是不可通行的，会导致可达性检查失败。
+            CompArtificialMaid maidComp = CompArtificialMaid.GetCompCached(pawn);
+            if (maidComp != null) maidComp.isFaking = true;
             IntVec3 oldPos = pawn.Position;
             IntVec3 searchPos = this.InteractionCell;
             if (!searchPos.InBounds(map)) searchPos = this.Position;
@@ -223,6 +225,7 @@ namespace OuterrealmTechRobot
             finally
             {
                 // 恢复状态
+                if (maidComp != null) maidComp.isFaking = false;
                 MapIndexOrStateRef(pawn) = oldMapIndex;
                 pawn.SetPositionDirect(oldPos);
                 // Log.Message("AnyJobFor finally");

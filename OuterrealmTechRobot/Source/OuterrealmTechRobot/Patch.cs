@@ -623,4 +623,27 @@ namespace OuterrealmTechRobot
             }
         }
     }
+
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.DynamicDrawPhaseAt))]
+    public static class Patch_Pawn_DynamicDrawPhaseAt
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn __instance)
+        {
+            // 性能优化：首先进行快速的 def 检查，避免所有非女仆 Pawn 进入组件查找逻辑
+            if (__instance.def != ArtificialMaidDefOf.ArtificialMaid)
+            {
+                return true;
+            }
+
+            // 如果女仆正处于工作检测的伪造状态中，则跳过本次绘制（防止在 InteractionCell 产生闪烁）
+            // 注意：由于展示柜内部是通过直接调用 PawnRenderer 绘制的，因此不会受到此拦截的影响
+            var comp = CompArtificialMaid.GetCompCached(__instance);
+            if (comp != null && comp.isFaking)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
 }

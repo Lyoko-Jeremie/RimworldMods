@@ -38,6 +38,7 @@ namespace OuterrealmTechRobot
         public bool enableHuntMode = false;
         public int lastEnemyFoundTick = -1;
         public bool hostileResponseInitialized = false;
+        public bool isFaking = false; // 用于抑制工作检测期间的闪烁
 
         private AutoBlink.CompAutoBlink _cachedBlinkComp;
         private AutoBlink.CompAutoBlink BlinkComp
