@@ -6,31 +6,82 @@ namespace OuterrealmTechRobot
 {
     public static class RJWCompatibility
     {
-        private static bool? _active;
+        private static readonly object _syncRoot = new object();
+        private static bool _initialized;
+        private static bool _active;
+
         private static MethodInfo _sexualizeMethod;
         private static System.Type _compSexPartType;
         private static System.Type _genitalFamilyType;
         private static FieldInfo _genitalFamilyField;
         private static FieldInfo _baseSizeField;
 
+        private static object _breastsEnum;
+        private static object _vaginaEnum;
+        private static object _anusEnum;
+
         public static bool Active
         {
             get
             {
-                if (!_active.HasValue)
+                EnsureInitialized();
+                return _active;
+            }
+        }
+
+        private static void EnsureInitialized()
+        {
+            if (_initialized) return;
+
+            lock (_syncRoot)
+            {
+                if (_initialized) return;
+
+                _active = ModsConfig.IsActive("rim.job.world");
+                if (_active)
                 {
-                    _active = ModsConfig.IsActive("rim.job.world");
-                    if (!_active.Value)
-                    {
-                        Log.Warning("RJW is not find.");
-                    }
-                    else
-                    {
-                        Log.Message("RJW is find.");
-                    }
+                    Log.Message("RJW found, initializing compatibility...");
+                    InitializeInternal();
+                }
+                else
+                {
+                    Log.Warning("RJW not found.");
                 }
 
-                return _active.Value;
+                _initialized = true;
+            }
+        }
+
+        private static void InitializeInternal()
+        {
+            try
+            {
+                System.Type sexualizerType = AccessTools.TypeByName("rjw.Sexualizer");
+                if (sexualizerType != null)
+                {
+                    _sexualizeMethod = AccessTools.Method(sexualizerType, "sexualize_pawn");
+                }
+
+                _compSexPartType = AccessTools.TypeByName("rjw.HediffComp_SexPart");
+                _genitalFamilyType = AccessTools.TypeByName("rjw.GenitalFamily");
+
+                if (_compSexPartType != null && _genitalFamilyType != null)
+                {
+                    System.Type defType = AccessTools.TypeByName("rjw.HediffDef_SexPart");
+                    if (defType != null)
+                    {
+                        _genitalFamilyField = AccessTools.Field(defType, "genitalFamily");
+                    }
+                    _baseSizeField = AccessTools.Field(_compSexPartType, "baseSize");
+
+                    _breastsEnum = System.Enum.Parse(_genitalFamilyType, "Breasts");
+                    _vaginaEnum = System.Enum.Parse(_genitalFamilyType, "Vagina");
+                    _anusEnum = System.Enum.Parse(_genitalFamilyType, "Anus");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Log.Error("Error initializing RJWCompatibility: " + e.Message);
             }
         }
 
@@ -38,26 +89,13 @@ namespace OuterrealmTechRobot
         {
             if (!Active || pawn == null) return;
 
-            if (_sexualizeMethod == null)
-            {
-                System.Type type = AccessTools.TypeByName("rjw.Sexualizer");
-                if (type != null)
-                {
-                    _sexualizeMethod = AccessTools.Method(type, "sexualize_pawn");
-                    if (_sexualizeMethod == null)
-                    {
-                        Log.Error("RJW: Sexualize method not found.");
-                    }
-                }
-                else
-                {
-                    Log.Error("RJW: Sexualizer type not found.");
-                }
-            }
-
             if (_sexualizeMethod != null)
             {
                 _sexualizeMethod.Invoke(null, new object[] { pawn });
+            }
+            else
+            {
+                Log.ErrorOnce("RJW: Sexualize method not found.", 58291);
             }
         }
 
@@ -65,41 +103,12 @@ namespace OuterrealmTechRobot
         {
             if (!Active || pawn == null) return;
 
-            // 1. 初始化反射缓存
-            if (_compSexPartType == null) _compSexPartType = AccessTools.TypeByName("rjw.HediffComp_SexPart");
-            if (_genitalFamilyType == null) _genitalFamilyType = AccessTools.TypeByName("rjw.GenitalFamily");
-
-            if (_compSexPartType == null || _genitalFamilyType == null)
+            if (_compSexPartType == null || _genitalFamilyType == null || _genitalFamilyField == null)
             {
-                Log.Error("RJW: HediffComp_SexPart or GenitalFamily type not found.");
                 return;
             }
 
-            if (_genitalFamilyField == null)
-            {
-                System.Type defType = AccessTools.TypeByName("rjw.HediffDef_SexPart");
-                if (defType != null)
-                {
-                    _genitalFamilyField = AccessTools.Field(defType, "genitalFamily");
-                    if (_genitalFamilyField == null)
-                    {
-                        Log.Error("RJW: GenitalFamily field not found.");
-                    }
-                }
-                else
-                {
-                    Log.Error("RJW: HediffDef_SexPart type not found.");
-                }
-            }
-
-            if (_genitalFamilyField == null) return;
-
-            if (_baseSizeField == null)
-            {
-                _baseSizeField = AccessTools.Field(_compSexPartType, "baseSize");
-            }
-
-            // 2. 检查是否已经有性器官，避免重复生成
+            // 1. 检查是否已经有性器官，避免重复生成
             bool hasOrgans = false;
             foreach (var h in pawn.health.hediffSet.hediffs)
             {
@@ -114,23 +123,18 @@ namespace OuterrealmTechRobot
                         }
                     }
                 }
-
                 if (hasOrgans) break;
             }
 
             if (!hasOrgans)
             {
-                // 3. 只有没有器官时才调用基础生成逻辑
+                // 2. 只有没有器官时才调用基础生成逻辑
                 Sexualize(pawn);
             }
 
-            // 4. 强制设置/修复器官属性
-            // 准备枚举值对比
-            object breastsEnum = System.Enum.Parse(_genitalFamilyType, "Breasts");
-            object vaginaEnum = System.Enum.Parse(_genitalFamilyType, "Vagina");
-            object anusEnum = System.Enum.Parse(_genitalFamilyType, "Anus");
+            // 3. 强制设置/修复器官属性
+            if (_breastsEnum == null || _vaginaEnum == null || _anusEnum == null) return;
 
-            // 遍历并强制设置属性
             var hediffs = pawn.health.hediffSet.hediffs;
             for (int i = hediffs.Count - 1; i >= 0; i--)
             {
@@ -151,21 +155,20 @@ namespace OuterrealmTechRobot
                 if (sexPartComp != null)
                 {
                     object family = _genitalFamilyField.GetValue(hediff.def);
-
                     if (family != null)
                     {
                         float bodySize = pawn.BodySize;
-                        if (family.Equals(breastsEnum))
+                        if (family.Equals(_breastsEnum))
                         {
-                            hediff.Severity = 1.2f; // Massive (RJW 阶段：Enormous 1.0, Massive 1.2)
+                            hediff.Severity = 1.2f; // Massive
                             if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 1.2f * bodySize);
                         }
-                        else if (family.Equals(vaginaEnum))
+                        else if (family.Equals(_vaginaEnum))
                         {
-                            hediff.Severity = 0.25f; // Tight (RJW 阶段：Micro 0.01, Tight 0.20, Average 0.40)
+                            hediff.Severity = 0.25f; // Tight
                             if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
                         }
-                        else if (family.Equals(anusEnum))
+                        else if (family.Equals(_anusEnum))
                         {
                             hediff.Severity = 0.25f; // Tight
                             if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
