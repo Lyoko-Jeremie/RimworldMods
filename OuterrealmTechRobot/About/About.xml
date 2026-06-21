@@ -63,6 +63,8 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/Outerrea
 	</loadBefore>
 	<loadAfter>
 		
+		<li>erdelf.HumanoidAlienRaces</li>
+		
 		<li>rabiosus.autoblink</li>
 		<!-- <li>-->
 		<!-- 	<packageId>rabiosus.autoblink</packageId>-->
