@@ -127,7 +127,7 @@ namespace FullyAutomaticOmniCrafter
         private string selectedModFilter = null; // null = show all mods
 
         private ThingDef selectedStuff;
-        private QualityCategory selectedQuality = QualityCategory.Normal;
+        private QualityCategory selectedQuality = QualityCategory.Legendary;
         private int craftCount = 1;
         private ProductionMode productionMode = ProductionMode.FixedCount;
         private int maintainCount = 10;
