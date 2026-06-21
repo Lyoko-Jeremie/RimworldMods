@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <HairDef>
+        <!-- 发型的唯一ID，不能和其他Mod重复，不要用空格 -->
+        <defName>ArtificialMaid_Hair_Seria</defName>
+
+        <!-- 游戏内显示的名字 -->
+        <label>人造人女仆Seria</label>
+
+        <!-- 性别倾向: Any(通用), Male(男性), Female(女性), MaleUsually(多为男性), FemaleUsually(多为女性) -->
+        <hairGender>Female</hairGender>
+
+        <!-- 指向你贴图的位置，注意：这里不需要写 _south 等后缀，写到前缀即可！ -->
+        <texPath>Things/Pawn/Humanlike/Hairs/ArtificialMaid_Hair_Seria</texPath>
+
+        <!-- 重点在这里！插入你的模组扩展 -->
+        <modExtensions>
+            <!-- 注意 Class 要填你 C# 的 命名空间.类名 -->
+            <li Class="OuterrealmTechRobot.ArtificialMaidHairs.ArtificialMaidHairOffsetExtension">
+                <!-- 格式为 (X, Y, Z) -->
+                <!-- Z 轴正数，往上移 -->
+                <offsetSouth>(0, 0, -0.3)</offsetSouth>
+                <offsetNorth>(0, 0, -0.3)</offsetNorth>
+                <offsetEast>(0, 0, -0.3)</offsetEast>
+                <offsetWest>(0, 0, -0.3)</offsetWest>
+<!--                <offsetEast>(-0.1, 0, -0.3)</offsetEast>-->
+<!--                <offsetWest>(0.1, 0, -0.3)</offsetWest>-->
+            </li>
+        </modExtensions>
+        
+    </HairDef>
+
+</Defs>
