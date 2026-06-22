@@ -27,12 +27,14 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompAutoResearch : ThingComp
     {
-        private const int ResearchTickInterval = 250;
+        private const int FastResearchTickInterval = 50;
+        private const int SlowResearchTickInterval = 500;
         private const float MaxEnergyPerTickWd = 10f;
 
         public CompProperties_AutoResearch Props => (CompProperties_AutoResearch)props;
         private CompPowerTrader powerComp;
         private bool active = false;
+        private int researchTickInterval = SlowResearchTickInterval;
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -44,6 +46,11 @@ namespace FullyAutomaticOmniCrafter
         {
             base.PostExposeData();
             Scribe_Values.Look(ref active, "active", false);
+            Scribe_Values.Look(ref researchTickInterval, "researchTickInterval", SlowResearchTickInterval);
+            if (researchTickInterval != FastResearchTickInterval && researchTickInterval != SlowResearchTickInterval)
+            {
+                researchTickInterval = SlowResearchTickInterval;
+            }
         }
         
         public override void CompTick()
@@ -55,30 +62,36 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            if (this.parent.IsHashIntervalTick(ResearchTickInterval))
+            if (!this.parent.IsHashIntervalTick(researchTickInterval))
             {
                 return;
             }
 
+            bool advancedResearch = TryAdvanceResearch();
+            researchTickInterval = advancedResearch ? FastResearchTickInterval : SlowResearchTickInterval;
+        }
+
+        private bool TryAdvanceResearch()
+        {
             if (powerComp != null && !powerComp.PowerOn)
             {
-                return;
+                return false;
             }
 
             ResearchProjectDef currentProj = Find.ResearchManager.GetProject();
             if (currentProj == null || currentProj.IsFinished)
             {
-                return;
+                return false;
             }
 
             float pointsNeeded = currentProj.baseCost - Find.ResearchManager.GetProgress(currentProj);
-            if (pointsNeeded <= 0) return;
+            if (pointsNeeded <= 0) return false;
 
             float ratio = Props.researchPoints / Mathf.Max(Props.energyCost, 0.0001f);
             float energyNeededWd = pointsNeeded / ratio;
             
-            // 每 250 tick 批量结算一次，但保持原本每 tick 10 Wd 的强度上限。
-            float maxEnergyPerBatchWd = MaxEnergyPerTickWd * ResearchTickInterval;
+            // 根据当前自适应间隔批量结算，但保持原本每 tick 10 Wd 的强度上限。
+            float maxEnergyPerBatchWd = MaxEnergyPerTickWd * researchTickInterval;
             float energyToConsumeWd = Mathf.Min(energyNeededWd, maxEnergyPerBatchWd);
 
             float consumedWd = ConsumeEnergyFromNet(energyToConsumeWd);
@@ -88,7 +101,10 @@ namespace FullyAutomaticOmniCrafter
                 // 使用 AddProgress 绕过 ResearchPerformed 中的 0.00825 倍率，
                 // 使得 config 中的 researchPoints 直接对应 UI 上的研究点数。
                 Find.ResearchManager.AddProgress(currentProj, pointsToGained, null);
+                return true;
             }
+
+            return false;
         }
 
         private float ConsumeEnergyFromNet(float amountWd)
