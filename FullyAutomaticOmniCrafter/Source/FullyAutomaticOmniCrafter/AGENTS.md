@@ -13,6 +13,8 @@ i18n语言目录在 `../../Languages` ，源代码中需要参与显示的硬编
 
 当前环境是 PowerShell 。
 
+所有源码内容使用 UTF-8 编码
+
 当前操作系统上有 ripgrep (rg) ， 可以使用 `rg` 命令进行文件内容搜索
 
 使用 `dotnet build -c Debug` 在完成所有修改后进行编译以确认修改正确。
