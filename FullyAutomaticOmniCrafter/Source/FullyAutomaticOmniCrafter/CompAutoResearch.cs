@@ -159,6 +159,18 @@ namespace FullyAutomaticOmniCrafter
             return battery.StoredEnergy;
         }
 
+        private float GetAvailableStoredEnergyFromNet(PowerNet net)
+        {
+            if (net == null) return 0f;
+
+            float available = 0f;
+            foreach (CompPowerBattery battery in net.batteryComps)
+            {
+                available += GetStoredEnergy(battery);
+            }
+            return available;
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             foreach (Gizmo g in base.CompGetGizmosExtra())
@@ -180,14 +192,43 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!active)
             {
-                return "OmniCrafter_AutoResearch_Paused".Translate();
+                return "OmniCrafter_AutoResearch_StatusPaused".Translate();
             }
-            ResearchProjectDef currentProj = Find.ResearchManager.GetProject();
-            if (currentProj != null)
+
+            if (powerComp != null && !powerComp.PowerOn)
             {
-                return "OmniCrafter_AutoResearching".Translate(currentProj.LabelCap);
+                return "OmniCrafter_AutoResearch_StatusNoPower".Translate();
             }
-            return base.CompInspectStringExtra();
+
+            ResearchProjectDef currentProj = Find.ResearchManager.GetProject();
+            if (currentProj == null)
+            {
+                return "OmniCrafter_AutoResearch_StatusNoProject".Translate();
+            }
+
+            if (currentProj.IsFinished)
+            {
+                return "OmniCrafter_AutoResearch_StatusProjectFinished".Translate(currentProj.LabelCap);
+            }
+
+            float pointsNeeded = currentProj.baseCost - Find.ResearchManager.GetProgress(currentProj);
+            if (pointsNeeded <= 0)
+            {
+                return "OmniCrafter_AutoResearch_StatusProjectFinished".Translate(currentProj.LabelCap);
+            }
+
+            PowerNet net = this.parent.GetComp<CompPower>()?.PowerNet;
+            if (net == null)
+            {
+                return "OmniCrafter_AutoResearch_StatusNoPowerNet".Translate();
+            }
+
+            if (GetAvailableStoredEnergyFromNet(net) <= 0f)
+            {
+                return "OmniCrafter_AutoResearch_StatusNoStoredEnergy".Translate();
+            }
+
+            return "OmniCrafter_AutoResearch_StatusRunning".Translate(currentProj.LabelCap);
         }
     }
     
