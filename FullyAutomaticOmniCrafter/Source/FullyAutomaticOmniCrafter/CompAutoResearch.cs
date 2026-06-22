@@ -55,7 +55,7 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
-            if ((Find.TickManager.TicksGame + parent.thingIDNumber) % ResearchTickInterval != 0)
+            if (this.parent.IsHashIntervalTick(ResearchTickInterval))
             {
                 return;
             }
