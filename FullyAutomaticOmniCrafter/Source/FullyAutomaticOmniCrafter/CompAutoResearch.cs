@@ -27,6 +27,9 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public class CompAutoResearch : ThingComp
     {
+        private const int ResearchTickInterval = 250;
+        private const float MaxEnergyPerTickWd = 10f;
+
         public CompProperties_AutoResearch Props => (CompProperties_AutoResearch)props;
         private CompPowerTrader powerComp;
         private bool active = false;
@@ -40,14 +43,19 @@ namespace FullyAutomaticOmniCrafter
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref active, "active", true);
+            Scribe_Values.Look(ref active, "active", false);
         }
         
         public override void CompTick()
         {
             base.CompTick();
 
-            if (active)
+            if (!active)
+            {
+                return;
+            }
+
+            if ((Find.TickManager.TicksGame + parent.thingIDNumber) % ResearchTickInterval != 0)
             {
                 return;
             }
@@ -69,10 +77,9 @@ namespace FullyAutomaticOmniCrafter
             float ratio = Props.researchPoints / Mathf.Max(Props.energyCost, 0.0001f);
             float energyNeededWd = pointsNeeded / ratio;
             
-            // 每 tick 最多消耗多少电量？如果太快可能一瞬间吸干。
-            // 假设每 tick 最多消耗 10 Wd (即 600,000 W 功率)
-            float maxEnergyPerTickWd = 10f; 
-            float energyToConsumeWd = Mathf.Min(energyNeededWd, maxEnergyPerTickWd);
+            // 每 250 tick 批量结算一次，但保持原本每 tick 10 Wd 的强度上限。
+            float maxEnergyPerBatchWd = MaxEnergyPerTickWd * ResearchTickInterval;
+            float energyToConsumeWd = Mathf.Min(energyNeededWd, maxEnergyPerBatchWd);
 
             float consumedWd = ConsumeEnergyFromNet(energyToConsumeWd);
             if (consumedWd > 0)
