@@ -180,6 +180,7 @@ namespace OuterrealmTechRobot
                 }
 
                 FinalizeRestoredPawn(restoredPawn, map, position);
+                record.RestoreGearTo(restoredPawn);
                 cloud.BackupPawn(restoredPawn);
                 return true;
             }
@@ -193,6 +194,7 @@ namespace OuterrealmTechRobot
 
             restoredPawn = rebuiltPawn;
             FinalizeRestoredPawn(restoredPawn, map, position);
+            record.RestoreGearTo(restoredPawn);
             cloud.BackupPawn(restoredPawn);
             return true;
         }
@@ -306,6 +308,89 @@ namespace OuterrealmTechRobot
 
             PrepareSnapshotPawn(clone);
             return clone;
+        }
+
+        private static T CloneThing<T>(T source) where T : Thing
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            // 装备单独克隆时也走 Scribe，确保武器、服装、库存物品上的 Comp 数据完整保留。
+            string filePath = Path.Combine(GenFilePaths.TempFolderPath, "OuterrealmTechRobot_ArtificialMaidGearBackup_" + Guid.NewGuid().ToString("N") + ".xml");
+            Thing thingToSave = source;
+            Thing clone = null;
+
+            try
+            {
+                Scribe.saver.InitSaving(filePath, "artificialMaidGearBackup");
+                Scribe.saver.savingForDebug = true;
+                Scribe_Deep.Look(ref thingToSave, "thing");
+                Scribe.saver.FinalizeSaving();
+
+                Scribe.loader.InitLoading(filePath);
+                Scribe_Deep.Look(ref clone, "thing");
+                Scribe.loader.FinalizeLoading();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("[OuterrealmTechRobot] Failed to clone Artificial Maid gear backup thing: " + ex);
+                Scribe.ForceStop();
+                clone = null;
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("[OuterrealmTechRobot] Failed to delete temporary Artificial Maid gear backup file: " + ex.Message);
+                }
+            }
+
+            if (clone == null)
+            {
+                return null;
+            }
+
+            PrepareSnapshotThing(clone);
+            return clone as T;
+        }
+
+        private static void PrepareSnapshotThing(Thing thing)
+        {
+            if (thing == null)
+            {
+                return;
+            }
+
+            // 单独保存装备时也必须重新分配 ThingID，避免和原装备或 Pawn 快照中的装备重复。
+            thing.ForceSetStateToUnspawned();
+            if (thing.def != null && thing.def.HasThingIDNumber)
+            {
+                thing.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
+            }
+
+            if (thing is IThingHolder holder)
+            {
+                tmpHeldThings.Clear();
+                ThingOwnerUtility.GetAllThingsRecursively(holder, tmpHeldThings);
+                for (int i = 0; i < tmpHeldThings.Count; i++)
+                {
+                    Thing child = tmpHeldThings[i];
+                    if (child != null && child.def != null && child.def.HasThingIDNumber)
+                    {
+                        child.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
+                    }
+                }
+                tmpHeldThings.Clear();
+            }
         }
 
         private static void PrepareSnapshotPawn(Pawn pawn)
@@ -536,6 +621,9 @@ namespace OuterrealmTechRobot
             // 独立 Pawn 快照。该对象不应生成在地图上，只作为恢复模板保存。
             private Pawn snapshot;
 
+            // 单独保存装备缓存，确保 Destroy 后从快照重建时可以显式装回武器、服装和背包物品。
+            private GearBackup gearBackup;
+
             // 对原 Pawn 的弱意义引用：能解析时用于诊断，不能解析时不影响从 snapshot 恢复。
             private Pawn lastKnownPawn;
 
@@ -556,7 +644,19 @@ namespace OuterrealmTechRobot
                 isDuplicate = comp != null && comp.isDuplicate;
                 originSerialNumber = comp?.originSerialNumber;
                 snapshot = newSnapshot;
+                gearBackup = GearBackup.FromPawn(source);
                 lastKnownPawn = source;
+            }
+
+            public void RestoreGearTo(Pawn pawn)
+            {
+                // 兼容旧存档：旧记录没有 gearBackup 时，尝试从完整 Pawn 快照中补建装备缓存。
+                if (gearBackup == null && snapshot != null)
+                {
+                    gearBackup = GearBackup.FromPawn(snapshot);
+                }
+
+                gearBackup?.RestoreTo(pawn);
             }
 
             public void ExposeData()
@@ -574,6 +674,9 @@ namespace OuterrealmTechRobot
                 // 快照必须深度保存，否则 Destroy 后无法重建 Pawn。
                 Scribe_Deep.Look(ref snapshot, "snapshot");
 
+                // 装备缓存也深度保存。旧存档没有该节点时，仍可退回使用 snapshot 中的装备数据。
+                Scribe_Deep.Look(ref gearBackup, "gearBackup");
+
                 // 引用原 Pawn 时允许保存 Destroyed Thing，避免刚被 Destroy 前缀备份时丢失引用信息。
                 Scribe_References.Look(ref lastKnownPawn, "lastKnownPawn", true);
             }
@@ -590,6 +693,173 @@ namespace OuterrealmTechRobot
                     }
 
                     return "ArtificialMaidBackupCloudEntry".Translate(resolvedLabel, serialNumber);
+                }
+            }
+        }
+
+        public class GearBackup : IExposable
+        {
+            private List<ThingWithComps> equipment = new List<ThingWithComps>();
+            private List<Apparel> apparel = new List<Apparel>();
+            private List<bool> apparelLocked = new List<bool>();
+            private List<Thing> inventory = new List<Thing>();
+
+            public static GearBackup FromPawn(Pawn pawn)
+            {
+                GearBackup backup = new GearBackup();
+                backup.CaptureFrom(pawn);
+                return backup;
+            }
+
+            public void ExposeData()
+            {
+                Scribe_Collections.Look(ref equipment, "equipment", LookMode.Deep);
+                Scribe_Collections.Look(ref apparel, "apparel", LookMode.Deep);
+                Scribe_Collections.Look(ref apparelLocked, "apparelLocked", LookMode.Value);
+                Scribe_Collections.Look(ref inventory, "inventory", LookMode.Deep);
+
+                if (Scribe.mode == LoadSaveMode.PostLoadInit)
+                {
+                    if (equipment == null) equipment = new List<ThingWithComps>();
+                    if (apparel == null) apparel = new List<Apparel>();
+                    if (apparelLocked == null) apparelLocked = new List<bool>();
+                    if (inventory == null) inventory = new List<Thing>();
+
+                    equipment.RemoveAll(thing => thing == null || thing.Destroyed);
+                    apparel.RemoveAll(thing => thing == null || thing.Destroyed);
+                    inventory.RemoveAll(thing => thing == null || thing.Destroyed);
+                }
+            }
+
+            private void CaptureFrom(Pawn pawn)
+            {
+                equipment.Clear();
+                apparel.Clear();
+                apparelLocked.Clear();
+                inventory.Clear();
+
+                if (pawn == null)
+                {
+                    return;
+                }
+
+                // 武器装备：使用 AddEquipment 恢复，因此这里保存 ThingWithComps。
+                List<ThingWithComps> sourceEquipment = pawn.equipment?.AllEquipmentListForReading;
+                if (sourceEquipment != null)
+                {
+                    for (int i = 0; i < sourceEquipment.Count; i++)
+                    {
+                        ThingWithComps cloned = CloneThing(sourceEquipment[i]);
+                        if (cloned != null)
+                        {
+                            equipment.Add(cloned);
+                        }
+                    }
+                }
+
+                // 穿戴服装：额外保存锁定状态，恢复时调用 Wear(..., locked) 还原锁定。
+                List<Apparel> sourceApparel = pawn.apparel?.WornApparel;
+                if (sourceApparel != null)
+                {
+                    for (int i = 0; i < sourceApparel.Count; i++)
+                    {
+                        Apparel source = sourceApparel[i];
+                        Apparel cloned = CloneThing(source);
+                        if (cloned != null)
+                        {
+                            apparel.Add(cloned);
+                            apparelLocked.Add(pawn.apparel.IsLocked(source));
+                        }
+                    }
+                }
+
+                // 背包库存：直接保存库存容器内的物品。
+                ThingOwner sourceInventory = pawn.inventory?.GetDirectlyHeldThings();
+                if (sourceInventory != null)
+                {
+                    for (int i = 0; i < sourceInventory.Count; i++)
+                    {
+                        Thing cloned = CloneThing(sourceInventory[i]);
+                        if (cloned != null)
+                        {
+                            inventory.Add(cloned);
+                        }
+                    }
+                }
+            }
+
+            public void RestoreTo(Pawn pawn)
+            {
+                if (pawn == null)
+                {
+                    return;
+                }
+
+                PawnComponentsUtility.CreateInitialComponents(pawn);
+                PawnComponentsUtility.AddAndRemoveDynamicComponents(pawn, true);
+
+                // 先清理恢复 Pawn 当前容器，避免快照自带的残缺装备和 GearBackup 重复叠加。
+                pawn.equipment?.DestroyAllEquipment();
+                pawn.apparel?.DestroyAll(DestroyMode.Vanish);
+                pawn.inventory?.GetDirectlyHeldThings()?.ClearAndDestroyContents();
+
+                RestoreEquipment(pawn);
+                RestoreApparel(pawn);
+                RestoreInventory(pawn);
+
+                pawn.Drawer?.renderer?.SetAllGraphicsDirty();
+            }
+
+            private void RestoreEquipment(Pawn pawn)
+            {
+                if (pawn.equipment == null || equipment == null)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < equipment.Count; i++)
+                {
+                    ThingWithComps cloned = CloneThing(equipment[i]);
+                    if (cloned != null && !cloned.Destroyed)
+                    {
+                        pawn.equipment.AddEquipment(cloned);
+                    }
+                }
+            }
+
+            private void RestoreApparel(Pawn pawn)
+            {
+                if (pawn.apparel == null || apparel == null)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < apparel.Count; i++)
+                {
+                    Apparel cloned = CloneThing(apparel[i]);
+                    if (cloned != null && !cloned.Destroyed)
+                    {
+                        bool locked = i < apparelLocked.Count && apparelLocked[i];
+                        pawn.apparel.Wear(cloned, false, locked);
+                    }
+                }
+            }
+
+            private void RestoreInventory(Pawn pawn)
+            {
+                ThingOwner targetInventory = pawn.inventory?.GetDirectlyHeldThings();
+                if (targetInventory == null || inventory == null)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < inventory.Count; i++)
+                {
+                    Thing cloned = CloneThing(inventory[i]);
+                    if (cloned != null && !cloned.Destroyed)
+                    {
+                        targetInventory.TryAdd(cloned, true);
+                    }
                 }
             }
         }
