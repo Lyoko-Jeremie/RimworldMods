@@ -44,6 +44,52 @@ namespace OuterrealmTechRobot
                     Find.WindowStack.Add(new FloatMenu(list));
                 }
             };
+
+            yield return new Command_Action
+            {
+                defaultLabel = "ArtificialMaidBackupCloudLabel".Translate(),
+                defaultDesc = "ArtificialMaidBackupCloudDesc".Translate(),
+                icon = ArtificialMaidTex.IconBackupCloud,
+                action = OpenBackupCloudMenu
+            };
+        }
+
+        private void OpenBackupCloudMenu()
+        {
+            List<FloatMenuOption> list = new List<FloatMenuOption>();
+            IReadOnlyList<ArtificialMaidBackupCloud.BackupRecord> backups = ArtificialMaidBackupCloud.BackupsForReading;
+
+            for (int i = 0; i < backups.Count; i++)
+            {
+                ArtificialMaidBackupCloud.BackupRecord backup = backups[i];
+                if (backup == null || string.IsNullOrEmpty(backup.SerialNumber))
+                {
+                    continue;
+                }
+
+                string serialNumber = backup.SerialNumber;
+                if (!ArtificialMaidBackupCloud.CanRestore(serialNumber, out string reason))
+                {
+                    list.Add(new FloatMenuOption(backup.FloatMenuLabel + ": " + reason, null));
+                    continue;
+                }
+
+                list.Add(new FloatMenuOption(backup.FloatMenuLabel, delegate
+                {
+                    if (!ArtificialMaidBackupCloud.TryRestore(serialNumber, parent.Map, parent.Position, out Pawn restoredPawn))
+                    {
+                        Messages.Message("ArtificialMaidBackupCloudRestoreFailed".Translate(),
+                            MessageTypeDefOf.RejectInput);
+                    }
+                }));
+            }
+
+            if (list.Count == 0)
+            {
+                list.Add(new FloatMenuOption("ArtificialMaidBackupCloudNoBackup".Translate(), null));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(list));
         }
 
         private void OpenModificationMenu(Pawn pawn)

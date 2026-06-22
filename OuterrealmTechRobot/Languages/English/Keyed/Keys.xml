@@ -32,6 +32,16 @@
     <ArtificialMaidDuplicate>Duplicate</ArtificialMaidDuplicate>
     <ArtificialMaidOriginSerialNumber>Original Serial Number</ArtificialMaidOriginSerialNumber>
 
+    <ArtificialMaidBackupCloudLabel>Backup Cloud</ArtificialMaidBackupCloudLabel>
+    <ArtificialMaidBackupCloudDesc>Restore an Artificial Maid from the latest cloud backup if the original unit is dead or missing.</ArtificialMaidBackupCloudDesc>
+    <ArtificialMaidBackupCloudEntry>{0} ({1})</ArtificialMaidBackupCloudEntry>
+    <ArtificialMaidBackupCloudNoBackup>No Artificial Maid backup available.</ArtificialMaidBackupCloudNoBackup>
+    <ArtificialMaidBackupCloudStillActive>{0} is still active.</ArtificialMaidBackupCloudStillActive>
+    <ArtificialMaidBackupCloudRestoreFailed>Artificial Maid backup restoration failed.</ArtificialMaidBackupCloudRestoreFailed>
+    <ArtificialMaidBackupCloudRestoredLabel>Backup Restored</ArtificialMaidBackupCloudRestoredLabel>
+    <ArtificialMaidBackupCloudRestoredText>Artificial Maid {0} has been restored from the backup cloud.</ArtificialMaidBackupCloudRestoredText>
+    <ArtificialMaidBackupCloudUnknownMaid>Unknown Artificial Maid</ArtificialMaidBackupCloudUnknownMaid>
+
     <AutoHibernateLabel>Auto-Hibernate</AutoHibernateLabel>
     <AutoHibernateDesc>If enabled, idle artificial maids will automatically seek this display case for hibernation.</AutoHibernateDesc>
     <AutoWakeLabel>Auto-Wake</AutoWakeLabel>

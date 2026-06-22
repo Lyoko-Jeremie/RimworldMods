@@ -32,6 +32,16 @@
     <ArtificialMaidDuplicate>复制体</ArtificialMaidDuplicate>
     <ArtificialMaidOriginSerialNumber>原始序列号</ArtificialMaidOriginSerialNumber>
 
+    <ArtificialMaidBackupCloudLabel>备份云</ArtificialMaidBackupCloudLabel>
+    <ArtificialMaidBackupCloudDesc>当原单位死亡或丢失时，从最新云端备份恢复人造人女仆。</ArtificialMaidBackupCloudDesc>
+    <ArtificialMaidBackupCloudEntry>{0}（{1}）</ArtificialMaidBackupCloudEntry>
+    <ArtificialMaidBackupCloudNoBackup>没有可用的人造人女仆备份。</ArtificialMaidBackupCloudNoBackup>
+    <ArtificialMaidBackupCloudStillActive>{0} 仍在活动。</ArtificialMaidBackupCloudStillActive>
+    <ArtificialMaidBackupCloudRestoreFailed>人造人女仆备份恢复失败。</ArtificialMaidBackupCloudRestoreFailed>
+    <ArtificialMaidBackupCloudRestoredLabel>备份恢复完成</ArtificialMaidBackupCloudRestoredLabel>
+    <ArtificialMaidBackupCloudRestoredText>人造人女仆 {0} 已从备份云恢复。</ArtificialMaidBackupCloudRestoredText>
+    <ArtificialMaidBackupCloudUnknownMaid>未知人造人女仆</ArtificialMaidBackupCloudUnknownMaid>
+
     <AutoHibernateLabel>自动休眠</AutoHibernateLabel>
     <AutoHibernateDesc>启用后，空闲的人造人女仆将自动寻找此展示柜进行休眠。</AutoHibernateDesc>
     <AutoWakeLabel>自动唤醒</AutoWakeLabel>

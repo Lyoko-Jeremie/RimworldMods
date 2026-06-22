@@ -119,5 +119,9 @@ namespace OuterrealmTechRobot
         public static readonly Texture2D IconHuntMode =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_HuntMode", false) ??
             BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconBackupCloud =
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_BackupCloud", false) ??
+            IconModifyMaid;
     }
 }

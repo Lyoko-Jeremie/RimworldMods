@@ -69,6 +69,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArtificialMaidBackupCloud.cs" />
     <Compile Include="ArtificialMaidHairs\HairOffsetExtension.cs" />
     <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
