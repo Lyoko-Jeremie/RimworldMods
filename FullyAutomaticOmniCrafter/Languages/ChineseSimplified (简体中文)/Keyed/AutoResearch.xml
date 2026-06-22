@@ -4,5 +4,12 @@
     <OmniCrafter_AutoResearch_Paused>自动研究已暂停</OmniCrafter_AutoResearch_Paused>
     <OmniCrafter_AutoResearch_Active>启动研究</OmniCrafter_AutoResearch_Active>
     <OmniCrafter_AutoResearch_ActiveDesc>切换自动研究的开启/关闭状态。</OmniCrafter_AutoResearch_ActiveDesc>
+    <OmniCrafter_AutoResearch_StatusRunning>自动研究：运行中（{0}）</OmniCrafter_AutoResearch_StatusRunning>
+    <OmniCrafter_AutoResearch_StatusPaused>自动研究：已暂停（开关关闭）</OmniCrafter_AutoResearch_StatusPaused>
+    <OmniCrafter_AutoResearch_StatusNoPower>自动研究：等待供电</OmniCrafter_AutoResearch_StatusNoPower>
+    <OmniCrafter_AutoResearch_StatusNoProject>自动研究：等待选择研究项目</OmniCrafter_AutoResearch_StatusNoProject>
+    <OmniCrafter_AutoResearch_StatusProjectFinished>自动研究：当前项目已完成（{0}）</OmniCrafter_AutoResearch_StatusProjectFinished>
+    <OmniCrafter_AutoResearch_StatusNoPowerNet>自动研究：等待连接电网</OmniCrafter_AutoResearch_StatusNoPowerNet>
+    <OmniCrafter_AutoResearch_StatusNoStoredEnergy>自动研究：等待电池储能</OmniCrafter_AutoResearch_StatusNoStoredEnergy>
 
 </LanguageData>

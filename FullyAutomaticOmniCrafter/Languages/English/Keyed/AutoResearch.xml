@@ -5,5 +5,12 @@
     <OmniCrafter_AutoResearch_Paused>Auto Research Paused</OmniCrafter_AutoResearch_Paused>
     <OmniCrafter_AutoResearch_Active>Enable Research</OmniCrafter_AutoResearch_Active>
     <OmniCrafter_AutoResearch_ActiveDesc>Toggle auto research on/off.</OmniCrafter_AutoResearch_ActiveDesc>
+    <OmniCrafter_AutoResearch_StatusRunning>Auto research: running ({0})</OmniCrafter_AutoResearch_StatusRunning>
+    <OmniCrafter_AutoResearch_StatusPaused>Auto research: paused (toggle is off)</OmniCrafter_AutoResearch_StatusPaused>
+    <OmniCrafter_AutoResearch_StatusNoPower>Auto research: waiting for power</OmniCrafter_AutoResearch_StatusNoPower>
+    <OmniCrafter_AutoResearch_StatusNoProject>Auto research: waiting for a selected research project</OmniCrafter_AutoResearch_StatusNoProject>
+    <OmniCrafter_AutoResearch_StatusProjectFinished>Auto research: current project is complete ({0})</OmniCrafter_AutoResearch_StatusProjectFinished>
+    <OmniCrafter_AutoResearch_StatusNoPowerNet>Auto research: waiting for power grid connection</OmniCrafter_AutoResearch_StatusNoPowerNet>
+    <OmniCrafter_AutoResearch_StatusNoStoredEnergy>Auto research: waiting for stored battery power</OmniCrafter_AutoResearch_StatusNoStoredEnergy>
 
 </LanguageData>
