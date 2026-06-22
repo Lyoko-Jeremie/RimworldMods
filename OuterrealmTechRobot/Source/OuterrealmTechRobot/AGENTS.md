@@ -38,6 +38,9 @@ i18n语言目录在 `../../Languages` ，源代码中需要参与显示的硬编
 
 ## 代码规范
 
+### 注释
+注释以中文编写
+
 ### 图片材质需要预加载
 ```csharp
     [StaticConstructorOnStartup]
