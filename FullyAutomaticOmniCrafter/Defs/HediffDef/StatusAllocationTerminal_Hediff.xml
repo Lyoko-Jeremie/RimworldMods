@@ -67,56 +67,94 @@
         <stages>
             <li>
                 <statOffsets>
-                    <!-- 核心战斗加成 -->
-                    <IncomingDamageFactor>-0.99985</IncomingDamageFactor> <!-- 对应 0.00015 的乘数，这里用负向偏移抵消 -->
+                    <!-- 核心战斗与机动能力：把受到伤害、瞄准、射击冷却和移动速度调整到近似超维强化状态。 -->
+                    <!-- 受到伤害倍率偏移；基础倍率为 1，-0.99985 使最终倍率约为 0.00015，几乎免疫常规伤害。 -->
+                    <IncomingDamageFactor>-0.99985</IncomingDamageFactor>
+                    <!-- 瞄准时间倍率偏移；基础倍率为 1，-0.999 使远程武器瞄准时间几乎归零。 -->
                     <AimingDelayFactor>-0.999</AimingDelayFactor>
+                    <!-- 远程攻击冷却倍率偏移；基础倍率为 1，-0.999 使射击后的冷却时间极短。 -->
                     <RangedCooldownFactor>-0.999</RangedCooldownFactor>
+                    <!-- 殖民者射击命中率加值；大幅提高远程武器命中表现。 -->
                     <ShootingAccuracyPawn>100</ShootingAccuracyPawn>
+                    <!-- 移动速度加值；直接提高小人的每秒移动格数。 -->
                     <MoveSpeed>200</MoveSpeed>
 
-                    <!-- 近战属性 -->
+                    <!-- 近战能力：提高命中、闪避和伤害，同时压低近战冷却与硬直。 -->
+                    <!-- 近战命中率加值；提高近战攻击成功命中的概率。 -->
                     <MeleeHitChance>1</MeleeHitChance>
+                    <!-- 近战闪避率加值；提高被近战攻击时闪避成功的概率。 -->
                     <MeleeDodgeChance>1</MeleeDodgeChance>
+                    <!-- 近战冷却倍率偏移；基础倍率为 1，-1 会把冷却倍率压到极低。 -->
                     <MeleeCooldownFactor>-1</MeleeCooldownFactor>
+                    <!-- 近战伤害倍率偏移；基础倍率为 1，+1 表示近战伤害约翻倍。 -->
                     <MeleeDamageFactor>1</MeleeDamageFactor>
+                    <!-- 受击硬直时间倍率偏移；基础倍率为 1，-1 使硬直时间接近或等于零。 -->
                     <StaggerDurationFactor>-1</StaggerDurationFactor>
 
-                    <!-- 精神与生存 -->
+                    <!-- 精神、毒性与日常生存：降低崩溃风险，增强灵能与基础生活效率。 -->
+                    <!-- 毒素抗性加值；提高对毒气、毒物和污染相关效果的抵抗能力。 -->
                     <ToxicResistance>1</ToxicResistance>
+                    <!-- 精神崩溃阈值偏移；负值降低进入精神崩溃的可能性。 -->
                     <MentalBreakThreshold>-2</MentalBreakThreshold>
+                    <!-- 灵能敏感度加值；提高灵能相关效果强度，适合配合高灵熵容量。 -->
                     <PsychicSensitivity>1</PsychicSensitivity>
+                    <!-- 灵熵上限加值；Ideology 启用时提供极高的灵能热量容量。 -->
                     <PsychicEntropyMax MayRequire="Ludeon.RimWorld.Ideology">200000</PsychicEntropyMax>
+                    <!-- 灵熵恢复速度加值；Ideology 启用时快速清空灵能热量。 -->
                     <PsychicEntropyRecoveryRate MayRequire="Ludeon.RimWorld.Ideology">10000</PsychicEntropyRecoveryRate>
+                    <!-- 冥想专注获取加值；Ideology 启用时显著提高冥想效率。 -->
                     <MeditationFocusGain MayRequire="Ludeon.RimWorld.Ideology">30</MeditationFocusGain>
+                    <!-- 进食速度加值；减少吃饭占用的时间。 -->
                     <EatingSpeed>1</EatingSpeed>
+                    <!-- 休息需求下降倍率偏移；基础倍率为 1，-0.5 表示休息需求下降速度约减半。 -->
                     <RestFallRateFactor>-0.5</RestFallRateFactor>
+                    <!-- 污秽产生率偏移；负值降低或抵消小人产生污物的倾向。 -->
                     <FilthRate>-1.5</FilthRate>
 
-                    <!-- 机械师 (Biotech) 相关属性 -->
+                    <!-- 机械师与 Biotech 相关能力：强化子核、机械体维护、带宽和远程护盾。 -->
+                    <!-- 子核编码速度加值；提高机械师进行子核编码的速度。 -->
                     <SubcoreEncodingSpeed>30</SubcoreEncodingSpeed>
+                    <!-- 机械体修理速度加值；缩短维修机械体所需时间。 -->
                     <MechRepairSpeed>300</MechRepairSpeed>
+                    <!-- 机械体控制组数量加值；允许机械师管理更多机械体控制组。 -->
                     <MechControlGroups>9</MechControlGroups>
+                    <!-- 机械体远程护盾能量加值；提高远程护盾可承受的能量总量。 -->
                     <MechRemoteShieldEnergy>2500</MechRemoteShieldEnergy>
+                    <!-- 机械体带宽加值；提高可控制机械体的总带宽容量。 -->
                     <MechBandwidth>600</MechBandwidth>
+                    <!-- 机械体全局工作速度偏移；提高受控机械体的整体工作效率。 -->
                     <WorkSpeedGlobalOffsetMech>110</WorkSpeedGlobalOffsetMech>
+                    <!-- 机械体成型速度加值；缩短机械体成型和孵化过程。 -->
                     <MechFormingSpeed>120</MechFormingSpeed>
 
-                    <!-- 生产、搬运与工作 -->
+                    <!-- 生产、搬运与工作：把全局工作、搬运和建造等通用效率推到极高。 -->
+                    <!-- 全局工作速度加值；影响大部分以工作速度结算的任务。 -->
                     <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>
+                    <!-- 搬运容量加值；让小人一次携带极大量物品。 -->
                     <CarryingCapacity>10000000</CarryingCapacity>
+                    <!-- RimImmortal 扩展的质量搬运容量；仅在对应 Mod 启用时生效。 -->
                     <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">100000</RI_MassCarryCapacity>
+                    <!-- 机械体屠宰效率加值；提高拆解机械体时获得资源的效率。 -->
                     <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency>
+                    <!-- 建造成功率加值；降低或消除建造失败概率。 -->
                     <ConstructSuccessChance>1</ConstructSuccessChance>
 
-                    <!-- 特殊环境抗性 -->
+                    <!-- 特殊环境抗性：覆盖真空和燃烧等高危环境因素。 -->
+                    <!-- 真空抗性加值；Odyssey 启用时提高在真空环境中的生存能力。 -->
                     <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
+                    <!-- 可燃性偏移；负值降低被点燃概率，-1 通常等同于完全不可燃。 -->
                     <Flammability>-1</Flammability>
 
-                    <!-- 护甲和抗性 (从物品的 statBases 转移过来) -->
+                    <!-- 护甲与温度抗性：这些属性原本常见于装备 statBases，这里通过 Hediff 直接加到小人身上。 -->
+                    <!-- 尖锐护甲加值；抵抗子弹、刀剑等锐器伤害。 -->
                     <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+                    <!-- 钝击护甲加值；抵抗钝器、爆炸冲击等钝击伤害。 -->
                     <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+                    <!-- 热能护甲加值；抵抗火焰、高温武器等热能伤害。 -->
                     <ArmorRating_Heat>10000</ArmorRating_Heat>
+                    <!-- 寒冷隔热加值；提高低温环境耐受能力。 -->
                     <Insulation_Cold>10000</Insulation_Cold>
+                    <!-- 炎热隔热加值；提高高温环境耐受能力。 -->
                     <Insulation_Heat>10000</Insulation_Heat>
                 </statOffsets>
             </li>
