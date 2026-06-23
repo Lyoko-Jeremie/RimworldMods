@@ -141,7 +141,7 @@ namespace FullyAutomaticOmniCrafter
         
         private ThingDef selectedDef;
         private ThingDef selectedStuff;
-        private QualityCategory selectedQuality = QualityCategory.Normal;
+        private QualityCategory selectedQuality = QualityCategory.Legendary;
         private List<WeaponTraitDef> selectedTraits = new List<WeaponTraitDef>();
         private WeaponTraitDef selectedTraitForDetail;
         
@@ -378,6 +378,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     selectedDef = def;
                     selectedStuff = def.MadeFromStuff ? GenStuff.DefaultStuffFor(def) : null;
+                    selectedQuality = QualityCategory.Legendary;
                 }
                 curY += rowHeight;
             }

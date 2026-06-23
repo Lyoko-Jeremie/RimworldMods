@@ -733,7 +733,7 @@ namespace FullyAutomaticOmniCrafter
             selectedAutoOrder = null;
             validStuffs = def.MadeFromStuff ? OmniCrafterCache.GetValidStuffs(def) : null;
             selectedStuff = validStuffs != null && validStuffs.Count > 0 ? validStuffs[0] : null;
-            selectedQuality = QualityCategory.Normal;
+            selectedQuality = QualityCategory.Legendary;
             craftCount = 1;
         }
 
