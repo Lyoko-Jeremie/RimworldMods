@@ -40,6 +40,9 @@
 20. 可以制作出附带属性的武器的武器制造台（开发中）； OmniWeaponCreator
 21. 可以控制生活区或指定活动区的宜居性的万能生物圈； OmniBiosphere
 22. 以多种压倒性的方法消灭目标的万能消杀机； OmniKiller
+23. 可以舒缓抑郁和倦怠的情绪的情绪协调仪；OmniJoySoothe
+24. 
+
 
 本 Mod 原名 [全自动万能制造机 FullyAutomaticOmniCrafter]
 
@@ -252,6 +255,7 @@ The currently available buildings are as follows:
 20. OmniWeaponCreator: Can create weapons with attributes; OmniWeaponCreator
 21. OmniBiosphere: Can control the habitability of living areas or specified activity areas; OmniBiosphere
 22. OmniKiller: A device that can eliminate targets in various overwhelming ways; OmniKiller
+22. OmniJoySoothe: Can soothe depression and fatigue; OmniJoySoothe
 
 This Mod was originally named [FullyAutomaticOmniCrafter].
         
