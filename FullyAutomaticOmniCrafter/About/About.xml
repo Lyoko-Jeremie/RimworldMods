@@ -408,7 +408,10 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAut
 	<loadBefore>
 	</loadBefore>
 	<loadAfter>
-		
+
+        <li>Ingendum.AnimalApparelFramework</li>
+        <li>ri.rimimmortal.core</li>
+
 		<li>rabiosus.autoblink</li>
 		<!-- <li>-->
 		<!-- 	<packageId>rabiosus.autoblink</packageId>-->
