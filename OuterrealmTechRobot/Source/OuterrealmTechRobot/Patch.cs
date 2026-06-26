@@ -12,7 +12,9 @@ namespace OuterrealmTechRobot
 {
     public static class ArtificialMaidCaravanUtility
     {
-        public const int MinWorldTicksPerMove = 50;
+        public const int MinWorldTicksPerMove = 1;
+        // 原版 RimWorld 用来把“地图格移动速度”折算成“世界格移动速度”的比例常量。
+        private const float CellToTilesConversionRatio = 340f;
 
         [System.ThreadStatic]
         private static int ignoreWorldPathCostsDepth;
@@ -85,6 +87,93 @@ namespace OuterrealmTechRobot
             }
 
             return false;
+        }
+
+        public static bool TryGetMoveSpeedTicksPerMove(
+            List<Pawn> pawns,
+            float massUsage,
+            float massCapacity,
+            out int ticksPerMove)
+        {
+            ticksPerMove = 0;
+            if (pawns == null)
+            {
+                return false;
+            }
+
+            float humanMoveSpeed = ThingDefOf.Human.GetStatValueAbstract(StatDefOf.MoveSpeed);
+            if (humanMoveSpeed <= 0f)
+            {
+                return false;
+            }
+
+            float bestSpeedFactor = 1f;
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn == null || pawn.def != ArtificialMaidDefOf.ArtificialMaid)
+                {
+                    continue;
+                }
+
+                float moveSpeed = pawn.GetStatValue(StatDefOf.MoveSpeed);
+                if (moveSpeed > humanMoveSpeed)
+                {
+                    bestSpeedFactor = UnityEngine.Mathf.Max(bestSpeedFactor, moveSpeed / humanMoveSpeed);
+                }
+            }
+
+            if (bestSpeedFactor <= 1f)
+            {
+                return false;
+            }
+
+            int baseHumanTicksPerCell = UnityEngine.Mathf.RoundToInt(1f / (humanMoveSpeed / 60f));
+            float baseWorldTicksPerMove = baseHumanTicksPerCell * CellToTilesConversionRatio;
+            float massFactor = GetMoveSpeedFactorFromMass(massUsage, massCapacity);
+            ticksPerMove = UnityEngine.Mathf.Max(
+                UnityEngine.Mathf.RoundToInt(baseWorldTicksPerMove / (massFactor * bestSpeedFactor)),
+                MinWorldTicksPerMove);
+            return true;
+        }
+
+        public static bool TryApplyMoveSpeedTicksPerMove(
+            List<Pawn> pawns,
+            float massUsage,
+            float massCapacity,
+            StringBuilder explanation,
+            ref int result)
+        {
+            if (!TryGetMoveSpeedTicksPerMove(pawns, massUsage, massCapacity, out int ticksPerMove) &&
+                result >= MinWorldTicksPerMove)
+            {
+                return false;
+            }
+
+            int safeResult = UnityEngine.Mathf.Max(result, MinWorldTicksPerMove);
+            int targetTicksPerMove = ticksPerMove > 0
+                ? UnityEngine.Mathf.Min(safeResult, ticksPerMove)
+                : safeResult;
+            if (targetTicksPerMove == result)
+            {
+                return false;
+            }
+
+            result = targetTicksPerMove;
+
+            if (explanation != null)
+            {
+                explanation.AppendLine();
+                explanation.Append("  " + "ArtificialMaidCaravanWorldPathingLimit".Translate(
+                    (60000f / result).ToString("0.#")));
+            }
+
+            return true;
+        }
+
+        private static float GetMoveSpeedFactorFromMass(float massUsage, float massCapacity)
+        {
+            return massCapacity <= 0f ? 1f : UnityEngine.Mathf.Lerp(2f, 1f, massUsage / massCapacity);
         }
     }
 
@@ -414,23 +503,25 @@ namespace OuterrealmTechRobot
     {
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(List<Pawn> pawns, bool isShuttle, StringBuilder explanation, ref int __result)
+        public static void Postfix(
+            List<Pawn> pawns,
+            float massUsage,
+            float massCapacity,
+            bool isShuttle,
+            StringBuilder explanation,
+            ref int __result)
         {
-            if (isShuttle || __result >= ArtificialMaidCaravanUtility.MinWorldTicksPerMove ||
-                !ArtificialMaidCaravanUtility.ContainsArtificialMaid(pawns))
+            if (isShuttle || !ArtificialMaidCaravanUtility.ContainsArtificialMaid(pawns))
             {
                 return;
             }
 
-            // 世界寻路使用整数边权；过低的移动成本会被道路倍率截断为 0，导致 A* 退化出异常路线。
-            __result = ArtificialMaidCaravanUtility.MinWorldTicksPerMove;
-
-            if (explanation != null)
-            {
-                explanation.AppendLine();
-                explanation.Append("  " + "ArtificialMaidCaravanWorldPathingLimit".Translate(
-                    (60000f / ArtificialMaidCaravanUtility.MinWorldTicksPerMove).ToString("0.#")));
-            }
+            ArtificialMaidCaravanUtility.TryApplyMoveSpeedTicksPerMove(
+                pawns,
+                massUsage,
+                massCapacity,
+                explanation,
+                ref __result);
         }
     }
 
@@ -443,22 +534,18 @@ namespace OuterrealmTechRobot
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(Caravan caravan, StringBuilder explanation, ref int __result)
         {
-            if (caravan == null || caravan.Shuttle != null ||
-                __result >= ArtificialMaidCaravanUtility.MinWorldTicksPerMove ||
-                !ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan))
+            if (caravan == null || caravan.Shuttle != null || !ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan))
             {
                 return;
             }
 
             // 兼容 Caravan Speed Patch：它会按当前 MoveSpeed 再次缩放，极端速度下可能把结果压到 0。
-            __result = ArtificialMaidCaravanUtility.MinWorldTicksPerMove;
-
-            if (explanation != null)
-            {
-                explanation.AppendLine();
-                explanation.Append("  " + "ArtificialMaidCaravanWorldPathingLimit".Translate(
-                    (60000f / ArtificialMaidCaravanUtility.MinWorldTicksPerMove).ToString("0.#")));
-            }
+            ArtificialMaidCaravanUtility.TryApplyMoveSpeedTicksPerMove(
+                caravan.PawnsListForReading,
+                caravan.MassUsage,
+                caravan.MassCapacity,
+                explanation,
+                ref __result);
         }
     }
 
