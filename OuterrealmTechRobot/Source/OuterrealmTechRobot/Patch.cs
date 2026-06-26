@@ -12,9 +12,58 @@ namespace OuterrealmTechRobot
 {
     public static class ArtificialMaidCaravanUtility
     {
+        [System.ThreadStatic]
+        private static int ignoreWorldPathCostsDepth;
+
+        public static bool IgnoreWorldPathCosts => ignoreWorldPathCostsDepth > 0;
+
+        public static void PushIgnoreWorldPathCosts(bool enabled, out bool pushed)
+        {
+            pushed = enabled;
+            if (enabled)
+            {
+                ignoreWorldPathCostsDepth++;
+            }
+        }
+
+        public static void PopIgnoreWorldPathCosts(bool pushed)
+        {
+            if (pushed && ignoreWorldPathCostsDepth > 0)
+            {
+                ignoreWorldPathCostsDepth--;
+            }
+        }
+
         public static bool ContainsArtificialMaid(Caravan caravan)
         {
             return caravan != null && ContainsArtificialMaid(caravan.PawnsListForReading);
+        }
+
+        public static bool ContainsArtificialMaid(List<TransferableOneWay> transferables)
+        {
+            if (transferables == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < transferables.Count; i++)
+            {
+                TransferableOneWay transferable = transferables[i];
+                if (transferable == null || !transferable.HasAnyThing)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < transferable.things.Count; j++)
+                {
+                    if (transferable.things[j] is Pawn pawn && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public static bool ContainsArtificialMaid(List<Pawn> pawns)
@@ -364,6 +413,7 @@ namespace OuterrealmTechRobot
         private const int MinArtificialMaidWorldTicksPerMove = 50;
 
         [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(List<Pawn> pawns, bool isShuttle, StringBuilder explanation, ref int __result)
         {
             if (isShuttle || __result <= 0 || __result >= MinArtificialMaidWorldTicksPerMove ||
@@ -437,7 +487,10 @@ namespace OuterrealmTechRobot
 
         private static float ArtificialMaidMovementDifficulty(float originalDifficulty, Caravan caravan)
         {
-            return ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan) ? 1f : originalDifficulty;
+            return ArtificialMaidCaravanUtility.IgnoreWorldPathCosts ||
+                   ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan)
+                ? 1f
+                : originalDifficulty;
         }
 
         private static float ArtificialMaidRoadMovementDifficultyMultiplier(
@@ -447,9 +500,108 @@ namespace OuterrealmTechRobot
             StringBuilder explanation,
             Caravan caravan)
         {
-            return ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan)
+            return ArtificialMaidCaravanUtility.IgnoreWorldPathCosts ||
+                   ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan)
                 ? 1f
                 : grid.GetRoadMovementDifficultyMultiplier(fromTile, toTile, explanation);
+        }
+    }
+
+    [HarmonyPatch(typeof(WorldRoutePlanner), "RecreatePaths")]
+    public static class Patch_WorldRoutePlanner_RecreatePaths
+    {
+        private static readonly AccessTools.FieldRef<WorldRoutePlanner, Dialog_FormCaravan> CurrentFormCaravanDialogRef =
+            AccessTools.FieldRefAccess<WorldRoutePlanner, Dialog_FormCaravan>("currentFormCaravanDialog");
+
+        private static readonly AccessTools.FieldRef<WorldRoutePlanner, CaravanTicksPerMoveUtility.CaravanInfo?>
+            CaravanInfoFromFormCaravanDialogRef =
+                AccessTools.FieldRefAccess<WorldRoutePlanner, CaravanTicksPerMoveUtility.CaravanInfo?>(
+                    "caravanInfoFromFormCaravanDialog");
+
+        [HarmonyPrefix]
+        public static void Prefix(WorldRoutePlanner __instance, out bool __state)
+        {
+            ArtificialMaidCaravanUtility.PushIgnoreWorldPathCosts(ShouldIgnoreWorldPathCosts(__instance), out __state);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(bool __state)
+        {
+            ArtificialMaidCaravanUtility.PopIgnoreWorldPathCosts(__state);
+        }
+
+        private static bool ShouldIgnoreWorldPathCosts(WorldRoutePlanner planner)
+        {
+            if (planner == null)
+            {
+                return false;
+            }
+
+            if (CurrentFormCaravanDialogRef(planner) != null)
+            {
+                CaravanTicksPerMoveUtility.CaravanInfo? caravanInfo = CaravanInfoFromFormCaravanDialogRef(planner);
+                return caravanInfo.HasValue &&
+                       ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravanInfo.Value.pawns);
+            }
+
+            if (planner.waypoints.NullOrEmpty())
+            {
+                return false;
+            }
+
+            Caravan caravan = Find.WorldObjects.PlayerControlledCaravanAt(planner.waypoints[0].Tile);
+            return ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan);
+        }
+    }
+
+    [HarmonyPatch(typeof(Dialog_FormCaravan), "get_DaysWorthOfFood")]
+    public static class Patch_Dialog_FormCaravan_DaysWorthOfFood
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Dialog_FormCaravan __instance, out bool __state)
+        {
+            ArtificialMaidCaravanUtility.PushIgnoreWorldPathCosts(
+                ArtificialMaidCaravanUtility.ContainsArtificialMaid(__instance.transferables), out __state);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(bool __state)
+        {
+            ArtificialMaidCaravanUtility.PopIgnoreWorldPathCosts(__state);
+        }
+    }
+
+    [HarmonyPatch(typeof(Dialog_FormCaravan), "get_TicksToArrive")]
+    public static class Patch_Dialog_FormCaravan_TicksToArrive
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Dialog_FormCaravan __instance, out bool __state)
+        {
+            ArtificialMaidCaravanUtility.PushIgnoreWorldPathCosts(
+                ArtificialMaidCaravanUtility.ContainsArtificialMaid(__instance.transferables), out __state);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(bool __state)
+        {
+            ArtificialMaidCaravanUtility.PopIgnoreWorldPathCosts(__state);
+        }
+    }
+
+    [HarmonyPatch(typeof(Dialog_FormCaravan), "SelectApproximateBestTravelSupplies")]
+    public static class Patch_Dialog_FormCaravan_SelectApproximateBestTravelSupplies
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Dialog_FormCaravan __instance, out bool __state)
+        {
+            ArtificialMaidCaravanUtility.PushIgnoreWorldPathCosts(
+                ArtificialMaidCaravanUtility.ContainsArtificialMaid(__instance.transferables), out __state);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(bool __state)
+        {
+            ArtificialMaidCaravanUtility.PopIgnoreWorldPathCosts(__state);
         }
     }
 
