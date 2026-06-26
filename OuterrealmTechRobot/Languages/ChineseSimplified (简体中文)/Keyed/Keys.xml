@@ -67,6 +67,7 @@
     <ContainsArtificialMaid>内容物：{0}</ContainsArtificialMaid>
     <ArtificialMaidPacked>人造人女仆 {0} 已被打包进运输箱。</ArtificialMaidPacked>
     <ArtificialMaidUnpacked>人造人女仆 {0} 已重新启动。</ArtificialMaidUnpacked>
+    <ArtificialMaidCaravanWorldPathingLimit>世界寻路稳定限制：{0} 格/天</ArtificialMaidCaravanWorldPathingLimit>
     <EnableHealingProtocolLabel>启用治疗协议</EnableHealingProtocolLabel>
     <EnableHealingProtocolDesc>启用后，人造人女仆将持续为主人提供治疗服务。</EnableHealingProtocolDesc>
 

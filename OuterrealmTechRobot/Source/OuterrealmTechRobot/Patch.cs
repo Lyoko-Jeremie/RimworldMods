@@ -2,6 +2,7 @@
 using System.Text;
 using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using Verse;
 using Verse.AI;
 using Verse.AI.Group;
@@ -325,6 +326,52 @@ namespace OuterrealmTechRobot
             }
 
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(CaravanTicksPerMoveUtility), nameof(CaravanTicksPerMoveUtility.GetTicksPerMove),
+        new System.Type[] { typeof(List<Pawn>), typeof(float), typeof(float), typeof(bool), typeof(StringBuilder) })]
+    public static class Patch_CaravanTicksPerMoveUtility_GetTicksPerMove
+    {
+        private const int MinArtificialMaidWorldTicksPerMove = 50;
+
+        [HarmonyPostfix]
+        public static void Postfix(List<Pawn> pawns, bool isShuttle, StringBuilder explanation, ref int __result)
+        {
+            if (isShuttle || __result <= 0 || __result >= MinArtificialMaidWorldTicksPerMove ||
+                !ContainsArtificialMaid(pawns))
+            {
+                return;
+            }
+
+            // 世界寻路使用整数边权；过低的移动成本会被道路倍率截断为 0，导致 A* 退化出异常路线。
+            __result = MinArtificialMaidWorldTicksPerMove;
+
+            if (explanation != null)
+            {
+                explanation.AppendLine();
+                explanation.Append("  " + "ArtificialMaidCaravanWorldPathingLimit".Translate(
+                    (60000f / MinArtificialMaidWorldTicksPerMove).ToString("0.#")));
+            }
+        }
+
+        private static bool ContainsArtificialMaid(List<Pawn> pawns)
+        {
+            if (pawns == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 

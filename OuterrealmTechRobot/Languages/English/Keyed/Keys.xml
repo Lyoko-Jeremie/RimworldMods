@@ -67,6 +67,7 @@
     <ContainsArtificialMaid>Contains: {0}</ContainsArtificialMaid>
     <ArtificialMaidPacked>Artificial Maid {0} has been packed into transport box.</ArtificialMaidPacked>
     <ArtificialMaidUnpacked>Artificial Maid {0} has been restarted.</ArtificialMaidUnpacked>
+    <ArtificialMaidCaravanWorldPathingLimit>World pathing stability limit: {0} tiles/day</ArtificialMaidCaravanWorldPathingLimit>
     <EnableHealingProtocolLabel>Enable Healing Protocol</EnableHealingProtocolLabel>
     <EnableHealingProtocolDesc>If enabled, this artificial maid will continuously provide disease treatment for master.</EnableHealingProtocolDesc>
 
