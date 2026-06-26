@@ -12,6 +12,8 @@ namespace OuterrealmTechRobot
 {
     public static class ArtificialMaidCaravanUtility
     {
+        public const int MinWorldTicksPerMove = 50;
+
         [System.ThreadStatic]
         private static int ignoreWorldPathCostsDepth;
 
@@ -410,26 +412,52 @@ namespace OuterrealmTechRobot
         new System.Type[] { typeof(List<Pawn>), typeof(float), typeof(float), typeof(bool), typeof(StringBuilder) })]
     public static class Patch_CaravanTicksPerMoveUtility_GetTicksPerMove
     {
-        private const int MinArtificialMaidWorldTicksPerMove = 50;
-
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(List<Pawn> pawns, bool isShuttle, StringBuilder explanation, ref int __result)
         {
-            if (isShuttle || __result <= 0 || __result >= MinArtificialMaidWorldTicksPerMove ||
+            if (isShuttle || __result >= ArtificialMaidCaravanUtility.MinWorldTicksPerMove ||
                 !ArtificialMaidCaravanUtility.ContainsArtificialMaid(pawns))
             {
                 return;
             }
 
             // 世界寻路使用整数边权；过低的移动成本会被道路倍率截断为 0，导致 A* 退化出异常路线。
-            __result = MinArtificialMaidWorldTicksPerMove;
+            __result = ArtificialMaidCaravanUtility.MinWorldTicksPerMove;
 
             if (explanation != null)
             {
                 explanation.AppendLine();
                 explanation.Append("  " + "ArtificialMaidCaravanWorldPathingLimit".Translate(
-                    (60000f / MinArtificialMaidWorldTicksPerMove).ToString("0.#")));
+                    (60000f / ArtificialMaidCaravanUtility.MinWorldTicksPerMove).ToString("0.#")));
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CaravanTicksPerMoveUtility), nameof(CaravanTicksPerMoveUtility.GetTicksPerMove),
+        new System.Type[] { typeof(Caravan), typeof(StringBuilder) })]
+    [HarmonyAfter("rimworld.ktk_CaravanSpeedPatch")]
+    public static class Patch_CaravanTicksPerMoveUtility_GetTicksPerMove_Caravan
+    {
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(Caravan caravan, StringBuilder explanation, ref int __result)
+        {
+            if (caravan == null || caravan.Shuttle != null ||
+                __result >= ArtificialMaidCaravanUtility.MinWorldTicksPerMove ||
+                !ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan))
+            {
+                return;
+            }
+
+            // 兼容 Caravan Speed Patch：它会按当前 MoveSpeed 再次缩放，极端速度下可能把结果压到 0。
+            __result = ArtificialMaidCaravanUtility.MinWorldTicksPerMove;
+
+            if (explanation != null)
+            {
+                explanation.AppendLine();
+                explanation.Append("  " + "ArtificialMaidCaravanWorldPathingLimit".Translate(
+                    (60000f / ArtificialMaidCaravanUtility.MinWorldTicksPerMove).ToString("0.#")));
             }
         }
     }
