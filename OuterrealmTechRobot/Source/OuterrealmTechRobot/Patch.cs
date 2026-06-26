@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Reflection.Emit;
 using System.Text;
 using HarmonyLib;
 using RimWorld;
@@ -9,6 +10,33 @@ using Verse.AI.Group;
 
 namespace OuterrealmTechRobot
 {
+    public static class ArtificialMaidCaravanUtility
+    {
+        public static bool ContainsArtificialMaid(Caravan caravan)
+        {
+            return caravan != null && ContainsArtificialMaid(caravan.PawnsListForReading);
+        }
+
+        public static bool ContainsArtificialMaid(List<Pawn> pawns)
+        {
+            if (pawns == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
     [HarmonyPatch(typeof(MassUtility), nameof(MassUtility.Capacity))]
     public static class Patch_MassUtility_Capacity
     {
@@ -339,7 +367,7 @@ namespace OuterrealmTechRobot
         public static void Postfix(List<Pawn> pawns, bool isShuttle, StringBuilder explanation, ref int __result)
         {
             if (isShuttle || __result <= 0 || __result >= MinArtificialMaidWorldTicksPerMove ||
-                !ContainsArtificialMaid(pawns))
+                !ArtificialMaidCaravanUtility.ContainsArtificialMaid(pawns))
             {
                 return;
             }
@@ -354,23 +382,91 @@ namespace OuterrealmTechRobot
                     (60000f / MinArtificialMaidWorldTicksPerMove).ToString("0.#")));
             }
         }
+    }
 
-        private static bool ContainsArtificialMaid(List<Pawn> pawns)
+    [HarmonyPatch(typeof(WorldPathing), nameof(WorldPathing.FindPath))]
+    public static class Patch_WorldPathing_FindPath
+    {
+        [HarmonyTranspiler]
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            if (pawns == null)
-            {
-                return false;
-            }
+            List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+            var roadMethod = AccessTools.Method(typeof(WorldGrid), nameof(WorldGrid.GetRoadMovementDifficultyMultiplier),
+                new System.Type[] { typeof(PlanetTile), typeof(PlanetTile), typeof(StringBuilder) });
+            var terrainMethod = AccessTools.Method(typeof(Patch_WorldPathing_FindPath),
+                nameof(ArtificialMaidMovementDifficulty));
+            var roadReplacementMethod = AccessTools.Method(typeof(Patch_WorldPathing_FindPath),
+                nameof(ArtificialMaidRoadMovementDifficultyMultiplier));
 
-            for (int i = 0; i < pawns.Count; i++)
+            bool patchedTerrain = false;
+            bool patchedRoad = false;
+
+            for (int i = 0; i < codes.Count; i++)
             {
-                Pawn pawn = pawns[i];
-                if (pawn != null && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+                if (!patchedRoad && codes[i].Calls(roadMethod))
                 {
-                    return true;
+                    for (int j = i - 1; j >= 0; j--)
+                    {
+                        if (codes[j].opcode == OpCodes.Ldelem_R4)
+                        {
+                            codes.Insert(j + 1, new CodeInstruction(OpCodes.Ldarg_3));
+                            codes.Insert(j + 2, new CodeInstruction(OpCodes.Call, terrainMethod));
+                            i += 2;
+                            patchedTerrain = true;
+                            break;
+                        }
+                    }
+
+                    CodeInstruction loadCaravan = new CodeInstruction(OpCodes.Ldarg_3);
+                    loadCaravan.labels.AddRange(codes[i].labels);
+                    codes[i].labels.Clear();
+                    codes.Insert(i, loadCaravan);
+                    codes[i + 1].operand = roadReplacementMethod;
+                    patchedRoad = true;
+                    i++;
                 }
             }
 
+            if (!patchedTerrain || !patchedRoad)
+            {
+                Log.Warning("[OuterrealmTechRobot] Failed to patch WorldPathing.FindPath movement cost.");
+            }
+
+            return codes;
+        }
+
+        private static float ArtificialMaidMovementDifficulty(float originalDifficulty, Caravan caravan)
+        {
+            return ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan) ? 1f : originalDifficulty;
+        }
+
+        private static float ArtificialMaidRoadMovementDifficultyMultiplier(
+            WorldGrid grid,
+            PlanetTile fromTile,
+            PlanetTile toTile,
+            StringBuilder explanation,
+            Caravan caravan)
+        {
+            return ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan)
+                ? 1f
+                : grid.GetRoadMovementDifficultyMultiplier(fromTile, toTile, explanation);
+        }
+    }
+
+    [HarmonyPatch(typeof(Caravan_PathFollower), nameof(Caravan_PathFollower.CostToMove),
+        new System.Type[] { typeof(Caravan), typeof(PlanetTile), typeof(PlanetTile), typeof(int?) })]
+    public static class Patch_Caravan_PathFollower_CostToMove_Caravan
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Caravan caravan, PlanetTile start, PlanetTile end, ref int __result)
+        {
+            if (!ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan))
+            {
+                return true;
+            }
+
+            // 与世界寻路保持一致：人造人女仆远行队不受世界地形和道路移动倍率影响。
+            __result = start == end ? 0 : UnityEngine.Mathf.Clamp(caravan.TicksPerMove, 1, 30000);
             return false;
         }
     }
