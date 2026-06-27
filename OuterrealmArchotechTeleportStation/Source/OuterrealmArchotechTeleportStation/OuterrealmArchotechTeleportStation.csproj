@@ -81,8 +81,8 @@
   </ItemGroup>
   <Target Name="CopyToModAssemblies" AfterTargets="Build">
     <MakeDir Directories="..\..\Assemblies" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" ContinueOnError="WarnAndContinue" />
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)$(TargetName).pdb')" ContinueOnError="WarnAndContinue" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" Retries="0" ContinueOnError="WarnAndContinue" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" Retries="0" Condition="Exists('$(TargetDir)$(TargetName).pdb')" ContinueOnError="WarnAndContinue" />
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
