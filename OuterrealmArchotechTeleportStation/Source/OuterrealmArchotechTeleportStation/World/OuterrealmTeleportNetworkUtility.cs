@@ -70,8 +70,34 @@ namespace OuterrealmArchotechTeleportStation
         }
 
         /// <summary>
+        /// 判断远行队是否位于传送站本格或相邻一格内。
+        /// 世界地图地标 tile 可能无法直接停留，因此相邻 tile 也允许使用传送站网络。
+        /// </summary>
+        public static bool CaravanInStationRange(Caravan caravan, OuterrealmArchotechTeleportStationWorldObject station)
+        {
+            if (caravan == null || station == null || !caravan.Tile.Valid || !station.Tile.Valid)
+            {
+                return false;
+            }
+
+            if (caravan.Tile == station.Tile)
+            {
+                return true;
+            }
+
+            if (caravan.Tile.Layer != station.Tile.Layer)
+            {
+                return false;
+            }
+
+            List<PlanetTile> neighbors = new List<PlanetTile>();
+            Find.WorldGrid.GetTileNeighbors(station.Tile, neighbors);
+            return neighbors.Contains(caravan.Tile);
+        }
+
+        /// <summary>
         /// 从指定起点传送远行队到目标传送站。
-        /// 此重载用于世界地图右键菜单，会额外验证远行队仍然位于起点 tile。
+        /// 此重载用于世界地图右键菜单，会额外验证远行队仍然位于起点或相邻 tile。
         /// </summary>
         public static void TeleportCaravan(
             Caravan caravan,
@@ -85,7 +111,7 @@ namespace OuterrealmArchotechTeleportStation
                 return;
             }
 
-            if (origin != null && caravan.Tile != origin.Tile)
+            if (origin != null && !CaravanInStationRange(caravan, origin))
             {
                 Messages.Message("OATS_CannotTeleportNotAtStation".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;

@@ -12,6 +12,11 @@ namespace OuterrealmArchotechTeleportStation
     public class OuterrealmArchotechTeleportStationWorldObject : MapParent
     {
         /// <summary>
+        /// 原版通用进入菜单要求 HasMap=true；传送站需要在到达时再生成地图。
+        /// </summary>
+        protected override bool UseGenericEnterMapFloatMenuOption => false;
+
+        /// <summary>
         /// 为右键点击该地标的玩家远行队追加传送选项。
         /// 保留 base 选项是为了继续使用原版“进入地图”等 MapParent 交互。
         /// </summary>
@@ -29,10 +34,14 @@ namespace OuterrealmArchotechTeleportStation
                 yield break;
             }
 
-            // 第一版要求远行队已经抵达当前传送站 tile，避免右键远处传送站时绕过旅行过程。
-            if (caravan.Tile != Tile)
+            foreach (FloatMenuOption option in CaravanArrivalAction_EnterOuterrealmTeleportStation.GetFloatMenuOptions(caravan, this))
             {
-                yield return new FloatMenuOption("OATS_CannotTeleportNotAtStation".Translate(), null);
+                yield return option;
+            }
+
+            // 远行队在传送站本格或相邻一格内都视为抵达传送站，解决地标 tile 无法直接停留的问题。
+            if (!OuterrealmTeleportNetworkUtility.CaravanInStationRange(caravan, this))
+            {
                 yield break;
             }
 
