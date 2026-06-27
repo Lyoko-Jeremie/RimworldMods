@@ -67,6 +67,7 @@
     <Compile Include="Defs\OuterrealmTeleportStationPrefabDef.cs" />
     <Compile Include="Map\GenStep_OuterrealmTeleportStationLayout.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="World\CaravanArrivalAction_EnterOuterrealmTeleportStation.cs" />
     <Compile Include="World\OuterrealmArchotechTeleportStationWorldObject.cs" />
     <Compile Include="World\OuterrealmTeleportNetworkUtility.cs" />
     <Compile Include="World\WorldComponent_OuterrealmTeleportStationBootstrap.cs" />
@@ -80,8 +81,8 @@
   </ItemGroup>
   <Target Name="CopyToModAssemblies" AfterTargets="Build">
     <MakeDir Directories="..\..\Assemblies" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" ContinueOnError="WarnAndContinue" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="..\..\Assemblies" SkipUnchangedFiles="true" Condition="Exists('$(TargetDir)$(TargetName).pdb')" ContinueOnError="WarnAndContinue" />
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
