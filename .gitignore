@@ -110,6 +110,8 @@ fabric.properties
 !FullyAutomaticOmniCrafter/**/*
 !OuterrealmTechRobot/
 !OuterrealmTechRobot/**/*
+!OuterrealmArchotechTeleportStation/
+!OuterrealmArchotechTeleportStation/**/*
 !.gitignore
 
 !readme.md
