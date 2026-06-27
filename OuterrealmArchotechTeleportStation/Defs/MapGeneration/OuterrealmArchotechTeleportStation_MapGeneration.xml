@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <MapGeneratorDef>
+    <defName>OuterrealmArchotechTeleportStationMap</defName>
+    <label>Outerrealm archotech teleport station map</label>
+    <disableShadows>true</disableShadows>
+    <ignoreAreaRevealedLetter>true</ignoreAreaRevealedLetter>
+    <genSteps>
+      <li>OuterrealmArchotechTeleportStationMapLayout</li>
+    </genSteps>
+  </MapGeneratorDef>
+
+  <GenStepDef>
+    <defName>OuterrealmArchotechTeleportStationMapLayout</defName>
+    <order>10</order>
+    <genStep Class="OuterrealmArchotechTeleportStation.GenStep_OuterrealmTeleportStationLayout" />
+  </GenStepDef>
+
+  <OuterrealmArchotechTeleportStation.OuterrealmTeleportStationPrefabDef>
+    <defName>OATS_PrefabEntry_Cross</defName>
+    <prefab>OATS_Prefab_TeleportStation_Cross</prefab>
+    <weight>1.2</weight>
+    <portalOffset>(8,8)</portalOffset>
+    <playerStartOffset>(8,3)</playerStartOffset>
+    <allowedRotations>All</allowedRotations>
+    <fallback>true</fallback>
+  </OuterrealmArchotechTeleportStation.OuterrealmTeleportStationPrefabDef>
+
+  <OuterrealmArchotechTeleportStation.OuterrealmTeleportStationPrefabDef>
+    <defName>OATS_PrefabEntry_Ring</defName>
+    <prefab>OATS_Prefab_TeleportStation_Ring</prefab>
+    <weight>1.0</weight>
+    <portalOffset>(8,8)</portalOffset>
+    <playerStartOffset>(8,3)</playerStartOffset>
+    <allowedRotations>All</allowedRotations>
+  </OuterrealmArchotechTeleportStation.OuterrealmTeleportStationPrefabDef>
+
+  <OuterrealmArchotechTeleportStation.OuterrealmTeleportStationPrefabDef>
+    <defName>OATS_PrefabEntry_Line</defName>
+    <prefab>OATS_Prefab_TeleportStation_Line</prefab>
+    <weight>1.0</weight>
+    <portalOffset>(8,12)</portalOffset>
+    <playerStartOffset>(8,2)</playerStartOffset>
+    <allowedRotations>All</allowedRotations>
+  </OuterrealmArchotechTeleportStation.OuterrealmTeleportStationPrefabDef>
+
+  <PrefabDef>
+    <defName>OATS_Prefab_TeleportStation_Cross</defName>
+    <size>(17,17)</size>
+    <terrain>
+      <MetalTile>
+        <rects>
+          <li>(5,5,7,7)</li>
+        </rects>
+      </MetalTile>
+      <PavedTile>
+        <rects>
+          <li>(7,0,3,17)</li>
+          <li>(0,7,17,3)</li>
+        </rects>
+      </PavedTile>
+    </terrain>
+    <things>
+      <OuterrealmArchotechTeleportPortal>
+        <position>(8,0,8)</position>
+        <rotation>South</rotation>
+      </OuterrealmArchotechTeleportPortal>
+      <Column>
+        <positions>
+          <li>(5,0,5)</li>
+          <li>(11,0,5)</li>
+          <li>(5,0,11)</li>
+          <li>(11,0,11)</li>
+        </positions>
+      </Column>
+    </things>
+  </PrefabDef>
+
+  <PrefabDef>
+    <defName>OATS_Prefab_TeleportStation_Ring</defName>
+    <size>(17,17)</size>
+    <terrain>
+      <MetalTile>
+        <rects>
+          <li>(4,4,9,9)</li>
+        </rects>
+      </MetalTile>
+      <PavedTile>
+        <rects>
+          <li>(7,0,3,17)</li>
+          <li>(0,7,17,3)</li>
+        </rects>
+      </PavedTile>
+    </terrain>
+    <things>
+      <OuterrealmArchotechTeleportPortal>
+        <position>(8,0,8)</position>
+        <rotation>South</rotation>
+      </OuterrealmArchotechTeleportPortal>
+      <Urn>
+        <positions>
+          <li>(8,0,4)</li>
+          <li>(12,0,8)</li>
+          <li>(8,0,12)</li>
+          <li>(4,0,8)</li>
+        </positions>
+      </Urn>
+    </things>
+  </PrefabDef>
+
+  <PrefabDef>
+    <defName>OATS_Prefab_TeleportStation_Line</defName>
+    <size>(17,17)</size>
+    <terrain>
+      <MetalTile>
+        <rects>
+          <li>(5,9,7,6)</li>
+        </rects>
+      </MetalTile>
+      <PavedTile>
+        <rects>
+          <li>(7,0,3,17)</li>
+        </rects>
+      </PavedTile>
+    </terrain>
+    <things>
+      <OuterrealmArchotechTeleportPortal>
+        <position>(8,0,12)</position>
+        <rotation>South</rotation>
+      </OuterrealmArchotechTeleportPortal>
+      <Column>
+        <positions>
+          <li>(5,0,10)</li>
+          <li>(11,0,10)</li>
+          <li>(5,0,14)</li>
+          <li>(11,0,14)</li>
+        </positions>
+      </Column>
+    </things>
+  </PrefabDef>
+
+</Defs>

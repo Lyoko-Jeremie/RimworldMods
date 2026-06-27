@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OATS_CommandTeleportToStation>传送到 {0}</OATS_CommandTeleportToStation>
+  <OATS_CommandTeleportToStationDesc>选择另一个超维科技远古传送站，并将当前单位传送过去。</OATS_CommandTeleportToStationDesc>
+  <OATS_SelectTeleportDestination>选择传送目的地</OATS_SelectTeleportDestination>
+  <OATS_CannotTeleportNotAtStation>远行队必须位于当前传送站才能传送。</OATS_CannotTeleportNotAtStation>
+  <OATS_CannotTeleportNoDestinations>没有其他已激活的传送站。</OATS_CannotTeleportNoDestinations>
+  <OATS_CannotTeleportInvalidDestination>传送目的地无效。</OATS_CannotTeleportInvalidDestination>
+  <OATS_CannotTeleportNoMapPawns>当前地图没有可传送的玩家单位。</OATS_CannotTeleportNoMapPawns>
+  <OATS_MessageCaravanTeleported>{0} 已传送到 {1}。</OATS_MessageCaravanTeleported>
+  <OATS_MessagePawnsTeleportedFromMap>单位已从传送站地图传送到 {0}。</OATS_MessagePawnsTeleportedFromMap>
+  <OATS_OuterrealmTeleportStationLabel>超维科技远古传送站</OATS_OuterrealmTeleportStationLabel>
+  <OATS_OuterrealmTeleportPortalLabel>超维科技远古传送门</OATS_OuterrealmTeleportPortalLabel>
+  <OATS_CommandAddTeleportStation>追加传送站</OATS_CommandAddTeleportStation>
+  <OATS_CommandAddTeleportStationDesc>在世界地图上激活一个新的超维科技远古传送站。</OATS_CommandAddTeleportStationDesc>
+  <OATS_AddTeleportStationRandom>随机追加传送站</OATS_AddTeleportStationRandom>
+  <OATS_AddTeleportStationSelectTile>指定位置追加传送站</OATS_AddTeleportStationSelectTile>
+  <OATS_SelectTeleportStationTile>选择传送站位置</OATS_SelectTeleportStationTile>
+  <OATS_CannotAddTeleportStationHere>不能在此处追加传送站。</OATS_CannotAddTeleportStationHere>
+  <OATS_CannotAddTeleportStationMaxCount>传送站数量已达到上限：{0}。</OATS_CannotAddTeleportStationMaxCount>
+  <OATS_MessageTeleportStationAdded>已激活新的传送站：{0}。</OATS_MessageTeleportStationAdded>
+</LanguageData>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <WorldObjectDef>
+    <defName>OuterrealmArchotechTeleportStation</defName>
+    <label>Outerrealm archotech teleport station</label>
+    <description>An ancient OuterrealmTech teleport station embedded in the planet's hidden infrastructure.</description>
+    <worldObjectClass>OuterrealmArchotechTeleportStation.OuterrealmArchotechTeleportStationWorldObject</worldObjectClass>
+    <canHaveMap>true</canHaveMap>
+    <mapGenerator>OuterrealmArchotechTeleportStationMap</mapGenerator>
+    <overrideMapSize>(35,1,35)</overrideMapSize>
+    <selectable>true</selectable>
+    <texture>World/WorldObjects/JourneyDestination</texture>
+    <expandingIcon>true</expandingIcon>
+    <expandingIconTexture>World/WorldObjects/Expanding/JourneyDestination</expandingIconTexture>
+    <expandingIconPriority>45</expandingIconPriority>
+    <expandMore>true</expandMore>
+    <IncidentTargetTags>
+      <li>Map_Misc</li>
+    </IncidentTargetTags>
+  </WorldObjectDef>
+
+</Defs>
