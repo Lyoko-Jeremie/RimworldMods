@@ -101,14 +101,14 @@ caravan.Notify_Teleported();
   - 可交互建筑，显示选择目的地命令。
   - 使用 `[StaticConstructorOnStartup]` 预加载命令图标贴图。
 
-- `GeneratedLocationDef OuterrealmArchotechTeleportStationGeneratedLocation`
-  - 可复用原版 `WorldComponent_LocationGenerator` 的随机生成机制。
+- `GeneratedLocationDef OuterrealmArchotechTeleportStationGeneratedLocation`（可选，仅用于开局初始地标）
+  - 可复用原版 `WorldComponent_LocationGenerator` 的随机生成机制，在新世界中提供至少一个可进入的初始传送站。
   - `worldObjectDef`: `OuterrealmArchotechTeleportStation`
   - `layerMaximum`: 控制每个世界层最多生成数量。
   - `weight`: 控制与其他 GeneratedLocation 的权重。
   - `LayerDefs`: 通常先只放 `Surface`。
 
-如果 `GeneratedLocationDef` 不能满足“开局立刻固定数量/距离分布”的需求，再实现自定义 `WorldComponent` 或 `WorldGenStep`。
+如果 `GeneratedLocationDef` 不能满足“开局至少生成一个入口传送站”的需求，再实现一次性的 `WorldGenStep`。世界创建后的网络扩展不走自动生成器，由玩家通过传送建筑命令手动追加。
 
 ### C# 类型设计
 
@@ -125,9 +125,10 @@ caravan.Notify_Teleported();
   - 可重写 `ShouldRemoveMapNow`，当地图空置时允许卸载地图但保留世界地标。
 
 - `World/OuterrealmTeleportNetworkUtility.cs`
-  - 提供传送站枚举、目标过滤、目的地排序、传送执行。
+  - 提供传送站枚举、目标过滤、目的地排序、传送执行、选址校验和创建新传送站。
   - 避免在每 tick 扫描；只在菜单打开/命令点击时扫描 `Find.WorldObjects.AllWorldObjects`。
   - 可使用静态临时 `List<OuterrealmArchotechTeleportStationWorldObject>` 但不要跨线程暴露或长期缓存。
+  - 建议提供 `CanPlaceStationAt`、`TryFindNewStationTile`、`TryAddStationAt` 等方法，供随机追加与指定 tile 追加共用。
 
 - `World/CaravanArrivalAction_UseOuterrealmTeleportStation.cs`（可选）
   - 若希望玩家在远行队不在传送站 tile 时右键目的地也能“先走到传送站再打开/执行传送”，可实现到达动作。
@@ -141,8 +142,9 @@ caravan.Notify_Teleported();
 
 - `Buildings/Building_OuterrealmArchotechTeleportPortal.cs`
   - 继承 `Building` 或 `Building_Storage` 以外的普通建筑。
-  - 重写 `GetGizmos()`，追加“选择传送目的地”命令。
-  - 命令打开 `FloatMenu` 或自定义窗口，列出其他传送站。
+  - 重写 `GetGizmos()`，追加“选择传送目的地”和“追加传送站”命令。
+  - 传送命令打开 `FloatMenu` 或自定义窗口，列出其他传送站。
+  - 追加命令打开 `FloatMenu` 或自定义窗口，提供随机追加和指定世界 tile 追加两种方式。
   - 执行时把当前地图内可发送的玩家单位组成远行队，或把选中单位/全部地图内远行队成员传送。
 
 - `UI/Dialog_OuterrealmTeleportDestination.cs`（可选）
@@ -178,13 +180,18 @@ caravan.Notify_Teleported();
 
 ### 世界创建后追加传送站
 
-可以在游戏世界创建完成后，再追加一些传送站散落在世界地图上。
+世界创建完成后，不再由 `WorldComponent` 自动持续补点。追加新的传送站改为由玩家在任意一个已存在的传送建筑上手动触发。
+
+玩家可以选择两种追加方式：
+
+- 随机追加：点击传送建筑命令后，由系统按选址规则随机寻找一个合法 tile 并放置新的传送站。
+- 指定追加：点击传送建筑命令后进入世界地图选点模式，玩家点击世界地图上的 tile，校验通过后在该 tile 放置新的传送站。
 
 原版依据：
 
-- `World.ConstructComponents()` 会实例化所有非抽象 `WorldComponent` 子类。
-- `World.FinalizeInit(bool fromLoad)` 会调用所有 `WorldComponent.FinalizeInit(fromLoad)`。
-- 原版 `WorldComponent_LocationGenerator` 在 `FinalizeInit(false)` 中生成世界地点，并在之后的 `WorldComponentTick()` 中每 90000 tick 检查数量，不足时继续生成。
+- 传送建筑的 `GetGizmos()` 可以提供“追加传送站”命令。
+- 世界地图目标选择可参考原版远行队、空投、能力等使用 `Targeter`/世界目标选择器的交互方式，让玩家在世界地图上点击 tile。
+- 命令执行时应复用统一的选址校验和创建逻辑，避免随机追加与指定追加出现不一致。
 - 追加世界对象的通用方式是：
 
 ```csharp
@@ -195,18 +202,23 @@ Find.WorldObjects.Add(obj);
 
 推荐实现：
 
-- 新增 `WorldComponent_OuterrealmTeleportStationGenerator`。
-- 在 `FinalizeInit(fromLoad)` 中：
-  - 如果 `fromLoad == true`，只读档恢复，不生成新点。
-  - 如果是新世界，等待原版世界对象、派系基地、初始地点完成后，补齐传送站数量。
-- 在 `WorldComponentTick()` 中可低频补点：
-  - 例如每 60000 或 90000 tick 检查一次。
-  - 如果传送站数量低于目标值，就追加 1 个或补齐。
-  - 如果不希望游戏中途自然增长，可不实现 tick 补点，只在新世界初始化时生成。
-- 在 `ExposeData()` 中保存：
-  - 是否已完成初始生成。
-  - 已生成数量或生成批次版本。
-  - 可选：玩家配置的目标数量快照，避免设置变化导致旧存档突然刷很多点。
+- 在 `Building_OuterrealmArchotechTeleportPortal.GetGizmos()` 中新增“追加传送站”命令。
+- 命令可先打开一个 `FloatMenu` 或小窗口，让玩家选择：
+  - `随机追加传送站`
+  - `指定位置追加传送站`
+- 随机追加：
+  - 调用 `OuterrealmTeleportNetworkUtility.TryFindNewStationTile(out int tile)`。
+  - 成功后调用 `OuterrealmTeleportNetworkUtility.TryAddStationAt(tile, out station, out reason)`。
+  - 失败时显示 keyed i18n 原因。
+- 指定追加：
+  - 切换到世界地图。
+  - 启动世界 tile 选择流程。
+  - 鼠标悬停或点击时调用同一套 `CanPlaceStationAt(tile, out reason)` 校验。
+  - 玩家确认合法 tile 后调用 `TryAddStationAt`。
+- 建议在执行命令时消耗资源、冷却或前置条件，但第一版可先只实现功能闭环。
+- 是否需要保存状态：
+  - 如果只有“世界对象是否存在”这一状态，不需要额外 `WorldComponent` 存档；传送站本身会随 `WorldObjects` 保存。
+  - 如果加入冷却、全局上限、已追加次数、每座传送门可用次数等规则，再新增轻量 `WorldComponent` 保存这些数据。
 
 选址建议：
 
@@ -217,16 +229,16 @@ Find.WorldObjects.Add(obj);
   - tile 所在 biome 允许建立地图，优先 `Find.WorldGrid[tile].PrimaryBiome.canBuildBase`。
   - 距离玩家初始基地/当前玩家定居点保持最小距离。
   - 传送站之间保持最小间距，避免扎堆。
-- 数量建议随世界覆盖率缩放：
-  - 30% 星球：6-8 个。
-  - 50% 星球：10-14 个。
-  - 100% 星球：18-24 个。
+- 全局数量上限建议随世界覆盖率缩放：
+  - 30% 星球：最多 6-8 个。
+  - 50% 星球：最多 10-14 个。
+  - 100% 星球：最多 18-24 个。
 
 是否使用 `GeneratedLocationDef`：
 
-- 可用，但它由原版 `WorldComponent_LocationGenerator` 统一管理，目标数量取决于 `generatedLocationFactor` 和所有 `GeneratedLocationDef` 的权重，难以精确控制“传送站网络必须有 N 个点”。
-- 推荐第一版使用自定义 `WorldComponent_OuterrealmTeleportStationGenerator`，保证数量、分布和存档兼容。
-- `GeneratedLocationDef` 可作为轻量备选方案，用于“像原版随机地点一样自然出现”的模式。
+- 不推荐用于手动追加传送站。
+- `GeneratedLocationDef` 更适合“像原版随机地点一样自然出现”的模式，但玩家指定 tile 与手动消耗/冷却流程都需要自定义代码控制。
+- 第一版推荐只保留自定义 `TryAddStationAt` 路径，所有追加方式都通过它创建 `WorldObject`。
 
 ### 小地图建筑传送流程
 
@@ -435,6 +447,14 @@ BaseGen/Sketch 暂不推荐第一版使用。它适合聚落、古代复合体�
 - `OATS_MessagePawnsTeleportedFromMap`
 - `OATS_OuterrealmTeleportStationLabel`
 - `OATS_OuterrealmTeleportPortalLabel`
+- `OATS_CommandAddTeleportStation`
+- `OATS_CommandAddTeleportStationDesc`
+- `OATS_AddTeleportStationRandom`
+- `OATS_AddTeleportStationSelectTile`
+- `OATS_SelectTeleportStationTile`
+- `OATS_CannotAddTeleportStationHere`
+- `OATS_CannotAddTeleportStationMaxCount`
+- `OATS_MessageTeleportStationAdded`
 
 ## 实施步骤
 
@@ -453,11 +473,11 @@ BaseGen/Sketch 暂不推荐第一版使用。它适合聚落、古代复合体�
 ### 阶段 2：世界地标与生成
 
 1. 添加 `WorldObjectDef`、`MapGeneratorDef`、`GenStepDef`、`ThingDef`。
-2. 实现 `WorldComponent_OuterrealmTeleportStationGenerator`，新世界初始化时补齐传送站数量。
+2. 实现开局初始传送站生成，至少保证世界上存在一个可进入的初始传送站。
 3. 实现 `OuterrealmArchotechTeleportStationWorldObject`。
-4. 实现 `OuterrealmTeleportNetworkUtility`。
+4. 实现 `OuterrealmTeleportNetworkUtility`，包含传送、选址校验、随机选址和指定 tile 创建传送站。
 5. 完成世界地图右键传送。
-6. 可选：添加 `GeneratedLocationDef` 作为“自然地点生成”模式，但不作为第一版主生成器。
+6. 可选：添加 `GeneratedLocationDef` 作为开局初始地标生成方案，但不作为世界创建后的追加方案。
 
 ### 阶段 3：小地图生成
 
@@ -472,10 +492,19 @@ BaseGen/Sketch 暂不推荐第一版使用。它适合聚落、古代复合体�
 ### 阶段 4：建筑传送
 
 1. 实现 `Building_OuterrealmArchotechTeleportPortal.GetGizmos()`。
-2. 使用 `FloatMenu` 或窗口选择目标。
+2. 使用 `FloatMenu` 或窗口选择传送目标。
 3. 收集可发送 pawns。
 4. 创建远行队并传送到目标传送站。
 5. 增加消息、音效、目标校验和失败提示。
+
+### 阶段 4.5：建筑追加传送站
+
+1. 在 `Building_OuterrealmArchotechTeleportPortal.GetGizmos()` 中添加“追加传送站”命令。
+2. 提供随机追加与指定世界 tile 追加两个入口。
+3. 随机追加时调用统一选址工具寻找合法 tile。
+4. 指定追加时切换到世界地图并让玩家点击 tile。
+5. 点击后复用同一套 `CanPlaceStationAt` 校验，合法时创建 `WorldObject`。
+6. 增加数量上限、失败原因、成功消息和 keyed i18n 文本。
 
 ### 阶段 5：本地化与资源
 
@@ -500,14 +529,17 @@ public static class OuterrealmTeleportStationTex
 4. 传送后远行队位置、路径、显示和消息正确。
 5. 进入传送站小地图，确认加载速度、地图尺寸、传送门位置。
 6. 建筑传送后 pawns 不丢失、库存不丢失、远行队状态正确。
-7. 保存/读取后传送站网络和已生成地图仍正常。
+7. 在传送建筑上执行随机追加，确认新传送站出现在合法 tile。
+8. 在传送建筑上执行指定 tile 追加，确认非法 tile 有失败提示，合法 tile 能创建新传送站。
+9. 保存/读取后传送站网络和已生成地图仍正常。
 
 ## 风险与处理
 
 - 远行队传送后路径缓存残留：统一使用 `pather.StopDead()` 和 `Notify_Teleported()`。
 - 世界对象扫描成本：只在菜单打开和命令执行时扫描，不在 tick 中扫描。
 - 小地图过小导致出生点/边缘不可达：保持至少 `31x31`，道路连通到边缘。
-- 世界创建后追加传送站重复刷点：`WorldComponent` 保存初始生成完成标记和已生成数量，读档时不重复初始化。
+- 世界创建后追加传送站重复刷点：不做自动 tick 补点；手动追加只在玩家确认命令时执行，并在创建前检查目标 tile 是否已有世界对象。
+- 玩家指定非法 tile：点击后立即给出 keyed i18n 失败原因，不创建世界对象。
 - 传送站扎堆：选址时检查与其他传送站的世界路径距离或 traversal distance。
 - 预制布局阻断寻路：布局生成后做可达性验证，失败时回退到十字道路保底布局。
 - 地图空置后地标被销毁：自定义 `ShouldRemoveMapNow` 只移除地图，不移除 `WorldObject`。
