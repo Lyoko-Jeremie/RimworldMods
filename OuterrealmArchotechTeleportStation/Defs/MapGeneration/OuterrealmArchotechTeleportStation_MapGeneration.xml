@@ -64,7 +64,7 @@
     <things>
       <OuterrealmArchotechTeleportPortal>
         <position>(8,0,8)</position>
-        <rotation>South</rotation>
+        <relativeRotation>None</relativeRotation>
       </OuterrealmArchotechTeleportPortal>
       <Column>
         <positions>
@@ -96,7 +96,7 @@
     <things>
       <OuterrealmArchotechTeleportPortal>
         <position>(8,0,8)</position>
-        <rotation>South</rotation>
+        <relativeRotation>None</relativeRotation>
       </OuterrealmArchotechTeleportPortal>
       <Urn>
         <positions>
@@ -127,7 +127,7 @@
     <things>
       <OuterrealmArchotechTeleportPortal>
         <position>(8,0,12)</position>
-        <rotation>South</rotation>
+        <relativeRotation>None</relativeRotation>
       </OuterrealmArchotechTeleportPortal>
       <Column>
         <positions>
