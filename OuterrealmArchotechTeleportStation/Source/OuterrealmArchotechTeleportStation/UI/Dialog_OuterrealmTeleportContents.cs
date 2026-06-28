@@ -21,14 +21,14 @@ namespace OuterrealmArchotechTeleportStation
         private static readonly List<TabRecord> TabsList = new List<TabRecord>();
 
         private readonly Map map;
-        private readonly OuterrealmArchotechTeleportStationWorldObject destination;
+        private readonly OuterrealmTeleportDestination destination;
         private List<TransferableOneWay> transferables;
         private TransferableOneWayWidget pawnsTransfer;
         private TransferableOneWayWidget itemsTransfer;
         private TransferableOneWayWidget travelSuppliesTransfer;
         private Tab tab;
 
-        public Dialog_OuterrealmTeleportContents(Map map, OuterrealmArchotechTeleportStationWorldObject destination)
+        public Dialog_OuterrealmTeleportContents(Map map, OuterrealmTeleportDestination destination)
         {
             this.map = map;
             this.destination = destination;

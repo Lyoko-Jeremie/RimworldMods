@@ -45,19 +45,19 @@ namespace OuterrealmArchotechTeleportStation
                 yield break;
             }
 
-            // 目标只列出“其他”传送站，且由工具类统一排序和过滤。
-            List<OuterrealmArchotechTeleportStationWorldObject> destinations =
-                OuterrealmTeleportNetworkUtility.GetDestinationStations(this);
+            // 目标列出其他世界传送站，以及玩家基地内已启用的传送门。
+            List<OuterrealmTeleportDestination> destinations =
+                OuterrealmTeleportNetworkUtility.GetDestinations(this);
             if (destinations.Count == 0)
             {
                 yield return new FloatMenuOption("OATS_CannotTeleportNoDestinations".Translate(), null);
                 yield break;
             }
 
-            foreach (OuterrealmArchotechTeleportStationWorldObject destination in destinations)
+            foreach (OuterrealmTeleportDestination destination in destinations)
             {
                 // yield + 闭包需要复制局部变量，避免所有菜单项最终都引用循环变量的最后一个值。
-                OuterrealmArchotechTeleportStationWorldObject localDestination = destination;
+                OuterrealmTeleportDestination localDestination = destination;
                 yield return new FloatMenuOption(
                     "OATS_CommandTeleportToStation".Translate(localDestination.LabelCap),
                     () => OuterrealmTeleportNetworkUtility.TeleportCaravan(caravan, this, localDestination));

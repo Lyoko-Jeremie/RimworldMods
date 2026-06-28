@@ -30,6 +30,8 @@ namespace OuterrealmArchotechTeleportStation
         /// 返回给调用者前会复制一份，避免外部持有静态临时列表。
         /// </summary>
         private static readonly List<OuterrealmArchotechTeleportStationWorldObject> TmpStations = new List<OuterrealmArchotechTeleportStationWorldObject>();
+        private static readonly List<Building_OuterrealmArchotechTeleportPortal> TmpPortals =
+            new List<Building_OuterrealmArchotechTeleportPortal>();
 
         /// <summary>
         /// 扫描当前世界中所有未销毁的传送站。
@@ -67,6 +69,54 @@ namespace OuterrealmArchotechTeleportStation
             }
 
             return stations;
+        }
+
+        /// <summary>
+        /// 获取当前可用的传送网络目的地。
+        /// 包含世界地图传送站和玩家基地内已生成、已启用的传送门。
+        /// </summary>
+        public static List<OuterrealmTeleportDestination> GetDestinations(
+            OuterrealmArchotechTeleportStationWorldObject originStation,
+            Building_OuterrealmArchotechTeleportPortal originPortal = null)
+        {
+            List<OuterrealmTeleportDestination> destinations = new List<OuterrealmTeleportDestination>();
+
+            List<OuterrealmArchotechTeleportStationWorldObject> stations = GetStations();
+            for (int i = 0; i < stations.Count; i++)
+            {
+                OuterrealmArchotechTeleportStationWorldObject station = stations[i];
+                if (station == originStation || station.Destroyed || !station.Tile.Valid)
+                {
+                    continue;
+                }
+
+                destinations.Add(OuterrealmTeleportDestination.ForStation(station));
+            }
+
+            AppendPlayerMapPortals(TmpPortals);
+            for (int i = 0; i < TmpPortals.Count; i++)
+            {
+                Building_OuterrealmArchotechTeleportPortal portal = TmpPortals[i];
+                if (portal == originPortal)
+                {
+                    continue;
+                }
+
+                destinations.Add(OuterrealmTeleportDestination.ForPortal(portal));
+            }
+
+            TmpPortals.Clear();
+            PlanetTile originTile = GetOriginTile(originStation, originPortal);
+            if (originTile.Valid)
+            {
+                destinations.SortBy(destination => DistanceFrom(originTile, destination.Tile), destination => destination.LabelCap.ToString());
+            }
+            else
+            {
+                destinations.SortBy(destination => destination.Tile.Valid ? destination.Tile.tileId : int.MaxValue, destination => destination.LabelCap.ToString());
+            }
+
+            return destinations;
         }
 
         /// <summary>
@@ -118,6 +168,29 @@ namespace OuterrealmArchotechTeleportStation
             }
 
             TeleportCaravan(caravan, destination);
+        }
+
+        /// <summary>
+        /// 从世界地图起点传送远行队到任意网络目的地。
+        /// </summary>
+        public static void TeleportCaravan(
+            Caravan caravan,
+            OuterrealmArchotechTeleportStationWorldObject origin,
+            OuterrealmTeleportDestination destination)
+        {
+            if (caravan == null || destination == null || !destination.IsValid())
+            {
+                Messages.Message("OATS_CannotTeleportInvalidDestination".Translate(), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            if (origin != null && !CaravanInStationRange(caravan, origin))
+            {
+                Messages.Message("OATS_CannotTeleportNotAtStation".Translate(), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            destination.TryTeleportCaravan(caravan);
         }
 
         /// <summary>
@@ -299,6 +372,43 @@ namespace OuterrealmArchotechTeleportStation
         {
             int tileCount = Find.WorldGrid.TilesCount;
             return Mathf.Clamp(Mathf.RoundToInt(tileCount / 1200f), 6, 24);
+        }
+
+        private static void AppendPlayerMapPortals(List<Building_OuterrealmArchotechTeleportPortal> result)
+        {
+            result.Clear();
+            List<Map> maps = Current.Game.Maps;
+            for (int i = 0; i < maps.Count; i++)
+            {
+                MapComponent_OuterrealmTeleportPortalTracker tracker =
+                    maps[i].GetComponent<MapComponent_OuterrealmTeleportPortalTracker>();
+                if (tracker != null)
+                {
+                    tracker.AppendActiveDestinations(result);
+                }
+            }
+        }
+
+        private static PlanetTile GetOriginTile(
+            OuterrealmArchotechTeleportStationWorldObject originStation,
+            Building_OuterrealmArchotechTeleportPortal originPortal)
+        {
+            if (originStation != null && originStation.Tile.Valid)
+            {
+                return originStation.Tile;
+            }
+
+            return originPortal?.Map?.Tile ?? PlanetTile.Invalid;
+        }
+
+        private static float DistanceFrom(PlanetTile originTile, PlanetTile destinationTile)
+        {
+            if (!destinationTile.Valid || originTile.Layer != destinationTile.Layer)
+            {
+                return float.MaxValue;
+            }
+
+            return Find.WorldGrid.ApproxDistanceInTiles(originTile, destinationTile);
         }
     }
 }

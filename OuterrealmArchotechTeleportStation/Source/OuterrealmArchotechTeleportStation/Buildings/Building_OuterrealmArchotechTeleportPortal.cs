@@ -14,6 +14,58 @@ namespace OuterrealmArchotechTeleportStation
     public class Building_OuterrealmArchotechTeleportPortal : Building
     {
         /// <summary>
+        /// 建筑生成后登记到地图追踪器，读档重建建筑时也会执行。
+        /// </summary>
+        public override void SpawnSetup(Map map, bool respawningAfterLoad)
+        {
+            base.SpawnSetup(map, respawningAfterLoad);
+            map.GetComponent<MapComponent_OuterrealmTeleportPortalTracker>()?.Register(this);
+        }
+
+        /// <summary>
+        /// 拆除、卸载和重装建筑前从地图追踪器移除。
+        /// </summary>
+        public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        {
+            Map map = Map;
+            map?.GetComponent<MapComponent_OuterrealmTeleportPortalTracker>()?.Unregister(this);
+            base.DeSpawn(mode);
+        }
+
+        /// <summary>
+        /// 判断该传送门是否应作为网络目的地出现。
+        /// 当前只允许玩家基地地图中的玩家传送门；未来的未启用状态可在 IsTeleportEndpointEnabled 中扩展。
+        /// </summary>
+        public virtual bool CanUseAsTeleportDestination(out TaggedString reason)
+        {
+            if (Destroyed || !Spawned || Map == null || Map.Parent is OuterrealmArchotechTeleportStationWorldObject)
+            {
+                reason = "OATS_CannotTeleportInvalidDestination".Translate();
+                return false;
+            }
+
+            if (!Map.IsPlayerHome || Faction != Faction.OfPlayer)
+            {
+                reason = "OATS_CannotTeleportInvalidDestination".Translate();
+                return false;
+            }
+
+            if (!IsTeleportEndpointEnabled)
+            {
+                reason = "OATS_CannotTeleportPortalInactive".Translate();
+                return false;
+            }
+
+            reason = TaggedString.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// 后续如果加入未启用、断电或冷却状态，可覆盖此属性而不改变追踪和菜单代码。
+        /// </summary>
+        protected virtual bool IsTeleportEndpointEnabled => true;
+
+        /// <summary>
         /// 在建筑默认 gizmo 后追加本 Mod 的传送和追加传送站命令。
         /// </summary>
         public override IEnumerable<Gizmo> GetGizmos()
@@ -49,8 +101,8 @@ namespace OuterrealmArchotechTeleportStation
         private void ShowTeleportDestinationMenu()
         {
             OuterrealmArchotechTeleportStationWorldObject origin = Map?.Parent as OuterrealmArchotechTeleportStationWorldObject;
-            List<OuterrealmArchotechTeleportStationWorldObject> destinations =
-                OuterrealmTeleportNetworkUtility.GetDestinationStations(origin);
+            List<OuterrealmTeleportDestination> destinations =
+                OuterrealmTeleportNetworkUtility.GetDestinations(origin, this);
 
             if (destinations.Count == 0)
             {
@@ -59,10 +111,10 @@ namespace OuterrealmArchotechTeleportStation
             }
 
             List<FloatMenuOption> options = new List<FloatMenuOption>();
-            foreach (OuterrealmArchotechTeleportStationWorldObject destination in destinations)
+            foreach (OuterrealmTeleportDestination destination in destinations)
             {
                 // 复制循环变量，避免闭包捕获导致所有菜单项指向同一个目的地。
-                OuterrealmArchotechTeleportStationWorldObject localDestination = destination;
+                OuterrealmTeleportDestination localDestination = destination;
                 options.Add(new FloatMenuOption(localDestination.LabelCap, () => TeleportMapContents(localDestination)));
             }
 
@@ -72,7 +124,7 @@ namespace OuterrealmArchotechTeleportStation
         /// <summary>
         /// 传送站地图会自动传送全部玩家内容并关闭来源图；普通地图需要玩家先选择内容。
         /// </summary>
-        private void TeleportMapContents(OuterrealmArchotechTeleportStationWorldObject destination)
+        private void TeleportMapContents(OuterrealmTeleportDestination destination)
         {
             if (Map == null)
             {

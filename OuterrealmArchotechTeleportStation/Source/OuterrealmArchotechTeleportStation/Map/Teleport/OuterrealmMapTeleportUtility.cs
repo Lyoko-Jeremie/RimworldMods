@@ -57,11 +57,11 @@ namespace OuterrealmArchotechTeleportStation
         /// </summary>
         public static bool TryTeleportTransferables(
             Map map,
-            OuterrealmArchotechTeleportStationWorldObject destination,
+            OuterrealmTeleportDestination destination,
             List<TransferableOneWay> transferables,
             bool removeSourceMap)
         {
-            if (map == null || destination == null || destination.Destroyed || !destination.Tile.Valid)
+            if (map == null || destination == null || !destination.IsValid())
             {
                 Messages.Message("OATS_CannotTeleportInvalidDestination".Translate(), MessageTypeDefOf.RejectInput, false);
                 return false;
@@ -101,10 +101,10 @@ namespace OuterrealmArchotechTeleportStation
                 return false;
             }
 
-            OuterrealmTeleportNetworkUtility.TeleportCaravan(caravan, destination);
+            destination.TryTeleportCaravan(caravan);
             Messages.Message(
                 "OATS_MessagePawnsTeleportedFromMap".Translate(destination.LabelCap),
-                new LookTargets(caravan, destination),
+                destination.LookTargets,
                 MessageTypeDefOf.TaskCompletion);
 
             if (removeSourceMap && Current.Game.Maps.Contains(map))

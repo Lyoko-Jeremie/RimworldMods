@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
   <OATS_CommandTeleportToStation>Teleport to {0}</OATS_CommandTeleportToStation>
-  <OATS_CommandTeleportToStationDesc>Select another Outerrealm archotech teleport station and teleport the current units there.</OATS_CommandTeleportToStationDesc>
+  <OATS_CommandTeleportToStationDesc>Select another teleport destination and teleport the current units there.</OATS_CommandTeleportToStationDesc>
   <OATS_SelectTeleportDestination>Select teleport destination</OATS_SelectTeleportDestination>
   <OATS_CannotTeleportNotAtStation>The caravan must be on this teleport station to teleport.</OATS_CannotTeleportNotAtStation>
-  <OATS_CannotTeleportNoDestinations>No other active teleport stations are available.</OATS_CannotTeleportNoDestinations>
+  <OATS_CannotTeleportNoDestinations>No other active teleport destinations are available.</OATS_CannotTeleportNoDestinations>
   <OATS_CannotTeleportInvalidDestination>The teleport destination is invalid.</OATS_CannotTeleportInvalidDestination>
+  <OATS_CannotTeleportPortalInactive>This teleport portal is not active.</OATS_CannotTeleportPortalInactive>
   <OATS_CannotTeleportNoMapPawns>There are no player units on this map that can be teleported.</OATS_CannotTeleportNoMapPawns>
   <OATS_MessageCaravanTeleported>{0} teleported to {1}.</OATS_MessageCaravanTeleported>
   <OATS_MessagePawnsTeleportedFromMap>Selected contents teleported to {0}.</OATS_MessagePawnsTeleportedFromMap>
   <OATS_SelectTeleportContents>Select contents to teleport to {0}</OATS_SelectTeleportContents>
+  <OATS_MapPortalDestinationLabel>{0} at {1}</OATS_MapPortalDestinationLabel>
+  <OATS_UnknownMapLabel>unknown map</OATS_UnknownMapLabel>
   <OATS_CannotTeleportNoItemCarrier>No selected pawn can carry teleported items.</OATS_CannotTeleportNoItemCarrier>
   <OATS_OuterrealmTeleportStationLabel>Outerrealm archotech teleport station</OATS_OuterrealmTeleportStationLabel>
   <OATS_OuterrealmTeleportPortalLabel>Outerrealm archotech teleport portal</OATS_OuterrealmTeleportPortalLabel>
