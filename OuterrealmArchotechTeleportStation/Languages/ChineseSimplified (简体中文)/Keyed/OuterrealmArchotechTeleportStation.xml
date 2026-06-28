@@ -18,10 +18,15 @@
   <OATS_SelectTeleportContents>选择要传送到 {0} 的内容</OATS_SelectTeleportContents>
   <OATS_MapPortalDestinationLabel>{1} 的 {0}</OATS_MapPortalDestinationLabel>
   <OATS_WorldTileDestinationLabel>世界地格 {0}</OATS_WorldTileDestinationLabel>
+  <OATS_TeleportStationDestinationLabel>{0}（{1}，地格 {2}）</OATS_TeleportStationDestinationLabel>
+  <OATS_TeleportStationDestinationLabelWithDistance>{0}（{1}，地格 {2}，距离 {3}）</OATS_TeleportStationDestinationLabelWithDistance>
   <OATS_UnknownMapLabel>未知地图</OATS_UnknownMapLabel>
   <OATS_CannotTeleportNoItemCarrier>选中的 Pawn 无法携带要传送的物品。</OATS_CannotTeleportNoItemCarrier>
   <OATS_OuterrealmTeleportStationLabel>超维科技远古传送站</OATS_OuterrealmTeleportStationLabel>
   <OATS_OuterrealmTeleportPortalLabel>超维科技远古传送门</OATS_OuterrealmTeleportPortalLabel>
+  <OATS_DefaultTeleportStationName>{0}传送站 {1}</OATS_DefaultTeleportStationName>
+  <OATS_CommandRenameTeleportStation>重命名传送站</OATS_CommandRenameTeleportStation>
+  <OATS_CommandRenameTeleportStationDesc>重命名此传送站，使它在传送目的地菜单中更容易区分。</OATS_CommandRenameTeleportStationDesc>
   <OATS_CommandAddTeleportStation>追加传送站</OATS_CommandAddTeleportStation>
   <OATS_CommandAddTeleportStationDesc>在世界地图上激活一个新的超维科技远古传送站。</OATS_CommandAddTeleportStationDesc>
   <OATS_AddTeleportStationRandom>随机追加传送站</OATS_AddTeleportStationRandom>

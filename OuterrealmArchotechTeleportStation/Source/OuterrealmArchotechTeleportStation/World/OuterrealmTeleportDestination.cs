@@ -82,6 +82,16 @@ namespace OuterrealmArchotechTeleportStation
             }
         }
 
+        public TaggedString GetMenuLabel(PlanetTile originTile)
+        {
+            if (station != null)
+            {
+                return GetStationMenuLabel(originTile);
+            }
+
+            return LabelCap;
+        }
+
         public static OuterrealmTeleportDestination ForStation(OuterrealmArchotechTeleportStationWorldObject station)
         {
             return new OuterrealmTeleportDestination(station, null, PlanetTile.Invalid);
@@ -166,6 +176,32 @@ namespace OuterrealmArchotechTeleportStation
             }
 
             return "OATS_UnknownMapLabel".Translate();
+        }
+
+        private TaggedString GetStationMenuLabel(PlanetTile originTile)
+        {
+            TaggedString biomeLabel = "OATS_UnknownMapLabel".Translate();
+            if (station.Tile.Valid)
+            {
+                BiomeDef biome = Find.WorldGrid[station.Tile]?.PrimaryBiome;
+                if (biome != null)
+                {
+                    biomeLabel = biome.LabelCap;
+                }
+            }
+
+            string tileLabel = station.Tile.Valid ? station.Tile.tileId.ToString() : "?";
+            if (originTile.Valid && station.Tile.Valid && originTile.Layer == station.Tile.Layer)
+            {
+                int distance = (int)Find.WorldGrid.ApproxDistanceInTiles(originTile, station.Tile);
+                return "OATS_TeleportStationDestinationLabelWithDistance".Translate(
+                    station.LabelCap,
+                    biomeLabel,
+                    tileLabel,
+                    distance);
+            }
+
+            return "OATS_TeleportStationDestinationLabel".Translate(station.LabelCap, biomeLabel, tileLabel);
         }
 
         private static IntVec3 GetArrivalRoot(Building_OuterrealmArchotechTeleportPortal portal)

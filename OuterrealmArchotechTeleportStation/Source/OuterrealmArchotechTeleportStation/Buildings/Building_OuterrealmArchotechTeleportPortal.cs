@@ -124,7 +124,7 @@ namespace OuterrealmArchotechTeleportStation
             {
                 // 复制循环变量，避免闭包捕获导致所有菜单项指向同一个目的地。
                 OuterrealmTeleportDestination localDestination = destination;
-                options.Add(new FloatMenuOption(localDestination.LabelCap, () => TeleportMapContents(localDestination)));
+                options.Add(new FloatMenuOption(localDestination.GetMenuLabel(Map.Tile), () => TeleportMapContents(localDestination)));
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
