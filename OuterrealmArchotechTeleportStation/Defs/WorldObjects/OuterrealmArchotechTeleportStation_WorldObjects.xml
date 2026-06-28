@@ -6,6 +6,7 @@
     <label>Outerrealm archotech teleport station</label>
     <description>An ancient OuterrealmTech teleport station embedded in the planet's hidden infrastructure.</description>
     <worldObjectClass>OuterrealmArchotechTeleportStation.OuterrealmArchotechTeleportStationWorldObject</worldObjectClass>
+    <nameMaker>NamerSettlementOutlander</nameMaker>
     <canHaveMap>true</canHaveMap>
     <mapGenerator>OuterrealmArchotechTeleportStationMap</mapGenerator>
     <overrideMapSize>(35,1,35)</overrideMapSize>

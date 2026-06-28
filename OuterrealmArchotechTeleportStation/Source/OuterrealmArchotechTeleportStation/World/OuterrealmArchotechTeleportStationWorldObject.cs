@@ -163,7 +163,7 @@ namespace OuterrealmArchotechTeleportStation
 
         private string GenerateNameRoot()
         {
-            RulePackDef rulePack = def?.nameMaker ?? Faction.OfPlayer?.def?.settlementNameMaker;
+            RulePackDef rulePack = def?.nameMaker;
             if (rulePack != null)
             {
                 List<string> usedNames = new List<string>();
