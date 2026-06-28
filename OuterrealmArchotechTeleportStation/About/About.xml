@@ -44,11 +44,11 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/Outerrea
             <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
             <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
         </li>
-        <li>
-            <packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>
-            <displayName>OuterrealmTech</displayName>
-            <steamWorkshopUrl>steam://url/CommunityFilePage/3712146789</steamWorkshopUrl>
-            <downloadUrl>https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticOmniCrafter</downloadUrl>
-        </li>
+<!--        <li>-->
+<!--            <packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>-->
+<!--            <displayName>OuterrealmTech</displayName>-->
+<!--            <steamWorkshopUrl>steam://url/CommunityFilePage/3712146789</steamWorkshopUrl>-->
+<!--            <downloadUrl>https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticOmniCrafter</downloadUrl>-->
+<!--        </li>-->
     </modDependencies>
 </ModMetaData>
