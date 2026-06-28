@@ -218,6 +218,58 @@ namespace OuterrealmArchotechTeleportStation
         }
 
         /// <summary>
+        /// 将远行队投送到任意可形成远行队的世界 tile。
+        /// 不要求目标 tile 存在传送站或其他世界对象。
+        /// </summary>
+        public static void TeleportCaravan(Caravan caravan, PlanetTile destinationTile)
+        {
+            if (caravan == null)
+            {
+                Messages.Message("OATS_CannotTeleportInvalidDestination".Translate(), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            if (!CanTeleportToWorldTile(destinationTile, out TaggedString reason))
+            {
+                Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            // 与传送站间瞬移一致，先停止旧路径再改写 tile。
+            caravan.pather.StopDead();
+            caravan.Tile = destinationTile;
+            caravan.Notify_Teleported();
+
+            TaggedString label = "OATS_WorldTileDestinationLabel".Translate(destinationTile.ToString());
+            Messages.Message(
+                "OATS_MessageCaravanTeleported".Translate(caravan.Name, label),
+                new LookTargets((GlobalTargetInfo)caravan, new GlobalTargetInfo(destinationTile)),
+                MessageTypeDefOf.TaskCompletion);
+        }
+
+        /// <summary>
+        /// 判断指定世界 tile 是否能作为远行队投送落点。
+        /// 这里不排除已有世界对象，因为玩家可以把远行队投送到据点、任务点或其他可通行地格外侧。
+        /// </summary>
+        public static bool CanTeleportToWorldTile(PlanetTile tile, out TaggedString reason)
+        {
+            if (!tile.Valid || !Find.WorldGrid.InBounds(tile))
+            {
+                reason = "OATS_CannotTeleportInvalidWorldTile".Translate();
+                return false;
+            }
+
+            if (Find.World.Impassable(tile) || !tile.LayerDef.canFormCaravans)
+            {
+                reason = "OATS_CannotTeleportInvalidWorldTile".Translate();
+                return false;
+            }
+
+            reason = TaggedString.Empty;
+            return true;
+        }
+
+        /// <summary>
         /// 为随机追加传送站寻找一个合法 tile。
         /// 优先使用原版 TileFinder 的站点查找逻辑；如果当前世界还没有玩家 tile 或原版查找失败，
         /// 再使用本 Mod 的保底随机/线性扫描。

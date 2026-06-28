@@ -84,6 +84,15 @@ namespace OuterrealmArchotechTeleportStation
                 action = ShowTeleportDestinationMenu
             };
 
+            // 世界投送：不要求目标地格存在传送站，直接在目标 tile 外侧形成远行队。
+            yield return new Command_Action
+            {
+                defaultLabel = "OATS_CommandTeleportToWorldTile".Translate(),
+                defaultDesc = "OATS_CommandTeleportToWorldTileDesc".Translate(),
+                icon = OuterrealmTeleportStationTex.Teleport,
+                action = BeginSelectWorldTeleportTile
+            };
+
             // 网络扩展：允许玩家随机或指定世界 tile 激活新的传送站。
             yield return new Command_Action
             {
@@ -144,6 +153,44 @@ namespace OuterrealmArchotechTeleportStation
             }
 
             Find.WindowStack.Add(new Dialog_OuterrealmTeleportContents(Map, destination));
+        }
+
+        /// <summary>
+        /// 进入世界地图选点流程，选择任意可通行 tile 作为远行队投送落点。
+        /// </summary>
+        private void BeginSelectWorldTeleportTile()
+        {
+            if (Map == null)
+            {
+                Messages.Message("OATS_CannotTeleportNoMapPawns".Translate(), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            CameraJumper.TryJump(new GlobalTargetInfo(Map.Tile));
+            Find.WorldSelector.ClearSelection();
+            Find.TilePicker.StartTargeting_NewTemp(
+                validator: tile =>
+                {
+                    if (OuterrealmTeleportNetworkUtility.CanTeleportToWorldTile(tile, out TaggedString reason))
+                    {
+                        return true;
+                    }
+
+                    Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
+                    return false;
+                },
+                tileChosen: tile =>
+                {
+                    Find.World.renderer.wantedMode = WorldRenderMode.None;
+                    TeleportMapContents(OuterrealmTeleportDestination.ForWorldTile(tile));
+                },
+                onGuiAction: DrawWorldTeleportTileMouseAttachment,
+                title: "OATS_SelectWorldTeleportTile".Translate(),
+                showRandomButton: false,
+                selectTileBehindObject: true,
+                hideFormCaravanGizmo: true,
+                canCancel: true,
+                noTileChosenMessage: "OATS_SelectWorldTeleportTile".Translate());
         }
 
         /// <summary>
@@ -236,6 +283,15 @@ namespace OuterrealmArchotechTeleportStation
         {
             Vector2 mousePosition = Event.current.mousePosition;
             GUI.DrawTexture(new Rect(mousePosition.x + 8f, mousePosition.y + 8f, 32f, 32f), OuterrealmTeleportStationTex.AddStation);
+        }
+
+        /// <summary>
+        /// 投送选点模式下跟随鼠标绘制传送图标，和追加传送站模式区分。
+        /// </summary>
+        private static void DrawWorldTeleportTileMouseAttachment()
+        {
+            Vector2 mousePosition = Event.current.mousePosition;
+            GUI.DrawTexture(new Rect(mousePosition.x + 8f, mousePosition.y + 8f, 32f, 32f), OuterrealmTeleportStationTex.Teleport);
         }
     }
 }

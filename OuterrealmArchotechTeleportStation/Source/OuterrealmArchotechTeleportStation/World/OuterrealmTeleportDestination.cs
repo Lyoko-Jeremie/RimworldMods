@@ -12,13 +12,16 @@ namespace OuterrealmArchotechTeleportStation
     {
         private readonly OuterrealmArchotechTeleportStationWorldObject station;
         private readonly Building_OuterrealmArchotechTeleportPortal portal;
+        private readonly PlanetTile worldTile;
 
         private OuterrealmTeleportDestination(
             OuterrealmArchotechTeleportStationWorldObject station,
-            Building_OuterrealmArchotechTeleportPortal portal)
+            Building_OuterrealmArchotechTeleportPortal portal,
+            PlanetTile worldTile)
         {
             this.station = station;
             this.portal = portal;
+            this.worldTile = worldTile;
         }
 
         public OuterrealmArchotechTeleportStationWorldObject Station => station;
@@ -34,6 +37,11 @@ namespace OuterrealmArchotechTeleportStation
                     return station.Tile;
                 }
 
+                if (worldTile.Valid)
+                {
+                    return worldTile;
+                }
+
                 return portal?.Map?.Tile ?? PlanetTile.Invalid;
             }
         }
@@ -47,20 +55,46 @@ namespace OuterrealmArchotechTeleportStation
                     return station.LabelCap;
                 }
 
+                if (worldTile.Valid)
+                {
+                    return "OATS_WorldTileDestinationLabel".Translate(worldTile.ToString());
+                }
+
                 return "OATS_MapPortalDestinationLabel".Translate(portal.LabelCap, MapLabelCap(portal.Map));
             }
         }
 
-        public LookTargets LookTargets => station != null ? new LookTargets(station) : new LookTargets(portal);
+        public LookTargets LookTargets
+        {
+            get
+            {
+                if (station != null)
+                {
+                    return new LookTargets(station);
+                }
+
+                if (worldTile.Valid)
+                {
+                    return new LookTargets(worldTile);
+                }
+
+                return new LookTargets(portal);
+            }
+        }
 
         public static OuterrealmTeleportDestination ForStation(OuterrealmArchotechTeleportStationWorldObject station)
         {
-            return new OuterrealmTeleportDestination(station, null);
+            return new OuterrealmTeleportDestination(station, null, PlanetTile.Invalid);
         }
 
         public static OuterrealmTeleportDestination ForPortal(Building_OuterrealmArchotechTeleportPortal portal)
         {
-            return new OuterrealmTeleportDestination(null, portal);
+            return new OuterrealmTeleportDestination(null, portal, PlanetTile.Invalid);
+        }
+
+        public static OuterrealmTeleportDestination ForWorldTile(PlanetTile tile)
+        {
+            return new OuterrealmTeleportDestination(null, null, tile);
         }
 
         public bool IsValid()
@@ -68,6 +102,11 @@ namespace OuterrealmArchotechTeleportStation
             if (station != null)
             {
                 return !station.Destroyed && station.Tile.Valid;
+            }
+
+            if (worldTile.Valid)
+            {
+                return OuterrealmTeleportNetworkUtility.CanTeleportToWorldTile(worldTile, out _);
             }
 
             return portal != null && portal.CanUseAsTeleportDestination(out _);
@@ -94,6 +133,12 @@ namespace OuterrealmArchotechTeleportStation
             if (station != null)
             {
                 OuterrealmTeleportNetworkUtility.TeleportCaravan(caravan, station);
+                return true;
+            }
+
+            if (worldTile.Valid)
+            {
+                OuterrealmTeleportNetworkUtility.TeleportCaravan(caravan, worldTile);
                 return true;
             }
 
