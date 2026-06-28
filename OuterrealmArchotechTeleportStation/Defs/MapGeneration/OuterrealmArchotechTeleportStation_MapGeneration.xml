@@ -64,7 +64,7 @@
     <things>
       <OuterrealmArchotechTeleportPortal>
         <position>(8,0,8)</position>
-        <relativeRotation>None</relativeRotation>
+        <relativeRotation>Opposite</relativeRotation>
       </OuterrealmArchotechTeleportPortal>
       <Column>
         <stuff>Steel</stuff>
@@ -97,7 +97,7 @@
     <things>
       <OuterrealmArchotechTeleportPortal>
         <position>(8,0,8)</position>
-        <relativeRotation>None</relativeRotation>
+        <relativeRotation>Opposite</relativeRotation>
       </OuterrealmArchotechTeleportPortal>
       <Urn>
         <stuff>Steel</stuff>
@@ -129,7 +129,7 @@
     <things>
       <OuterrealmArchotechTeleportPortal>
         <position>(8,0,12)</position>
-        <relativeRotation>None</relativeRotation>
+        <relativeRotation>Opposite</relativeRotation>
       </OuterrealmArchotechTeleportPortal>
       <Column>
         <stuff>Steel</stuff>
