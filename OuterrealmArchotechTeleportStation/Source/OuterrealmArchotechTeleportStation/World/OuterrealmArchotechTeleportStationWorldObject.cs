@@ -42,6 +42,7 @@ namespace OuterrealmArchotechTeleportStation
             // 远行队在传送站本格或相邻一格内都视为抵达传送站，解决地标 tile 无法直接停留的问题。
             if (!OuterrealmTeleportNetworkUtility.CaravanInStationRange(caravan, this))
             {
+                yield return new FloatMenuOption("OATS_CannotTeleportTooFar".Translate(), null);
                 yield break;
             }
 

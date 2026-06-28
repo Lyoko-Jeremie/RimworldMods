@@ -3,6 +3,7 @@
   <OATS_CommandTeleportToStation>传送到 {0}</OATS_CommandTeleportToStation>
   <OATS_CommandTeleportToStationDesc>选择另一个传送目的地，并将当前单位传送过去。</OATS_CommandTeleportToStationDesc>
   <OATS_SelectTeleportDestination>选择传送目的地</OATS_SelectTeleportDestination>
+  <OATS_CannotTeleportTooFar>距离过远</OATS_CannotTeleportTooFar>
   <OATS_CannotTeleportNotAtStation>远行队必须位于当前传送站才能传送。</OATS_CannotTeleportNotAtStation>
   <OATS_CannotTeleportNoDestinations>没有其他已激活的传送目的地。</OATS_CannotTeleportNoDestinations>
   <OATS_CannotTeleportInvalidDestination>传送目的地无效。</OATS_CannotTeleportInvalidDestination>

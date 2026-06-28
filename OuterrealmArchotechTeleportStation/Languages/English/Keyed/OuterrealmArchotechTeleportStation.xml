@@ -3,6 +3,7 @@
   <OATS_CommandTeleportToStation>Teleport to {0}</OATS_CommandTeleportToStation>
   <OATS_CommandTeleportToStationDesc>Select another teleport destination and teleport the current units there.</OATS_CommandTeleportToStationDesc>
   <OATS_SelectTeleportDestination>Select teleport destination</OATS_SelectTeleportDestination>
+  <OATS_CannotTeleportTooFar>Too far away</OATS_CannotTeleportTooFar>
   <OATS_CannotTeleportNotAtStation>The caravan must be on this teleport station to teleport.</OATS_CannotTeleportNotAtStation>
   <OATS_CannotTeleportNoDestinations>No other active teleport destinations are available.</OATS_CannotTeleportNoDestinations>
   <OATS_CannotTeleportInvalidDestination>The teleport destination is invalid.</OATS_CannotTeleportInvalidDestination>
