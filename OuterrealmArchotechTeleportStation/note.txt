@@ -1,0 +1,6 @@
+
+<relativeRotation>None</relativeRotation>
+<relativeRotation>Clockwise</relativeRotation>
+<relativeRotation>Opposite</relativeRotation>
+<relativeRotation>Counterclockwise</relativeRotation>
+
