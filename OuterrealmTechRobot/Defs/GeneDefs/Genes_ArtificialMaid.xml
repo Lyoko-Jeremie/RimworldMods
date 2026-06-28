@@ -4,7 +4,7 @@
         <defName>ArtificialMaid_Core</defName>
         <label>artificial maid core</label>
         <description>The core gene of an artificial maid. It enforces their appearance and grants them superior combat capabilities.</description>
-        <iconPath>UI/Icons/Genes/Gene_MeleeDamage_More</iconPath>
+        <iconPath>UI/Icons/Genes/Gene_Artificial_Maid</iconPath>
         <displayCategory>ArtificialMaid</displayCategory>
         <displayOrderInCategory>1</displayOrderInCategory>
         <skinColorOverride>(250, 240, 240)</skinColorOverride>
