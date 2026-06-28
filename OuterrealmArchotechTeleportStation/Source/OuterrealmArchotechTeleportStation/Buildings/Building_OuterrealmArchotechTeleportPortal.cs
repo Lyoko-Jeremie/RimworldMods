@@ -132,13 +132,17 @@ namespace OuterrealmArchotechTeleportStation
         /// </summary>
         private void AddRandomStation()
         {
-            if (!OuterrealmTeleportNetworkUtility.TryFindNewStationTile(out PlanetTile tile))
+            if (!OuterrealmTeleportNetworkUtility.TryFindNewStationTile(out PlanetTile tile, ignoreStationCountLimit: true))
             {
                 Messages.Message("OATS_CannotAddTeleportStationHere".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
-            if (!OuterrealmTeleportNetworkUtility.TryAddStationAt(tile, out _, out TaggedString reason))
+            if (!OuterrealmTeleportNetworkUtility.TryAddStationAt(
+                    tile,
+                    out _,
+                    out TaggedString reason,
+                    ignoreStationCountLimit: true))
             {
                 Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
             }

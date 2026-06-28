@@ -149,7 +149,7 @@ namespace OuterrealmArchotechTeleportStation
         /// 优先使用原版 TileFinder 的站点查找逻辑；如果当前世界还没有玩家 tile 或原版查找失败，
         /// 再使用本 Mod 的保底随机/线性扫描。
         /// </summary>
-        public static bool TryFindNewStationTile(out PlanetTile tile)
+        public static bool TryFindNewStationTile(out PlanetTile tile, bool ignoreStationCountLimit = false)
         {
             PlanetTile nearTile;
             bool hasPlayerTile = TileFinder.TryFindRandomPlayerTile(out nearTile, allowCaravans: true);
@@ -159,7 +159,7 @@ namespace OuterrealmArchotechTeleportStation
                     RandomSiteMinDistance,
                     RandomSiteMaxDistance,
                     allowCaravans: true,
-                    validator: candidate => CanPlaceStationAt(candidate, out _)))
+                    validator: candidate => CanPlaceStationAt(candidate, out _, ignoreStationCountLimit)))
             {
                 return true;
             }
@@ -169,21 +169,21 @@ namespace OuterrealmArchotechTeleportStation
                 RandomSiteMinDistance,
                 RandomSiteMaxDistance,
                 allowCaravans: true,
-                validator: candidate => CanPlaceStationAt(candidate, out _)) ||
-                TryFindRandomValidTile(out tile);
+                validator: candidate => CanPlaceStationAt(candidate, out _, ignoreStationCountLimit)) ||
+                TryFindRandomValidTile(out tile, ignoreStationCountLimit);
         }
 
         /// <summary>
         /// 原版随机地点查找失败时的保底方案。
         /// 先随机抽样减少平均耗时；抽样失败后再线性扫描，尽量保证新世界至少能生成一个入口。
         /// </summary>
-        private static bool TryFindRandomValidTile(out PlanetTile tile)
+        private static bool TryFindRandomValidTile(out PlanetTile tile, bool ignoreStationCountLimit)
         {
             int tileCount = Find.WorldGrid.TilesCount;
             for (int i = 0; i < 2000; i++)
             {
                 PlanetTile candidate = new PlanetTile(Rand.Range(0, tileCount));
-                if (CanPlaceStationAt(candidate, out _))
+                if (CanPlaceStationAt(candidate, out _, ignoreStationCountLimit))
                 {
                     tile = candidate;
                     return true;
@@ -193,7 +193,7 @@ namespace OuterrealmArchotechTeleportStation
             for (int i = 0; i < tileCount; i++)
             {
                 PlanetTile candidate = new PlanetTile(i);
-                if (CanPlaceStationAt(candidate, out _))
+                if (CanPlaceStationAt(candidate, out _, ignoreStationCountLimit))
                 {
                     tile = candidate;
                     return true;
@@ -212,10 +212,11 @@ namespace OuterrealmArchotechTeleportStation
             PlanetTile tile,
             out OuterrealmArchotechTeleportStationWorldObject station,
             out TaggedString reason,
-            bool sendMessage = true)
+            bool sendMessage = true,
+            bool ignoreStationCountLimit = false)
         {
             station = null;
-            if (!CanPlaceStationAt(tile, out reason))
+            if (!CanPlaceStationAt(tile, out reason, ignoreStationCountLimit))
             {
                 return false;
             }
@@ -240,7 +241,7 @@ namespace OuterrealmArchotechTeleportStation
         /// 判断指定世界 tile 是否可以放置传送站。
         /// 这里是随机追加和玩家手动选点共用的唯一规则入口。
         /// </summary>
-        public static bool CanPlaceStationAt(PlanetTile tile, out TaggedString reason)
+        public static bool CanPlaceStationAt(PlanetTile tile, out TaggedString reason, bool ignoreStationCountLimit = false)
         {
             if (!tile.Valid)
             {
@@ -248,7 +249,7 @@ namespace OuterrealmArchotechTeleportStation
                 return false;
             }
 
-            if (GetStations().Count >= MaxStationCount())
+            if (!ignoreStationCountLimit && GetStations().Count >= MaxStationCount())
             {
                 reason = "OATS_CannotAddTeleportStationMaxCount".Translate(MaxStationCount());
                 return false;
