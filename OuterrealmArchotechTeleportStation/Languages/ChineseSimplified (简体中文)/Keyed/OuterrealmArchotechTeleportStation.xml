@@ -8,7 +8,9 @@
   <OATS_CannotTeleportInvalidDestination>传送目的地无效。</OATS_CannotTeleportInvalidDestination>
   <OATS_CannotTeleportNoMapPawns>当前地图没有可传送的玩家单位。</OATS_CannotTeleportNoMapPawns>
   <OATS_MessageCaravanTeleported>{0} 已传送到 {1}。</OATS_MessageCaravanTeleported>
-  <OATS_MessagePawnsTeleportedFromMap>单位已从传送站地图传送到 {0}。</OATS_MessagePawnsTeleportedFromMap>
+  <OATS_MessagePawnsTeleportedFromMap>选中内容已传送到 {0}。</OATS_MessagePawnsTeleportedFromMap>
+  <OATS_SelectTeleportContents>选择要传送到 {0} 的内容</OATS_SelectTeleportContents>
+  <OATS_CannotTeleportNoItemCarrier>选中的 Pawn 无法携带要传送的物品。</OATS_CannotTeleportNoItemCarrier>
   <OATS_OuterrealmTeleportStationLabel>超维科技远古传送站</OATS_OuterrealmTeleportStationLabel>
   <OATS_OuterrealmTeleportPortalLabel>超维科技远古传送门</OATS_OuterrealmTeleportPortalLabel>
   <OATS_CommandAddTeleportStation>追加传送站</OATS_CommandAddTeleportStation>

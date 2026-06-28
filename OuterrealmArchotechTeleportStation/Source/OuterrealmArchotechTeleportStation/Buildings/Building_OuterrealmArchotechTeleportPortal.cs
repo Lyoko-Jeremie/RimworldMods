@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using RimWorld.Planet;
 using UnityEngine;
@@ -24,7 +23,7 @@ namespace OuterrealmArchotechTeleportStation
                 yield return gizmo;
             }
 
-            // 地图内传送：打开目的地菜单，选择后把当前地图玩家单位组成远行队并瞬移。
+            // 地图内传送：打开目的地菜单，之后按当前地图类型决定全图传送或弹出选择窗口。
             yield return new Command_Action
             {
                 defaultLabel = "OATS_SelectTeleportDestination".Translate(),
@@ -64,53 +63,35 @@ namespace OuterrealmArchotechTeleportStation
             {
                 // 复制循环变量，避免闭包捕获导致所有菜单项指向同一个目的地。
                 OuterrealmArchotechTeleportStationWorldObject localDestination = destination;
-                options.Add(new FloatMenuOption(localDestination.LabelCap, () => TeleportMapPawns(localDestination)));
+                options.Add(new FloatMenuOption(localDestination.LabelCap, () => TeleportMapContents(localDestination)));
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
         /// <summary>
-        /// 将当前传送站局部地图中的玩家派系单位组成远行队，并传送到目标传送站所在 tile。
-        /// 第一版不直接把单位生成到目标局部地图，避免目标地图未加载时产生额外地图生成和落点问题。
+        /// 传送站地图会自动传送全部玩家内容并关闭来源图；普通地图需要玩家先选择内容。
         /// </summary>
-        private void TeleportMapPawns(OuterrealmArchotechTeleportStationWorldObject destination)
+        private void TeleportMapContents(OuterrealmArchotechTeleportStationWorldObject destination)
         {
-            // 只传送当前地图内仍然存活、未倒地的玩家派系单位，避免把敌人、尸体或不可控单位卷入传送。
-            List<Pawn> pawns = Map.mapPawns.SpawnedPawnsInFaction(Faction.OfPlayer)
-                .Where(pawn => !pawn.Downed && !pawn.Dead)
-                .ToList();
-
-            if (pawns.Count == 0)
+            if (Map == null)
             {
                 Messages.Message("OATS_CannotTeleportNoMapPawns".Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
-            PlanetTile originTile = Map.Tile;
-
-            // 先使用原版离图工具把 Pawn 从 Map 转为 Caravan。
-            // destinationTile 传 Invalid，避免原版工具自动按普通路径下达移动命令；之后由本 Mod 统一瞬移。
-            Caravan caravan = CaravanExitMapUtility.ExitMapAndCreateCaravan(
-                pawns,
-                Faction.OfPlayer,
-                originTile,
-                originTile,
-                PlanetTile.Invalid,
-                false);
-
-            if (caravan == null)
+            if (Map.Parent is OuterrealmArchotechTeleportStationWorldObject)
             {
-                Messages.Message("OATS_CannotTeleportNoMapPawns".Translate(), MessageTypeDefOf.RejectInput, false);
+                List<TransferableOneWay> transferables = OuterrealmMapTeleportUtility.CreateTransferables(Map, selectAll: true);
+                OuterrealmMapTeleportUtility.TryTeleportTransferables(
+                    Map,
+                    destination,
+                    transferables,
+                    removeSourceMap: true);
                 return;
             }
 
-            // 远行队创建成功后复用世界传送逻辑，统一处理 StopDead、Tile、Notify_Teleported 和消息。
-            OuterrealmTeleportNetworkUtility.TeleportCaravan(caravan, destination);
-            Messages.Message(
-                "OATS_MessagePawnsTeleportedFromMap".Translate(destination.LabelCap),
-                new LookTargets(caravan, destination),
-                MessageTypeDefOf.TaskCompletion);
+            Find.WindowStack.Add(new Dialog_OuterrealmTeleportContents(Map, destination));
         }
 
         /// <summary>

@@ -8,7 +8,9 @@
   <OATS_CannotTeleportInvalidDestination>The teleport destination is invalid.</OATS_CannotTeleportInvalidDestination>
   <OATS_CannotTeleportNoMapPawns>There are no player units on this map that can be teleported.</OATS_CannotTeleportNoMapPawns>
   <OATS_MessageCaravanTeleported>{0} teleported to {1}.</OATS_MessageCaravanTeleported>
-  <OATS_MessagePawnsTeleportedFromMap>Units teleported from the station map to {0}.</OATS_MessagePawnsTeleportedFromMap>
+  <OATS_MessagePawnsTeleportedFromMap>Selected contents teleported to {0}.</OATS_MessagePawnsTeleportedFromMap>
+  <OATS_SelectTeleportContents>Select contents to teleport to {0}</OATS_SelectTeleportContents>
+  <OATS_CannotTeleportNoItemCarrier>No selected pawn can carry teleported items.</OATS_CannotTeleportNoItemCarrier>
   <OATS_OuterrealmTeleportStationLabel>Outerrealm archotech teleport station</OATS_OuterrealmTeleportStationLabel>
   <OATS_OuterrealmTeleportPortalLabel>Outerrealm archotech teleport portal</OATS_OuterrealmTeleportPortalLabel>
   <OATS_CommandAddTeleportStation>Add teleport station</OATS_CommandAddTeleportStation>
