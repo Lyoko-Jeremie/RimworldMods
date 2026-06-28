@@ -82,6 +82,7 @@
   <ItemGroup>
     <Content Include="AGENTS.md" />
     <Content Include="plan.md" />
+    <Content Include="q1.md" />
   </ItemGroup>
   <Target Name="CopyToModAssemblies" AfterTargets="Build">
     <MakeDir Directories="..\..\Assemblies" />
