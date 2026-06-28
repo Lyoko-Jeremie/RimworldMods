@@ -197,7 +197,8 @@ namespace OuterrealmArchotechTeleportStation
                     if (OuterrealmTeleportNetworkUtility.CanPlaceStationAt(
                             tile,
                             out TaggedString reason,
-                            ignoreStationCountLimit: true))
+                            ignoreStationCountLimit: true,
+                            ignoreStationDistanceLimit: true))
                     {
                         return true;
                     }
@@ -213,7 +214,8 @@ namespace OuterrealmArchotechTeleportStation
                             tile,
                             out _,
                             out TaggedString reason,
-                            ignoreStationCountLimit: true))
+                            ignoreStationCountLimit: true,
+                            ignoreStationDistanceLimit: true))
                     {
                         Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
                     }

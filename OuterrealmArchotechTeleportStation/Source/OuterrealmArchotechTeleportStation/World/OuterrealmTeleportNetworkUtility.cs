@@ -286,10 +286,11 @@ namespace OuterrealmArchotechTeleportStation
             out OuterrealmArchotechTeleportStationWorldObject station,
             out TaggedString reason,
             bool sendMessage = true,
-            bool ignoreStationCountLimit = false)
+            bool ignoreStationCountLimit = false,
+            bool ignoreStationDistanceLimit = false)
         {
             station = null;
-            if (!CanPlaceStationAt(tile, out reason, ignoreStationCountLimit))
+            if (!CanPlaceStationAt(tile, out reason, ignoreStationCountLimit, ignoreStationDistanceLimit))
             {
                 return false;
             }
@@ -314,7 +315,11 @@ namespace OuterrealmArchotechTeleportStation
         /// 判断指定世界 tile 是否可以放置传送站。
         /// 这里是随机追加和玩家手动选点共用的唯一规则入口。
         /// </summary>
-        public static bool CanPlaceStationAt(PlanetTile tile, out TaggedString reason, bool ignoreStationCountLimit = false)
+        public static bool CanPlaceStationAt(
+            PlanetTile tile,
+            out TaggedString reason,
+            bool ignoreStationCountLimit = false,
+            bool ignoreStationDistanceLimit = false)
         {
             if (!tile.Valid)
             {
@@ -348,15 +353,18 @@ namespace OuterrealmArchotechTeleportStation
                 return false;
             }
 
-            // 控制传送网络空间分布，避免玩家连续追加时全都贴在同一区域。
-            List<OuterrealmArchotechTeleportStationWorldObject> stations = GetStations();
-            for (int i = 0; i < stations.Count; i++)
+            if (!ignoreStationDistanceLimit)
             {
-                if (stations[i].Tile.Layer == tile.Layer &&
-                    Find.WorldGrid.ApproxDistanceInTiles(stations[i].Tile, tile) < MinStationDistance)
+                // 控制自动追加的网络空间分布；手动选点允许玩家自行决定距离。
+                List<OuterrealmArchotechTeleportStationWorldObject> stations = GetStations();
+                for (int i = 0; i < stations.Count; i++)
                 {
-                    reason = "OATS_CannotAddTeleportStationHere".Translate();
-                    return false;
+                    if (stations[i].Tile.Layer == tile.Layer &&
+                        Find.WorldGrid.ApproxDistanceInTiles(stations[i].Tile, tile) < MinStationDistance)
+                    {
+                        reason = "OATS_CannotAddTeleportStationHere".Translate();
+                        return false;
+                    }
                 }
             }
 
