@@ -161,7 +161,10 @@ namespace OuterrealmArchotechTeleportStation
                 {
                     // TilePicker 的 validator 会在点击“下一步”时执行；
                     // 非法时直接显示统一选址规则返回的 i18n 原因。
-                    if (OuterrealmTeleportNetworkUtility.CanPlaceStationAt(tile, out TaggedString reason))
+                    if (OuterrealmTeleportNetworkUtility.CanPlaceStationAt(
+                            tile,
+                            out TaggedString reason,
+                            ignoreStationCountLimit: true))
                     {
                         return true;
                     }
@@ -173,7 +176,11 @@ namespace OuterrealmArchotechTeleportStation
                 {
                     // 选定后关闭世界渲染高亮模式，再通过统一创建入口实际添加世界对象。
                     Find.World.renderer.wantedMode = WorldRenderMode.None;
-                    if (!OuterrealmTeleportNetworkUtility.TryAddStationAt(tile, out _, out TaggedString reason))
+                    if (!OuterrealmTeleportNetworkUtility.TryAddStationAt(
+                            tile,
+                            out _,
+                            out TaggedString reason,
+                            ignoreStationCountLimit: true))
                     {
                         Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
                     }

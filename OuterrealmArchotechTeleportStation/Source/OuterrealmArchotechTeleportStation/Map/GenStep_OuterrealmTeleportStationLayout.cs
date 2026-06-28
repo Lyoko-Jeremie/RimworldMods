@@ -121,7 +121,7 @@ namespace OuterrealmArchotechTeleportStation
             playerStart = IntVec3.Invalid;
             Rot4 rot = PrefabUtility.ValidateRotation(prefabDef.prefab, Rot4.North);
             IntVec3 root = PrefabUtility.GetRoot(prefabDef.prefab, center, rot);
-            CellRect occupied = new CellRect(root.x, root.z, prefabDef.prefab.size.x, prefabDef.prefab.size.z).ExpandedBy(3).ClipInsideMap(map);
+            CellRect occupied = GenAdj.OccupiedRect(center, rot, prefabDef.prefab.size).ExpandedBy(3).ClipInsideMap(map);
 
             // 先给占用区域铺重型地面并清理墙体类阻挡，提升 CanSpawnPrefab 成功率。
             foreach (IntVec3 cell in occupied)
@@ -130,14 +130,15 @@ namespace OuterrealmArchotechTeleportStation
                 GenSpawn.WipeExistingThings(cell, Rot4.North, ThingDefOf.Wall, map, DestroyMode.Vanish);
             }
 
-            // 让原版工具做最终放置校验，避免 prefab 与边界、建筑占用等规则冲突。
-            if (!PrefabUtility.CanSpawnPrefab(prefabDef.prefab, map, root, rot))
+            // PrefabUtility 的 pos 是 prefab 占用矩形中心，不是 GetRoot 返回的左下根坐标。
+            // 传 root 会让原版工具再次计算 root，导致整个 prefab 按半个尺寸偏移。
+            if (!PrefabUtility.CanSpawnPrefab(prefabDef.prefab, map, center, rot))
             {
                 return false;
             }
 
             SpawnedThings.Clear();
-            PrefabUtility.SpawnPrefab(prefabDef.prefab, map, root, rot, spawned: SpawnedThings);
+            PrefabUtility.SpawnPrefab(prefabDef.prefab, map, center, rot, spawned: SpawnedThings);
 
             // 优先从生成列表中找主传送门，这是最可靠的定位方式。
             portal = SpawnedThings.OfType<Building>()
@@ -158,8 +159,8 @@ namespace OuterrealmArchotechTeleportStation
 
             if (portal != null)
             {
-                // prefab 只负责建筑群，通向地图边缘的道路由生成器根据实际地图尺寸补齐。
-                EnsureRoadToEdge(map, portal.Position);
+                // prefab 只负责建筑群，通向地图边缘的十字道路固定按地图中心补齐。
+                EnsureRoadToEdge(map, center);
             }
 
             SpawnedThings.Clear();

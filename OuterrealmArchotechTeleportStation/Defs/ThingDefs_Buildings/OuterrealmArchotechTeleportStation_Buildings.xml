@@ -37,8 +37,8 @@
       <ComponentSpacer>4</ComponentSpacer>
     </costList>
     <defaultPlacingRot>South</defaultPlacingRot>
-    <interactionCellOffset>(0,0,-1)</interactionCellOffset>
-    <hasInteractionCell>true</hasInteractionCell>
+<!--    <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
+    <hasInteractionCell>false</hasInteractionCell>
     <terrainAffordanceNeeded>Medium</terrainAffordanceNeeded>
     <designationCategory>Misc</designationCategory>
     <uiOrder>2101</uiOrder>
