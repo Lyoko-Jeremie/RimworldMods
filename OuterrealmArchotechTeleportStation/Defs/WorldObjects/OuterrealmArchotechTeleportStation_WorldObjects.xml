@@ -15,6 +15,9 @@
     <expandingIconTexture>World/WorldObjects/Expanding/JourneyDestination</expandingIconTexture>
     <expandingIconPriority>45</expandingIconPriority>
     <expandMore>true</expandMore>
+    <comps>
+      <li Class="WorldObjectCompProperties_FormCaravan" />
+    </comps>
     <IncidentTargetTags>
       <li>Map_Misc</li>
     </IncidentTargetTags>
