@@ -73,6 +73,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup\OuterrealmTechRoadProjectStartup.cs" />
     <Compile Include="UI\OuterrealmLinkTex.cs" />
+    <Compile Include="UI\Window_OuterrealmLinkPlannerControls.cs" />
     <Compile Include="World\OuterrealmLinkPlanner.cs" />
     <Compile Include="World\OuterrealmLinkUtility.cs" />
     <Compile Include="World\RoadDefGenStep_OuterrealmLinkPlace.cs" />

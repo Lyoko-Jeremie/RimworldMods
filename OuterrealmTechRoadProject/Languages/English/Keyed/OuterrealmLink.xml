@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
   <OuterrealmTechRoadProject_CommandPlanOuterrealmLink>Plan outerrealm link</OuterrealmTechRoadProject_CommandPlanOuterrealmLink>
-  <OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>Select adjacent world tiles to draw an outerrealm link. Click the current endpoint again to confirm and build it instantly.</OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>
+  <OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>Select adjacent world tiles to draw an outerrealm link, then use the finish button to confirm and build it instantly.</OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>
   <OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlan>Cancel outerrealm link plan</OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlan>
   <OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlanDesc>Stop the current outerrealm link world-map plan.</OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlanDesc>
+  <OuterrealmTechRoadProject_CommandFinishOuterrealmLinkPlan>Finish outerrealm link plan</OuterrealmTechRoadProject_CommandFinishOuterrealmLinkPlan>
+  <OuterrealmTechRoadProject_PlannerControlStatus>Nodes: {0}  Segments: {1}</OuterrealmTechRoadProject_PlannerControlStatus>
   <OuterrealmTechRoadProject_InvalidWorldTile>An outerrealm link cannot be planned on this world tile.</OuterrealmTechRoadProject_InvalidWorldTile>
   <OuterrealmTechRoadProject_MustChooseNeighborTile>You must choose a world tile adjacent to the current endpoint.</OuterrealmTechRoadProject_MustChooseNeighborTile>
   <OuterrealmTechRoadProject_ClickEndpointToConfirm>Click the current endpoint again to confirm construction. Segments: {0}</OuterrealmTechRoadProject_ClickEndpointToConfirm>
+  <OuterrealmTechRoadProject_UseFinishButtonToConfirm>Use the finish button to confirm construction. Segments: {0}</OuterrealmTechRoadProject_UseFinishButtonToConfirm>
+  <OuterrealmTechRoadProject_NeedAtLeastOneSegment>Choose at least one adjacent tile before finishing the outerrealm link.</OuterrealmTechRoadProject_NeedAtLeastOneSegment>
   <OuterrealmTechRoadProject_ClickRouteNodeToTrim>Click to trim the route back to node {0}.</OuterrealmTechRoadProject_ClickRouteNodeToTrim>
   <OuterrealmTechRoadProject_AddOuterrealmLinkNode>Click to add outerrealm link node {0}.</OuterrealmTechRoadProject_AddOuterrealmLinkNode>
   <OuterrealmTechRoadProject_ConfirmOuterrealmLinkText>Generate this outerrealm link? The route contains {0} nodes and {1} segments. This version consumes no resources.</OuterrealmTechRoadProject_ConfirmOuterrealmLinkText>

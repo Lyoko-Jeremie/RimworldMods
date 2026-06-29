@@ -25,6 +25,17 @@ namespace OuterrealmTechRoadProject.World
         private static Buildings.Building_OuterrealmLinkProjector projector;
 
         /// <summary>
+        /// 当前路线节点数量，供规划控制窗口显示。
+        /// </summary>
+        public static int RouteNodeCount => Route.Count;
+
+        /// <summary>
+        /// 当前路线的道路段数量。
+        /// 节点数为 0/1 时没有可建造路段。
+        /// </summary>
+        public static int RouteSegmentCount => Route.Count > 1 ? Route.Count - 1 : 0;
+
+        /// <summary>
         /// 是否处于超维链路规划状态。
         /// 如果世界目标器已经关闭，说明玩家取消或其他系统结束了目标选择，需要同步清空本地状态。
         /// </summary>
@@ -69,6 +80,10 @@ namespace OuterrealmTechRoadProject.World
                 CanSelectTarget,
                 source.Tile,
                 true);
+
+            // 规划期间显示独立完成按钮，避免把“点击世界 tile”同时作为确认动作。
+            Find.WindowStack.TryRemove(typeof(Window_OuterrealmLinkPlannerControls));
+            Find.WindowStack.Add(new Window_OuterrealmLinkPlannerControls());
         }
 
         /// <summary>
@@ -100,14 +115,7 @@ namespace OuterrealmTechRoadProject.World
             int existingIndex = IndexOf(tile);
             if (existingIndex >= 0)
             {
-                // 再次点击当前终点表示“路线已经选完，准备确认建造”。
-                if (existingIndex == Route.Count - 1 && Route.Count > 1)
-                {
-                    ConfirmRoute();
-                    return true;
-                }
-
-                // 点击路线中的旧节点表示回退，类似撤销后续节点。
+                // 点击路线中的旧节点表示回退，类似撤销后续节点；点击当前终点不再确认建造。
                 TrimRouteAfter(existingIndex);
                 return false;
             }
@@ -158,7 +166,7 @@ namespace OuterrealmTechRoadProject.World
             int existingIndex = IndexOf(tile);
             if (existingIndex == Route.Count - 1 && Route.Count > 1)
             {
-                return "OuterrealmTechRoadProject_ClickEndpointToConfirm".Translate(Route.Count - 1);
+                return "OuterrealmTechRoadProject_UseFinishButtonToConfirm".Translate(Route.Count - 1);
             }
 
             if (existingIndex >= 0)
@@ -193,6 +201,25 @@ namespace OuterrealmTechRoadProject.World
                 Vector3 to = grid.GetTileCenter(Route[i + 1]) + grid.GetTileCenter(Route[i + 1]).normalized * 0.05f;
                 GenDraw.DrawWorldLineBetween(from, to);
             }
+        }
+
+        /// <summary>
+        /// 由规划控制窗口触发完成规划。
+        /// </summary>
+        public static void FinishPlanning()
+        {
+            if (Route.Count < 2)
+            {
+                Messages.Message("OuterrealmTechRoadProject_NeedAtLeastOneSegment".Translate(), MessageTypeDefOf.RejectInput);
+                return;
+            }
+
+            if (Find.WorldTargeter.IsTargeting)
+            {
+                Find.WorldTargeter.StopTargeting();
+            }
+
+            ConfirmRoute();
         }
 
         /// <summary>
@@ -280,6 +307,7 @@ namespace OuterrealmTechRoadProject.World
         /// </summary>
         private static void Clear()
         {
+            Find.WindowStack.TryRemove(typeof(Window_OuterrealmLinkPlannerControls));
             projector = null;
             Route.Clear();
         }
