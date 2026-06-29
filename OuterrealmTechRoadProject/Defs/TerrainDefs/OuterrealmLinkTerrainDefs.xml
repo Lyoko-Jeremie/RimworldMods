@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <TerrainDef ParentName="FloorBase">
+    <defName>OuterrealmTech_OuterrealmLinkTerrain</defName>
+    <label>outerrealm link</label>
+    <description>A stabilized outerrealm road surface projected into local space.</description>
+    <texturePath>Terrain/Surfaces/GenericFloorTile</texturePath>
+    <color>(0.20, 0.95, 1.00)</color>
+    <renderPrecedence>250</renderPrecedence>
+    <affordances>
+      <li>Light</li>
+      <li>Medium</li>
+      <li>Heavy</li>
+      <li>Walkable</li>
+    </affordances>
+    <statBases>
+      <WorkToBuild>1</WorkToBuild>
+      <Cleanliness>0.4</Cleanliness>
+      <Beauty>2</Beauty>
+      <Flammability>0</Flammability>
+    </statBases>
+  </TerrainDef>
+</Defs>

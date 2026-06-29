@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <RoadDef>
+    <defName>OuterrealmTech_OuterrealmLink</defName>
+    <label>outerrealm link</label>
+    <priority>100</priority>
+    <movementCostMultiplier>0.10</movementCostMultiplier>
+    <tilesPerSegment>100</tilesPerSegment>
+    <pathingMode>Bulldoze</pathingMode>
+    <roadGenSteps>
+      <li Class="OuterrealmTechRoadProject.World.RoadDefGenStep_OuterrealmLinkPlace">
+        <chancePerPositionCurve>
+          <points>
+            <li>(3.0, 1)</li>
+            <li>(3.1, 0)</li>
+          </points>
+        </chancePerPositionCurve>
+        <antialiasingMultiplier>0</antialiasingMultiplier>
+        <linkTerrain>OuterrealmTech_OuterrealmLinkTerrain</linkTerrain>
+        <bridgeTerrain>ConcreteBridge</bridgeTerrain>
+      </li>
+    </roadGenSteps>
+    <distortionFrequency>0.15</distortionFrequency>
+    <distortionIntensity>0.02</distortionIntensity>
+    <worldRenderSteps>
+      <li>
+        <layer>Outline</layer>
+        <width>0.80</width>
+      </li>
+      <li>
+        <layer>OuterrealmLinkGlow</layer>
+        <width>0.45</width>
+      </li>
+    </worldRenderSteps>
+    <worldTransitionGroup>OuterrealmLink</worldTransitionGroup>
+    <modExtensions>
+      <li Class="RoadsOfTheRim.DefModExtension_RotR_RoadDef">
+        <built>true</built>
+        <biomeModifier>1</biomeModifier>
+        <hillinessModifier>1</hillinessModifier>
+        <winterModifier>1</winterModifier>
+        <canBuildOnImpassable>true</canBuildOnImpassable>
+        <canBuildOnWater>true</canBuildOnWater>
+        <costs>
+          <Work>1</Work>
+        </costs>
+      </li>
+      <li Class="OuterrealmTechRoadProject.Defs.DefModExtension_OuterrealmLinkRoad">
+        <allowAnyTerrain>true</allowAnyTerrain>
+        <strictEdgePassability>true</strictEdgePassability>
+        <impassableTileMovementDifficulty>4</impassableTileMovementDifficulty>
+      </li>
+    </modExtensions>
+  </RoadDef>
+</Defs>

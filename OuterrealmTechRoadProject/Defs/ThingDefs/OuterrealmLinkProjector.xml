@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="BuildingBase">
+    <defName>OuterrealmTech_OuterrealmLinkProjector</defName>
+    <label>outerrealm link projector</label>
+    <description>A control structure that projects outerrealm links directly onto the world map.</description>
+    <thingClass>OuterrealmTechRoadProject.Buildings.Building_OuterrealmLinkProjector</thingClass>
+    <graphicData>
+      <texPath>Things/Building/Misc/CommsConsole</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(3,2)</drawSize>
+      <shadowData>
+        <volume>(2.4,0.5,1.4)</volume>
+        <offset>(0,0,-0.1)</offset>
+      </shadowData>
+      <damageData>
+        <rect>(0,0,2,1.2)</rect>
+      </damageData>
+    </graphicData>
+    <altitudeLayer>Building</altitudeLayer>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
+    <statBases>
+      <MaxHitPoints>300</MaxHitPoints>
+      <WorkToBuild>1</WorkToBuild>
+      <Flammability>0</Flammability>
+      <Mass>20</Mass>
+    </statBases>
+    <size>(3,2)</size>
+    <passability>PassThroughOnly</passability>
+    <pathCost>30</pathCost>
+    <fillPercent>0.4</fillPercent>
+    <designationCategory>Misc</designationCategory>
+    <uiOrder>2200</uiOrder>
+    <rotatable>true</rotatable>
+    <building>
+      <destroySound>BuildingDestroyed_Metal_Medium</destroySound>
+    </building>
+  </ThingDef>
+</Defs>

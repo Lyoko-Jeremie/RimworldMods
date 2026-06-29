@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\..\Assemblies\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -25,7 +25,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\..\Assemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -65,8 +65,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="Buildings\Building_OuterrealmLinkProjector.cs" />
+    <Compile Include="DefOfs\OuterrealmRoadDefOf.cs" />
+    <Compile Include="DefOfs\OuterrealmTerrainDefOf.cs" />
+    <Compile Include="Defs\DefModExtension_OuterrealmLinkRoad.cs" />
+    <Compile Include="Patches\Patch_WorldPathGrid_CalculatedMovementDifficultyAt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Startup\OuterrealmTechRoadProjectStartup.cs" />
+    <Compile Include="UI\OuterrealmLinkTex.cs" />
+    <Compile Include="World\OuterrealmLinkPlanner.cs" />
+    <Compile Include="World\OuterrealmLinkUtility.cs" />
+    <Compile Include="World\RoadDefGenStep_OuterrealmLinkPlace.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
