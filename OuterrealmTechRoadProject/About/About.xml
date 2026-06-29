@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+    <name>OuterrealmTechRoadProject 超维科技道路工程</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+        <li>1.6</li>
+    </supportedVersions>
+    <packageId>Jeremie.Outerrealm.Tech.ArtificialMaid</packageId>
+    <description>
+[h1] 超维科技道路工程 OuterrealmTech RoadProject [/h1]
+
+这是来自边缘世界所在宇宙维度外的超级国度的科技，超越了常规科技的极限。
+集合了一系列超凡的、万能的、超出常人想象的、让人无法理解的、打破常规的东西。
+它们将彻底改变殖民地建设和管理方式，让你体验到前所未有的便利和效率！
+
+欢迎来到超维科技的世界！
+
+借助超维科技的力量，现在你可以建造隧道和跨海大桥，轻松跨越地形阻挡，连接世界的任何一个角落。无论是高耸入云的山脉还是深不见底的海洋，超维科技道路工程都能为您提供解决方案。
+
+"一桥飞架南北，天堑变通途！" ———— 毛
+
+
+
+[hr][/hr]
+
+Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmTechRoadProject
+
+---
+
+[h1] OuterrealmTech ArtificialMaid [/h1]
+
+This is technology from a super-realm beyond the dimensional universe of the RimWorld, transcending the limits of conventional science.
+It features a collection of extraordinary, omnipotent, unimaginable, incomprehensible, and paradigm-breaking things.
+They will completely revolutionize the way your colony is built and managed, letting you experience unprecedented convenience and efficiency!
+
+Welcome to the world of Outerrealm Tech!
+
+By harnessing the power of Outerrealm Tech, you can now construct tunnels and bridges across the sea, easily overcoming terrain obstacles and connecting any corner of the world. Whether it's towering mountains or bottomless oceans, Outerrealm Tech RoadProject has a solution for you.
+
+"A bridge will fly to span the north and south, turning a deep chasm into a thoroughfare!" -- Mao
+
+
+
+
+[hr][/hr]
+
+Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmTechRoadProject
+
+    </description>
+    <loadBefore>
+    </loadBefore>
+    <loadAfter>
+
+        <li>Jeremie.Fully.Automatic.OmniCrafter</li>
+
+    </loadAfter>
+    <modDependencies>
+        <li>
+            <packageId>brrainz.harmony</packageId>
+            <displayName>Harmony</displayName>
+            <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+            <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+        </li>
+        <li>
+            <packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>
+            <displayName>OuterrealmTech</displayName>
+            <steamWorkshopUrl>steam://url/CommunityFilePage/3712146789</steamWorkshopUrl>
+            <downloadUrl>https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticOmniCrafter</downloadUrl>
+        </li>
+        <li>
+            <packageId>Mlie.RoadsOfTheRim</packageId>
+            <displayName>Roads of the Rim (Continued)</displayName>
+            <steamWorkshopUrl>steam://url/CommunityFilePage/2280318231</steamWorkshopUrl>
+            <downloadUrl>https://github.com/emipa606/RoadsOfTheRim</downloadUrl>
+        </li>
+    </modDependencies>
+</ModMetaData>
