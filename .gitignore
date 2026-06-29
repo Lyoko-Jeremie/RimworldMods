@@ -112,6 +112,8 @@ fabric.properties
 !OuterrealmTechRobot/**/*
 !OuterrealmArchotechTeleportStation/
 !OuterrealmArchotechTeleportStation/**/*
+!OuterrealmTechRoadProject/
+!OuterrealmTechRoadProject/**/*
 !.gitignore
 
 !readme.md
