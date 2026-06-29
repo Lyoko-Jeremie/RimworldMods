@@ -77,6 +77,7 @@
     <Compile Include="World\OuterrealmLinkPlanner.cs" />
     <Compile Include="World\OuterrealmLinkUtility.cs" />
     <Compile Include="World\RoadDefGenStep_OuterrealmLinkPlace.cs" />
+    <Compile Include="World\WorldDrawLayer_OuterrealmLinkOnWater.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

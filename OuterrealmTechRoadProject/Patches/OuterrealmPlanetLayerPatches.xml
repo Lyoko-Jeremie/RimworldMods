@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <Operation Class="PatchOperationInsert">
+    <xpath>/Defs/PlanetLayerDef[defName="Surface"]/worldDrawLayers/li[text()="WorldDrawLayer_Roads"]</xpath>
+    <order>Append</order>
+    <value>
+      <li>OuterrealmTechRoadProject.World.WorldDrawLayer_OuterrealmLinkOnWater</li>
+    </value>
+  </Operation>
+</Patch>
