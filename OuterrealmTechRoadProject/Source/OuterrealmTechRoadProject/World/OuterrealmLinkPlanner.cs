@@ -15,7 +15,7 @@ namespace OuterrealmTechRoadProject.World
     {
         /// <summary>
         /// 当前正在规划的世界 tile 路线。
-        /// 第一个节点始终是投射器所在地图的世界 tile，后续节点由玩家逐段点击添加。
+        /// 第一个节点由玩家在世界地图上任意选择，后续节点必须与当前终点相邻。
         /// </summary>
         private static readonly List<PlanetTile> Route = new List<PlanetTile>();
 
@@ -53,7 +53,8 @@ namespace OuterrealmTechRoadProject.World
         }
 
         /// <summary>
-        /// 从建筑开始一次新的世界地图规划。
+        /// 从建筑打开一次新的世界地图规划。
+        /// 建筑只提供命令入口，不强制路线从建筑所在 tile 开始。
         /// </summary>
         public static void BeginPlanning(Buildings.Building_OuterrealmLinkProjector source)
         {
@@ -64,9 +65,8 @@ namespace OuterrealmTechRoadProject.World
 
             projector = source;
             Route.Clear();
-            Route.Add(source.Tile);
 
-            // 切到建筑所在世界 tile，减少玩家手动寻找起点的操作。
+            // 只把视角切到建筑所在世界 tile 方便定位；真正起点由玩家第一次点击决定。
             CameraJumper.TryJump(source.Tile, CameraJumper.MovementMode.Cut);
 
             // WorldTargeter 负责世界地图鼠标点击、悬浮提示和取消按钮。
@@ -120,6 +120,13 @@ namespace OuterrealmTechRoadProject.World
                 return false;
             }
 
+            if (Route.Count == 0)
+            {
+                // 路线尚未拥有起点时，第一次有效点击即作为任意起始 tile。
+                Route.Add(tile);
+                return false;
+            }
+
             PlanetTile lastTile = Route[Route.Count - 1];
             // 世界 RoadLink 只能连接相邻 tile，所以规划阶段就拒绝非相邻选择。
             if (!Find.WorldGrid.IsNeighbor(lastTile, tile))
@@ -149,6 +156,11 @@ namespace OuterrealmTechRoadProject.World
                 return true;
             }
 
+            if (Route.Count == 0)
+            {
+                return true;
+            }
+
             return Route.Count > 0 && Find.WorldGrid.IsNeighbor(Route[Route.Count - 1], tile);
         }
 
@@ -172,6 +184,11 @@ namespace OuterrealmTechRoadProject.World
             if (existingIndex >= 0)
             {
                 return "OuterrealmTechRoadProject_ClickRouteNodeToTrim".Translate(existingIndex);
+            }
+
+            if (Route.Count == 0)
+            {
+                return "OuterrealmTechRoadProject_SetOuterrealmLinkStartNode".Translate();
             }
 
             if (Route.Count > 0 && !Find.WorldGrid.IsNeighbor(Route[Route.Count - 1], tile))

@@ -17,6 +17,9 @@
         <rect>(0,0,2,1.2)</rect>
       </damageData>
     </graphicData>
+
+    <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+    
     <altitudeLayer>Building</altitudeLayer>
     <minifiedDef>MinifiedThing</minifiedDef>
     <thingCategories>
@@ -32,7 +35,6 @@
     <passability>PassThroughOnly</passability>
     <pathCost>30</pathCost>
     <fillPercent>0.4</fillPercent>
-    <designationCategory>Misc</designationCategory>
     <uiOrder>2200</uiOrder>
     <rotatable>true</rotatable>
     <building>

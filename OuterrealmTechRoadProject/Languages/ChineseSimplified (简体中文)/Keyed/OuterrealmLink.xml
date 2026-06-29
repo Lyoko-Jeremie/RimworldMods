@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
   <OuterrealmTechRoadProject_CommandPlanOuterrealmLink>规划超维链路</OuterrealmTechRoadProject_CommandPlanOuterrealmLink>
-  <OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>在世界地图上逐段选择相邻区块，然后使用完成按钮确认并瞬间生成超维链路。</OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>
+  <OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>在世界地图上先任意选择一个起点，再逐段选择相邻区块，然后使用完成按钮确认并瞬间生成超维链路。</OuterrealmTechRoadProject_CommandPlanOuterrealmLinkDesc>
   <OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlan>取消超维链路规划</OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlan>
   <OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlanDesc>停止当前的超维链路世界地图规划。</OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlanDesc>
   <OuterrealmTechRoadProject_CommandFinishOuterrealmLinkPlan>完成超维链路规划</OuterrealmTechRoadProject_CommandFinishOuterrealmLinkPlan>
@@ -10,8 +10,9 @@
   <OuterrealmTechRoadProject_MustChooseNeighborTile>必须选择与当前终点相邻的世界区块。</OuterrealmTechRoadProject_MustChooseNeighborTile>
   <OuterrealmTechRoadProject_ClickEndpointToConfirm>再次点击当前终点以确认建造。路段数：{0}</OuterrealmTechRoadProject_ClickEndpointToConfirm>
   <OuterrealmTechRoadProject_UseFinishButtonToConfirm>使用完成按钮确认建造。路段数：{0}</OuterrealmTechRoadProject_UseFinishButtonToConfirm>
-  <OuterrealmTechRoadProject_NeedAtLeastOneSegment>请至少选择一个相邻区块后再完成超维链路。</OuterrealmTechRoadProject_NeedAtLeastOneSegment>
+  <OuterrealmTechRoadProject_NeedAtLeastOneSegment>请先选择一个起点和至少一个相邻区块后再完成超维链路。</OuterrealmTechRoadProject_NeedAtLeastOneSegment>
   <OuterrealmTechRoadProject_ClickRouteNodeToTrim>点击后将路线回退到节点 {0}。</OuterrealmTechRoadProject_ClickRouteNodeToTrim>
+  <OuterrealmTechRoadProject_SetOuterrealmLinkStartNode>点击将这个世界区块设为超维链路起点。</OuterrealmTechRoadProject_SetOuterrealmLinkStartNode>
   <OuterrealmTechRoadProject_AddOuterrealmLinkNode>点击添加超维链路节点 {0}。</OuterrealmTechRoadProject_AddOuterrealmLinkNode>
   <OuterrealmTechRoadProject_ConfirmOuterrealmLinkText>确认生成超维链路？路线包含 {0} 个节点、{1} 个路段。本版本不会消耗资源。</OuterrealmTechRoadProject_ConfirmOuterrealmLinkText>
   <OuterrealmTechRoadProject_BuildOuterrealmLinkFailed>超维链路第 {0} 段生成失败。</OuterrealmTechRoadProject_BuildOuterrealmLinkFailed>

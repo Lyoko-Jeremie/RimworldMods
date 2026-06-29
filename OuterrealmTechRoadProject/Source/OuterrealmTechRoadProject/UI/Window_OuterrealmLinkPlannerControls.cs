@@ -10,7 +10,9 @@ namespace OuterrealmTechRoadProject.UI
     /// </summary>
     public class Window_OuterrealmLinkPlannerControls : Window
     {
-        public override Vector2 InitialSize => new Vector2(300f, 128f);
+        private const float LeftOffset = 24f;
+
+        public override Vector2 InitialSize => new Vector2(320f, 180f);
 
         public Window_OuterrealmLinkPlannerControls()
         {
@@ -22,15 +24,26 @@ namespace OuterrealmTechRoadProject.UI
             forcePause = false;
         }
 
+        /// <summary>
+        /// 将规划控制窗口默认放在屏幕左侧中部，减少遮挡世界地图中心路线的概率。
+        /// </summary>
+        protected override void SetInitialSizeAndPosition()
+        {
+            Vector2 initialSize = InitialSize;
+            float x = LeftOffset;
+            float y = (Verse.UI.screenHeight - initialSize.y) / 2f;
+            windowRect = new Rect(x, y, initialSize.x, initialSize.y).Rounded();
+        }
+
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.UpperLeft;
 
-            Rect labelRect = new Rect(inRect.x, inRect.y, inRect.width, 28f);
+            Rect labelRect = new Rect(inRect.x, inRect.y, inRect.width, 32f);
             Widgets.Label(labelRect, "OuterrealmTechRoadProject_PlannerControlStatus".Translate(OuterrealmLinkPlanner.RouteNodeCount, OuterrealmLinkPlanner.RouteSegmentCount));
 
-            Rect finishRect = new Rect(inRect.x, labelRect.yMax + 8f, inRect.width, 32f);
+            Rect finishRect = new Rect(inRect.x, labelRect.yMax + 12f, inRect.width, 36f);
             bool canFinish = OuterrealmLinkPlanner.RouteSegmentCount > 0;
             if (!canFinish)
             {
@@ -44,7 +57,7 @@ namespace OuterrealmTechRoadProject.UI
 
             GUI.color = Color.white;
 
-            Rect cancelRect = new Rect(inRect.x, finishRect.yMax + 8f, inRect.width, 32f);
+            Rect cancelRect = new Rect(inRect.x, finishRect.yMax + 10f, inRect.width, 36f);
             if (Widgets.ButtonText(cancelRect, "OuterrealmTechRoadProject_CommandCancelOuterrealmLinkPlan".Translate()))
             {
                 OuterrealmLinkPlanner.CancelPlanning();
