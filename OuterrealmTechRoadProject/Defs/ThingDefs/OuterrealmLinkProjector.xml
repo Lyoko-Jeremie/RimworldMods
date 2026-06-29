@@ -34,7 +34,7 @@
     <size>(3,2)</size>
     <passability>PassThroughOnly</passability>
     <pathCost>30</pathCost>
-    <fillPercent>0.4</fillPercent>
+    <fillPercent>0</fillPercent>
     <uiOrder>2200</uiOrder>
     <rotatable>true</rotatable>
     <building>
