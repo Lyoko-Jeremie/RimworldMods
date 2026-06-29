@@ -6,7 +6,7 @@
     <supportedVersions>
         <li>1.6</li>
     </supportedVersions>
-    <packageId>Jeremie.Outerrealm.Tech.ArtificialMaid</packageId>
+    <packageId>Jeremie.Outerrealm.Tech.RoadProject</packageId>
     <description>
 [h1] 超维科技道路工程 OuterrealmTech RoadProject [/h1]
 
@@ -53,6 +53,7 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/Outerrea
     <loadAfter>
 
         <li>Jeremie.Fully.Automatic.OmniCrafter</li>
+        <li>Mlie.RoadsOfTheRim</li>
 
     </loadAfter>
     <modDependencies>
