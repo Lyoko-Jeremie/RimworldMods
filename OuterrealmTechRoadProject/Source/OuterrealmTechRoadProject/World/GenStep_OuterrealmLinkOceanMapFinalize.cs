@@ -124,15 +124,12 @@ namespace OuterrealmTechRoadProject.World
             map.roofGrid.SetRoof(cell, null);
             map.fogGrid.Unfog(cell);
 
-            TerrainDef terrain = cell.GetTerrain(map);
-            if (terrain == null || terrain.IsWater || !cell.Standable(map))
-            {
-                TerrainDef bridgeTerrain = DefDatabase<TerrainDef>.GetNamedSilentFail("ConcreteBridge") ??
-                                           DefDatabase<TerrainDef>.GetNamedSilentFail("HeavyBridge") ??
-                                           TerrainDefOf.Bridge ??
-                                           OuterrealmTerrainDefOf.OuterrealmTech_OuterrealmLinkTerrain;
-                map.terrainGrid.SetTerrain(cell, bridgeTerrain);
-            }
+            // Roads 阶段可能已经设置过桥基，这里仍统一确认 top terrain 是超维链路地板。
+            RoadDefGenStep_OuterrealmLinkPlace.PlaceOuterrealmLinkOnBridge(
+                map,
+                cell,
+                RoadDefGenStep_OuterrealmLinkPlace.BestAvailableBridgeFoundation(null),
+                OuterrealmTerrainDefOf.OuterrealmTech_OuterrealmLinkTerrain);
         }
 
         /// <summary>
@@ -142,6 +139,11 @@ namespace OuterrealmTechRoadProject.World
         {
             ClearThingsForOceanMap(map, cell);
             map.roofGrid.SetRoof(cell, null);
+            if (map.terrainGrid.FoundationAt(cell) != null)
+            {
+                map.terrainGrid.RemoveFoundation(cell, false);
+            }
+
             map.terrainGrid.SetTerrain(cell, MapGenUtility.DeepOceanWaterTerrainAt(cell, map));
         }
 

@@ -61,7 +61,7 @@ namespace OuterrealmTechRoadProject.World
             {
                 map.roofGrid.SetRoof(position, null);
                 map.fogGrid.Unfog(position);
-                map.terrainGrid.SetTerrain(position, BridgeTerrain);
+                PlaceOuterrealmLinkOnBridge(map, position, BridgeTerrain, LinkTerrain);
                 return;
             }
 
@@ -90,25 +90,65 @@ namespace OuterrealmTechRoadProject.World
         {
             get
             {
-                if (bridgeTerrain != null)
-                {
-                    return bridgeTerrain;
-                }
-
-                TerrainDef concreteBridge = DefDatabase<TerrainDef>.GetNamedSilentFail("ConcreteBridge");
-                if (concreteBridge != null)
-                {
-                    return concreteBridge;
-                }
-
-                TerrainDef heavyBridge = DefDatabase<TerrainDef>.GetNamedSilentFail("HeavyBridge");
-                if (heavyBridge != null)
-                {
-                    return heavyBridge;
-                }
-
-                return TerrainDefOf.Bridge;
+                return BestAvailableBridgeFoundation(bridgeTerrain);
             }
+        }
+
+        /// <summary>
+        /// 在桥基上铺设超维链路路面。
+        /// RimWorld 1.6 中桥梁是 foundation，直接 SetTerrain(桥) 会只显示桥；
+        /// 正确结构是 foundation=桥、top terrain=超维链路地板。
+        /// </summary>
+        public static void PlaceOuterrealmLinkOnBridge(Map map, IntVec3 position, TerrainDef bridgeTerrain, TerrainDef linkTerrain)
+        {
+            TerrainDef bridgeFoundation = BestAvailableBridgeFoundation(bridgeTerrain);
+            TerrainDef outerrealmLinkTerrain = linkTerrain ?? OuterrealmTerrainDefOf.OuterrealmTech_OuterrealmLinkTerrain;
+
+            if (bridgeFoundation != null && bridgeFoundation.isFoundation)
+            {
+                TerrainDef currentFoundation = map.terrainGrid.FoundationAt(position);
+                if (currentFoundation != bridgeFoundation)
+                {
+                    if (currentFoundation != null)
+                    {
+                        map.terrainGrid.RemoveFoundation(position, false);
+                    }
+
+                    map.terrainGrid.SetFoundation(position, bridgeFoundation);
+                }
+
+                map.terrainGrid.SetTerrain(position, outerrealmLinkTerrain);
+                return;
+            }
+
+            // 极端情况下如果没有可用的 foundation 桥梁，至少保留可见且可站立的超维链路路面。
+            map.terrainGrid.SetTerrain(position, outerrealmLinkTerrain);
+        }
+
+        /// <summary>
+        /// 选择可作为 foundation 的桥梁地形。
+        /// 优先使用 XML 指定项；如果它不是 foundation，则回退到可分层承载地板的桥梁。
+        /// </summary>
+        public static TerrainDef BestAvailableBridgeFoundation(TerrainDef preferredBridgeTerrain)
+        {
+            if (preferredBridgeTerrain != null && preferredBridgeTerrain.isFoundation)
+            {
+                return preferredBridgeTerrain;
+            }
+
+            TerrainDef concreteBridge = DefDatabase<TerrainDef>.GetNamedSilentFail("ConcreteBridge");
+            if (concreteBridge != null && concreteBridge.isFoundation)
+            {
+                return concreteBridge;
+            }
+
+            TerrainDef heavyBridge = DefDatabase<TerrainDef>.GetNamedSilentFail("HeavyBridge");
+            if (heavyBridge != null && heavyBridge.isFoundation)
+            {
+                return heavyBridge;
+            }
+
+            return TerrainDefOf.Bridge;
         }
 
         /// <summary>
