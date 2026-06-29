@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <GenStepDef>
+    <defName>OuterrealmTech_OuterrealmLinkOceanMapFinalize</defName>
+    <order>849</order>
+    <genStep Class="OuterrealmTechRoadProject.World.GenStep_OuterrealmLinkOceanMapFinalize" />
+  </GenStepDef>
+</Defs>

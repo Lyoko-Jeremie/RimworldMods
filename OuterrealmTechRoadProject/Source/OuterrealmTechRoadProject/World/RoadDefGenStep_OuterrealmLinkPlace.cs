@@ -42,6 +42,12 @@ namespace OuterrealmTechRoadProject.World
             // 先移除道路格子上的阻挡物，避免后续 SetTerrain 后仍被岩石墙或不可通行建筑堵住。
             ClearBlockingThings(map, position);
             TerrainDef terrain = position.GetTerrain(map);
+            bool waterCoveredWorldTile = IsWaterCoveredWorldTile(map);
+
+            if (waterCoveredWorldTile)
+            {
+                GenStep_OuterrealmLinkOceanMapFinalize.RegisterRoadCell(position);
+            }
 
             // 不可通行山地按设计清出露天空旷直线：拆掉阻挡物、清除岩顶、铺超维链路路面。
             if (IsImpassableMountainMap(map))
@@ -50,8 +56,8 @@ namespace OuterrealmTechRoadProject.World
                 return;
             }
 
-            // 水面道路直接铺重型桥梁，让全深水/海洋地图也能生成可站立道路带。
-            if (terrain != null && terrain.IsWater)
+            // 水域世界 tile 的局部地图初始地形可能被原版回退成沙地；这里仍按海上道路处理为桥梁。
+            if (waterCoveredWorldTile || terrain != null && terrain.IsWater)
             {
                 map.roofGrid.SetRoof(position, null);
                 map.fogGrid.Unfog(position);
@@ -112,6 +118,16 @@ namespace OuterrealmTechRoadProject.World
         {
             SurfaceTile surfaceTile = Find.WorldGrid[map.Tile] as SurfaceTile;
             return surfaceTile != null && surfaceTile.hilliness == Hilliness.Impassable;
+        }
+
+        /// <summary>
+        /// 判断当前局部地图是否来自水域覆盖的世界 tile。
+        /// 原版海洋 tile 生成局部地图时可能先回退成沙地，所以不能只依赖当前格子的 TerrainDef.IsWater。
+        /// </summary>
+        private static bool IsWaterCoveredWorldTile(Map map)
+        {
+            SurfaceTile surfaceTile = Find.WorldGrid[map.Tile] as SurfaceTile;
+            return surfaceTile != null && surfaceTile.WaterCovered;
         }
 
         /// <summary>

@@ -7,4 +7,12 @@
       <li>OuterrealmTechRoadProject.World.WorldDrawLayer_OuterrealmLinkOnWater</li>
     </value>
   </Operation>
+
+  <Operation Class="PatchOperationInsert">
+    <xpath>/Defs/MapGeneratorDef[@Name="MapCommonBase"]/genSteps/li[text()="FindPlayerStartSpot"]</xpath>
+    <order>Prepend</order>
+    <value>
+      <li>OuterrealmTech_OuterrealmLinkOceanMapFinalize</li>
+    </value>
+  </Operation>
 </Patch>
