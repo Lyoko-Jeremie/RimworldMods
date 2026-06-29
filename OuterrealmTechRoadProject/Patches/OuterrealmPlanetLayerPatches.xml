@@ -12,6 +12,7 @@
     <xpath>/Defs/MapGeneratorDef[@Name="MapCommonBase"]/genSteps/li[text()="FindPlayerStartSpot"]</xpath>
     <order>Prepend</order>
     <value>
+      <li>OuterrealmTech_OuterrealmLinkMountainMapFinalize</li>
       <li>OuterrealmTech_OuterrealmLinkOceanMapFinalize</li>
     </value>
   </Operation>

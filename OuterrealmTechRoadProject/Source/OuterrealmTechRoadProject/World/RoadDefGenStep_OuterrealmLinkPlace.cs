@@ -52,6 +52,7 @@ namespace OuterrealmTechRoadProject.World
             // 不可通行山地按设计清出露天空旷直线：拆掉阻挡物、清除岩顶、铺超维链路路面。
             if (IsImpassableMountainMap(map))
             {
+                GenStep_OuterrealmLinkMountainMapFinalize.RegisterRoadCell(position);
                 ClearMountainCell(map, position, LinkTerrain);
                 return;
             }

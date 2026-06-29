@@ -5,4 +5,10 @@
     <order>849</order>
     <genStep Class="OuterrealmTechRoadProject.World.GenStep_OuterrealmLinkOceanMapFinalize" />
   </GenStepDef>
+
+  <GenStepDef>
+    <defName>OuterrealmTech_OuterrealmLinkMountainMapFinalize</defName>
+    <order>848</order>
+    <genStep Class="OuterrealmTechRoadProject.World.GenStep_OuterrealmLinkMountainMapFinalize" />
+  </GenStepDef>
 </Defs>
