@@ -365,6 +365,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRepair.cs" />
+    <Compile Include="CompAbsorbAllDamage.cs" />
     <Compile Include="CompAutomatedCapturer.cs" />
     <Compile Include="CompAutoPainter.cs" />
     <Compile Include="CompAutoResearch.cs" />
