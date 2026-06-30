@@ -4,6 +4,7 @@
     <defName>OuterrealmTech_OuterrealmLink</defName>
     <label>outerrealm link</label>
     <priority>100</priority>
+    <ancientOnly>true</ancientOnly>
     <movementCostMultiplier>0.10</movementCostMultiplier>
     <tilesPerSegment>100</tilesPerSegment>
     <pathingMode>Bulldoze</pathingMode>
