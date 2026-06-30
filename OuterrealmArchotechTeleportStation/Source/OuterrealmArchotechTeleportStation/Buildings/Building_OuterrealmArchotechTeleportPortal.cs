@@ -80,7 +80,7 @@ namespace OuterrealmArchotechTeleportStation
             {
                 defaultLabel = "OATS_SelectTeleportDestination".Translate(),
                 defaultDesc = "OATS_CommandTeleportToStationDesc".Translate(),
-                icon = OuterrealmTeleportStationTex.Teleport,
+                icon = OuterrealmTeleportStationTex.Teleport2Site,
                 action = ShowTeleportDestinationMenu
             };
 
@@ -89,7 +89,7 @@ namespace OuterrealmArchotechTeleportStation
             {
                 defaultLabel = "OATS_CommandTeleportToWorldTile".Translate(),
                 defaultDesc = "OATS_CommandTeleportToWorldTileDesc".Translate(),
-                icon = OuterrealmTeleportStationTex.Teleport,
+                icon = OuterrealmTeleportStationTex.Teleport2Tile,
                 action = BeginSelectWorldTeleportTile
             };
 
@@ -291,7 +291,7 @@ namespace OuterrealmArchotechTeleportStation
         private static void DrawWorldTeleportTileMouseAttachment()
         {
             Vector2 mousePosition = Event.current.mousePosition;
-            GUI.DrawTexture(new Rect(mousePosition.x + 8f, mousePosition.y + 8f, 32f, 32f), OuterrealmTeleportStationTex.Teleport);
+            GUI.DrawTexture(new Rect(mousePosition.x + 8f, mousePosition.y + 8f, 32f, 32f), OuterrealmTeleportStationTex.Teleport2Tile);
         }
     }
 }

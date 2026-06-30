@@ -7,13 +7,13 @@
     <description>An ancient OuterrealmTech portal that can bridge active teleport stations across the world.</description>
     <thingClass>OuterrealmArchotechTeleportStation.Building_OuterrealmArchotechTeleportPortal</thingClass>
     <graphicData>
-      <texPath>Things/Building/Misc/CommsConsole</texPath>
-      <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,2)</drawSize>
-      <shadowData>
-        <volume>(2,0.5,1)</volume>
-      </shadowData>
+      <texPath>Things/Building/Production/OuterrealmArchotechTeleportStation</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shaderType>CutoutComplex</shaderType>
+      <drawSize>(3,3)</drawSize>
     </graphicData>
+    <uiIconPath>Things/Building/Production/OuterrealmArchotechTeleportStation</uiIconPath>
+    <size>(3,2)</size>
 
     <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
@@ -29,29 +29,37 @@
     <fillPercent>0.4</fillPercent>
     <canOverlapZones>false</canOverlapZones>
     <size>(3,2)</size>
-    <building>
-      <destroySound>BuildingDestroyed_Metal_Big</destroySound>
-    </building>
     <statBases>
-      <MaxHitPoints>600</MaxHitPoints>
+      <!-- 极高的血量，让破墙AI计算后认为破坏它极其不划算，从而绕路 -->
+      <MaxHitPoints>999999999</MaxHitPoints>
       <WorkToBuild>2400</WorkToBuild>
-      <Flammability>0</Flammability>
-      <Beauty>8</Beauty>
+      <Flammability>0</Flammability> <!-- 不可燃 -->
+      <Beauty>100</Beauty>
+      <Mass>50</Mass>
     </statBases>
     <costList>
       <Steel>250</Steel>
-      <Plasteel>80</Plasteel>
-      <ComponentSpacer>4</ComponentSpacer>
     </costList>
-    <defaultPlacingRot>South</defaultPlacingRot>
-<!--    <interactionCellOffset>(0,0,-1)</interactionCellOffset>-->
+    <building>
+      <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+      <!-- 进一步告诉普通AI不要闲着没事砸它 -->
+      <ai_neverTrashThis>true</ai_neverTrashThis>
+      <!-- 标记该建筑是"惰性的"——它不会被 AI 主动选为拆除目标 -->
+      <isInert>true</isInert>
+    </building>
+    <rotatable>false</rotatable>
     <hasInteractionCell>false</hasInteractionCell>
     <terrainAffordanceNeeded>Medium</terrainAffordanceNeeded>
     <uiOrder>2101</uiOrder>
-    <constructionSkillPrerequisite>8</constructionSkillPrerequisite>
+    <constructionSkillPrerequisite>18</constructionSkillPrerequisite>
     <placeWorkers>
       <li>PlaceWorker_PreventInteractionSpotOverlap</li>
     </placeWorkers>
+
+    <comps>
+      <li Class="FullyAutomaticOmniCrafter.CompProperties_AbsorbAllDamage" />
+    </comps>
+    
   </ThingDef>
 
 </Defs>
