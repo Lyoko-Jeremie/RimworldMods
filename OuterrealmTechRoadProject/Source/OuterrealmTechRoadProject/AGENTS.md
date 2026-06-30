@@ -57,3 +57,9 @@ i18n语言目录在 `../../Languages` ，源代码中需要参与显示的硬编
 - 超维科技 (OuterrealmTech)
 - 超维科技道路工程 (OuterrealmTechRoadProject)
 
+## 引用信息
+RoadsOfTheRim的mod在此：`F:\294100\294100\2280318231`
+RoadsOfTheRim.dll已经反编译到此：`f:\RimworldCodeIL\RoadsOfTheRim`
+RailsAndRoadsOfTheRim目录：`F:\SteamLibrary\steamapps\workshop\content\294100\3271115410`
+RailsAndRoadsOfTheRim.dll已经反编译到此：`f:\RimworldCodeIL\RailsAndRoadsOfTheRim`
+

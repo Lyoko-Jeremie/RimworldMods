@@ -69,6 +69,7 @@
     <Compile Include="DefOfs\OuterrealmRoadDefOf.cs" />
     <Compile Include="DefOfs\OuterrealmTerrainDefOf.cs" />
     <Compile Include="Defs\DefModExtension_OuterrealmLinkRoad.cs" />
+    <Compile Include="Patches\Patch_RotR_ConstructionMenu.cs" />
     <Compile Include="Patches\Patch_WorldPathGrid_CalculatedMovementDifficultyAt.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup\OuterrealmTechRoadProjectStartup.cs" />

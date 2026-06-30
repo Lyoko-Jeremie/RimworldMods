@@ -234,7 +234,6 @@ namespace OuterrealmTechRobot
         {
             if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                ArtificialMaidBackupCloud.NotifyMaidDestroyed(__instance);
                 if (__instance.Map != null)
                 {
                     var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
@@ -250,10 +249,14 @@ namespace OuterrealmTechRobot
         [HarmonyPrefix]
         public static void Prefix(Pawn __instance)
         {
-            if (__instance.Map != null && __instance.def == ArtificialMaidDefOf.ArtificialMaid)
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
-                mapComp?.UnregisterMaid(__instance);
+                ArtificialMaidBackupCloud.NotifyMaidDestroyed(__instance);
+                if (__instance.Map != null)
+                {
+                    var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
+                    mapComp?.UnregisterMaid(__instance);
+                }
             }
         }
     }
