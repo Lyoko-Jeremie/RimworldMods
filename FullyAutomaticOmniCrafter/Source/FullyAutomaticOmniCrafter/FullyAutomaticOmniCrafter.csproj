@@ -413,6 +413,7 @@
     <Compile Include="OmniCrafterSettings.cs" />
     <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
     <Compile Include="OmniCrafterUi.cs" />
+    <Compile Include="OmniPowerNetUtility.cs" />
     <Compile Include="PinyinSearchEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Patch_ShortCircuitUtility.cs" />
