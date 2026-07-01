@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using RimWorld.Planet;
 using UnityEngine;
@@ -20,10 +19,10 @@ namespace OuterrealmArchotechTeleportStation
         private const int MinStationDistance = 12;
 
         /// <summary>
-        /// 使用原版随机地点查找时，优先在玩家附近这个距离范围内寻找候选 tile。
+        /// 全局随机选址时每座传送站抽样的候选数量。
+        /// 抽样后选取离现有网络最远的合法 tile，避免全图排序带来的开销。
         /// </summary>
-        private const int RandomSiteMinDistance = 10;
-        private const int RandomSiteMaxDistance = 80;
+        private const int StationCandidateSampleCount = 512;
 
         /// <summary>
         /// 临时列表只在主线程菜单/命令执行时使用，不跨 Tick 缓存世界对象状态。
@@ -51,7 +50,7 @@ namespace OuterrealmArchotechTeleportStation
 
             // 固定排序让菜单顺序稳定，减少每次打开菜单时选项跳动。
             TmpStations.SortBy(station => station.Tile.tileId);
-            return TmpStations.ToList();
+            return new List<OuterrealmArchotechTeleportStationWorldObject>(TmpStations);
         }
 
         /// <summary>
@@ -270,63 +269,103 @@ namespace OuterrealmArchotechTeleportStation
         }
 
         /// <summary>
-        /// 为随机追加传送站寻找一个合法 tile。
-        /// 优先使用原版 TileFinder 的站点查找逻辑；如果当前世界还没有玩家 tile 或原版查找失败，
-        /// 再使用本 Mod 的保底随机/线性扫描。
+        /// 为随机追加传送站在整个世界范围内寻找一个合法 tile。
         /// </summary>
         public static bool TryFindNewStationTile(out PlanetTile tile, bool ignoreStationCountLimit = false)
         {
-            PlanetTile nearTile;
-            bool hasPlayerTile = TileFinder.TryFindRandomPlayerTile(out nearTile, allowCaravans: true);
-            if (hasPlayerTile && TileFinder.TryFindNewSiteTile(
-                    out tile,
-                    nearTile,
-                    RandomSiteMinDistance,
-                    RandomSiteMaxDistance,
-                    allowCaravans: true,
-                    validator: candidate => CanPlaceStationAt(candidate, out _, ignoreStationCountLimit)))
-            {
-                return true;
-            }
-
-            return TileFinder.TryFindNewSiteTile(
+            StationPlacementContext context = new StationPlacementContext();
+            return TryFindBestGlobalStationTile(
+                context,
                 out tile,
-                RandomSiteMinDistance,
-                RandomSiteMaxDistance,
-                allowCaravans: true,
-                validator: candidate => CanPlaceStationAt(candidate, out _, ignoreStationCountLimit)) ||
-                TryFindRandomValidTile(out tile, ignoreStationCountLimit);
+                ignoreStationCountLimit,
+                ignoreStationDistanceLimit: false);
         }
 
         /// <summary>
-        /// 原版随机地点查找失败时的保底方案。
-        /// 先随机抽样减少平均耗时；抽样失败后再线性扫描，尽量保证新世界至少能生成一个入口。
+        /// 根据世界覆盖率确定新世界初始传送站数量。
         /// </summary>
-        private static bool TryFindRandomValidTile(out PlanetTile tile, bool ignoreStationCountLimit)
+        public static int InitialStationTargetCount()
         {
-            int tileCount = Find.WorldGrid.TilesCount;
-            for (int i = 0; i < 2000; i++)
+            float coverage = Find.World?.PlanetCoverage ?? 0.3f;
+            if (coverage < 0.2f)
             {
-                PlanetTile candidate = new PlanetTile(Rand.Range(0, tileCount));
-                if (CanPlaceStationAt(candidate, out _, ignoreStationCountLimit))
+                return 6;
+            }
+
+            if (coverage < 0.4f)
+            {
+                return 10;
+            }
+
+            return coverage < 0.75f ? 16 : 32;
+        }
+
+        /// <summary>
+        /// 新世界初始化时按覆盖率批量生成传送站。
+        /// </summary>
+        public static int AddInitialStationsForNewWorld()
+        {
+            return TryAddRandomStations(
+                InitialStationTargetCount(),
+                out _,
+                sendMessage: false,
+                ignoreStationCountLimit: true);
+        }
+
+        /// <summary>
+        /// 在整个世界范围内批量随机追加传送站。
+        /// </summary>
+        public static int TryAddRandomStations(
+            int count,
+            out TaggedString reason,
+            bool sendMessage = true,
+            bool ignoreStationCountLimit = false)
+        {
+            reason = TaggedString.Empty;
+            if (count <= 0)
+            {
+                return 0;
+            }
+
+            StationPlacementContext context = new StationPlacementContext();
+            int added = 0;
+            OuterrealmArchotechTeleportStationWorldObject lastStation = null;
+            for (int i = 0; i < count; i++)
+            {
+                if (!TryFindBestGlobalStationTile(
+                        context,
+                        out PlanetTile tile,
+                        ignoreStationCountLimit,
+                        ignoreStationDistanceLimit: false))
                 {
-                    tile = candidate;
-                    return true;
+                    reason = "OATS_CannotAddTeleportStationHere".Translate();
+                    break;
+                }
+
+                lastStation = AddStationAtUnchecked(tile);
+                context.RegisterStation(tile);
+                added++;
+            }
+
+            if (sendMessage && added > 0)
+            {
+                if (added == 1 && lastStation != null)
+                {
+                    Messages.Message(
+                        "OATS_MessageTeleportStationAdded".Translate(lastStation.LabelCap),
+                        new LookTargets(lastStation),
+                        MessageTypeDefOf.PositiveEvent);
+                }
+                else
+                {
+                    Messages.Message(
+                        "OATS_MessageTeleportStationsAdded".Translate(added),
+                        MessageTypeDefOf.PositiveEvent,
+                        false);
                 }
             }
 
-            for (int i = 0; i < tileCount; i++)
-            {
-                PlanetTile candidate = new PlanetTile(i);
-                if (CanPlaceStationAt(candidate, out _, ignoreStationCountLimit))
-                {
-                    tile = candidate;
-                    return true;
-                }
-            }
-
-            tile = PlanetTile.Invalid;
-            return false;
+            return added;
         }
 
         /// <summary>
@@ -342,16 +381,13 @@ namespace OuterrealmArchotechTeleportStation
             bool ignoreStationDistanceLimit = false)
         {
             station = null;
-            if (!CanPlaceStationAt(tile, out reason, ignoreStationCountLimit, ignoreStationDistanceLimit))
+            StationPlacementContext context = new StationPlacementContext();
+            if (!CanPlaceStationAt(tile, context, out reason, ignoreStationCountLimit, ignoreStationDistanceLimit))
             {
                 return false;
             }
 
-            // WorldObjectMaker 会按 WorldObjectDef.worldObjectClass 实例化自定义 MapParent。
-            station = (OuterrealmArchotechTeleportStationWorldObject)WorldObjectMaker.MakeWorldObject(
-                OuterrealmDefOf.OuterrealmArchotechTeleportStation);
-            station.Tile = tile;
-            Find.WorldObjects.Add(station);
+            station = AddStationAtUnchecked(tile);
             if (sendMessage)
             {
                 Messages.Message(
@@ -373,13 +409,38 @@ namespace OuterrealmArchotechTeleportStation
             bool ignoreStationCountLimit = false,
             bool ignoreStationDistanceLimit = false)
         {
+            return CanPlaceStationAt(
+                tile,
+                new StationPlacementContext(),
+                out reason,
+                ignoreStationCountLimit,
+                ignoreStationDistanceLimit);
+        }
+
+        /// <summary>
+        /// 判断指定世界 tile 是否可以放置传送站。
+        /// 批量生成时通过 context 复用已有扫描结果，避免每个候选 tile 都重新扫描 WorldObjects。
+        /// </summary>
+        private static bool CanPlaceStationAt(
+            PlanetTile tile,
+            StationPlacementContext context,
+            out TaggedString reason,
+            bool ignoreStationCountLimit = false,
+            bool ignoreStationDistanceLimit = false)
+        {
             if (!tile.Valid)
             {
                 reason = "OATS_CannotAddTeleportStationHere".Translate();
                 return false;
             }
 
-            if (!ignoreStationCountLimit && GetStations().Count >= MaxStationCount())
+            if (!Find.WorldGrid.InBounds(tile))
+            {
+                reason = "OATS_CannotAddTeleportStationHere".Translate();
+                return false;
+            }
+
+            if (!ignoreStationCountLimit && context.StationTiles.Count >= MaxStationCount())
             {
                 reason = "OATS_CannotAddTeleportStationMaxCount".Translate(MaxStationCount());
                 return false;
@@ -399,7 +460,7 @@ namespace OuterrealmArchotechTeleportStation
             }
 
             // 不允许放在已有世界对象的 tile 上，避免和定居点、任务地点、其他传送站重叠。
-            if (Find.WorldObjects.AnyWorldObjectAt(tile))
+            if (context.OccupiedTiles.Contains(tile))
             {
                 reason = "OATS_CannotAddTeleportStationHere".Translate();
                 return false;
@@ -408,11 +469,11 @@ namespace OuterrealmArchotechTeleportStation
             if (!ignoreStationDistanceLimit)
             {
                 // 控制自动追加的网络空间分布；手动选点允许玩家自行决定距离。
-                List<OuterrealmArchotechTeleportStationWorldObject> stations = GetStations();
-                for (int i = 0; i < stations.Count; i++)
+                List<PlanetTile> stationTiles = context.StationTiles;
+                for (int i = 0; i < stationTiles.Count; i++)
                 {
-                    if (stations[i].Tile.Layer == tile.Layer &&
-                        Find.WorldGrid.ApproxDistanceInTiles(stations[i].Tile, tile) < MinStationDistance)
+                    if (stationTiles[i].Layer == tile.Layer &&
+                        Find.WorldGrid.ApproxDistanceInTiles(stationTiles[i], tile) < MinStationDistance)
                     {
                         reason = "OATS_CannotAddTeleportStationHere".Translate();
                         return false;
@@ -430,8 +491,134 @@ namespace OuterrealmArchotechTeleportStation
         /// </summary>
         public static int MaxStationCount()
         {
+            return InitialStationTargetCount();
+        }
+
+        private static bool TryFindBestGlobalStationTile(
+            StationPlacementContext context,
+            out PlanetTile tile,
+            bool ignoreStationCountLimit,
+            bool ignoreStationDistanceLimit)
+        {
+            PlanetTile bestTile = PlanetTile.Invalid;
             int tileCount = Find.WorldGrid.TilesCount;
-            return Mathf.Clamp(Mathf.RoundToInt(tileCount / 1200f), 6, 24);
+            float bestScore = -1f;
+
+            for (int i = 0; i < StationCandidateSampleCount; i++)
+            {
+                PlanetTile candidate = new PlanetTile(Rand.Range(0, tileCount));
+                TryUseCandidate(candidate);
+            }
+
+            if (bestTile.Valid)
+            {
+                tile = bestTile;
+                return true;
+            }
+
+            int startTile = Rand.Range(0, tileCount);
+            for (int i = 0; i < tileCount; i++)
+            {
+                PlanetTile candidate = new PlanetTile((startTile + i) % tileCount);
+                if (TryUseCandidate(candidate))
+                {
+                    tile = bestTile;
+                    return true;
+                }
+            }
+
+            tile = PlanetTile.Invalid;
+            return false;
+
+            bool TryUseCandidate(PlanetTile candidate)
+            {
+                if (!CanPlaceStationAt(
+                        candidate,
+                        context,
+                        out _,
+                        ignoreStationCountLimit,
+                        ignoreStationDistanceLimit))
+                {
+                    return false;
+                }
+
+                float score = DistanceToNearestStation(candidate, context);
+                if (!bestTile.Valid || score > bestScore || Mathf.Approximately(score, bestScore) && Rand.Chance(0.5f))
+                {
+                    bestTile = candidate;
+                    bestScore = score;
+                }
+
+                return true;
+            }
+        }
+
+        private static float DistanceToNearestStation(PlanetTile tile, StationPlacementContext context)
+        {
+            List<PlanetTile> stationTiles = context.StationTiles;
+            if (stationTiles.Count == 0)
+            {
+                return Rand.Value;
+            }
+
+            float bestDistance = float.MaxValue;
+            for (int i = 0; i < stationTiles.Count; i++)
+            {
+                if (stationTiles[i].Layer != tile.Layer)
+                {
+                    continue;
+                }
+
+                float distance = Find.WorldGrid.ApproxDistanceInTiles(stationTiles[i], tile);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                }
+            }
+
+            return bestDistance;
+        }
+
+        private static OuterrealmArchotechTeleportStationWorldObject AddStationAtUnchecked(PlanetTile tile)
+        {
+            // WorldObjectMaker 会按 WorldObjectDef.worldObjectClass 实例化自定义 MapParent。
+            OuterrealmArchotechTeleportStationWorldObject station =
+                (OuterrealmArchotechTeleportStationWorldObject)WorldObjectMaker.MakeWorldObject(
+                    OuterrealmDefOf.OuterrealmArchotechTeleportStation);
+            station.Tile = tile;
+            Find.WorldObjects.Add(station);
+            return station;
+        }
+
+        private sealed class StationPlacementContext
+        {
+            public readonly List<PlanetTile> StationTiles = new List<PlanetTile>();
+            public readonly HashSet<PlanetTile> OccupiedTiles = new HashSet<PlanetTile>();
+
+            public StationPlacementContext()
+            {
+                List<WorldObject> objects = Find.WorldObjects.AllWorldObjects;
+                for (int i = 0; i < objects.Count; i++)
+                {
+                    WorldObject worldObject = objects[i];
+                    if (worldObject.Destroyed || !worldObject.Tile.Valid)
+                    {
+                        continue;
+                    }
+
+                    OccupiedTiles.Add(worldObject.Tile);
+                    if (worldObject is OuterrealmArchotechTeleportStationWorldObject)
+                    {
+                        StationTiles.Add(worldObject.Tile);
+                    }
+                }
+            }
+
+            public void RegisterStation(PlanetTile tile)
+            {
+                StationTiles.Add(tile);
+                OccupiedTiles.Add(tile);
+            }
         }
 
         private static void AppendPlayerMapPortals(List<Building_OuterrealmArchotechTeleportPortal> result)

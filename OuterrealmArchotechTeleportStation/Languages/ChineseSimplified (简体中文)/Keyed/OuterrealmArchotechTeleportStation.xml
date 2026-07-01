@@ -30,9 +30,12 @@
   <OATS_CommandAddTeleportStation>追加传送站</OATS_CommandAddTeleportStation>
   <OATS_CommandAddTeleportStationDesc>在世界地图上激活一个新的超维科技远古传送站。</OATS_CommandAddTeleportStationDesc>
   <OATS_AddTeleportStationRandom>随机追加传送站</OATS_AddTeleportStationRandom>
+  <OATS_AddTeleportStationRandom5>随机追加 5 个传送站</OATS_AddTeleportStationRandom5>
+  <OATS_AddTeleportStationRandom10>随机追加 10 个传送站</OATS_AddTeleportStationRandom10>
   <OATS_AddTeleportStationSelectTile>指定位置追加传送站</OATS_AddTeleportStationSelectTile>
   <OATS_SelectTeleportStationTile>选择传送站位置</OATS_SelectTeleportStationTile>
   <OATS_CannotAddTeleportStationHere>不能在此处追加传送站。</OATS_CannotAddTeleportStationHere>
   <OATS_CannotAddTeleportStationMaxCount>传送站数量已达到上限：{0}。</OATS_CannotAddTeleportStationMaxCount>
   <OATS_MessageTeleportStationAdded>已激活新的传送站：{0}。</OATS_MessageTeleportStationAdded>
+  <OATS_MessageTeleportStationsAdded>已激活 {0} 个新的传送站。</OATS_MessageTeleportStationsAdded>
 </LanguageData>

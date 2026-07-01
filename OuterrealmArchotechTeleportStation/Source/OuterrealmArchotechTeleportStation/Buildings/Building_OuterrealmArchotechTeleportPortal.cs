@@ -201,28 +201,23 @@ namespace OuterrealmArchotechTeleportStation
         {
             List<FloatMenuOption> options = new List<FloatMenuOption>
             {
-                new FloatMenuOption("OATS_AddTeleportStationRandom".Translate(), AddRandomStation),
+                new FloatMenuOption("OATS_AddTeleportStationRandom".Translate(), () => AddRandomStations(1)),
+                new FloatMenuOption("OATS_AddTeleportStationRandom5".Translate(), () => AddRandomStations(5)),
+                new FloatMenuOption("OATS_AddTeleportStationRandom10".Translate(), () => AddRandomStations(10)),
                 new FloatMenuOption("OATS_AddTeleportStationSelectTile".Translate(), BeginSelectStationTile)
             };
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
         /// <summary>
-        /// 自动寻找合法 tile 并创建新的传送站。
+        /// 自动寻找合法 tile 并创建指定数量的新传送站。
         /// </summary>
-        private void AddRandomStation()
+        private void AddRandomStations(int count)
         {
-            if (!OuterrealmTeleportNetworkUtility.TryFindNewStationTile(out PlanetTile tile, ignoreStationCountLimit: true))
-            {
-                Messages.Message("OATS_CannotAddTeleportStationHere".Translate(), MessageTypeDefOf.RejectInput, false);
-                return;
-            }
-
-            if (!OuterrealmTeleportNetworkUtility.TryAddStationAt(
-                    tile,
-                    out _,
+            if (OuterrealmTeleportNetworkUtility.TryAddRandomStations(
+                    count,
                     out TaggedString reason,
-                    ignoreStationCountLimit: true))
+                    ignoreStationCountLimit: true) == 0)
             {
                 Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
             }

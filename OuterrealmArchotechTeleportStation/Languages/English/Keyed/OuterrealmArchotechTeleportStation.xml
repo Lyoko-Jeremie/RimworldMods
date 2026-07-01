@@ -30,9 +30,12 @@
   <OATS_CommandAddTeleportStation>Add teleport station</OATS_CommandAddTeleportStation>
   <OATS_CommandAddTeleportStationDesc>Activate a new Outerrealm archotech teleport station on the world map.</OATS_CommandAddTeleportStationDesc>
   <OATS_AddTeleportStationRandom>Add random station</OATS_AddTeleportStationRandom>
+  <OATS_AddTeleportStationRandom5>Add 5 random stations</OATS_AddTeleportStationRandom5>
+  <OATS_AddTeleportStationRandom10>Add 10 random stations</OATS_AddTeleportStationRandom10>
   <OATS_AddTeleportStationSelectTile>Select station tile</OATS_AddTeleportStationSelectTile>
   <OATS_SelectTeleportStationTile>Select teleport station tile</OATS_SelectTeleportStationTile>
   <OATS_CannotAddTeleportStationHere>A teleport station cannot be added here.</OATS_CannotAddTeleportStationHere>
   <OATS_CannotAddTeleportStationMaxCount>The teleport station limit has been reached: {0}.</OATS_CannotAddTeleportStationMaxCount>
   <OATS_MessageTeleportStationAdded>Activated new teleport station: {0}.</OATS_MessageTeleportStationAdded>
+  <OATS_MessageTeleportStationsAdded>Activated {0} new teleport stations.</OATS_MessageTeleportStationsAdded>
 </LanguageData>

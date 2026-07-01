@@ -5,7 +5,7 @@ namespace OuterrealmArchotechTeleportStation
 {
     /// <summary>
     /// 世界级初始化组件。
-    /// 它只在世界初始化完成时检查一次传送站网络，确保新世界至少拥有一个可进入的入口传送站。
+    /// 它只在新世界初始化完成时检查一次传送站网络，并按世界覆盖率批量生成初始传送站。
     /// 不在 Tick 中自动补点，避免长期扫描世界对象。
     /// </summary>
     public class WorldComponent_OuterrealmTeleportStationBootstrap : WorldComponent
@@ -24,7 +24,14 @@ namespace OuterrealmArchotechTeleportStation
         {
             base.FinalizeInit(fromLoad);
 
-            // 读档时如果旧存档已经存在传送站，直接认为初始化完成。
+            // 读档时不主动批量补点，避免升级旧存档时突然改变世界布局。
+            if (fromLoad)
+            {
+                ensuredInitialStation = true;
+                return;
+            }
+
+            // 如果旧流程或其他 Mod 已经放置了传送站，直接认为初始化完成。
             // 这样玩家手动删除/添加传送站后的状态完全由 WorldObjects 存档决定。
             if (ensuredInitialStation || OuterrealmTeleportNetworkUtility.GetStations().Count > 0)
             {
@@ -32,12 +39,8 @@ namespace OuterrealmArchotechTeleportStation
                 return;
             }
 
-            // 新世界没有传送站时，尝试按统一选址规则创建一个入口。
-            // 初始创建不弹消息，避免开局加载阶段出现不合时宜的提示。
-            if (OuterrealmTeleportNetworkUtility.TryFindNewStationTile(out PlanetTile tile))
-            {
-                OuterrealmTeleportNetworkUtility.TryAddStationAt(tile, out _, out _, false);
-            }
+            // 新世界生成阶段玩家基地尚未确定，因此不依赖玩家 tile，直接在整个世界均匀撒点。
+            OuterrealmTeleportNetworkUtility.AddInitialStationsForNewWorld();
 
             ensuredInitialStation = true;
         }
