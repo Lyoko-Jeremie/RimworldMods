@@ -6,17 +6,25 @@
     <description>A control structure that projects outerrealm links directly onto the world map.</description>
     <thingClass>OuterrealmTechRoadProject.Buildings.Building_OuterrealmLinkProjector</thingClass>
     <graphicData>
-      <texPath>Things/Building/Misc/CommsConsole</texPath>
-      <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,2)</drawSize>
+      <texPath>Things/Building/Production/OuterrealmTech_OuterrealmLinkProjector</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shaderType>CutoutComplex</shaderType>
+      <drawSize>(3,3)</drawSize>
+      <!-- (绘制高度 - 实际高度) / 2  -->
+      <!-- (3 - 2) / 2 = 0.5 -->
+      <drawOffset>(0, 0, 0.5)</drawOffset>
       <shadowData>
-        <volume>(2.4,0.5,1.4)</volume>
-        <offset>(0,0,-0.1)</offset>
+        <!-- 阴影盒子的尺寸 -->
+        <!-- 宽度 = 3  高度/厚度/太阳斜射时拉出的阴影 = 0.5  长度/高度 = 2 -->
+        <volume>(3, 0.5, 2)</volume>
+        <!-- 阴影盒子的中心点偏移 -->
+        <!-- Z (上下偏移 = -0.5) 默认情况下，阴影盒子的中心会自动对齐 3x3 贴图的中心（即高度为 1.5 的中线位置） -->
+        <!-- 为了让阴影盒子从贴图中心（1.5）向下移动到实际占地的中心（1.0），需要让它在 Z 轴上向下移动 0.5 格。在游戏底层的坐标系中，向下就是负方向，因此输入 -0.5。 -->
+        <offset>(0, 0, -0.5)</offset>
       </shadowData>
-      <damageData>
-        <rect>(0,0,2,1.2)</rect>
-      </damageData>
     </graphicData>
+    <uiIconPath>Things/Building/Production/OuterrealmTech_OuterrealmLinkProjector</uiIconPath>
+    <size>(3,2)</size>
 
     <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
     
