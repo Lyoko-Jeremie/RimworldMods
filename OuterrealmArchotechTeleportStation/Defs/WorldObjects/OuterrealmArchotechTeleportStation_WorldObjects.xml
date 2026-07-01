@@ -11,9 +11,10 @@
     <mapGenerator>OuterrealmArchotechTeleportStationMap</mapGenerator>
     <overrideMapSize>(35,1,35)</overrideMapSize>
     <selectable>true</selectable>
-    <texture>World/WorldObjects/JourneyDestination</texture>
+    <texture>World/WorldObjects/OuterrealmArchotechTeleportStation</texture>
     <expandingIcon>true</expandingIcon>
-    <expandingIconTexture>World/WorldObjects/Expanding/JourneyDestination</expandingIconTexture>
+    <expandingIconTexture>World/WorldObjects/OuterrealmArchotechTeleportStation</expandingIconTexture>
+<!--    <expandingIconColor>(255, 255, 255, 255)</expandingIconColor>-->
     <expandingIconPriority>45</expandingIconPriority>
     <expandMore>true</expandMore>
     <comps>
