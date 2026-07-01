@@ -21,7 +21,8 @@
         <!-- 阴影盒子的中心点偏移 -->
         <!-- Z (上下偏移 = -0.5) 默认情况下，阴影盒子的中心会自动对齐 3x3 贴图的中心（即高度为 1.5 的中线位置） -->
         <!-- 为了让阴影盒子从贴图中心（1.5）向下移动到实际占地的中心（1.0），需要让它在 Z 轴上向下移动 0.5 格。在游戏底层的坐标系中，向下就是负方向，因此输入 -0.5。 -->
-        <offset>(0, 0, -0.5)</offset>
+<!--        <offset>(0, 0, -0.5)</offset>-->
+        <offset>(0, 0, 0)</offset>
       </shadowData>
     </graphicData>
     <uiIconPath>Things/Building/Production/OuterrealmArchotechTeleportStation</uiIconPath>
