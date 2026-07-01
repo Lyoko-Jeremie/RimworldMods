@@ -15,7 +15,6 @@
     <expandingIcon>true</expandingIcon>
     <expandingIconTexture>World/WorldObjects/Expanding/OuterrealmArchotechTeleportStation</expandingIconTexture>
     <expandingIconPriority>45</expandingIconPriority>
-    <expandMore>true</expandMore>
     <comps>
       <li Class="WorldObjectCompProperties_FormCaravan" />
     </comps>
