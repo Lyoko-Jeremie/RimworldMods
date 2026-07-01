@@ -528,29 +528,30 @@ namespace OuterrealmTechRobot
         }
     }
 
-    [HarmonyPatch(typeof(CaravanTicksPerMoveUtility), nameof(CaravanTicksPerMoveUtility.GetTicksPerMove),
-        new System.Type[] { typeof(Caravan), typeof(StringBuilder) })]
-    [HarmonyAfter("rimworld.ktk_CaravanSpeedPatch")]
-    public static class Patch_CaravanTicksPerMoveUtility_GetTicksPerMove_Caravan
-    {
-        [HarmonyPostfix]
-        [HarmonyPriority(Priority.Last)]
-        public static void Postfix(Caravan caravan, StringBuilder explanation, ref int __result)
-        {
-            if (caravan == null || caravan.Shuttle != null || !ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan))
-            {
-                return;
-            }
-
-            // 兼容 Caravan Speed Patch：它会按当前 MoveSpeed 再次缩放，极端速度下可能把结果压到 0。
-            ArtificialMaidCaravanUtility.TryApplyMoveSpeedTicksPerMove(
-                caravan.PawnsListForReading,
-                caravan.MassUsage,
-                caravan.MassCapacity,
-                explanation,
-                ref __result);
-        }
-    }
+    // Caravan Speed 已修复此问题
+    // [HarmonyPatch(typeof(CaravanTicksPerMoveUtility), nameof(CaravanTicksPerMoveUtility.GetTicksPerMove),
+    //     new System.Type[] { typeof(Caravan), typeof(StringBuilder) })]
+    // [HarmonyAfter("rimworld.ktk_CaravanSpeedPatch")]
+    // public static class Patch_CaravanTicksPerMoveUtility_GetTicksPerMove_Caravan
+    // {
+    //     [HarmonyPostfix]
+    //     [HarmonyPriority(Priority.Last)]
+    //     public static void Postfix(Caravan caravan, StringBuilder explanation, ref int __result)
+    //     {
+    //         if (caravan == null || caravan.Shuttle != null || !ArtificialMaidCaravanUtility.ContainsArtificialMaid(caravan))
+    //         {
+    //             return;
+    //         }
+    //
+    //         // 兼容 Caravan Speed Patch：它会按当前 MoveSpeed 再次缩放，极端速度下可能把结果压到 0。
+    //         ArtificialMaidCaravanUtility.TryApplyMoveSpeedTicksPerMove(
+    //             caravan.PawnsListForReading,
+    //             caravan.MassUsage,
+    //             caravan.MassCapacity,
+    //             explanation,
+    //             ref __result);
+    //     }
+    // }
 
     [HarmonyPatch(typeof(WorldPathing), nameof(WorldPathing.FindPath))]
     public static class Patch_WorldPathing_FindPath
