@@ -4,7 +4,7 @@
         <defName>ArtificialMaidXenotype</defName>
         <label>artificial maid</label>
         <description>An artificial maid xenotype. They are perfectly crafted beings with pale skin and incredible combat prowess.</description>
-        <iconPath>UI/Icons/Genes/Gene_MeleeDamage_More</iconPath>
+        <iconPath>UI/Icons/Genes/Gene_Artificial_Maid</iconPath>
         <genes>
             <li>ArtificialMaid_Core</li>
         </genes>
