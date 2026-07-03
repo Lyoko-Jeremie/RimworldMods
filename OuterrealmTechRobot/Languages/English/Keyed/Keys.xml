@@ -54,10 +54,12 @@
     <CannotEnterDisplayCase>Cannot enter display case</CannotEnterDisplayCase>
 
     <ArtificialMaidDisplayCaseEject>Wake up Artificial Maid</ArtificialMaidDisplayCaseEject>
-    <ArtificialMaidDisplayCaseEjectDesc>Manually wake up and eject the Artificial Maid from the display case.</ArtificialMaidDisplayCaseEjectDesc>
+    <ArtificialMaidDisplayCaseEjectDesc>Manually wake up and eject the Artificial Maid from the display case, and disable her auto-hibernate.</ArtificialMaidDisplayCaseEjectDesc>
 
     <ImmediateHibernateLabel>Hibernate Immediately</ImmediateHibernateLabel>
     <ImmediateHibernateDesc>Force this maid to stop working and immediately enter the nearest empty display case, and disable auto-wake for that case.</ImmediateHibernateDesc>
+    <ImmediateWakeLabel>Wake Immediately</ImmediateWakeLabel>
+    <ImmediateWakeDesc>Wake this Artificial Maid from the display case immediately and disable her auto-hibernate.</ImmediateWakeDesc>
     <NoEmptyDisplayCaseFound>No empty display case found.</NoEmptyDisplayCaseFound>
 
     <PackArtificialMaid>Pack into transport box</PackArtificialMaid>

@@ -295,11 +295,32 @@ namespace OuterrealmTechRobot
                     icon = ArtificialMaidTex.IconPodEject,
                     action = delegate
                     {
-                        autoHibernate = false;
-                        EjectContents();
+                        WakeContainedMaid(true);
                     }
                 };
             }
+        }
+
+        /// <summary>
+        /// 立即唤醒柜内的人造人女仆。
+        /// </summary>
+        public void WakeContainedMaid(bool disableDisplayCaseAutoHibernate)
+        {
+            if (ContainedThing is Pawn pawn && pawn.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                CompArtificialMaid comp = CompArtificialMaid.GetCompCached(pawn);
+                if (comp != null)
+                {
+                    comp.allowAutoHibernate = false;
+                }
+            }
+
+            if (disableDisplayCaseAutoHibernate)
+            {
+                autoHibernate = false;
+            }
+
+            EjectContents();
         }
 
         /// <summary>

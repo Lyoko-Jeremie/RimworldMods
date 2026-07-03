@@ -53,6 +53,14 @@ namespace OuterrealmTechRobot
             }
         }
 
+        private Building_ArtificialMaidDisplayCase CurrentDisplayCase
+        {
+            get
+            {
+                return Pawn?.ParentHolder as Building_ArtificialMaidDisplayCase;
+            }
+        }
+
         public override void PostPostMake()
         {
             base.PostPostMake();
@@ -692,6 +700,8 @@ namespace OuterrealmTechRobot
 
             if (Pawn.Faction == Faction.OfPlayer)
             {
+                Building_ArtificialMaidDisplayCase currentDisplayCase = CurrentDisplayCase;
+
                 yield return new Command_Toggle
                 {
                     defaultLabel = "AllowAutoHibernateLabel".Translate(),
@@ -726,38 +736,59 @@ namespace OuterrealmTechRobot
                     icon = ArtificialMaidTex.IconHuntMode
                 };
 
-                yield return new Command_Action
+                if (currentDisplayCase != null)
                 {
-                    defaultLabel = "ImmediateHibernateLabel".Translate(),
-                    defaultDesc = "ImmediateHibernateDesc".Translate(),
-                    icon = ArtificialMaidTex.IconImmediateHibernate,
-                    action = () =>
+                    yield return new Command_Action
                     {
-                        Building_ArtificialMaidDisplayCase displayCase = (Building_ArtificialMaidDisplayCase)GenClosest.ClosestThingReachable(
-                            Pawn.Position, Pawn.Map,
-                            ThingRequest.ForDef(ArtificialMaidDefOf.ArtificialMaidDisplayCase),
-                            PathEndMode.InteractionCell,
-                            TraverseParms.For(Pawn),
-                            9999f,
-                            t =>
+                        defaultLabel = "ImmediateWakeLabel".Translate(),
+                        defaultDesc = "ImmediateWakeDesc".Translate(),
+                        icon = ArtificialMaidTex.IconImmediateWake,
+                        action = () =>
+                        {
+                            Building_ArtificialMaidDisplayCase displayCase = CurrentDisplayCase;
+                            if (displayCase != null)
                             {
-                                var dc = (Building_ArtificialMaidDisplayCase)t;
-                                return !dc.HasAnyContents && dc.Faction == Pawn.Faction && Pawn.CanReserve(dc);
+                                displayCase.WakeContainedMaid(false);
                             }
-                        );
+                        }
+                    };
+                }
 
-                        if (displayCase != null)
+                if (Pawn.Spawned)
+                {
+                    yield return new Command_Action
+                    {
+                        defaultLabel = "ImmediateHibernateLabel".Translate(),
+                        defaultDesc = "ImmediateHibernateDesc".Translate(),
+                        icon = ArtificialMaidTex.IconImmediateHibernate,
+                        action = () =>
                         {
-                            displayCase.autoWake = false;
-                            Job job = JobMaker.MakeJob(ArtificialMaidDefOf.EnterDisplayCase, displayCase);
-                            Pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                            Building_ArtificialMaidDisplayCase displayCase = (Building_ArtificialMaidDisplayCase)GenClosest.ClosestThingReachable(
+                                Pawn.Position, Pawn.Map,
+                                ThingRequest.ForDef(ArtificialMaidDefOf.ArtificialMaidDisplayCase),
+                                PathEndMode.InteractionCell,
+                                TraverseParms.For(Pawn),
+                                9999f,
+                                t =>
+                                {
+                                    var dc = (Building_ArtificialMaidDisplayCase)t;
+                                    return !dc.HasAnyContents && dc.Faction == Pawn.Faction && Pawn.CanReserve(dc);
+                                }
+                            );
+
+                            if (displayCase != null)
+                            {
+                                displayCase.autoWake = false;
+                                Job job = JobMaker.MakeJob(ArtificialMaidDefOf.EnterDisplayCase, displayCase);
+                                Pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
+                            }
+                            else
+                            {
+                                Messages.Message("NoEmptyDisplayCaseFound".Translate(), MessageTypeDefOf.RejectInput, false);
+                            }
                         }
-                        else
-                        {
-                            Messages.Message("NoEmptyDisplayCaseFound".Translate(), MessageTypeDefOf.RejectInput, false);
-                        }
-                    }
-                };
+                    };
+                }
             }
         }
 

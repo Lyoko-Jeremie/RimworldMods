@@ -54,10 +54,12 @@
     <CannotEnterDisplayCase>无法进入展示柜</CannotEnterDisplayCase>
 
     <ArtificialMaidDisplayCaseEject>唤醒人造人女仆</ArtificialMaidDisplayCaseEject>
-    <ArtificialMaidDisplayCaseEjectDesc>手动唤醒并弹出展示柜中的人造人女仆。</ArtificialMaidDisplayCaseEjectDesc>
+    <ArtificialMaidDisplayCaseEjectDesc>手动唤醒并弹出展示柜中的人造人女仆，同时关闭她的自动休眠。</ArtificialMaidDisplayCaseEjectDesc>
 
     <ImmediateHibernateLabel>立即休眠</ImmediateHibernateLabel>
     <ImmediateHibernateDesc>强制该女仆停止工作并立即进入最近的一个空展示柜，并将该展示柜设定为不自动唤醒。</ImmediateHibernateDesc>
+    <ImmediateWakeLabel>立即唤醒</ImmediateWakeLabel>
+    <ImmediateWakeDesc>立即从展示柜中唤醒该人造人女仆，并关闭她的自动休眠。</ImmediateWakeDesc>
     <NoEmptyDisplayCaseFound>未找到空置的展示柜。</NoEmptyDisplayCaseFound>
 
     <PackArtificialMaid>打包为人造人女仆运输箱</PackArtificialMaid>
