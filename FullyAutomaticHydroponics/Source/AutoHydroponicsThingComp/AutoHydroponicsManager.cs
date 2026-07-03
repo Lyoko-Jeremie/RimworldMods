@@ -56,6 +56,12 @@ namespace FullyAutoHydroponicsThingComp
             }
         }
 
+        public void ResetAllCooldowns()
+        {
+            _searchCooldownCache.Clear();
+            _storeCellCache.Clear();
+        }
+
         // MapComponent 自带每 tick 执行一次的心跳
         public override void MapComponentTick()
         {

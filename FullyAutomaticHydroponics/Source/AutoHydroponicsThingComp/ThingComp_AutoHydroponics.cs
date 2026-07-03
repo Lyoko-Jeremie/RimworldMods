@@ -156,13 +156,7 @@ namespace FullyAutoHydroponicsThingComp
 
                     if (autoStore && Manager != null)
                     {
-                        // 获取当前盆子里计划种植的作物类型
-                        ThingDef currentPlantDef = (parent as Building_PlantGrower)?.GetPlantDefToGrow()?.plant
-                            ?.harvestedThingDef;
-                        if (currentPlantDef != null)
-                        {
-                            Manager.ResetCooldown(currentPlantDef);
-                        }
+                        Manager.ResetAllCooldowns();
                     }
 
                     UpdateRegistration();
@@ -211,6 +205,102 @@ namespace FullyAutoHydroponicsThingComp
             }
         }
 
+        private IEnumerable<ThingDefCountClass> GetHarvestProducts(Plant plant)
+        {
+            if (plant?.def?.plant == null)
+                yield break;
+
+            ThingDef mainProduct = plant.def.plant.harvestedThingDef;
+            if (mainProduct != null)
+            {
+                int yieldCount = plant.YieldNow();
+                if (yieldCount > 0)
+                    yield return new ThingDefCountClass(mainProduct, yieldCount);
+            }
+
+            if (!plant.HarvestableNow || plant.AllComps == null)
+                yield break;
+
+            foreach (ThingComp comp in plant.AllComps)
+            {
+                if (comp == null)
+                    continue;
+
+                IEnumerable<ThingDefCountClass> additionalYield = comp.GetAdditionalHarvestYield();
+                if (additionalYield == null)
+                    continue;
+
+                foreach (ThingDefCountClass product in additionalYield)
+                {
+                    if (product?.thingDef != null && product.count > 0)
+                        yield return product;
+                }
+            }
+        }
+
+        private bool TryGetAutoHarvestProducts(Plant plant, out List<ThingDefCountClass> products)
+        {
+            products = null;
+
+            if (plant?.def?.plant == null)
+                return false;
+
+            products = GetHarvestProducts(plant).ToList();
+
+            return plant.def.plant.harvestedThingDef != null || products.Count > 0;
+        }
+
+        private void PlaceAndMaybeStore(ThingDefCountClass product, IntVec3 pos, Map map)
+        {
+            if (product?.thingDef == null || product.count <= 0 || map == null)
+                return;
+
+            Thing yieldThing = ThingMaker.MakeThing(product.thingDef);
+            yieldThing.stackCount = product.count;
+            PlaceAndMaybeStore(yieldThing, pos, map);
+        }
+
+        private void PlaceAndMaybeStore(Thing yieldThing, IntVec3 pos, Map map)
+        {
+            if (yieldThing == null || map == null || yieldThing.stackCount <= 0)
+                return;
+
+            // 先生成到地图上，保证后续存储寻址能拿到合法的 Map 和 Position。
+            if (!GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near, out Thing placedThing))
+                return;
+
+            if (!autoStore || Manager == null)
+                return;
+
+            if (!Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
+                return;
+
+            placedThing.DeSpawn();
+
+            Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
+            if (existingStack != null)
+                existingStack.TryAbsorbStack(placedThing, true);
+            else
+                GenSpawn.Spawn(placedThing, storeCell, map);
+
+            if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
+                GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
+        }
+
+        private void PlaceHarvestProducts(Plant plant, IntVec3 pos, Map map)
+        {
+            PlaceHarvestProducts(GetHarvestProducts(plant), pos, map);
+        }
+
+        private void PlaceHarvestProducts(IEnumerable<ThingDefCountClass> products, IntVec3 pos, Map map)
+        {
+            if (products == null)
+                return;
+
+            foreach (ThingDefCountClass product in products)
+                PlaceAndMaybeStore(product, pos, map);
+        }
+
         // ── 立即收获辅助方法 ──
         // blightedOnly = true 时只处理枯萎病植物；false 时处理全部植物
         private void HarvestAllNow(bool blightedOnly)
@@ -228,34 +318,7 @@ namespace FullyAutoHydroponicsThingComp
                 IntVec3 pos = plant.Position;
                 Map map = plant.Map;
 
-                // 有可收获产物时先生成收获物
-                if (plant.def.plant?.harvestedThingDef != null)
-                {
-                    int yieldCount = plant.YieldNow();
-                    if (yieldCount > 0)
-                    {
-                        Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
-                        yieldThing.stackCount = yieldCount;
-                        if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near, out Thing placedThing))
-                        {
-                            if (autoStore && Manager != null)
-                            {
-                                if (Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
-                                {
-                                    placedThing.DeSpawn();
-                                    Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
-                                    if (existingStack != null)
-                                        existingStack.TryAbsorbStack(placedThing, true);
-                                    else
-                                        GenSpawn.Spawn(placedThing, storeCell, map);
-
-                                    if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
-                                        GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
-                                }
-                            }
-                        }
-                    }
-                }
+                PlaceHarvestProducts(plant, pos, map);
 
                 // 销毁植物（枯萎病直接割除；普通植物收获后销毁）
                 if (!plant.Destroyed)
@@ -307,60 +370,15 @@ namespace FullyAutoHydroponicsThingComp
                     // 如果植物没有 plant 属性定义，则跳过（防御性检查）
                     // 仅当该植物有定义的收获物时才进行收获
                     if (plant == null || plant.Destroyed || plant.Growth < 1.0f ||
-                        plant.def.plant?.harvestedThingDef == null)
+                        !TryGetAutoHarvestProducts(plant, out List<ThingDefCountClass> harvestProducts))
                         continue;
 
                     // 记录植物当前所在的地图格坐标
                     IntVec3 pos = plant.Position;
                     // 记录植物所在的地图对象
                     Map map = plant.Map;
-                    // 计算当前植物在现有生长度和血量下的实际产量
-                    int yieldCount = plant.YieldNow();
 
-                    // 只有产量大于 0 时才生成收获物，避免创建无意义的空物品
-                    if (yieldCount > 0)
-                    {
-                        Thing yieldThing = ThingMaker.MakeThing(plant.def.plant.harvestedThingDef);
-                        yieldThing.stackCount = yieldCount;
-
-                        // 1. 【核心修正】：必须先将物品安全地生成在水培盆附近。
-                        // 这样物品就拥有了合法的 Map 和 Position，各种存储 Mod (如 ASF) 在计算距离时就不会报 NullReferenceException 了。
-                        if (GenPlace.TryPlaceThing(yieldThing, pos, map, ThingPlaceMode.Near, out Thing placedThing))
-                        {
-                            // 2. 如果开启了自动存储，向大管家请求智能寻址
-                            if (autoStore && Manager != null)
-                            {
-                                // 此时传递的是 placedThing，它已经真实存在于地图上
-                                if (Manager.TryGetSmartStoreCell(placedThing, out IntVec3 storeCell))
-                                {
-                                    // 3. 找到了目标仓库，先把它从水培盆脚下的地上“捡起来”（脱离物理地面）
-                                    placedThing.DeSpawn();
-
-                                    // 检查目标格子上是否已经有同类物品
-                                    Thing existingStack = storeCell.GetFirstThing(map, placedThing.def);
-                                    if (existingStack != null)
-                                    {
-                                        // 尝试吸收
-                                        existingStack.TryAbsorbStack(placedThing, true);
-                                    }
-                                    else
-                                    {
-                                        // 格子是空的，直接霸道生成进去
-                                        GenSpawn.Spawn(placedThing, storeCell, map);
-                                    }
-
-                                    // 4. 处理没吸完的剩余物品（完美规避挤出Bug）
-                                    if (!placedThing.Destroyed && placedThing.stackCount > 0 && !placedThing.Spawned)
-                                    {
-                                        // 乖乖扔回水培盆旁边
-                                        GenPlace.TryPlaceThing(placedThing, pos, map, ThingPlaceMode.Near);
-                                    }
-                                }
-                                // 如果 Manager.TryGetSmartStoreCell 返回 false（全局冷却中，或全图满载）
-                                // 代码什么都不做，物品就安安静静地留在刚才 GenPlace 掉落的地方，逻辑完美闭环。
-                            }
-                        }
-                    }
+                    PlaceHarvestProducts(harvestProducts, pos, map);
 
                     // 判断该植物是否为多年生植物（即收获后不销毁，而是恢复到一定生长度继续生长）
                     // HarvestDestroys 为 true 表示 harvestAfterGrowth <= 0，即一年生植物，需要销毁并重种
