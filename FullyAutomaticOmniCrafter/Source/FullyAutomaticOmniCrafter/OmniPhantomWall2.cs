@@ -218,8 +218,8 @@ namespace FullyAutomaticOmniCrafter
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
-            base.SpawnSetup(map, respawningAfterLoad);
             RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(map);
+            base.SpawnSetup(map, respawningAfterLoad);
         }
 
         public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
@@ -610,9 +610,9 @@ namespace FullyAutomaticOmniCrafter
             // 2. 清除可达性缓存
             map.reachability.ClearCache();
 
-            // 3. 立即强制重建所有区域和房间
-            // RebuildAllRegionsAndRooms 内部会调用 map.regionDirtyer.SetAllDirty()
-            RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(map);
+            // 3. 刷新二代墙涂色缓存，然后交给原版整图区域/房间重建。
+            // RebuildAllRegionsAndRooms 会重置温度缓存、SetAllDirty 并立即 TryRebuild。
+            RegionTypeUtility_GetExpectedRegionType_Patch.NotifyPhantomWall2ColoringDirty(map, false);
             map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
 
             ForceRePath(map);

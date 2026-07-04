@@ -63,6 +63,26 @@ namespace FullyAutomaticOmniCrafter
         private static readonly Dictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
             new Dictionary<Map, PhantomWall2RegionColorCache>();
 
+        private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker =
+            CreateNotifyWalkabilityChangedInvoker();
+
+        private static Action<RegionDirtyer, IntVec3, bool> CreateNotifyWalkabilityChangedInvoker()
+        {
+            try
+            {
+                var method = AccessTools.Method(typeof(RegionDirtyer), "Notify_WalkabilityChanged");
+                if (method == null)
+                    return null;
+
+                return AccessTools.MethodDelegate<Action<RegionDirtyer, IntVec3, bool>>(method);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[OmniPhantomWall2] Failed to bind RegionDirtyer.Notify_WalkabilityChanged for coloring dirty: {ex}");
+                return null;
+            }
+        }
+
         /// <summary>
         /// Harmony 后缀：在原版判定为 Normal 的格子上，把幻影墙格改成自定义 RegionType。
         /// </summary>
@@ -87,7 +107,7 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>
         /// 标记指定地图的二代幻影墙涂色缓存已过期，下一次查询时会重新计算。
         /// </summary>
-        public static void NotifyPhantomWall2ColoringDirty(Map map)
+        public static void NotifyPhantomWall2ColoringDirty(Map map, bool dirtyAffectedRegions = true)
         {
             if (map == null)
                 return;
@@ -95,6 +115,41 @@ namespace FullyAutomaticOmniCrafter
             // 二代墙生成、移除、规则变化或强制重建时调用。
             // 下一次 GetExpectedRegionType 查询二代墙格时会重新扫描并涂色。
             GetPhantomWall2ColorCache(map).MarkDirty();
+
+            if (dirtyAffectedRegions)
+                DirtyPhantomWall2RegionScope(map);
+        }
+
+        /// <summary>
+        /// 二代墙涂色可能改变任意相邻组件的 RegionType。
+        /// 因此缓存失效时不能只脏化当前格，必须同步脏化所有二代墙附近的原版 Region。
+        /// </summary>
+        private static void DirtyPhantomWall2RegionScope(Map map)
+        {
+            if (map == null || NotifyWalkabilityChangedInvoker == null)
+                return;
+
+            DirtyPhantomWall2RegionScope(map, map.listerBuildings.allBuildingsColonist);
+            DirtyPhantomWall2RegionScope(map, map.listerBuildings.allBuildingsNonColonist);
+        }
+
+        private static void DirtyPhantomWall2RegionScope(Map map, List<Building> buildings)
+        {
+            if (buildings == null)
+                return;
+
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                Building_OmniPhantomWall2 wall = buildings[i] as Building_OmniPhantomWall2;
+                if (wall == null || wall.Destroyed || !wall.Spawned || wall.Map != map)
+                    continue;
+
+                foreach (IntVec3 cell in wall.OccupiedRect())
+                {
+                    if (cell.InBounds(map))
+                        NotifyWalkabilityChangedInvoker(map.regionDirtyer, cell, true);
+                }
+            }
         }
 
         /// <summary>
