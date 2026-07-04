@@ -2126,7 +2126,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Widgets.Label(rect, "FullyAutoOmniSurgeon_ThoughtSituationalCannotDelete".Translate());
                 GUI.enabled = false;
-                Widgets.ButtonText(new Rect(rect.x, rect.y + 46f, 180f, 30f), "FullyAutoOmniSurgeon_ThoughtDelete".Translate());
+                Widgets.ButtonText(new Rect(rect.x, rect.y + 100f, 180f, 30f), "FullyAutoOmniSurgeon_ThoughtDelete".Translate());
                 GUI.enabled = true;
                 return;
             }
