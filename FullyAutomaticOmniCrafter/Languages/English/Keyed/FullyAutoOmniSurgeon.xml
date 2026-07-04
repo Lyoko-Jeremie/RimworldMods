@@ -114,4 +114,20 @@
   <FullyAutoOmniSurgeon_ThoughtSourceUnknown>Unknown source</FullyAutoOmniSurgeon_ThoughtSourceUnknown>
   <FullyAutoOmniSurgeon_ThoughtDurationPermanent>Permanent</FullyAutoOmniSurgeon_ThoughtDurationPermanent>
   <FullyAutoOmniSurgeon_ThoughtDurationRemaining>{0} remaining</FullyAutoOmniSurgeon_ThoughtDurationRemaining>
+
+  <FullyAutoOmniSurgeon_OpenHediffEditor>Edit Hediffs</FullyAutoOmniSurgeon_OpenHediffEditor>
+  <FullyAutoOmniSurgeon_OpenHediffEditorDesc>View and edit the occupant's current health states (Hediffs), with support for source mod identification and removal.</FullyAutoOmniSurgeon_OpenHediffEditorDesc>
+  <FullyAutoOmniSurgeon_HediffEditorTitle>Hediff Editor: {0}</FullyAutoOmniSurgeon_HediffEditorTitle>
+  <FullyAutoOmniSurgeon_HediffListTitle>Current Hediffs</FullyAutoOmniSurgeon_HediffListTitle>
+  <FullyAutoOmniSurgeon_HediffDetailsTitle>Details</FullyAutoOmniSurgeon_HediffDetailsTitle>
+  <FullyAutoOmniSurgeon_HediffSelectPrompt>Please select a Hediff from the left.</FullyAutoOmniSurgeon_HediffSelectPrompt>
+  <FullyAutoOmniSurgeon_HediffName>Name</FullyAutoOmniSurgeon_HediffName>
+  <FullyAutoOmniSurgeon_HediffDefName>DefName</FullyAutoOmniSurgeon_HediffDefName>
+  <FullyAutoOmniSurgeon_HediffPart>Part</FullyAutoOmniSurgeon_HediffPart>
+  <FullyAutoOmniSurgeon_HediffSeverity>Severity</FullyAutoOmniSurgeon_HediffSeverity>
+  <FullyAutoOmniSurgeon_HediffSource>Source</FullyAutoOmniSurgeon_HediffSource>
+  <FullyAutoOmniSurgeon_HediffDescription>Description</FullyAutoOmniSurgeon_HediffDescription>
+  <FullyAutoOmniSurgeon_HediffDelete>Remove Hediff</FullyAutoOmniSurgeon_HediffDelete>
+  <FullyAutoOmniSurgeon_HediffDeleteConfirm>Are you sure you want to remove this health state: {0}?</FullyAutoOmniSurgeon_HediffDeleteConfirm>
+  <FullyAutoOmniSurgeon_HediffDeleted>Removed Hediff: {0}.</FullyAutoOmniSurgeon_HediffDeleted>
 </LanguageData>

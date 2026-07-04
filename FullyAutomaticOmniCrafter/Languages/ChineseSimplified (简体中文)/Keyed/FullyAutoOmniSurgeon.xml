@@ -114,4 +114,20 @@
   <FullyAutoOmniSurgeon_ThoughtSourceUnknown>未知来源</FullyAutoOmniSurgeon_ThoughtSourceUnknown>
   <FullyAutoOmniSurgeon_ThoughtDurationPermanent>永久</FullyAutoOmniSurgeon_ThoughtDurationPermanent>
   <FullyAutoOmniSurgeon_ThoughtDurationRemaining>剩余 {0}</FullyAutoOmniSurgeon_ThoughtDurationRemaining>
+  
+  <FullyAutoOmniSurgeon_OpenHediffEditor>编辑健康状态</FullyAutoOmniSurgeon_OpenHediffEditor>
+  <FullyAutoOmniSurgeon_OpenHediffEditorDesc>查看并编辑舱内对象当前的健康状态(Hediff)，支持查看来源及删除状态。</FullyAutoOmniSurgeon_OpenHediffEditorDesc>
+  <FullyAutoOmniSurgeon_HediffEditorTitle>健康状态编辑: {0}</FullyAutoOmniSurgeon_HediffEditorTitle>
+  <FullyAutoOmniSurgeon_HediffListTitle>当前健康状态</FullyAutoOmniSurgeon_HediffListTitle>
+  <FullyAutoOmniSurgeon_HediffDetailsTitle>详细信息</FullyAutoOmniSurgeon_HediffDetailsTitle>
+  <FullyAutoOmniSurgeon_HediffSelectPrompt>请选择左侧的健康状态。</FullyAutoOmniSurgeon_HediffSelectPrompt>
+  <FullyAutoOmniSurgeon_HediffName>名称</FullyAutoOmniSurgeon_HediffName>
+  <FullyAutoOmniSurgeon_HediffDefName>DefName</FullyAutoOmniSurgeon_HediffDefName>
+  <FullyAutoOmniSurgeon_HediffPart>部位</FullyAutoOmniSurgeon_HediffPart>
+  <FullyAutoOmniSurgeon_HediffSeverity>严重程度</FullyAutoOmniSurgeon_HediffSeverity>
+  <FullyAutoOmniSurgeon_HediffSource>来源</FullyAutoOmniSurgeon_HediffSource>
+  <FullyAutoOmniSurgeon_HediffDescription>描述</FullyAutoOmniSurgeon_HediffDescription>
+  <FullyAutoOmniSurgeon_HediffDelete>删除状态</FullyAutoOmniSurgeon_HediffDelete>
+  <FullyAutoOmniSurgeon_HediffDeleteConfirm>确认删除该健康状态：{0}？</FullyAutoOmniSurgeon_HediffDeleteConfirm>
+  <FullyAutoOmniSurgeon_HediffDeleted>已删除健康状态：{0}。</FullyAutoOmniSurgeon_HediffDeleted>
 </LanguageData>

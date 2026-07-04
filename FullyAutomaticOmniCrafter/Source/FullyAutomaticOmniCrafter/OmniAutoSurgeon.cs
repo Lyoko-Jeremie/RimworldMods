@@ -228,6 +228,10 @@ namespace FullyAutomaticOmniCrafter
             ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Thought", false) ??
             IconModifyDialog;
 
+        public static readonly Texture2D IconHediff =
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Hediff", false) ??
+            IconRepair;
+
         public static readonly Texture2D IconRepair =
             ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Repair", true) ??
             BaseContent.WhiteTex;
@@ -377,6 +381,14 @@ namespace FullyAutomaticOmniCrafter
                     defaultDesc = "FullyAutoOmniSurgeon_OpenThoughtEditorDesc".Translate(),
                     icon = FullyAutoOmniSurgeonTex.IconThought,
                     action = () => { Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_ThoughtEditor(this.Occupant)); }
+                };
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "FullyAutoOmniSurgeon_OpenHediffEditor".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_OpenHediffEditorDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconHediff,
+                    action = () => { Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_HediffEditor(this.Occupant)); }
                 };
             }
             else if (this.selectedPawn != null)
@@ -2234,6 +2246,208 @@ namespace FullyAutomaticOmniCrafter
 
             int remaining = Mathf.Max(0, memory.DurationTicks - memory.age);
             return "FullyAutoOmniSurgeon_ThoughtDurationRemaining".Translate(remaining.ToStringTicksToPeriod());
+        }
+    }
+
+    public class Dialog_OmniAutoSurgeon_HediffEditor : Window
+    {
+        private readonly Pawn pawn;
+        private readonly List<Hediff> hediffs = new List<Hediff>();
+        private Vector2 leftScrollPos;
+        private Vector2 rightScrollPos;
+        private Hediff selectedHediff;
+
+        public override Vector2 InitialSize => new Vector2(900f, 620f);
+
+        public Dialog_OmniAutoSurgeon_HediffEditor(Pawn pawn)
+        {
+            this.pawn = pawn;
+            this.doCloseButton = true;
+            this.doCloseX = true;
+            this.absorbInputAroundWindow = true;
+            this.draggable = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            if (pawn == null || pawn.Destroyed)
+            {
+                Close();
+                return;
+            }
+
+            RefreshHediffs();
+
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "FullyAutoOmniSurgeon_HediffEditorTitle".Translate(pawn.LabelShortCap));
+            Text.Font = GameFont.Small;
+
+            const float bottomReservedForCloseButton = 42f;
+            Rect contentRect = new Rect(0f, 40f, inRect.width, inRect.height - 40f - bottomReservedForCloseButton);
+            const float gap = 10f;
+            float leftWidth = Mathf.Floor(contentRect.width * 0.46f);
+            Rect leftRect = new Rect(contentRect.x, contentRect.y, leftWidth - gap * 0.5f, contentRect.height);
+            Rect rightRect = new Rect(leftRect.xMax + gap, contentRect.y, contentRect.width - leftRect.width - gap, contentRect.height);
+
+            Widgets.DrawMenuSection(leftRect);
+            Widgets.DrawMenuSection(rightRect);
+
+            DrawHediffList(leftRect.ContractedBy(8f));
+            DrawHediffDetails(rightRect.ContractedBy(8f));
+        }
+
+        private void RefreshHediffs()
+        {
+            hediffs.Clear();
+            if (pawn.health?.hediffSet?.hediffs != null)
+            {
+                hediffs.AddRange(pawn.health.hediffSet.hediffs);
+            }
+
+            if (selectedHediff != null && !hediffs.Contains(selectedHediff))
+            {
+                selectedHediff = null;
+            }
+        }
+
+        private void DrawHediffList(Rect rect)
+        {
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 28f), "FullyAutoOmniSurgeon_HediffListTitle".Translate());
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            Rect outRect = new Rect(rect.x, rect.y + 30f, rect.width, rect.height - 30f);
+            const float rowHeight = 28f;
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(60f, hediffs.Count * rowHeight));
+
+            Widgets.BeginScrollView(outRect, ref leftScrollPos, viewRect);
+
+            for (int i = 0; i < hediffs.Count; i++)
+            {
+                Hediff hediff = hediffs[i];
+                Rect rowRect = new Rect(0f, i * rowHeight, viewRect.width, rowHeight - 2f);
+
+                if (selectedHediff == hediff)
+                {
+                    Widgets.DrawHighlightSelected(rowRect);
+                }
+                else if (Mouse.IsOver(rowRect))
+                {
+                    Widgets.DrawHighlight(rowRect);
+                }
+
+                string label = hediff.LabelCap;
+                if (hediff.Part != null)
+                {
+                    label += " (" + hediff.Part.LabelCap + ")";
+                }
+
+                Rect labelRect = rowRect;
+                labelRect.xMin += 4f;
+                GUI.color = hediff.LabelColor;
+                Widgets.Label(labelRect, label.Truncate(labelRect.width));
+                GUI.color = Color.white;
+
+                if (Widgets.ButtonInvisible(rowRect))
+                {
+                    selectedHediff = hediff;
+                    rightScrollPos = Vector2.zero;
+                }
+            }
+
+            Widgets.EndScrollView();
+        }
+
+        private void DrawHediffDetails(Rect rect)
+        {
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 28f), "FullyAutoOmniSurgeon_HediffDetailsTitle".Translate());
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            Rect outRect = new Rect(rect.x, rect.y + 30f, rect.width, rect.height - 30f);
+
+            if (selectedHediff == null)
+            {
+                Text.Anchor = TextAnchor.MiddleCenter;
+                GUI.color = ColoredText.SubtleGrayColor;
+                Widgets.Label(outRect, "FullyAutoOmniSurgeon_HediffSelectPrompt".Translate());
+                GUI.color = Color.white;
+                Text.Anchor = TextAnchor.UpperLeft;
+                return;
+            }
+
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, 1000f);
+            Widgets.BeginScrollView(outRect, ref rightScrollPos, viewRect);
+
+            float y = 0f;
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_HediffName".Translate(), selectedHediff.LabelCap);
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_HediffDefName".Translate(), selectedHediff.def.defName);
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_HediffPart".Translate(), selectedHediff.Part?.LabelCap ?? "FullyAutoOmniSurgeon_NotSpecifiedPart".Translate());
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_HediffSeverity".Translate(), selectedHediff.SeverityLabel ?? "FullyAutoOmniSurgeon_StatusNormal".Translate());
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_HediffSource".Translate(), GetHediffSourceLabel(selectedHediff.def));
+
+            y += 10f;
+            Widgets.Label(new Rect(0f, y, viewRect.width, 24f), "FullyAutoOmniSurgeon_HediffDescription".Translate() + ":");
+            y += 24f;
+
+            string desc = selectedHediff.Description;
+            if (desc.NullOrEmpty()) desc = selectedHediff.def.description;
+            if (desc.NullOrEmpty()) desc = "No description.";
+
+            float descHeight = Text.CalcHeight(desc, viewRect.width);
+            Widgets.Label(new Rect(0f, y, viewRect.width, descHeight), desc);
+            y += descHeight + 20f;
+
+            if (Widgets.ButtonText(new Rect(0f, y, 120f, 32f), "FullyAutoOmniSurgeon_HediffDelete".Translate()))
+            {
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("FullyAutoOmniSurgeon_HediffDeleteConfirm".Translate(selectedHediff.LabelCap), () =>
+                {
+                    string labelStr = selectedHediff.LabelCap;
+                    pawn.health.RemoveHediff(selectedHediff);
+                    selectedHediff = null;
+                    Messages.Message("FullyAutoOmniSurgeon_HediffDeleted".Translate(labelStr), MessageTypeDefOf.TaskCompletion, false);
+                }));
+            }
+            y += 40f;
+
+            if (Event.current.type == EventType.Layout)
+            {
+                viewRect.height = y;
+            }
+
+            Widgets.EndScrollView();
+        }
+
+        private void DrawInfoLine(Rect viewRect, ref float y, string label, string value)
+        {
+            Rect labelRect = new Rect(0f, y, 120f, 22f);
+            Rect valueRect = new Rect(124f, y, viewRect.width - 124f, 22f);
+            GUI.color = ColoredText.SubtleGrayColor;
+            Widgets.Label(labelRect, label);
+            GUI.color = Color.white;
+            Widgets.Label(valueRect, value);
+            y += 24f;
+        }
+
+        private string GetHediffSourceLabel(HediffDef def)
+        {
+            ModContentPack mod = def?.modContentPack;
+            if (mod == null)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtSourceUnknown".Translate();
+            }
+
+            if (mod.IsCoreMod)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtSourceCore".Translate(mod.Name, mod.PackageIdPlayerFacing);
+            }
+
+            if (mod.IsOfficialMod)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtSourceDlc".Translate(mod.Name, mod.PackageIdPlayerFacing);
+            }
+
+            return "FullyAutoOmniSurgeon_ThoughtSourceMod".Translate(mod.Name, mod.PackageIdPlayerFacing);
         }
     }
 
