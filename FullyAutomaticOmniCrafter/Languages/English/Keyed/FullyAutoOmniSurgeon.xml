@@ -85,4 +85,33 @@
   <FullyAutoOmniSurgeon_ConfirmBatchAdd>Confirm Batch Add ({0})</FullyAutoOmniSurgeon_ConfirmBatchAdd>
   <FullyAutoOmniSurgeon_SelectAll>Select All</FullyAutoOmniSurgeon_SelectAll>
   <FullyAutoOmniSurgeon_DeselectAll>Deselect All</FullyAutoOmniSurgeon_DeselectAll>
+  <FullyAutoOmniSurgeon_OpenThoughtEditor>Edit Thoughts</FullyAutoOmniSurgeon_OpenThoughtEditor>
+  <FullyAutoOmniSurgeon_OpenThoughtEditorDesc>View the occupant's current thoughts and delete removable memory thoughts.</FullyAutoOmniSurgeon_OpenThoughtEditorDesc>
+  <FullyAutoOmniSurgeon_ThoughtEditorTitle>Thought Editor: {0}</FullyAutoOmniSurgeon_ThoughtEditorTitle>
+  <FullyAutoOmniSurgeon_ThoughtNoMood>This target has no mood need, so thoughts cannot be edited.</FullyAutoOmniSurgeon_ThoughtNoMood>
+  <FullyAutoOmniSurgeon_ThoughtListTitle>Current Thoughts</FullyAutoOmniSurgeon_ThoughtListTitle>
+  <FullyAutoOmniSurgeon_ThoughtDetailsTitle>Details</FullyAutoOmniSurgeon_ThoughtDetailsTitle>
+  <FullyAutoOmniSurgeon_ThoughtSelectPrompt>Select a thought on the left.</FullyAutoOmniSurgeon_ThoughtSelectPrompt>
+  <FullyAutoOmniSurgeon_ThoughtName>Name</FullyAutoOmniSurgeon_ThoughtName>
+  <FullyAutoOmniSurgeon_ThoughtDefName>DefName</FullyAutoOmniSurgeon_ThoughtDefName>
+  <FullyAutoOmniSurgeon_ThoughtType>Type</FullyAutoOmniSurgeon_ThoughtType>
+  <FullyAutoOmniSurgeon_ThoughtSource>Source</FullyAutoOmniSurgeon_ThoughtSource>
+  <FullyAutoOmniSurgeon_ThoughtMoodOffset>Mood</FullyAutoOmniSurgeon_ThoughtMoodOffset>
+  <FullyAutoOmniSurgeon_ThoughtPrecept>Precept</FullyAutoOmniSurgeon_ThoughtPrecept>
+  <FullyAutoOmniSurgeon_ThoughtDuration>Duration</FullyAutoOmniSurgeon_ThoughtDuration>
+  <FullyAutoOmniSurgeon_ThoughtDescription>Description</FullyAutoOmniSurgeon_ThoughtDescription>
+  <FullyAutoOmniSurgeon_ThoughtGroupItems>Grouped thoughts ({0})</FullyAutoOmniSurgeon_ThoughtGroupItems>
+  <FullyAutoOmniSurgeon_ThoughtDelete>Delete Thought</FullyAutoOmniSurgeon_ThoughtDelete>
+  <FullyAutoOmniSurgeon_ThoughtDeleteConfirm>Delete {0} memory thoughts in this group?</FullyAutoOmniSurgeon_ThoughtDeleteConfirm>
+  <FullyAutoOmniSurgeon_ThoughtDeleted>Deleted {0} memory thoughts.</FullyAutoOmniSurgeon_ThoughtDeleted>
+  <FullyAutoOmniSurgeon_ThoughtSituationalCannotDelete>This thought is generated from the current situation and is not stored in the memory list, so it cannot be deleted directly. It will disappear after the related environment or state changes.</FullyAutoOmniSurgeon_ThoughtSituationalCannotDelete>
+  <FullyAutoOmniSurgeon_ThoughtTypeMemory>Memory</FullyAutoOmniSurgeon_ThoughtTypeMemory>
+  <FullyAutoOmniSurgeon_ThoughtTypeSituational>Situational</FullyAutoOmniSurgeon_ThoughtTypeSituational>
+  <FullyAutoOmniSurgeon_ThoughtTypeOther>Other</FullyAutoOmniSurgeon_ThoughtTypeOther>
+  <FullyAutoOmniSurgeon_ThoughtSourceCore>Core: {0} ({1})</FullyAutoOmniSurgeon_ThoughtSourceCore>
+  <FullyAutoOmniSurgeon_ThoughtSourceDlc>DLC: {0} ({1})</FullyAutoOmniSurgeon_ThoughtSourceDlc>
+  <FullyAutoOmniSurgeon_ThoughtSourceMod>Mod: {0} ({1})</FullyAutoOmniSurgeon_ThoughtSourceMod>
+  <FullyAutoOmniSurgeon_ThoughtSourceUnknown>Unknown source</FullyAutoOmniSurgeon_ThoughtSourceUnknown>
+  <FullyAutoOmniSurgeon_ThoughtDurationPermanent>Permanent</FullyAutoOmniSurgeon_ThoughtDurationPermanent>
+  <FullyAutoOmniSurgeon_ThoughtDurationRemaining>{0} remaining</FullyAutoOmniSurgeon_ThoughtDurationRemaining>
 </LanguageData>

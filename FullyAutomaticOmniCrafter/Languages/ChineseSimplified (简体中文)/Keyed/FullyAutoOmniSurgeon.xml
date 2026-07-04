@@ -85,4 +85,33 @@
   <FullyAutoOmniSurgeon_ConfirmBatchAdd>确认添加所选 ({0})</FullyAutoOmniSurgeon_ConfirmBatchAdd>
   <FullyAutoOmniSurgeon_SelectAll>全选</FullyAutoOmniSurgeon_SelectAll>
   <FullyAutoOmniSurgeon_DeselectAll>取消全选</FullyAutoOmniSurgeon_DeselectAll>
+  <FullyAutoOmniSurgeon_OpenThoughtEditor>编辑心情想法</FullyAutoOmniSurgeon_OpenThoughtEditor>
+  <FullyAutoOmniSurgeon_OpenThoughtEditorDesc>查看舱内对象当前的 Thought，并删除可移除的记忆类 Thought。</FullyAutoOmniSurgeon_OpenThoughtEditorDesc>
+  <FullyAutoOmniSurgeon_ThoughtEditorTitle>Thought 编辑: {0}</FullyAutoOmniSurgeon_ThoughtEditorTitle>
+  <FullyAutoOmniSurgeon_ThoughtNoMood>该对象没有心情需求，无法编辑 Thought。</FullyAutoOmniSurgeon_ThoughtNoMood>
+  <FullyAutoOmniSurgeon_ThoughtListTitle>当前 Thought</FullyAutoOmniSurgeon_ThoughtListTitle>
+  <FullyAutoOmniSurgeon_ThoughtDetailsTitle>详细信息</FullyAutoOmniSurgeon_ThoughtDetailsTitle>
+  <FullyAutoOmniSurgeon_ThoughtSelectPrompt>请选择左侧的 Thought。</FullyAutoOmniSurgeon_ThoughtSelectPrompt>
+  <FullyAutoOmniSurgeon_ThoughtName>名称</FullyAutoOmniSurgeon_ThoughtName>
+  <FullyAutoOmniSurgeon_ThoughtDefName>DefName</FullyAutoOmniSurgeon_ThoughtDefName>
+  <FullyAutoOmniSurgeon_ThoughtType>类型</FullyAutoOmniSurgeon_ThoughtType>
+  <FullyAutoOmniSurgeon_ThoughtSource>来源</FullyAutoOmniSurgeon_ThoughtSource>
+  <FullyAutoOmniSurgeon_ThoughtMoodOffset>心情</FullyAutoOmniSurgeon_ThoughtMoodOffset>
+  <FullyAutoOmniSurgeon_ThoughtPrecept>信条</FullyAutoOmniSurgeon_ThoughtPrecept>
+  <FullyAutoOmniSurgeon_ThoughtDuration>持续</FullyAutoOmniSurgeon_ThoughtDuration>
+  <FullyAutoOmniSurgeon_ThoughtDescription>描述</FullyAutoOmniSurgeon_ThoughtDescription>
+  <FullyAutoOmniSurgeon_ThoughtGroupItems>同组 Thought ({0})</FullyAutoOmniSurgeon_ThoughtGroupItems>
+  <FullyAutoOmniSurgeon_ThoughtDelete>删除 Thought</FullyAutoOmniSurgeon_ThoughtDelete>
+  <FullyAutoOmniSurgeon_ThoughtDeleteConfirm>确认删除该组中的 {0} 条记忆类 Thought？</FullyAutoOmniSurgeon_ThoughtDeleteConfirm>
+  <FullyAutoOmniSurgeon_ThoughtDeleted>已删除 {0} 条记忆类 Thought。</FullyAutoOmniSurgeon_ThoughtDeleted>
+  <FullyAutoOmniSurgeon_ThoughtSituationalCannotDelete>该 Thought 由当前情境实时生成，不会保存在记忆列表中，因此不能直接删除。改变对应环境或状态后它会自动消失。</FullyAutoOmniSurgeon_ThoughtSituationalCannotDelete>
+  <FullyAutoOmniSurgeon_ThoughtTypeMemory>记忆</FullyAutoOmniSurgeon_ThoughtTypeMemory>
+  <FullyAutoOmniSurgeon_ThoughtTypeSituational>情境</FullyAutoOmniSurgeon_ThoughtTypeSituational>
+  <FullyAutoOmniSurgeon_ThoughtTypeOther>其他</FullyAutoOmniSurgeon_ThoughtTypeOther>
+  <FullyAutoOmniSurgeon_ThoughtSourceCore>Core: {0} ({1})</FullyAutoOmniSurgeon_ThoughtSourceCore>
+  <FullyAutoOmniSurgeon_ThoughtSourceDlc>DLC: {0} ({1})</FullyAutoOmniSurgeon_ThoughtSourceDlc>
+  <FullyAutoOmniSurgeon_ThoughtSourceMod>Mod: {0} ({1})</FullyAutoOmniSurgeon_ThoughtSourceMod>
+  <FullyAutoOmniSurgeon_ThoughtSourceUnknown>未知来源</FullyAutoOmniSurgeon_ThoughtSourceUnknown>
+  <FullyAutoOmniSurgeon_ThoughtDurationPermanent>永久</FullyAutoOmniSurgeon_ThoughtDurationPermanent>
+  <FullyAutoOmniSurgeon_ThoughtDurationRemaining>剩余 {0}</FullyAutoOmniSurgeon_ThoughtDurationRemaining>
 </LanguageData>

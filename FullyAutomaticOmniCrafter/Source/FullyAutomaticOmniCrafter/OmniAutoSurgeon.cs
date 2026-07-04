@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -223,6 +224,10 @@ namespace FullyAutomaticOmniCrafter
             ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Modify", true) ??
             BaseContent.WhiteTex;
 
+        public static readonly Texture2D IconThought =
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Thought", false) ??
+            IconModifyDialog;
+
         public static readonly Texture2D IconRepair =
             ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Repair", true) ??
             BaseContent.WhiteTex;
@@ -364,6 +369,14 @@ namespace FullyAutomaticOmniCrafter
                     defaultDesc = "FullyAutoOmniSurgeon_OpenPanelDesc".Translate(),
                     icon = FullyAutoOmniSurgeonTex.IconModifyDialog,
                     action = () => { Find.WindowStack.Add(new Window_OmniAutoSurgeonUI(this.Occupant, this)); }
+                };
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "FullyAutoOmniSurgeon_OpenThoughtEditor".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_OpenThoughtEditorDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconThought,
+                    action = () => { Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_ThoughtEditor(this.Occupant)); }
                 };
             }
             else if (this.selectedPawn != null)
@@ -1845,6 +1858,382 @@ namespace FullyAutomaticOmniCrafter
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
+        }
+    }
+
+    public class Dialog_OmniAutoSurgeon_ThoughtEditor : Window
+    {
+        private readonly Pawn pawn;
+        private readonly List<Thought> thoughtGroups = new List<Thought>();
+        private readonly List<Thought> thoughtGroup = new List<Thought>();
+        private readonly List<Thought> selectedGroupThoughts = new List<Thought>();
+        private Vector2 leftScrollPos;
+        private Vector2 rightScrollPos;
+        private Thought selectedGroup;
+
+        private static readonly Color MoodColor = new Color(0.1f, 1f, 0.1f);
+        private static readonly Color MoodColorNegative = new Color(0.8f, 0.4f, 0.4f);
+        private static readonly Color NoEffectColor = new Color(0.5f, 0.5f, 0.5f, 0.75f);
+
+        public override Vector2 InitialSize => new Vector2(900f, 620f);
+
+        public Dialog_OmniAutoSurgeon_ThoughtEditor(Pawn pawn)
+        {
+            this.pawn = pawn;
+            this.doCloseButton = true;
+            this.doCloseX = true;
+            this.absorbInputAroundWindow = true;
+            this.draggable = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            if (pawn == null || pawn.Destroyed || pawn.needs == null || pawn.needs.mood == null)
+            {
+                Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "FullyAutoOmniSurgeon_ThoughtNoMood".Translate());
+                return;
+            }
+
+            RefreshThoughtGroups();
+
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "FullyAutoOmniSurgeon_ThoughtEditorTitle".Translate(pawn.LabelShortCap));
+            Text.Font = GameFont.Small;
+
+            const float bottomReservedForCloseButton = 42f;
+            Rect contentRect = new Rect(0f, 40f, inRect.width, inRect.height - 40f - bottomReservedForCloseButton);
+            const float gap = 10f;
+            float leftWidth = Mathf.Floor(contentRect.width * 0.46f);
+            Rect leftRect = new Rect(contentRect.x, contentRect.y, leftWidth - gap * 0.5f, contentRect.height);
+            Rect rightRect = new Rect(leftRect.xMax + gap, contentRect.y, contentRect.width - leftRect.width - gap, contentRect.height);
+
+            Widgets.DrawMenuSection(leftRect);
+            Widgets.DrawMenuSection(rightRect);
+
+            DrawThoughtList(leftRect.ContractedBy(8f));
+            DrawThoughtDetails(rightRect.ContractedBy(8f));
+        }
+
+        private void RefreshThoughtGroups()
+        {
+            thoughtGroups.Clear();
+            PawnNeedsUIUtility.GetThoughtGroupsInDisplayOrder(pawn.needs.mood, thoughtGroups);
+
+            if (selectedGroup == null)
+            {
+                return;
+            }
+
+            Thought current = null;
+            for (int i = 0; i < thoughtGroups.Count; i++)
+            {
+                if (thoughtGroups[i].GroupsWith(selectedGroup))
+                {
+                    current = thoughtGroups[i];
+                    break;
+                }
+            }
+
+            selectedGroup = current;
+        }
+
+        private void DrawThoughtList(Rect rect)
+        {
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 28f), "FullyAutoOmniSurgeon_ThoughtListTitle".Translate());
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            Rect outRect = new Rect(rect.x, rect.y + 30f, rect.width, rect.height - 30f);
+            const float rowHeight = 24f;
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(60f, thoughtGroups.Count * rowHeight));
+
+            Widgets.BeginScrollView(outRect, ref leftScrollPos, viewRect);
+
+            int firstIndex = Mathf.Max(0, Mathf.FloorToInt(leftScrollPos.y / rowHeight));
+            int lastIndex = Mathf.Min(thoughtGroups.Count, Mathf.CeilToInt((leftScrollPos.y + outRect.height) / rowHeight));
+
+            for (int i = firstIndex; i < lastIndex; i++)
+            {
+                Thought group = thoughtGroups[i];
+                Rect rowRect = new Rect(0f, i * rowHeight, viewRect.width, 20f);
+                if (selectedGroup != null && group.GroupsWith(selectedGroup))
+                {
+                    Widgets.DrawHighlightSelected(rowRect);
+                }
+                else if (Mouse.IsOver(rowRect))
+                {
+                    Widgets.DrawHighlight(rowRect);
+                }
+
+                if (DrawThoughtGroupRow(rowRect, group))
+                {
+                    selectedGroup = group;
+                    rightScrollPos = Vector2.zero;
+                }
+            }
+
+            Widgets.EndScrollView();
+        }
+
+        private bool DrawThoughtGroupRow(Rect rect, Thought group)
+        {
+            pawn.needs.mood.thoughts.GetMoodThoughts(group, thoughtGroup);
+            if (thoughtGroup.Count == 0)
+            {
+                return false;
+            }
+
+            Thought leadingThought = PawnNeedsUIUtility.GetLeadingThoughtInGroup(thoughtGroup);
+            if (leadingThought == null || !leadingThought.VisibleInNeedsTab)
+            {
+                thoughtGroup.Clear();
+                return false;
+            }
+
+            Verse.Text.WordWrap = false;
+            Text.Anchor = TextAnchor.MiddleLeft;
+            string label = leadingThought.LabelCap;
+            if (thoughtGroup.Count > 1)
+            {
+                label = label + " x" + thoughtGroup.Count;
+            }
+
+            Rect labelRect = new Rect(rect.x + 8f, rect.y, rect.width - 58f, rect.height);
+            Widgets.Label(labelRect, label.Truncate(labelRect.width));
+
+            float moodOffset = pawn.needs.mood.thoughts.MoodOffsetOfGroup(group);
+            GUI.color = GetMoodColor(moodOffset);
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Widgets.Label(new Rect(rect.xMax - 44f, rect.y, 38f, rect.height), moodOffset.ToString("##0"));
+            GUI.color = Color.white;
+            Text.Anchor = TextAnchor.UpperLeft;
+            Verse.Text.WordWrap = true;
+
+            if (Mouse.IsOver(rect))
+            {
+                TooltipHandler.TipRegion(rect, new TipSignal(BuildThoughtTooltip(leadingThought, group), group.GetHashCode()));
+            }
+
+            bool clicked = Widgets.ButtonInvisible(rect);
+            thoughtGroup.Clear();
+            return clicked;
+        }
+
+        private void DrawThoughtDetails(Rect rect)
+        {
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 28f), "FullyAutoOmniSurgeon_ThoughtDetailsTitle".Translate());
+            Text.Anchor = TextAnchor.UpperLeft;
+
+            Rect outRect = new Rect(rect.x, rect.y + 30f, rect.width, rect.height - 30f);
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, 900f);
+
+            Widgets.BeginScrollView(outRect, ref rightScrollPos, viewRect);
+
+            if (selectedGroup == null)
+            {
+                Widgets.Label(new Rect(0f, 0f, viewRect.width, 30f), "FullyAutoOmniSurgeon_ThoughtSelectPrompt".Translate());
+                Widgets.EndScrollView();
+                return;
+            }
+
+            FillSelectedGroupThoughts();
+            Thought leadingThought = PawnNeedsUIUtility.GetLeadingThoughtInGroup(selectedGroupThoughts);
+            if (leadingThought == null)
+            {
+                Widgets.Label(new Rect(0f, 0f, viewRect.width, 30f), "FullyAutoOmniSurgeon_ThoughtSelectPrompt".Translate());
+                Widgets.EndScrollView();
+                return;
+            }
+
+            float y = 0f;
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtName".Translate(), leadingThought.LabelCap);
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtDefName".Translate(), leadingThought.def.defName);
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtType".Translate(), GetThoughtTypeLabel(leadingThought));
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtSource".Translate(), GetThoughtSourceLabel(leadingThought.def));
+            DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtMoodOffset".Translate(), pawn.needs.mood.thoughts.MoodOffsetOfGroup(selectedGroup).ToString("##0"));
+
+            if (leadingThought.sourcePrecept != null)
+            {
+                string precept = leadingThought.sourcePrecept.def != null ? leadingThought.sourcePrecept.def.LabelCap.ToString() : leadingThought.sourcePrecept.ToStringSafe();
+                DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtPrecept".Translate(), precept);
+            }
+
+            if (leadingThought is Thought_Memory memory)
+            {
+                DrawInfoLine(viewRect, ref y, "FullyAutoOmniSurgeon_ThoughtDuration".Translate(), GetMemoryDurationLabel(memory));
+            }
+
+            y += 8f;
+            Widgets.Label(new Rect(0f, y, viewRect.width, 24f), "FullyAutoOmniSurgeon_ThoughtDescription".Translate());
+            y += 24f;
+            string description = leadingThought.Description;
+            float descHeight = Text.CalcHeight(description, viewRect.width);
+            Widgets.Label(new Rect(0f, y, viewRect.width, descHeight), description);
+            y += descHeight + 12f;
+
+            if (selectedGroupThoughts.Count > 1)
+            {
+                Widgets.Label(new Rect(0f, y, viewRect.width, 24f), "FullyAutoOmniSurgeon_ThoughtGroupItems".Translate(selectedGroupThoughts.Count));
+                y += 24f;
+                for (int i = 0; i < selectedGroupThoughts.Count; i++)
+                {
+                    Thought item = selectedGroupThoughts[i];
+                    Widgets.Label(new Rect(8f, y, viewRect.width - 8f, 22f), "- " + item.LabelCap + " (" + GetThoughtTypeLabel(item) + ")");
+                    y += 22f;
+                }
+                y += 8f;
+            }
+
+            DrawDeleteControls(new Rect(0f, y, viewRect.width, 84f));
+
+            Widgets.EndScrollView();
+        }
+
+        private void FillSelectedGroupThoughts()
+        {
+            selectedGroupThoughts.Clear();
+            if (selectedGroup != null)
+            {
+                pawn.needs.mood.thoughts.GetMoodThoughts(selectedGroup, selectedGroupThoughts);
+            }
+        }
+
+        private void DrawDeleteControls(Rect rect)
+        {
+            int memoryCount = 0;
+            for (int i = 0; i < selectedGroupThoughts.Count; i++)
+            {
+                if (selectedGroupThoughts[i] is Thought_Memory)
+                {
+                    memoryCount++;
+                }
+            }
+
+            if (memoryCount == 0)
+            {
+                Widgets.Label(rect, "FullyAutoOmniSurgeon_ThoughtSituationalCannotDelete".Translate());
+                GUI.enabled = false;
+                Widgets.ButtonText(new Rect(rect.x, rect.y + 46f, 180f, 30f), "FullyAutoOmniSurgeon_ThoughtDelete".Translate());
+                GUI.enabled = true;
+                return;
+            }
+
+            if (Widgets.ButtonText(new Rect(rect.x, rect.y, 180f, 30f), "FullyAutoOmniSurgeon_ThoughtDelete".Translate()))
+            {
+                int count = memoryCount;
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                    "FullyAutoOmniSurgeon_ThoughtDeleteConfirm".Translate(count),
+                    delegate { DeleteSelectedMemories(); },
+                    destructive: true));
+            }
+        }
+
+        private void DeleteSelectedMemories()
+        {
+            if (selectedGroup == null || pawn.needs?.mood?.thoughts?.memories == null)
+            {
+                return;
+            }
+
+            selectedGroupThoughts.Clear();
+            pawn.needs.mood.thoughts.GetMoodThoughts(selectedGroup, selectedGroupThoughts);
+
+            int removed = 0;
+            List<Thought_Memory> memories = pawn.needs.mood.thoughts.memories.Memories;
+            for (int i = memories.Count - 1; i >= 0; i--)
+            {
+                Thought_Memory memory = memories[i];
+                if (memory != null && memory.GroupsWith(selectedGroup))
+                {
+                    pawn.needs.mood.thoughts.memories.RemoveMemory(memory);
+                    removed++;
+                }
+            }
+
+            selectedGroup = null;
+            selectedGroupThoughts.Clear();
+            Messages.Message("FullyAutoOmniSurgeon_ThoughtDeleted".Translate(removed), MessageTypeDefOf.TaskCompletion, false);
+        }
+
+        private void DrawInfoLine(Rect viewRect, ref float y, string label, string value)
+        {
+            Rect labelRect = new Rect(0f, y, 120f, 22f);
+            Rect valueRect = new Rect(124f, y, viewRect.width - 124f, 22f);
+            GUI.color = ColoredText.SubtleGrayColor;
+            Widgets.Label(labelRect, label);
+            GUI.color = Color.white;
+            Widgets.Label(valueRect, value);
+            y += 24f;
+        }
+
+        private static Color GetMoodColor(float moodOffset)
+        {
+            if (moodOffset > 0f) return MoodColor;
+            if (moodOffset < 0f) return MoodColorNegative;
+            return NoEffectColor;
+        }
+
+        private string BuildThoughtTooltip(Thought leadingThought, Thought group)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(leadingThought.LabelCap.AsTipTitle()).AppendLine().AppendLine();
+            sb.Append(leadingThought.Description);
+
+            int durationTicks = group.DurationTicks;
+            if (durationTicks > 5 && leadingThought is Thought_Memory memory)
+            {
+                sb.AppendLine();
+                sb.AppendLine();
+                sb.Append("ThoughtExpiresIn".Translate((durationTicks - memory.age).ToStringTicksToPeriod()));
+            }
+
+            return sb.ToString();
+        }
+
+        private static string GetThoughtTypeLabel(Thought thought)
+        {
+            if (thought is Thought_Memory)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtTypeMemory".Translate();
+            }
+            if (thought.def != null && thought.def.IsSituational)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtTypeSituational".Translate();
+            }
+            return "FullyAutoOmniSurgeon_ThoughtTypeOther".Translate();
+        }
+
+        private static string GetThoughtSourceLabel(ThoughtDef def)
+        {
+            ModContentPack mod = def?.modContentPack;
+            if (mod == null)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtSourceUnknown".Translate();
+            }
+
+            if (mod.IsCoreMod)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtSourceCore".Translate(mod.Name, mod.PackageIdPlayerFacing);
+            }
+
+            if (mod.IsOfficialMod)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtSourceDlc".Translate(mod.Name, mod.PackageIdPlayerFacing);
+            }
+
+            return "FullyAutoOmniSurgeon_ThoughtSourceMod".Translate(mod.Name, mod.PackageIdPlayerFacing);
+        }
+
+        private static string GetMemoryDurationLabel(Thought_Memory memory)
+        {
+            if (memory.permanent)
+            {
+                return "FullyAutoOmniSurgeon_ThoughtDurationPermanent".Translate();
+            }
+
+            int remaining = Mathf.Max(0, memory.DurationTicks - memory.age);
+            return "FullyAutoOmniSurgeon_ThoughtDurationRemaining".Translate(remaining.ToStringTicksToPeriod());
         }
     }
 
