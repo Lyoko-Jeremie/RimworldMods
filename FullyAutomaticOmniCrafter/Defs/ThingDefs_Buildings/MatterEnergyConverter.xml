@@ -35,11 +35,8 @@
             <graphicClass>Graphic_Single</graphicClass>
             <shaderType>CutoutComplex</shaderType>
             <drawSize>(5,5)</drawSize>
-            <!-- (绘制高度 - 实际高度) / 2  -->
-            <!-- (5 - 4) / 2 = 0.5 -->
-            <drawOffset>(0, 0, 0.5)</drawOffset>
         </graphicData>
-        <size>(5,4)</size>
+        <size>(5,5)</size>
         <uiIconPath>Things/Building/Production/MatterEnergyConverter</uiIconPath>
 
         <!-- ── 布局 ───────────────────────────────────────────────────── -->
@@ -206,11 +203,8 @@
         <defName>MatterEnergyConverter_home</defName>
         <graphicData>
             <drawSize>(3,3)</drawSize>
-            <!-- (绘制高度 - 实际高度) / 2  -->
-            <!-- (3 - 2) / 2 = 0.5 -->
-            <drawOffset>(0, 0, 0.5)</drawOffset>
         </graphicData>
-        <size>(3,2)</size>
+        <size>(3,3)</size>
     </ThingDef>
 
 </Defs>
