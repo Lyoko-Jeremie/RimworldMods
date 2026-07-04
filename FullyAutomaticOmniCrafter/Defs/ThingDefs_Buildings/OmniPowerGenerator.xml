@@ -21,10 +21,13 @@
         <graphicData>
             <texPath>Things/Building/Production/OmniPowerGenerator</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(5,5)</drawSize>
             <shaderType>CutoutComplex</shaderType>
+            <drawSize>(5,5)</drawSize>
+            <!-- (绘制高度 - 实际高度) / 2  -->
+            <!-- (5 - 4) / 2 = 0.5 -->
+            <drawOffset>(0, 0, 0.5)</drawOffset>
         </graphicData>
-        <size>(5,5)</size>
+        <size>(5,4)</size>
         <uiIconPath>Things/Building/Production/OmniPowerGenerator</uiIconPath>
 
         <altitudeLayer>Building</altitudeLayer>
@@ -99,10 +102,13 @@
 
     <ThingDef ParentName="OmniPowerGenerator">
         <defName>OmniPowerGenerator_home</defName>
-        <size>(3,3)</size>
         <graphicData>
             <drawSize>(3,3)</drawSize>
+            <!-- (绘制高度 - 实际高度) / 2  -->
+            <!-- (3 - 2) / 2 = 0.5 -->
+            <drawOffset>(0, 0, 0.5)</drawOffset>
         </graphicData>
+        <size>(3,2)</size>
     </ThingDef>
     
 </Defs>

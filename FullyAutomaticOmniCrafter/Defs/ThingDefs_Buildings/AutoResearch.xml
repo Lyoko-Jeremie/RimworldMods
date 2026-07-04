@@ -19,16 +19,20 @@
         <graphicData>
             <texPath>Things/Building/Production/AutoResearch</texPath>
             <graphicClass>Graphic_Single</graphicClass>
-            <drawSize>(3,3)</drawSize>
             <shaderType>CutoutComplex</shaderType>
+            <drawSize>(3,3)</drawSize>
+            <!-- (绘制高度 - 实际高度) / 2  -->
+            <!-- (3 - 2) / 2 = 0.5 -->
+            <drawOffset>(0, 0, 0.5)</drawOffset>
         </graphicData>
+        <size>(3,2)</size>
+        
         <pathCost>1</pathCost>
         <blockWind>false</blockWind>
         <castEdgeShadows>false</castEdgeShadows>
         <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
-        <size>(3,3)</size>
         <uiIconPath>Things/Building/Production/AutoResearch</uiIconPath>
 
         <costList>
