@@ -225,12 +225,12 @@ namespace FullyAutomaticOmniCrafter
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconThought =
-            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Thought", false) ??
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Thought", true) ??
             IconModifyDialog;
 
         public static readonly Texture2D IconHediff =
-            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Hediff", false) ??
-            IconRepair;
+            ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Hediff", true) ??
+            IconModifyDialog;
 
         public static readonly Texture2D IconRepair =
             ContentFinder<Texture2D>.Get("UI/Commands/FullyAutoOmniSurgeon_Repair", true) ??
