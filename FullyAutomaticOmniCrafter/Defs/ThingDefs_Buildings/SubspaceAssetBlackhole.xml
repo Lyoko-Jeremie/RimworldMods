@@ -122,6 +122,7 @@
         <size>(1,1)</size>
         <graphicData>
             <drawSize>(1,1)</drawSize>
+            <drawOffset>(0, 0, 0)</drawOffset>
         </graphicData>
     </ThingDef>
 

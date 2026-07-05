@@ -67,6 +67,7 @@
         <defName>StatusAllocationTerminal_mini</defName>
         <graphicData>
             <drawSize>(1,1)</drawSize>
+            <drawOffset>(0, 0, 0)</drawOffset>
         </graphicData>
         <size>(1,1)</size>
     </ThingDef>
