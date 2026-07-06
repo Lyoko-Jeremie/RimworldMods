@@ -81,10 +81,13 @@ Lost, wandering, and other factions' Artificial Maids will automatically execute
 [hr][/hr]
 
 Notice:
-The Artificial Maid will actively perform tasks, using special methods to force it to quickly check for work to do, and complete tasks before other colonists, avoiding issues where the Artificial Maid has work to do but does not perform it due to performance optimization mods adjusting the colonist task check interval.
-Additionally, the Artificial Maid's prototype is a standard colonist with complex behavioral logic, which can lead to higher computational load compared to the same number of ordinary colonists, especially when there are many Artificial Maids.
-Artificial Maids in the display cabinet will not actively consume TPS, as the work check logic is managed by the display cabinet. The cabinet will adaptively check for work and automatically wake up the Artificial Maid when needed, significantly reducing TPS consumption.
-Therefore, please provide each Artificial Maid with a display cabinet and enable automatic sleep for both the maid and the cabinet, allowing them to enter sleep mode when idle, reducing load (and lowering TPS consumption).
+1. To avoid certain performance optimization mods adjusting the colonist task check interval, which causes the Artificial Maid to have work but not perform it, resulting in the Artificial Maid being idle while there is actually work waiting to be done, a special method is used to force the Artificial Maid to frequently check the work list. This allows the Artificial Maid to be very proactive in performing tasks, ensuring that it always takes precedence over other colonists in executing work.
+2. To allow the Artificial Maid to complete any mod's custom behavior just like a colonist without requiring additional patches, the Artificial Maid is implemented as a standard colonist. Therefore, it has the same complex behavior logic as colonists, and the addition of Artificial Maids will check for work more frequently, which can lead to the same number of Artificial Maids consuming more computational resources than an equal number of regular colonists, especially when the number of Artificial Maids is large.
+3. To avoid wasting additional computational resources when the Artificial Maid is idle, an Artificial Maid Display Cabinet is designed based on the concept of a sleep pod. In the display cabinet, the Artificial Maid will be in a dormant state, and the display cabinet with automatic wake-up enabled will check for work at adaptive intervals and automatically wake up the Artificial Maid when there is work to be done, significantly reducing computational load.
+4. Please try to equip each Artificial Maid with an Artificial Maid Display Cabinet, and enable automatic sleep and wake-up for both the Artificial Maid and the display cabinet, so that the Artificial Maid enters the display cabinet to sleep when there is no work to be done instead of wandering around.
+5. When manual control of the Artificial Maid is needed, such as when forming a caravan or when control is needed in combat, you can wake up the Artificial Maid from the display cabinet using the immediate wake-up button and disable the Artificial Maid's automatic sleep.
+6. The hunting mode will quickly scan for threats on the map and, upon detecting a threat, will continuously teleport (AutoBlink) to the threat's side for close combat. Therefore, hunting mode consumes a lot of computational resources, so it will automatically turn off after a period of time without finding any threats.
+
 
 
 
