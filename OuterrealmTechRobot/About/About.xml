@@ -43,6 +43,15 @@
 
 [hr][/hr]
 
+注意：
+人造人女仆会非常积极地执行工作，使用了特殊的方法来强制人造人女仆快速地检查是否有工作要做，并抢在其他殖民者之前去完成工作，避免某些性能优化mod调整了殖民者任务检查间隔，导致人造人女仆出现有工作但是不去做的问题。
+再叠加人造人女仆的原型是一个标准殖民者，带有复杂的行为逻辑，这会导致同样数量的人造人女仆在非休眠状态时会比同等数量的普通殖民者消耗更多的计算量，尤其是当人造人女仆数量较多时尤其明显。
+而在人造人女仆展示柜中休眠的人造人女仆不会主动消耗TPS，会将工作检查逻辑交由人造人女仆展示柜来管理，启用了自动唤醒的展示柜会自适应地执行检查，并在有工作时自动唤醒人造人女仆，因此可以大幅度降低TPS消耗。
+故请尽可能为每一个人造人女仆都配备一个人造人女仆展示柜，并为女仆和展示柜启用自动休眠，让其在空闲时进入展示柜休眠，减少负担(降低TPS消耗)。
+
+
+[hr][/hr]
+
 Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmTechRobot
 
 ---
@@ -64,6 +73,16 @@ The Artificial Maid automatically repairs itself and will never get sick, injure
 All skills of the Artificial Maid are optimized and enhanced to the extreme, allowing it to perform various tasks with extraordinary efficiency. Whether it's cooking, cleaning, medical care, or combat, the Artificial Maid can handle it competently and perform excellently.
 
 Lost, wandering, and other factions' Artificial Maids will automatically execute the underlying security protocol upon seeing the player, perform full-body repairs, and join the player's colony.
+
+
+
+[hr][/hr]
+
+Notice:
+The Artificial Maid will actively perform tasks, using special methods to force it to quickly check for work to do, and complete tasks before other colonists, avoiding issues where the Artificial Maid has work to do but does not perform it due to performance optimization mods adjusting the colonist task check interval.
+Additionally, the Artificial Maid's prototype is a standard colonist with complex behavioral logic, which can lead to higher computational load compared to the same number of ordinary colonists, especially when there are many Artificial Maids.
+Artificial Maids in the display cabinet will not actively consume TPS, as the work check logic is managed by the display cabinet. The cabinet will adaptively check for work and automatically wake up the Artificial Maid when needed, significantly reducing TPS consumption.
+Therefore, please provide each Artificial Maid with a display cabinet and enable automatic sleep for both the maid and the cabinet, allowing them to enter sleep mode when idle, reducing load (and lowering TPS consumption).
 
 
 
