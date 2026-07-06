@@ -60,6 +60,35 @@
                 <blackGeneList>
                     <li MayRequire="Ludeon.RimWorld.Biotech">ViolenceDisabled</li>
                 </blackGeneList>
+                <whiteTraitList>
+                    <li>ArtificialMaidTrait_AbsoluteLoyalty</li>
+                    <li>ArtificialMaidTrait_EfficientLogic</li>
+                    <li>ArtificialMaidTrait_CombatMode</li>
+                    <li>ArtificialMaidTrait_EmotionalSynchrony</li>
+                    <li>ArtificialMaidTrait_CulinaryMaster</li>
+                    <li>ArtificialMaidTrait_NatureSoul</li>
+                    <li>ArtificialMaidTrait_TechnologicalOracle</li>
+                    <li>ArtificialMaidTrait_EternalLover</li>
+                    <li>ArtificialMaidTrait_DesireVessel</li>
+                    <li>ArtificialMaidTrait_NurturingOrigin</li>
+                    <li>ArtificialMaidTrait_ChildhoodPlaymate</li>
+                    <li>ArtificialMaidTrait_MasterProtocol</li>
+                </whiteTraitList>
+                <whiteBackstoryList>
+                    <li>MaidChild_Nurturer</li>
+                    <li>MaidChild_Companion</li>
+                    <li>MaidChild_Academic</li>
+                    <li>MaidChild_Emotional</li>
+                    <li>MaidChild_GuardianSister</li>
+                    <li>MaidAdult_Partner</li>
+                    <li>MaidAdult_SpiritualMentor</li>
+                    <li>MaidAdult_DesireFulfillment</li>
+                    <li>MaidAdult_CreativePartner</li>
+                    <li>MaidAdult_UltimateGuardian</li>
+                    <li>MaidAdult_EcoSteward</li>
+                    <li>MaidAdult_ResourceOrchestrator</li>
+                    <li>MaidAdult_MaidLeader</li>
+                </whiteBackstoryList>
             </raceRestriction>
         </alienRace>
         <statBases>
