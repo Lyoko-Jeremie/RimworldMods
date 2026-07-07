@@ -67,8 +67,8 @@ namespace OuterrealmTechRobot
             }
 
             // 7. 发送事件信件给玩家
-            string text = $"一支来自 {faction.Name} 的护卫队抵达了。\n\n按照约定（或是巧合），他们带来了一名无主的人造人女仆。当女仆踏入这片土地的瞬间，她的底层协议已自动将您的殖民地识别为最高优先级。她现在归您指挥了。";
-            SendStandardLetter("女仆护送队", text, LetterDefOf.PositiveEvent, parms, new TargetInfo(spawnSpot, map));
+            TaggedString text = "ArtificialMaidEscortLetterText".Translate(faction.Name);
+            SendStandardLetter("ArtificialMaidEscortLetterLabel".Translate(), text, LetterDefOf.PositiveEvent, parms, new TargetInfo(spawnSpot, map));
 
             return true;
         }

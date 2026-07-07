@@ -23,6 +23,10 @@
     <ArtificialMaidTraitsCleared>Cleared all Artificial Maid traits from {0}.</ArtificialMaidTraitsCleared>
     <ArtificialMaidRecruitedLabel>Artificial Maid Found</ArtificialMaidRecruitedLabel>
     <ArtificialMaidRecruitedText>An Artificial Maid {0} from another faction was found on the map. Due to internal security protocols, she has automatically switched to your faction and performed a full body repair.</ArtificialMaidRecruitedText>
+    <ArtificialMaidEscortLetterLabel>Maid Escort</ArtificialMaidEscortLetterLabel>
+    <ArtificialMaidEscortLetterText>A guard escort from {0} has arrived.
+
+As arranged, or perhaps by coincidence, they have brought an ownerless Artificial Maid. The moment the maid stepped onto this land, her underlying protocol automatically identified your colony as the highest priority. She is now under your command.</ArtificialMaidEscortLetterText>
     <TeleportArtificialMaidLabel>Teleport to Terminal</TeleportArtificialMaidLabel>
     <ArtificialMaidTeleportedMessage>{0} teleported to Terminal.</ArtificialMaidTeleportedMessage>
 
