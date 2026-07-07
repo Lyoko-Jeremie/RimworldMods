@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
     <IncidentDef>
-        <defName>IncidentWorker_ArtificialMaidEscort</defName>
+        <defName>ArtificialMaidEscort</defName>
         <label>人造人女仆护送队</label>
-        <category>Special</category>
+        <category>Misc</category>
         <targetTags>
             <li>Map_PlayerHome</li>
         </targetTags>
