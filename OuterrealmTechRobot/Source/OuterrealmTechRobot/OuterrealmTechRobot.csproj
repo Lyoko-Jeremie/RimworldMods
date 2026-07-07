@@ -70,6 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArtificialMaidBackupCloud.cs" />
+    <Compile Include="ArtificialMaidEscortUtility.cs" />
     <Compile Include="ArtificialMaidHairs\HairOffsetExtension.cs" />
     <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
@@ -78,11 +79,14 @@
     <Compile Include="CompArtificialMaid.cs" />
     <Compile Include="CompArtificialMaidPacker.cs" />
     <Compile Include="CompArtificialMaidTerminal.cs" />
+    <Compile Include="FloatMenuOptionProvider_DismissArtificialMaidEscort.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
     <Compile Include="IncidentWorker_ArtificialMaidEscort.cs" />
+    <Compile Include="JobDriver_DismissArtificialMaidEscort.cs" />
     <Compile Include="JobDriver_PackArtificialMaid.cs" />
     <Compile Include="JobDriver_UnpackArtificialMaid.cs" />
+    <Compile Include="LordJob_ArtificialMaidEscortVisit.cs" />
     <Compile Include="Patch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RecipeWorker_FabricateArtificialMaid.cs" />

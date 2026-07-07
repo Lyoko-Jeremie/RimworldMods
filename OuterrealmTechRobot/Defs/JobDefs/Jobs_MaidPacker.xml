@@ -13,4 +13,11 @@
     <reportString>unpacking artificial maid.</reportString>
     <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
   </JobDef>
+
+  <JobDef>
+    <defName>DismissArtificialMaidEscort</defName>
+    <driverClass>OuterrealmTechRobot.JobDriver_DismissArtificialMaidEscort</driverClass>
+    <reportString>dismissing escort.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
 </Defs>

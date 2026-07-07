@@ -27,6 +27,9 @@
     <ArtificialMaidEscortLetterText>一支来自 {0} 的护卫队抵达了。
 
 按照约定（或是巧合），他们带来了一名无主的人造人女仆。当女仆踏入这片土地的瞬间，她的底层协议已自动将您的殖民地识别为最高优先级。她现在归您指挥了。</ArtificialMaidEscortLetterText>
+    <DismissArtificialMaidEscort>请护卫队离开</DismissArtificialMaidEscort>
+    <CannotDismissArtificialMaidEscort>无法请护卫队离开</CannotDismissArtificialMaidEscort>
+    <ArtificialMaidEscortDismissedMessage>来自 {0} 的护卫队正在离开。</ArtificialMaidEscortDismissedMessage>
     <TeleportArtificialMaidLabel>传送到终端</TeleportArtificialMaidLabel>
     <ArtificialMaidTeleportedMessage>已将 {0} 传送到终端。</ArtificialMaidTeleportedMessage>
 

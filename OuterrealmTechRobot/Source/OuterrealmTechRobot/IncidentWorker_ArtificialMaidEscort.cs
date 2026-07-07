@@ -52,7 +52,8 @@ namespace OuterrealmTechRobot
             }
 
             // 让他们去基地外围逛逛
-            LordJob_VisitColony lordJob = new LordJob_VisitColony(parms.faction, chillSpot);
+            Pawn leader = FindEscortLeader(escorts);
+            LordJob_ArtificialMaidEscortVisit lordJob = new LordJob_ArtificialMaidEscortVisit(parms.faction, chillSpot, leader);
             LordMaker.MakeNewLord(parms.faction, lordJob, map, escorts);
 
             // 6. 发送事件信件给玩家
@@ -69,6 +70,21 @@ namespace OuterrealmTechRobot
             {
                 parms.points = 500f;
             }
+        }
+
+        // 优先选择成年可交流的人形单位作为护卫队领队。
+        private static Pawn FindEscortLeader(List<Pawn> escorts)
+        {
+            for (int i = 0; i < escorts.Count; i++)
+            {
+                Pawn pawn = escorts[i];
+                if (pawn.RaceProps.Humanlike && pawn.DevelopmentalStage.Adult())
+                {
+                    return pawn;
+                }
+            }
+
+            return escorts[0];
         }
     }
 }

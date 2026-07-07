@@ -2,4 +2,5 @@
 <LanguageData>
   <PackArtificialMaid.reportString>正在打包为人造人女仆运输箱。</PackArtificialMaid.reportString>
   <UnpackArtificialMaid.reportString>正在重启人造人女仆。</UnpackArtificialMaid.reportString>
+  <DismissArtificialMaidEscort.reportString>正在请护卫队离开。</DismissArtificialMaidEscort.reportString>
 </LanguageData>

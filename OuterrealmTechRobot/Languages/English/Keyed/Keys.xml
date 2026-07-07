@@ -27,6 +27,9 @@
     <ArtificialMaidEscortLetterText>A guard escort from {0} has arrived.
 
 As arranged, or perhaps by coincidence, they have brought an ownerless Artificial Maid. The moment the maid stepped onto this land, her underlying protocol automatically identified your colony as the highest priority. She is now under your command.</ArtificialMaidEscortLetterText>
+    <DismissArtificialMaidEscort>Ask escort to leave</DismissArtificialMaidEscort>
+    <CannotDismissArtificialMaidEscort>Cannot ask escort to leave</CannotDismissArtificialMaidEscort>
+    <ArtificialMaidEscortDismissedMessage>The escort from {0} is leaving.</ArtificialMaidEscortDismissedMessage>
     <TeleportArtificialMaidLabel>Teleport to Terminal</TeleportArtificialMaidLabel>
     <ArtificialMaidTeleportedMessage>{0} teleported to Terminal.</ArtificialMaidTeleportedMessage>
 
