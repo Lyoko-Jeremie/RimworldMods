@@ -3,7 +3,7 @@
 
     <!-- 穹顶发生器 -->
     <OmniForceFieldDome.label>Force Field Dome Generator</OmniForceFieldDome.label>
-    <!--一种源自超维科技的穹顶发生器，产生一个高维场域，形成一个穹顶，用于保护和防御。\n能抵御威胁和恶劣环境，用于在恶劣环境下快速建立一个安全区。-->
-    <OmniForceFieldDome.description>A Force Field Dome Generator is a device derived from Outerrealm technology, capable of generating a high-dimensional field domain to form a dome for protection and defense. It can resist threats and harsh environments, and is used to quickly establish a safe area in adverse conditions.</OmniForceFieldDome.description>
+    <!--一种源自超维科技的穹顶发生器，产生一个高维场域，形成一个穹顶，用于保护和防御。\n能抵御威胁和恶劣环境，用于在恶劣环境下快速建立一个安全区。\n\n提示：穹顶设计用于户外，不要让穹顶覆盖到已经存在房间的区域。房间区域可以使用护盾。-->
+    <OmniForceFieldDome.description>A Force Field Dome Generator is a device derived from Outerrealm technology, capable of generating a high-dimensional field domain to form a dome for protection and defense. It can resist threats and harsh environments, and is used to quickly establish a safe area in adverse conditions.\n\nTip: The dome is designed for outdoor use. Do not let the dome cover areas that already have rooms. Room areas can use shields.</OmniForceFieldDome.description>
 
 </LanguageData>

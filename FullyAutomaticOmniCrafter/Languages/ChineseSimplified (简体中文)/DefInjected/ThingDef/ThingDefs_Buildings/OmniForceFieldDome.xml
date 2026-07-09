@@ -2,6 +2,6 @@
 <LanguageData>
 
     <OmniForceFieldDome.label>穹顶发生器</OmniForceFieldDome.label>
-    <OmniForceFieldDome.description>一种源自超维科技的穹顶发生器，产生一个高维场域，形成一个穹顶，用于保护和防御。\n能抵御威胁和恶劣环境，用于在恶劣环境下快速建立一个安全区。</OmniForceFieldDome.description>
+    <OmniForceFieldDome.description>一种源自超维科技的穹顶发生器，产生一个高维场域，形成一个穹顶，用于保护和防御。\n能抵御威胁和恶劣环境，用于在恶劣环境下快速建立一个安全区。\n\n提示：穹顶设计用于户外，不要让穹顶覆盖到已经存在房间的区域。房间区域可以使用护盾。</OmniForceFieldDome.description>
 
 </LanguageData>
