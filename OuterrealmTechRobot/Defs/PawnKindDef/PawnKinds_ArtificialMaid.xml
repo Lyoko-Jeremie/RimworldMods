@@ -47,9 +47,12 @@
         <initialResistanceRange>0~0</initialResistanceRange>
         <backstoryFilters>
             <li>
-                <categories>
+                <categoriesChildhood>
                     <li>ArtificialMaidBackstory</li>
-                </categories>
+                </categoriesChildhood>
+                <categoriesAdulthood>
+                    <li>ArtificialMaidBackstory</li>
+                </categoriesAdulthood>
             </li>
         </backstoryFilters>
         <preventIdeo>true</preventIdeo>

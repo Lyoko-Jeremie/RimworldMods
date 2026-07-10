@@ -10,6 +10,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Social>200</Social>
             <Medicine>200</Medicine>
@@ -25,6 +26,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Melee>200</Melee>
             <Social>200</Social>
@@ -41,6 +43,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Intellectual>200</Intellectual>
             <Social>200</Social>
@@ -57,6 +60,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Social>200</Social>
             <Artistic>200</Artistic>
@@ -72,6 +76,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Shooting>200</Shooting>
             <Melee>200</Melee>
@@ -88,6 +93,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Social>200</Social>
             <Cooking>200</Cooking>
@@ -104,6 +110,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Social>200</Social>
             <Intellectual>200</Intellectual>
@@ -119,6 +126,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Social>200</Social>
             <Medicine>200</Medicine>
@@ -134,6 +142,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Crafting>200</Crafting>
             <Construction>200</Construction>
@@ -150,6 +159,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Shooting>200</Shooting>
             <Melee>200</Melee>
@@ -165,6 +175,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Plants>200</Plants>
             <Animals>200</Animals>
@@ -181,6 +192,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Mining>200</Mining>
             <Crafting>200</Crafting>
@@ -197,6 +209,7 @@
         <spawnCategories>
             <li>ArtificialMaidBackstory</li>
         </spawnCategories>
+        <requiresSpawnCategory>true</requiresSpawnCategory>
         <skillGains>
             <Shooting>200</Shooting>
             <Melee>200</Melee>

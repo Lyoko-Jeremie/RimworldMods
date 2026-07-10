@@ -13,16 +13,16 @@
                 <immuneToXenophobia>true</immuneToXenophobia>
                 <childBackstoryFilter>
                     <li>
-                        <categories>
+                        <categoriesChildhood>
                             <li>ArtificialMaidBackstory</li>
-                        </categories>
+                        </categoriesChildhood>
                     </li>
                 </childBackstoryFilter>
                 <adultBackstoryFilter>
                     <li>
-                        <categories>
+                        <categoriesAdulthood>
                             <li>ArtificialMaidBackstory</li>
-                        </categories>
+                        </categoriesAdulthood>
                     </li>
                 </adultBackstoryFilter>
                 <alienPartGenerator>
@@ -74,21 +74,6 @@
                     <li>ArtificialMaidTrait_ChildhoodPlaymate</li>
                     <li>ArtificialMaidTrait_MasterProtocol</li>
                 </whiteTraitList>
-                <whiteBackstoryList>
-                    <li>MaidChild_Nurturer</li>
-                    <li>MaidChild_Companion</li>
-                    <li>MaidChild_Academic</li>
-                    <li>MaidChild_Emotional</li>
-                    <li>MaidChild_GuardianSister</li>
-                    <li>MaidAdult_Partner</li>
-                    <li>MaidAdult_SpiritualMentor</li>
-                    <li>MaidAdult_DesireFulfillment</li>
-                    <li>MaidAdult_CreativePartner</li>
-                    <li>MaidAdult_UltimateGuardian</li>
-                    <li>MaidAdult_EcoSteward</li>
-                    <li>MaidAdult_ResourceOrchestrator</li>
-                    <li>MaidAdult_MaidLeader</li>
-                </whiteBackstoryList>
             </raceRestriction>
         </alienRace>
         <statBases>
