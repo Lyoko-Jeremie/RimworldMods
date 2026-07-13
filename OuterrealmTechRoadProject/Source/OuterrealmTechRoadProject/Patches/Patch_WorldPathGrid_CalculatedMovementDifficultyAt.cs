@@ -15,15 +15,17 @@ namespace OuterrealmTechRoadProject.Patches
         /// <summary>
         /// Postfix 只在原版已经算完后修正结果，尽量减少与其他 mod 的冲突。
         /// </summary>
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result, PlanetTile tile)
         {
-            // 小于 1000 表示原版已经认为可通行，不需要干预普通地形的移动难度。
-            if (__result < 1000f)
+            bool needsOuterrealmLinkEdge = OuterrealmLinkUtility.NeedsOuterrealmLinkEdge(tile);
+            // 普通可通行地形仍交给原版和道路倍率处理；只有特殊地形或不可通行结果需要本补丁兜底。
+            if (__result < 1000f && !needsOuterrealmLinkEdge)
             {
                 return;
             }
 
-            // 只有拥有超维链路的不可通行 tile 才被放行；没有道路的海洋/山脉仍保持不可通行。
+            // 只有拥有超维链路的特殊 tile 才被放行；没有道路的海洋/山脉仍保持不可通行。
             Defs.DefModExtension_OuterrealmLinkRoad extension;
             if (OuterrealmLinkUtility.TileHasOuterrealmLink(tile, out extension))
             {

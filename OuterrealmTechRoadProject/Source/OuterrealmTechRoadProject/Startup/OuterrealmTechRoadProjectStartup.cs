@@ -13,9 +13,14 @@ namespace OuterrealmTechRoadProject.Startup
     {
         static OuterrealmTechRoadProjectStartup()
         {
+            Harmony harmony = new Harmony("OuterrealmTechRoadProject");
+
             // PatchAll 会扫描当前程序集里所有带 HarmonyPatch 的类型。
             // 目前用于让拥有超维链路的不可通行世界 tile 参与世界寻路。
-            new Harmony("OuterrealmTechRoadProject").PatchAll(Assembly.GetExecutingAssembly());
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
+
+            RoadConstructionBackend.LogDetectedBackend();
+            Patches.Patch_RotR_ConstructionMenu.Apply(harmony);
         }
     }
 }

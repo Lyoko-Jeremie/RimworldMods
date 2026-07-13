@@ -1,22 +1,21 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
+using OuterrealmTechRoadProject.Startup;
 using RimWorld;
 using RimWorld.Planet;
-using RoadsOfTheRim;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
-using RotRConstructionMenu = RoadsOfTheRim.ConstructionMenu;
-using RotRMod = RoadsOfTheRim.RoadsOfTheRim;
 
 namespace OuterrealmTechRoadProject.Patches
 {
     /// <summary>
     /// 让 Roads of the Rim 的道路选择窗口按道路数量自适应宽度，并在道路过多时横向滚动。
+    /// 这里不能静态引用 RoadsOfTheRim 类型，否则 Rails-only 加载时本程序集会因缺少依赖而失败。
     /// </summary>
-    [HarmonyPatch(typeof(RotRConstructionMenu))]
     public static class Patch_RotR_ConstructionMenu
     {
         private const float OriginalWindowWidth = 804f;
@@ -28,23 +27,61 @@ namespace OuterrealmTechRoadProject.Patches
         private const float RoadCardHeight = 560f;
         private const float RoadIconSize = 128f;
 
-        private static readonly FieldInfo SiteField = AccessTools.Field(typeof(RotRConstructionMenu), "<site>P");
-        private static readonly FieldInfo CaravanField = AccessTools.Field(typeof(RotRConstructionMenu), "<caravan>P");
-        private static readonly FieldInfo BuildableRoadsField = AccessTools.Field(typeof(RotRConstructionMenu), "buildableRoads");
-        private static readonly ConditionalWeakTable<RotRConstructionMenu, ScrollState> ScrollStates =
-            new ConditionalWeakTable<RotRConstructionMenu, ScrollState>();
+        private static readonly ConditionalWeakTable<object, ScrollState> ScrollStates =
+            new ConditionalWeakTable<object, ScrollState>();
+
+        private static Type menuType;
+        private static Type siteType;
+        private static Type extensionType;
+        private static FieldInfo siteField;
+        private static FieldInfo caravanField;
+        private static FieldInfo buildableRoadsField;
+        private static FieldInfo siteRoadDefField;
+        private static FieldInfo techNeededToBuildField;
+        private static FieldInfo allResourcesAndWorkField;
+        private static FieldInfo settingsField;
+        private static FieldInfo baseEffortField;
+        private static PropertyInfo roadBuildingStateProperty;
+        private static PropertyInfo currentlyTargetingProperty;
+        private static PropertyInfo caravanProperty;
+        private static MethodInfo deleteConstructionSiteMethod;
+        private static MethodInfo targetLegMethod;
+        private static MethodInfo getCostMethod;
 
         private sealed class ScrollState
         {
             public Vector2 Position;
         }
 
+        public static void Apply(Harmony harmony)
+        {
+            if (RoadConstructionBackend.Selected != RoadConstructionBackendKind.RoadsOfTheRim)
+            {
+                return;
+            }
+
+            if (!TryInitialize())
+            {
+                Log.Warning("[OuterrealmTechRoadProject] RoadsOfTheRim is active, but its ConstructionMenu compatibility patch could not be initialized.");
+                return;
+            }
+
+            MethodInfo initialSizeGetter = AccessTools.PropertyGetter(menuType, "InitialSize");
+            MethodInfo doWindowContents = AccessTools.Method(menuType, nameof(Window.DoWindowContents), new[] { typeof(Rect) });
+            if (initialSizeGetter == null || doWindowContents == null)
+            {
+                Log.Warning("[OuterrealmTechRoadProject] RoadsOfTheRim ConstructionMenu methods were not found; skipping menu size patch.");
+                return;
+            }
+
+            harmony.Patch(initialSizeGetter, postfix: new HarmonyMethod(typeof(Patch_RotR_ConstructionMenu), nameof(InitialSizePostfix)));
+            harmony.Patch(doWindowContents, prefix: new HarmonyMethod(typeof(Patch_RotR_ConstructionMenu), nameof(DoWindowContentsPrefix)));
+        }
+
         /// <summary>
         /// 根据实际可显示道路数量扩展窗口，但不超过屏幕宽度。
         /// </summary>
-        [HarmonyPatch("get_InitialSize")]
-        [HarmonyPostfix]
-        public static void InitialSizePostfix(RotRConstructionMenu __instance, ref Vector2 __result)
+        public static void InitialSizePostfix(object __instance, ref Vector2 __result)
         {
             List<RoadDef> roads = GetBuildableRoads(__instance);
             int visibleRoads = CountVisibleRoads(roads);
@@ -64,9 +101,7 @@ namespace OuterrealmTechRoadProject.Patches
         /// <summary>
         /// 替换原窗口绘制逻辑，把道路列表放进横向滚动区域。
         /// </summary>
-        [HarmonyPatch(nameof(Window.DoWindowContents))]
-        [HarmonyPrefix]
-        public static bool DoWindowContentsPrefix(RotRConstructionMenu __instance, Rect inRect)
+        public static bool DoWindowContentsPrefix(object __instance, Rect inRect)
         {
             List<RoadDef> roads = GetBuildableRoads(__instance);
             if (roads == null)
@@ -74,13 +109,13 @@ namespace OuterrealmTechRoadProject.Patches
                 return true;
             }
 
-            RoadConstructionSite site = GetFieldValue<RoadConstructionSite>(SiteField, __instance);
-            Caravan caravan = GetFieldValue<Caravan>(CaravanField, __instance);
+            WorldObject site = GetFieldValue<WorldObject>(siteField, __instance);
+            Caravan caravan = GetFieldValue<Caravan>(caravanField, __instance);
 
             if (Event.current.isKey && site != null)
             {
-                RotRMod.DeleteConstructionSite((int)site.Tile);
-                __instance.Close();
+                DeleteConstructionSite(site.Tile);
+                ((Window)__instance).Close();
                 return false;
             }
 
@@ -89,6 +124,57 @@ namespace OuterrealmTechRoadProject.Patches
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
             return false;
+        }
+
+        private static bool TryInitialize()
+        {
+            menuType = AccessTools.TypeByName("RoadsOfTheRim.ConstructionMenu");
+            siteType = AccessTools.TypeByName("RoadsOfTheRim.RoadConstructionSite");
+            Type legType = AccessTools.TypeByName("RoadsOfTheRim.RoadConstructionLeg");
+            Type modType = AccessTools.TypeByName("RoadsOfTheRim.RoadsOfTheRim");
+            extensionType = AccessTools.TypeByName("RoadsOfTheRim.DefModExtension_RotR_RoadDef");
+
+            if (menuType == null || siteType == null || legType == null || modType == null || extensionType == null)
+            {
+                return false;
+            }
+
+            siteField = AccessTools.Field(menuType, "<site>P");
+            caravanField = AccessTools.Field(menuType, "<caravan>P");
+            buildableRoadsField = AccessTools.Field(menuType, "buildableRoads");
+            siteRoadDefField = AccessTools.Field(siteType, "roadDef");
+            techNeededToBuildField = AccessTools.Field(extensionType, "techNeededToBuild");
+            allResourcesAndWorkField = AccessTools.Field(extensionType, "allResourcesAndWork");
+            settingsField = AccessTools.Field(modType, "settings");
+            roadBuildingStateProperty = AccessTools.Property(modType, "RoadBuildingState");
+            if (roadBuildingStateProperty == null)
+            {
+                return false;
+            }
+
+            currentlyTargetingProperty = AccessTools.Property(roadBuildingStateProperty.PropertyType, "CurrentlyTargeting");
+            caravanProperty = AccessTools.Property(roadBuildingStateProperty.PropertyType, "Caravan");
+            deleteConstructionSiteMethod = AccessTools.Method(modType, "DeleteConstructionSite", new[] { typeof(int) });
+            targetLegMethod = AccessTools.Method(legType, "Target", new[] { siteType });
+            getCostMethod = AccessTools.Method(extensionType, "GetCost", new[] { typeof(string) });
+
+            Type settingsType = settingsField != null ? settingsField.FieldType : null;
+            baseEffortField = settingsType != null ? AccessTools.Field(settingsType, "BaseEffort") : null;
+
+            return siteField != null &&
+                   caravanField != null &&
+                   buildableRoadsField != null &&
+                   siteRoadDefField != null &&
+                   techNeededToBuildField != null &&
+                   allResourcesAndWorkField != null &&
+                   settingsField != null &&
+                   baseEffortField != null &&
+                   roadBuildingStateProperty != null &&
+                   currentlyTargetingProperty != null &&
+                   caravanProperty != null &&
+                   deleteConstructionSiteMethod != null &&
+                   targetLegMethod != null &&
+                   getCostMethod != null;
         }
 
         private static void DrawResourceIcons()
@@ -130,10 +216,10 @@ namespace OuterrealmTechRoadProject.Patches
         }
 
         private static void DrawRoadCards(
-            RotRConstructionMenu instance,
+            object instance,
             Rect inRect,
             List<RoadDef> roads,
-            RoadConstructionSite site,
+            WorldObject site,
             Caravan caravan)
         {
             int visibleRoads = CountVisibleRoads(roads);
@@ -151,7 +237,7 @@ namespace OuterrealmTechRoadProject.Patches
                 int roadIndex = 0;
                 foreach (RoadDef road in roads)
                 {
-                    DefModExtension_RotR_RoadDef extension = road.GetModExtension<DefModExtension_RotR_RoadDef>();
+                    object extension = GetRotRExtension(road);
                     if (!ShouldShowRoad(extension))
                     {
                         continue;
@@ -171,10 +257,10 @@ namespace OuterrealmTechRoadProject.Patches
 
         private static void DrawRoadCard(
             RoadDef road,
-            DefModExtension_RotR_RoadDef extension,
-            RoadConstructionSite site,
+            object extension,
+            WorldObject site,
             Caravan caravan,
-            RotRConstructionMenu instance)
+            object instance)
         {
             string iconPath = "UI/Commands/Build_" + road.defName;
             Texture2D icon = ContentFinder<Texture2D>.Get(iconPath, false) ?? BaseContent.WhiteTex;
@@ -183,11 +269,10 @@ namespace OuterrealmTechRoadProject.Patches
                 SoundDefOf.Tick_High.PlayOneShotOnCamera();
                 if (site != null)
                 {
-                    site.roadDef = road;
-                    instance.Close();
-                    RotRMod.RoadBuildingState.CurrentlyTargeting = site;
-                    RotRMod.RoadBuildingState.Caravan = caravan;
-                    RoadConstructionLeg.Target(site);
+                    siteRoadDefField.SetValue(site, road);
+                    ((Window)instance).Close();
+                    SetRoadBuildingState(site, caravan);
+                    targetLegMethod.Invoke(null, new[] { site });
                 }
             }
 
@@ -197,9 +282,9 @@ namespace OuterrealmTechRoadProject.Patches
             Text.Font = GameFont.Small;
 
             int resourceIndex = 0;
-            foreach (string resourceName in DefModExtension_RotR_RoadDef.allResourcesAndWork)
+            foreach (string resourceName in AllResourcesAndWork())
             {
-                int cost = extension.GetCost(resourceName);
+                int cost = GetCost(extension, resourceName);
                 string label = cost > 0 ? (cost * GetBaseEffortFactor()).ToString() : "-";
                 Widgets.Label(new Rect(0f, 176f + resourceIndex * 40f, RoadCardWidth, 32f), label);
                 resourceIndex++;
@@ -208,7 +293,14 @@ namespace OuterrealmTechRoadProject.Patches
 
         private static float GetBaseEffortFactor()
         {
-            return RotRMod.settings != null ? RotRMod.settings.BaseEffort / 10f : 1f;
+            object settings = settingsField.GetValue(null);
+            if (settings == null)
+            {
+                return 1f;
+            }
+
+            object baseEffort = baseEffortField.GetValue(settings);
+            return baseEffort is int value ? value / 10f : 1f;
         }
 
         private static int CountVisibleRoads(List<RoadDef> roads)
@@ -221,7 +313,7 @@ namespace OuterrealmTechRoadProject.Patches
             int count = 0;
             foreach (RoadDef road in roads)
             {
-                if (ShouldShowRoad(road.GetModExtension<DefModExtension_RotR_RoadDef>()))
+                if (ShouldShowRoad(GetRotRExtension(road)))
                 {
                     count++;
                 }
@@ -230,28 +322,75 @@ namespace OuterrealmTechRoadProject.Patches
             return count;
         }
 
-        private static bool ShouldShowRoad(DefModExtension_RotR_RoadDef extension)
+        private static bool ShouldShowRoad(object extension)
         {
             if (extension == null)
             {
                 return false;
             }
 
-            ResearchProjectDef techNeeded = extension.techNeededToBuild;
+            ResearchProjectDef techNeeded = techNeededToBuildField.GetValue(extension) as ResearchProjectDef;
             return techNeeded == null || techNeeded.IsFinished;
         }
 
-        private static List<RoadDef> GetBuildableRoads(RotRConstructionMenu instance)
+        private static object GetRotRExtension(RoadDef road)
         {
-            return GetFieldValue<List<RoadDef>>(BuildableRoadsField, instance);
+            if (road == null || road.modExtensions == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < road.modExtensions.Count; i++)
+            {
+                DefModExtension extension = road.modExtensions[i];
+                if (extension != null && extensionType.IsInstanceOfType(extension))
+                {
+                    return extension;
+                }
+            }
+
+            return null;
         }
 
-        private static T GetFieldValue<T>(FieldInfo field, RotRConstructionMenu instance) where T : class
+        private static string[] AllResourcesAndWork()
+        {
+            return allResourcesAndWorkField.GetValue(null) as string[] ?? Array.Empty<string>();
+        }
+
+        private static int GetCost(object extension, string resourceName)
+        {
+            object result = getCostMethod.Invoke(extension, new object[] { resourceName });
+            return result is int cost ? cost : 0;
+        }
+
+        private static List<RoadDef> GetBuildableRoads(object instance)
+        {
+            return buildableRoadsField.GetValue(instance) as List<RoadDef>;
+        }
+
+        private static T GetFieldValue<T>(FieldInfo field, object instance) where T : class
         {
             return field == null ? null : field.GetValue(instance) as T;
         }
 
-        private static ScrollState CreateScrollState(RotRConstructionMenu _)
+        private static void DeleteConstructionSite(PlanetTile tile)
+        {
+            deleteConstructionSiteMethod.Invoke(null, new object[] { (int)tile });
+        }
+
+        private static void SetRoadBuildingState(WorldObject site, Caravan caravan)
+        {
+            object roadBuildingState = roadBuildingStateProperty.GetValue(null, null);
+            if (roadBuildingState == null)
+            {
+                return;
+            }
+
+            currentlyTargetingProperty.SetValue(roadBuildingState, site, null);
+            caravanProperty.SetValue(roadBuildingState, caravan, null);
+        }
+
+        private static ScrollState CreateScrollState(object _)
         {
             return new ScrollState();
         }
