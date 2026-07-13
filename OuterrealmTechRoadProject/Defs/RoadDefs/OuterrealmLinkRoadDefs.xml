@@ -35,17 +35,6 @@
     </worldRenderSteps>
     <worldTransitionGroup>OuterrealmLink</worldTransitionGroup>
     <modExtensions>
-      <li Class="RoadsOfTheRim.DefModExtension_RotR_RoadDef">
-        <built>true</built>
-        <biomeModifier>1</biomeModifier>
-        <hillinessModifier>1</hillinessModifier>
-        <winterModifier>1</winterModifier>
-        <canBuildOnImpassable>true</canBuildOnImpassable>
-        <canBuildOnWater>true</canBuildOnWater>
-        <costs>
-          <Work>1</Work>
-        </costs>
-      </li>
       <li Class="OuterrealmTechRoadProject.Defs.DefModExtension_OuterrealmLinkRoad">
         <allowAnyTerrain>true</allowAnyTerrain>
         <strictEdgePassability>true</strictEdgePassability>
