@@ -55,7 +55,7 @@ namespace OuterrealmTechRoadProject.Patches
 
         public static void Apply(Harmony harmony)
         {
-            if (RoadConstructionBackend.Selected != RoadConstructionBackendKind.RoadsOfTheRim)
+            if (!RoadConstructionBackend.RoadsActive)
             {
                 return;
             }

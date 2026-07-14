@@ -40,6 +40,28 @@
         <strictEdgePassability>true</strictEdgePassability>
         <impassableTileMovementDifficulty>4</impassableTileMovementDifficulty>
       </li>
+      <li Class="RoadsOfTheRim.DefModExtension_RotR_RoadDef" MayRequire="Mlie.RoadsOfTheRim">
+        <built>true</built>
+        <biomeModifier>1</biomeModifier>
+        <hillinessModifier>1</hillinessModifier>
+        <winterModifier>1</winterModifier>
+        <canBuildOnImpassable>true</canBuildOnImpassable>
+        <canBuildOnWater>true</canBuildOnWater>
+        <costs>
+          <Work>1</Work>
+        </costs>
+      </li>
+      <li Class="RailsAndRoadsOfTheRim.DefModExtension_RotR_RoadDef" MayRequire="Mlie.RailsAndRoadsOfTheRim">
+        <built>true</built>
+        <biomeModifier>1</biomeModifier>
+        <hillinessModifier>1</hillinessModifier>
+        <winterModifier>1</winterModifier>
+        <canBuildOnImpassable>true</canBuildOnImpassable>
+        <canBuildOnWater>true</canBuildOnWater>
+        <costs>
+          <Work>1</Work>
+        </costs>
+      </li>
     </modExtensions>
   </RoadDef>
 </Defs>

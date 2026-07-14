@@ -57,7 +57,7 @@ namespace OuterrealmTechRoadProject.Startup
             warningLogged = true;
             if (RoadsActive && RailsActive)
             {
-                Log.Warning("[OuterrealmTechRoadProject] RoadsOfTheRim and RailsAndRoadsOfTheRim are both active. They are replacement-style road construction systems; OuterrealmTechRoadProject will prefer RailsAndRoadsOfTheRim compatibility data.");
+                Log.Warning("[OuterrealmTechRoadProject] RoadsOfTheRim and RailsAndRoadsOfTheRim are both active. They are replacement-style road construction systems; OuterrealmTechRoadProject will expose outerrealm links to both construction menus, but using both backends together is not recommended.");
             }
             else if (!RoadsActive && !RailsActive)
             {
