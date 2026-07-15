@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using RimWorld;
+using System.Runtime.CompilerServices;
 using Verse;
 using UnityEngine;
 using Verse.AI;
@@ -177,8 +178,27 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Skyfaller), "Tick")]
     public static class Patch_Skyfaller_Tick
     {
+        private enum SkyfallerRelation
+        {
+            Unknown,
+            Friendly,
+            Hostile
+        }
+
+        private sealed class SkyfallerRelationCacheEntry
+        {
+            public readonly SkyfallerRelation relation;
+
+            public SkyfallerRelationCacheEntry(Skyfaller skyfaller)
+            {
+                relation = ResolveSkyfallerRelation(skyfaller);
+            }
+        }
+
         private static Map cachedMap;
         private static OmniInterceptorTracker cachedTracker;
+        private static readonly ConditionalWeakTable<Skyfaller, SkyfallerRelationCacheEntry> relationCache =
+            new ConditionalWeakTable<Skyfaller, SkyfallerRelationCacheEntry>();
 
         public static void Postfix(Skyfaller __instance)
         {
@@ -194,26 +214,144 @@ namespace FullyAutomaticOmniCrafter
 
             if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return;
 
-            // 尝试获取派系信息
-            Thing searcher = null;
-            if (__instance.innerContainer != null && __instance.innerContainer.Count > 0)
+            // Skyfaller 同时覆盖降落和起飞动画。明确属于玩家或非敌对派系的运输物必须放行。
+            SkyfallerRelation relation = relationCache.GetValue(
+                __instance,
+                CreateRelationCacheEntry).relation;
+            if (relation == SkyfallerRelation.Friendly)
             {
-                searcher = __instance.innerContainer[0];
-                // 如果是 DropPodIncoming，内容物通常在 ActiveTransporter 里
-                if (searcher is ActiveTransporter at && at.Contents != null && at.Contents.innerContainer.Count > 0)
-                {
-                    searcher = at.Contents.innerContainer[0];
-                }
+                return;
             }
 
-            // 检查落点是否受保护
-            if (cachedTracker.IsCellProtected(__instance.Position, searcher, out var protector))
+            // 敌对和无法确认来源的物体继续采用保守策略拦截。
+            if (cachedTracker.IsCellWithinShield(__instance.Position, out var protector))
             {
                 if (protector.interceptSkyfallers)
                 {
                     RedirectOrDestroy(__instance, protector);
                 }
             }
+        }
+
+        private static SkyfallerRelationCacheEntry CreateRelationCacheEntry(Skyfaller skyfaller)
+        {
+            return new SkyfallerRelationCacheEntry(skyfaller);
+        }
+
+        private static SkyfallerRelation ResolveSkyfallerRelation(Skyfaller skyfaller)
+        {
+            SkyfallerRelation directRelation = RelationFromFaction(skyfaller?.Faction);
+            if (directRelation != SkyfallerRelation.Unknown)
+            {
+                return directRelation;
+            }
+
+            ThingOwner container = skyfaller?.innerContainer;
+            if (container == null || container.Count == 0)
+            {
+                return SkyfallerRelation.Unknown;
+            }
+
+            SkyfallerRelation contentsRelation = SkyfallerRelation.Unknown;
+            for (int i = 0; i < container.Count; i++)
+            {
+                SkyfallerRelation relation = ResolveTransportThingRelation(container[i], true);
+                if (relation == SkyfallerRelation.Hostile)
+                {
+                    return SkyfallerRelation.Hostile;
+                }
+
+                if (relation == SkyfallerRelation.Friendly)
+                {
+                    contentsRelation = SkyfallerRelation.Friendly;
+                }
+            }
+
+            return contentsRelation;
+        }
+
+        private static SkyfallerRelation ResolveTransportThingRelation(Thing thing, bool isCarrier)
+        {
+            if (thing == null)
+            {
+                return SkyfallerRelation.Unknown;
+            }
+
+            SkyfallerRelation directRelation = RelationFromFaction(thing.Faction);
+            if (directRelation != SkyfallerRelation.Unknown)
+            {
+                return directRelation;
+            }
+
+            CompShuttle shuttleComp = thing.TryGetComp<CompShuttle>();
+            if (shuttleComp != null && shuttleComp.IsPlayerShuttle)
+            {
+                return SkyfallerRelation.Friendly;
+            }
+
+            if (!(thing is ActiveTransporter transporter) || transporter.Contents == null)
+            {
+                return SkyfallerRelation.Unknown;
+            }
+
+            ActiveTransporterInfo info = transporter.Contents;
+            Thing shuttle = info.GetShuttle();
+            if (shuttle != null)
+            {
+                SkyfallerRelation shuttleRelation = ResolveTransportThingRelation(shuttle, true);
+                if (shuttleRelation != SkyfallerRelation.Unknown)
+                {
+                    return shuttleRelation;
+                }
+            }
+
+            // 原版玩家运输仓在 CompLaunchable.TryLaunch 中记录发射器 Def，
+            // 敌袭空投则通过派系的 dropPodIncoming 创建，不设置该字段。
+            if (isCarrier && info.sentTransporterDef != null)
+            {
+                return SkyfallerRelation.Friendly;
+            }
+
+            ThingOwner innerContainer = info.innerContainer;
+            if (innerContainer == null)
+            {
+                return SkyfallerRelation.Unknown;
+            }
+
+            SkyfallerRelation contentsRelation = SkyfallerRelation.Unknown;
+            for (int i = 0; i < innerContainer.Count; i++)
+            {
+                Thing containedThing = innerContainer[i];
+                if (containedThing == shuttle)
+                {
+                    continue;
+                }
+
+                SkyfallerRelation relation = ResolveTransportThingRelation(containedThing, false);
+                if (relation == SkyfallerRelation.Hostile)
+                {
+                    return SkyfallerRelation.Hostile;
+                }
+
+                if (relation == SkyfallerRelation.Friendly)
+                {
+                    contentsRelation = SkyfallerRelation.Friendly;
+                }
+            }
+
+            return contentsRelation;
+        }
+
+        private static SkyfallerRelation RelationFromFaction(Faction faction)
+        {
+            if (faction == null)
+            {
+                return SkyfallerRelation.Unknown;
+            }
+
+            return faction.HostileTo(Faction.OfPlayer)
+                ? SkyfallerRelation.Hostile
+                : SkyfallerRelation.Friendly;
         }
 
         private static void RedirectOrDestroy(Skyfaller skyfaller, CompOmniProjectileInterceptor protector)
