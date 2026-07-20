@@ -636,6 +636,129 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 开始点选建筑蓝图或未完工建筑，并在万能制造机附近生成其尚缺的全部材料。
+        /// </summary>
+        private void BeginConstructionSupplyTargeting()
+        {
+            TargetingParameters parameters = new TargetingParameters
+            {
+                canTargetBuildings = true,
+                mapObjectTargetsMustBeAutoAttackable = false,
+                validator = target => target.HasThing && IsConstructionSupplyTarget(target.Thing)
+            };
+
+            Find.Targeter.BeginTargeting(parameters, target =>
+            {
+                if (target.HasThing)
+                    SupplyConstructionMaterials(target.Thing);
+
+                // 与物质-能量转化仪的定点转化一致，完成一次后继续允许连续点选。
+                if (Spawned && !Destroyed)
+                    BeginConstructionSupplyTargeting();
+            });
+        }
+
+        private static bool IsConstructionSupplyTarget(Thing thing)
+        {
+            if (thing is Blueprint_Build blueprint)
+                return blueprint.BuildDef?.category == ThingCategory.Building;
+
+            if (thing is Frame frame)
+                return frame.BuildDef?.category == ThingCategory.Building;
+
+            return false;
+        }
+
+        private void SupplyConstructionMaterials(Thing target)
+        {
+            List<ThingDefCountClass> totalCost;
+            IHaulEnroute haulTarget;
+            Frame frame = target as Frame;
+
+            if (target is Blueprint_Build blueprint)
+            {
+                totalCost = blueprint.TotalMaterialCost();
+                haulTarget = blueprint;
+            }
+            else if (frame != null)
+            {
+                totalCost = frame.TotalMaterialCost();
+                haulTarget = frame;
+            }
+            else
+            {
+                return;
+            }
+
+            List<ThingDefCountClass> missingMaterials = new List<ThingDefCountClass>(totalCost.Count);
+            float totalPowerCost = 0f;
+            int totalItemCount = 0;
+
+            foreach (ThingDefCountClass material in totalCost)
+            {
+                int missingCount;
+                if (frame != null)
+                {
+                    // 同时扣除已送入框架和正在运送途中的材料，避免重复生成。
+                    missingCount = frame.ThingCountNeededWithEnroute(material.thingDef);
+                }
+                else
+                {
+                    int enrouteCount = Map.enrouteManager.GetEnroute(haulTarget, material.thingDef);
+                    missingCount = Mathf.Max(0, material.count - enrouteCount);
+                }
+
+                if (missingCount <= 0)
+                    continue;
+
+                missingMaterials.Add(new ThingDefCountClass(material.thingDef, missingCount));
+                totalItemCount += missingCount;
+                totalPowerCost += OmniPowerCost.CostWd(
+                    material.thingDef, null, QualityCategory.Normal, missingCount);
+            }
+
+            if (missingMaterials.Count == 0)
+            {
+                Messages.Message(
+                    "OmniCrafter_ConstructionSupplyNothingMissing".Translate(target.LabelShort),
+                    target,
+                    MessageTypeDefOf.NeutralEvent,
+                    false);
+                return;
+            }
+
+            PowerNet net = GetWorkingPowerNet();
+            if (!OmniPowerCost.TryDrainPower(net, totalPowerCost))
+            {
+                Messages.Message(
+                    "OmniCrafter_ConstructionSupplyNotEnoughPower".Translate(totalPowerCost.ToString("N1")),
+                    this,
+                    MessageTypeDefOf.RejectInput,
+                    false);
+                return;
+            }
+
+            foreach (ThingDefCountClass material in missingMaterials)
+            {
+                SpawnItems(
+                    material.thingDef,
+                    null,
+                    QualityCategory.Normal,
+                    material.count,
+                    OutputMode.DropNear);
+            }
+
+            Messages.Message(
+                "OmniCrafter_ConstructionSupplyCompleted".Translate(
+                    target.LabelShort,
+                    totalItemCount,
+                    totalPowerCost.ToString("N1")),
+                target,
+                MessageTypeDefOf.PositiveEvent,
+                false);
+        }
+
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (Gizmo g in base.GetGizmos()) yield return g;
@@ -646,6 +769,13 @@ namespace FullyAutomaticOmniCrafter
                 icon = FullyAutomaticOmniCrafterTex.IconLaunchReport,
                 action = () => Find.WindowStack.Add(new Dialog_OmniCrafter(this))
             };
+            yield return new Command_Action
+            {
+                defaultLabel = "OmniCrafter_ConstructionSupply".Translate(),
+                defaultDesc = "OmniCrafter_ConstructionSupplyDesc".Translate(),
+                icon = FullyAutomaticOmniCrafterTex.IconConstructionSupply,
+                action = BeginConstructionSupplyTargeting
+            };
         }
     }
 
@@ -654,5 +784,7 @@ namespace FullyAutomaticOmniCrafter
     {
         public static readonly Texture2D IconLaunchReport =
             ContentFinder<Texture2D>.Get("UI/Commands/OmniCrafter_LaunchReport", true) ?? BaseContent.WhiteTex;
+        public static readonly Texture2D IconConstructionSupply =
+            ContentFinder<Texture2D>.Get("UI/Commands/MatterEnergyConverter_Picker", true) ?? BaseContent.WhiteTex;
     }
 }
