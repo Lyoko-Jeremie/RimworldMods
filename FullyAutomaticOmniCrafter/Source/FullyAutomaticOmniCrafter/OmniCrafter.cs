@@ -644,6 +644,9 @@ namespace FullyAutomaticOmniCrafter
             TargetingParameters parameters = new TargetingParameters
             {
                 canTargetBuildings = true,
+                // 蓝图自身属于 Ethereal；原版通过 canTargetItems 的兜底分支接纳此类目标。
+                // validator 仍会将实际目标严格限制为建筑蓝图和施工框。
+                canTargetItems = true,
                 mapObjectTargetsMustBeAutoAttackable = false,
                 validator = target => target.HasThing && IsConstructionSupplyTarget(target.Thing)
             };
