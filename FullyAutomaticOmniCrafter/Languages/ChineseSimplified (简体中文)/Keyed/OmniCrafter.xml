@@ -8,6 +8,11 @@
     <OmniCrafter_Recent>最近生产</OmniCrafter_Recent>
     <OmniCrafter_SelectItem>从左侧列表选择物品以开始生产。</OmniCrafter_SelectItem>
     <OmniCrafter_NotEnoughPower>电网储能不足！</OmniCrafter_NotEnoughPower>
+    <OmniCrafter_ConstructionSupply>定点补充建材</OmniCrafter_ConstructionSupply>
+    <OmniCrafter_ConstructionSupplyDesc>点选一个正在建造的建筑蓝图或未完工建筑，消耗电能并在万能制造机附近生成其尚缺的全部建材。已送达和正在运送途中的材料不会重复生成。</OmniCrafter_ConstructionSupplyDesc>
+    <OmniCrafter_ConstructionSupplyNothingMissing>{0} 当前不缺少建材。</OmniCrafter_ConstructionSupplyNothingMissing>
+    <OmniCrafter_ConstructionSupplyNotEnoughPower>电量不足，需要 {0} Wd 才能生成全部所缺建材。</OmniCrafter_ConstructionSupplyNotEnoughPower>
+    <OmniCrafter_ConstructionSupplyCompleted>已为 {0} 生成 {1} 件所缺建材，消耗 {2} Wd。</OmniCrafter_ConstructionSupplyCompleted>
     <!-- 顶部工具栏 -->
     <OmniCrafter_Search>搜索：</OmniCrafter_Search>
     <OmniCrafter_PinyinSearchOn>拼音搜索：开</OmniCrafter_PinyinSearchOn>

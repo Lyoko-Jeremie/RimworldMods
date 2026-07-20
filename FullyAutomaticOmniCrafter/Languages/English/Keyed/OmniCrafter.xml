@@ -8,6 +8,11 @@
     <OmniCrafter_Recent>Recent</OmniCrafter_Recent>
     <OmniCrafter_SelectItem>Select an item from the list to get started.</OmniCrafter_SelectItem>
     <OmniCrafter_NotEnoughPower>Not enough stored power in the grid!</OmniCrafter_NotEnoughPower>
+    <OmniCrafter_ConstructionSupply>Supply Construction Materials</OmniCrafter_ConstructionSupply>
+    <OmniCrafter_ConstructionSupplyDesc>Select a building blueprint or unfinished building to consume power and generate all of its missing construction materials near the OmniCrafter. Delivered and en-route materials are not duplicated.</OmniCrafter_ConstructionSupplyDesc>
+    <OmniCrafter_ConstructionSupplyNothingMissing>{0} is not missing any construction materials.</OmniCrafter_ConstructionSupplyNothingMissing>
+    <OmniCrafter_ConstructionSupplyNotEnoughPower>Not enough power. Generating all missing construction materials requires {0} Wd.</OmniCrafter_ConstructionSupplyNotEnoughPower>
+    <OmniCrafter_ConstructionSupplyCompleted>Generated {1} missing construction materials for {0}, consuming {2} Wd.</OmniCrafter_ConstructionSupplyCompleted>
     <!-- Top bar -->
     <OmniCrafter_Search>Search:</OmniCrafter_Search>
     <OmniCrafter_PinyinSearchOn>Pinyin Search: On</OmniCrafter_PinyinSearchOn>
