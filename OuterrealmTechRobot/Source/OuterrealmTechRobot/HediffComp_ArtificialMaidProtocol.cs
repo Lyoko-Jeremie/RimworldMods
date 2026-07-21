@@ -52,41 +52,24 @@ namespace OuterrealmTechRobot
             }
 
             // 2. 核心逻辑判断
-            // 判定当前状态：
-            // - isIdleTag: 逻辑层面的闲置（根据 lastJobTag == Idle 判定，涵盖游荡移动和等待）
-            // - isWaitingIdle: 真正的等待闲置（没活干，或者正在原地游荡等待）
+            // Idle 标签也可能被其他 Mod 用于有实际行为的工作，不能据此强制结束当前 Job。
+            // 这里只允许原版的纯等待、游荡 Job 参与工作覆盖检查。
             Job curJob = pawn.CurJob;
-            bool isIdleTag = pawn.mindState.IsIdle;
-            bool isMoving = pawn.pather != null && pawn.pather.Moving;
-            bool isIdle = (curJob == null || curJob.def == JobDefOf.Wait_Wander || isIdleTag);
-            bool isWaitingIdle = isIdle && !isMoving;
-
-            if (isWaitingIdle)
+            if (CanCheckForJobOverride(curJob))
             {
-                // 【积极抢先】打断正在进行的闲置等待。
-                // 仅在真的原地闲置时触发重新寻找 Job
-                if (curJob != null)
-                {
-                    pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
-                }
+                // 使用原生覆盖流程寻找并切换工作。该流程会正确回收未采用的 Job，
+                // 并以 InterruptOptional 结束闲置 Job，避免直接强制清理其他 Mod 的工作。
+                pawn.jobs.CheckForJobOverride();
 
-                // 【自适应退避】因为被唤醒后依然闲置（说明没活干），增加下次扫描的间隔时间
-                currentInterval = Math.Min(currentInterval + IdlePenalty, MaxInterval);
-            }
-            else if (isIdle && isMoving)
-            {
-                // 【游荡保护 + 紧急打断】
-                // 如果正在游荡移动，为了避免“走走停停”，我们不盲目打断。
-                // 但是，如果此时出现了“真正的任务”（如灭火、救人、工作），我们需要立即打断游荡。
-                if (HasRealWork(pawn))
-                {
-                    pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
-                    currentInterval = MinInterval;
-                }
+                // 如果仍然没有获得实际工作，则逐步降低扫描频率。
+                currentInterval = CanCheckForJobOverride(pawn.CurJob)
+                    ? Math.Min(currentInterval + IdlePenalty, MaxInterval)
+                    : MinInterval;
             }
             else
             {
-                // 【敏锐模式】正在干活中（非闲置任务）！将间隔重置为最小，这样她手头工作一干完就能立刻接下一个
+                // 【敏锐模式】正在干活中（非纯等待/游荡任务），不主动打断。
+                // 将间隔重置为最小，这样手头工作结束后能尽快检查下一个任务。
                 // 注意：这里重置的是下一次“检查”的间隔，而不是立刻检查
                 currentInterval = MinInterval;
             }
@@ -100,37 +83,16 @@ namespace OuterrealmTechRobot
         }
 
         /// <summary>
-        /// 深度检查是否有真实的工作可做（排除游荡和等待）
+        /// 判断当前 Job 是否允许通过原生流程检查工作覆盖。
         /// </summary>
-        private bool HasRealWork(Pawn pawn)
+        private static bool CanCheckForJobOverride(Job job)
         {
-            if (pawn.thinker?.MainThinkNodeRoot == null) return false;
+            if (job == null) return true;
 
-            try
-            {
-                // 使用思维树预判下一个任务
-                ThinkResult thinkResult = pawn.thinker.MainThinkNodeRoot.TryIssueJobPackage(pawn, new JobIssueParams());
-                if (thinkResult.IsValid && thinkResult.Job != null)
-                {
-                    JobDef def = thinkResult.Job.def;
-                    // 排除非工作性任务（与展示柜检测逻辑一致）
-                    if (def != JobDefOf.Wait &&
-                        def != JobDefOf.Wait_MaintainPosture &&
-                        def != JobDefOf.Wait_SafeTemperature &&
-                        def != JobDefOf.Wait_Wander &&
-                        def != JobDefOf.GotoWander /*&&
-                        (ArtificialMaidDefOf.EnterDisplayCase == null || def != ArtificialMaidDefOf.EnterDisplayCase)*/)
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // 忽略检查期间的异常，确保不跳红字
-            }
-
-            return false;
+            JobDef def = job.def;
+            return def == JobDefOf.Wait ||
+                   def == JobDefOf.Wait_Wander ||
+                   def == JobDefOf.GotoWander;
         }
 
 
