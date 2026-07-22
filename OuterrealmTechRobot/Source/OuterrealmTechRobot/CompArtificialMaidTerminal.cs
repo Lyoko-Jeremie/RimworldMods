@@ -118,11 +118,8 @@ namespace OuterrealmTechRobot
             list.Add(new FloatMenuOption("TeleportArtificialMaidLabel".Translate(), delegate
             {
                 pawn.Position = this.parent.Position;
-                pawn.pather.StopDead();
-                if (pawn.pather.nextCell.IsValid)
-                {
-                    pawn.pather.nextCell = pawn.Position;
-                }
+                // 使用原版传送收尾，统一重置寻路与绘制状态，并中断传送前的旧任务。
+                pawn.Notify_Teleported();
 
                 Messages.Message("ArtificialMaidTeleportedMessage".Translate(pawn.LabelShort),
                     MessageTypeDefOf.PositiveEvent);
