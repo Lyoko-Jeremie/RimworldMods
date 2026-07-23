@@ -53,18 +53,30 @@ namespace OuterrealmTechRobot
 
             // 2. 核心逻辑判断
             // Idle 标签也可能被其他 Mod 用于有实际行为的工作，不能据此强制结束当前 Job。
-            // 这里只允许原版的纯等待、游荡 Job 参与工作覆盖检查。
+            // 这里只允许原版的纯等待、游荡 Job，以及已明确兼容的 DSFI 空闲 Job 参与工作覆盖检查。
             Job curJob = pawn.CurJob;
+            bool isDsfiIdleJob = DSFICompatibility.IsIdleJob(curJob);
             if (CanCheckForJobOverride(curJob))
             {
                 // 使用原生覆盖流程寻找并切换工作。该流程会正确回收未采用的 Job，
                 // 并以 InterruptOptional 结束闲置 Job，避免直接强制清理其他 Mod 的工作。
-                pawn.jobs.CheckForJobOverride();
+                if (isDsfiIdleJob)
+                {
+                    // 检查期间临时屏蔽 DSFI 空闲节点，只允许真实工作覆盖当前空闲行为。
+                    DSFICompatibility.CheckForRealJobOverride(pawn);
+                }
+                else
+                {
+                    pawn.jobs.CheckForJobOverride();
+                }
 
                 // 如果仍然没有获得实际工作，则逐步降低扫描频率。
-                currentInterval = CanCheckForJobOverride(pawn.CurJob)
-                    ? Math.Min(currentInterval + IdlePenalty, MaxInterval)
-                    : MinInterval;
+                // DSFI 的行为通常持续较久，必须保持敏锐扫描，避免新工作等待整个行为结束。
+                currentInterval = isDsfiIdleJob && DSFICompatibility.IsIdleJob(pawn.CurJob)
+                    ? MinInterval
+                    : CanCheckForJobOverride(pawn.CurJob)
+                        ? Math.Min(currentInterval + IdlePenalty, MaxInterval)
+                        : MinInterval;
             }
             else
             {
@@ -92,7 +104,8 @@ namespace OuterrealmTechRobot
             JobDef def = job.def;
             return def == JobDefOf.Wait ||
                    def == JobDefOf.Wait_Wander ||
-                   def == JobDefOf.GotoWander;
+                   def == JobDefOf.GotoWander ||
+                   DSFICompatibility.IsIdleJob(job);
         }
 
 

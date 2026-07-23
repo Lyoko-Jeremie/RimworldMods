@@ -36,6 +36,7 @@ namespace OuterrealmTechRobot
         {
             var harmony = new Harmony("Jeremie.Outerrealm.Tech.ArtificialMaid");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+            DSFICompatibility.Initialize(harmony);
 
             LongEventHandler.ExecuteWhenFinished(() =>
             {

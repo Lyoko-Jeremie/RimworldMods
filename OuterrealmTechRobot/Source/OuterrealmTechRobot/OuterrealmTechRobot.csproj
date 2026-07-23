@@ -78,6 +78,7 @@
     <Compile Include="CompArtificialMaid.cs" />
     <Compile Include="CompArtificialMaidPacker.cs" />
     <Compile Include="CompArtificialMaidTerminal.cs" />
+    <Compile Include="DSFICompatibility.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
     <Compile Include="Incident\ArtificialMaidEscortUtility.cs" />
