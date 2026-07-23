@@ -85,10 +85,19 @@ namespace FullyAutomaticOmniCrafter
                 }
             } while (unlockedAny);
 
+            // Rimatomics 使用独立于原版 ResearchManager 的研究系统。
+            // 兼容层会动态处理全部已加载项目，因此也支持其他 Mod 添加的 Rimatomics 研究。
+            int rimatomicsUnlockCount = RimatomicsResearchCompat.FinishAllResearch();
+
             // 发送提示
-            if (unlockCount > 0)
+            if (unlockCount > 0 || rimatomicsUnlockCount > 0)
             {
-                Messages.Message("OmniCrafter_OkUnlockAvailableResearch".Translate(unlockCount), MessageTypeDefOf.PositiveEvent, false);
+                string message = RimatomicsResearchCompat.IsModActive
+                    ? "OmniCrafter_OkUnlockAvailableResearchWithRimatomics"
+                        .Translate(unlockCount, rimatomicsUnlockCount)
+                    : "OmniCrafter_OkUnlockAvailableResearch".Translate(unlockCount);
+
+                Messages.Message(message, MessageTypeDefOf.PositiveEvent, false);
             }
             else
             {
