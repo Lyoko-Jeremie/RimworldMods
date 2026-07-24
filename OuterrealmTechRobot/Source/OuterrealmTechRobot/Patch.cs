@@ -209,6 +209,7 @@ namespace OuterrealmTechRobot
             {
                 var mapComp = ArtificialMaidMapComponent.Get(map);
                 mapComp?.RegisterMaid(__instance);
+                ArtificialMaidBackupCloud.NotifyMaidSpawned(__instance);
             }
         }
     }
@@ -234,11 +235,25 @@ namespace OuterrealmTechRobot
         {
             if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
+                ArtificialMaidBackupCloud.NotifyMaidDespawned(__instance);
                 if (__instance.Map != null)
                 {
                     var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
                     mapComp?.UnregisterMaid(__instance);
                 }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.Discard))]
+    public static class Patch_Pawn_Discard
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Pawn __instance)
+        {
+            if (__instance.def == ArtificialMaidDefOf.ArtificialMaid && !__instance.Destroyed)
+            {
+                ArtificialMaidBackupCloud.NotifyMaidDiscarding(__instance);
             }
         }
     }

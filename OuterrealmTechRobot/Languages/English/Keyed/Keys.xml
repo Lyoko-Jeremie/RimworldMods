@@ -85,4 +85,62 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <EnableHuntModeLabel>Enable Hunt Mode</EnableHuntModeLabel>
     <EnableHuntModeDesc>If enabled, this artificial maid will automatically teleport to and melee attack all hostile units on the map until no enemies remain or the mode is manually disabled. The mode will automatically disable if no targets are found for a while.</EnableHuntModeDesc>
     <HuntModeAutoDisabled>Artificial Maid {0} has automatically disabled Hunt Mode (no targets found).</HuntModeAutoDisabled>
+
+    <ArtificialMaidBackupCloudWindowTitle>Artificial Maid Backup Cloud</ArtificialMaidBackupCloudWindowTitle>
+    <ArtificialMaidBackupCloudSummary>Registered: {0}　Valid backups: {1}　Needs attention: {2}</ArtificialMaidBackupCloudSummary>
+    <ArtificialMaidBackupCloudColumnMaid>Maid</ArtificialMaidBackupCloudColumnMaid>
+    <ArtificialMaidBackupCloudColumnLocation>Location</ArtificialMaidBackupCloudColumnLocation>
+    <ArtificialMaidBackupCloudColumnObjectState>Object state</ArtificialMaidBackupCloudColumnObjectState>
+    <ArtificialMaidBackupCloudColumnBackup>Backup</ArtificialMaidBackupCloudColumnBackup>
+    <ArtificialMaidBackupCloudObjectStateLabel>Object state</ArtificialMaidBackupCloudObjectStateLabel>
+    <ArtificialMaidBackupCloudLocationLabel>Location</ArtificialMaidBackupCloudLocationLabel>
+    <ArtificialMaidBackupCloudLastSeenLabel>Last seen</ArtificialMaidBackupCloudLastSeenLabel>
+    <ArtificialMaidBackupCloudBackupStateLabel>Backup state</ArtificialMaidBackupCloudBackupStateLabel>
+    <ArtificialMaidBackupCloudLastBackupLabel>Last successful backup</ArtificialMaidBackupCloudLastBackupLabel>
+    <ArtificialMaidBackupCloudErrorLabel>Failure stage: {0}\n{1}</ArtificialMaidBackupCloudErrorLabel>
+    <ArtificialMaidBackupCloudRescan>Rescan</ArtificialMaidBackupCloudRescan>
+    <ArtificialMaidBackupCloudBackupNow>Back up now</ArtificialMaidBackupCloudBackupNow>
+    <ArtificialMaidBackupCloudBackupSucceeded>Artificial Maid {0} was backed up successfully.</ArtificialMaidBackupCloudBackupSucceeded>
+    <ArtificialMaidBackupCloudLocate>Locate maid</ArtificialMaidBackupCloudLocate>
+    <ArtificialMaidBackupCloudRecallOriginal>Recall original object</ArtificialMaidBackupCloudRecallOriginal>
+    <ArtificialMaidBackupCloudResurrectOriginal>Resurrect original object</ArtificialMaidBackupCloudResurrectOriginal>
+    <ArtificialMaidBackupCloudRebuild>Rebuild from backup</ArtificialMaidBackupCloudRebuild>
+    <ArtificialMaidBackupCloudUnavailable>Recovery unavailable</ArtificialMaidBackupCloudUnavailable>
+    <ArtificialMaidBackupCloudConfirmRecovery>Perform “{1}” for {0}?\nCurrent backup state: {2}</ArtificialMaidBackupCloudConfirmRecovery>
+    <ArtificialMaidBackupCloudRecoveredMessage>Artificial Maid {0} has been recovered.</ArtificialMaidBackupCloudRecoveredMessage>
+    <ArtificialMaidBackupCloudNever>Never</ArtificialMaidBackupCloudNever>
+    <ArtificialMaidBackupCloudNoRegistry>No Artificial Maid identity record exists.</ArtificialMaidBackupCloudNoRegistry>
+    <ArtificialMaidBackupCloudServiceUnavailable>The backup cloud service is unavailable.</ArtificialMaidBackupCloudServiceUnavailable>
+    <ArtificialMaidBackupCloudInvalidMaid>The target is not a valid Artificial Maid.</ArtificialMaidBackupCloudInvalidMaid>
+    <ArtificialMaidBackupCloudBackupFailedReason>Backup failed at stage: {0}</ArtificialMaidBackupCloudBackupFailedReason>
+    <ArtificialMaidBackupCloudSerialConflict>Multiple maids share this serial number. Automatic recovery is disabled.</ArtificialMaidBackupCloudSerialConflict>
+
+    <ArtificialMaidBackupCloudObjectState_Unknown>Unknown</ArtificialMaidBackupCloudObjectState_Unknown>
+    <ArtificialMaidBackupCloudObjectState_ActiveOnMap>Active on map</ArtificialMaidBackupCloudObjectState_ActiveOnMap>
+    <ArtificialMaidBackupCloudObjectState_ActiveInCaravan>Active in caravan</ArtificialMaidBackupCloudObjectState_ActiveInCaravan>
+    <ArtificialMaidBackupCloudObjectState_Contained>Contained</ArtificialMaidBackupCloudObjectState_Contained>
+    <ArtificialMaidBackupCloudObjectState_WorldPawn>World pawn</ArtificialMaidBackupCloudObjectState_WorldPawn>
+    <ArtificialMaidBackupCloudObjectState_Dead>Dead</ArtificialMaidBackupCloudObjectState_Dead>
+    <ArtificialMaidBackupCloudObjectState_Destroyed>Destroyed</ArtificialMaidBackupCloudObjectState_Destroyed>
+    <ArtificialMaidBackupCloudObjectState_Discarded>Discarded</ArtificialMaidBackupCloudObjectState_Discarded>
+    <ArtificialMaidBackupCloudObjectState_Transitioning>Transitioning</ArtificialMaidBackupCloudObjectState_Transitioning>
+    <ArtificialMaidBackupCloudObjectState_Unrooted>Unrooted reference</ArtificialMaidBackupCloudObjectState_Unrooted>
+    <ArtificialMaidBackupCloudObjectState_Missing>Missing</ArtificialMaidBackupCloudObjectState_Missing>
+    <ArtificialMaidBackupCloudObjectState_SerialConflict>Serial conflict</ArtificialMaidBackupCloudObjectState_SerialConflict>
+
+    <ArtificialMaidBackupCloudBackupState_NeverAttempted>Never attempted</ArtificialMaidBackupCloudBackupState_NeverAttempted>
+    <ArtificialMaidBackupCloudBackupState_Capturing>Capturing</ArtificialMaidBackupCloudBackupState_Capturing>
+    <ArtificialMaidBackupCloudBackupState_Valid>Full backup valid</ArtificialMaidBackupCloudBackupState_Valid>
+    <ArtificialMaidBackupCloudBackupState_ValidPartial>Core backup valid</ArtificialMaidBackupCloudBackupState_ValidPartial>
+    <ArtificialMaidBackupCloudBackupState_Stale>Previous backup valid; latest attempt failed</ArtificialMaidBackupCloudBackupState_Stale>
+    <ArtificialMaidBackupCloudBackupState_Failed>Backup failed</ArtificialMaidBackupCloudBackupState_Failed>
+    <ArtificialMaidBackupCloudBackupState_Corrupted>Backup corrupted</ArtificialMaidBackupCloudBackupState_Corrupted>
+    <ArtificialMaidBackupCloudBackupState_Incompatible>Version incompatible</ArtificialMaidBackupCloudBackupState_Incompatible>
+
+    <ArtificialMaidBackupCloudLocation_WorldPawns>World pawns</ArtificialMaidBackupCloudLocation_WorldPawns>
+    <ArtificialMaidBackupCloudLocation_Unrooted>Not connected to the game object tree</ArtificialMaidBackupCloudLocation_Unrooted>
+    <ArtificialMaidBackupCloudLocation_Missing>Object not found</ArtificialMaidBackupCloudLocation_Missing>
+    <ArtificialMaidBackupCloudLocation_Destroyed>Object destroyed</ArtificialMaidBackupCloudLocation_Destroyed>
+    <ArtificialMaidBackupCloudLocation_Discarded>Object discarded</ArtificialMaidBackupCloudLocation_Discarded>
+    <ArtificialMaidBackupCloudLocation_SerialConflict>Duplicate serial number detected</ArtificialMaidBackupCloudLocation_SerialConflict>
 </LanguageData>

@@ -85,4 +85,62 @@
     <EnableHuntModeLabel>启用猎杀模式</EnableHuntModeLabel>
     <EnableHuntModeDesc>启用后，人造人女仆将自动瞬移并近战攻击地图上的所有敌对单位，直到没有敌人或手动关闭。如果长时间没有发现目标，将自动关闭该模式。</EnableHuntModeDesc>
     <HuntModeAutoDisabled>人造人女仆 {0} 已自动关闭猎杀模式（未发现目标）。</HuntModeAutoDisabled>
+
+    <ArtificialMaidBackupCloudWindowTitle>人造人女仆备份云</ArtificialMaidBackupCloudWindowTitle>
+    <ArtificialMaidBackupCloudSummary>已登记：{0}　有效备份：{1}　需要处理：{2}</ArtificialMaidBackupCloudSummary>
+    <ArtificialMaidBackupCloudColumnMaid>女仆</ArtificialMaidBackupCloudColumnMaid>
+    <ArtificialMaidBackupCloudColumnLocation>当前位置</ArtificialMaidBackupCloudColumnLocation>
+    <ArtificialMaidBackupCloudColumnObjectState>对象状态</ArtificialMaidBackupCloudColumnObjectState>
+    <ArtificialMaidBackupCloudColumnBackup>备份状态</ArtificialMaidBackupCloudColumnBackup>
+    <ArtificialMaidBackupCloudObjectStateLabel>对象状态</ArtificialMaidBackupCloudObjectStateLabel>
+    <ArtificialMaidBackupCloudLocationLabel>当前位置</ArtificialMaidBackupCloudLocationLabel>
+    <ArtificialMaidBackupCloudLastSeenLabel>最后发现</ArtificialMaidBackupCloudLastSeenLabel>
+    <ArtificialMaidBackupCloudBackupStateLabel>备份状态</ArtificialMaidBackupCloudBackupStateLabel>
+    <ArtificialMaidBackupCloudLastBackupLabel>最后成功备份</ArtificialMaidBackupCloudLastBackupLabel>
+    <ArtificialMaidBackupCloudErrorLabel>失败阶段：{0}\n{1}</ArtificialMaidBackupCloudErrorLabel>
+    <ArtificialMaidBackupCloudRescan>重新扫描</ArtificialMaidBackupCloudRescan>
+    <ArtificialMaidBackupCloudBackupNow>立即备份</ArtificialMaidBackupCloudBackupNow>
+    <ArtificialMaidBackupCloudBackupSucceeded>已成功备份人造人女仆 {0}。</ArtificialMaidBackupCloudBackupSucceeded>
+    <ArtificialMaidBackupCloudLocate>定位女仆</ArtificialMaidBackupCloudLocate>
+    <ArtificialMaidBackupCloudRecallOriginal>召回原对象</ArtificialMaidBackupCloudRecallOriginal>
+    <ArtificialMaidBackupCloudResurrectOriginal>复活原对象</ArtificialMaidBackupCloudResurrectOriginal>
+    <ArtificialMaidBackupCloudRebuild>从备份重建</ArtificialMaidBackupCloudRebuild>
+    <ArtificialMaidBackupCloudUnavailable>当前不可恢复</ArtificialMaidBackupCloudUnavailable>
+    <ArtificialMaidBackupCloudConfirmRecovery>确定要对 {0} 执行“{1}”吗？\n当前备份状态：{2}</ArtificialMaidBackupCloudConfirmRecovery>
+    <ArtificialMaidBackupCloudRecoveredMessage>人造人女仆 {0} 已恢复。</ArtificialMaidBackupCloudRecoveredMessage>
+    <ArtificialMaidBackupCloudNever>从未</ArtificialMaidBackupCloudNever>
+    <ArtificialMaidBackupCloudNoRegistry>没有女仆身份记录。</ArtificialMaidBackupCloudNoRegistry>
+    <ArtificialMaidBackupCloudServiceUnavailable>备份云服务当前不可用。</ArtificialMaidBackupCloudServiceUnavailable>
+    <ArtificialMaidBackupCloudInvalidMaid>目标不是有效的人造人女仆。</ArtificialMaidBackupCloudInvalidMaid>
+    <ArtificialMaidBackupCloudBackupFailedReason>备份失败，阶段：{0}</ArtificialMaidBackupCloudBackupFailedReason>
+    <ArtificialMaidBackupCloudSerialConflict>检测到多个相同序列号的女仆，已禁止自动恢复。</ArtificialMaidBackupCloudSerialConflict>
+
+    <ArtificialMaidBackupCloudObjectState_Unknown>未知</ArtificialMaidBackupCloudObjectState_Unknown>
+    <ArtificialMaidBackupCloudObjectState_ActiveOnMap>地图活动中</ArtificialMaidBackupCloudObjectState_ActiveOnMap>
+    <ArtificialMaidBackupCloudObjectState_ActiveInCaravan>远行队活动中</ArtificialMaidBackupCloudObjectState_ActiveInCaravan>
+    <ArtificialMaidBackupCloudObjectState_Contained>容器收纳中</ArtificialMaidBackupCloudObjectState_Contained>
+    <ArtificialMaidBackupCloudObjectState_WorldPawn>世界 Pawn</ArtificialMaidBackupCloudObjectState_WorldPawn>
+    <ArtificialMaidBackupCloudObjectState_Dead>已死亡</ArtificialMaidBackupCloudObjectState_Dead>
+    <ArtificialMaidBackupCloudObjectState_Destroyed>已销毁</ArtificialMaidBackupCloudObjectState_Destroyed>
+    <ArtificialMaidBackupCloudObjectState_Discarded>已丢弃</ArtificialMaidBackupCloudObjectState_Discarded>
+    <ArtificialMaidBackupCloudObjectState_Transitioning>转移中</ArtificialMaidBackupCloudObjectState_Transitioning>
+    <ArtificialMaidBackupCloudObjectState_Unrooted>失联对象</ArtificialMaidBackupCloudObjectState_Unrooted>
+    <ArtificialMaidBackupCloudObjectState_Missing>完全缺失</ArtificialMaidBackupCloudObjectState_Missing>
+    <ArtificialMaidBackupCloudObjectState_SerialConflict>序列号冲突</ArtificialMaidBackupCloudObjectState_SerialConflict>
+
+    <ArtificialMaidBackupCloudBackupState_NeverAttempted>从未尝试</ArtificialMaidBackupCloudBackupState_NeverAttempted>
+    <ArtificialMaidBackupCloudBackupState_Capturing>正在备份</ArtificialMaidBackupCloudBackupState_Capturing>
+    <ArtificialMaidBackupCloudBackupState_Valid>完整有效</ArtificialMaidBackupCloudBackupState_Valid>
+    <ArtificialMaidBackupCloudBackupState_ValidPartial>核心备份有效</ArtificialMaidBackupCloudBackupState_ValidPartial>
+    <ArtificialMaidBackupCloudBackupState_Stale>旧备份有效，新备份失败</ArtificialMaidBackupCloudBackupState_Stale>
+    <ArtificialMaidBackupCloudBackupState_Failed>备份失败</ArtificialMaidBackupCloudBackupState_Failed>
+    <ArtificialMaidBackupCloudBackupState_Corrupted>备份损坏</ArtificialMaidBackupCloudBackupState_Corrupted>
+    <ArtificialMaidBackupCloudBackupState_Incompatible>版本不兼容</ArtificialMaidBackupCloudBackupState_Incompatible>
+
+    <ArtificialMaidBackupCloudLocation_WorldPawns>世界 Pawn 列表</ArtificialMaidBackupCloudLocation_WorldPawns>
+    <ArtificialMaidBackupCloudLocation_Unrooted>未连接到游戏对象树</ArtificialMaidBackupCloudLocation_Unrooted>
+    <ArtificialMaidBackupCloudLocation_Missing>无法找到对象</ArtificialMaidBackupCloudLocation_Missing>
+    <ArtificialMaidBackupCloudLocation_Destroyed>对象已销毁</ArtificialMaidBackupCloudLocation_Destroyed>
+    <ArtificialMaidBackupCloudLocation_Discarded>对象已丢弃</ArtificialMaidBackupCloudLocation_Discarded>
+    <ArtificialMaidBackupCloudLocation_SerialConflict>发现重复序列号</ArtificialMaidBackupCloudLocation_SerialConflict>
 </LanguageData>
