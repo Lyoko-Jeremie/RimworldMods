@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using RimWorld;
+using RimWorld.Planet;
+using System;
 using Verse;
 
 namespace OuterrealmTechRobot
@@ -22,9 +24,6 @@ namespace OuterrealmTechRobot
                 return;
             }
 
-            // 扣除电量
-            ConsumePowerFromNet(net, PowerRequired);
-
             base.Notify_IterationCompleted(billDoer, ingredients);
             List<TraitDef> prohibitedTraits = new List<TraitDef>();
             foreach (var t in DefDatabase<TraitDef>.AllDefs)
@@ -35,6 +34,9 @@ namespace OuterrealmTechRobot
                 }
             }
 
+            Pawn pawn = null;
+            try
+            {
             PawnGenerationRequest request = new PawnGenerationRequest(
                 PawnKindDef.Named("ArtificialMaidKind"),
                 billDoer.Faction,
@@ -68,7 +70,7 @@ namespace OuterrealmTechRobot
                 null, // fixedChronologicalAge (固定实际年龄)
                 Gender.Female
             );
-            Pawn pawn = PawnGenerator.GeneratePawn(request);
+            pawn = PawnGenerator.GeneratePawn(request);
 
             // 强制背景限制 (虽然XML已有过滤，但这里做最终确保)
             if (pawn.story != null)
@@ -216,7 +218,28 @@ namespace OuterrealmTechRobot
             // RJW 支持：添加性器官
             RJWCompatibility.InitializeMaidOrgans(pawn);
 
-            GenSpawn.Spawn(pawn, billDoer.Position, billDoer.Map);
+            bool spawned = false;
+            try
+            {
+                spawned = ArtificialMaidTransferUtility.TrySpawnNear(
+                    pawn, billDoer.Map, billDoer.Position, out _);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("[OuterrealmTechRobot] Exception while spawning fabricated Artificial Maid: " + ex);
+            }
+
+            // 不能只相信 GenSpawn 的返回值；SpawnSetup 也可能因无效 Pawn 状态将其再次反生成。
+            if (!spawned ||
+                !ArtificialMaidTransferUtility.IsSafelySpawned(pawn, billDoer.Map) ||
+                pawn.def != ArtificialMaidDefOf.ArtificialMaid)
+            {
+                DiscardFailedPawn(pawn);
+                Log.Error("[OuterrealmTechRobot] Fabricated Artificial Maid failed final spawn validation.");
+                Messages.Message("ArtificialMaidFabricationFailed".Translate(),
+                    MessageTypeDefOf.RejectInput);
+                return;
+            }
 
             // 确保技能全满且双火
             if (pawn.skills != null)
@@ -228,8 +251,48 @@ namespace OuterrealmTechRobot
                 }
             }
 
+            // 只有 Pawn 已确认生成并完成初始化后，才提交电量消耗和成功消息。
+            ConsumePowerFromNet(net, PowerRequired);
             Messages.Message("ArtificialMaidFabricated".Translate(pawn.LabelShort), pawn,
                 MessageTypeDefOf.PositiveEvent);
+            }
+            catch (Exception ex)
+            {
+                DiscardFailedPawn(pawn);
+                Log.Error("[OuterrealmTechRobot] Failed to fabricate Artificial Maid: " + ex);
+                Messages.Message("ArtificialMaidFabricationFailed".Translate(),
+                    MessageTypeDefOf.RejectInput);
+            }
+        }
+
+        private static void DiscardFailedPawn(Pawn pawn)
+        {
+            if (pawn == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (pawn.Spawned)
+                {
+                    pawn.DeSpawnOrDeselect();
+                }
+
+                // 不调用 Pawn.Destroy，避免为从未成功制造的 Pawn 建立云端备份。
+                if (Find.WorldPawns.Contains(pawn))
+                {
+                    Find.WorldPawns.RemoveAndDiscardPawnViaGC(pawn);
+                }
+                else if (!pawn.Discarded && pawn.ParentHolder == null)
+                {
+                    Find.WorldPawns.PassToWorld(pawn, PawnDiscardDecideMode.Discard);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("[OuterrealmTechRobot] Failed to discard invalid fabricated Artificial Maid: " + ex);
+            }
         }
 
         private void ConsumePowerFromNet(PowerNet net, float amount)

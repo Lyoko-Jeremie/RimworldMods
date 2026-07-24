@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>人造人女仆 {0} 已成功制造。</ArtificialMaidFabricated>
+    <ArtificialMaidFabricationFailed>人造人女仆制造失败：完成的单位无法安全生成到地图上。</ArtificialMaidFabricationFailed>
     <ArtificialMaid_NotEnoughPower>存储电量不足。制造需要连接的网络中至少有 {0} Wd 的存储电量。</ArtificialMaid_NotEnoughPower>
     <ArtificialMaid_DeathLetter_Label>系统崩溃</ArtificialMaid_DeathLetter_Label>
     <ArtificialMaid_DeathLetter_Text>人造人女仆 {0} 的核心逻辑系统已崩溃。它将尝试进入自动修复序列。</ArtificialMaid_DeathLetter_Text>

@@ -24,20 +24,61 @@ namespace OuterrealmTechRobot
             {
                 ArtificialMaidTransportBox box = (ArtificialMaidTransportBox)unpack.actor.CurJob.targetA.Thing;
                 ThingOwner container = box.GetDirectlyHeldThings();
-                if (container.Count > 0)
+                Map map = box.Map;
+                IntVec3 boxPosition = box.Position;
+
+                if (container.Count == 0 || !(container[0] is Pawn maid) ||
+                    maid.def != ArtificialMaidDefOf.ArtificialMaid)
                 {
-                    Pawn maid = (Pawn)container[0];
-                    container.Remove(maid);
-                    GenSpawn.Spawn(maid, box.Position, box.Map);
-                    
-                    if (maid.Faction != Faction.OfPlayer)
+                    ArtificialMaidTransferUtility.LogTransferFailure("Unpack.ValidateContents", null,
+                        "Transport box does not contain a valid Artificial Maid.");
+                    Messages.Message("CannotUnpackArtificialMaid".Translate(), box, MessageTypeDefOf.RejectInput);
+                    return;
+                }
+
+                // 不提前 Remove；GenSpawn 通过前置检查后会自动从 ThingOwner 移除 Pawn。
+                bool spawned = ArtificialMaidTransferUtility.TrySpawnNear(maid, map, boxPosition, out _);
+                if (!spawned)
+                {
+                    bool recovered = container.Contains(maid) && maid.ParentHolder == box;
+                    if (!recovered && !maid.Spawned && maid.ParentHolder == null)
                     {
-                        maid.SetFaction(Faction.OfPlayer);
+                        recovered = ArtificialMaidTransferUtility.TryAddToContainer(maid, container, box);
                     }
 
-                    Messages.Message("ArtificialMaidUnpacked".Translate(maid.LabelShort), maid, MessageTypeDefOf.PositiveEvent);
+                    if (!recovered)
+                    {
+                        recovered = ArtificialMaidTransferUtility.TrySpawnNear(maid, map, boxPosition, out _);
+                    }
+
+                    if (!recovered)
+                    {
+                        recovered = ArtificialMaidTransferUtility.TryKeepInWorld(maid);
+                    }
+
+                    ArtificialMaidTransferUtility.LogTransferFailure("Unpack.SpawnMaid", maid,
+                        "Unable to spawn maid near the transport box. Recovery=" + recovered);
+                    Messages.Message("CannotUnpackArtificialMaid".Translate(), box, MessageTypeDefOf.RejectInput);
+                    return;
                 }
+
+                if (maid.Faction != Faction.OfPlayer)
+                {
+                    maid.SetFaction(Faction.OfPlayer);
+                }
+
+                // 只有女仆已经确认生成且箱子已经为空时，才能销毁运输箱。
+                if (container.Count != 0)
+                {
+                    ArtificialMaidTransferUtility.LogTransferFailure("Unpack.Finalize", maid,
+                        "Maid spawned but the source container is not empty.");
+                    Messages.Message("CannotUnpackArtificialMaid".Translate(), box, MessageTypeDefOf.RejectInput);
+                    return;
+                }
+
                 box.Destroy();
+                Messages.Message("ArtificialMaidUnpacked".Translate(maid.LabelShort), maid,
+                    MessageTypeDefOf.PositiveEvent);
             };
             unpack.defaultCompleteMode = ToilCompleteMode.Instant;
             yield return unpack;

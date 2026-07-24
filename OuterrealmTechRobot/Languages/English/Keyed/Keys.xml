@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>Artificial Maid {0} has been successfully fabricated.</ArtificialMaidFabricated>
+    <ArtificialMaidFabricationFailed>Artificial Maid fabrication failed because the completed unit could not be placed safely.</ArtificialMaidFabricationFailed>
     <ArtificialMaid_NotEnoughPower>Insufficient stored electrical energy. Requires {0} Wd of stored power in the connected power net.</ArtificialMaid_NotEnoughPower>
     <ArtificialMaid_DeathLetter_Label>System Crash</ArtificialMaid_DeathLetter_Label>
     <ArtificialMaid_DeathLetter_Text>Artificial Maid {0}'s core logic system has crashed. It will attempt to enter auto-repair sequence.</ArtificialMaid_DeathLetter_Text>

@@ -73,6 +73,7 @@
     <Compile Include="ArtificialMaidHairs\HairOffsetExtension.cs" />
     <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
+    <Compile Include="ArtificialMaidTransferUtility.cs" />
     <Compile Include="ArtificialMaidTransportBox.cs" />
     <Compile Include="Building_ArtificialMaidDisplayCase.cs" />
     <Compile Include="CompArtificialMaid.cs" />

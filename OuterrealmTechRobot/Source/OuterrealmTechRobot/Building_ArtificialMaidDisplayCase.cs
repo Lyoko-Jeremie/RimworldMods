@@ -414,13 +414,60 @@ namespace OuterrealmTechRobot
             prepare.initAction = delegate
             {
                 Pawn actor = prepare.actor;
-                Building_ArtificialMaidDisplayCase pod = (Building_ArtificialMaidDisplayCase)actor.CurJob.targetA.Thing;
-                if (!pod.HasAnyContents)
+                Building_ArtificialMaidDisplayCase pod =
+                    actor.CurJob?.targetA.Thing as Building_ArtificialMaidDisplayCase;
+
+                // 到达后重新验证，避免移动期间展示柜被占用或失效。
+                if (pod == null ||
+                    !pod.Spawned ||
+                    pod.Destroyed ||
+                    pod.HasAnyContents ||
+                    actor.Map == null ||
+                    pod.Map != actor.Map ||
+                    !pod.Accepts(actor))
                 {
-                    // 将女仆存入容器
-                    actor.DeSpawnOrDeselect();
-                    pod.TryAcceptThing(actor);
+                    Messages.Message("CannotEnterDisplayCase".Translate(), actor,
+                        MessageTypeDefOf.RejectInput);
+                    return;
                 }
+
+                Map originalMap = actor.Map;
+                IntVec3 originalPosition = actor.Position;
+
+                actor.DeSpawnOrDeselect();
+                bool accepted;
+                try
+                {
+                    accepted = pod.TryAcceptThing(actor);
+                }
+                catch (Exception ex)
+                {
+                    accepted = false;
+                    Log.Error("[OuterrealmTechRobot] Display case threw while accepting Artificial Maid: " + ex);
+                }
+                bool safelyContained = accepted &&
+                                       actor.ParentHolder == pod &&
+                                       pod.ContainedThing == actor &&
+                                       !actor.Spawned;
+
+                if (safelyContained)
+                {
+                    return;
+                }
+
+                // 接收失败时优先恢复到原地图，防止形成无容器、未生成的游离 Pawn。
+                bool recovered = actor.ParentHolder != null ||
+                                 ArtificialMaidTransferUtility.TrySpawnNear(actor, originalMap,
+                                     originalPosition, out _);
+                if (!recovered)
+                {
+                    recovered = ArtificialMaidTransferUtility.TryKeepInWorld(actor);
+                }
+
+                ArtificialMaidTransferUtility.LogTransferFailure("EnterDisplayCase", actor,
+                    "Display case rejected the maid. Recovery=" + recovered);
+                Messages.Message("CannotEnterDisplayCase".Translate(), actor,
+                    MessageTypeDefOf.RejectInput);
             };
             prepare.defaultCompleteMode = ToilCompleteMode.Instant;
             yield return prepare;
