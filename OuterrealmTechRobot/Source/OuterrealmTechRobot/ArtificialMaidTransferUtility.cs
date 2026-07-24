@@ -19,8 +19,7 @@ namespace OuterrealmTechRobot
                    !pawn.Destroyed &&
                    !pawn.Dead &&
                    pawn.Spawned &&
-                   pawn.Map == map &&
-                   pawn.ParentHolder == map;
+                   pawn.Map == map;
         }
 
         /// <summary>

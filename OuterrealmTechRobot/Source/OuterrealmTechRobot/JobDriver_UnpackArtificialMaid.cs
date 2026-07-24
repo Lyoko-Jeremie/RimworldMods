@@ -40,6 +40,12 @@ namespace OuterrealmTechRobot
                 bool spawned = ArtificialMaidTransferUtility.TrySpawnNear(maid, map, boxPosition, out _);
                 if (!spawned)
                 {
+                    // 某些补丁可能改变 GenSpawn 的返回路径；以 Pawn 的实际地图状态为准。
+                    spawned = ArtificialMaidTransferUtility.IsSafelySpawned(maid, map);
+                }
+
+                if (!spawned)
+                {
                     bool recovered = container.Contains(maid) && maid.ParentHolder == box;
                     if (!recovered && !maid.Spawned && maid.ParentHolder == null)
                     {
@@ -57,7 +63,8 @@ namespace OuterrealmTechRobot
                     }
 
                     ArtificialMaidTransferUtility.LogTransferFailure("Unpack.SpawnMaid", maid,
-                        "Unable to spawn maid near the transport box. Recovery=" + recovered);
+                        "Unable to spawn maid near the transport box. Recovery=" + recovered +
+                        ", " + ArtificialMaidTransferUtility.DescribeSpawnState(maid, map));
                     Messages.Message("CannotUnpackArtificialMaid".Translate(), box, MessageTypeDefOf.RejectInput);
                     return;
                 }
