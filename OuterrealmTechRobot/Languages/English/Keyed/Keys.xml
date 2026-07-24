@@ -62,6 +62,7 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
 
     <ArtificialMaidDisplayCaseEject>Wake up Artificial Maid</ArtificialMaidDisplayCaseEject>
     <ArtificialMaidDisplayCaseEjectDesc>Manually wake up and eject the Artificial Maid from the display case, and disable her auto-hibernate.</ArtificialMaidDisplayCaseEjectDesc>
+    <ArtificialMaidDisplayCaseAutofixDesc>Fully repair the Artificial Maid currently in this display case and replenish her resources.</ArtificialMaidDisplayCaseAutofixDesc>
 
     <ImmediateHibernateLabel>Hibernate Immediately</ImmediateHibernateLabel>
     <ImmediateHibernateDesc>Force this maid to stop working and immediately enter the nearest empty display case, and disable auto-wake for that case.</ImmediateHibernateDesc>

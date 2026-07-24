@@ -285,9 +285,28 @@ namespace OuterrealmTechRobot
                 icon = ArtificialMaidTex.IconAutoWake
             };
             
-            // 如果柜内有物且属于玩家派系，显示手动弹出按钮
-            if (HasAnyContents && Faction == Faction.OfPlayer)
+            // 如果柜内有人造人女仆且属于玩家派系，显示修复与手动弹出按钮
+            if (ContainedThing is Pawn containedMaid &&
+                containedMaid.def == ArtificialMaidDefOf.ArtificialMaid &&
+                Faction == Faction.OfPlayer)
             {
+                yield return new Command_Action
+                {
+                    defaultLabel = "AutofixReplenishLabel".Translate(),
+                    defaultDesc = "ArtificialMaidDisplayCaseAutofixDesc".Translate(),
+                    icon = ArtificialMaidTex.IconModifyMaid,
+                    action = delegate
+                    {
+                        CompArtificialMaid comp = CompArtificialMaid.GetCompCached(containedMaid);
+                        if (comp != null)
+                        {
+                            comp.FullRepair();
+                            Messages.Message("ArtificialMaidFixedMessage".Translate(containedMaid.LabelShort),
+                                MessageTypeDefOf.PositiveEvent);
+                        }
+                    }
+                };
+
                 yield return new Command_Action
                 {
                     defaultLabel = "ArtificialMaidDisplayCaseEject".Translate(),
