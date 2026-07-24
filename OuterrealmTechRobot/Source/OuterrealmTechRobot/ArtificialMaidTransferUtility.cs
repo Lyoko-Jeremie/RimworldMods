@@ -52,10 +52,9 @@ namespace OuterrealmTechRobot
                     ? preferredCell
                     : map.Center;
 
-                if (!CellFinder.TryFindRandomSpawnCellForPawnNear(root, map, out IntVec3 cell))
-                {
-                    return false;
-                }
+                // 与原版 RandomSpawnCellForPawnNear 保持一致：附近搜索失败时退回首选格。
+                // Pawn 可以与制造者短暂处于同一格，生成后的寻路器会自行恢复位置。
+                IntVec3 cell = CellFinder.RandomSpawnCellForPawnNear(root, map);
 
                 Thing spawned = GenSpawn.Spawn(pawn, cell, map);
                 if (spawned == pawn && IsSafelySpawned(pawn, map))
@@ -66,10 +65,31 @@ namespace OuterrealmTechRobot
 
                 return false;
             }
-            catch
+            catch (System.Exception ex)
             {
+                LogTransferFailure("SpawnNear", pawn, ex.ToString());
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 生成校验失败时输出各项状态，避免只有笼统错误而无法定位。
+        /// </summary>
+        public static string DescribeSpawnState(Pawn pawn, Map expectedMap)
+        {
+            if (pawn == null)
+            {
+                return "pawn=null";
+            }
+
+            return "destroyed=" + pawn.Destroyed +
+                   ", dead=" + pawn.Dead +
+                   ", discarded=" + pawn.Discarded +
+                   ", spawned=" + pawn.Spawned +
+                   ", mapMatches=" + (pawn.Map == expectedMap) +
+                   ", parentHolder=" + pawn.ParentHolder?.ToStringSafe() +
+                   ", def=" + pawn.def?.defName +
+                   ", kindDef=" + pawn.kindDef?.defName;
         }
 
         /// <summary>

@@ -234,8 +234,11 @@ namespace OuterrealmTechRobot
                 !ArtificialMaidTransferUtility.IsSafelySpawned(pawn, billDoer.Map) ||
                 pawn.def != ArtificialMaidDefOf.ArtificialMaid)
             {
+                string spawnState =
+                    ArtificialMaidTransferUtility.DescribeSpawnState(pawn, billDoer.Map);
                 DiscardFailedPawn(pawn);
-                Log.Error("[OuterrealmTechRobot] Fabricated Artificial Maid failed final spawn validation.");
+                Log.Error("[OuterrealmTechRobot] Fabricated Artificial Maid failed final spawn validation. " +
+                          "trySpawnResult=" + spawned + ", " + spawnState);
                 Messages.Message("ArtificialMaidFabricationFailed".Translate(),
                     MessageTypeDefOf.RejectInput);
                 return;
