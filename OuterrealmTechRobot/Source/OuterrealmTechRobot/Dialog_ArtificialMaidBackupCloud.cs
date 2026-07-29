@@ -18,10 +18,10 @@ namespace OuterrealmTechRobot
         private readonly List<ArtificialMaidBackupCloud.MaidRegistryRecord> sortedRecords =
             new List<ArtificialMaidBackupCloud.MaidRegistryRecord>();
 
-        private const float RowHeight = 54f;
-        private const float DetailWidth = 310f;
+        private const float RowHeight = 58f;
+        private const float DetailWidth = 370f;
 
-        public override Vector2 InitialSize => new Vector2(980f, 680f);
+        public override Vector2 InitialSize => new Vector2(1080f, 720f);
 
         public Dialog_ArtificialMaidBackupCloud(Map targetMap, IntVec3 targetPosition)
         {
@@ -189,7 +189,10 @@ namespace OuterrealmTechRobot
                     selectedSerialNumber = record.SerialNumber;
                 }
 
-                string maidLabel = record.Label + "\n" + record.SerialNumber;
+                string duplicateSuffix = record.IsDuplicate
+                    ? " [" + (string)"ArtificialMaidDuplicate".Translate() + "]"
+                    : "";
+                string maidLabel = record.Label + duplicateSuffix + "\n" + record.SerialNumber;
                 DrawColumns(row.ContractedBy(4f), maidLabel,
                     TranslateLocation(record),
                     TranslateObjectState(record.ObjectState),
@@ -242,7 +245,21 @@ namespace OuterrealmTechRobot
             Text.Font = GameFont.Small;
             y += 38f;
 
+            // 身份信息置于最前，方便同名女仆、原体与复制体之间进行明确区分。
             DrawDetailLine(ref y, inner, "ArtificialMaidSerialNumber".Translate(), record.SerialNumber);
+            DrawDetailLine(ref y, inner, "ArtificialMaidManufactureDate".Translate(),
+                FormatTick(record.ManufactureTick));
+            DrawDetailLine(ref y, inner, "ArtificialMaidJoinDate".Translate(),
+                FormatTick(record.JoinPlayerTick));
+            DrawDetailLine(ref y, inner, "ArtificialMaidDuplicate".Translate(),
+                record.IsDuplicate ? "Yes".Translate() : "No".Translate());
+            if (record.IsDuplicate)
+            {
+                DrawDetailLine(ref y, inner, "ArtificialMaidOriginSerialNumber".Translate(),
+                    record.OriginSerialNumber);
+            }
+
+            y += 6f;
             DrawDetailLine(ref y, inner, "ArtificialMaidBackupCloudObjectStateLabel".Translate(),
                 TranslateObjectState(record.ObjectState));
             DrawDetailLine(ref y, inner, "ArtificialMaidBackupCloudLocationLabel".Translate(),
@@ -321,7 +338,7 @@ namespace OuterrealmTechRobot
 
         private static void DrawDetailLine(ref float y, Rect inner, string label, string value)
         {
-            Rect labelRect = new Rect(inner.x, y, 112f, 25f);
+            Rect labelRect = new Rect(inner.x, y, 145f, 25f);
             Rect valueRect = new Rect(labelRect.xMax, y, inner.xMax - labelRect.xMax, 25f);
             GUI.color = ColoredText.SubtleGrayColor;
             Widgets.Label(labelRect, label);
