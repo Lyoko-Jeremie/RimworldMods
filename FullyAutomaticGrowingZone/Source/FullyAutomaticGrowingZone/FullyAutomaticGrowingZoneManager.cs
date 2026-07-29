@@ -63,6 +63,9 @@ namespace FullyAutomaticGrowingZone
 
             // 保存虚拟仓库
             Scribe_Collections.Look(ref virtualYieldBuffer, "virtualYieldBuffer", LookMode.Def, LookMode.Value);
+            
+            // 保存待播种队列
+            Scribe_Collections.Look(ref pendingCellsToSow, "pendingCellsToSow", LookMode.Value);
 
             if (Scribe.mode == LoadSaveMode.Saving)
             {
@@ -78,6 +81,7 @@ namespace FullyAutomaticGrowingZone
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 virtualYieldBuffer = virtualYieldBuffer ?? new Dictionary<ThingDef, int>();
+                pendingCellsToSow = pendingCellsToSow ?? new HashSet<IntVec3>();
                 autoSowZones = new HashSet<Zone_Growing>();
                 autoHarvestZones = new HashSet<Zone_Growing>();
                 autoStoreZones = new HashSet<Zone_Growing>();
@@ -106,12 +110,25 @@ namespace FullyAutomaticGrowingZone
 
                 RebuildActiveCache();
 
-                // 读档后，为所有自动区的格子做一次全面扫描
+                // 读档后，为所有自动播种区的格子做一次扫描，确保即使存档里漏了也能补上
                 foreach (var zone in autoSowZones)
                 {
                     foreach (IntVec3 cell in zone.Cells)
                     {
                         pendingCellsToSow.Add(cell);
+                    }
+                }
+
+                // 关键修复：读档后，为所有自动收获区的格子做一次成熟度扫描
+                foreach (var zone in autoHarvestZones)
+                {
+                    foreach (IntVec3 cell in zone.Cells)
+                    {
+                        Plant plant = cell.GetPlant(map);
+                        if (plant != null && !plant.Destroyed && plant.Growth >= 1f)
+                        {
+                            TryEnqueueHarvest(plant);
+                        }
                     }
                 }
             }
