@@ -8,6 +8,7 @@
         <displayCategory>ArtificialMaid</displayCategory>
         <displayOrderInCategory>1</displayOrderInCategory>
         <skinColorOverride>(250, 240, 240)</skinColorOverride>
+        <bodyType>Thin</bodyType>
         <statOffsets>
             <MeleeHitChance>20</MeleeHitChance>
             <MeleeDodgeChance>20</MeleeDodgeChance>
