@@ -36,6 +36,12 @@ namespace OuterrealmTechRobot
                         "ArtificialMaid_ResurrectionLetter_Text".Translate(pawn.LabelShort),
                         LetterDefOf.PositiveEvent, pawn);
                 }
+                else
+                {
+                    Find.LetterStack.ReceiveLetter("ArtificialMaid_ResurrectionFailedLetter_Label".Translate(),
+                        "ArtificialMaid_ResurrectionFailedLetter_Text".Translate(pawn.LabelShort),
+                        LetterDefOf.NegativeEvent, pawn);
+                }
 
                 return;
             }
