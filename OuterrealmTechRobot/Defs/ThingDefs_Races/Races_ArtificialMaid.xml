@@ -43,7 +43,7 @@
                 </raceGenes>
             </generalSettings>
             <graphicPaths>
-                <body>Things/Pawn/Humanlike/Bodies/</body>
+                <body>Things/Pawn/Humanlike/Bodies/Naked_Thin</body>
                 <head>Things/Pawn/Humanlike/Heads/</head>
                 <skinShader>CutoutSkin</skinShader>
             </graphicPaths>

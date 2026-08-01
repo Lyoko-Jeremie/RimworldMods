@@ -7,6 +7,8 @@
     <ArtificialMaid_DeathLetter_Text>Artificial Maid {0}'s core logic system has crashed. It will attempt to enter auto-repair sequence.</ArtificialMaid_DeathLetter_Text>
     <ArtificialMaid_ResurrectionLetter_Label>Reboot Complete</ArtificialMaid_ResurrectionLetter_Label>
     <ArtificialMaid_ResurrectionLetter_Text>Artificial Maid {0} has completed self-repair and rebooted its system.</ArtificialMaid_ResurrectionLetter_Text>
+    <ArtificialMaid_ResurrectionFailedLetter_Label>Reboot Failed</ArtificialMaid_ResurrectionFailedLetter_Label>
+    <ArtificialMaid_ResurrectionFailedLetter_Text>Artificial Maid {0}'s recovery system failed to resurrect it.</ArtificialMaid_ResurrectionFailedLetter_Text>
     <ArtificialMaid_RepairMessage>Artificial Maid {0} is performing body repair procedures.</ArtificialMaid_RepairMessage>
 
     <ModifyArtificialMaidLabel>Modify Artificial Maid</ModifyArtificialMaidLabel>
