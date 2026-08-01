@@ -6,6 +6,7 @@
         <race>ArtificialMaid</race>
         <combatPower>9999</combatPower>
         <isFighter>true</isFighter>
+        <ignoresPainShock>true</ignoresPainShock>
         <apparelIgnoreSeasons>true</apparelIgnoreSeasons>
         <forceNormalGearQuality>true</forceNormalGearQuality>
         <apparelAllowHeadgearChance>1.0</apparelAllowHeadgearChance>

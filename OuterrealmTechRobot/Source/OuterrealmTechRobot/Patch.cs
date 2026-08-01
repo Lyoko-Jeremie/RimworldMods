@@ -305,7 +305,7 @@ namespace OuterrealmTechRobot
         }
     }
 
-    // Method 1: Intercept Pawn.Kill
+    // 拦截最终死亡：只修复有害健康状态，不清空全部 Hediff。
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.Kill))]
     public static class Patch_Pawn_Kill
     {
@@ -314,18 +314,10 @@ namespace OuterrealmTechRobot
         {
             if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
-                ArtificialMaidBackupCloud.NotifyMaidKilled(__instance);
-
-                // 被 Kill 时也尝试注销，确保计数准确（即使它不死）
-                if (__instance.Map != null)
-                {
-                    var mapComp = ArtificialMaidMapComponent.Get(__instance.Map);
-                    mapComp?.UnregisterMaid(__instance);
-                }
-
-                __instance.health.Reset();
-                Find.LetterStack.ReceiveLetter("ArtificialMaid_DeathLetter_Label".Translate(),
-                    "ArtificialMaid_DeathLetter_Text".Translate(__instance.LabelShort), LetterDefOf.Death, __instance);
+                ArtificialMaidHealthUtility.RepairHarmfulHealthConditions(__instance);
+                CompArtificialMaid.GetCompCached(__instance)?.EnsureRecoveryHediff();
+                Messages.Message("ArtificialMaid_RepairMessage".Translate(__instance.LabelShort), __instance,
+                    MessageTypeDefOf.NeutralEvent);
                 return false;
             }
 
@@ -350,7 +342,7 @@ namespace OuterrealmTechRobot
         }
     }
 
-    // Method 3: Strengthening - Patch CheckForStateChange to prevent death state
+    // 在原版写入倒地或死亡状态前消除有害状态，保留全部良性 Hediff。
     [HarmonyPatch(typeof(Pawn_HealthTracker), "CheckForStateChange")]
     public static class Patch_Pawn_HealthTracker_CheckForStateChange
     {
@@ -359,9 +351,15 @@ namespace OuterrealmTechRobot
         {
             if (___pawn != null && ___pawn.def == ArtificialMaidDefOf.ArtificialMaid)
             {
+                // 修复过程中 RemoveHediff 会递归调用本方法；中间态不应再次结算倒地或死亡。
+                if (ArtificialMaidHealthUtility.IsRepairing(___pawn))
+                {
+                    return false;
+                }
+
                 if (__instance.ShouldBeDead() || __instance.ShouldBeDowned())
                 {
-                    __instance.Reset();
+                    ArtificialMaidHealthUtility.RepairHarmfulHealthConditions(___pawn);
                     return false;
                 }
             }

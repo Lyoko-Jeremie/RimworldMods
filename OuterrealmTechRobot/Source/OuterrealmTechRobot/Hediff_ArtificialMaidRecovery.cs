@@ -46,8 +46,8 @@ namespace OuterrealmTechRobot
                 return;
             }
 
-            // 统一使用人造人女仆组件中的完整修复逻辑
-            CompArtificialMaid.GetCompCached(pawn)?.FullRepair();
+            // 常规循环只处理健康和资源，避免每 250 tick 重复修改背景、特质及第三方组件。
+            CompArtificialMaid.GetCompCached(pawn)?.ReplenishResources();
         }
 
         public override bool ShouldRemove => false;

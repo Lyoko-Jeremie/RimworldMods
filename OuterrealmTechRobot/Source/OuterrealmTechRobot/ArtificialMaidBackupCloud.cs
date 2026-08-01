@@ -10,7 +10,7 @@ namespace OuterrealmTechRobot
 {
     /// <summary>
     /// 人造人女仆的云端备份组件。
-    /// 该组件随 Game 存档保存，定期为每个人造人女仆保存一份独立 Pawn 快照。
+    /// 该组件随 Game 存档保存，定期为每个人造人女仆保存稳定的核心数据和装备快照。
     /// 当原 Pawn 死亡或被其他 Mod 强制 Destroy 后，可以通过女仆自身序列号恢复原对象或重建新 Pawn。
     /// </summary>
     public class ArtificialMaidBackupCloud : GameComponent
@@ -354,7 +354,6 @@ namespace OuterrealmTechRobot
                 return false;
             }
 
-            Pawn snapshot = ClonePawn(pawn, out string cloneError);
             GearBackup gearBackup = null;
             string gearError = null;
             try
@@ -366,19 +365,13 @@ namespace OuterrealmTechRobot
                 gearError = ex.ToString();
             }
 
-            // 即使完整 Pawn 克隆失败，核心快照仍能重建可用女仆。
+            // 只保存稳定的 DTO 核心快照。直接深存 Pawn 会复制 Hediff、Gene、Verb 等 loadID，
+            // 与活动 Pawn 冲突并污染后续存档。
             BackupRecord candidate = new BackupRecord();
-            candidate.UpdateFrom(pawn, snapshot, coreSnapshot, gearBackup, serialNumber, comp,
-                cloneError, gearError);
+            candidate.UpdateFrom(pawn, coreSnapshot, gearBackup, serialNumber, comp, gearError);
 
             ReplaceBackupRecord(serialNumber, candidate);
             registryRecord.CompleteBackup(candidate, ticksGame + BackupIntervalTicks);
-
-            if (!string.IsNullOrEmpty(cloneError))
-            {
-                Log.Warning("[OuterrealmTechRobot] Artificial Maid full snapshot failed; core snapshot retained. pawn=" +
-                            pawn.ToStringSafe() + ", error=" + cloneError);
-            }
 
             if (!string.IsNullOrEmpty(gearError))
             {
@@ -409,86 +402,6 @@ namespace OuterrealmTechRobot
             }
 
             backupsBySerial[serialNumber] = candidate;
-        }
-
-        private static Pawn ClonePawn(Pawn source)
-        {
-            return ClonePawn(source, out _);
-        }
-
-        private static Pawn ClonePawn(Pawn source, out string error)
-        {
-            error = null;
-            if (source == null)
-            {
-                error = "Source pawn is null.";
-                return null;
-            }
-
-            // RimWorld 没有公开的 Pawn 深拷贝 API。
-            // 这里通过临时 XML 文件走一遍 Scribe 深度保存/读取，得到结构完整的独立 Pawn。
-            string filePath = Path.Combine(GenFilePaths.TempFolderPath, "OuterrealmTechRobot_ArtificialMaidBackup_" + Guid.NewGuid().ToString("N") + ".xml");
-            Pawn pawnToSave = source;
-            Pawn clone = null;
-
-            try
-            {
-                Scribe.saver.InitSaving(filePath, "artificialMaidBackup");
-
-                // 临时快照不是完整存档，可能引用外部 Pawn 或 Faction。
-                // 标记为 debug 风格保存，避免 DevMode 下产生“引用对象未深度保存”的误导性警告。
-                Scribe.saver.savingForDebug = true;
-                Scribe_Deep.Look(ref pawnToSave, "pawn");
-                Scribe.saver.FinalizeSaving();
-
-                // 立即从临时文件读回，形成与原 Pawn 分离的新对象图。
-                Scribe.loader.InitLoading(filePath);
-                Scribe_Deep.Look(ref clone, "pawn");
-                Scribe.loader.FinalizeLoading();
-            }
-            catch (Exception ex)
-            {
-                Log.Warning("[OuterrealmTechRobot] Failed to clone Artificial Maid backup pawn: " + ex);
-                Scribe.ForceStop();
-                error = ex.ToString();
-                clone = null;
-            }
-            finally
-            {
-                try
-                {
-                    // 临时文件只用于本次深拷贝，必须尽快清理。
-                    if (File.Exists(filePath))
-                    {
-                        File.Delete(filePath);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning("[OuterrealmTechRobot] Failed to delete temporary Artificial Maid backup file: " + ex.Message);
-                }
-            }
-
-            if (clone == null)
-            {
-                if (string.IsNullOrEmpty(error))
-                {
-                    error = "Scribe returned a null Pawn snapshot.";
-                }
-                return null;
-            }
-
-            try
-            {
-                PrepareSnapshotPawn(clone);
-                return clone;
-            }
-            catch (Exception ex)
-            {
-                error = ex.ToString();
-                Log.Warning("[OuterrealmTechRobot] Failed to prepare Artificial Maid backup pawn: " + ex);
-                return null;
-            }
         }
 
         private static T CloneThing<T>(T source) where T : Thing
@@ -572,36 +485,6 @@ namespace OuterrealmTechRobot
                 }
                 tmpHeldThings.Clear();
             }
-        }
-
-        private static void PrepareSnapshotPawn(Pawn pawn)
-        {
-            // 快照应保持未生成状态，避免保存时被当作地图上的真实 Pawn。
-            pawn.ForceSetStateToUnspawned();
-            pawn.SetPositionDirect(IntVec3.Invalid);
-
-            // 深拷贝会带着原 Pawn 的 ThingID；若不换 ID，存档中会出现重复 loadID。
-            pawn.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
-
-            // 装备、背包、携带物等子 Thing 也可能带有原 loadID，必须递归换掉。
-            tmpHeldThings.Clear();
-            ThingOwnerUtility.GetAllThingsRecursively(pawn, tmpHeldThings);
-            for (int i = 0; i < tmpHeldThings.Count; i++)
-            {
-                Thing thing = tmpHeldThings[i];
-                if (thing != null && thing.def != null && thing.def.HasThingIDNumber)
-                {
-                    thing.thingIDNumber = Find.UniqueIDsManager.GetNextThingID();
-                }
-            }
-            tmpHeldThings.Clear();
-
-            // 确保动态组件完整，尤其是读档、派系或 DLC 状态变化后可能需要补齐的 tracker。
-            PawnComponentsUtility.CreateInitialComponents(pawn);
-            PawnComponentsUtility.AddAndRemoveDynamicComponents(pawn, true);
-
-            // 快照不应保留正在执行的 Job，恢复后由 AI 重新决策。
-            pawn.jobs?.StopAll(false);
         }
 
         private static void FinalizeRestoredPawn(Pawn pawn, Map map, IntVec3 position)
@@ -1320,7 +1203,7 @@ namespace OuterrealmTechRobot
                 lastSuccessfulBackupTick = backup.LastBackupTick;
                 backupIsPartial = backup.IsPartial;
                 backupState = backup.IsPartial ? MaidBackupState.ValidPartial : MaidBackupState.Valid;
-                lastBackupStage = backup.IsPartial ? "CoreSnapshot" : "FullSnapshot";
+                lastBackupStage = backup.IsPartial ? "CoreSnapshot" : "CoreAndGearSnapshot";
                 lastBackupError = backup.IsPartial ? backup.FullSnapshotError : null;
                 nextBackupTick = nextTick;
             }
@@ -1616,38 +1499,33 @@ namespace OuterrealmTechRobot
             private bool isDuplicate;
             private string originSerialNumber;
 
-            // 独立 Pawn 快照。该对象不应生成在地图上，只作为恢复模板保存。
-            private Pawn snapshot;
-
-            // 不依赖第三方 Comp 的核心快照；完整 Pawn 克隆失败时仍可重建女仆。
+            // 不深存 Pawn 对象，避免复制 Hediff、Gene、Verb 等全局 loadID。
             private MaidCoreSnapshot coreSnapshot;
 
             // 单独保存装备缓存，确保 Destroy 后从快照重建时可以显式装回武器、服装和背包物品。
             private GearBackup gearBackup;
 
-            private string fullSnapshotError;
             private string gearSnapshotError;
 
-            // 对原 Pawn 的弱意义引用：能解析时用于诊断，不能解析时不影响从 snapshot 恢复。
+            // 对原 Pawn 的弱意义引用：能解析时用于诊断，不能解析时不影响从核心快照恢复。
             private Pawn lastKnownPawn;
 
             public string SerialNumber => serialNumber;
             public string Label => label;
             public int LastBackupTick => lastBackupTick;
-            public Pawn Snapshot => snapshot;
             public MaidCoreSnapshot CoreSnapshot => coreSnapshot;
-            public bool IsUsable => snapshot != null || coreSnapshot != null;
-            public bool IsPartial => snapshot == null && coreSnapshot != null;
-            public string FullSnapshotError => fullSnapshotError;
+            public bool IsUsable => coreSnapshot != null;
+            public bool IsPartial => coreSnapshot != null && gearBackup == null;
+            public string FullSnapshotError => gearSnapshotError;
             public int OriginalThingId => originalThingId;
             public int ManufactureTick => manufactureTick;
             public int JoinPlayerTick => joinPlayerTick;
             public bool IsDuplicate => isDuplicate;
             public string OriginSerialNumber => originSerialNumber;
 
-            public void UpdateFrom(Pawn source, Pawn newSnapshot, MaidCoreSnapshot newCoreSnapshot,
+            public void UpdateFrom(Pawn source, MaidCoreSnapshot newCoreSnapshot,
                 GearBackup newGearBackup, string newSerialNumber, CompArtificialMaid comp,
-                string newFullSnapshotError, string newGearSnapshotError)
+                string newGearSnapshotError)
             {
                 serialNumber = newSerialNumber;
                 label = source.LabelShort;
@@ -1657,33 +1535,19 @@ namespace OuterrealmTechRobot
                 joinPlayerTick = comp != null ? comp.joinPlayerTick : -1;
                 isDuplicate = comp != null && comp.isDuplicate;
                 originSerialNumber = comp?.originSerialNumber;
-                snapshot = newSnapshot;
                 coreSnapshot = newCoreSnapshot;
                 gearBackup = newGearBackup;
-                fullSnapshotError = newFullSnapshotError;
                 gearSnapshotError = newGearSnapshotError;
                 lastKnownPawn = source;
             }
 
             public Pawn CreateRestoredPawn()
             {
-                Pawn restored = snapshot != null ? ClonePawn(snapshot) : null;
-                if (restored == null && coreSnapshot != null)
-                {
-                    restored = coreSnapshot.CreatePawn();
-                }
-
-                return restored;
+                return coreSnapshot?.CreatePawn();
             }
 
             public void RestoreGearTo(Pawn pawn)
             {
-                // 兼容旧存档：旧记录没有 gearBackup 时，尝试从完整 Pawn 快照中补建装备缓存。
-                if (gearBackup == null && snapshot != null)
-                {
-                    gearBackup = GearBackup.FromPawn(snapshot);
-                }
-
                 gearBackup?.RestoreTo(pawn);
             }
 
@@ -1698,14 +1562,12 @@ namespace OuterrealmTechRobot
                 Scribe_Values.Look(ref joinPlayerTick, "joinPlayerTick", -1);
                 Scribe_Values.Look(ref isDuplicate, "isDuplicate", false);
                 Scribe_Values.Look(ref originSerialNumber, "originSerialNumber");
-                Scribe_Values.Look(ref fullSnapshotError, "fullSnapshotError");
                 Scribe_Values.Look(ref gearSnapshotError, "gearSnapshotError");
 
-                // 快照必须深度保存，否则 Destroy 后无法重建 Pawn。
-                Scribe_Deep.Look(ref snapshot, "snapshot");
+                // 旧存档中的 snapshot 节点故意不再读取；读取它会立即注册重复 loadID。
                 Scribe_Deep.Look(ref coreSnapshot, "coreSnapshot");
 
-                // 装备缓存也深度保存。旧存档没有该节点时，仍可退回使用 snapshot 中的装备数据。
+                // 装备缓存保存的是独立 Thing，创建时已重新分配 ThingID。
                 Scribe_Deep.Look(ref gearBackup, "gearBackup");
 
                 // 引用原 Pawn 时允许保存 Destroyed Thing，避免刚被 Destroy 前缀备份时丢失引用信息。
@@ -1716,8 +1578,7 @@ namespace OuterrealmTechRobot
             {
                 get
                 {
-                    // 菜单显示优先使用备份时记录的名称；旧记录缺失时回退到快照名称。
-                    string resolvedLabel = string.IsNullOrEmpty(label) && snapshot != null ? snapshot.LabelShort : label;
+                    string resolvedLabel = label;
                     if (string.IsNullOrEmpty(resolvedLabel))
                     {
                         resolvedLabel = "ArtificialMaidBackupCloudUnknownMaid".Translate();

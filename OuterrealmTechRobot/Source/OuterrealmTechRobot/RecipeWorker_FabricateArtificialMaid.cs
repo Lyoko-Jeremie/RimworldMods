@@ -202,8 +202,8 @@ namespace OuterrealmTechRobot
                 }
             }
 
-            // 清理所有初始状态，确保刚制造出来时是完美状态
-            pawn.health.Reset();
+            // 只清理生成时附带的伤病，保留 RJW 器官和其他良性植入物。
+            ArtificialMaidHealthUtility.RepairHarmfulHealthConditions(pawn);
 
             // 补上机械师能力 (Biotech)
             if (ModsConfig.BiotechActive && pawn.health != null)

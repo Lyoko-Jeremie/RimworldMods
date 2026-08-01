@@ -95,7 +95,7 @@
             <WorkSpeedGlobal>9999999</WorkSpeedGlobal> <!-- 全局工作速度 -->
             <CarryingCapacity>999999</CarryingCapacity> <!-- 搬运能力 -->
             <MentalBreakThreshold>0</MentalBreakThreshold> <!-- 崩溃临界值 -->
-            <PainShockThreshold>0</PainShockThreshold> <!-- 疼痛休克临界值 -->
+            <PainShockThreshold>0.99</PainShockThreshold> <!-- 痛觉休克阈值；实际免疫由 PawnKindDef.ignoresPainShock 提供 -->
             <MeditationFocusGain>10</MeditationFocusGain> <!-- 冥想效率 (1000%) -->
             <ImmunityGainSpeed>10</ImmunityGainSpeed> <!-- 免疫速度 (1000%) -->
             <MeleeDamageFactor>1000</MeleeDamageFactor> <!-- 近战伤害倍率 (100,000%) -->

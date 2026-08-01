@@ -504,28 +504,8 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null) return;
 
-            // 1. 修复所有损伤和缺失
-            // 先恢复所有缺失部位
-            foreach (var part in Pawn.health.hediffSet.GetMissingPartsCommonAncestors())
-            {
-                Pawn.health.RestorePart(part.Part);
-            }
-
-            // 移除所有坏的 Hediff
-            List<Hediff> toRemove = new List<Hediff>();
-            foreach (var hediff in Pawn.health.hediffSet.hediffs)
-            {
-                if (hediff is Hediff_Injury || hediff.def.isBad ||
-                    hediff.def.IsAddiction || hediff.def.chronic)
-                {
-                    toRemove.Add(hediff);
-                }
-            }
-
-            foreach (var hediff in toRemove)
-            {
-                Pawn.health.RemoveHediff(hediff);
-            }
+            // 1. 只修复有害健康状态，保留机控中枢、RJW 器官和其他良性植入物。
+            ArtificialMaidHealthUtility.RepairHarmfulHealthConditions(Pawn);
 
             // 2. 去除不属于 ArtificialMaid 的特质并确保情感同步特性
             if (Pawn.story?.traits != null)
@@ -613,21 +593,7 @@ namespace OuterrealmTechRobot
         {
             if (Pawn == null) return;
 
-            // 修复所有损伤和缺失
-            foreach (var mp in Pawn.health.hediffSet.GetMissingPartsCommonAncestors())
-            {
-                Pawn.health.RestorePart(mp.Part);
-            }
-
-            var hediffs = Pawn.health.hediffSet.hediffs;
-            for (int i = hediffs.Count - 1; i >= 0; i--)
-            {
-                var hediff = hediffs[i];
-                if (hediff is Hediff_Injury || hediff.def.isBad || hediff.def.IsAddiction || hediff.def.chronic)
-                {
-                    Pawn.health.RemoveHediff(hediff);
-                }
-            }
+            ArtificialMaidHealthUtility.RepairHarmfulHealthConditions(Pawn);
 
             // 清除文化
             if (ModsConfig.IdeologyActive && Pawn.ideo != null && Pawn.ideo.Ideo != null)

@@ -11,10 +11,14 @@ namespace OuterrealmTechRobot
         private static bool _active;
 
         private static MethodInfo _sexualizeMethod;
+        private static MethodInfo _addGenitalsMethod;
+        private static MethodInfo _addBreastsMethod;
+        private static MethodInfo _addAnusMethod;
         private static System.Type _compSexPartType;
         private static System.Type _genitalFamilyType;
         private static FieldInfo _genitalFamilyField;
         private static FieldInfo _baseSizeField;
+        private static FieldInfo _discoveredField;
 
         private static object _breastsEnum;
         private static object _vaginaEnum;
@@ -62,6 +66,14 @@ namespace OuterrealmTechRobot
                     _sexualizeMethod = AccessTools.Method(sexualizerType, "sexualize_pawn");
                 }
 
+                System.Type sexPartAdderType = AccessTools.TypeByName("rjw.SexPartAdder");
+                if (sexPartAdderType != null)
+                {
+                    _addGenitalsMethod = AccessTools.Method(sexPartAdderType, "add_genitals");
+                    _addBreastsMethod = AccessTools.Method(sexPartAdderType, "add_breasts");
+                    _addAnusMethod = AccessTools.Method(sexPartAdderType, "add_anus");
+                }
+
                 _compSexPartType = AccessTools.TypeByName("rjw.HediffComp_SexPart");
                 _genitalFamilyType = AccessTools.TypeByName("rjw.GenitalFamily");
 
@@ -73,6 +85,7 @@ namespace OuterrealmTechRobot
                         _genitalFamilyField = AccessTools.Field(defType, "genitalFamily");
                     }
                     _baseSizeField = AccessTools.Field(_compSexPartType, "baseSize");
+                    _discoveredField = AccessTools.Field(_compSexPartType, "discovered");
 
                     _breastsEnum = System.Enum.Parse(_genitalFamilyType, "Breasts");
                     _vaginaEnum = System.Enum.Parse(_genitalFamilyType, "Vagina");
@@ -103,79 +116,106 @@ namespace OuterrealmTechRobot
         {
             if (!Active || pawn == null) return;
 
-            if (_compSexPartType == null || _genitalFamilyType == null || _genitalFamilyField == null)
+            if (_compSexPartType == null || _genitalFamilyType == null || _genitalFamilyField == null ||
+                _breastsEnum == null || _vaginaEnum == null || _anusEnum == null)
             {
+                Log.ErrorOnce("[OuterrealmTechRobot] RJW compatibility types are incomplete; cannot repair maid organs.",
+                    58292);
                 return;
             }
 
-            // 1. 检查是否已经有性器官，避免重复生成
-            bool hasOrgans = false;
-            foreach (var h in pawn.health.hediffSet.hediffs)
+            try
             {
-                if (h is HediffWithComps hwc && hwc.comps != null)
+                // 按类别检查，避免只剩一个器官时被误判为完整。
+                bool hasBreasts = false;
+                bool hasVagina = false;
+                bool hasAnus = false;
+                var hediffs = pawn.health.hediffSet.hediffs;
+                for (int i = 0; i < hediffs.Count; i++)
                 {
-                    foreach (var c in hwc.comps)
+                    if (TryGetSexPart(hediffs[i], out _, out object family))
                     {
-                        if (_compSexPartType.IsAssignableFrom(c.GetType()))
-                        {
-                            hasOrgans = true;
-                            break;
-                        }
-                    }
-                }
-                if (hasOrgans) break;
-            }
-
-            if (!hasOrgans)
-            {
-                // 2. 只有没有器官时才调用基础生成逻辑
-                Sexualize(pawn);
-            }
-
-            // 3. 强制设置/修复器官属性
-            if (_breastsEnum == null || _vaginaEnum == null || _anusEnum == null) return;
-
-            var hediffs = pawn.health.hediffSet.hediffs;
-            for (int i = hediffs.Count - 1; i >= 0; i--)
-            {
-                var hediff = hediffs[i];
-                object sexPartComp = null;
-                if (hediff is HediffWithComps hwc && hwc.comps != null)
-                {
-                    foreach (var c in hwc.comps)
-                    {
-                        if (_compSexPartType.IsAssignableFrom(c.GetType()))
-                        {
-                            sexPartComp = c;
-                            break;
-                        }
+                        if (family.Equals(_breastsEnum)) hasBreasts = true;
+                        else if (family.Equals(_vaginaEnum)) hasVagina = true;
+                        else if (family.Equals(_anusEnum)) hasAnus = true;
                     }
                 }
 
-                if (sexPartComp != null)
+                // 优先使用 RJW 分类添加器，只补缺少的类别，避免生成重复器官。
+                bool usedCategoryAdders = true;
+                if (!hasVagina) usedCategoryAdders &= InvokePartAdder(_addGenitalsMethod, pawn);
+                if (!hasBreasts) usedCategoryAdders &= InvokePartAdder(_addBreastsMethod, pawn);
+                if (!hasAnus) usedCategoryAdders &= InvokePartAdder(_addAnusMethod, pawn);
+
+                // 旧版 RJW 没有分类 API 时退回完整初始化。
+                if ((!hasBreasts || !hasVagina || !hasAnus) && !usedCategoryAdders)
                 {
-                    object family = _genitalFamilyField.GetValue(hediff.def);
-                    if (family != null)
+                    Sexualize(pawn);
+                }
+
+                // 统一尺寸，并把修复生成的器官标记为已发现，确保健康面板可见。
+                hediffs = pawn.health.hediffSet.hediffs;
+                for (int i = hediffs.Count - 1; i >= 0; i--)
+                {
+                    Hediff hediff = hediffs[i];
+                    if (!TryGetSexPart(hediff, out object sexPartComp, out object family))
                     {
-                        float bodySize = pawn.BodySize;
-                        if (family.Equals(_breastsEnum))
-                        {
-                            hediff.Severity = 1.2f; // Massive
-                            if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 1.2f * bodySize);
-                        }
-                        else if (family.Equals(_vaginaEnum))
-                        {
-                            hediff.Severity = 0.25f; // Tight
-                            if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
-                        }
-                        else if (family.Equals(_anusEnum))
-                        {
-                            hediff.Severity = 0.25f; // Tight
-                            if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
-                        }
+                        continue;
                     }
+
+                    float bodySize = pawn.BodySize;
+                    if (family.Equals(_breastsEnum))
+                    {
+                        hediff.Severity = 1.2f;
+                        if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 1.2f * bodySize);
+                    }
+                    else if (family.Equals(_vaginaEnum) || family.Equals(_anusEnum))
+                    {
+                        hediff.Severity = 0.25f;
+                        if (_baseSizeField != null) _baseSizeField.SetValue(sexPartComp, 0.25f * bodySize);
+                    }
+
+                    if (_discoveredField != null) _discoveredField.SetValue(sexPartComp, true);
                 }
             }
+            catch (System.Exception ex)
+            {
+                Log.Error("[OuterrealmTechRobot] Failed to repair RJW organs for " + pawn.ToStringSafe() + ": " + ex);
+            }
+        }
+
+        private static bool InvokePartAdder(MethodInfo method, Pawn pawn)
+        {
+            if (method == null)
+            {
+                return false;
+            }
+
+            method.Invoke(null, new object[] { pawn, null, Gender.Female });
+            return true;
+        }
+
+        private static bool TryGetSexPart(Hediff hediff, out object sexPartComp, out object family)
+        {
+            sexPartComp = null;
+            family = null;
+            if (!(hediff is HediffWithComps hwc) || hwc.comps == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < hwc.comps.Count; i++)
+            {
+                object comp = hwc.comps[i];
+                if (comp != null && _compSexPartType.IsAssignableFrom(comp.GetType()))
+                {
+                    sexPartComp = comp;
+                    family = _genitalFamilyField.GetValue(hediff.def);
+                    return family != null;
+                }
+            }
+
+            return false;
         }
     }
 }
