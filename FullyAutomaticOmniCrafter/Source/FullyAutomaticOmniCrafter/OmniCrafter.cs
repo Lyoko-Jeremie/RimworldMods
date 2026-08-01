@@ -31,6 +31,28 @@ namespace FullyAutomaticOmniCrafter
         public bool storageOnly = false; // 仅统计存储区中的物品
         public bool paused = false;
 
+        /// <summary>创建独立的订单副本，避免不同制造机共享同一个可变对象。</summary>
+        public AutoOrder Clone()
+        {
+            AutoOrder clone = new AutoOrder();
+            clone.CopyFrom(this);
+            return clone;
+        }
+
+        /// <summary>将另一条订单的全部配置复制到当前订单。</summary>
+        public void CopyFrom(AutoOrder source)
+        {
+            if (source == null) return;
+
+            thingDef = source.thingDef;
+            stuffDef = source.stuffDef;
+            quality = source.quality;
+            targetCount = source.targetCount;
+            outputMode = source.outputMode;
+            storageOnly = source.storageOnly;
+            paused = source.paused;
+        }
+
         public void ExposeData()
         {
             Scribe_Defs.Look(ref thingDef, "thingDef");
@@ -357,6 +379,12 @@ namespace FullyAutomaticOmniCrafter
         public PowerNet GetWorkingPowerNet()
         {
             return powerTraderComp?.PowerNet ?? powerComp?.PowerNet;
+        }
+
+        /// <summary>订单列表发生批量变化后，从列表开头重新开始分帧轮询。</summary>
+        public void NotifyAutoOrdersChanged()
+        {
+            _processOrderIndex = 0;
         }
 
         public override void ExposeData()

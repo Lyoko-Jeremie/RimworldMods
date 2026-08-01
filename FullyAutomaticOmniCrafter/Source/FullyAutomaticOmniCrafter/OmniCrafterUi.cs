@@ -160,6 +160,14 @@ namespace FullyAutomaticOmniCrafter
             selectedAutoOrder.storageOnly = storageOnly;
         }
 
+        /// <summary>粘贴订单并刷新当前正在编辑的订单配置。</summary>
+        private void PasteAutoOrders(AutoOrderPasteMode mode)
+        {
+            OmniCrafterOrderClipboard.PasteInto(building, mode);
+            if (selectedAutoOrder != null && building.autoOrders.Contains(selectedAutoOrder))
+                SelectDefFromOrder(selectedAutoOrder);
+        }
+
         private List<ThingDef> CurrentList
         {
             get
@@ -1156,20 +1164,78 @@ namespace FullyAutomaticOmniCrafter
             Widgets.DrawBoxSolid(rect, new Color(0.14f, 0.14f, 0.14f, 0.6f));
             rect = rect.ContractedBy(6f);
 
+            const float headerH = 22f;
+            const float buttonH = 28f;
+            const float gap = 4f;
+            const float copyW = 62f;
+
+            Widgets.Label(
+                new Rect(rect.x, rect.y, rect.width, headerH),
+                "OmniCrafter_AutoOrdersHeader".Translate(building.autoOrders.Count));
+
+            float buttonY = rect.y + headerH + 2f;
+            float pasteW = (rect.width - copyW - gap * 2f) / 2f;
+            Rect copyRect = new Rect(rect.x, buttonY, copyW, buttonH);
+            Rect overwriteRect = new Rect(copyRect.xMax + gap, buttonY, pasteW, buttonH);
+            Rect keepRect = new Rect(overwriteRect.xMax + gap, buttonY, pasteW, buttonH);
+
+            if (Widgets.ButtonText(copyRect, "OmniCrafter_CopyOrders".Translate()))
+            {
+                SoundDefOf.Tick_High.PlayOneShotOnCamera();
+                OmniCrafterOrderClipboard.CopyFrom(building);
+            }
+            TooltipHandler.TipRegion(copyRect, "OmniCrafter_CopyOrdersDesc".Translate());
+
+            bool canPaste = OmniCrafterOrderClipboard.HasCopiedOrders;
+            if (Widgets.ButtonText(
+                    overwriteRect,
+                    "OmniCrafter_PasteOrdersOverwrite".Translate(),
+                    true,
+                    true,
+                    canPaste))
+            {
+                SoundDefOf.Tick_Low.PlayOneShotOnCamera();
+                PasteAutoOrders(AutoOrderPasteMode.OverwriteExisting);
+            }
+            TooltipHandler.TipRegion(
+                overwriteRect,
+                canPaste
+                    ? "OmniCrafter_PasteOrdersOverwriteDesc".Translate()
+                    : "OmniCrafter_OrderClipboardEmpty".Translate());
+
+            if (Widgets.ButtonText(
+                    keepRect,
+                    "OmniCrafter_PasteOrdersKeep".Translate(),
+                    true,
+                    true,
+                    canPaste))
+            {
+                SoundDefOf.Tick_Low.PlayOneShotOnCamera();
+                PasteAutoOrders(AutoOrderPasteMode.KeepExisting);
+            }
+            TooltipHandler.TipRegion(
+                keepRect,
+                canPaste
+                    ? "OmniCrafter_PasteOrdersKeepDesc".Translate()
+                    : "OmniCrafter_OrderClipboardEmpty".Translate());
+
+            float listY = buttonY + buttonH + 6f;
+            Rect listRect = new Rect(rect.x, listY, rect.width, Mathf.Max(0f, rect.yMax - listY));
+
             if (building.autoOrders.Count == 0)
             {
-                Widgets.Label(rect, "OmniCrafter_NoAutoOrders".Translate());
+                Widgets.Label(listRect, "OmniCrafter_NoAutoOrders".Translate());
                 return;
             }
 
-            float w = rect.width;
+            float w = listRect.width;
             float viewW = w - 16f;
 
             // Estimate content height for the virtual scroll view
             float contentH = building.autoOrders.Count * 36f;
 
             Rect viewRect = new Rect(0f, 0f, viewW, contentH);
-            Widgets.BeginScrollView(rect, ref farRightScroll, viewRect);
+            Widgets.BeginScrollView(listRect, ref farRightScroll, viewRect);
 
             float y = 0f;
 

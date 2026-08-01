@@ -412,6 +412,7 @@
     <Compile Include="MatterEnergyConverter.cs" />
     <Compile Include="OmniCrafter.cs" />
     <Compile Include="OmniCrafterCache.cs" />
+    <Compile Include="OmniCrafterOrderClipboard.cs" />
     <Compile Include="OmniCrafterSettings.cs" />
     <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
     <Compile Include="OmniCrafterUi.cs" />

@@ -57,6 +57,15 @@
     <OmniCrafter_RemoveAutoOrder>移除自动订单</OmniCrafter_RemoveAutoOrder>
     <OmniCrafter_NoAutoOrders>没有自动订单</OmniCrafter_NoAutoOrders>
     <OmniCrafter_AutoOrdersHeader>自动订单 ({0})：</OmniCrafter_AutoOrdersHeader>
+    <OmniCrafter_CopyOrders>复制</OmniCrafter_CopyOrders>
+    <OmniCrafter_CopyOrdersDesc>复制这台万能制造机的全部自动订单及其配置。</OmniCrafter_CopyOrdersDesc>
+    <OmniCrafter_PasteOrdersOverwrite>粘贴并覆盖</OmniCrafter_PasteOrdersOverwrite>
+    <OmniCrafter_PasteOrdersOverwriteDesc>粘贴已复制的订单。相同物品的订单配置会被覆盖，新物品会追加；目标中独有的订单保持不变。</OmniCrafter_PasteOrdersOverwriteDesc>
+    <OmniCrafter_PasteOrdersKeep>粘贴并保留</OmniCrafter_PasteOrdersKeep>
+    <OmniCrafter_PasteOrdersKeepDesc>粘贴已复制的订单。目标中已有的相同物品保持不变，只追加尚不存在的物品订单。</OmniCrafter_PasteOrdersKeepDesc>
+    <OmniCrafter_OrderClipboardEmpty>尚未复制万能制造机订单。</OmniCrafter_OrderClipboardEmpty>
+    <OmniCrafter_OrdersCopied>已复制 {0} 条万能制造机订单。</OmniCrafter_OrdersCopied>
+    <OmniCrafter_OrdersPasted>订单粘贴完成：新增 {0} 条，覆盖 {1} 条，保留 {2} 条。</OmniCrafter_OrdersPasted>
     <OmniCrafter_NonDestroyableBuildingWarning>警告：该建筑为不可摧毁类型（destroyable=false），生成后可能异常。</OmniCrafter_NonDestroyableBuildingWarning>
     <!-- 收藏夹中缺失物品的占位符 -->
     <OmniCrafter_MissingDef>[缺失] {0}（所属Mod未加载，点击取消收藏）</OmniCrafter_MissingDef>
