@@ -93,6 +93,7 @@
             <Insulation_Cold>10000</Insulation_Cold> <!-- 抗寒绝缘 -->
             <Insulation_Heat>10000</Insulation_Heat> <!-- 抗热绝缘 -->
             <WorkSpeedGlobal>9999999</WorkSpeedGlobal> <!-- 全局工作速度 -->
+            <MiningSpeed>9999999</MiningSpeed> <!-- 挖掘速度；原版挖掘伤害间隔最低为每 Tick 一次 -->
             <CarryingCapacity>999999</CarryingCapacity> <!-- 搬运能力 -->
             <MentalBreakThreshold>0</MentalBreakThreshold> <!-- 崩溃临界值 -->
             <PainShockThreshold>0.99</PainShockThreshold> <!-- 痛觉休克阈值；实际免疫由 PawnKindDef.ignoresPainShock 提供 -->
