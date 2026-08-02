@@ -1010,9 +1010,6 @@ namespace OuterrealmTechRobot
     [HarmonyPatch(typeof(JobDriver_Mine), "DoDamage")]
     public static class Patch_JobDriver_Mine_DoDamage
     {
-        // 女仆的挖掘速度已经达到每 Tick 一次镐击；提高单次伤害才能继续缩短总耗时。
-        private const int ArtificialMaidMiningTicks = 3;
-
         [HarmonyPrefix]
         public static bool Prefix(Thing target, Toil mine, Pawn actor, IntVec3 mineablePos)
         {
@@ -1021,22 +1018,17 @@ namespace OuterrealmTechRobot
                 return true;
             }
 
-            int vanillaDamage = target.def.building.isNaturalRock ? 80 : 40;
-            int damagePerTick = UnityEngine.Mathf.Max(
-                vanillaDamage,
-                UnityEngine.Mathf.CeilToInt(target.MaxHitPoints / (float)ArtificialMaidMiningTicks));
-
-            if (!(target is Mineable mineable) || target.HitPoints > damagePerTick)
+            if (!(target is Mineable mineable))
             {
                 DamageInfo damageInfo = new DamageInfo(
                     DamageDefOf.Mining,
-                    damagePerTick,
+                    UnityEngine.Mathf.Max(1, target.HitPoints),
                     instigator: mine.actor);
                 target.TakeDamage(damageInfo);
                 return false;
             }
 
-            // 复用原版的最终一击流程，保留产量、矿脉连续指定和历史事件。
+            // 直接执行原版最终一击流程，完整结算挖掘产量。
             Map map = actor.Map;
             bool mineVein = map.designationManager.DesignationAt(
                 mineable.Position,
