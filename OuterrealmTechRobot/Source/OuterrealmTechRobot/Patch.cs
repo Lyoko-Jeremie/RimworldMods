@@ -1007,6 +1007,60 @@ namespace OuterrealmTechRobot
         }
     }
 
+    [HarmonyPatch(typeof(JobDriver_Mine), "DoDamage")]
+    public static class Patch_JobDriver_Mine_DoDamage
+    {
+        // 女仆的挖掘速度已经达到每 Tick 一次镐击；提高单次伤害才能继续缩短总耗时。
+        private const int ArtificialMaidMiningTicks = 3;
+
+        [HarmonyPrefix]
+        public static bool Prefix(Thing target, Toil mine, Pawn actor, IntVec3 mineablePos)
+        {
+            if (actor == null || actor.def != ArtificialMaidDefOf.ArtificialMaid)
+            {
+                return true;
+            }
+
+            int vanillaDamage = target.def.building.isNaturalRock ? 80 : 40;
+            int damagePerTick = UnityEngine.Mathf.Max(
+                vanillaDamage,
+                UnityEngine.Mathf.CeilToInt(target.MaxHitPoints / (float)ArtificialMaidMiningTicks));
+
+            if (!(target is Mineable mineable) || target.HitPoints > damagePerTick)
+            {
+                DamageInfo damageInfo = new DamageInfo(
+                    DamageDefOf.Mining,
+                    damagePerTick,
+                    instigator: mine.actor);
+                target.TakeDamage(damageInfo);
+                return false;
+            }
+
+            // 复用原版的最终一击流程，保留产量、矿脉连续指定和历史事件。
+            Map map = actor.Map;
+            bool mineVein = map.designationManager.DesignationAt(
+                mineable.Position,
+                DesignationDefOf.MineVein) != null;
+
+            mineable.Notify_TookMiningDamage(target.HitPoints, actor);
+            mineable.HitPoints = 0;
+            mineable.DestroyMined(actor);
+
+            if (mineVein)
+            {
+                foreach (IntVec3 adjacentCell in GenAdj.AdjacentCells)
+                {
+                    Designator_MineVein.FloodFillDesignations(
+                        mineablePos + adjacentCell,
+                        map,
+                        mineable.def);
+                }
+            }
+
+            return false;
+        }
+    }
+
     [HarmonyPatch(typeof(JobDriver_ActivateMonolith), "MakeNewToils")]
     public static class Patch_JobDriver_ActivateMonolith_MakeNewToils
     {
