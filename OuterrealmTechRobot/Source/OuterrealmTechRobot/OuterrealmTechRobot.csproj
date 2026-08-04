@@ -93,6 +93,7 @@
     <Compile Include="JobDriver_PackArtificialMaid.cs" />
     <Compile Include="JobDriver_UnpackArtificialMaid.cs" />
     <Compile Include="Patch.cs" />
+    <Compile Include="Patch_ArtificialMaidInvisibility.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RecipeWorker_FabricateArtificialMaid.cs" />
     <Compile Include="RJWCompatibility.cs" />
