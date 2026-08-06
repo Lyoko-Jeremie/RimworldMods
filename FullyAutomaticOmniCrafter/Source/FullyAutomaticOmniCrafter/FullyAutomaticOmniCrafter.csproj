@@ -381,6 +381,7 @@
     <Compile Include="CompOmniPowerGenerator.cs" />
     <Compile Include="CompOmniProjectileInterceptor.cs" />
     <Compile Include="CompOmniRectangleProjectileInterceptor.cs" />
+    <Compile Include="CompOmniResurrector.cs" />
     <Compile Include="CompWeaponCreator.cs" />
     <Compile Include="Comp_SNS_OuterrealmTech_TemporalBarrierProjector_CompShieldRanged.cs" />
     <Compile Include="DebugTools_PoisonFood.cs" />
@@ -389,6 +390,8 @@
     <Compile Include="Dialog_CompBiosphere_Temperature.cs" />
     <Compile Include="Dialog_CompOmniKiller.cs" />
     <Compile Include="Dialog_OmniPowerAdjust.cs" />
+    <Compile Include="Dialog_OmniResurrector.cs" />
+    <Compile Include="GameComponent_OmniResurrector.cs" />
     <Compile Include="OmniAutoScanner.cs" />
     <Compile Include="OmniAutoSurgeon_Dialog_SelectPawn.cs" />
     <Compile Include="GlobalFireExtinguisher.cs" />

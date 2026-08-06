@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <!-- 万能重生平台 -->
+    <OmniResurrector.label>万能重生平台</OmniResurrector.label>
+    <!-- 一种源自超维科技的装置。消耗大量电力即可复活任何已死亡的Pawn——无论其是否留下了尸体。已登记的Pawn会受到保护，不会被世界回收机制清理。 -->
+    <OmniResurrector.description>一种源自超维科技的装置。消耗大量电力即可复活任何已死亡的Pawn——无论其是否留下了尸体。已登记的Pawn会受到保护，不会被世界回收机制清理。</OmniResurrector.description>
+</LanguageData>

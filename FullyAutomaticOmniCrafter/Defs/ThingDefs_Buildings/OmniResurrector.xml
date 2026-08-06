@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <DesignatorDropdownGroupDef>
+        <defName>OmniResurrector_DropdownGroup</defName>
+    </DesignatorDropdownGroupDef>
+
+    <ThingDef ParentName="BuildingBase" Name="OmniResurrector">
+        <defName>OmniResurrector</defName>
+        <label>OmniResurrector</label>
+        <description>description</description>
+
+        <!-- 功能全部由 Comp 提供，无需自定义 Building 类 -->
+        <thingClass>Building</thingClass>
+
+        <!-- 下拉菜单配置放在父类，子类自动继承 -->
+        <designatorDropdown>OmniResurrector_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniResurrector</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <shaderType>CutoutComplex</shaderType>
+            <drawSize>(5,5)</drawSize>
+        </graphicData>
+        <size>(5,5)</size>
+        <uiIconPath>Things/Building/Production/OmniResurrector</uiIconPath>
+
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <canOverlapZones>false</canOverlapZones>
+
+        <costList>
+            <Steel>500</Steel>
+            <ComponentIndustrial>10</ComponentIndustrial>
+        </costList>
+
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <Flammability>0</Flammability> <!-- 不可燃 -->
+            <Beauty>100</Beauty>
+        </statBases>
+
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+        <rotatable>false</rotatable>
+        <selectable>true</selectable>
+
+        <comps>
+            <!-- 接入项目 Omni 电力网络（平时不耗电，复活时一次性从电池扣电） -->
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>0</basePowerConsumption>
+            </li>
+            <!-- 万能重生平台本体 -->
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_OmniResurrector">
+                <energyCostWd>100000</energyCostWd>
+                <allowInfiniteGenerator>true</allowInfiniteGenerator>
+                <sideEffects>false</sideEffects>
+                <gettingScarsChance>0</gettingScarsChance>
+                <removeDiedThoughts>true</removeDiedThoughts>
+                <noLord>true</noLord>
+            </li>
+        </comps>
+
+    </ThingDef>
+
+</Defs>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <OpenOmniResurrectorUI>Resurrection Control</OpenOmniResurrectorUI>
+  <OpenOmniResurrectorUIDesc>Open the Omni Resurrector control panel to resurrect dead pawns, with or without a corpse.</OpenOmniResurrectorUIDesc>
+  <OmniResurrector_Title>Omni Resurrector — Resurrection Control</OmniResurrector_Title>
+  <OmniResurrector_Search>Search:</OmniResurrector_Search>
+  <OmniResurrector_FilterHuman>Humans</OmniResurrector_FilterHuman>
+  <OmniResurrector_FilterAnimal>Animals</OmniResurrector_FilterAnimal>
+  <OmniResurrector_FilterMechanoid>Mechanoids</OmniResurrector_FilterMechanoid>
+  <OmniResurrector_FilterFactionPlayer>Player Faction</OmniResurrector_FilterFactionPlayer>
+  <OmniResurrector_FilterFactionHostile>Hostile Factions</OmniResurrector_FilterFactionHostile>
+  <OmniResurrector_FilterFactionNeutral>Neutral Factions</OmniResurrector_FilterFactionNeutral>
+  <OmniResurrector_FilterFactionNone>No Faction</OmniResurrector_FilterFactionNone>
+  <OmniResurrector_Registered>[Registered]</OmniResurrector_Registered>
+  <OmniResurrector_ButtonRegister>Register</OmniResurrector_ButtonRegister>
+  <OmniResurrector_ButtonUnregister>Unregister</OmniResurrector_ButtonUnregister>
+  <OmniResurrector_ButtonResurrect>Resurrect</OmniResurrector_ButtonResurrect>
+  <OmniResurrector_KindHuman>Human</OmniResurrector_KindHuman>
+  <OmniResurrector_KindAnimal>Animal</OmniResurrector_KindAnimal>
+  <OmniResurrector_KindMechanoid>Mechanoid</OmniResurrector_KindMechanoid>
+  <OmniResurrector_NoFaction>No Faction</OmniResurrector_NoFaction>
+  <OmniResurrector_CorpseNone>No corpse</OmniResurrector_CorpseNone>
+  <OmniResurrector_CorpseYes>Corpse</OmniResurrector_CorpseYes>
+  <OmniResurrector_CorpseFresh>Corpse (fresh)</OmniResurrector_CorpseFresh>
+  <OmniResurrector_CorpseRotting>Corpse (rotting)</OmniResurrector_CorpseRotting>
+  <OmniResurrector_CorpseDessicated>Corpse (dessicated)</OmniResurrector_CorpseDessicated>
+  <OmniResurrector_NoEnergy>Not enough power: resurrection needs {0} Wd, the power grid provides {1} Wd</OmniResurrector_NoEnergy>
+  <OmniResurrector_FailInvalid>{0} can no longer be resurrected (already reclaimed or invalid)</OmniResurrector_FailInvalid>
+  <OmniResurrector_Resurrected>{0} has been resurrected</OmniResurrector_Resurrected>
+  <OmniResurrector_InspectRegistered>{0} pawn(s) registered for resurrection</OmniResurrector_InspectRegistered>
+  <OmniResurrector_InspectEnergy>Grid storage: {0} Wd</OmniResurrector_InspectEnergy>
+  <OmniResurrector_EmptyList>No dead pawns match the current filters</OmniResurrector_EmptyList>
+</LanguageData>
