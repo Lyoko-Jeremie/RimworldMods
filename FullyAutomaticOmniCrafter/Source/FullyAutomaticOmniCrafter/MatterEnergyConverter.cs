@@ -666,6 +666,26 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    // ─── Harmony：阻止腐烂（CompRottable） ────────────────────────────────────
+    /// <summary>
+    /// 当物品位于 MEC 的存储区时，跳过 CompRottable.TickInterval，
+    /// 防止生肉、尸体、熟食等 CompRottable 物品因时间/温度腐烂。
+    /// CompTickRare() 与 CompTickInterval() 均直接调用 TickInterval()，
+    /// 因此只需 Patch TickInterval 即可覆盖两者。
+    /// 方式 A 货舱内物品已由 shouldTickContents=false 冻结，不在此 Patch 覆盖范围。
+    /// 查询使用静态 HashSet O(1) 缓存，性能开销极低。
+    /// </summary>
+    [HarmonyPatch(typeof(CompRottable), "TickInterval")]
+    public static class Patch_MEC_NoRottable
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(CompRottable __instance)
+        {
+            Thing t = __instance.parent;
+            return t?.Map == null || !Building_MatterEnergyConverter.IsInMecStorage(t.Position, t.Map);
+        }
+    }
+
     // ─── Harmony：修正 MEC 作为 CompTransporter 装载目标时的容量判断 ───────────────
     /// <summary>
     /// 修复方式 A 装载物品时，小人反复开始 HaulToTransporter 并立即失败的问题。
