@@ -7,6 +7,7 @@
   <OmniResurrector_FilterHuman>人类</OmniResurrector_FilterHuman>
   <OmniResurrector_FilterAnimal>动物</OmniResurrector_FilterAnimal>
   <OmniResurrector_FilterMechanoid>机械体</OmniResurrector_FilterMechanoid>
+  <OmniResurrector_ShowAlive>显示存活Pawn</OmniResurrector_ShowAlive>
   <OmniResurrector_FilterFactionPlayer>玩家派系</OmniResurrector_FilterFactionPlayer>
   <OmniResurrector_FilterFactionHostile>敌对派系</OmniResurrector_FilterFactionHostile>
   <OmniResurrector_FilterFactionNeutral>中立派系</OmniResurrector_FilterFactionNeutral>
@@ -15,6 +16,7 @@
   <OmniResurrector_ButtonRegister>登记</OmniResurrector_ButtonRegister>
   <OmniResurrector_ButtonUnregister>取消登记</OmniResurrector_ButtonUnregister>
   <OmniResurrector_ButtonResurrect>复活</OmniResurrector_ButtonResurrect>
+  <OmniResurrector_CannotResurrectAlive>仅已死亡Pawn可复活</OmniResurrector_CannotResurrectAlive>
   <OmniResurrector_KindHuman>人类</OmniResurrector_KindHuman>
   <OmniResurrector_KindAnimal>动物</OmniResurrector_KindAnimal>
   <OmniResurrector_KindMechanoid>机械体</OmniResurrector_KindMechanoid>
@@ -27,7 +29,8 @@
   <OmniResurrector_NoEnergy>电力不足：复活需要 {0} Wd，当前电网可提供 {1} Wd</OmniResurrector_NoEnergy>
   <OmniResurrector_FailInvalid>{0} 已无法复活（已被回收或状态无效）</OmniResurrector_FailInvalid>
   <OmniResurrector_Resurrected>{0} 已复活</OmniResurrector_Resurrected>
-  <OmniResurrector_InspectRegistered>已登记 {0} 名待复活者</OmniResurrector_InspectRegistered>
+  <OmniResurrector_ListOverflow>共 {0} 名符合条件，列表仅显示前 {1} 名，请细化筛选条件</OmniResurrector_ListOverflow>
+  <OmniResurrector_InspectRegistered>已登记 {0} 名Pawn</OmniResurrector_InspectRegistered>
   <OmniResurrector_InspectEnergy>电网储能 {0} Wd</OmniResurrector_InspectEnergy>
-  <OmniResurrector_EmptyList>没有符合当前筛选条件的已死亡Pawn</OmniResurrector_EmptyList>
+  <OmniResurrector_EmptyList>没有符合当前筛选条件的Pawn</OmniResurrector_EmptyList>
 </LanguageData>

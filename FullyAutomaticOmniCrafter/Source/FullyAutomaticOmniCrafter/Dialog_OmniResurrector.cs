@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FullyAutomaticOmniCrafter.UtilApi;
@@ -19,10 +20,14 @@ namespace FullyAutomaticOmniCrafter
     {
         private const float RowHeight = 46f;
 
+        /// <summary>列表最大显示行数（防止死亡 Pawn 过多时全量构建图形导致卡顿）。</summary>
+        private const int MaxListCount = 200;
+
         private readonly CompOmniResurrector comp;
         private string searchText = "";
         private Vector2 scrollPosition;
         private List<Pawn> cachedPawns;
+        private int totalCount;
 
         // 类型筛选。
         private bool filterHuman = true;
@@ -33,6 +38,8 @@ namespace FullyAutomaticOmniCrafter
         private bool filterFactionHostile = true;
         private bool filterFactionNeutral = true;
         private bool filterFactionNone = true;
+        // 是否同时列出存活的 Pawn（仅可登记，不可复活）。
+        private bool showAlive = false;
 
         public override Vector2 InitialSize => new Vector2(720f, 720f);
 
@@ -49,9 +56,9 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 构建缓存列表：可复活死亡 Pawn 集合中，先按筛选、再按搜索词过滤，
-        /// 已登记的排在上面，同组内按名称排序。
-        /// 仅在筛选/搜索/操作变化时重建，不做高频全量扫描。
+        /// 构建缓存列表：默认仅列出已死亡 Pawn；开启"显示存活Pawn"后并入全部存活 Pawn（地图+世界+飞船）。
+        /// 已登记的排在前面，组内保持原顺序；最多显示 MaxListCount 行，避免超大列表的图形构建开销。
+        /// 单次枚举构建，不做高频全量扫描。
         /// </summary>
         private void UpdateCache()
         {
@@ -59,16 +66,64 @@ namespace FullyAutomaticOmniCrafter
             if (mgr == null)
             {
                 cachedPawns = new List<Pawn>();
+                totalCount = 0;
                 return;
             }
             List<Pawn> registered = mgr.Registered;
-            cachedPawns = Find.WorldPawns.AllPawnsDead
-                .Where(p => p != null && p.Dead && !p.Discarded)
-                .Where(MatchesFilters)
-                .Where(MatchesSearch)
-                .OrderBy(p => registered.Contains(p) ? 0 : 1)
-                .ThenBy(p => p.LabelCap)
-                .ToList();
+
+            IEnumerable<Pawn> pool = Find.WorldPawns.AllPawnsDead;
+            if (showAlive)
+            {
+                // AllMapsAndWorld_Alive 返回内部复用的 List，必须在本次调用内立即消费完。
+                List<Pawn> alive = PawnsFinder.AllMapsAndWorld_Alive;
+                List<Pawn> combined = new List<Pawn>(alive.Count + pool.Count());
+                combined.AddRange(alive);
+                combined.AddRange(pool);
+                pool = combined;
+            }
+
+            List<Pawn> all = new List<Pawn>(pool.Count());
+            foreach (Pawn p in pool)
+            {
+                if (p == null || p.Discarded || (!p.Dead && !showAlive))
+                {
+                    continue;
+                }
+                if (!MatchesFilters(p) || !MatchesSearch(p))
+                {
+                    continue;
+                }
+                all.Add(p);
+            }
+            totalCount = all.Count;
+
+            // 已登记优先：稳定分组（已登记在前，其余在后），组内保持原顺序，避免额外字符串排序开销。
+            cachedPawns = new List<Pawn>(Math.Min(all.Count, MaxListCount));
+            foreach (Pawn p in all)
+            {
+                if (registered.Contains(p))
+                {
+                    cachedPawns.Add(p);
+                    if (cachedPawns.Count >= MaxListCount)
+                    {
+                        break;
+                    }
+                }
+            }
+            if (cachedPawns.Count < MaxListCount)
+            {
+                foreach (Pawn p in all)
+                {
+                    if (!registered.Contains(p))
+                    {
+                        cachedPawns.Add(p);
+                        if (cachedPawns.Count >= MaxListCount)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         private bool MatchesFilters(Pawn p)
@@ -132,12 +187,13 @@ namespace FullyAutomaticOmniCrafter
             }
             y += 35f;
 
-            // 类型筛选。
-            float typeW = (inRect.width - 10f) / 3f;
+            // 类型筛选 + 显示存活开关。
+            float typeW = inRect.width / 4f;
             bool changed = false;
             Checkbox(new Rect(0f, y, typeW, 30f), "OmniResurrector_FilterHuman", ref filterHuman, ref changed);
             Checkbox(new Rect(typeW, y, typeW, 30f), "OmniResurrector_FilterAnimal", ref filterAnimal, ref changed);
             Checkbox(new Rect(typeW * 2f, y, typeW, 30f), "OmniResurrector_FilterMechanoid", ref filterMechanoid, ref changed);
+            Checkbox(new Rect(typeW * 3f, y, typeW, 30f), "OmniResurrector_ShowAlive", ref showAlive, ref changed);
             y += 35f;
 
             // 派系筛选。
@@ -151,6 +207,16 @@ namespace FullyAutomaticOmniCrafter
             if (changed)
             {
                 UpdateCache();
+            }
+
+            // 结果统计行（结果过多时提示）。
+            if (totalCount > MaxListCount)
+            {
+                Text.Font = GameFont.Tiny;
+                Widgets.Label(new Rect(0f, y, inRect.width, 20f),
+                    "OmniResurrector_ListOverflow".Translate(totalCount, MaxListCount));
+                Text.Font = GameFont.Small;
+                y += 22f;
             }
 
             // 列表。
@@ -254,9 +320,14 @@ namespace FullyAutomaticOmniCrafter
                 UpdateCache();
             }
 
-            if (Widgets.ButtonText(resurrectBtn, "OmniResurrector_ButtonResurrect".Translate()))
+            if (Widgets.ButtonText(resurrectBtn, "OmniResurrector_ButtonResurrect".Translate(), active: pawn.Dead))
             {
                 TryResurrect(pawn);
+            }
+            if (!pawn.Dead)
+            {
+                // 存活 Pawn 不允许复活，给出提示。
+                TooltipHandler.TipRegion(resurrectBtn, "OmniResurrector_CannotResurrectAlive".Translate());
             }
         }
 

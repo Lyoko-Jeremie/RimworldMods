@@ -58,12 +58,13 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 清理失效登记：Pawn 已复活（非死亡）、已被回收（Discarded）或为 null 时移除。
+        /// 清理失效登记：Pawn 已被回收（Discarded）或为 null 时移除。
+        /// 登记列表允许包含存活的 Pawn（预约保护），因此不要求 Pawn 死亡。
         /// 在打开复活控制界面时调用一次即可。
         /// </summary>
         public void CleanupInvalid()
         {
-            sourceComp.pawnSources.RemoveAll(p => p == null || !p.Dead || p.Discarded);
+            sourceComp.pawnSources.RemoveAll(p => p == null || p.Discarded);
         }
 
         public override void ExposeData()
@@ -77,11 +78,11 @@ namespace FullyAutomaticOmniCrafter
                 {
                     sourceComp.pawnSources = new List<Pawn>();
                 }
-                sourceComp.pawnSources.RemoveAll(p => p == null || !p.Dead || p.Discarded);
+                sourceComp.pawnSources.RemoveAll(p => p == null || p.Discarded);
                 // 读档后 sourcedPawns 字典已丢失，需要重新登记以恢复 GC 保护。
                 foreach (Pawn p in sourceComp.pawnSources)
                 {
-                    if (p != null)
+                    if (p != null && !p.Discarded)
                     {
                         Find.WorldPawns.AddPawnSource(p, sourceComp);
                     }
