@@ -71,6 +71,12 @@ namespace OuterrealmTechRobot
 
             list.Add(new FloatMenuOption("ModifyTraitsLabel".Translate(), delegate { OpenTraitMenu(pawn); }));
 
+            // 文化修改（仅 Ideology DLC 激活且非无文化模式时显示）
+            if (ModsConfig.IdeologyActive && Find.IdeoManager != null && !Find.IdeoManager.classicMode)
+            {
+                list.Add(new FloatMenuOption("ModifyIdeoLabel".Translate(), delegate { OpenIdeoMenu(pawn); }));
+            }
+
             list.Add(new FloatMenuOption("AutofixReplenishLabel".Translate(), delegate
             {
                 var comp = CompArtificialMaid.GetCompCached(pawn);
@@ -89,6 +95,44 @@ namespace OuterrealmTechRobot
                 pawn.Notify_Teleported();
 
                 Messages.Message("ArtificialMaidTeleportedMessage".Translate(pawn.LabelShort),
+                    MessageTypeDefOf.PositiveEvent);
+            }));
+
+            Find.WindowStack.Add(new FloatMenu(list));
+        }
+
+        private void OpenIdeoMenu(Pawn pawn)
+        {
+            List<FloatMenuOption> list = new List<FloatMenuOption>();
+
+            // 列出所有可用文化，排除隐藏文化（如 Anomaly 的实体文化 Horaxian）
+            foreach (Ideo ideo in Find.IdeoManager.IdeosListForReading)
+            {
+                if (ideo.hidden || ideo == Find.IdeoManager.Horaxian) continue;
+
+                Ideo localIdeo = ideo;
+                bool isCurrent = pawn.Ideo == localIdeo;
+                string label = isCurrent
+                    ? (string)"ArtificialMaidIdeoCurrent".Translate(localIdeo.name)
+                    : localIdeo.name;
+
+                list.Add(new FloatMenuOption(label, delegate
+                {
+                    if (pawn.ideo == null) return; // 防御性检查
+                    pawn.ideo.SetIdeo(localIdeo);
+                    CompArtificialMaid comp = CompArtificialMaid.GetCompCached(pawn);
+                    if (comp != null) comp.ideologySet = true; // 标记为玩家指定，自动修复不再清除
+                    Messages.Message("ArtificialMaidIdeoUpdated".Translate(pawn.LabelShort, localIdeo.name),
+                        MessageTypeDefOf.PositiveEvent);
+                }));
+            }
+
+            list.Add(new FloatMenuOption("ClearArtificialMaidIdeoLabel".Translate(), delegate
+            {
+                if (pawn.ideo != null) pawn.ideo.SetIdeo(null);
+                CompArtificialMaid comp = CompArtificialMaid.GetCompCached(pawn);
+                if (comp != null) comp.ideologySet = false; // 恢复出厂无文化状态
+                Messages.Message("ArtificialMaidIdeoCleared".Translate(pawn.LabelShort),
                     MessageTypeDefOf.PositiveEvent);
             }));
 

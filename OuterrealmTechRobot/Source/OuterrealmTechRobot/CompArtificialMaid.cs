@@ -36,6 +36,7 @@ namespace OuterrealmTechRobot
         public bool allowAutoHibernate = true;
         public bool enableHealingProtocol = false;
         public bool enableHuntMode = false;
+        public bool ideologySet = false; // 文化是否由玩家通过终端指定（指定后自动修复不再清除）
         public int lastEnemyFoundTick = -1;
         public bool hostileResponseInitialized = false;
         public bool isFaking = false; // 用于抑制工作检测期间的闪烁
@@ -103,6 +104,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref allowAutoHibernate, "allowAutoHibernate", true);
             Scribe_Values.Look(ref enableHealingProtocol, "enableHealingProtocol", false);
             Scribe_Values.Look(ref enableHuntMode, "enableHuntMode", false);
+            Scribe_Values.Look(ref ideologySet, "ideologySet", false);
             Scribe_Values.Look(ref lastEnemyFoundTick, "lastEnemyFoundTick", -1);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
 
@@ -595,8 +597,8 @@ namespace OuterrealmTechRobot
 
             ArtificialMaidHealthUtility.RepairHarmfulHealthConditions(Pawn);
 
-            // 清除文化
-            if (ModsConfig.IdeologyActive && Pawn.ideo != null && Pawn.ideo.Ideo != null)
+            // 清除文化（仅清除未经玩家指定的文化；玩家通过终端指定的文化保留）
+            if (ModsConfig.IdeologyActive && Pawn.ideo != null && Pawn.ideo.Ideo != null && !ideologySet)
             {
                 Pawn.ideo.SetIdeo(null);
             }

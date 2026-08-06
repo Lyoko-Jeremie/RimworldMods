@@ -24,6 +24,11 @@
     <ArtificialMaidTraitAdded>Added {0} to {1}.</ArtificialMaidTraitAdded>
     <ClearArtificialMaidTraitsLabel>--- Clear All Artificial Maid Traits ---</ClearArtificialMaidTraitsLabel>
     <ArtificialMaidTraitsCleared>Cleared all Artificial Maid traits from {0}.</ArtificialMaidTraitsCleared>
+    <ModifyIdeoLabel>Modify Ideoligion</ModifyIdeoLabel>
+    <ArtificialMaidIdeoUpdated>Updated {0}'s ideoligion to {1}.</ArtificialMaidIdeoUpdated>
+    <ArtificialMaidIdeoCurrent>{0} (current)</ArtificialMaidIdeoCurrent>
+    <ClearArtificialMaidIdeoLabel>--- Clear Ideoligion ---</ClearArtificialMaidIdeoLabel>
+    <ArtificialMaidIdeoCleared>Cleared {0}'s ideoligion.</ArtificialMaidIdeoCleared>
     <ArtificialMaidRecruitedLabel>Artificial Maid Found</ArtificialMaidRecruitedLabel>
     <ArtificialMaidRecruitedText>An Artificial Maid {0} from another faction was found on the map. Due to internal security protocols, she has automatically switched to your faction and performed a full body repair.</ArtificialMaidRecruitedText>
     <ArtificialMaidEscortLetterLabel>Maid Escort</ArtificialMaidEscortLetterLabel>
