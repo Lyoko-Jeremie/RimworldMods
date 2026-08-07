@@ -33,4 +33,11 @@
   <OmniResurrector_InspectRegistered>{0} pawn(s) registered</OmniResurrector_InspectRegistered>
   <OmniResurrector_InspectEnergy>Grid storage: {0} Wd</OmniResurrector_InspectEnergy>
   <OmniResurrector_EmptyList>No pawns match the current filters</OmniResurrector_EmptyList>
+  <OmniResurrector_ShowIcons>Show pawn icons</OmniResurrector_ShowIcons>
+  <OmniResurrector_ShowPawnIcons>Show pawn icons in the Omni Resurrector UI</OmniResurrector_ShowPawnIcons>
+  <OmniResurrector_ShowPawnIconsDesc>Off speeds up UI opening (pawn icons are not loaded); when on, the UI loads and displays pawn icons.</OmniResurrector_ShowPawnIconsDesc>
+  <OmniResurrector_ContextRegister>Register {0} (not registered)</OmniResurrector_ContextRegister>
+  <OmniResurrector_ContextUnregister>Unregister {0} (registered)</OmniResurrector_ContextUnregister>
+  <OmniResurrector_ContextRegistered>{0} has been registered to the Omni Resurrector</OmniResurrector_ContextRegistered>
+  <OmniResurrector_ContextUnregistered>{0} has been unregistered from the Omni Resurrector</OmniResurrector_ContextUnregistered>
 </LanguageData>

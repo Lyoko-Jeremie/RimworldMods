@@ -33,4 +33,11 @@
   <OmniResurrector_InspectRegistered>已登记 {0} 名Pawn</OmniResurrector_InspectRegistered>
   <OmniResurrector_InspectEnergy>电网储能 {0} Wd</OmniResurrector_InspectEnergy>
   <OmniResurrector_EmptyList>没有符合当前筛选条件的Pawn</OmniResurrector_EmptyList>
+  <OmniResurrector_ShowIcons>显示Pawn图像</OmniResurrector_ShowIcons>
+  <OmniResurrector_ShowPawnIcons>万能重生平台界面显示Pawn图像</OmniResurrector_ShowPawnIcons>
+  <OmniResurrector_ShowPawnIconsDesc>关闭可加速界面打开速度（不加载Pawn图像）；开启后界面会加载并显示各Pawn的图像。</OmniResurrector_ShowPawnIconsDesc>
+  <OmniResurrector_ContextRegister>登记 {0}（未登记）</OmniResurrector_ContextRegister>
+  <OmniResurrector_ContextUnregister>取消登记 {0}（已登记）</OmniResurrector_ContextUnregister>
+  <OmniResurrector_ContextRegistered>已将 {0} 登记到万能重生平台</OmniResurrector_ContextRegistered>
+  <OmniResurrector_ContextUnregistered>已取消 {0} 的登记</OmniResurrector_ContextUnregistered>
 </LanguageData>

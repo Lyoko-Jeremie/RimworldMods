@@ -40,6 +40,8 @@ namespace FullyAutomaticOmniCrafter
         private bool filterFactionNone = true;
         // 是否同时列出存活的 Pawn（仅可登记，不可复活）。
         private bool showAlive = false;
+        // 是否加载并显示 Pawn 图像（默认跟随全局设置，关闭可加速界面打开）。
+        private bool showPawnIcons;
 
         public override Vector2 InitialSize => new Vector2(720f, 720f);
 
@@ -51,6 +53,7 @@ namespace FullyAutomaticOmniCrafter
             this.closeOnClickedOutside = true;
             this.absorbInputAroundWindow = true;
             this.draggable = true;
+            showPawnIcons = OmniCrafterMod.Settings.resurrectorShowPawnIcons;
             GameComponent_OmniResurrector.Instance?.CleanupInvalid();
             UpdateCache();
         }
@@ -204,9 +207,19 @@ namespace FullyAutomaticOmniCrafter
             Checkbox(new Rect(factionW * 3f, y, factionW, 30f), "OmniResurrector_FilterFactionNone", ref filterFactionNone, ref changed);
             y += 35f;
 
+            // 图像加载开关（默认关闭以加速界面打开；打开后才加载并显示 Pawn 图像）。
+            Checkbox(new Rect(0f, y, inRect.width / 2f, 30f), "OmniResurrector_ShowIcons", ref showPawnIcons, ref changed);
+            y += 35f;
+
             if (changed)
             {
                 UpdateCache();
+                // 图像开关为全局设置：变更后写回 Mod 设置并保存。
+                if (OmniCrafterMod.Settings.resurrectorShowPawnIcons != showPawnIcons)
+                {
+                    OmniCrafterMod.Settings.resurrectorShowPawnIcons = showPawnIcons;
+                    OmniCrafterMod.Settings.Write();
+                }
             }
 
             // 结果统计行（结果过多时提示）。
@@ -276,8 +289,18 @@ namespace FullyAutomaticOmniCrafter
                 Widgets.DrawHighlight(rowRect);
             }
 
-            // 头像。
-            Widgets.ThingIcon(new Rect(rowRect.x + 5f, rowRect.y + 8f, 30f, 30f), pawn);
+            // 头像：默认不加载 Pawn 图像（绘制占位框），加速界面打开；
+            // 打开图像开关后才通过 Widgets.ThingIcon 加载并显示各 Pawn 的图像。
+            Rect iconRect = new Rect(rowRect.x + 5f, rowRect.y + 8f, 30f, 30f);
+            if (showPawnIcons)
+            {
+                Widgets.ThingIcon(iconRect, pawn);
+            }
+            else
+            {
+                Widgets.DrawRectFast(iconRect, new Color(0.16f, 0.16f, 0.16f, 0.55f));
+                Widgets.DrawBox(iconRect, 1);
+            }
 
             // 第一行：名称 + 派系 + 已登记徽章。
             string nameLine = pawn.LabelCap;

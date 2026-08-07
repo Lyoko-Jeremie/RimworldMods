@@ -16,6 +16,13 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public bool enablePinyinSearch = false;
 
+        /// <summary>
+        /// 万能重生平台操作界面是否加载并显示 Pawn 图像（头像）。
+        /// 默认关闭：界面打开时不加载 Pawn 图像，显著加速界面打开速度；
+        /// 打开界面后可在界面内或 Mod 设置页打开此开关，此时才加载并显示图像。
+        /// </summary>
+        public bool resurrectorShowPawnIcons = false;
+
         // ─── Power cost polynomial coefficients ───────────────────────────
         // X = marketValue [+ mass if xIncludeMass] [+ maxHP if xIncludeHitPoints]
         // Y = a + b*X + c*X^2 + d*X^3 + e*X^4 + g*log10(X) + n*ln(X)
@@ -63,6 +70,7 @@ namespace FullyAutomaticOmniCrafter
 
             Scribe_Values.Look(ref enablePinyinSearch, "enablePinyinSearch", false);
             if (Scribe.mode == LoadSaveMode.LoadingVars) enablePinyinSearch = false;
+            Scribe_Values.Look(ref resurrectorShowPawnIcons, "resurrectorShowPawnIcons", false);
             Scribe_Values.Look(ref powerCostA, "powerCostA", 0f);
             Scribe_Values.Look(ref powerCostB, "powerCostB", 1f);
             Scribe_Values.Look(ref powerCostC, "powerCostC", 0f);

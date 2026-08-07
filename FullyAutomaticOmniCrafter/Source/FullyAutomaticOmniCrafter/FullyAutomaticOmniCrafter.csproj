@@ -408,6 +408,7 @@
     <Compile Include="Patch_OmniPhantomWall.cs" />
     <Compile Include="Patch_OmniPhantomWallTerrain.cs" />
     <Compile Include="Patch_OmniPhantomWall_DoorFix.cs" />
+    <Compile Include="Patch_OmniResurrectorFloatMenu.cs" />
     <Compile Include="Patch_PhantomWall2DesignatorBinding.cs" />
     <Compile Include="Patch_ProjectileInterceptor.cs" />
     <Compile Include="RealityWeaver.cs" />

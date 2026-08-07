@@ -203,7 +203,7 @@ namespace FullyAutomaticOmniCrafter
                 + checkH * 2              // logX + logY toggles
                 + 12f + 30f;              // gap + reset button
 
-            float contentH = checkH + 12f + sectionH + 16f + sectionH;
+            float contentH = checkH + 12f + checkH + 4f + sectionH + 16f + sectionH;
 
             Rect viewRect = new Rect(0f, 0f, inRect.width - 20f, contentH);
             Widgets.BeginScrollView(inRect, ref _scrollPos, viewRect);
@@ -215,6 +215,12 @@ namespace FullyAutomaticOmniCrafter
             listing.CheckboxLabeled(
                 "OmniCrafter_EnablePinyinSearch".Translate(),
                 ref Settings.enablePinyinSearch);
+
+            // ── Omni Resurrector UI options ──────────────────────────────
+            listing.CheckboxLabeled(
+                "OmniResurrector_ShowPawnIcons".Translate(),
+                ref Settings.resurrectorShowPawnIcons,
+                "OmniResurrector_ShowPawnIconsDesc".Translate());
 
             // ── Helper: coefficient row (label + text field + slider) ────
             void CoeffRow(string labelKey, ref float val, float min, float max)
