@@ -21,13 +21,14 @@
             <texPath>Things/Building/Production/OmniResurrector</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <shaderType>CutoutComplex</shaderType>
-            <drawSize>(5,5)</drawSize>
+            <drawSize>(1,1)</drawSize>
+            <drawOffset>(0, 0, 0)</drawOffset>
         </graphicData>
-        <size>(5,5)</size>
+        <size>(1,1)</size>
         <uiIconPath>Things/Building/Production/OmniResurrector</uiIconPath>
 
         <altitudeLayer>Building</altitudeLayer>
-        <passability>PassThroughOnly</passability>
+        <passability>Standable</passability>
         <pathCost>1</pathCost>
         <blockWind>false</blockWind>
         <castEdgeShadows>false</castEdgeShadows>
@@ -36,8 +37,7 @@
         <canOverlapZones>false</canOverlapZones>
 
         <costList>
-            <Steel>500</Steel>
-            <ComponentIndustrial>10</ComponentIndustrial>
+            <Steel>300</Steel>
         </costList>
 
         <minifiedDef>MinifiedThing</minifiedDef>
@@ -73,6 +73,8 @@
             </li>
         </comps>
 
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
     </ThingDef>
 
 </Defs>
