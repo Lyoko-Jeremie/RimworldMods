@@ -54,6 +54,13 @@
 
 [hr][/hr]
 
+兼容性：
+
+当前与 Do Something for Idle (摸鱼) 存在兼容性问题，Do Something for Idle 的一个畸形实现会导致人造人女仆在种植区摸鱼时爆红字，但不影响实际功能。
+
+
+[hr][/hr]
+
 Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmTechRobot
 
 ---
@@ -87,6 +94,15 @@ Notice:
 4. Please try to equip each Artificial Maid with an Artificial Maid Display Cabinet, and enable automatic sleep and wake-up for both the Artificial Maid and the display cabinet, so that the Artificial Maid enters the display cabinet to sleep when there is no work to be done instead of wandering around.
 5. When manual control of the Artificial Maid is needed, such as when forming a caravan or when control is needed in combat, you can wake up the Artificial Maid from the display cabinet using the immediate wake-up button and disable the Artificial Maid's automatic sleep.
 6. The hunting mode will quickly scan for threats on the map and, upon detecting a threat, will continuously teleport (AutoBlink) to the threat's side for close combat. Therefore, hunting mode consumes a lot of computational resources, so it will automatically turn off after a period of time without finding any threats.
+
+
+
+
+[hr][/hr]
+
+Compatibility:
+
+Currently, there is a compatibility issue with [Do Something for Idle (Idle)]. A malformed implementation of Do Something for Idle causes the Artificial Maid to display red text when idling in a growing zone, but it does not affect actual functionality.
 
 
 
