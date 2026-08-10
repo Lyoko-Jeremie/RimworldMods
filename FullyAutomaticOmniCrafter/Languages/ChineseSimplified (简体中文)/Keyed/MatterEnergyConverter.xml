@@ -40,4 +40,9 @@
   <MEC_ZM_StatusMonitoring>监控存储区：{0} — 自动转化运行中</MEC_ZM_StatusMonitoring>
   <MEC_ZM_StatusNotInZone>未处于存储区范围内 — 自动转化已暂停</MEC_ZM_StatusNotInZone>
   <MEC_ZM_Converted>已自动转化 {0} 件物品，产出 {1} Wd 电能</MEC_ZM_Converted>
+
+  <!-- 存储区监控型转化仪：自动转化 Gizmo 开关与关闭状态 -->
+  <MEC_ZM_AutoConvert_Toggle>自动转化</MEC_ZM_AutoConvert_Toggle>
+  <MEC_ZM_AutoConvert_Toggle_Desc>开关：自动将监控存储区中的物品转化为电能。</MEC_ZM_AutoConvert_Toggle_Desc>
+  <MEC_ZM_StatusDisabled>自动转化已关闭</MEC_ZM_StatusDisabled>
 </LanguageData>

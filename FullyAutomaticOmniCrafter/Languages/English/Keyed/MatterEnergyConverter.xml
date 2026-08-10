@@ -41,4 +41,9 @@
   <MEC_ZM_StatusMonitoring>Monitoring stockpile: {0} — auto-conversion active</MEC_ZM_StatusMonitoring>
   <MEC_ZM_StatusNotInZone>Not inside a stockpile zone — auto-conversion paused</MEC_ZM_StatusNotInZone>
   <MEC_ZM_Converted>Auto-converted {0} item(s), producing {1} Wd of energy</MEC_ZM_Converted>
+
+  <!-- Zone Monitor converter: auto-convert gizmo toggle and disabled status -->
+  <MEC_ZM_AutoConvert_Toggle>Auto-Convert</MEC_ZM_AutoConvert_Toggle>
+  <MEC_ZM_AutoConvert_Toggle_Desc>Toggle: automatically convert items in the monitored stockpile into electrical energy.</MEC_ZM_AutoConvert_Toggle_Desc>
+  <MEC_ZM_StatusDisabled>Auto-conversion disabled</MEC_ZM_StatusDisabled>
 </LanguageData>

@@ -15,9 +15,11 @@ namespace FullyAutomaticOmniCrafter
     ///      1 格存储位、Flickable 开关）。
     ///   - 允许建造在存储区（Zone_Stockpile）范围内
     ///     （需配合 Patch_ZoneMonitorMec_CanOverlapZones，见本文件下方）。
-    ///   - 自动绑定建筑脚下所在的存储区：开关开启且装置处于存储区内时，
-    ///     持续自动将存储区中的物品转化为电能（复用 RecycleThing 逻辑）。
+    ///   - 自动绑定建筑脚下所在的存储区：自动转化开关（Gizmo）开启且装置处于
+    ///     存储区内时，持续自动将存储区中的物品转化为电能（复用 RecycleThing 逻辑）。
     ///   - 不在存储区内时自动转化暂停，但手动转化模式仍然可用。
+    ///   - 注意：自动转化由独立 Gizmo 开关控制，不受 Flickable 物理开关影响；
+    ///     Flickable 仍保留原功能（控制专属电池对外放电）。
     /// </summary>
     public class Building_MatterEnergyConverterZoneMonitor : Building_MatterEnergyConverter
     {
@@ -27,6 +29,9 @@ namespace FullyAutomaticOmniCrafter
         private int nextAutoScanTick;
         private int totalConvertedCount;
         private float totalConvertedEnergy;
+
+        /// <summary>自动转化开关（由 Gizmo 按钮控制，独立于 Flickable 物理开关）。</summary>
+        private bool autoConvertEnabled = true;
 
         /// <summary>
         /// 当前监控的存储区：建筑所在格所属的 Zone_Stockpile。
@@ -38,6 +43,12 @@ namespace FullyAutomaticOmniCrafter
             return Map.zoneManager.ZoneAt(Position) as Zone_Stockpile;
         }
 
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref autoConvertEnabled, "autoConvertEnabled", true, true);
+        }
+
         protected override void Tick()
         {
             base.Tick();
@@ -47,8 +58,8 @@ namespace FullyAutomaticOmniCrafter
             if (GenTicks.TicksGame < nextAutoScanTick) return;
             nextAutoScanTick = GenTicks.TicksGame + AutoScanIntervalTicks;
 
-            // 开关关闭或装置不在存储区内时暂停自动转化
-            if (!FlickUtility.WantsToBeOn(this)) return;
+            // 开关关闭（Gizmo 控制）或装置不在存储区内时暂停自动转化
+            if (!autoConvertEnabled) return;
             Zone_Stockpile zone = MonitoredZone();
             if (zone == null) return;
             SlotGroup slotGroup = zone.GetSlotGroup();
@@ -74,17 +85,39 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        // ── Gizmo：自动转化开关 ────────────────────────────────────────────
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            foreach (Gizmo g in base.GetGizmos())
+                yield return g;
+
+            yield return new Command_Toggle
+            {
+                defaultLabel = "MEC_ZM_AutoConvert_Toggle".Translate(),
+                defaultDesc = "MEC_ZM_AutoConvert_Toggle_Desc".Translate(),
+                icon = MatterEnergyConverterTex.IconStorage,
+                isActive = () => autoConvertEnabled,
+                toggleAction = () => autoConvertEnabled = !autoConvertEnabled
+            };
+        }
+
         public override string GetInspectString()
         {
             string s = base.GetInspectString();
 
             Zone_Stockpile zone = MonitoredZone();
-            if (zone != null && FlickUtility.WantsToBeOn(this))
+            if (zone != null && autoConvertEnabled)
             {
                 if (!s.NullOrEmpty()) s += "\n";
                 s += "MEC_ZM_StatusMonitoring".Translate(zone.label);
             }
-            else if (zone == null)
+            else if (zone != null)
+            {
+                // 在存储区内但自动转化开关关闭
+                if (!s.NullOrEmpty()) s += "\n";
+                s += "MEC_ZM_StatusDisabled".Translate();
+            }
+            else
             {
                 if (!s.NullOrEmpty()) s += "\n";
                 s += "MEC_ZM_StatusNotInZone".Translate();
