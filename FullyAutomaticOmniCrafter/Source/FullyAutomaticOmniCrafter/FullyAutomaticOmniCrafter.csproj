@@ -414,6 +414,7 @@
     <Compile Include="RealityWeaver.cs" />
     <Compile Include="RimatomicsResearchCompat.cs" />
     <Compile Include="MatterEnergyConverter.cs" />
+    <Compile Include="MatterEnergyConverterZoneMonitor.cs" />
     <Compile Include="OmniCrafter.cs" />
     <Compile Include="OmniCrafterCache.cs" />
     <Compile Include="OmniCrafterOrderClipboard.cs" />

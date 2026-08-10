@@ -213,5 +213,31 @@
         <size>(3,3)</size>
     </ThingDef>
 
+
+    <!--
+      ============================================================
+      存储区监控型物质-能量转化仪（1x1）/ Matter-Energy Converter (Zone Monitor)
+      thingClass : FullyAutomaticOmniCrafter.Building_MatterEnergyConverterZoneMonitor
+      继承        : Building_MatterEnergyConverter（保留 A/B/C 三种手动模式与专属电池）
+      额外功能    :
+        - 允许建造在存储区（Zone_Stockpile）范围内
+          （原版 CanOverlapZones 对 Building_Storage 派生类恒为 false，
+           需配合 C# 中的 Patch_ZoneMonitorMec_CanOverlapZones 生效）
+        - 自动绑定建筑脚下所在存储区：开关开启且装置处于存储区内时，
+          持续自动将存储区中的物品转化为电能
+        - 不在存储区内时自动转化暂停，手动转化模式仍可用
+      ============================================================
+    -->
+    <ThingDef ParentName="MatterEnergyConverter">
+        <defName>MatterEnergyConverter_ZoneMonitor</defName>
+        <thingClass>FullyAutomaticOmniCrafter.Building_MatterEnergyConverterZoneMonitor</thingClass>
+        <label>Matter-Energy Converter (Zone Monitor)</label>
+        <description>Matter-Energy Converter Zone Monitor</description>
+        <size>(1,1)</size>
+        <canOverlapZones>true</canOverlapZones>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+        </graphicData>
+    </ThingDef>
 </Defs>
 

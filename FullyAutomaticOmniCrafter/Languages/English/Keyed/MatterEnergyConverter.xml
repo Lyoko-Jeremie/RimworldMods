@@ -36,4 +36,9 @@
   <MEC_DischargeAll_Desc>Release all electrical energy stored in this converter's dedicated battery back into the power grid immediately.</MEC_DischargeAll_Desc>
   <MEC_DischargeAll_Confirm>Release all stored energy into the power grid? This cannot be undone.</MEC_DischargeAll_Confirm>
 
+
+  <!-- Zone Monitor converter: status / paused hint / running stats -->
+  <MEC_ZM_StatusMonitoring>Monitoring stockpile: {0} — auto-conversion active</MEC_ZM_StatusMonitoring>
+  <MEC_ZM_StatusNotInZone>Not inside a stockpile zone — auto-conversion paused</MEC_ZM_StatusNotInZone>
+  <MEC_ZM_Converted>Auto-converted {0} item(s), producing {1} Wd of energy</MEC_ZM_Converted>
 </LanguageData>
