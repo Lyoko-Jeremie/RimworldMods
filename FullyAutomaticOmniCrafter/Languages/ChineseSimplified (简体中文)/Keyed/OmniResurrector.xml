@@ -8,6 +8,7 @@
   <OmniResurrector_FilterAnimal>动物</OmniResurrector_FilterAnimal>
   <OmniResurrector_FilterMechanoid>机械体</OmniResurrector_FilterMechanoid>
   <OmniResurrector_ShowAlive>显示存活Pawn</OmniResurrector_ShowAlive>
+  <OmniResurrector_OnlyRegistered>仅显示已登记Pawn</OmniResurrector_OnlyRegistered>
   <OmniResurrector_FilterFactionPlayer>玩家派系</OmniResurrector_FilterFactionPlayer>
   <OmniResurrector_FilterFactionHostile>敌对派系</OmniResurrector_FilterFactionHostile>
   <OmniResurrector_FilterFactionNeutral>中立派系</OmniResurrector_FilterFactionNeutral>

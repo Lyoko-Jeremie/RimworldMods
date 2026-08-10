@@ -8,6 +8,7 @@
   <OmniResurrector_FilterAnimal>Animals</OmniResurrector_FilterAnimal>
   <OmniResurrector_FilterMechanoid>Mechanoids</OmniResurrector_FilterMechanoid>
   <OmniResurrector_ShowAlive>Show alive pawns</OmniResurrector_ShowAlive>
+  <OmniResurrector_OnlyRegistered>Registered only</OmniResurrector_OnlyRegistered>
   <OmniResurrector_FilterFactionPlayer>Player Faction</OmniResurrector_FilterFactionPlayer>
   <OmniResurrector_FilterFactionHostile>Hostile Factions</OmniResurrector_FilterFactionHostile>
   <OmniResurrector_FilterFactionNeutral>Neutral Factions</OmniResurrector_FilterFactionNeutral>

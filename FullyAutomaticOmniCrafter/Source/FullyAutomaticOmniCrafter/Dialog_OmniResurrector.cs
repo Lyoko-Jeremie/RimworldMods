@@ -13,7 +13,7 @@ namespace FullyAutomaticOmniCrafter
     /// 单个列表同时展示"已登记"（受 GC 保护）与"未登记"的已死亡 Pawn，
     /// 已登记的 Pawn 排序在前并带高亮徽章。
     /// 支持按类型（人类/动物/机械体）、派系（玩家/敌对/中立/无派系）筛选，
-    /// 并提供名称搜索框。
+    /// 可勾选"仅显示已登记"只查看当前已登记的目标，并提供名称搜索框。
     /// 每一行可执行 [登记]/[取消登记]/[复活] 操作，复活为即时完成。
     /// </summary>
     public class Dialog_OmniResurrector : Window
@@ -40,6 +40,8 @@ namespace FullyAutomaticOmniCrafter
         private bool filterFactionNone = false;
         // 是否同时列出存活的 Pawn（仅可登记，不可复活）。
         private bool showAlive = false;
+        // 是否仅显示已登记的 Pawn（勾选后只查看当前已登记的目标）。
+        private bool showRegisteredOnly = false;
         // 是否加载并显示 Pawn 图像（每次打开界面时默认不显示，可在本次打开中手动勾选开启）。
         private bool showPawnIcons;
 
@@ -96,6 +98,10 @@ namespace FullyAutomaticOmniCrafter
                     continue;
                 }
                 if (!MatchesFilters(p) || !MatchesSearch(p))
+                {
+                    continue;
+                }
+                if (showRegisteredOnly && !registered.Contains(p))
                 {
                     continue;
                 }
@@ -212,6 +218,8 @@ namespace FullyAutomaticOmniCrafter
 
             // 图像加载开关（默认关闭以加速界面打开；打开后才加载并显示 Pawn 图像）。
             Checkbox(new Rect(0f, y, inRect.width / 2f, 30f), "OmniResurrector_ShowIcons", ref showPawnIcons, ref changed);
+            // 仅显示已登记 Pawn 开关（勾选后列表只保留当前已登记的目标）。
+            Checkbox(new Rect(inRect.width / 2f, y, inRect.width / 2f, 30f), "OmniResurrector_OnlyRegistered", ref showRegisteredOnly, ref changed);
             y += 35f;
 
             if (changed)
