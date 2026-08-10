@@ -21,6 +21,7 @@
   <OmniResurrector_KindAnimal>动物</OmniResurrector_KindAnimal>
   <OmniResurrector_KindMechanoid>机械体</OmniResurrector_KindMechanoid>
   <OmniResurrector_NoFaction>无派系</OmniResurrector_NoFaction>
+  <OmniResurrector_CorpseAlive>仍存活</OmniResurrector_CorpseAlive>
   <OmniResurrector_CorpseNone>无尸体</OmniResurrector_CorpseNone>
   <OmniResurrector_CorpseYes>尸体</OmniResurrector_CorpseYes>
   <OmniResurrector_CorpseFresh>尸体（新鲜）</OmniResurrector_CorpseFresh>

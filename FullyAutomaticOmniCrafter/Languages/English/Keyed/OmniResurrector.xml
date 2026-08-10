@@ -21,6 +21,7 @@
   <OmniResurrector_KindAnimal>Animal</OmniResurrector_KindAnimal>
   <OmniResurrector_KindMechanoid>Mechanoid</OmniResurrector_KindMechanoid>
   <OmniResurrector_NoFaction>No Faction</OmniResurrector_NoFaction>
+  <OmniResurrector_CorpseAlive>Alive</OmniResurrector_CorpseAlive>
   <OmniResurrector_CorpseNone>No corpse</OmniResurrector_CorpseNone>
   <OmniResurrector_CorpseYes>Corpse</OmniResurrector_CorpseYes>
   <OmniResurrector_CorpseFresh>Corpse (fresh)</OmniResurrector_CorpseFresh>

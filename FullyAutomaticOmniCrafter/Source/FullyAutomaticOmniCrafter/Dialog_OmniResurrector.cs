@@ -33,14 +33,14 @@ namespace FullyAutomaticOmniCrafter
         private bool filterHuman = true;
         private bool filterAnimal = true;
         private bool filterMechanoid = true;
-        // 派系筛选。
+        // 派系筛选（每次打开界面时默认仅显示玩家派系）。
         private bool filterFactionPlayer = true;
-        private bool filterFactionHostile = true;
-        private bool filterFactionNeutral = true;
-        private bool filterFactionNone = true;
+        private bool filterFactionHostile = false;
+        private bool filterFactionNeutral = false;
+        private bool filterFactionNone = false;
         // 是否同时列出存活的 Pawn（仅可登记，不可复活）。
         private bool showAlive = false;
-        // 是否加载并显示 Pawn 图像（默认跟随全局设置，关闭可加速界面打开）。
+        // 是否加载并显示 Pawn 图像（每次打开界面时默认不显示，可在本次打开中手动勾选开启）。
         private bool showPawnIcons;
 
         public override Vector2 InitialSize => new Vector2(720f, 720f);
@@ -53,7 +53,10 @@ namespace FullyAutomaticOmniCrafter
             this.closeOnClickedOutside = true;
             this.absorbInputAroundWindow = true;
             this.draggable = true;
-            showPawnIcons = OmniCrafterMod.Settings.resurrectorShowPawnIcons;
+            // 打开界面时暂停游戏，方便仔细挑选要复活的目标。
+            this.forcePause = true;
+            // 每次打开界面时默认不显示 Pawn 图像（不跟随全局设置），加速界面打开。
+            showPawnIcons = false;
             GameComponent_OmniResurrector.Instance?.CleanupInvalid();
             UpdateCache();
         }
@@ -397,9 +400,13 @@ namespace FullyAutomaticOmniCrafter
             return p.def.label;
         }
 
-        /// <summary>尸体状态：无尸体 / 新鲜 / 腐烂 / 干尸。</summary>
+        /// <summary>尸体状态：仍存活 / 无尸体 / 新鲜 / 腐烂 / 干尸。</summary>
         private static string GetCorpseInfo(Pawn p)
         {
+            if (!p.Dead)
+            {
+                return "OmniResurrector_CorpseAlive".Translate();
+            }
             Corpse corpse = p.Corpse;
             if (corpse == null || corpse.Destroyed)
             {
