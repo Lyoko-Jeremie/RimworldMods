@@ -184,4 +184,16 @@
             </li>
         </degreeDatas>
     </TraitDef>
+
+    <!-- 非致命制服模式：被制服者的标记特性，恢复时移除 -->
+    <TraitDef>
+        <defName>ArtificialMaidTrait_Subdued</defName>
+        <commonality>0</commonality>
+        <degreeDatas>
+            <li>
+                <label>被制服</label>
+                <description>{PAWN_nameDef} 被超维科技的非致命控制场完全压制，暂时失去行动与反抗能力。</description>
+            </li>
+        </degreeDatas>
+    </TraitDef>
 </Defs>

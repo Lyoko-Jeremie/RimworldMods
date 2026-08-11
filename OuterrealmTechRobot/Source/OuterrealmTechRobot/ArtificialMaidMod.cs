@@ -15,6 +15,9 @@ namespace OuterrealmTechRobot
         public static ThoughtDef MaidEmotionalSupport;
         public static ThoughtDef ArtificialMaidMasterProtocol_Mood;
         public static HediffDef ArtificialMaidRecovery;
+        public static HediffDef ArtificialMaidNonLethalSubdue;
+        public static TraitDef ArtificialMaidTrait_Subdued;
+        public static ThoughtDef ArtificialMaidSubdued_Mood;
         public static HediffDef ArtificialMaidAura;
         public static ThoughtDef ArtificialMaidAura_Mood;
         public static ThingDef ArtificialMaidDisplayCase;
@@ -135,5 +138,13 @@ namespace OuterrealmTechRobot
         public static readonly Texture2D IconAura =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ModifyMaid", false) ??
             BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconNonLethalMode =
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_NonLethalMode", false) ??
+            IconHuntMode;
+
+        public static readonly Texture2D IconReleaseSubdued =
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ReleaseSubdued", false) ??
+            IconHealingProtocol;
     }
 }

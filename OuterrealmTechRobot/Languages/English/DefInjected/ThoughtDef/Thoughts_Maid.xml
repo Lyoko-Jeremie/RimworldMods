@@ -6,4 +6,6 @@
   <ArtificialMaidMasterProtocol_Mood.stages.0.description>Under the protection of Outerrealm Tech's nano-array, I feel unprecedented peace of mind. The pain in my body disappeared in an instant, and my spirit was greatly invigorated.</ArtificialMaidMasterProtocol_Mood.stages.0.description>
   <ArtificialMaidAura_Mood.stages.0.label>maid's presence</ArtificialMaidAura_Mood.stages.0.label>
   <ArtificialMaidAura_Mood.stages.0.description>The maid is right beside me. Her presence fills me with strength and confidence.</ArtificialMaidAura_Mood.stages.0.description>
+  <ArtificialMaidSubdued_Mood.stages.0.label>Subdued by Outerrealm Tech</ArtificialMaidSubdued_Mood.stages.0.label>
+  <ArtificialMaidSubdued_Mood.stages.0.description>Outerrealm Tech's control field has locked down all my functions: unable to act, unable to resist, only consciousness drifting in the darkness.</ArtificialMaidSubdued_Mood.stages.0.description>
 </LanguageData>

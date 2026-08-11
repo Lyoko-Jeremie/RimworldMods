@@ -6,13 +6,99 @@
     <description>An advanced recovery system that ensures the maid's immortality through multiple layers of protection.</description>
     <hediffClass>OuterrealmTechRobot.Hediff_ArtificialMaidRecovery</hediffClass>
     <comps>
-      <li Class="OuterrealmTechRobot.HediffCompProperties_ArtificialMaidProtocol"/>
+      <li Class="OuterrealmTechRobot.HediffCompProperties_ArtificialMaid"/>
     </comps>
     <isBad>false</isBad>
     <initialSeverity>1.0</initialSeverity>
     <stages>
       <li>
         <becomeVisible>false</becomeVisible>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!-- 非致命制服模式：目标被超维科技控制场压制，能力与技能全部降至最低，同时获得临时防御保护 -->
+  <HediffDef>
+    <defName>ArtificialMaidNonLethalSubdue</defName>
+    <label>outerrealm subjugation</label>
+    <hediffClass>OuterrealmTechRobot.Hediff_NonLethalSubdued</hediffClass>
+    <description>A target suppressed by Outerrealm Tech's non-lethal control field. All capacities and skills are reduced to a minimum, while a temporary protection keeps them from dying from the resulting collapse.</description>
+    <isBad>true</isBad>
+    <initialSeverity>1.0</initialSeverity>
+    <stages>
+      <li>
+        <label>Subdued</label>
+        <!-- 非致命能力全部钳制到 1%（意识 1% 会强制倒地）；致命能力保持正常，保证不会死亡 -->
+        <capMods>
+          <li>
+            <capacity>Consciousness</capacity>
+            <setMax>0.01</setMax>
+          </li>
+          <li>
+            <capacity>Moving</capacity>
+            <setMax>0.01</setMax>
+          </li>
+          <li>
+            <capacity>Manipulation</capacity>
+            <setMax>0.01</setMax>
+          </li>
+          <li>
+            <capacity>Talking</capacity>
+            <setMax>0.01</setMax>
+          </li>
+          <li>
+            <capacity>Sight</capacity>
+            <setMax>0.01</setMax>
+          </li>
+          <li>
+            <capacity>Hearing</capacity>
+            <setMax>0.01</setMax>
+          </li>
+          <li>
+            <capacity>Eating</capacity>
+            <setMax>0.1</setMax>
+          </li>
+        </capMods>
+        <!-- 临时防御：利器/钝器/热能高护甲 + 伤害减免 + 温度隔离 + 不可燃 -->
+        <statOffsets>
+          <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+          <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+          <ArmorRating_Heat>10000</ArmorRating_Heat>
+          <Insulation_Cold>500</Insulation_Cold>
+          <Insulation_Heat>500</Insulation_Heat>
+          <Flammability>-1</Flammability>
+        </statOffsets>
+        <statFactors>
+          <IncomingDamageFactor>0.01</IncomingDamageFactor>
+        </statFactors>
+        <!-- 禁用所有工作类型：所有技能判定为禁用，等级显示为 0 -->
+        <disabledWorkTags>
+          <li>ManualDumb</li>
+          <li>ManualSkilled</li>
+          <li>Violent</li>
+          <li>Caring</li>
+          <li>Social</li>
+          <li>Commoner</li>
+          <li>Intellectual</li>
+          <li>Animals</li>
+          <li>Artistic</li>
+          <li>Crafting</li>
+          <li>Cooking</li>
+          <li>Firefighting</li>
+          <li>Cleaning</li>
+          <li>Hauling</li>
+          <li>PlantWork</li>
+          <li>Mining</li>
+          <li>Hunting</li>
+          <li>Constructing</li>
+          <li>Shooting</li>
+          <li>AllWork</li>
+        </disabledWorkTags>
+        <!-- 长时间倒地期间不饿不困不失血，杜绝间接死亡 -->
+        <hungerRateFactor>0</hungerRateFactor>
+        <totalBleedFactor>0</totalBleedFactor>
+        <restFallFactor>0</restFallFactor>
+        <blocksMentalBreaks>true</blocksMentalBreaks>
       </li>
     </stages>
   </HediffDef>

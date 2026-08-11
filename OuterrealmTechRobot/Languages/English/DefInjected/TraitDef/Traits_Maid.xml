@@ -35,4 +35,6 @@
   
   <ArtificialMaidTrait_MasterProtocol.degreeDatas.0.label>Outerrealm healing Protocol</ArtificialMaidTrait_MasterProtocol.degreeDatas.0.label>
   <ArtificialMaidTrait_MasterProtocol.degreeDatas.0.description>{PAWN_nameDef} runs the core protocol from Outerrealm Tech. As the highest-level Artificial Maid, she not only takes perfect care of the master's daily life, but also automatically heals all injuries of nearby companions through a Outerrealm space nano-robot array. Her existence is the solid backing of the master.</ArtificialMaidTrait_MasterProtocol.degreeDatas.0.description>
+  <ArtificialMaidTrait_Subdued.degreeDatas.0.label>Subdued</ArtificialMaidTrait_Subdued.degreeDatas.0.label>
+  <ArtificialMaidTrait_Subdued.degreeDatas.0.description>{PAWN_nameDef} is completely suppressed by Outerrealm Tech's non-lethal control field, temporarily losing the ability to act and resist.</ArtificialMaidTrait_Subdued.degreeDatas.0.description>
 </LanguageData>

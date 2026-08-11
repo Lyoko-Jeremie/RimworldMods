@@ -295,10 +295,31 @@ namespace OuterrealmTechRobot
         public static bool Prefix(Pawn __instance, ref DamageInfo dinfo, out bool absorbed)
         {
             absorbed = false;
+
+            // 女仆本体：完全免疫伤害
             if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
                 absorbed = true;
                 return false;
+            }
+
+            // 非致命制服：已被制服的目标完全免伤，保证倒地后不会因后续攻击而意外死亡
+            if (NonLethalSubdueUtility.IsSubdued(__instance))
+            {
+                absorbed = true;
+                return false;
+            }
+
+            // 非致命制服：女仆开启非致命模式时，其攻击不造成真实伤害，而是对目标施加制服状态
+            if (dinfo.Instigator is Pawn instigator && instigator.def == ArtificialMaidDefOf.ArtificialMaid)
+            {
+                CompArtificialMaid comp = CompArtificialMaid.GetCompCached(instigator);
+                if (comp != null && comp.enableNonLethalMode)
+                {
+                    NonLethalSubdueUtility.ApplySubdue(__instance);
+                    absorbed = true;
+                    return false;
+                }
             }
 
             return true;

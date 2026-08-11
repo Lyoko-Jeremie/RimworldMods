@@ -156,4 +156,9 @@
     <ArtificialMaidAuraDialogHint>勾选即授予光环；取消即移除光环。被标记的角色脱离我方阵营或由玩家取消时，光环自动消失；若因其他原因丢失，女仆在身边时会自动重新施加。</ArtificialMaidAuraDialogHint>
     <ArtificialMaidAuraLocationSuffix>（{0}）</ArtificialMaidAuraLocationSuffix>
     <ArtificialMaidAuraLocationUnknown>未知位置</ArtificialMaidAuraLocationUnknown>
+    <EnableNonLethalModeLabel>启用非致命制服模式</EnableNonLethalModeLabel>
+    <EnableNonLethalModeDesc>启用后，人造人女仆的攻击不再造成伤害，而是将目标强制制服：击倒倒地、能力与技能全部压制，并附加临时防御保护其生命安全。</EnableNonLethalModeDesc>
+    <ReleaseSubduedLabel>解除制服</ReleaseSubduedLabel>
+    <ReleaseSubduedDesc>指定一名被制服的目标，立即解除其被制服状态，恢复全部能力与技能。</ReleaseSubduedDesc>
+    <SubduedReleasedMessage>已解除 {0} 的制服状态。</SubduedReleasedMessage>
 </LanguageData>

@@ -39,4 +39,18 @@
         </stages>
     </ThoughtDef>
 
+
+    <ThoughtDef>
+        <defName>ArtificialMaidSubdued_Mood</defName>
+        <durationDays>1</durationDays>
+        <stackLimit>1</stackLimit>
+        <stages>
+            <li>
+                <label>被超维科技制服</label>
+                <description>超维科技的控制场封锁了我的全部机能：无法行动、无法反抗，只剩下意识在黑暗中漂浮。</description>
+                <baseMoodEffect>-10</baseMoodEffect>
+            </li>
+        </stages>
+    </ThoughtDef>
+
 </Defs>

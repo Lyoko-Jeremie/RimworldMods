@@ -86,6 +86,8 @@
     <Compile Include="GameComponent_ArtificialMaidAuraManager.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
+    <Compile Include="Hediff_NonLethalSubdued.cs" />
+    <Compile Include="NonLethalSubdueUtility.cs" />
     <Compile Include="Incident\ArtificialMaidEscortUtility.cs" />
     <Compile Include="Incident\FloatMenuOptionProvider_DismissArtificialMaidEscort.cs" />
     <Compile Include="Incident\IncidentWorker_ArtificialMaidEscort.cs" />

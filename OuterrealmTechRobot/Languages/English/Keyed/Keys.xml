@@ -156,4 +156,9 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <ArtificialMaidAuraDialogHint>Check to grant the aura; uncheck to remove it. The aura automatically disappears when the pawn leaves your faction or you cancel it manually. If it is lost for some reason, it will be re-applied automatically while a maid is nearby.</ArtificialMaidAuraDialogHint>
     <ArtificialMaidAuraLocationSuffix> ({0})</ArtificialMaidAuraLocationSuffix>
     <ArtificialMaidAuraLocationUnknown>Unknown location</ArtificialMaidAuraLocationUnknown>
+    <EnableNonLethalModeLabel>Enable Non-Lethal Subdue Mode</EnableNonLethalModeLabel>
+    <EnableNonLethalModeDesc>If enabled, this artificial maid's attacks no longer deal damage. Instead, targets are forcibly subdued: knocked down, with all capacities and skills suppressed, while temporary protections keep them alive.</EnableNonLethalModeDesc>
+    <ReleaseSubduedLabel>Release Subdued</ReleaseSubduedLabel>
+    <ReleaseSubduedDesc>Select a subdued target to immediately release it, restoring all capacities and skills.</ReleaseSubduedDesc>
+    <SubduedReleasedMessage>{0} has been released from subjugation.</SubduedReleasedMessage>
 </LanguageData>

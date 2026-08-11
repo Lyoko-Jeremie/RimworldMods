@@ -4,4 +4,7 @@
   <ArtificialMaidRecovery.description>先进的修复系统，通过多层保护确保女仆的不死性。</ArtificialMaidRecovery.description>
   <ArtificialMaidAura.label>女仆在身边</ArtificialMaidAura.label>
   <ArtificialMaidAura.description>人造人女仆的能量笼罩着你，全面强化了你的身心能力与战斗素养。</ArtificialMaidAura.description>
+  <ArtificialMaidNonLethalSubdue.label>超维制服状态</ArtificialMaidNonLethalSubdue.label>
+  <ArtificialMaidNonLethalSubdue.description>目标被超维科技的非致命控制场完全压制：意识、行动、语言等能力降至最低，暂时失去所有技能。但其生命安全临时受到保护，不会因倒地而意外死亡。</ArtificialMaidNonLethalSubdue.description>
+  <ArtificialMaidNonLethalSubdue.stages.0.label>被制服</ArtificialMaidNonLethalSubdue.stages.0.label>
 </LanguageData>

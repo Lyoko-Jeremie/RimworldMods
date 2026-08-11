@@ -36,6 +36,7 @@ namespace OuterrealmTechRobot
         public bool allowAutoHibernate = true;
         public bool enableHealingProtocol = false;
         public bool enableHuntMode = false;
+        public bool enableNonLethalMode = false; // 非致命制服模式：近战攻击不造成伤害，而是制服目标
         public bool ideologySet = false; // 文化是否由玩家通过终端指定（指定后自动修复不再清除）
         public int lastEnemyFoundTick = -1;
         public bool hostileResponseInitialized = false;
@@ -104,6 +105,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref allowAutoHibernate, "allowAutoHibernate", true);
             Scribe_Values.Look(ref enableHealingProtocol, "enableHealingProtocol", false);
             Scribe_Values.Look(ref enableHuntMode, "enableHuntMode", false);
+            Scribe_Values.Look(ref enableNonLethalMode, "enableNonLethalMode", false);
             Scribe_Values.Look(ref ideologySet, "ideologySet", false);
             Scribe_Values.Look(ref lastEnemyFoundTick, "lastEnemyFoundTick", -1);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
@@ -702,6 +704,46 @@ namespace OuterrealmTechRobot
                         }
                     },
                     icon = ArtificialMaidTex.IconHuntMode
+                };
+
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "EnableNonLethalModeLabel".Translate(),
+                    defaultDesc = "EnableNonLethalModeDesc".Translate(),
+                    isActive = () => enableNonLethalMode,
+                    toggleAction = () => enableNonLethalMode = !enableNonLethalMode,
+                    icon = ArtificialMaidTex.IconNonLethalMode
+                };
+
+                yield return new Command_Target
+                {
+                    defaultLabel = "ReleaseSubduedLabel".Translate(),
+                    defaultDesc = "ReleaseSubduedDesc".Translate(),
+                    icon = ArtificialMaidTex.IconReleaseSubdued,
+                    targetingParams = new TargetingParameters
+                    {
+                        canTargetPawns = true,
+                        canTargetBuildings = false,
+                        canTargetLocations = false,
+                        validator = target =>
+                        {
+                            if (target.Thing is Pawn p && p.RaceProps.Humanlike && !p.Dead &&
+                                NonLethalSubdueUtility.IsSubdued(p))
+                            {
+                                return Pawn.Position.DistanceToSquared(p.Position) <= 50f * 50f;
+                            }
+                            return false;
+                        }
+                    },
+                    action = target =>
+                    {
+                        if (target.Thing is Pawn p)
+                        {
+                            NonLethalSubdueUtility.ReleaseSubdue(p);
+                            Messages.Message(
+                                "SubduedReleasedMessage".Translate(p.LabelShort), p, MessageTypeDefOf.PositiveEvent);
+                        }
+                    }
                 };
 
                 // 管理"女仆在身边"光环：打开全局列表为任意我方小人授予/取消光环标记
