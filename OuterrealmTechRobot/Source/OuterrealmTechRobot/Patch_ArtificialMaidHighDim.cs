@@ -373,7 +373,7 @@ namespace OuterrealmTechRobot
         /// 心灵能力/异象能力施法前校验：以高维女仆为目标的施法一律无效（覆盖 berserk、skip、眩晕等不走伤害的效果）。
         /// 同时 patch 能力统一入口 <see cref="Ability.CanApplyOn"/> 与各效果组件的 Valid，双保险覆盖 override 情况。
         /// </summary>
-        [HarmonyPatch(typeof(CompAbilityEffect), nameof(CompAbilityEffect.Valid))]
+        [HarmonyPatch(typeof(CompAbilityEffect), nameof(CompAbilityEffect.Valid), new Type[] { typeof(LocalTargetInfo), typeof(bool) })]
         public static class Patch_CompAbilityEffect_Valid_HighDim
         {
             [HarmonyPrefix]
@@ -439,6 +439,50 @@ namespace OuterrealmTechRobot
                 {
                     __result = false;
                 }
+            }
+        }
+
+        // ==================== 视觉：避免隐形噪点材质（防止头发等细节消失） ====================
+
+        /// <summary>
+        /// 高维女仆的"心理隐形"不设置 PawnRenderFlags.Invisible：
+        /// 原版隐形会用 ShaderDatabase.Invisible 噪点扭曲材质（InvisibilityMatPool），
+        /// 细小的头发在这种材质下几乎不可见（表现为"头发消失"）。
+        /// 高维幻影只依赖 GetAlpha 的 tint 半透明，因此保持返回 true（禁用渲染缓存，
+        /// 保证 tint 每帧生效）但不设置 Invisible flag。
+        /// </summary>
+        [HarmonyPatch(typeof(PawnRenderer), "PawnNeedsHediffMaterial")]
+        public static class Patch_PawnRenderer_PawnNeedsHediffMaterial_HighDim
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(PawnRenderer __instance, Pawn ___pawn, ref bool __result, out PawnRenderFlags renderFlags)
+            {
+                if (!ArtificialMaidHighDimUtility.IsHighDim(___pawn))
+                {
+                    renderFlags = PawnRenderFlags.None;
+                    return true;
+                }
+
+                renderFlags = PawnRenderFlags.None;
+                __result = true;
+                return false;
+            }
+        }
+
+        /// <summary>其他材质覆盖路径（影子/姿态覆盖等）同样不换隐形材质，保持均匀半透明。</summary>
+        [HarmonyPatch(typeof(PawnRenderer), "OverrideMaterialIfNeeded")]
+        public static class Patch_PawnRenderer_OverrideMaterialIfNeeded_HighDim
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(PawnRenderer __instance, Pawn ___pawn, Material original, ref Material __result)
+            {
+                if (!ArtificialMaidHighDimUtility.IsHighDim(___pawn))
+                {
+                    return true;
+                }
+
+                __result = original;
+                return false;
             }
         }
     }
