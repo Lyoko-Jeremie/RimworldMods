@@ -221,9 +221,6 @@ namespace OuterrealmTechRobot
                 this.AutoConvertFaction();
                 this.EnsureMaidProperties();
 
-                // 高维视觉 hediff 常驻，保证渐出渐入随时可用（平时 alpha=1，无副作用）
-                ArtificialMaidHighDimUtility.EnsureHighDimHediff(Pawn);
-
                 // 展示柜收容时强制退出高维（兜底；常规进柜路径已由 Patch_Pawn_DeSpawn 覆盖）。
                 // 注意：地图上女仆的 Pawn.ParentHolder 恒为 Map（spawnedThings 容器），
                 // 不能使用 ParentHolder != null 判定收纳状态，必须精确匹配展示柜。

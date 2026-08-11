@@ -406,84 +406,8 @@ namespace OuterrealmTechRobot
             }
         }
 
-        // ==================== 视觉：高维幻影（玩家可见的半透明渐变） ====================
-
-        /// <summary>
-        /// GetAlpha 下限抬到 HighDimAlphaBase：高维状态下玩家看到半透明幻影而非完全消失，
-        /// 同时保留渐出渐入（进入 1→0.2、退出 0.2→1）。
-        /// </summary>
-        [HarmonyPatch(typeof(HediffComp_Invisibility), nameof(HediffComp_Invisibility.GetAlpha))]
-        public static class Patch_HediffComp_Invisibility_GetAlpha_HighDim
-        {
-            [HarmonyPostfix]
-            public static void Postfix(HediffComp_Invisibility __instance, ref float __result)
-            {
-                if (ArtificialMaidHighDimUtility.IsHighDim(__instance.Pawn))
-                {
-                    __result = Mathf.Max(__result, ArtificialMaidHighDimUtility.HighDimAlphaBase);
-                }
-            }
-        }
-
-        /// <summary>
-        /// ForcedVisible 强制显形豁免：高维女仆不受倒地/眩晕/燃烧/泡沫覆盖/DisruptorFlash 等
-        /// 原版强制显形条件影响（女仆免伤不倒地，主要是防止灭火泡沫覆盖导致的视觉穿帮）。
-        /// </summary>
-        [HarmonyPatch(typeof(HediffComp_Invisibility), "ForcedVisible", MethodType.Getter)]
-        public static class Patch_HediffComp_Invisibility_ForcedVisible_HighDim
-        {
-            [HarmonyPostfix]
-            public static void Postfix(HediffComp_Invisibility __instance, ref bool __result)
-            {
-                if (ArtificialMaidHighDimUtility.IsHighDim(__instance.Pawn))
-                {
-                    __result = false;
-                }
-            }
-        }
-
-        // ==================== 视觉：避免隐形噪点材质（防止头发等细节消失） ====================
-
-        /// <summary>
-        /// 高维女仆的"心理隐形"不设置 PawnRenderFlags.Invisible：
-        /// 原版隐形会用 ShaderDatabase.Invisible 噪点扭曲材质（InvisibilityMatPool），
-        /// 细小的头发在这种材质下几乎不可见（表现为"头发消失"）。
-        /// 高维幻影只依赖 GetAlpha 的 tint 半透明，因此保持返回 true（禁用渲染缓存，
-        /// 保证 tint 每帧生效）但不设置 Invisible flag。
-        /// </summary>
-        [HarmonyPatch(typeof(PawnRenderer), "PawnNeedsHediffMaterial")]
-        public static class Patch_PawnRenderer_PawnNeedsHediffMaterial_HighDim
-        {
-            [HarmonyPrefix]
-            public static bool Prefix(PawnRenderer __instance, Pawn ___pawn, ref bool __result, out PawnRenderFlags renderFlags)
-            {
-                if (!ArtificialMaidHighDimUtility.IsHighDim(___pawn))
-                {
-                    renderFlags = PawnRenderFlags.None;
-                    return true;
-                }
-
-                renderFlags = PawnRenderFlags.None;
-                __result = true;
-                return false;
-            }
-        }
-
-        /// <summary>其他材质覆盖路径（影子/姿态覆盖等）同样不换隐形材质，保持均匀半透明。</summary>
-        [HarmonyPatch(typeof(PawnRenderer), "OverrideMaterialIfNeeded")]
-        public static class Patch_PawnRenderer_OverrideMaterialIfNeeded_HighDim
-        {
-            [HarmonyPrefix]
-            public static bool Prefix(PawnRenderer __instance, Pawn ___pawn, Material original, ref Material __result)
-            {
-                if (!ArtificialMaidHighDimUtility.IsHighDim(___pawn))
-                {
-                    return true;
-                }
-
-                __result = original;
-                return false;
-            }
-        }
+        // ==================== 视觉：高维状态光效（实体渲染 + 脚下能量光环） ====================
+        // 光效绘制由 ArtificialMaidMapComponent.MapComponentUpdate 调用
+        // ArtificialMaidHighDimUtility.DrawHighDimEffect 完成，此处无需 patch。
     }
 }

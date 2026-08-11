@@ -59,6 +59,27 @@ namespace OuterrealmTechRobot
             }
         }
 
+        /// <summary>
+        /// 每帧渲染阶段：绘制高维状态女仆的能量光环（实体渲染不受影响）。
+        /// </summary>
+        public override void MapComponentUpdate()
+        {
+            base.MapComponentUpdate();
+
+            if (registeredMaids.Count == 0)
+            {
+                return;
+            }
+
+            foreach (Pawn maid in registeredMaids)
+            {
+                if (maid != null && ArtificialMaidHighDimUtility.IsHighDim(maid))
+                {
+                    ArtificialMaidHighDimUtility.DrawHighDimEffect(maid);
+                }
+            }
+        }
+
         public override void MapComponentTick()
         {
             base.MapComponentTick();

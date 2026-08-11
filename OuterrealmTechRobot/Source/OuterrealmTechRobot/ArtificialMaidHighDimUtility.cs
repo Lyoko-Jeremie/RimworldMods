@@ -1,19 +1,41 @@
 using System.Reflection;
 using HarmonyLib;
 using RimWorld;
+using UnityEngine;
 using Verse;
 using Verse.AI;
 
 namespace OuterrealmTechRobot
 {
     /// <summary>
-    /// 高维转换模式的核心工具：状态判定、进入/退出、视觉渐变控制与寻路缓存刷新。
+    /// 高维转换模式的核心工具：状态判定、进入/退出、光效绘制与寻路缓存刷新。
     /// 所有 Harmony patch 的守卫统一走 <see cref="IsHighDim"/>（先 def 短路，再查 comp 缓存，性能优先）。
+    /// 视觉采用"实体渲染 + 脚下能量光环"方案，不使用隐形/半透明，避免渲染树材质替换引发的头发/衣服问题。
     /// </summary>
     public static class ArtificialMaidHighDimUtility
     {
-        /// <summary>高维幻影的透明度下限：玩家仍能看到半透明的女仆（可选中/操作），AI 心理隐形不受影响。</summary>
-        public const float HighDimAlphaBase = 0.2f;
+        /// <summary>高维能量光环的透明度。</summary>
+        public const float HighDimGlowAlpha = 0.35f;
+
+        /// <summary>高维能量光环的颜色（偏紫的"维度"色）。</summary>
+        public static readonly Color HighDimGlowColor = new Color(0.65f, 0.4f, 1f);
+
+        // 高维光环的半透明材质（缓存，避免每帧创建）
+        private static Material highDimGlowMat;
+
+        private static Material HighDimGlowMat
+        {
+            get
+            {
+                if (highDimGlowMat == null)
+                {
+                    highDimGlowMat = SolidColorMaterials.NewSolidColorMaterial(
+                        new Color(HighDimGlowColor.r, HighDimGlowColor.g, HighDimGlowColor.b, HighDimGlowAlpha),
+                        ShaderDatabase.Transparent);
+                }
+                return highDimGlowMat;
+            }
+        }
 
         // 反射调用私有 PathFinder.RecycleGridJobData，清空排队中的寻路任务，让网格切换立即生效
         private static readonly MethodInfo recycleGridJobDataMethod =
@@ -21,7 +43,7 @@ namespace OuterrealmTechRobot
 
         /// <summary>
         /// 快速判定 Pawn 是否处于高维状态。
-        /// 高频调用点（ThreatDisabled、CanHitTargetFrom、GetAlpha 等）统一走此入口。
+        /// 高频调用点（ThreatDisabled、CanHitTargetFrom 等）统一走此入口。
         /// </summary>
         public static bool IsHighDim(Pawn pawn)
         {
@@ -34,7 +56,7 @@ namespace OuterrealmTechRobot
             return comp != null && comp.isHighDim;
         }
 
-        /// <summary>进入高维：置状态、复位并淡出视觉、结束当前 Job、刷新寻路。</summary>
+        /// <summary>进入高维：置状态、结束当前 Job、刷新寻路。</summary>
         public static void EnterHighDim(Pawn pawn)
         {
             if (pawn == null || pawn.Dead)
@@ -45,25 +67,16 @@ namespace OuterrealmTechRobot
             CompArtificialMaid comp = CompArtificialMaid.GetCompCached(pawn);
             if (comp == null || comp.isHighDim)
             {
-                Log.Message($"[OuterrealmTech-HighDim] EnterHighDim 拦截: comp==null={comp == null}, isHighDim={comp?.isHighDim}");
                 return;
             }
 
             // 仅展示柜内/未生成时禁止进入（防御性守卫；gizmo 已保证地图上才显示开关）
             if (!pawn.Spawned || pawn.ParentHolder is Building_ArtificialMaidDisplayCase)
             {
-                Log.Message($"[OuterrealmTech-HighDim] EnterHighDim 拦截: spawned={pawn.Spawned}, holder={pawn.ParentHolder?.GetType().Name ?? "null"}");
                 return;
             }
 
             comp.isHighDim = true;
-            EnsureHighDimHediff(pawn);
-
-            // 复位到完全可见后开始淡出（1 → 0.2 的渐出），保证每次进入都有渐变效果
-            HediffComp_Invisibility inv = GetInvisibilityComp(pawn);
-            inv?.BecomeVisible(true);
-            inv?.BecomeInvisible(false);
-            Log.Message($"[OuterrealmTech-HighDim] EnterHighDim 成功: isHighDim={comp.isHighDim}, invComp={inv != null}");
 
             // 结束当前 Job，让后续寻路立即以高维网格重新规划
             if (pawn.jobs != null && pawn.CurJob != null)
@@ -77,7 +90,7 @@ namespace OuterrealmTechRobot
         }
 
         /// <summary>
-        /// 退出高维：置状态、淡入视觉、刷新寻路。
+        /// 退出高维：置状态、刷新寻路。
         /// 若停在不可站立格（山体/深水/真空/被建筑占据），先传送到附近可站立格，避免卡进地形。
         /// </summary>
         /// <param name="pawn">目标女仆</param>
@@ -108,49 +121,32 @@ namespace OuterrealmTechRobot
                 }
             }
 
-            // 淡入（0.2 → 1）
-            HediffComp_Invisibility inv = GetInvisibilityComp(pawn);
-            inv?.BecomeVisible(false);
-
             RefreshPathing(pawn);
 
             Messages.Message("ArtificialMaid_HighDimExit".Translate(pawn.LabelShort), pawn, MessageTypeDefOf.NeutralEvent);
         }
 
-        /// <summary>确保高维视觉 hediff 常驻（平时 alpha=1 无副作用，渐变随时可用）。</summary>
-        public static void EnsureHighDimHediff(Pawn pawn)
+        /// <summary>
+        /// 每帧绘制高维状态光效：女仆脚下脉动的能量光环（实体渲染不受影响）。
+        /// 由 ArtificialMaidMapComponent.MapComponentUpdate 驱动。
+        /// </summary>
+        public static void DrawHighDimEffect(Pawn pawn)
         {
-            if (pawn == null || pawn.Dead || pawn.health == null)
+            if (pawn == null || !pawn.Spawned || pawn.Dead || pawn.Map == null)
             {
                 return;
             }
 
-            HediffDef def = ArtificialMaidDefOf.AM_HighDim;
-            if (def != null && !pawn.health.hediffSet.HasHediff(def))
-            {
-                pawn.health.AddHediff(def);
-                // 刚添加的隐形 hediff 会被 CompPostPostAdd 设为隐形状态，
-                // 显式复位为完全可见，保证非高维时 alpha=1 无副作用（消除版本差异）
-                GetInvisibilityComp(pawn)?.BecomeVisible(true);
-            }
-        }
+            // 脉动：半径与透明度随时间缓慢起伏
+            float pulse = 0.5f + 0.5f * Mathf.Sin(Find.TickManager.TicksGame * 0.08f);
+            float radius = 1.15f + 0.25f * pulse;
 
-        /// <summary>获取高维视觉 hediff 上的隐身组件（用于控制渐出渐入）。</summary>
-        public static HediffComp_Invisibility GetInvisibilityComp(Pawn pawn)
-        {
-            if (pawn?.health?.hediffSet == null)
-            {
-                return null;
-            }
+            // 光环绘制在地面稍上方，避免被地形完全遮挡
+            Vector3 pos = pawn.DrawPos;
+            pos.y = AltitudeLayer.Blueprint.AltitudeFor() + 0.01f;
 
-            HediffDef def = ArtificialMaidDefOf.AM_HighDim;
-            if (def == null)
-            {
-                return null;
-            }
-
-            Hediff hediff = pawn.health.hediffSet.GetFirstHediffOfDef(def);
-            return hediff?.TryGetComp<HediffComp_Invisibility>();
+            Matrix4x4 matrix = Matrix4x4.TRS(pos, Quaternion.identity, new Vector3(radius, 1f, radius));
+            Graphics.DrawMesh(MeshPool.plane10, matrix, HighDimGlowMat, 0);
         }
 
         /// <summary>
