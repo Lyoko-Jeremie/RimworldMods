@@ -2,18 +2,20 @@
 <Defs>
     <!-- 人造人女仆在身边光环：
          玩家通过女仆手动授予我方小人的持久增益，全面强化各项能力与属性。
-         加成清单参考 FullyAutomaticOmniCrafter 的 TemporalBarrierProjector（equippedStatOffsets）。
+         加成清单完全照抄 FullyAutomaticOmniCrafter 的 StatusAllocationTerminal_SuperMan，
+         含护甲/绝缘属性；另照抄其 AutoBlink 自动瞬移 comps
+         （依赖 rabiosus.autoblink Mod，未安装该 Mod 时 comps 自动跳过，不影响其余加成）。
          本 hediff 由 GameComponent_ArtificialMaidAuraManager 统一管理：
          被标记即持续生效；若因其他原因（其他 Mod、复活流程等）丢失，
          在女仆与小人同地图或同远行队时自动补回。
-         注：IncomingDamageFactor 放入 statFactors（乘法语义）实现真实减伤；
-         其余加成照搬参考数值放入 statOffsets（加法语义）。 -->
+         注：灵熵相关加成沿用本 Mod 原有 MayRequireAnyOf（Royalty/Biotech 任一即生效），
+         比 SuperMan 的 MayRequire=Ideology 覆盖更广、数值相同。 -->
     <HediffDef>
         <defName>ArtificialMaidAura</defName>
         <label>artificial maid presence</label>
         <description>The presence of the artificial maid empowers your body and mind, greatly enhancing your abilities.</description>
 
-        <hediffClass>Hediff</hediffClass>
+        <hediffClass>HediffWithComps</hediffClass>
         <isBad>false</isBad>
         <makesAlert>false</makesAlert>
         <initialSeverity>1.0</initialSeverity>
@@ -25,57 +27,134 @@
             <li>
                 <becomeVisible>true</becomeVisible>
 
-                <!-- 核心战斗加成（factor 语义：真正的受击伤害乘数，对应参考装备注释的意图） -->
-                <statFactors>
-                    <IncomingDamageFactor>0.00015</IncomingDamageFactor>
-                </statFactors>
-
                 <statOffsets>
-                    <!-- 核心战斗加成 -->
-                    <AimingDelayFactor>-0.999</AimingDelayFactor> <!-- 瞄准时间降至 stat 下限（1%） -->
-                    <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 近乎没有冷却 -->
-                    <ShootingAccuracyPawn>100</ShootingAccuracyPawn> <!-- 射击精度补正 -->
-                    <MoveSpeed>200</MoveSpeed> <!-- 极速移动 -->
+                    <!-- 核心战斗与机动能力：把受到伤害、瞄准、射击冷却和移动速度调整到近似超维强化状态。 -->
+                    <!-- 受到伤害倍率偏移；基础倍率为 1，-0.99985 使最终倍率约为 0.00015，几乎免疫常规伤害。 -->
+                    <IncomingDamageFactor>-0.99985</IncomingDamageFactor>
+                    <!-- 瞄准时间倍率偏移；基础倍率为 1，-0.999 使远程武器瞄准时间几乎归零。 -->
+                    <AimingDelayFactor>-0.999</AimingDelayFactor>
+                    <!-- 远程攻击冷却倍率偏移；基础倍率为 1，-0.999 使射击后的冷却时间极短。 -->
+                    <RangedCooldownFactor>-0.999</RangedCooldownFactor>
+                    <!-- 殖民者射击命中率加值；大幅提高远程武器命中表现。 -->
+                    <ShootingAccuracyPawn>100</ShootingAccuracyPawn>
+                    <!-- 移动速度加值；直接提高小人的每秒移动格数。 -->
+                    <MoveSpeed>200</MoveSpeed>
 
-                    <!-- 近战属性 -->
-                    <MeleeHitChance>1</MeleeHitChance> <!-- 近战命中率 -->
-                    <MeleeDodgeChance>1</MeleeDodgeChance> <!-- 近战闪避率 -->
-                    <MeleeCooldownFactor>-1</MeleeCooldownFactor> <!-- 近战冷却降至 stat 下限（5%） -->
-                    <MeleeDamageFactor>1</MeleeDamageFactor> <!-- 额外伤害加成 -->
-                    <StaggerDurationFactor>-1</StaggerDurationFactor> <!-- 免疫被击中后的减速僵直 -->
+                    <!-- 近战能力：提高命中、闪避和伤害，同时压低近战冷却与硬直。 -->
+                    <!-- 近战命中率加值；提高近战攻击成功命中的概率。 -->
+                    <MeleeHitChance>1</MeleeHitChance>
+                    <!-- 近战闪避率加值；提高被近战攻击时闪避成功的概率。 -->
+                    <MeleeDodgeChance>1</MeleeDodgeChance>
+                    <!-- 近战冷却倍率偏移；基础倍率为 1，-1 会把冷却倍率压到极低。 -->
+                    <MeleeCooldownFactor>-1</MeleeCooldownFactor>
+                    <!-- 近战伤害倍率偏移；基础倍率为 1，+1 表示近战伤害约翻倍。 -->
+                    <MeleeDamageFactor>1</MeleeDamageFactor>
+                    <!-- 受击硬直时间倍率偏移；基础倍率为 1，-1 使硬直时间接近或等于零。 -->
+                    <StaggerDurationFactor>-1</StaggerDurationFactor>
 
-                    <!-- 精神与生存 -->
-                    <ToxicResistance>1</ToxicResistance> <!-- 免疫毒性 -->
-                    <MentalBreakThreshold>-2</MentalBreakThreshold> <!-- 永不崩溃 -->
-                    <PsychicSensitivity>1</PsychicSensitivity> <!-- 精神敏感度提升 -->
-                    <PsychicEntropyMax MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">200000</PsychicEntropyMax> <!-- 精神熵上限 -->
-                    <PsychicEntropyRecoveryRate MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">10000</PsychicEntropyRecoveryRate> <!-- 精神熵恢复速度 -->
-                    <MeditationFocusGain MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">30</MeditationFocusGain> <!-- 冥想效力 -->
-                    <EatingSpeed>1</EatingSpeed> <!-- 进食速度 -->
-                    <RestFallRateFactor>-0.5</RestFallRateFactor> <!-- 睡眠需求减半 -->
-                    <FilthRate>-1.5</FilthRate> <!-- 不产生污垢 -->
+                    <!-- 精神、毒性与日常生存：降低崩溃风险，增强灵能与基础生活效率。 -->
+                    <!-- 毒素抗性加值；提高对毒气、毒物和污染相关效果的抵抗能力。 -->
+                    <ToxicResistance>1</ToxicResistance>
+                    <!-- 精神崩溃阈值偏移；负值降低进入精神崩溃的可能性。 -->
+                    <MentalBreakThreshold>-2</MentalBreakThreshold>
+                    <!-- 灵能敏感度加值；提高灵能相关效果强度，适合配合高灵熵容量。 -->
+                    <PsychicSensitivity>1</PsychicSensitivity>
+                    <!-- 灵熵上限加值；Royalty 或 Biotech 启用时提供极高的灵能热量容量。 -->
+                    <PsychicEntropyMax MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">200000</PsychicEntropyMax>
+                    <!-- 灵熵恢复速度加值；Royalty 或 Biotech 启用时快速清空灵能热量。 -->
+                    <PsychicEntropyRecoveryRate MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">10000</PsychicEntropyRecoveryRate>
+                    <!-- 冥想专注获取加值；Royalty 或 Biotech 启用时显著提高冥想效率。 -->
+                    <MeditationFocusGain MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">30</MeditationFocusGain>
+                    <!-- 进食速度加值；减少吃饭占用的时间。 -->
+                    <EatingSpeed>1</EatingSpeed>
+                    <!-- 休息需求下降倍率偏移；基础倍率为 1，-0.5 表示休息需求下降速度约减半。 -->
+                    <RestFallRateFactor>-0.5</RestFallRateFactor>
+                    <!-- 污秽产生率偏移；负值降低或抵消小人产生污物的倾向。 -->
+                    <FilthRate>-1.5</FilthRate>
 
-                    <!-- 机械师 (Biotech) 相关属性 -->
-                    <SubcoreEncodingSpeed MayRequire="Ludeon.RimWorld.Biotech">30</SubcoreEncodingSpeed> <!-- 次级核心编码/扫描速度 -->
-                    <MechRepairSpeed MayRequire="Ludeon.RimWorld.Biotech">300</MechRepairSpeed> <!-- 机械体修理速度 -->
-                    <MechControlGroups MayRequire="Ludeon.RimWorld.Biotech">9</MechControlGroups> <!-- 机械控制组数量 -->
-                    <MechRemoteShieldEnergy MayRequire="Ludeon.RimWorld.Biotech">2500</MechRemoteShieldEnergy> <!-- 远程机械盾能量 -->
-                    <MechBandwidth MayRequire="Ludeon.RimWorld.Biotech">600</MechBandwidth> <!-- 机械带宽 -->
-                    <WorkSpeedGlobalOffsetMech MayRequire="Ludeon.RimWorld.Biotech">110</WorkSpeedGlobalOffsetMech> <!-- 受控机械体工作速度偏移 -->
-                    <MechFormingSpeed MayRequire="Ludeon.RimWorld.Biotech">120</MechFormingSpeed> <!-- 机械体制造速度 -->
-                    <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency> <!-- 拆解机械体产出效率 -->
+                    <!-- 机械师与 Biotech 相关能力：强化子核、机械体维护、带宽和远程护盾。 -->
+                    <!-- 子核编码速度加值；提高机械师进行子核编码的速度。 -->
+                    <SubcoreEncodingSpeed>30</SubcoreEncodingSpeed>
+                    <!-- 机械体修理速度加值；缩短维修机械体所需时间。 -->
+                    <MechRepairSpeed>300</MechRepairSpeed>
+                    <!-- 机械体控制组数量加值；允许机械师管理更多机械体控制组。 -->
+                    <MechControlGroups>9</MechControlGroups>
+                    <!-- 机械体远程护盾能量加值；提高远程护盾可承受的能量总量。 -->
+                    <MechRemoteShieldEnergy>2500</MechRemoteShieldEnergy>
+                    <!-- 机械体带宽加值；提高可控制机械体的总带宽容量。 -->
+                    <MechBandwidth>600</MechBandwidth>
+                    <!-- 机械体全局工作速度偏移；提高受控机械体的整体工作效率。 -->
+                    <WorkSpeedGlobalOffsetMech>110</WorkSpeedGlobalOffsetMech>
+                    <!-- 机械体成型速度加值；缩短机械体成型和孵化过程。 -->
+                    <MechFormingSpeed>120</MechFormingSpeed>
+                    <!-- 机械体屠宰效率加值；提高拆解机械体时获得资源的效率。 -->
+                    <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency>
 
-                    <!-- 生产、搬运与工作 -->
-                    <WorkSpeedGlobal>100000.0</WorkSpeedGlobal> <!-- 瞬间完成所有工作 -->
-                    <CarryingCapacity>10000000</CarryingCapacity> <!-- 极大的携带量 -->
-                    <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">100000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
-                    <ConstructSuccessChance>1</ConstructSuccessChance> <!-- 建造成功率 -->
+                    <!-- 生产、搬运与工作：把全局工作、搬运和建造等通用效率推到极高。 -->
+                    <!-- 全局工作速度加值；影响大部分以工作速度结算的任务。 -->
+                    <WorkSpeedGlobal>100000.0</WorkSpeedGlobal>
+                    <!-- 搬运容量加值；让小人一次携带极大量物品。 -->
+                    <CarryingCapacity>10000000</CarryingCapacity>
+                    <!-- RimImmortal 扩展的质量搬运容量；仅在对应 Mod 启用时生效。 -->
+                    <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">100000</RI_MassCarryCapacity>
+                    <!-- 建造成功率加值；降低或消除建造失败概率。 -->
+                    <ConstructSuccessChance>1</ConstructSuccessChance>
 
-                    <!-- 特殊环境抗性 -->
-                    <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance> <!-- 真空抗性 -->
-                    <Flammability>-1</Flammability> <!-- 绝对不可燃 -->
+                    <!-- 特殊环境抗性：覆盖真空和燃烧等高危环境因素。 -->
+                    <!-- 真空抗性加值；Odyssey 启用时提高在真空环境中的生存能力。 -->
+                    <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
+                    <!-- 可燃性偏移；负值降低被点燃概率，-1 通常等同于完全不可燃。 -->
+                    <Flammability>-1</Flammability>
+
+                    <!-- 护甲与温度抗性：通过 Hediff 直接加到小人身上的装备型属性。 -->
+                    <!-- 尖锐护甲加值；抵抗子弹、刀剑等锐器伤害。 -->
+                    <ArmorRating_Sharp>10000</ArmorRating_Sharp>
+                    <!-- 钝击护甲加值；抵抗钝器、爆炸冲击等钝击伤害。 -->
+                    <ArmorRating_Blunt>10000</ArmorRating_Blunt>
+                    <!-- 热能护甲加值；抵抗火焰、高温武器等热能伤害。 -->
+                    <ArmorRating_Heat>10000</ArmorRating_Heat>
+                    <!-- 寒冷隔热加值；提高低温环境耐受能力。 -->
+                    <Insulation_Cold>10000</Insulation_Cold>
+                    <!-- 炎热隔热加值；提高高温环境耐受能力。 -->
+                    <Insulation_Heat>10000</Insulation_Heat>
                 </statOffsets>
             </li>
         </stages>
+
+        <comps>
+            <!-- AutoBlink 自动瞬移能力；完全照抄 StatusAllocationTerminal_SuperMan，依赖 rabiosus.autoblink Mod。 -->
+            <li Class="AutoBlink.HediffCompProperties_AutoBlink" MayRequire="rabiosus.autoblink">
+                <minDistanceToBlink>5</minDistanceToBlink>
+                <maxDistanceToBlink>300</maxDistanceToBlink>
+                <blinkIntervalTicks>60</blinkIntervalTicks>
+                <delayAfterEligibleTicks>40</delayAfterEligibleTicks>
+                <cellsBeforeTarget>1</cellsBeforeTarget>
+                <postBlinkStanceTicks>30</postBlinkStanceTicks>
+                <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
+                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
+                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
+                <playerFactionOnly>true</playerFactionOnly>
+                <excludedJobDefs>
+                    <!-- 闲逛时 -->
+                    <li>GotoWander</li>
+                    <!-- 被携带搬运时 -->
+                    <li>Carried</li>
+                </excludedJobDefs>
+                <drawGizmo>true</drawGizmo>
+                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>
+                <preBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Small</li>
+                </preBlinkSoundDefs>
+                <preBlinkEffecterDefs>
+                    <li>Skip_Entry</li>
+                </preBlinkEffecterDefs>
+                <postBlinkSoundDefs>
+                    <li>AutoBlink_Skip_Exit_Small</li>
+                </postBlinkSoundDefs>
+                <postBlinkEffecterDefs>
+                    <li>Skip_ExitNoDelay</li>
+                </postBlinkEffecterDefs>
+            </li>
+        </comps>
     </HediffDef>
 </Defs>
