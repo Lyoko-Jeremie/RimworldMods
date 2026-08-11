@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -162,6 +163,143 @@ namespace FullyAutomaticOmniCrafter
             }
 
             return true;
+        }
+    }
+
+    // ─── Harmony：消除 ZoneMonitor 建筑与存储区之间的 SlotGroup 格子冲突 ─────
+    /// <summary>
+    /// 背景：ZoneMonitor 继承 Building_Storage，其占用格会被注册进
+    /// HaulDestinationManager（格子归属表是「一格一主」的独占模型）。而本 mod 又
+    /// 通过 Patch_ZoneMonitorMec_CanOverlapZones 允许存储区与 ZoneMonitor 共存，
+    /// 于是两种操作顺序都会触发原版冲突报错：
+    ///   - 先建建筑再画存储区：Zone_Stockpile.AddCell → SlotGroup.Notify_AddedCell
+    ///     → HaulDestinationManager.SetCellFor 发现格子已属于建筑的 SlotGroup，
+    ///     打出 "overwriting slot group square" 错误（即本次用户报告的报错）；
+    ///   - 先画存储区再建建筑：建筑 SpawnSetup → AddHaulDestination → SetCellFor
+    ///     覆盖存储区格子 → 同样报错并破坏存储区归属；
+    ///   - 用收缩工具把建筑格从存储区划掉：ClearCellFor 同样报错；
+    ///   - 删除存储区/拆除建筑：RemoveHaulDestination 无条件清空格子归属，
+    ///     会误清对方已经登记的格子。
+    /// 本组 patch 采用「先到先得」语义：仅当冲突双方恰好是 ZoneMonitor 建筑与
+    /// 存储区时静默跳过（不 Log、不覆盖、不清除），其余冲突保持原版行为。
+    /// </summary>
+    internal static class ZoneMonitorStorageConflictUtility
+    {
+        // 反射缓存：HaulDestinationManager.map 为私有字段，只解析一次
+        private static readonly FieldInfo MapField = AccessTools.Field(typeof(HaulDestinationManager), "map");
+
+        /// <summary>冲突双方是否恰好是 ZoneMonitor 建筑与存储区。</summary>
+        public static bool IsZoneMonitorVsStockpile(SlotGroup a, SlotGroup b)
+        {
+            if (a == null || b == null) return false;
+            bool zmInvolved = a.parent is Building_MatterEnergyConverterZoneMonitor
+                           || b.parent is Building_MatterEnergyConverterZoneMonitor;
+            if (!zmInvolved) return false;
+            return a.parent is Zone_Stockpile || b.parent is Zone_Stockpile;
+        }
+
+        /// <summary>
+        /// 获取 HaulDestinationManager 所属地图（其 map 字段为私有，需反射）。
+        /// 字段不存在时记录一次警告并返回 null，恢复逻辑静默降级（核心报错消除不受影响）。
+        /// </summary>
+        public static Map GetMap(HaulDestinationManager manager)
+        {
+            if (MapField == null)
+            {
+                Log.WarningOnce(
+                    "FullyAutomaticOmniCrafter: 无法反射 HaulDestinationManager.map 字段，" +
+                    "ZoneMonitor 与存储区共存的格子归属恢复将不可用。",
+                    "MEC_ZoneMonitor_HdManagerMapField".GetHashCode());
+                return null;
+            }
+            return MapField.GetValue(manager) as Map;
+        }
+    }
+
+    [HarmonyPatch(typeof(HaulDestinationManager), nameof(HaulDestinationManager.SetCellFor))]
+    public static class Patch_ZoneMonitorMec_StorageConflict_SetCellFor
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(HaulDestinationManager __instance, IntVec3 c, SlotGroup group)
+        {
+            SlotGroup old = __instance.SlotGroupAt(c);
+            if (old == null || old == group) return true;
+            // ZoneMonitor 建筑与存储区之间的冲突：静默跳过（先到先得，保留先注册者）
+            return !ZoneMonitorStorageConflictUtility.IsZoneMonitorVsStockpile(old, group);
+        }
+    }
+
+    [HarmonyPatch(typeof(HaulDestinationManager), nameof(HaulDestinationManager.ClearCellFor))]
+    public static class Patch_ZoneMonitorMec_StorageConflict_ClearCellFor
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(HaulDestinationManager __instance, IntVec3 c, SlotGroup group)
+        {
+            SlotGroup cur = __instance.SlotGroupAt(c);
+            if (cur == null || cur == group) return true;
+            // 收缩/删除存储区把 ZoneMonitor 建筑格划掉等场景：该格归属仍是建筑的
+            // SlotGroup（先到先得），原版会 Log.Error 并误清建筑归属；此处静默不清。
+            return !ZoneMonitorStorageConflictUtility.IsZoneMonitorVsStockpile(cur, group);
+        }
+    }
+
+    [HarmonyPatch(typeof(HaulDestinationManager), nameof(HaulDestinationManager.RemoveHaulDestination))]
+    public static class Patch_ZoneMonitorMec_StorageConflict_RemoveHaulDestination
+    {
+        [HarmonyPostfix]
+        public static void Postfix(HaulDestinationManager __instance, IHaulDestination haulDestination)
+        {
+            Map map = ZoneMonitorStorageConflictUtility.GetMap(__instance);
+            if (map == null) return;
+
+            // 场景 1：删除存储区。原版会无条件清空存储区全部格子的归属，
+            // 其中可能包含 ZoneMonitor 建筑已登记的格子，此处恢复建筑归属。
+            Zone_Stockpile zone = haulDestination as Zone_Stockpile;
+            if (zone != null)
+            {
+                foreach (IntVec3 c in zone.AllSlotCellsList())
+                {
+                    if (__instance.SlotGroupAt(c) != null) continue; // 归属仍在，无需恢复
+                    foreach (Thing t in map.thingGrid.ThingsListAt(c))
+                    {
+                        Building_MatterEnergyConverterZoneMonitor zm = t as Building_MatterEnergyConverterZoneMonitor;
+                        if (zm != null && zm.Spawned)
+                        {
+                            SlotGroup sg = zm.GetSlotGroup();
+                            if (sg != null) RestoreCell(__instance, map, c, sg);
+                            break;
+                        }
+                    }
+                }
+                return;
+            }
+
+            // 场景 2：拆除 ZoneMonitor 建筑。原版会清空建筑占用格的归属，
+            // 若该格实际由脚下存储区登记（先画区后建建筑），此处恢复存储区归属。
+            Building_MatterEnergyConverterZoneMonitor zmBuilding = haulDestination as Building_MatterEnergyConverterZoneMonitor;
+            if (zmBuilding != null)
+            {
+                foreach (IntVec3 c in zmBuilding.AllSlotCellsList())
+                {
+                    if (__instance.SlotGroupAt(c) != null) continue;
+                    Zone_Stockpile z = map.zoneManager.ZoneAt(c) as Zone_Stockpile;
+                    if (z != null && z.GetSlotGroup() != null)
+                        RestoreCell(__instance, map, c, z.GetSlotGroup());
+                }
+            }
+        }
+
+        /// <summary>
+        /// 把格子归属直接写回归属表并刷新 haulable/mergeable 缓存。
+        /// 不使用 SlotGroup.Notify_AddedCell：那是「新增格子」语义，内部实现可能
+        /// 因版本而异（个别版本带 cells.Contains 短路），直接写表保证恢复必生效，
+        /// 且此时该格归属必为 null，不会触发本组 SetCellFor 前缀的拦截。
+        /// </summary>
+        private static void RestoreCell(HaulDestinationManager manager, Map map, IntVec3 c, SlotGroup group)
+        {
+            manager.SetCellFor(c, group);
+            map.listerHaulables.RecalcAllInCell(c);
+            map.listerMergeables.RecalcAllInCell(c);
         }
     }
 }
