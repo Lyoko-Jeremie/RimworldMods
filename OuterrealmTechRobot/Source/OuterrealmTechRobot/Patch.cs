@@ -307,6 +307,19 @@ namespace OuterrealmTechRobot
             if (NonLethalSubdueUtility.IsSubdued(__instance))
             {
                 absorbed = true;
+                // 兜底：若女仆在非致命模式下仍对已制服目标发起攻击（原版倒地检查会因异种
+                // canAttackWhileCrawling 等场景失效，导致攻击 Job 无法自然结束），立即终止攻击 Job，
+                // 保证“攻击到目标倒地即停”，不持续站桩攻击已倒地的目标。
+                if (dinfo.Instigator is Pawn maid && maid.def == ArtificialMaidDefOf.ArtificialMaid &&
+                    maid.jobs != null && maid.CurJob != null &&
+                    (maid.CurJob.def == JobDefOf.AttackMelee || maid.CurJob.def == JobDefOf.AttackStatic))
+                {
+                    CompArtificialMaid comp = CompArtificialMaid.GetCompCached(maid);
+                    if (comp != null && comp.enableNonLethalMode)
+                    {
+                        maid.jobs.EndCurrentJob(JobCondition.Incompletable);
+                    }
+                }
                 return false;
             }
 

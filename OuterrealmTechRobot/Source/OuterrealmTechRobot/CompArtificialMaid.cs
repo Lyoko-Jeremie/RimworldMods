@@ -232,7 +232,9 @@ namespace OuterrealmTechRobot
             if (Pawn.CurJob != null && (Pawn.CurJob.def == JobDefOf.AttackMelee || Pawn.CurJob.def == JobDefOf.AttackStatic))
             {
                 var currentTarget = Pawn.CurJob.targetA.Thing as Pawn;
-                if (currentTarget != null && !currentTarget.Dead && currentTarget.HostileTo(Pawn))
+                // 已倒地（含被非致命模式制服）的目标不再视为有效攻击目标：跳过并重新寻敌，
+                // 避免把攻击 Job 停留在已倒地的目标上反复空挥。
+                if (currentTarget != null && !currentTarget.Dead && !currentTarget.Downed && currentTarget.HostileTo(Pawn))
                 {
                     lastEnemyFoundTick = Find.TickManager.TicksGame;
                     
@@ -715,7 +717,11 @@ namespace OuterrealmTechRobot
                     icon = ArtificialMaidTex.IconNonLethalMode
                 };
 
-                yield return new Command_Target
+                // 解除制服：支持连续选择。点击按钮进入选择模式后，每次释放一个被制服对象都会
+                // 重新进入选择模式（Targeter 在 action 执行后会把 needsStopTargetingCall 重置为 false，
+                // 因此不会结束 targeting），可继续点选下一个目标，直到按 Esc 或右键退出。
+                Command_Target releaseSubduedCommand = null;
+                releaseSubduedCommand = new Command_Target
                 {
                     defaultLabel = "ReleaseSubduedLabel".Translate(),
                     defaultDesc = "ReleaseSubduedDesc".Translate(),
@@ -743,8 +749,11 @@ namespace OuterrealmTechRobot
                             Messages.Message(
                                 "SubduedReleasedMessage".Translate(p.LabelShort), p, MessageTypeDefOf.PositiveEvent);
                         }
+                        // 释放完成后保持选择模式，实现连续解除
+                        Find.Targeter.BeginTargeting(releaseSubduedCommand.targetingParams, releaseSubduedCommand.action);
                     }
                 };
+                yield return releaseSubduedCommand;
 
                 // 管理"女仆在身边"光环：打开全局列表为任意我方小人授予/取消光环标记
                 yield return new Command_Action
