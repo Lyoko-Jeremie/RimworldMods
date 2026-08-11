@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <!-- 人造人女仆在身边光环：
+         玩家通过女仆手动授予我方小人的持久增益，全面强化各项能力与属性。
+         加成清单参考 FullyAutomaticOmniCrafter 的 TemporalBarrierProjector（equippedStatOffsets）。
+         本 hediff 由 GameComponent_ArtificialMaidAuraManager 统一管理：
+         被标记即持续生效；若因其他原因（其他 Mod、复活流程等）丢失，
+         在女仆与小人同地图或同远行队时自动补回。
+         注：IncomingDamageFactor 放入 statFactors（乘法语义）实现真实减伤；
+         其余加成照搬参考数值放入 statOffsets（加法语义）。 -->
+    <HediffDef>
+        <defName>ArtificialMaidAura</defName>
+        <label>artificial maid presence</label>
+        <description>The presence of the artificial maid empowers your body and mind, greatly enhancing your abilities.</description>
+
+        <hediffClass>Hediff</hediffClass>
+        <isBad>false</isBad>
+        <makesAlert>false</makesAlert>
+        <initialSeverity>1.0</initialSeverity>
+        <minSeverity>1.0</minSeverity>
+        <maxSeverity>1.0</maxSeverity>
+        <scenarioCanAdd>false</scenarioCanAdd>
+
+        <stages>
+            <li>
+                <becomeVisible>true</becomeVisible>
+
+                <!-- 核心战斗加成（factor 语义：真正的受击伤害乘数，对应参考装备注释的意图） -->
+                <statFactors>
+                    <IncomingDamageFactor>0.00015</IncomingDamageFactor>
+                </statFactors>
+
+                <statOffsets>
+                    <!-- 核心战斗加成 -->
+                    <AimingDelayFactor>-0.999</AimingDelayFactor> <!-- 瞄准时间降至 stat 下限（1%） -->
+                    <RangedCooldownFactor>-0.999</RangedCooldownFactor> <!-- 近乎没有冷却 -->
+                    <ShootingAccuracyPawn>100</ShootingAccuracyPawn> <!-- 射击精度补正 -->
+                    <MoveSpeed>200</MoveSpeed> <!-- 极速移动 -->
+
+                    <!-- 近战属性 -->
+                    <MeleeHitChance>1</MeleeHitChance> <!-- 近战命中率 -->
+                    <MeleeDodgeChance>1</MeleeDodgeChance> <!-- 近战闪避率 -->
+                    <MeleeCooldownFactor>-1</MeleeCooldownFactor> <!-- 近战冷却降至 stat 下限（5%） -->
+                    <MeleeDamageFactor>1</MeleeDamageFactor> <!-- 额外伤害加成 -->
+                    <StaggerDurationFactor>-1</StaggerDurationFactor> <!-- 免疫被击中后的减速僵直 -->
+
+                    <!-- 精神与生存 -->
+                    <ToxicResistance>1</ToxicResistance> <!-- 免疫毒性 -->
+                    <MentalBreakThreshold>-2</MentalBreakThreshold> <!-- 永不崩溃 -->
+                    <PsychicSensitivity>1</PsychicSensitivity> <!-- 精神敏感度提升 -->
+                    <PsychicEntropyMax MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">200000</PsychicEntropyMax> <!-- 精神熵上限 -->
+                    <PsychicEntropyRecoveryRate MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">10000</PsychicEntropyRecoveryRate> <!-- 精神熵恢复速度 -->
+                    <MeditationFocusGain MayRequireAnyOf="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">30</MeditationFocusGain> <!-- 冥想效力 -->
+                    <EatingSpeed>1</EatingSpeed> <!-- 进食速度 -->
+                    <RestFallRateFactor>-0.5</RestFallRateFactor> <!-- 睡眠需求减半 -->
+                    <FilthRate>-1.5</FilthRate> <!-- 不产生污垢 -->
+
+                    <!-- 机械师 (Biotech) 相关属性 -->
+                    <SubcoreEncodingSpeed MayRequire="Ludeon.RimWorld.Biotech">30</SubcoreEncodingSpeed> <!-- 次级核心编码/扫描速度 -->
+                    <MechRepairSpeed MayRequire="Ludeon.RimWorld.Biotech">300</MechRepairSpeed> <!-- 机械体修理速度 -->
+                    <MechControlGroups MayRequire="Ludeon.RimWorld.Biotech">9</MechControlGroups> <!-- 机械控制组数量 -->
+                    <MechRemoteShieldEnergy MayRequire="Ludeon.RimWorld.Biotech">2500</MechRemoteShieldEnergy> <!-- 远程机械盾能量 -->
+                    <MechBandwidth MayRequire="Ludeon.RimWorld.Biotech">600</MechBandwidth> <!-- 机械带宽 -->
+                    <WorkSpeedGlobalOffsetMech MayRequire="Ludeon.RimWorld.Biotech">110</WorkSpeedGlobalOffsetMech> <!-- 受控机械体工作速度偏移 -->
+                    <MechFormingSpeed MayRequire="Ludeon.RimWorld.Biotech">120</MechFormingSpeed> <!-- 机械体制造速度 -->
+                    <ButcheryMechanoidEfficiency>1</ButcheryMechanoidEfficiency> <!-- 拆解机械体产出效率 -->
+
+                    <!-- 生产、搬运与工作 -->
+                    <WorkSpeedGlobal>100000.0</WorkSpeedGlobal> <!-- 瞬间完成所有工作 -->
+                    <CarryingCapacity>10000000</CarryingCapacity> <!-- 极大的携带量 -->
+                    <RI_MassCarryCapacity MayRequire="RI.RimImmortal.Core">100000</RI_MassCarryCapacity> <!-- 负重上限增加 -->
+                    <ConstructSuccessChance>1</ConstructSuccessChance> <!-- 建造成功率 -->
+
+                    <!-- 特殊环境抗性 -->
+                    <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance> <!-- 真空抗性 -->
+                    <Flammability>-1</Flammability> <!-- 绝对不可燃 -->
+                </statOffsets>
+            </li>
+        </stages>
+    </HediffDef>
+</Defs>
