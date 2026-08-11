@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>OuterrealmTechDailyThings 超维科技日用品</name>
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.Outerrealm.Tech.DailyThings</packageId>
+    <description>
+[h1] 超维科技日用品 OuterrealmTech DailyThings [/h1]
+
+这是来自边缘世界所在宇宙维度外的超级国度的科技，超越了常规科技的极限。
+集合了一系列超凡的、万能的、超出常人想象的、让人无法理解的、打破常规的东西。
+它们将彻底改变殖民地建设和管理方式，让你体验到前所未有的便利和效率！
+
+欢迎来到超维科技的世界！
+
+
+
+
+
+[hr][/hr]
+
+Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmTechRobot
+
+---
+
+[h1] OuterrealmTech DailyThings [/h1]
+
+This is technology from a super-realm beyond the dimensional universe of the RimWorld, transcending the limits of conventional science.
+It features a collection of extraordinary, omnipotent, unimaginable, incomprehensible, and paradigm-breaking things.
+They will completely revolutionize the way your colony is built and managed, letting you experience unprecedented convenience and efficiency!
+
+Welcome to the world of Outerrealm Tech!
+
+
+
+[hr][/hr]
+
+Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmTechRobot
+
+	</description>
+	<loadBefore>
+	</loadBefore>
+	<loadAfter>
+		
+		<li>rabiosus.autoblink</li>
+		<!-- <li>-->
+		<!-- 	<packageId>rabiosus.autoblink</packageId>-->
+		<!-- 	<displayName>AutoBlink</displayName>-->
+		<!-- 	<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>-->
+		<!-- </li>-->
+
+        <li>Jeremie.Fully.Automatic.OmniCrafter</li>
+        
+	</loadAfter>
+	<modDependencies>
+		<li>
+			<packageId>brrainz.harmony</packageId>
+			<displayName>Harmony</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+			<downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+		</li>
+		<li>
+			<packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>
+			<displayName>OuterrealmTech</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/3712146789</steamWorkshopUrl>
+			<downloadUrl>https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAutomaticOmniCrafter</downloadUrl>
+		</li>
+		 <li>
+		 	<packageId>rabiosus.autoblink</packageId>
+		 	<displayName>AutoBlink</displayName>
+		 	<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>
+		 </li>
+	</modDependencies>
+</ModMetaData>
