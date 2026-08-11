@@ -31,8 +31,8 @@ namespace FullyAutomaticOmniCrafter
         private int totalConvertedCount;
         private float totalConvertedEnergy;
 
-        /// <summary>自动转化开关（由 Gizmo 按钮控制，独立于 Flickable 物理开关）。</summary>
-        private bool autoConvertEnabled = true;
+        /// <summary>自动转化开关（由 Gizmo 按钮控制，独立于 Flickable 物理开关）。默认关闭。</summary>
+        private bool autoConvertEnabled = false;
 
         /// <summary>
         /// 当前监控的存储区：建筑所在格所属的 Zone_Stockpile。
@@ -47,7 +47,7 @@ namespace FullyAutomaticOmniCrafter
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Values.Look(ref autoConvertEnabled, "autoConvertEnabled", true, true);
+            Scribe_Values.Look(ref autoConvertEnabled, "autoConvertEnabled", false, true);
         }
 
         protected override void Tick()
