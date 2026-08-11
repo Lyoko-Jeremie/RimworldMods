@@ -6,7 +6,7 @@
     <description>An advanced recovery system that ensures the maid's immortality through multiple layers of protection.</description>
     <hediffClass>OuterrealmTechRobot.Hediff_ArtificialMaidRecovery</hediffClass>
     <comps>
-      <li Class="OuterrealmTechRobot.HediffCompProperties_ArtificialMaid"/>
+      <li Class="OuterrealmTechRobot.HediffCompProperties_ArtificialMaidProtocol"/>
     </comps>
     <isBad>false</isBad>
     <initialSeverity>1.0</initialSeverity>
