@@ -25,4 +25,18 @@
             </li>
         </stages>
     </ThoughtDef>
+
+    <ThoughtDef>
+        <defName>ArtificialMaidAura_Mood</defName>
+        <durationDays>1</durationDays>
+        <stackLimit>1</stackLimit>
+        <stages>
+            <li>
+                <label>女仆在身边</label>
+                <description>人造人女仆的能量场环绕着我，身心都感到无比安定与自信。</description>
+                <baseMoodEffect>20</baseMoodEffect>
+            </li>
+        </stages>
+    </ThoughtDef>
+
 </Defs>

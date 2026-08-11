@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
   <ArtificialMaidRecovery.label>artificial maid recovery system</ArtificialMaidRecovery.label>
-  <ArtificialMaidRecovery.description>An advanced recovery system that ensures the maid's immortality through multiple layers of protection.</description>
+  <ArtificialMaidRecovery.description>An advanced recovery system that ensures the maid's immortality through multiple layers of protection.</ArtificialMaidRecovery.description>
+  <ArtificialMaidAura.label>maid's presence</ArtificialMaidAura.label>
+  <ArtificialMaidAura.description>The presence of the artificial maid empowers your body and mind, greatly enhancing your abilities and combat prowess.</ArtificialMaidAura.description>
 </LanguageData>

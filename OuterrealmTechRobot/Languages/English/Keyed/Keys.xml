@@ -150,4 +150,10 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <ArtificialMaidBackupCloudLocation_Destroyed>Object destroyed</ArtificialMaidBackupCloudLocation_Destroyed>
     <ArtificialMaidBackupCloudLocation_Discarded>Object discarded</ArtificialMaidBackupCloudLocation_Discarded>
     <ArtificialMaidBackupCloudLocation_SerialConflict>Duplicate serial number detected</ArtificialMaidBackupCloudLocation_SerialConflict>
+    <ArtificialMaidAuraGizmoLabel>Manage maid aura</ArtificialMaidAuraGizmoLabel>
+    <ArtificialMaidAuraGizmoDesc>Open the global list to grant or remove the "Maid's Presence" aura to any of your pawns. The aura greatly enhances all abilities and stats.</ArtificialMaidAuraGizmoDesc>
+    <ArtificialMaidAuraDialogTitle>Artificial Maid Aura Management</ArtificialMaidAuraDialogTitle>
+    <ArtificialMaidAuraDialogHint>Check to grant the aura; uncheck to remove it. The aura automatically disappears when the pawn leaves your faction or you cancel it manually. If it is lost for some reason, it will be re-applied automatically while a maid is nearby.</ArtificialMaidAuraDialogHint>
+    <ArtificialMaidAuraLocationSuffix> ({0})</ArtificialMaidAuraLocationSuffix>
+    <ArtificialMaidAuraLocationUnknown>Unknown location</ArtificialMaidAuraLocationUnknown>
 </LanguageData>

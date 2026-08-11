@@ -81,7 +81,9 @@
     <Compile Include="CompArtificialMaidPacker.cs" />
     <Compile Include="CompArtificialMaidTerminal.cs" />
     <Compile Include="DSFICompatibility.cs" />
+    <Compile Include="Dialog_ArtificialMaidAuraManager.cs" />
     <Compile Include="Dialog_ArtificialMaidBackupCloud.cs" />
+    <Compile Include="GameComponent_ArtificialMaidAuraManager.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
     <Compile Include="Incident\ArtificialMaidEscortUtility.cs" />

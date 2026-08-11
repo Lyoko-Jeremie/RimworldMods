@@ -150,4 +150,10 @@
     <ArtificialMaidBackupCloudLocation_Destroyed>对象已销毁</ArtificialMaidBackupCloudLocation_Destroyed>
     <ArtificialMaidBackupCloudLocation_Discarded>对象已丢弃</ArtificialMaidBackupCloudLocation_Discarded>
     <ArtificialMaidBackupCloudLocation_SerialConflict>发现重复序列号</ArtificialMaidBackupCloudLocation_SerialConflict>
+    <ArtificialMaidAuraGizmoLabel>管理女仆光环</ArtificialMaidAuraGizmoLabel>
+    <ArtificialMaidAuraGizmoDesc>打开全局列表，为任意我方角色授予或取消"女仆在身边"光环。光环将全面提高各项能力与属性。</ArtificialMaidAuraGizmoDesc>
+    <ArtificialMaidAuraDialogTitle>人造人女仆光环管理</ArtificialMaidAuraDialogTitle>
+    <ArtificialMaidAuraDialogHint>勾选即授予光环；取消即移除光环。被标记的角色脱离我方阵营或由玩家取消时，光环自动消失；若因其他原因丢失，女仆在身边时会自动重新施加。</ArtificialMaidAuraDialogHint>
+    <ArtificialMaidAuraLocationSuffix>（{0}）</ArtificialMaidAuraLocationSuffix>
+    <ArtificialMaidAuraLocationUnknown>未知位置</ArtificialMaidAuraLocationUnknown>
 </LanguageData>

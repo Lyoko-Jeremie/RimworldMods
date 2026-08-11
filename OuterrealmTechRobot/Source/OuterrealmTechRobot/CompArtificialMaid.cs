@@ -704,6 +704,15 @@ namespace OuterrealmTechRobot
                     icon = ArtificialMaidTex.IconHuntMode
                 };
 
+                // 管理"女仆在身边"光环：打开全局列表为任意我方小人授予/取消光环标记
+                yield return new Command_Action
+                {
+                    defaultLabel = "ArtificialMaidAuraGizmoLabel".Translate(),
+                    defaultDesc = "ArtificialMaidAuraGizmoDesc".Translate(),
+                    icon = ArtificialMaidTex.IconAura,
+                    action = () => Find.WindowStack.Add(new Dialog_ArtificialMaidAuraManager())
+                };
+
                 if (currentDisplayCase != null)
                 {
                     yield return new Command_Action
