@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <Defs>
   <HediffDef>
     <defName>ArtificialMaidRecovery</defName>
@@ -64,8 +64,10 @@
           <ArmorRating_Sharp>10000</ArmorRating_Sharp>
           <ArmorRating_Blunt>10000</ArmorRating_Blunt>
           <ArmorRating_Heat>10000</ArmorRating_Heat>
-          <Insulation_Cold>500</Insulation_Cold>
-          <Insulation_Heat>500</Insulation_Heat>
+          <!-- 温度隔离：舒适温度范围大幅拓宽（原版舒适温度由 ComfyTemperatureMin/Max 决定，
+               pawn 自身的 Insulation_Cold/Insulation_Heat 偏移不参与温度舒适计算） -->
+          <ComfyTemperatureMin>-500</ComfyTemperatureMin>
+          <ComfyTemperatureMax>500</ComfyTemperatureMax>
           <Flammability>-1</Flammability>
         </statOffsets>
         <statFactors>
