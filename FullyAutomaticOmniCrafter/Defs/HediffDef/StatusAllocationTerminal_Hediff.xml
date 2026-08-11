@@ -99,11 +99,11 @@
                     <!-- 灵能敏感度加值；提高灵能相关效果强度，适合配合高灵熵容量。 -->
                     <PsychicSensitivity>1</PsychicSensitivity>
                     <!-- 灵熵上限加值；Ideology 启用时提供极高的灵能热量容量。 -->
-                    <PsychicEntropyMax MayRequire="Ludeon.RimWorld.Ideology">200000</PsychicEntropyMax>
+                    <PsychicEntropyMax MayRequire="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">200000</PsychicEntropyMax>
                     <!-- 灵熵恢复速度加值；Ideology 启用时快速清空灵能热量。 -->
-                    <PsychicEntropyRecoveryRate MayRequire="Ludeon.RimWorld.Ideology">10000</PsychicEntropyRecoveryRate>
+                    <PsychicEntropyRecoveryRate MayRequire="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">10000</PsychicEntropyRecoveryRate>
                     <!-- 冥想专注获取加值；Ideology 启用时显著提高冥想效率。 -->
-                    <MeditationFocusGain MayRequire="Ludeon.RimWorld.Ideology">30</MeditationFocusGain>
+                    <MeditationFocusGain MayRequire="Ludeon.RimWorld.Royalty,Ludeon.RimWorld.Biotech">30</MeditationFocusGain>
                     <!-- 进食速度加值；减少吃饭占用的时间。 -->
                     <EatingSpeed>1</EatingSpeed>
                     <!-- 休息需求下降倍率偏移；基础倍率为 1，-0.5 表示休息需求下降速度约减半。 -->
