@@ -41,6 +41,7 @@ namespace OuterrealmTechRobot
         public int lastEnemyFoundTick = -1;
         public bool hostileResponseInitialized = false;
         public bool isFaking = false; // 用于抑制工作检测期间的闪烁
+        public bool isHighDim = false; // 高维转换模式：穿墙自由移动、无视陷阱、单向攻击、半透明幻影
 
         private AutoBlink.CompAutoBlink _cachedBlinkComp;
         private AutoBlink.CompAutoBlink BlinkComp
@@ -109,6 +110,7 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref ideologySet, "ideologySet", false);
             Scribe_Values.Look(ref lastEnemyFoundTick, "lastEnemyFoundTick", -1);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
+            Scribe_Values.Look(ref isHighDim, "isHighDim", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -134,6 +136,8 @@ namespace OuterrealmTechRobot
             // 复制体生成新的序列号以便区分
             serialNumber = GenerateSerialNumber();
             manufactureTick = Find.TickManager.TicksGame;
+            // 高维是瞬时状态，复制体不继承
+            isHighDim = false;
         }
 
         private string GenerateSerialNumber()
@@ -149,6 +153,10 @@ namespace OuterrealmTechRobot
 
             string duplicateSuffix = isDuplicate ? " (" + (string)"ArtificialMaidDuplicate".Translate() + ")" : "";
             str += (string)"ArtificialMaidSerialNumber".Translate() + ": " + serialNumber + duplicateSuffix;
+            if (isHighDim)
+            {
+                str += "\n" + (string)"ArtificialMaidHighDimActive".Translate();
+            }
             if (isDuplicate && !string.IsNullOrEmpty(originSerialNumber))
             {
                 str += "\n" + (string)"ArtificialMaidOriginSerialNumber".Translate() + ": " + originSerialNumber;
@@ -212,6 +220,17 @@ namespace OuterrealmTechRobot
                 this.EnsureRecoveryHediff();
                 this.AutoConvertFaction();
                 this.EnsureMaidProperties();
+
+                // 高维视觉 hediff 常驻，保证渐出渐入随时可用（平时 alpha=1，无副作用）
+                ArtificialMaidHighDimUtility.EnsureHighDimHediff(Pawn);
+
+                // 展示柜收容时强制退出高维（兜底；常规进柜路径已由 Patch_Pawn_DeSpawn 覆盖）。
+                // 注意：地图上女仆的 Pawn.ParentHolder 恒为 Map（spawnedThings 容器），
+                // 不能使用 ParentHolder != null 判定收纳状态，必须精确匹配展示柜。
+                if (isHighDim && Pawn.ParentHolder is Building_ArtificialMaidDisplayCase)
+                {
+                    ArtificialMaidHighDimUtility.ExitHighDim(Pawn, force: true);
+                }
             }
 
             if (this.parent.IsHashIntervalTick(250))
@@ -716,6 +735,29 @@ namespace OuterrealmTechRobot
                     toggleAction = () => enableNonLethalMode = !enableNonLethalMode,
                     icon = ArtificialMaidTex.IconNonLethalMode
                 };
+
+                // 高维转换开关：仅在地图上且不在展示柜内时可用（柜内不可进入高维）
+                if (CurrentDisplayCase == null && Pawn.Spawned)
+                {
+                    yield return new Command_Toggle
+                    {
+                        defaultLabel = "EnableHighDimLabel".Translate(),
+                        defaultDesc = "EnableHighDimDesc".Translate(),
+                        isActive = () => isHighDim,
+                        toggleAction = () =>
+                        {
+                            if (isHighDim)
+                            {
+                                ArtificialMaidHighDimUtility.ExitHighDim(Pawn);
+                            }
+                            else
+                            {
+                                ArtificialMaidHighDimUtility.EnterHighDim(Pawn);
+                            }
+                        },
+                        icon = ArtificialMaidTex.IconHighDim
+                    };
+                }
 
                 // 解除制服：支持连续选择。点击按钮进入选择模式后，每次释放一个被制服对象都会
                 // 重新进入选择模式（Targeter 在 action 执行后会把 needsStopTargetingCall 重置为 false，

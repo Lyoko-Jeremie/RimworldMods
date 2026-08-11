@@ -31,6 +31,8 @@ namespace OuterrealmTechRobot
 
                 if (resurrected)
                 {
+                    // 重生后退出高维状态（重生是用户指定的高维退出例外之一）
+                    ArtificialMaidHighDimUtility.ExitHighDim(pawn, force: true);
                     CompArtificialMaid.GetCompCached(pawn)?.FullRepair();
                     Find.LetterStack.ReceiveLetter("ArtificialMaid_ResurrectionLetter_Label".Translate(),
                         "ArtificialMaid_ResurrectionLetter_Text".Translate(pawn.LabelShort),

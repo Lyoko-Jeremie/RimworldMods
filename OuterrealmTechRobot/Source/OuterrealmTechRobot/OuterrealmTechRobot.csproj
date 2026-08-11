@@ -71,6 +71,7 @@
   <ItemGroup>
     <Compile Include="ArtificialMaidBackupCloud.cs" />
     <Compile Include="ArtificialMaidHealthUtility.cs" />
+    <Compile Include="ArtificialMaidHighDimUtility.cs" />
     <Compile Include="ArtificialMaidHairs\HairOffsetExtension.cs" />
     <Compile Include="ArtificialMaidMapComponent.cs" />
     <Compile Include="ArtificialMaidMod.cs" />
@@ -87,6 +88,7 @@
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
     <Compile Include="Hediff_NonLethalSubdued.cs" />
+    <Compile Include="HighDimPathGrid.cs" />
     <Compile Include="NonLethalSubdueUtility.cs" />
     <Compile Include="Incident\ArtificialMaidEscortUtility.cs" />
     <Compile Include="Incident\FloatMenuOptionProvider_DismissArtificialMaidEscort.cs" />
@@ -97,6 +99,7 @@
     <Compile Include="JobDriver_PackArtificialMaid.cs" />
     <Compile Include="JobDriver_UnpackArtificialMaid.cs" />
     <Compile Include="Patch.cs" />
+    <Compile Include="Patch_ArtificialMaidHighDim.cs" />
     <Compile Include="Patch_ArtificialMaidInvisibility.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RecipeWorker_FabricateArtificialMaid.cs" />

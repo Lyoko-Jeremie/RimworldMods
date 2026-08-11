@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>Artificial Maid {0} has been successfully fabricated.</ArtificialMaidFabricated>
     <ArtificialMaidFabricationFailed>Artificial Maid fabrication failed because the completed unit could not be placed safely.</ArtificialMaidFabricationFailed>
@@ -161,4 +161,9 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <ReleaseSubduedLabel>Release Subdued</ReleaseSubduedLabel>
     <ReleaseSubduedDesc>Select a subdued target to immediately release it, restoring all capacities and skills.</ReleaseSubduedDesc>
     <SubduedReleasedMessage>{0} has been released from subjugation.</SubduedReleasedMessage>
+    <EnableHighDimLabel>High-Dimensional Phase</EnableHighDimLabel>
+    <EnableHighDimDesc>When enabled, this artificial maid shifts out of normal spacetime into a higher dimension: she can move and linger through any terrain or structure, never triggers traps, and cannot be attacked by anyone by any means, while still being able to attack enemies herself. Click again to exit.</EnableHighDimDesc>
+    <ArtificialMaidHighDimActive>Now in high-dimensional space</ArtificialMaidHighDimActive>
+    <ArtificialMaid_HighDimEnter>{0} has entered high-dimensional space.</ArtificialMaid_HighDimEnter>
+    <ArtificialMaid_HighDimExit>{0} has returned from high-dimensional space.</ArtificialMaid_HighDimExit>
 </LanguageData>

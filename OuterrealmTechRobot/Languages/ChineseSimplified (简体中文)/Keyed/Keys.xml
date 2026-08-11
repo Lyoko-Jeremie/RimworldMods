@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>人造人女仆 {0} 已成功制造。</ArtificialMaidFabricated>
     <ArtificialMaidFabricationFailed>人造人女仆制造失败：完成的单位无法安全生成到地图上。</ArtificialMaidFabricationFailed>
@@ -161,4 +161,9 @@
     <ReleaseSubduedLabel>解除制服</ReleaseSubduedLabel>
     <ReleaseSubduedDesc>指定一名被制服的目标，立即解除其被制服状态，恢复全部能力与技能。</ReleaseSubduedDesc>
     <SubduedReleasedMessage>已解除 {0} 的制服状态。</SubduedReleasedMessage>
+    <EnableHighDimLabel>高维转换</EnableHighDimLabel>
+    <EnableHighDimDesc>开启后，人造人女仆将脱离正常时空进入高维空间：可无视任何地形与建筑自由穿行停留，不触发任何陷阱，敌人无法攻击到女仆但女仆可以攻击到敌人。再次点击以退出高维。</EnableHighDimDesc>
+    <ArtificialMaidHighDimActive>正在高维空间</ArtificialMaidHighDimActive>
+    <ArtificialMaid_HighDimEnter>人造人女仆 {0} 已进入高维空间。</ArtificialMaid_HighDimEnter>
+    <ArtificialMaid_HighDimExit>人造人女仆 {0} 已从高维空间返回。</ArtificialMaid_HighDimExit>
 </LanguageData>

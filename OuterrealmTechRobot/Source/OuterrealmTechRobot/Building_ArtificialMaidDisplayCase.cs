@@ -485,6 +485,12 @@ namespace OuterrealmTechRobot
             // 仅适用于人造人女仆
             if (pawn.def != ArtificialMaidDefOf.ArtificialMaid) return null;
 
+            // 高维状态下不自动休眠（高维女仆应保持活动，直至玩家手动退出/进柜/离图/重生）
+            if (ArtificialMaidHighDimUtility.IsHighDim(pawn))
+            {
+                return null;
+            }
+
             // 检查女仆自身的自动休眠设置
             CompArtificialMaid comp = CompArtificialMaid.GetCompCached(pawn);
             if (comp != null && !comp.allowAutoHibernate)

@@ -26,6 +26,8 @@ namespace OuterrealmTechRobot
         public static JobDef PackArtificialMaid;
         public static JobDef UnpackArtificialMaid;
         public static JobDef DismissArtificialMaidEscort;
+        public static PathGridDef AM_HighDimPathGrid;
+        public static HediffDef AM_HighDim;
 
         [MayRequireBiotech] public static XenotypeDef ArtificialMaidXenotype;
         [MayRequireBiotech] public static GeneDef ArtificialMaid_Core;
@@ -146,5 +148,9 @@ namespace OuterrealmTechRobot
         public static readonly Texture2D IconReleaseSubdued =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ReleaseSubdued", false) ??
             IconHealingProtocol;
+
+        public static readonly Texture2D IconHighDim =
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_HighDim", false) ??
+            BaseContent.WhiteTex;
     }
 }

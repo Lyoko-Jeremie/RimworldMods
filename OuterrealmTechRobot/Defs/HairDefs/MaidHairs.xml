@@ -16,16 +16,16 @@
         <!-- 重点在这里！插入你的模组扩展 -->
         <modExtensions>
             <!-- 注意 Class 要填你 C# 的 命名空间.类名 -->
-            <li Class="OuterrealmTechRobot.ArtificialMaidHairs.ArtificialMaidHairOffsetExtension">
+<!--            <li Class="OuterrealmTechRobot.ArtificialMaidHairs.ArtificialMaidHairOffsetExtension">-->
                 <!-- 格式为 (X, Y, Z) -->
                 <!-- Z 轴正数，往上移 -->
-                <offsetSouth>(0, 0, -0.3)</offsetSouth>
-                <offsetNorth>(0, 0, -0.3)</offsetNorth>
-                <offsetEast>(0, 0, -0.3)</offsetEast>
-                <offsetWest>(0, 0, -0.3)</offsetWest>
+<!--                <offsetSouth>(0, 0, -0.25)</offsetSouth>-->
+<!--                <offsetNorth>(0, 0, -0.25)</offsetNorth>-->
+<!--                <offsetEast>(0, 0, -0.25)</offsetEast>-->
+<!--                <offsetWest>(0, 0, -0.25)</offsetWest>-->
 <!--                <offsetEast>(-0.1, 0, -0.3)</offsetEast>-->
 <!--                <offsetWest>(0.1, 0, -0.3)</offsetWest>-->
-            </li>
+<!--            </li>-->
         </modExtensions>
         
     </HairDef>

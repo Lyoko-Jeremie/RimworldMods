@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!-- 高维转换模式使用的自定义寻路网格：workerType 为恒 10 成本的 HighDimPathGrid，
+       无视一切地形/建筑/天气成本，使女仆可穿过墙壁、山体、深水与真空无地面区域。 -->
+  <PathGridDef>
+    <defName>AM_HighDimPathGrid</defName>
+    <fencePassable>true</fencePassable>
+    <flying>true</flying>
+    <workerType>OuterrealmTechRobot.HighDimPathGrid</workerType>
+  </PathGridDef>
+
+</Defs>

@@ -235,6 +235,9 @@ namespace OuterrealmTechRobot
         {
             if (__instance.def == ArtificialMaidDefOf.ArtificialMaid)
             {
+                // 收纳/离开地图前强制退出高维（不传送，位置由外部流程管理），
+                // 避免女仆在容器或新地图中保持高维状态
+                ArtificialMaidHighDimUtility.ExitHighDim(__instance, force: true);
                 ArtificialMaidBackupCloud.NotifyMaidDespawned(__instance);
                 if (__instance.Map != null)
                 {

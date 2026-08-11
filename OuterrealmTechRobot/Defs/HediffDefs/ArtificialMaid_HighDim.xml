@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!-- 高维转换模式的视觉载体（常驻 hediff）：
+       复用原版隐身系统的透明度渐变管线（PawnRenderer 统一应用 GetAlpha），
+       进入高维调用 BecomeInvisible(false) 渐出、退出调用 BecomeVisible(false) 渐入。
+       visibleToPlayer=false 以启用渐变；高维幻影的透明度下限由代码 patch 抬到 0.2，保证玩家可见。 -->
+  <HediffDef>
+    <defName>AM_HighDim</defName>
+    <label>high-dimensional phase</label>
+    <description>An advanced dimensional phase state. The maid shifts partially out of normal spacetime, allowing her to pass through any terrain while remaining faintly visible and fully controllable.</description>
+    <hediffClass>HediffWithComps</hediffClass>
+    <isBad>false</isBad>
+    <initialSeverity>1.0</initialSeverity>
+    <stages>
+      <li>
+        <becomeVisible>false</becomeVisible>
+      </li>
+    </stages>
+    <comps>
+      <li Class="HediffCompProperties_Invisibility">
+        <visibleToPlayer>false</visibleToPlayer>
+        <fadeDurationTicks>60</fadeDurationTicks>
+        <recoverFromDisruptedTicks>0</recoverFromDisruptedTicks>
+        <affectedByDisruptor>false</affectedByDisruptor>
+      </li>
+    </comps>
+  </HediffDef>
+
+</Defs>
