@@ -48,78 +48,7 @@ namespace OuterrealmTechRobot
 
             foreach (KeyValuePair<Pawn, Pawn> pair in servantToMaster)
             {
-                TryTeleportServantToMaster(pair.Key, pair.Value);
-            }
-        }
-
-        /// <summary>
-        /// 跨图传送伴随：主人已生成在地图而女仆在别处（其他图/未生成）时，
-        /// 将女仆生成到主人附近可站立格。低频（120 tick 分频）+ 多项跳过守卫，无每 tick 开销。
-        /// </summary>
-        private void TryTeleportServantToMaster(Pawn maid, Pawn master)
-        {
-            if (maid == null || master == null || maid.Dead || master.Dead || maid.Destroyed || master.Destroyed)
-            {
-                return;
-            }
-
-            if (maid.Map == master.Map)
-            {
-                return; // 同图（含双方均未生成）
-            }
-
-            // 主人不在任何地图（商队/世界）→ 无法传送
-            Map targetMap = master.Map;
-            if (targetMap == null)
-            {
-                return;
-            }
-
-            // 女仆在商队中 → 不传送（尊重商队结构，避免拆散远行队）
-            if (maid.GetCaravan() != null)
-            {
-                return;
-            }
-
-            // 女仆在容器中（展示柜/运输盒等）→ 尊重收纳，不强制取出
-            if (maid.ParentHolder != null && !(maid.ParentHolder is Map))
-            {
-                return;
-            }
-
-            // 女仆被携带（ParentHolder 为其他 Pawn）→ 不传送
-            if (maid.ParentHolder is Pawn)
-            {
-                return;
-            }
-
-            // 女仆正在携带物品 → 不传送（避免丢失携带物）
-            if (maid.carryTracker != null && maid.carryTracker.CarriedThing != null)
-            {
-                return;
-            }
-
-            // 留守 → 不传送（完全静默）
-            CompArtificialMaid comp = CompArtificialMaid.GetCompCached(maid);
-            if (comp != null && comp.standbyMode)
-            {
-                return;
-            }
-
-            // 传送：先注销再生成到主人附近
-            try
-            {
-                if (maid.Spawned)
-                {
-                    maid.DeSpawn();
-                }
-
-                IntVec3 cell = CellFinder.RandomSpawnCellForPawnNear(master.Position, targetMap);
-                GenSpawn.Spawn(maid, cell, targetMap);
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning("[OuterrealmTech] 侍奉跨图传送失败: " + ex.Message);
+                ArtificialMaidServitudeUtility.TryTeleportToMaster(pair.Key, pair.Value);
             }
         }
 

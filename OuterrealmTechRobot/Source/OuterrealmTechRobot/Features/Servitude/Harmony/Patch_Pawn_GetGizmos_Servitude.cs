@@ -93,7 +93,7 @@ namespace OuterrealmTechRobot
                     {
                         defaultLabel = "AM_Servitude_UnbindLabel".Translate(),
                         defaultDesc = "AM_Servitude_UnbindDesc_Master".Translate(),
-                        icon = ContentFinder<Texture2D>.Get("UI/Commands/Dismiss", false) ?? BaseContent.WhiteTex,
+                        icon = ArtificialMaidTex.IconServitudeUnbind,
                         action = delegate
                         {
                             List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -129,7 +129,7 @@ namespace OuterrealmTechRobot
                     {
                         defaultLabel = "AM_Servitude_UnbindLabel".Translate(),
                         defaultDesc = "AM_Servitude_UnbindDesc_Servant".Translate(),
-                        icon = ContentFinder<Texture2D>.Get("UI/Commands/Dismiss", false) ?? BaseContent.WhiteTex,
+                        icon = ArtificialMaidTex.IconServitudeUnbind,
                         action = delegate
                         {
                             Pawn oldMaster = mgr.GetMaster(__instance);

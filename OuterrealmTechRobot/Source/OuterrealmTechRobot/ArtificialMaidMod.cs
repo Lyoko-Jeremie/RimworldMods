@@ -164,6 +164,10 @@ namespace OuterrealmTechRobot
             ContentFinder<Texture2D>.Get("UI/Commands/ServitudeBond", false) ??
             BaseContent.WhiteTex;
 
+        public static readonly Texture2D IconServitudeUnbind =
+            ContentFinder<Texture2D>.Get("UI/Commands/AM_Servitude_Unbind", false) ??
+            BaseContent.WhiteTex;
+
         public static readonly Texture2D IconStandby =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_Standby", false) ??
             IconAutoHibernate;

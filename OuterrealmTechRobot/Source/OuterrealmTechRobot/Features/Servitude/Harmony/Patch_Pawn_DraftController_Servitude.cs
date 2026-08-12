@@ -51,6 +51,12 @@ namespace OuterrealmTechRobot
                     continue; // 留守：不自动征召、不唤醒
                 }
 
+                // 倒地/精神崩溃中的女仆不自动征召（等待救援；守卫无意义）
+                if (maid.Downed || maid.InMentalState)
+                {
+                    continue;
+                }
+
                 // 柜内女仆未 Spawned，IsColonistPlayerControlled 不可用 → 用 Faction 判定（在唤醒之前，避免弹出敌对/非玩家女仆）
                 if (maid.Faction != Faction.OfPlayer)
                 {
@@ -86,6 +92,8 @@ namespace OuterrealmTechRobot
                     maid.drafter.Drafted = true; // setter 内部会 EndCurrentJob
                     comp.SetGuardMode(true);     // 互斥入口：自动关猎杀
                     comp.autoDraftedByMaster = true;
+                    // 立即到主人身边（优先瞬移，冷却中则走向主人）
+                    ArtificialMaidServitudeUtility.ImmediatelyJoinMaster(maid, master);
                     Messages.Message(
                         "AM_Servitude_AutoDraftMessage".Translate(maid.LabelShort, master.LabelShort),
                         maid, MessageTypeDefOf.NeutralEvent);

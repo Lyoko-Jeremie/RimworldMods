@@ -14,12 +14,6 @@ namespace OuterrealmTechRobot
     /// </summary>
     public abstract class ThinkNode_JobGiver_ServitudeBase : ThinkNode_JobGiver
     {
-        /// <summary>高维跟随保持距离（格）。</summary>
-        private const float HighDimFollowRadius = 4f;
-
-        /// <summary>高维跟随触发距离（格）：空闲且距主人超过该距离才跟随。</summary>
-        private const float HighDimFollowTriggerDistance = 15f;
-
         protected sealed override Job TryGiveJob(Pawn pawn)
         {
             // 通用守卫（快速失败链，全 O(1)/廉价判定）
@@ -34,7 +28,7 @@ namespace OuterrealmTechRobot
                 return null;
             }
 
-            // ② 高维维度：高维 + 未征召 = 只跟随主人
+            // ② 高维维度：高维 + 未征召 = 只跟随主人（持续跟随，阻断其他空闲行为）
             if (comp.isHighDim)
             {
                 return TryGiveHighDimFollowJob(pawn, master);
@@ -43,16 +37,11 @@ namespace OuterrealmTechRobot
             return TryGiveServitudeJob(pawn, master, mgr);
         }
 
-        /// <summary>高维模式下的跟随行为（复用跟随 Job）。</summary>
+        /// <summary>高维模式下的跟随行为（复用跟随 Job，持续跟随）。</summary>
         private Job TryGiveHighDimFollowJob(Pawn pawn, Pawn master)
         {
-            // 仅空闲时跟随；距主人较近时停下（不粘住主人，保证不干扰正常行动）
+            // 仅空闲时跟随（空闲时持续跟随）
             if (pawn.mindState == null || !pawn.mindState.IsIdle)
-            {
-                return null;
-            }
-
-            if (pawn.Position.InHorDistOf(master.Position, HighDimFollowTriggerDistance))
             {
                 return null;
             }
