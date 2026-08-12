@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 主人的心情：拥有专属侍奉女仆 -->
+  <ThoughtDef>
+    <defName>AM_Thought_HasServant</defName>
+    <workerClass>OuterrealmTechRobot.ThoughtWorker_HasServant</workerClass>
+    <validWhileDespawned>true</validWhileDespawned>
+    <stackLimit>1</stackLimit>
+    <stages>
+      <li>
+        <label>拥有专属侍奉女仆</label>
+        <description>我的女仆时刻陪伴在我身边，无微不至地照顾着我。这种被人全心全意侍奉的感觉，令人安心而满足。</description>
+        <baseMoodEffect>8</baseMoodEffect>
+      </li>
+    </stages>
+  </ThoughtDef>
+
+</Defs>

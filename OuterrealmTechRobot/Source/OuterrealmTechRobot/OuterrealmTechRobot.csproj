@@ -85,6 +85,23 @@
     <Compile Include="Dialog_ArtificialMaidAuraManager.cs" />
     <Compile Include="Dialog_ArtificialMaidBackupCloud.cs" />
     <Compile Include="GameComponent_ArtificialMaidAuraManager.cs" />
+    <Compile Include="Features\Servitude\ArtificialMaidServitudeManager.cs" />
+    <Compile Include="Features\Servitude\ArtificialMaidServitudeDef.cs" />
+    <Compile Include="Features\Servitude\ArtificialMaidServitudeUtility.cs" />
+    <Compile Include="Features\Servitude\ThinkNode_JobGiver_ServitudeBase.cs" />
+    <Compile Include="Features\Servitude\JobGiver_AMGuardMaster.cs" />
+    <Compile Include="Features\Servitude\JobGiver_AMFollowMaster.cs" />
+    <Compile Include="Features\Servitude\JobGiver_AMFeedMaster.cs" />
+    <Compile Include="Features\Servitude\JobGiver_AMProtectMaster.cs" />
+    <Compile Include="Features\Servitude\JobGiver_AMRescueMaster.cs" />
+    <Compile Include="Features\Servitude\JobGiver_AMCompanion.cs" />
+    <Compile Include="Features\Servitude\JobDriver_AMFollowMaster.cs" />
+    <Compile Include="Features\Servitude\JobDriver_AMLapPillow.cs" />
+    <Compile Include="Features\Servitude\Harmony\Patch_AutoBlink_CarrySync.cs" />
+    <Compile Include="Features\Servitude\Harmony\Patch_Pawn_DraftController_Servitude.cs" />
+    <Compile Include="Features\Servitude\ThoughtWorker_HasServant.cs" />
+    <Compile Include="Features\Servitude\Harmony\Patch_Pawn_GetGizmos_Servitude.cs" />
+    <Compile Include="Features\Servitude\Harmony\Patch_Pawn_DrawExtraSelectionOverlays_Servitude.cs" />
     <Compile Include="HediffComp_ArtificialMaidProtocol.cs" />
     <Compile Include="Hediff_ArtificialMaidRecovery.cs" />
     <Compile Include="Hediff_NonLethalSubdued.cs" />
@@ -128,6 +145,7 @@
   <ItemGroup>
     <Content Include="AGENTS.md" />
     <Content Include="plan.md" />
+    <Content Include="plan2.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>Artificial Maid {0} has been successfully fabricated.</ArtificialMaidFabricated>
     <ArtificialMaidFabricationFailed>Artificial Maid fabrication failed because the completed unit could not be placed safely.</ArtificialMaidFabricationFailed>
@@ -166,4 +166,25 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <ArtificialMaidHighDimActive>Now in high-dimensional space</ArtificialMaidHighDimActive>
     <ArtificialMaid_HighDimEnter>{0} has entered high-dimensional space.</ArtificialMaid_HighDimEnter>
     <ArtificialMaid_HighDimExit>{0} has returned from high-dimensional space.</ArtificialMaid_HighDimExit>
+    <!-- Servitude system -->
+    <AM_Servitude_BindLabel>Establish servitude...</AM_Servitude_BindLabel>
+    <AM_Servitude_BindDesc>Designate a target as this pawn's dedicated servant. The artificial maid will follow and care for her master.</AM_Servitude_BindDesc>
+    <AM_Servitude_BindOption>{0} (serving {1})</AM_Servitude_BindOption>
+    <AM_Servitude_BindNone>No available targets</AM_Servitude_BindNone>
+    <AM_Servitude_UnbindLabel>Sever servitude</AM_Servitude_UnbindLabel>
+    <AM_Servitude_UnbindDesc_Master>Sever the master-servant bond with the designated servant.</AM_Servitude_UnbindDesc_Master>
+    <AM_Servitude_UnbindDesc_Servant>Stop serving the master.</AM_Servitude_UnbindDesc_Servant>
+    <AM_Servitude_UnbindOption>Release {0}</AM_Servitude_UnbindOption>
+    <AM_Servitude_UnbindAll>Release all servants</AM_Servitude_UnbindAll>
+    <AM_Servitude_BoundMessage>{0} is now serving {1}.</AM_Servitude_BoundMessage>
+    <AM_Servitude_UnboundMessage>{0} is no longer serving {1}.</AM_Servitude_UnboundMessage>
+    <AM_Servitude_StandbyLabel>Standby Mode</AM_Servitude_StandbyLabel>
+    <AM_Servitude_StandbyDesc>While enabled, the artificial maid temporarily stops all servitude behaviors (follow, protect, guard, feed, companionship, etc.). Disable to resume normally.</AM_Servitude_StandbyDesc>
+    <AM_Servitude_AutoDraftMessage>{0} automatically enters drafted guard mode because her master {1} was drafted.</AM_Servitude_AutoDraftMessage>
+    <AM_Servitude_Letter_LapPillowLabel>A tender lap pillow</AM_Servitude_Letter_LapPillowLabel>
+    <AM_Servitude_Letter_LapPillowText>{0} gently lets {1} rest their head on her lap, hoping her master can get some proper rest.</AM_Servitude_Letter_LapPillowText>
+    <AM_Servitude_Letter_SeduceLabel>An amorous invitation</AM_Servitude_Letter_SeduceLabel>
+    <AM_Servitude_Letter_SeduceText>{0} casts a longing gaze at {1}, her body already prepared...</AM_Servitude_Letter_SeduceText>
+    <AM_Servitude_GuardLabel>Guard and follow master</AM_Servitude_GuardLabel>
+    <AM_Servitude_GuardDesc>While enabled, the drafted maid automatically follows her master and intercepts threats against her (enabling this disables Hunt Mode).</AM_Servitude_GuardDesc>
 </LanguageData>

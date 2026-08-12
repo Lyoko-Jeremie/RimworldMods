@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 侍奉系统：跟随主人 -->
+  <JobDef>
+    <defName>AM_Job_FollowMaster</defName>
+    <driverClass>OuterrealmTechRobot.JobDriver_AMFollowMaster</driverClass>
+    <reportString>accompanying master.</reportString>
+    <casualInterruptible>true</casualInterruptible>
+  </JobDef>
+
+
+  <!-- 侍奉系统：喂食主人（复用原版 JobDriver_Feed） -->
+  <JobDef>
+    <defName>AM_Job_FeedMaster</defName>
+    <driverClass>RimWorld.JobDriver_Feed</driverClass>
+    <reportString>feeding master.</reportString>
+    <casualInterruptible>true</casualInterruptible>
+  </JobDef>
+
+  <!-- 侍奉系统：膝枕 -->
+  <JobDef>
+    <defName>AM_Job_LapPillow</defName>
+    <driverClass>OuterrealmTechRobot.JobDriver_AMLapPillow</driverClass>
+    <reportString>giving master a lap pillow.</reportString>
+    <casualInterruptible>false</casualInterruptible>
+  </JobDef>
+</Defs>

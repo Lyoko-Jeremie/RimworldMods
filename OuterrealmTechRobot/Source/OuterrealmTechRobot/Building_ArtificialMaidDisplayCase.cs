@@ -485,6 +485,17 @@ namespace OuterrealmTechRobot
             // 仅适用于人造人女仆
             if (pawn.def != ArtificialMaidDefOf.ArtificialMaid) return null;
 
+            // 侍奉系统：有在地图上的主人时不自动休眠（陪伴主人优先于进柜休眠）
+            ArtificialMaidServitudeManager servitudeMgr = ArtificialMaidServitudeManager.Get();
+            if (servitudeMgr != null)
+            {
+                Pawn master = servitudeMgr.GetMaster(pawn);
+                if (master != null && !master.Dead && !master.Downed && master.Map == pawn.Map)
+                {
+                    return null;
+                }
+            }
+
             // 高维状态下不自动休眠（高维女仆应保持活动，直至玩家手动退出/进柜/离图/重生）
             if (ArtificialMaidHighDimUtility.IsHighDim(pawn))
             {

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 侍奉互动目录（Def 驱动）：新互动 = 加一个 <li> 条目 -->
+  <OuterrealmTechRobot.ArtificialMaidServitudeDef>
+    <defName>AM_ServitudeBond</defName>
+    <label>servitude bond</label>
+    <description>侍奉互动配置目录。</description>
+    <modExtensions>
+      <li Class="OuterrealmTechRobot.ArtificialMaidServitudeExtension">
+        <interactions>
+          <!-- 膝枕：主人在休息时 -->
+          <li Class="OuterrealmTechRobot.ArtificialMaidServitudeInteraction">
+            <jobDef>AM_Job_LapPillow</jobDef>
+            <fleckDef>Heart</fleckDef>
+            <letterLabelKey>AM_Servitude_Letter_LapPillowLabel</letterLabelKey>
+            <letterTextKey>AM_Servitude_Letter_LapPillowText</letterTextKey>
+            <baseChance>0.04</baseChance>
+            <cooldownTicks>30000</cooldownTicks>
+            <requiredMasterState>Resting</requiredMasterState>
+          </li>
+          <!-- 主动勾引：主人清醒时，走原版亲密互动 -->
+          <li Class="OuterrealmTechRobot.ArtificialMaidServitudeInteraction">
+            <jobDef>Lovin</jobDef>
+            <fleckDef>Heart</fleckDef>
+            <letterLabelKey>AM_Servitude_Letter_SeduceLabel</letterLabelKey>
+            <letterTextKey>AM_Servitude_Letter_SeduceText</letterTextKey>
+            <baseChance>0.015</baseChance>
+            <cooldownTicks>60000</cooldownTicks>
+            <requiredMasterState>Awake</requiredMasterState>
+          </li>
+        </interactions>
+      </li>
+    </modExtensions>
+  </OuterrealmTechRobot.ArtificialMaidServitudeDef>
+
+</Defs>

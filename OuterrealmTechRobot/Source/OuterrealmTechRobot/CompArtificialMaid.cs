@@ -42,6 +42,9 @@ namespace OuterrealmTechRobot
         public bool hostileResponseInitialized = false;
         public bool isFaking = false; // 用于抑制工作检测期间的闪烁
         public bool isHighDim = false; // 高维转换模式：穿墙自由移动、无视陷阱、单向攻击、半透明幻影
+        public bool standbyMode = false; // 留守总开关（v2.3）：打开后侍奉系统完全不执行（跟随/保卫/守卫/救援/喂食/陪伴/勾引/自动征召联动/高维跟随全部暂停）
+        public bool guardModeEnabled = false; // 征召守卫开关（v2.1 起）：征召状态下紧跟并守卫主人（与猎杀互斥）
+        public bool autoDraftedByMaster = false; // 是否由主人自动征召联动触发（解除征召时仅自动来源被连带解除）
 
         private AutoBlink.CompAutoBlink _cachedBlinkComp;
         private AutoBlink.CompAutoBlink BlinkComp
@@ -53,6 +56,88 @@ namespace OuterrealmTechRobot
                     _cachedBlinkComp = Pawn.GetComp<AutoBlink.CompAutoBlink>();
                 }
                 return _cachedBlinkComp;
+            }
+        }
+
+        // 侍奉系统相关 JobDef 集合（留守开关打开时用于打断当前侍奉 Job；懒加载，避免启动期依赖）
+        private static HashSet<JobDef> _servitudeJobDefs;
+        private static HashSet<JobDef> ServitudeJobDefs
+        {
+            get
+            {
+                if (_servitudeJobDefs == null)
+                {
+                    _servitudeJobDefs = new HashSet<JobDef>();
+                    if (ArtificialMaidDefOf.AM_Job_FollowMaster != null)
+                    {
+                        _servitudeJobDefs.Add(ArtificialMaidDefOf.AM_Job_FollowMaster);
+                    }
+                    if (ArtificialMaidDefOf.AM_Job_FeedMaster != null)
+                    {
+                        _servitudeJobDefs.Add(ArtificialMaidDefOf.AM_Job_FeedMaster);
+                    }
+                    if (ArtificialMaidDefOf.AM_Job_LapPillow != null)
+                    {
+                        _servitudeJobDefs.Add(ArtificialMaidDefOf.AM_Job_LapPillow);
+                    }
+                    // 后续里程碑追加：AM_Job_Seduce / AM_Job_CarryMaster 等
+                }
+                return _servitudeJobDefs;
+            }
+        }
+
+        /// <summary>
+        /// 设置留守总开关（v2.3）：打开后侍奉系统完全不执行。
+        /// 打开瞬间若正在执行侍奉 Job 则立即中断。
+        /// </summary>
+        public void SetStandbyMode(bool on)
+        {
+            if (on == standbyMode)
+            {
+                return;
+            }
+
+            standbyMode = on;
+            if (on && Pawn != null && Pawn.CurJob != null && ServitudeJobDefs.Contains(Pawn.CurJob.def))
+            {
+                Pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
+            }
+        }
+
+        /// <summary>
+        /// 设置征召守卫开关（与猎杀互斥：开守卫必关猎杀）。
+        /// 所有守卫开关赋值必须走此入口，禁止直接写 guardModeEnabled。
+        /// </summary>
+        public void SetGuardMode(bool on)
+        {
+            if (on == guardModeEnabled)
+            {
+                return;
+            }
+
+            guardModeEnabled = on;
+            if (on)
+            {
+                enableHuntMode = false;
+            }
+        }
+
+        /// <summary>
+        /// 设置猎杀模式开关（与守卫互斥：开猎杀必关守卫）。
+        /// 所有猎杀开关赋值必须走此入口，禁止直接写 enableHuntMode。
+        /// </summary>
+        public void SetHuntMode(bool on)
+        {
+            if (on == enableHuntMode)
+            {
+                return;
+            }
+
+            enableHuntMode = on;
+            if (on)
+            {
+                guardModeEnabled = false;
+                lastEnemyFoundTick = Find.TickManager.TicksGame;
             }
         }
 
@@ -111,6 +196,9 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref lastEnemyFoundTick, "lastEnemyFoundTick", -1);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
             Scribe_Values.Look(ref isHighDim, "isHighDim", false);
+            Scribe_Values.Look(ref standbyMode, "standbyMode", false);
+            Scribe_Values.Look(ref guardModeEnabled, "guardModeEnabled", false);
+            Scribe_Values.Look(ref autoDraftedByMaster, "autoDraftedByMaster", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -291,13 +379,13 @@ namespace OuterrealmTechRobot
                 // 检查超时自动关闭
                 if (lastEnemyFoundTick > 0 && Find.TickManager.TicksGame - lastEnemyFoundTick > 3000)
                 {
-                    enableHuntMode = false;
+                    SetHuntMode(false);
                     Messages.Message("HuntModeAutoDisabled".Translate(Pawn.LabelShort), Pawn, MessageTypeDefOf.NeutralEvent);
                 }
             }
         }
 
-        private bool TryBlinkToTarget(Pawn target)
+        internal bool TryBlinkToTarget(Pawn target)
         {
             var blinkComp = BlinkComp;
             if (blinkComp == null) return false;
@@ -713,14 +801,7 @@ namespace OuterrealmTechRobot
                     defaultLabel = "EnableHuntModeLabel".Translate(),
                     defaultDesc = "EnableHuntModeDesc".Translate(),
                     isActive = () => enableHuntMode,
-                    toggleAction = () =>
-                    {
-                        enableHuntMode = !enableHuntMode;
-                        if (enableHuntMode)
-                        {
-                            lastEnemyFoundTick = Find.TickManager.TicksGame;
-                        }
-                    },
+                    toggleAction = () => SetHuntMode(!enableHuntMode),
                     icon = ArtificialMaidTex.IconHuntMode
                 };
 
@@ -754,6 +835,33 @@ namespace OuterrealmTechRobot
                         },
                         icon = ArtificialMaidTex.IconHighDim
                     };
+                }
+
+                // 留守模式（侍奉总开关，v2.3）：打开后侍奉系统完全不执行
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "AM_Servitude_StandbyLabel".Translate(),
+                    defaultDesc = "AM_Servitude_StandbyDesc".Translate(),
+                    isActive = () => standbyMode,
+                    toggleAction = () => SetStandbyMode(!standbyMode),
+                    icon = ArtificialMaidTex.IconStandby
+                };
+
+                // 征召守卫：仅征召且有主人时显示（未征召时守卫不生效，按钮不出现）
+                if (Pawn.Drafted)
+                {
+                    ArtificialMaidServitudeManager servitudeMgr = ArtificialMaidServitudeManager.Get();
+                    if (servitudeMgr != null && servitudeMgr.GetMaster(Pawn) != null)
+                    {
+                        yield return new Command_Toggle
+                        {
+                            defaultLabel = "AM_Servitude_GuardLabel".Translate(),
+                            defaultDesc = "AM_Servitude_GuardDesc".Translate(),
+                            isActive = () => guardModeEnabled,
+                            toggleAction = () => SetGuardMode(!guardModeEnabled),
+                            icon = ArtificialMaidTex.IconServitudeBond
+                        };
+                    }
                 }
 
                 // 解除制服：支持连续选择。点击按钮进入选择模式后，每次释放一个被制服对象都会

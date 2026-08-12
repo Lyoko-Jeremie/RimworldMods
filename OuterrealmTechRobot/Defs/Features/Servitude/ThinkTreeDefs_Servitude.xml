@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <ThinkTreeDef>
+    <defName>AM_ServitudeAI</defName>
+    <insertTag>Humanlike_PostDuty</insertTag>
+    <insertPriority>200</insertPriority>
+    <thinkRoot Class="ThinkNode_Priority">
+      <subNodes>
+        <li Class="OuterrealmTechRobot.JobGiver_AMGuardMaster"/>
+        <!-- 后续里程碑按优先级插入：携带跟随 > 陪伴 > 勾引 -->
+        <li Class="OuterrealmTechRobot.JobGiver_AMProtectMaster"/>
+        <li Class="OuterrealmTechRobot.JobGiver_AMRescueMaster"/>
+        <li Class="OuterrealmTechRobot.JobGiver_AMFeedMaster"/>
+        <li Class="OuterrealmTechRobot.JobGiver_AMCompanion"/>
+        <li Class="OuterrealmTechRobot.JobGiver_AMFollowMaster"/>
+      </subNodes>
+    </thinkRoot>
+  </ThinkTreeDef>
+
+</Defs>

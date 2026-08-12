@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
     <ArtificialMaidFabricated>人造人女仆 {0} 已成功制造。</ArtificialMaidFabricated>
     <ArtificialMaidFabricationFailed>人造人女仆制造失败：完成的单位无法安全生成到地图上。</ArtificialMaidFabricationFailed>
@@ -166,4 +166,25 @@
     <ArtificialMaidHighDimActive>正在高维空间</ArtificialMaidHighDimActive>
     <ArtificialMaid_HighDimEnter>人造人女仆 {0} 已进入高维空间。</ArtificialMaid_HighDimEnter>
     <ArtificialMaid_HighDimExit>人造人女仆 {0} 已从高维空间返回。</ArtificialMaid_HighDimExit>
+    <!-- 侍奉系统（Servitude） -->
+    <AM_Servitude_BindLabel>建立侍奉关系...</AM_Servitude_BindLabel>
+    <AM_Servitude_BindDesc>指定一个对象成为该角色的专属侍奉者。人造人女仆会跟随并照顾她的主人。</AM_Servitude_BindDesc>
+    <AM_Servitude_BindOption>{0} (正在侍奉 {1})</AM_Servitude_BindOption>
+    <AM_Servitude_BindNone>没有可用的对象</AM_Servitude_BindNone>
+    <AM_Servitude_UnbindLabel>解除侍奉关系</AM_Servitude_UnbindLabel>
+    <AM_Servitude_UnbindDesc_Master>解除与指定侍奉者的主从关系。</AM_Servitude_UnbindDesc_Master>
+    <AM_Servitude_UnbindDesc_Servant>停止对主人的侍奉。</AM_Servitude_UnbindDesc_Servant>
+    <AM_Servitude_UnbindOption>解除对 {0} 的支配</AM_Servitude_UnbindOption>
+    <AM_Servitude_UnbindAll>解除所有侍奉者</AM_Servitude_UnbindAll>
+    <AM_Servitude_BoundMessage>{0} 现在开始侍奉 {1}。</AM_Servitude_BoundMessage>
+    <AM_Servitude_UnboundMessage>{0} 解除了与 {1} 的主从关系。</AM_Servitude_UnboundMessage>
+    <AM_Servitude_StandbyLabel>留守模式</AM_Servitude_StandbyLabel>
+    <AM_Servitude_StandbyDesc>开启后，人造人女仆将暂时完全不执行侍奉系统的所有内容（跟随、保卫、守卫、喂食、陪伴等全部暂停）。关闭后一切恢复正常。</AM_Servitude_StandbyDesc>
+    <AM_Servitude_AutoDraftMessage>{0} 因主人 {1} 被征召而自动进入征召与护卫状态。</AM_Servitude_AutoDraftMessage>
+    <AM_Servitude_Letter_LapPillowLabel>温柔的膝枕</AM_Servitude_Letter_LapPillowLabel>
+    <AM_Servitude_Letter_LapPillowText>{0} 温柔地让 {1} 枕在腿上，希望能让主人好好休息一下。</AM_Servitude_Letter_LapPillowText>
+    <AM_Servitude_Letter_SeduceLabel>爱意的邀约</AM_Servitude_Letter_SeduceLabel>
+    <AM_Servitude_Letter_SeduceText>{0} 向 {1} 投去了渴求的目光，她的身体已经做好了准备...</AM_Servitude_Letter_SeduceText>
+    <AM_Servitude_GuardLabel>紧跟并守卫主人</AM_Servitude_GuardLabel>
+    <AM_Servitude_GuardDesc>开启后，征召状态下自动紧跟主人并拦截对主人的威胁（开启将关闭猎杀模式）。</AM_Servitude_GuardDesc>
 </LanguageData>

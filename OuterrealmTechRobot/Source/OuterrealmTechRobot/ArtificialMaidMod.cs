@@ -28,6 +28,13 @@ namespace OuterrealmTechRobot
         public static JobDef DismissArtificialMaidEscort;
         public static PathGridDef AM_HighDimPathGrid;
 
+        // —— 侍奉系统（Servitude）——
+        public static JobDef AM_Job_FollowMaster;
+        public static JobDef AM_Job_FeedMaster;
+        public static JobDef AM_Job_LapPillow;
+        public static ThoughtDef AM_Thought_HasServant;
+        public static ThinkTreeDef AM_ServitudeAI;
+
         [MayRequireBiotech] public static XenotypeDef ArtificialMaidXenotype;
         [MayRequireBiotech] public static GeneDef ArtificialMaid_Core;
     }
@@ -151,5 +158,14 @@ namespace OuterrealmTechRobot
         public static readonly Texture2D IconHighDim =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_HighDim", false) ??
             BaseContent.WhiteTex;
+
+        // —— 侍奉系统（Servitude）——
+        public static readonly Texture2D IconServitudeBond =
+            ContentFinder<Texture2D>.Get("UI/Commands/ServitudeBond", false) ??
+            BaseContent.WhiteTex;
+
+        public static readonly Texture2D IconStandby =
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_Standby", false) ??
+            IconAutoHibernate;
     }
 }
