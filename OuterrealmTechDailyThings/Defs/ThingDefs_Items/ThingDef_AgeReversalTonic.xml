@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <!--
+      超维科技返老还童药剂
+      结构参照原版 MechSerumHealer（消耗品：CompUsable + CompUseEffect + 用后销毁）。
+      万能制造机（FullyAutomaticOmniCrafter）会自动收录所有 category=Item 的物品，
+      无需 RecipeDef / 研究即可由万能制造机直接生成。
+    -->
+    <ThingDef ParentName="MechSerumBase">
+        <defName>OuterTech_AgeReversalTonic</defName>
+        <label>OuterrealmTech Rejuvenation Tonic</label>
+        <description>A super-technology tonic from the Outerrealm. It reverses the user's biological age by 10 years, but never below the race's age of adulthood, and automatically removes age-related diseases acquired over the years. Can only be used by adult humanlikes.</description>
+
+        <comps>
+            <li Class="CompProperties_Forbiddable" />
+            <li Class="CompProperties_Usable">
+                <useJob>UseItem</useJob>
+                <useLabel>Use {0_label}</useLabel>
+                <useDuration>600</useDuration>
+                <showUseGizmo>true</showUseGizmo>
+            </li>
+            <li Class="CompProperties_UseEffect">
+                <compClass>OuterrealmTechDailyThings.CompUseEffect_ReverseAge</compClass>
+                <yearsToReverse>10</yearsToReverse>
+            </li>
+            <li Class="CompProperties_UseEffectPlaySound">
+                <soundOnUsed>MechSerumUsed</soundOnUsed>
+            </li>
+            <li Class="CompProperties_UseEffectDestroySelf" />
+        </comps>
+
+        <graphicData>
+            <texPath>Things/Item/AgeReversalTonic</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+        </graphicData>
+
+        <thingCategories>
+            <li>Drugs</li>
+        </thingCategories>
+
+        <statBases>
+            <Beauty>-4</Beauty>
+            <MaxHitPoints>80</MaxHitPoints>
+            <Mass>0.2</Mass>
+            <DeteriorationRate>2</DeteriorationRate>
+            <Flammability>0.2</Flammability>
+            <MarketValue>1500</MarketValue>
+        </statBases>
+    </ThingDef>
+
+</Defs>

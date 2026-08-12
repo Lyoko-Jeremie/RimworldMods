@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OuterTechAgeReversalInvalidTarget>此药剂无法作用于该目标。</OuterTechAgeReversalInvalidTarget>
+  <OuterTechAgeReversalNotHumanlike>只有人形生物才能使用此药剂。</OuterTechAgeReversalNotHumanlike>
+  <OuterTechAgeReversalTooYoung>过于年轻，无法使用。药剂无法将年龄逆转至成年之前。</OuterTechAgeReversalTooYoung>
+  <OuterTechAgeReversalCompleted>{0}的生理年龄逆转了{1}年，现在{2}岁。</OuterTechAgeReversalCompleted>
+</LanguageData>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <OuterTechAgeReversalInvalidTarget>This tonic cannot be used on that target.</OuterTechAgeReversalInvalidTarget>
+  <OuterTechAgeReversalNotHumanlike>Only humanlikes can use this tonic.</OuterTechAgeReversalNotHumanlike>
+  <OuterTechAgeReversalTooYoung>Too young to use. The tonic cannot reverse age below adulthood.</OuterTechAgeReversalTooYoung>
+  <OuterTechAgeReversalCompleted>{0}'s biological age has been reversed by {1} year(s). They are now {2} years old.</OuterTechAgeReversalCompleted>
+</LanguageData>
