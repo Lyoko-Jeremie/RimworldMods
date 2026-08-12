@@ -263,8 +263,9 @@ namespace OuterrealmTechRobot
 
                     if (tmpPawns.Count == 0)
                     {
-                        __result = null;
-                        return false;
+                        // 多选中没有高维征召女仆（例如"非征召高维女仆 + 普通征召单位"）：
+                        // 回退原版逻辑，为普通征召单位正常生成移动选项，避免吞掉其命令。
+                        return true;
                     }
 
                     option = new FloatMenuOption("GoHere".Translate(), () =>
@@ -409,5 +410,143 @@ namespace OuterrealmTechRobot
         // ==================== 视觉：高维状态光效（实体渲染 + 脚下能量光环） ====================
         // 光效绘制由 ArtificialMaidMapComponent.MapComponentUpdate 调用
         // ArtificialMaidHighDimUtility.DrawHighDimEffect 完成，此处无需 patch。
+
+        // ==================== 玩家操作：fogged 点击格放行（山体内部等未探明区域） ====================
+
+        /// <summary>
+        /// 原版 FloatMenuOptionProvider_DraftedMove 的 IgnoreFogged=false 会使 Applies 在点击格处于
+        /// 战争迷雾（未探明的山体内部等）时返回 false，导致 GetOptions/GetSingleOption 根本不被调用，
+        /// 高维女仆右键移动的 patch 没有执行机会。此 patch 在选中单位中存在"高维且已征召"的女仆时
+        /// 放行 fogged 判定，让右键菜单正常生成。
+        /// </summary>
+        [HarmonyPatch(typeof(FloatMenuOptionProvider), nameof(FloatMenuOptionProvider.Applies))]
+        public static class Patch_FloatMenuOptionProvider_Applies_HighDim
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(FloatMenuOptionProvider __instance, FloatMenuContext context, ref bool __result)
+            {
+                if (!(__instance is FloatMenuOptionProvider_DraftedMove))
+                {
+                    return true;
+                }
+
+                // 仅当选中单位中存在"高维且已征召"的女仆时放行，其余情况完全走原版
+                foreach (Pawn p in context.allSelectedPawns)
+                {
+                    if (ArtificialMaidHighDimUtility.IsHighDim(p) && p.Drafted)
+                    {
+                        __result = true;
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        // ==================== 玩家操作：多选右键移动直达不可站立格 ====================
+
+        /// <summary>
+        /// 多选右键移动（Selector.HandleMultiselectGoto）在多选时先执行
+        /// CellFinder.StandableCellNear(ClickedCell, 2.9f)，点击不可站立格（山体内部等）返回 Invalid
+        /// 导致整个分支静默跳过，高维女仆收不到任何命令。此 patch 在征召单位中包含高维女仆时接管：
+        /// 单选征召（仅高维女仆）直接以点击格为目的地；多选则从点击格启动 gotoController 拖拽交互
+        /// （高维女仆的目标由 BestOrderedGotoDestNear 的 patch 直接取点击/拖拽格）。
+        /// </summary>
+        [HarmonyPatch(typeof(Selector), "HandleMultiselectGoto")]
+        public static class Patch_Selector_HandleMultiselectGoto_HighDim
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(Selector __instance, FloatMenuContext context)
+            {
+                // 点击格越界（如右键点击 UI 区域，GetOptions 前置检查会返回空选项列表但 context 仍非空）
+                // 时交给原版逻辑处理，避免对越界格发起移动命令。
+                if (!context.ClickedCell.IsValid || !context.ClickedCell.InBounds(context.map))
+                {
+                    return true;
+                }
+
+                // 复刻原版过滤：征召且允许生成 float menu 的单位
+                List<Pawn> draftedPawns = null;
+                foreach (Pawn p in context.allSelectedPawns)
+                {
+                    if (p.Drafted && FloatMenuMakerMap.ShouldGenerateFloatMenuForPawn(p).Accepted)
+                    {
+                        if (draftedPawns == null)
+                        {
+                            draftedPawns = new List<Pawn>();
+                        }
+
+                        draftedPawns.Add(p);
+                    }
+                }
+
+                if (draftedPawns == null || draftedPawns.Count == 0)
+                {
+                    return true;
+                }
+
+                // 是否包含高维女仆；不包含则完全走原版
+                bool anyHighDim = false;
+                foreach (Pawn p in draftedPawns)
+                {
+                    if (ArtificialMaidHighDimUtility.IsHighDim(p))
+                    {
+                        anyHighDim = true;
+                        break;
+                    }
+                }
+
+                if (!anyHighDim)
+                {
+                    return true;
+                }
+
+                if (draftedPawns.Count == 1)
+                {
+                    // 仅高维女仆：直接以点击格为目的地（跳过原版 PawnCanGoto / StandableCellNear）
+                    FloatMenuOptionProvider_DraftedMove.PawnGotoAction(context.ClickedCell, draftedPawns[0], context.ClickedCell);
+                }
+                else
+                {
+                    // 多选：从点击格启动拖拽交互（不再做 StandableCellNear 修正）。
+                    // 高维女仆目标由 BestOrderedGotoDestNear patch 直接取点击/拖拽格；普通征召单位仍按原版在附近找可站立目的地。
+                    __instance.gotoController.StartInteraction(context.ClickedCell);
+                    foreach (Pawn p in draftedPawns)
+                    {
+                        __instance.gotoController.AddPawn(p);
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 多选右键拖拽的目标计算（MultiPawnGotoController.RecomputeDestinations 内部调用）：
+        /// 原版 BestOrderedGotoDestNear 要求目标可站立/可通行/可达，点击山体内部等格时会把目标弹到附近
+        /// 可站立格或返回女仆原位。高维女仆可直接停留在任意格，此 patch 让其直接以 root
+        /// （点击格/拖拽插值格）为目的地，实现"拖拽到任意位置"。
+        /// </summary>
+        [HarmonyPatch(typeof(RCellFinder), nameof(RCellFinder.BestOrderedGotoDestNear))]
+        public static class Patch_RCellFinder_BestOrderedGotoDestNear_HighDim
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(IntVec3 root, Pawn searcher, ref IntVec3 __result)
+            {
+                if (searcher == null || searcher.Map == null || !ArtificialMaidHighDimUtility.IsHighDim(searcher))
+                {
+                    return true;
+                }
+
+                if (root.InBounds(searcher.Map))
+                {
+                    __result = root;
+                    return false;
+                }
+
+                return true;
+            }
+        }
     }
 }
