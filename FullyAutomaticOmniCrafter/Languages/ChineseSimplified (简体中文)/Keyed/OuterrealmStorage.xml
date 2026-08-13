@@ -19,4 +19,11 @@
   <VaultNoWithdrawDesc>开启后，搬运工不能自动取走内容，同时关闭工作台原料与进食/治疗搜索，除非开启"允许拿取"。</VaultNoWithdrawDesc>
   <VaultAllowTakeForUse>禁止取出时允许拿取</VaultAllowTakeForUse>
   <VaultAllowTakeForUseDesc>开启后，在"禁止取出"状态下，工作台原料与进食/治疗搜索仍可看到本建筑内容（搬运工搬运仍被禁止）。</VaultAllowTakeForUseDesc>
-  <VaultAllowTakeForUseDisabledReason>需先开启"禁止取出"</VaultAllowTakeForUseDisabledReason></LanguageData>
+  <VaultAllowTakeForUseDisabledReason>需先开启"禁止取出"</VaultAllowTakeForUseDisabledReason>
+  <!-- 移出/放行（§6.3） -->
+  <OuterrealmVault_Release>移出该类</OuterrealmVault_Release>
+  <OuterrealmVault_StopRelease>停止移出</OuterrealmVault_StopRelease>
+  <OuterrealmVault_ReleaseAll>移出全部</OuterrealmVault_ReleaseAll>
+  <OuterrealmVault_StopReleaseAll>停止移出全部</OuterrealmVault_StopReleaseAll>
+  <OuterrealmVault_ReleaseAllDesc>放行全部条目，搬运工会把它们搬到其他允许的存储区（物品从超维空间取出）。条目搬空后放行状态自动清除。</OuterrealmVault_ReleaseAllDesc>
+</LanguageData>

@@ -244,6 +244,29 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §6.3 防回吸：放行条目的搬运目标排除本系统 Vault ──
+    // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 放行永不完成、
+    // 无限搬运循环。postfix 发现"放行条目 + 目标是本系统 Vault"时置失败（搬运工放弃该 job，
+    // 物品滞留；存在普通存储区时正常搬走）。
+    [HarmonyPatch(typeof(StoreUtility), "TryFindBestBetterNonSlotGroupStorageFor")]
+    internal static class Patch_StoreUtility_TryFindBestBetterNonSlotGroupStorageFor
+    {
+        private static void Postfix(Thing t, ref IHaulDestination haulDestination, ref bool __result)
+        {
+            if (!__result || haulDestination == null || t == null)
+            {
+                return;
+            }
+            if (haulDestination is Building_OuterrealmVault
+                && t.ParentHolder is Building_OuterrealmVault sourceVault
+                && !sourceVault.Accepts(t))
+            {
+                haulDestination = null;
+                __result = false;
+            }
+        }
+    }
+
     // ── §5.2 #9：数量替换（"无限容量对外可见"，默认启用） ──
     // 取料：Pawn_CarryTracker.TryStartCarry 对视图副本临时提升 stackCount，使单趟取物量不受 stackLimit 封顶。
     [HarmonyPatch(typeof(Pawn_CarryTracker), "TryStartCarry", new Type[] { typeof(Thing), typeof(int), typeof(bool) })]

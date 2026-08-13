@@ -19,4 +19,11 @@
   <VaultNoWithdrawDesc>When enabled, haulers cannot automatically take items, and workbench/food/medicine search is disabled unless "Allow taking for use" is on.</VaultNoWithdrawDesc>
   <VaultAllowTakeForUse>Allow taking for use while disallowed</VaultAllowTakeForUse>
   <VaultAllowTakeForUseDesc>When enabled together with "Disallow withdrawing", workbench ingredients and eating/treatment search still see this building's contents (hauling remains disabled).</VaultAllowTakeForUseDesc>
-  <VaultAllowTakeForUseDisabledReason>Requires "Disallow withdrawing" first</VaultAllowTakeForUseDisabledReason></LanguageData>
+  <VaultAllowTakeForUseDisabledReason>Requires "Disallow withdrawing" first</VaultAllowTakeForUseDisabledReason>
+  <!-- Release / move-out (§6.3) -->
+  <OuterrealmVault_Release>Move out this type</OuterrealmVault_Release>
+  <OuterrealmVault_StopRelease>Stop moving out</OuterrealmVault_StopRelease>
+  <OuterrealmVault_ReleaseAll>Move out everything</OuterrealmVault_ReleaseAll>
+  <OuterrealmVault_StopReleaseAll>Stop moving out everything</OuterrealmVault_StopReleaseAll>
+  <OuterrealmVault_ReleaseAllDesc>Release every entry; haulers will carry them to other allowed storage (items leave subspace). Released entries are cleared automatically once empty.</OuterrealmVault_ReleaseAllDesc>
+</LanguageData>

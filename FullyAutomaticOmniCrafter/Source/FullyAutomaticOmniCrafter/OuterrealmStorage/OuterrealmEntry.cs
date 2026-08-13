@@ -105,6 +105,55 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             return (Def != null ? Def.defName : "null") + (Stuff != null ? "+" + Stuff.defName : "") + " q" + Quality + " hp" + HpBucket + " s" + (Style != null ? Style.defName : "-") + " c" + ColorArgb;
         }
+
+        /// <summary>从 ToString 格式恢复分组键（放行列表存档用）。解析失败返回 false（跳过该放行项，无害）。</summary>
+        public static bool TryParse(string s, out OuterrealmEntryKey key)
+        {
+            key = default(OuterrealmEntryKey);
+            if (string.IsNullOrEmpty(s))
+            {
+                return false;
+            }
+            string[] parts = s.Split(' ');
+            if (parts.Length < 3)
+            {
+                return false;
+            }
+            string[] bs = parts[0].Split('+');
+            ThingDef def = DefDatabase<ThingDef>.GetNamedSilentFail(bs[0]);
+            if (def == null)
+            {
+                return false;
+            }
+            ThingDef stuff = bs.Length > 1 ? DefDatabase<ThingDef>.GetNamedSilentFail(bs[1]) : null;
+            int quality = -1;
+            int hpBucket = -1;
+            int colorArgb = -1;
+            ThingStyleDef style = null;
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string p = parts[i];
+                if (p.StartsWith("q"))
+                {
+                    int.TryParse(p.Substring(1), out quality);
+                }
+                else if (p.StartsWith("hp"))
+                {
+                    int.TryParse(p.Substring(2), out hpBucket);
+                }
+                else if (p.StartsWith("s"))
+                {
+                    string styleName = p.Substring(1);
+                    style = styleName == "-" ? null : DefDatabase<ThingStyleDef>.GetNamedSilentFail(styleName);
+                }
+                else if (p.StartsWith("c"))
+                {
+                    int.TryParse(p.Substring(1), out colorArgb);
+                }
+            }
+            key = new OuterrealmEntryKey(def, stuff, quality, hpBucket, style, colorArgb);
+            return true;
+        }
     }
 
     /// <summary>
