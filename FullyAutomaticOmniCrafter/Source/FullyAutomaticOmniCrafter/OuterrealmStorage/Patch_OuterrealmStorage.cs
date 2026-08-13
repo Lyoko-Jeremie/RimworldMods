@@ -14,6 +14,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// P1 已实现：#5 SplitOff 同步（防超卖）、TryAbsorbStack 回滚补偿、
     /// #6 ListerHaulables 锁定短路、#8 ReservationManager 预留数量检查、
     /// #9 数量替换（选料/取料/计数）、§5.1 冻结温度读数。
+    /// P1 补充：#8 扩展——vault 建筑本体的 CanReserve/Reserve 豁免（无限容量容器
+    /// 无需"防过度搬运"互斥），消除 PickUpAndHaul 多工同时搬入 vault 时的预留冲突报错。
     /// P4 再补：#7 使用路径放宽（allowTakeForUse 驱动）。
     /// </summary>
     internal static class OuterrealmPatchUtil
@@ -161,6 +163,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(Pawn claimant, LocalTargetInfo target, int stackCount, ref bool __result)
         {
             Thing t = target.Thing;
+            if (t is Building_OuterrealmVault)
+            {
+                // vault 建筑本体（§1.2 无限容量）：预留不构成任何容量约束，
+                // 豁免"他人已占满 maxPawns"的互斥检查。否则 PickUpAndHaul 对目的地
+                // 建筑打 maxPawns=1 整建筑预留后，其他搬运工同时搬入 vault 时
+                // CanReserve 恒失败 → Reserve 失败 → "Could not reserve" 刷屏。
+                __result = true;
+                return false;
+            }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return true;
@@ -186,6 +197,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(Pawn claimant, LocalTargetInfo target, int maxPawns, int stackCount, ref bool __result)
         {
             Thing t = target.Thing;
+            if (t is Building_OuterrealmVault)
+            {
+                // vault 建筑本体（§1.2 无限容量）：直接放行，不做预留记账。
+                // 多 pawn 可同时向 vault 搬入（容量无限，无过度搬运问题）；
+                // 消除 LogCouldNotReserveError 与 StartJob 的
+                // "TryMakePreToilReservations() returned false" 警告刷屏。
+                // 本 Mod 取货 job（JobDriver_VaultTakeToInventory）预留的是视图副本
+                // （TargetB），与建筑本体无关，不受影响。
+                __result = true;
+                return false;
+            }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return true;
