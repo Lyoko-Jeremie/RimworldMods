@@ -1,0 +1,321 @@
+using System;
+using System.Collections.Generic;
+using HarmonyLib;
+using RimWorld;
+using Verse;
+using Verse.AI;
+
+namespace FullyAutomaticOmniCrafter.OuterrealmStorage
+{
+    /// <summary>
+    /// 超维存储所需的全部 Harmony patches（§5 清单）。
+    /// 由 OmniCrafterMod 构造中的 HarmonyInstance.PatchAll() 自动应用。
+    ///
+    /// P1 已实现：#5 SplitOff 同步（防超卖）、TryAbsorbStack 回滚补偿、
+    /// #6 ListerHaulables 锁定短路、#8 ReservationManager 预留数量检查、
+    /// #9 数量替换（选料/取料/计数）、§5.1 冻结温度读数。
+    /// P4 再补：#7 使用路径放宽（allowTakeForUse 驱动）。
+    /// </summary>
+    internal static class OuterrealmPatchUtil
+    {
+        /// <summary>提升地图上所有视图副本的 stackCount 为全局剩余量（#9 数量感知路径）。</summary>
+        public static void BoostMapVaults(Map map)
+        {
+            List<IHaulSource> sources = map.haulDestinationManager.AllHaulSourcesListForReading;
+            for (int i = 0; i < sources.Count; i++)
+            {
+                if (sources[i] is Building_OuterrealmVault vault && vault.view != null)
+                {
+                    vault.view.BoostAllCopies();
+                }
+            }
+        }
+
+        /// <summary>恢复地图上所有视图副本的 stackCount 为 min(全局剩余, stackLimit)。</summary>
+        public static void UnboostMapVaults(Map map)
+        {
+            List<IHaulSource> sources = map.haulDestinationManager.AllHaulSourcesListForReading;
+            for (int i = 0; i < sources.Count; i++)
+            {
+                if (sources[i] is Building_OuterrealmVault vault && vault.view != null)
+                {
+                    vault.view.UnboostCopies();
+                }
+            }
+        }
+    }
+
+    // ── §5.2 #5：Thing.SplitOff 取出即同步 + 防超卖（只 patch virtual 声明处一处） ──
+    // ThingWithComps.SplitOff / MinifiedThing.SplitOff 均为 base.SplitOff 薄包装，
+    // patch 此处即覆盖全部；三处全 patch 会导致 prefix/postfix 双触发。
+    [HarmonyPatch(typeof(Thing), "SplitOff")]
+    internal static class Patch_Thing_SplitOff
+    {
+        private static void Prefix(Thing __instance)
+        {
+            OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
+            if (view == null)
+            {
+                return;
+            }
+            view.PreSplitOff(__instance);
+        }
+
+        private static void Postfix(Thing __instance, Thing __result)
+        {
+            OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
+            if (view == null)
+            {
+                return;
+            }
+            view.PostSplitOff(__instance, __result);
+        }
+    }
+
+    // ── §5.2 #5 配套：Thing.TryAbsorbStack 回滚补偿（§3.3） ──
+    // SplitOff 调用方失败回滚（TakeToInventory / TryTransferToContainer）时 piece 合并回副本，
+    // 须把吸收量补回全局。ThingWithComps.TryAbsorbStack 内部调 base（Thing）版本，patch 此处即覆盖。
+    [HarmonyPatch(typeof(Thing), "TryAbsorbStack")]
+    internal static class Patch_Thing_TryAbsorbStack
+    {
+        private static void Prefix(Thing __instance, Thing other)
+        {
+            OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
+            if (view == null || other == null)
+            {
+                return;
+            }
+            view.LastAbsorbAmount = other.stackCount;
+        }
+
+        private static void Postfix(Thing __instance, Thing other)
+        {
+            OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
+            if (view == null)
+            {
+                return;
+            }
+            int amountBefore = view.LastAbsorbAmount;
+            view.LastAbsorbAmount = 0;
+            if (amountBefore <= 0)
+            {
+                return;
+            }
+            // 实际吸收量 = 吸收前 other.stackCount − 吸收后 remaining（全量吸收时 other 被 Destroy → remaining=0；
+            // 部分吸收（respectStackLimit=true 时 take 受限）按实际量补偿，避免多计全局）。
+            int remaining = other != null && !other.Destroyed ? other.stackCount : 0;
+            int absorbed = amountBefore - remaining;
+            if (absorbed <= 0)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            OuterrealmEntryKey key = OuterrealmEntryKey.From(__instance);
+            OuterrealmEntry e = gs.FindEntry(key);
+            if (e != null)
+            {
+                e.Count += absorbed;
+                gs.NotifyContentChanged(key); // version++ + 变更日志
+            }
+            else
+            {
+                // 条目已被完全取走并移除（回滚重建）：以副本属性物化新代表 Thing 重建条目。
+                Thing newProto = GameComponent_OuterrealmStorage.Materialize(__instance);
+                newProto.stackCount = 1;
+                gs.RestoreEntry(new OuterrealmEntry { Key = key, Proto = newProto, Count = absorbed });
+            }
+        }
+    }
+
+    // ── §5.2 #6：ListerHaulables 锁定短路（必需，默认启用） ──
+    // 视图内条目 Accepts==true → 恒不 haulable（锁定，O(1) 短路，跳过 IsInValidBestStorage 全图搜索）；
+    // 放行条目（Accepts==false）绝不短路（否则 §6.3 移出机制失效）。同时消除 M10 无限搬运循环。
+    [HarmonyPatch(typeof(ListerHaulables), "ShouldBeHaulable")]
+    internal static class Patch_ListerHaulables_ShouldBeHaulable
+    {
+        private static bool Prefix(Thing t, ref bool __result)
+        {
+            if (t.ParentHolder is Building_OuterrealmVault vault && vault.Accepts(t))
+            {
+                __result = false;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // ── §5.2 #8：ReservationManager 预留记账（默认启用） ──
+    // 对视图副本 target 用全局可用量 G−R 做数量检查（替代原版 num1 = target.Thing.stackCount），
+    // 数量不足静默拒绝（不打 Log.Error）；在入口无条件执行（不因 ignoreOtherReservations 跳过，防 playerForced 强抢）。
+    [HarmonyPatch(typeof(ReservationManager), "CanReserve")]
+    internal static class Patch_ReservationManager_CanReserve
+    {
+        private static bool Prefix(Pawn claimant, LocalTargetInfo target, int stackCount, ref bool __result)
+        {
+            Thing t = target.Thing;
+            if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
+            {
+                return true;
+            }
+            int req = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
+            if (req <= 0)
+            {
+                return true;
+            }
+            if (req > view.AvailableForReserve(t))
+            {
+                __result = false; // 数量不足：阻止预留
+                return false;
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(ReservationManager), "Reserve")]
+    internal static class Patch_ReservationManager_Reserve
+    {
+        private static bool Prefix(Pawn claimant, LocalTargetInfo target, int stackCount, ref bool __result)
+        {
+            Thing t = target.Thing;
+            if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
+            {
+                return true;
+            }
+            int req = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
+            if (req <= 0)
+            {
+                return true;
+            }
+            if (req > view.AvailableForReserve(t))
+            {
+                // 短路原 Reserve：避免原版 errorOnFailed 的 LogCouldNotReserveError 刷屏（§3.3 静默语义）
+                __result = false;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(ReservationManager), "CanReserveStack")]
+    internal static class Patch_ReservationManager_CanReserveStack
+    {
+        private static bool Prefix(Pawn claimant, LocalTargetInfo target, ref int __result)
+        {
+            Thing t = target.Thing;
+            if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
+            {
+                return true;
+            }
+            long available = view.AvailableForReserve(t);
+            __result = (int)Math.Min(available, int.MaxValue);
+            return false;
+        }
+    }
+
+    // §3.3 退休副本销毁检查：reservation 释放后，若对应条目已不存在 / filter 已禁止则销毁孤儿副本。
+    // 覆盖能定位 target 的释放路径（Release / ReleaseAllForTarget）；ReleaseClaimedBy 系列无 target
+    // 参数，孤儿副本留待下次同 key 变更或全量重建时清理（P4 可补）。
+    [HarmonyPatch(typeof(ReservationManager), "Release")]
+    internal static class Patch_ReservationManager_Release
+    {
+        private static void Postfix(LocalTargetInfo target)
+        {
+            Thing t = target.Thing;
+            if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner view)
+            {
+                view.TryDisposeCopyIfObsolete(t);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(ReservationManager), "ReleaseAllForTarget")]
+    internal static class Patch_ReservationManager_ReleaseAllForTarget
+    {
+        private static void Postfix(Thing t)
+        {
+            if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner view)
+            {
+                view.TryDisposeCopyIfObsolete(t);
+            }
+        }
+    }
+
+    // ── §5.2 #9：数量替换（"无限容量对外可见"，默认启用） ──
+    // 取料：Pawn_CarryTracker.TryStartCarry 对视图副本临时提升 stackCount，使单趟取物量不受 stackLimit 封顶。
+    [HarmonyPatch(typeof(Pawn_CarryTracker), "TryStartCarry", new Type[] { typeof(Thing), typeof(int), typeof(bool) })]
+    internal static class Patch_Pawn_CarryTracker_TryStartCarry
+    {
+        private static void Prefix(Thing item)
+        {
+            if (item.holdingOwner is OuterrealmVaultViewThingOwner view)
+            {
+                view.BoostCopy(item);
+            }
+        }
+    }
+
+    // 计数：RecipeWorkerCounter.CountProducts（账单"已有数量"用全局量）。
+    [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
+    internal static class Patch_RecipeWorkerCounter_CountProducts
+    {
+        private static void Prefix(Bill_Production bill)
+        {
+            if (bill != null && bill.Map != null)
+            {
+                OuterrealmPatchUtil.BoostMapVaults(bill.Map);
+            }
+        }
+
+        private static void Postfix(Bill_Production bill)
+        {
+            if (bill != null && bill.Map != null)
+            {
+                OuterrealmPatchUtil.UnboostMapVaults(bill.Map);
+            }
+        }
+    }
+
+    // 选料：WorkGiver_DoBill.TryFindBestIngredientsHelper（HaulSource 分支候选的 stackCount 用全局量，
+    // 使"单份需求 > stackLimit"的账单可生成，连续制作无 8-10 秒空转）。
+    [HarmonyPatch(typeof(WorkGiver_DoBill), "TryFindBestIngredientsHelper")]
+    internal static class Patch_WorkGiver_DoBill_TryFindBestIngredientsHelper
+    {
+        private static void Prefix(Pawn pawn)
+        {
+            if (pawn != null && pawn.Map != null)
+            {
+                OuterrealmPatchUtil.BoostMapVaults(pawn.Map);
+            }
+        }
+
+        private static void Postfix(Pawn pawn)
+        {
+            if (pawn != null && pawn.Map != null)
+            {
+                OuterrealmPatchUtil.UnboostMapVaults(pawn.Map);
+            }
+        }
+    }
+
+    // ── §5.1 必需：ThingOwnerUtility.TryGetFixedTemperature（冻结温度读数） ──
+    // 硬编码 switch 无法从 mod 扩展；对持有者是本系统建筑的条目返回"冷冻"读数。
+    // 使用 prefix 短路并严格限定本 mod holder，其余放行。
+    [HarmonyPatch(typeof(ThingOwnerUtility), "TryGetFixedTemperature")]
+    internal static class Patch_ThingOwnerUtility_TryGetFixedTemperature
+    {
+        private static bool Prefix(IThingHolder holder, ref float temperature, ref bool __result)
+        {
+            if (holder is Building_OuterrealmVault)
+            {
+                temperature = -30f; // 显示为"冷冻"（§5.1）
+                __result = true;
+                return false;
+            }
+            return true;
+        }
+    }
+}

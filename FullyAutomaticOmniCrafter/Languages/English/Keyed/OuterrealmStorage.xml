@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- OuterrealmStorage -->
+
+  <!-- InspectString -->
+  <OuterrealmVault_InspectSummary>Outerrealm storage: {0} item types, {1} total</OuterrealmVault_InspectSummary>
+  <OuterrealmVault_InspectEmpty>Outerrealm storage: empty</OuterrealmVault_InspectEmpty>
+
+</LanguageData>

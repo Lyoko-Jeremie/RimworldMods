@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!--
+    ══════════════════════════════════════════════════════════════════════
+    超维存储仓 / Outerrealm Vault
+    thingClass : FullyAutomaticOmniCrafter.OuterrealmStorage.Building_OuterrealmVault
+    功能 :
+      · 无限容量：不受 maxItemsInCell × 格数、stackLimit 约束。
+      · 物品冻结：存入后不腐败、不老化、不受温度/环境任何影响。
+      · 跨建筑/跨地图共享：所有终端访问同一份超维空间内容。
+      · 每建筑独立存储清单（filter）：允许 = 可存入、可取出、可看到。
+      · 默认 filter 为空（全禁止）：玩家显式勾选允许类型后才开始工作，
+        防止放置即吸走殖民地所有可存物品（§6.2 设计约定）。
+    ══════════════════════════════════════════════════════════════════════
+  -->
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>FAOC_OuterrealmVault</defName>
+    <label>Outerrealm Vault</label>
+    <description>An outerrealm storage terminal that projects items folded into subspace. Items stored here are shared between all terminals across every map, never deteriorate, and never age. Configure its filter to decide what may be stored.</description>
+    <thingClass>FullyAutomaticOmniCrafter.OuterrealmStorage.Building_OuterrealmVault</thingClass>
+
+    <!-- 建造分类（沿用项目既有生产分类） -->
+    <designationCategory>OmniCrafter_Category</designationCategory>
+
+    <!-- 贴图（暂用原版 Shelf 贴图占位，后续可替换为专用贴图） -->
+    <graphicData>
+      <texPath>Things/Building/Furniture/Shelf</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(3,2)</drawSize>
+    </graphicData>
+    <size>(2,2)</size>
+
+    <!-- 布局 -->
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>1</pathCost>
+    <blockWind>false</blockWind>
+    <castEdgeShadows>false</castEdgeShadows>
+    <staticSunShadowHeight>0.0</staticSunShadowHeight>
+    <fillPercent>0.5</fillPercent>
+    <canOverlapZones>false</canOverlapZones>
+    <rotatable>true</rotatable>
+
+    <!-- 属性基础值 -->
+    <statBases>
+      <Mass>50</Mass>
+      <MaxHitPoints>999999999</MaxHitPoints>
+      <WorkToBuild>500</WorkToBuild>
+    </statBases>
+
+    <!-- 建造成本 -->
+    <costList>
+      <Steel>150</Steel>
+      <ComponentIndustrial>5</ComponentIndustrial>
+    </costList>
+
+    <!-- 可打包为小物件带走（内容保留在超维空间，§4.1b） -->
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <thingCategories>
+      <li>BuildingsStorage</li>
+    </thingCategories>
+
+    <!-- Tick 类型：Normal 以支持 60 tick 视图刷新（§4.1：勿用 Rare，1.6 中 Rare 走 TickRare 不调 Tick） -->
+    <tickerType>Normal</tickerType>
+
+    <!-- 检查选项卡：原版清单/优先级 Tab（内容 Tab ITab_OuterrealmVaultContents 于 P2 加入） -->
+    <inspectorTabs>
+      <li>ITab_Storage</li>
+    </inspectorTabs>
+
+    <!-- 建筑属性 -->
+    <building>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <!-- 启用原版存储组（§4.1e）：自定义 tag，与原版 Shelf/Bookcase 隔离；组 = 共享 filter + 优先级，内容仍全局共享 -->
+      <storageGroupTag>FAOC_Vault</storageGroupTag>
+      <!-- 不配置 defaultStorageSettings：PostMake 后 filter 为空 = 默认全禁止（§6.2） -->
+    </building>
+
+    <!-- 地形要求 -->
+    <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+
+    <!-- 建造 / 修理音效 -->
+    <constructEffect>ConstructMetal</constructEffect>
+    <repairEffect>Repair</repairEffect>
+    <soundImpactDefault>BulletImpact_Metal</soundImpactDefault>
+    <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+
+  </ThingDef>
+
+</Defs>

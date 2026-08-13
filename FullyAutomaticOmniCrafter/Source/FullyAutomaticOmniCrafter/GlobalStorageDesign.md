@@ -1,8 +1,34 @@
 # 全局共享冻结存储系统 — 设计方案报告
 
-> 状态：**设计阶段（暂未修改任何代码）**
+> 状态：**实现阶段（进行中）**
 > 目标版本：RimWorld 1.6（Assembly-CSharp 1.6.9438）
 > 本文所有原版代码引用均来自 rimsage 反编译索引，路径如 `RimWorld/Building_Storage.cs`。
+
+---
+
+## 0.0 实现要求与背景设定（追加于实现启动时）
+
+### 背景故事：超维存储
+
+**超维存储（OuterrealmStorage）** 基于超维科技（OuterrealmTech）的亚空间折叠技术：所有存入的物品被分解为"超维印记"并折叠进**独立的超维空间**中——该空间与物质宇宙的任何物理位置都无绑定关系，因此**任意位置的存储终端都能访问同一份内容**（跨建筑、跨地图共享）。
+
+- 物品在超维空间中**完全静止**：不腐败、不老化、不受温度/环境任何影响，取回时保持存入时的原状（冻结语义）。
+- 超维空间容量无限：不受 `stackLimit`、格数等物质宇宙约束。
+- 存取通过"存储终端"（超维存储仓建筑）完成：终端只负责**投影**超维空间中的内容（视图），并非内容所在——拆除任何终端都不会丢失内容。
+
+### 实现要求（用户指定）
+
+1. **模块独立**：本系统所有 C# 实现**集中放在单一文件夹** `Source/FullyAutomaticOmniCrafter/OuterrealmStorage/` 中，与该 Mod 的既有代码（OmniCrafter、SubspaceAssetBlackhole 等）保持相对独立；如需 Harmony patch 原版方法，patch 类也放在该文件夹内。
+2. **正式命名**：系统对外名称统一为**超维存储（OuterrealmStorage）**；所有需要显示的用户界面字符串（建筑名、gizmo、提示、对话框标题等）走 i18n（`Languages/Keyed/OuterrealmStorage.xml` + `Languages/*/DefInjected/ThingDef/...`）。
+3. **命名映射**（本文正文沿用设计阶段的类名，实现时按下表映射）：
+   | 设计文档类名 | 实现类名（`FullyAutomaticOmniCrafter.OuterrealmStorage` 命名空间） |
+   |---|---|
+   | `GameComponent_GlobalStorage` | `GameComponent_OuterrealmStorage` |
+   | `Building_GlobalVault` | `Building_OuterrealmVault` |
+   | `VaultViewThingOwner` | `OuterrealmVaultViewThingOwner` |
+   | `GlobalEntry` | `OuterrealmEntry` |
+   | `ITab_VaultContents` | `ITab_OuterrealmVaultContents` |
+4. **Def 与 i18n 位置**：Def 文件 `Defs/ThingDefs_Buildings/OuterrealmStorage.xml`（`defName=FAOC_OuterrealmVault`、`ParentName="BuildingBase"`）；i18n 文件 `Languages/ChineseSimplified (简体中文)/` 与 `Languages/English/` 下新增 `Keyed/OuterrealmStorage.xml` 与 `DefInjected/ThingDef/ThingDefs_Buildings/OuterrealmStorage.xml`。
 
 ---
 

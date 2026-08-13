@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- 超维存储（OuterrealmStorage）-->
+
+  <!-- InspectString -->
+  <OuterrealmVault_InspectSummary>超维存储：{0} 类物品，共 {1} 件</OuterrealmVault_InspectSummary>
+  <OuterrealmVault_InspectEmpty>超维存储：空</OuterrealmVault_InspectEmpty>
+
+</LanguageData>
