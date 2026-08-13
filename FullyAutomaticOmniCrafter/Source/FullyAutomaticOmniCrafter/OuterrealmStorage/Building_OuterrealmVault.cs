@@ -596,6 +596,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     for (int i = 0; i < copies.Count; i++)
                     {
                         Thing copy = copies[i];
+                        if (copy is Corpse)
+                        {
+                            continue; // 尸体无"取到背包"意义，且 Corpse.LabelNoCount 在 Bugged 状态会 Log.Error
+                        }
                         OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
                         if (e == null || e.Count <= 0)
                         {
@@ -603,7 +607,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         }
                         Thing copyForClosure = copy;
                         OuterrealmEntry entryForClosure = e;
-                        yield return new FloatMenuOption("OuterrealmVault_TakeToInventory".Translate(copy.LabelCapNoCount), () =>
+                        string copyLabel = OuterrealmVaultUtil.SafeLabelCapNoCount(copy);
+                        yield return new FloatMenuOption("OuterrealmVault_TakeToInventory".Translate(copyLabel), () =>
                         {
                             int max = (int)Mathf.Min(entryForClosure.Count, int.MaxValue);
                             if (max <= 0)
@@ -638,6 +643,31 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── 穿戴/装备浮菜单选项（§4，逐行照抄 Building_OutfitStand.cs:554-704 原版逻辑） ──
 
+        /// <summary>
+        /// 仿原版 FloatMenuUtility.DecoratePrioritizedTask 的装饰，但拆分两个 target：
+        /// ReservedBy 检查针对"副本"（衣物/武器自身预留状态，语义准确，避免建筑被搬运预留时的误报）；
+        /// revalidateClickTarget 用"建筑"——原版若传副本（未 Spawned），FloatMenuMap.StillValid
+        /// （!revalidateClickTarget.Spawned → option.Disabled=true）会把所有穿戴/装备选项置灰。
+        /// </summary>
+        private FloatMenuOption DecorateVaultOption(FloatMenuOption option, Pawn selPawn, Thing apparelOrWeapon)
+        {
+            if (option.action == null)
+            {
+                return option;
+            }
+            if (selPawn != null && !selPawn.CanReserve(apparelOrWeapon) && selPawn.CanReserve(apparelOrWeapon, ignoreOtherReservations: true))
+            {
+                Pawn reserver = selPawn.Map.reservationManager.FirstRespectedReserver(apparelOrWeapon, selPawn)
+                    ?? selPawn.Map.physicalInteractionReservationManager.FirstReserverOf(apparelOrWeapon);
+                if (reserver != null)
+                {
+                    option.Label = option.Label + ": " + "ReservedBy".Translate(reserver.LabelShort, reserver);
+                }
+            }
+            option.revalidateClickTarget = this; // 建筑（Spawned），FloatMenu 有效性校验通过
+            return option;
+        }
+
         private FloatMenuOption GetFloatMenuOptionToWear(Pawn selPawn, Apparel apparel)
         {
             string key1 = "CannotWear";
@@ -658,14 +688,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (!ApparelUtility.HasPartsToWear(selPawn, apparel.def))
                 return new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "CannotWearBecauseOfMissingBodyParts".Translate().CapitalizeFirst()), (Action)null, (Thing)apparel, Color.white);
             string cantReason;
-            return !EquipmentUtility.CanEquip((Thing)apparel, selPawn, out cantReason) ? new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + cantReason), (Action)null, (Thing)apparel, Color.white) : FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption((string)key2.Translate((NamedArgument)apparel.LabelShort, (NamedArgument)(Thing)apparel), (Action)(() =>
+            return !EquipmentUtility.CanEquip((Thing)apparel, selPawn, out cantReason) ? new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + cantReason), (Action)null, (Thing)apparel, Color.white) : DecorateVaultOption(new FloatMenuOption((string)key2.Translate((NamedArgument)apparel.LabelShort, (NamedArgument)(Thing)apparel), (Action)(() =>
             {
                 Action confirmAct = (Action)(() => selPawn.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.Wear, (LocalTargetInfo)(Thing)apparel)));
                 Apparel replacedByNewApparel = ApparelUtility.GetApparelReplacedByNewApparel(selPawn, apparel);
                 if (replacedByNewApparel != null && ModsConfig.BiotechActive && MechanitorUtility.TryConfirmBandwidthLossFromDroppingThing(selPawn, (Thing)replacedByNewApparel, confirmAct))
                     return;
                 confirmAct();
-            }), (Thing)apparel, Color.white), selPawn, (LocalTargetInfo)(Thing)apparel);
+            }), (Thing)apparel, Color.white), selPawn, apparel);
         }
 
         private FloatMenuOption GetFloatMenuOptionForForceWear(Pawn selPawn, Apparel apparel)
@@ -679,7 +709,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (!selPawn.CanReach((LocalTargetInfo)(Thing)apparel, PathEndMode.ClosestTouch, Danger.Deadly))
                 return new FloatMenuOption((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "NoPath".Translate().CapitalizeFirst()), (Action)null, (Thing)apparel, Color.white);
-            return apparel.IsBurning() ? new FloatMenuOption((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "Burning".Translate()), (Action)null, (Thing)apparel, Color.white) : FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption((string)key.Translate((NamedArgument)apparel.LabelShort, (NamedArgument)(Thing)apparel), (Action)(() =>
+            return apparel.IsBurning() ? new FloatMenuOption((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "Burning".Translate()), (Action)null, (Thing)apparel, Color.white) : DecorateVaultOption(new FloatMenuOption((string)key.Translate((NamedArgument)apparel.LabelShort, (NamedArgument)(Thing)apparel), (Action)(() =>
             {
                 bool queueOrder = KeyBindingDefOf.QueueOrder.IsDownEvent;
                 Find.Targeter.BeginTargeting(TargetingParameters.ForForceWear(selPawn), (Action<LocalTargetInfo>)(target =>
@@ -736,7 +766,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         }
                     }
                 }));
-            }), (Thing)apparel, Color.white), selPawn, (LocalTargetInfo)(Thing)apparel);
+            }), (Thing)apparel, Color.white), selPawn, apparel);
         }
 
         private FloatMenuOption GetFloatMenuOptionToEquipWeapon(Pawn selPawn, Thing weapon)
@@ -763,17 +793,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (weapon.def.IsRangedWeapon && selPawn.story != null && selPawn.story.traits.HasTrait(TraitDefOf.Brawler))
                 label1 = (string)(label1 + (" " + "EquipWarningBrawler".Translate()));
             if (!EquipmentUtility.AlreadyBondedToWeapon(weapon, selPawn))
-                return FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption(label1, (Action)(() =>
+                return DecorateVaultOption(new FloatMenuOption(label1, (Action)(() =>
                 {
                     string confirmationText = EquipmentUtility.GetPersonaWeaponConfirmationText(weapon, selPawn);
                     if (!confirmationText.NullOrEmpty())
                         Find.WindowStack.Add((Window)new Dialog_MessageBox((TaggedString)confirmationText, (string)"Yes".Translate(), (Action)(() => Equip()), (string)"No".Translate()));
                     else
                         Equip();
-                }), weapon, Color.white), selPawn, (LocalTargetInfo)weapon);
+                }), weapon, Color.white), selPawn, weapon);
             string label2 = (string)(label1 + (" " + "BladelinkAlreadyBonded".Translate()));
             TaggedString dialogText = "BladelinkAlreadyBondedDialog".Translate(selPawn.Named("PAWN"), weapon.Named("WEAPON"), selPawn.equipment.bondedWeapon.Named("BONDEDWEAPON"));
-            return FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption(label2, (Action)(() => Find.WindowStack.Add((Window)new Dialog_MessageBox(dialogText))), weapon, Color.white, MenuOptionPriority.High), selPawn, (LocalTargetInfo)weapon);
+            return DecorateVaultOption(new FloatMenuOption(label2, (Action)(() => Find.WindowStack.Add((Window)new Dialog_MessageBox(dialogText))), weapon, Color.white, MenuOptionPriority.High), selPawn, weapon);
 
             void Equip()
             {

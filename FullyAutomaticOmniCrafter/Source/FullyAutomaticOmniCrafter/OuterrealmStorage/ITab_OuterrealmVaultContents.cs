@@ -84,7 +84,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     int max = (int)Mathf.Min(entry.Count, int.MaxValue);
                     if (max > 0)
                     {
-                        string label = copy.LabelCapNoCount;
+                        string label = OuterrealmVaultUtil.SafeLabelCapNoCount(copy);
                         Find.WindowStack.Add(new Dialog_Slider(
                             (int v) => label + " x" + v.ToString("N0"),
                             1,
@@ -110,7 +110,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Widgets.ThingIcon(new Rect(4f, curY, 28f, 28f), copy);
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.MiddleLeft;
-            string labelText = copy.LabelCapNoCount + " x" + entry.Count.ToString("N0");
+            string labelText = OuterrealmVaultUtil.SafeLabelCapNoCount(copy) + " x" + entry.Count.ToString("N0");
             Rect labelRect = new Rect(36f, curY, rect.width - 36f, rect.height);
             Text.WordWrap = false;
             Widgets.Label(labelRect, labelText.StripTags().Truncate(labelRect.width));

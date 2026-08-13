@@ -185,7 +185,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 int max = (int)Mathf.Min(entry.Count, int.MaxValue);
                 if (max > 0)
                 {
-                    string label = entry.Proto.LabelCapNoCount;
+                    string label = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto);
                     Find.WindowStack.Add(new Dialog_Slider(
                         (int v) => label + " x" + v.ToString("N0"),
                         1,
@@ -199,7 +199,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             rect.width -= 24f;
             Widgets.ThingIcon(new Rect(4f, curY, 28f, 28f), entry.Proto);
 
-            string text = entry.Proto.LabelCapNoCount + " x" + entry.Count.ToString("N0");
+            string text = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto) + " x" + entry.Count.ToString("N0");
             if (visibleBuildings == 0)
             {
                 text += "  (" + "OuterrealmStorageManager_Unseen".Translate() + ")";

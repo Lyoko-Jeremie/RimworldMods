@@ -428,6 +428,7 @@
     <Compile Include="OuterrealmStorage\JobDriver_VaultTakeToInventory.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmEntry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />
     <Compile Include="OmniPowerNetUtility.cs" />
