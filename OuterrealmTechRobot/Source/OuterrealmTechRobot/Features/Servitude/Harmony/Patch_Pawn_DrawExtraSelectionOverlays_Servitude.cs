@@ -11,6 +11,7 @@ namespace OuterrealmTechRobot
     /// 渲染仅在选中时触发（DrawExtraSelectionOverlays 机制），无持续开销。
     /// </summary>
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.DrawExtraSelectionOverlays))]
+    [StaticConstructorOnStartup]
     public static class Patch_Pawn_DrawExtraSelectionOverlays_Servitude
     {
         private static readonly Material ConnectionLineMat =

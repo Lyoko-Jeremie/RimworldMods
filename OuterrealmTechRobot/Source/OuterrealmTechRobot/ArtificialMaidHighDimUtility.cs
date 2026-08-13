@@ -12,6 +12,7 @@ namespace OuterrealmTechRobot
     /// 所有 Harmony patch 的守卫统一走 <see cref="IsHighDim"/>（先 def 短路，再查 comp 缓存，性能优先）。
     /// 视觉采用"实体渲染 + 脚下能量光环"方案，不使用隐形/半透明，避免渲染树材质替换引发的头发/衣服问题。
     /// </summary>
+    [StaticConstructorOnStartup]
     public static class ArtificialMaidHighDimUtility
     {
         /// <summary>高维能量光环的透明度。</summary>
@@ -20,22 +21,10 @@ namespace OuterrealmTechRobot
         /// <summary>高维能量光环的颜色（偏紫的"维度"色）。</summary>
         public static readonly Color HighDimGlowColor = new Color(0.65f, 0.4f, 1f);
 
-        // 高维光环的半透明材质（缓存，避免每帧创建）
-        private static Material highDimGlowMat;
-
-        private static Material HighDimGlowMat
-        {
-            get
-            {
-                if (highDimGlowMat == null)
-                {
-                    highDimGlowMat = SolidColorMaterials.NewSolidColorMaterial(
-                        new Color(HighDimGlowColor.r, HighDimGlowColor.g, HighDimGlowColor.b, HighDimGlowAlpha),
-                        ShaderDatabase.Transparent);
-                }
-                return highDimGlowMat;
-            }
-        }
+        // 高维光环的半透明材质（StaticConstructorOnStartup 预加载，保证主线程创建；避免每帧创建）
+        private static readonly Material HighDimGlowMat = SolidColorMaterials.NewSolidColorMaterial(
+            new Color(HighDimGlowColor.r, HighDimGlowColor.g, HighDimGlowColor.b, HighDimGlowAlpha),
+            ShaderDatabase.Transparent);
 
         // 反射调用私有 PathFinder.RecycleGridJobData，清空排队中的寻路任务，让网格切换立即生效
         private static readonly MethodInfo recycleGridJobDataMethod =
