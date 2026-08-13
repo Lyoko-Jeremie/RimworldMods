@@ -26,4 +26,18 @@
   <OuterrealmVault_ReleaseAll>Move out everything</OuterrealmVault_ReleaseAll>
   <OuterrealmVault_StopReleaseAll>Stop moving out everything</OuterrealmVault_StopReleaseAll>
   <OuterrealmVault_ReleaseAllDesc>Release every entry; haulers will carry them to other allowed storage (items leave subspace). Released entries are cleared automatically once empty.</OuterrealmVault_ReleaseAllDesc>
+
+  <!-- Global storage manager (§6.4) -->
+  <OuterrealmStorageManagerTitle>Outerrealm Storage Manager</OuterrealmStorageManagerTitle>
+  <OuterrealmStorageManager_Total>{0} entry types, {1} total</OuterrealmStorageManager_Total>
+  <OuterrealmStorageManager_EjectProgress>Ejecting: {0} remaining</OuterrealmStorageManager_EjectProgress>
+  <OuterrealmStorageManager_ShowOnlyUnseen>Show only unseen entries</OuterrealmStorageManager_ShowOnlyUnseen>
+  <OuterrealmStorageManager_SelectMap>Target map</OuterrealmStorageManager_SelectMap>
+  <OuterrealmStorageManager_Eject>Eject</OuterrealmStorageManager_Eject>
+  <OuterrealmStorageManager_EjectAll>Eject all</OuterrealmStorageManager_EjectAll>
+  <OuterrealmStorageManager_Unseen>unseen</OuterrealmStorageManager_Unseen>
+  <OuterrealmStorageManager_VisibleBuildings>visible from {0} terminals</OuterrealmStorageManager_VisibleBuildings>
+  <OuterrealmStorageManager_NoEntries>Outerrealm storage is empty</OuterrealmStorageManager_NoEntries>
+  <OuterrealmStorageManager_Open>Open global storage manager</OuterrealmStorageManager_Open>
+  <OuterrealmStorageManager_OpenDesc>View all contents of subspace (ignoring every terminal filter), and force-eject or transfer them to a chosen map.</OuterrealmStorageManager_OpenDesc>
 </LanguageData>

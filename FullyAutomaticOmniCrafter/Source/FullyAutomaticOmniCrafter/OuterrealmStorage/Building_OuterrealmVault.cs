@@ -527,6 +527,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         }
                     },
                 };
+                // 打开全局存储管理器（§6.4：无视 filter 的内容总览与死锁逃生口）
+                yield return new Command_Action
+                {
+                    defaultLabel = "OuterrealmStorageManager_Open".Translate(),
+                    defaultDesc = "OuterrealmStorageManager_OpenDesc".Translate(),
+                    icon = TexCommand.SelectShelf,
+                    action = () => Find.WindowStack.Add(new Dialog_OuterrealmStorageManager()),
+                };
             }
         }
 

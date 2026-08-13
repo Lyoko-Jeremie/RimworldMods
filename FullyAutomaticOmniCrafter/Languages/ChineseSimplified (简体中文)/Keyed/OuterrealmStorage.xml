@@ -26,4 +26,18 @@
   <OuterrealmVault_ReleaseAll>移出全部</OuterrealmVault_ReleaseAll>
   <OuterrealmVault_StopReleaseAll>停止移出全部</OuterrealmVault_StopReleaseAll>
   <OuterrealmVault_ReleaseAllDesc>放行全部条目，搬运工会把它们搬到其他允许的存储区（物品从超维空间取出）。条目搬空后放行状态自动清除。</OuterrealmVault_ReleaseAllDesc>
+
+  <!-- 全局管理面板（§6.4） -->
+  <OuterrealmStorageManagerTitle>超维存储管理器</OuterrealmStorageManagerTitle>
+  <OuterrealmStorageManager_Total>共 {0} 类条目，{1} 件</OuterrealmStorageManager_Total>
+  <OuterrealmStorageManager_EjectProgress>弹出中：{0} 件剩余</OuterrealmStorageManager_EjectProgress>
+  <OuterrealmStorageManager_ShowOnlyUnseen>仅显示不可见条目</OuterrealmStorageManager_ShowOnlyUnseen>
+  <OuterrealmStorageManager_SelectMap>目标地图</OuterrealmStorageManager_SelectMap>
+  <OuterrealmStorageManager_Eject>弹出</OuterrealmStorageManager_Eject>
+  <OuterrealmStorageManager_EjectAll>全部弹出</OuterrealmStorageManager_EjectAll>
+  <OuterrealmStorageManager_Unseen>不可见</OuterrealmStorageManager_Unseen>
+  <OuterrealmStorageManager_VisibleBuildings>{0} 座终端可见</OuterrealmStorageManager_VisibleBuildings>
+  <OuterrealmStorageManager_NoEntries>超维存储为空</OuterrealmStorageManager_NoEntries>
+  <OuterrealmStorageManager_Open>打开全局存储管理器</OuterrealmStorageManager_Open>
+  <OuterrealmStorageManager_OpenDesc>查看超维空间中的全部内容（无视任何终端的存储清单），可强制弹出或转移到指定地图。</OuterrealmStorageManager_OpenDesc>
 </LanguageData>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
@@ -36,10 +37,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>已注册的建筑实例（SpawnSetup 注册 / DeSpawn 注销）。</summary>
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
 
+        // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
+        private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
+
         public int Version => version;
         public bool NeedFullRebuild => changeLogOverflow;
         public List<OuterrealmEntry> EntriesForReading => entries;
         public List<Building_OuterrealmVault> VaultsForReading => vaults;
+        public List<VaultEjectJob> EjectQueueForReading => ejectQueue;
 
         public GameComponent_OuterrealmStorage(Game game)
         {
@@ -268,6 +273,111 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             vaults.Remove(vault);
         }
 
+        // ── 弹出队列（§6.4） ────────────────────────────────────────────────────
+
+        /// <summary>把 count 个条目物化弹出到指定地图（追加到弹出队列，逐 tick 限速执行）。</summary>
+        public void EnqueueEject(OuterrealmEntryKey key, Map map, long count)
+        {
+            if (count <= 0 || map == null || !FindEntryExists(key))
+            {
+                return;
+            }
+            int mapIndex = Find.Maps.IndexOf(map);
+            if (mapIndex < 0)
+            {
+                return;
+            }
+            for (int i = 0; i < ejectQueue.Count; i++)
+            {
+                VaultEjectJob job = ejectQueue[i];
+                if (job.Key == key && job.MapIndex == mapIndex)
+                {
+                    job.Remaining += count;
+                    return;
+                }
+            }
+            ejectQueue.Add(new VaultEjectJob { Key = key, MapIndex = mapIndex, Remaining = count });
+        }
+
+        private bool FindEntryExists(OuterrealmEntryKey key)
+        {
+            OuterrealmEntry e = FindEntry(key);
+            return e != null && e.Count > 0;
+        }
+
+        /// <summary>每 tick 物化 ≤ 4 堆（每堆 ≤ stackLimit）到目标地图，防瞬间物化爆炸（§6.4/§6.5）。</summary>
+        public override void GameComponentTick()
+        {
+            base.GameComponentTick();
+            if (ejectQueue.Count == 0)
+            {
+                return;
+            }
+            int spawnedThisTick = 0;
+            for (int i = ejectQueue.Count - 1; i >= 0 && spawnedThisTick < 4; i--)
+            {
+                VaultEjectJob job = ejectQueue[i];
+                if (job.MapIndex < 0 || job.MapIndex >= Find.Maps.Count || Find.Maps[job.MapIndex] == null)
+                {
+                    ejectQueue.RemoveAt(i);
+                    continue;
+                }
+                Map map = Find.Maps[job.MapIndex];
+                OuterrealmEntry entry = FindEntry(job.Key);
+                if (entry == null || entry.Count <= 0)
+                {
+                    ejectQueue.RemoveAt(i);
+                    continue;
+                }
+                int stackLimit = entry.Proto != null && entry.Proto.def != null ? entry.Proto.def.stackLimit : 75;
+                int take = (int)Math.Min(job.Remaining, Math.Min((long)stackLimit, entry.Count));
+                take = Math.Min(take, int.MaxValue);
+                if (take <= 0)
+                {
+                    ejectQueue.RemoveAt(i);
+                    continue;
+                }
+                Thing t = Withdraw(entry, take);
+                if (t == null)
+                {
+                    ejectQueue.RemoveAt(i);
+                    continue;
+                }
+                job.Remaining -= t.stackCount;
+                Thing dropped;
+                if (GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped))
+                {
+                    if (t.stackCount > 0)
+                    {
+                        Deposit(t); // 放置未完全（Near 模式极少）：退回全局，job.Remaining 保持待处理
+                    }
+                }
+                else
+                {
+                    Deposit(t); // 放置失败：退回全局
+                }
+                if (job.Remaining <= 0)
+                {
+                    ejectQueue.RemoveAt(i);
+                }
+                spawnedThisTick++;
+            }
+        }
+
+        /// <summary>弹出锚点：优先该地图上任一 Vault 的交互格，其次地图中心。</summary>
+        private static IntVec3 FindEjectAnchor(Map map)
+        {
+            for (int i = 0; i < Instance.vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = Instance.vaults[i];
+                if (v != null && v.Spawned && v.Map == map)
+                {
+                    return v.InteractionCell;
+                }
+            }
+            return map.Center;
+        }
+
         // ── 存档 ─────────────────────────────────────────────────────────────────
 
         public override void ExposeData()
@@ -299,7 +409,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 changeLog.Clear();
                 changeLogSet.Clear();
                 changeLogOverflow = false;
+                // 弹出队列不序列化（目标地图索引在重载后不可靠；条目仍在全局层，玩家可重新弹出）。
+                ejectQueue.Clear();
             }
         }
+    }
+
+    /// <summary>弹出任务（§6.4）：条目 + 目标地图索引 + 剩余数量。挂在全局层，与建筑生命周期解耦。</summary>
+    public class VaultEjectJob
+    {
+        public OuterrealmEntryKey Key;
+        public int MapIndex;
+        public long Remaining;
     }
 }
