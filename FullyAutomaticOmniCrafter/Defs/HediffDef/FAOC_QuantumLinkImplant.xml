@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!--
+    ══════════════════════════════════════════════════════════════════════
+    量子链路植入体 / Quantum Link Implant（§7 超维存储扩展）
+    携带者与超维存储网络直连：制作产物直接存入超维空间（A3），
+    原料可原地取用（A1/A2，后续阶段）。
+    当前通过 dev mode / 存档注入获得；未来可加手术配方。
+    ══════════════════════════════════════════════════════════════════════
+  -->
+
+  <HediffDef>
+    <defName>FAOC_QuantumLinkImplant</defName>
+    <label>quantum link implant</label>
+    <description>An outerrealm-tech neural implant linking the bearer to the subspace storage network. Products crafted by the bearer are deposited directly into subspace.</description>
+    <hediffClass>Hediff</hediffClass>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <makesAlert>false</makesAlert>
+    <tendable>false</tendable>
+    <maxSeverity>1</maxSeverity>
+    <initialSeverity>1</initialSeverity>
+    <defaultLabelColor>(0.4,0.8,1.0)</defaultLabelColor>
+  </HediffDef>
+
+</Defs>

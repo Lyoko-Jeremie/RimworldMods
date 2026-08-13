@@ -43,4 +43,7 @@
 
   <!-- Take to inventory (§6.1) -->
   <OuterrealmVault_TakeToInventory>Take {0} to inventory</OuterrealmVault_TakeToInventory>
+
+  <!-- P6 extension (§7 A3) -->
+  <OuterrealmVault_ProductDeposited>{0} deposited into outerrealm storage</OuterrealmVault_ProductDeposited>
 </LanguageData>

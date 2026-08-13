@@ -43,4 +43,7 @@
 
   <!-- 取到背包（§6.1） -->
   <OuterrealmVault_TakeToInventory>把 {0} 拿到背包</OuterrealmVault_TakeToInventory>
+
+  <!-- P6 扩展（§7 A3） -->
+  <OuterrealmVault_ProductDeposited>{0} 已存入超维存储</OuterrealmVault_ProductDeposited>
 </LanguageData>

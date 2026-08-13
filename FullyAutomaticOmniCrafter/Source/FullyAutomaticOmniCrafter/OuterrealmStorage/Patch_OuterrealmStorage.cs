@@ -324,6 +324,42 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §7.3 A3：标记 pawn 的产物原地存入超维空间 ──
+    // GenRecipe.MakeRecipeProducts 的迭代器在 initAction 里被 ToList() 枚举——postfix 物化枚举后
+    // 逐个 Deposit 吸收进全局层，再返回空列表（原版 thingList.Count==0 → EndCurrentJob(Succeeded)，
+    // 无放置/自持）。Bill_Mech 分支走 FinalizeGestatedPawns，不受影响。
+    [HarmonyPatch(typeof(GenRecipe), "MakeRecipeProducts")]
+    internal static class Patch_GenRecipe_MakeRecipeProducts
+    {
+        private static void Postfix(Pawn worker, ref IEnumerable<Thing> __result)
+        {
+            if (!OuterrealmMarkUtility.IsMarked(worker))
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            List<Thing> products = new List<Thing>();
+            foreach (Thing product in __result)
+            {
+                if (product == null)
+                {
+                    continue;
+                }
+                products.Add(product);
+                gs.Deposit(product); // 吸收（冻结在超维空间）
+            }
+            __result = new List<Thing>();
+            if (products.Count > 0)
+            {
+                MoteMaker.ThrowText(worker.DrawPos, worker.Map, "OuterrealmVault_ProductDeposited".Translate(products[0].LabelCapNoCount));
+            }
+        }
+    }
+
     // ── §5.1 必需：ThingOwnerUtility.TryGetFixedTemperature（冻结温度读数） ──
     // 硬编码 switch 无法从 mod 扩展；对持有者是本系统建筑的条目返回"冷冻"读数。
     // 使用 prefix 短路并严格限定本 mod holder，其余放行。
