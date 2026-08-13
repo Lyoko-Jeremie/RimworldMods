@@ -217,6 +217,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true;
             }
+            // 条目已空（e == null / Count <= 0）而副本仍残留在视图：孤儿副本自愈清理 + 静默拒绝。
+            // 成因：条目被取空（穿戴 RemoveApparel → Subtract 等）后，残留副本在 60 tick 懒同步前
+            // 被 JobGiver_OptimizeApparel（枚举 GetDirectlyHeldThings 且生成 job 不重置检查间隔）
+            // 反复选中 → Wear job 启动 → 预留失败 → "Could not reserve ... No existing reserver"
+            // + StartJob 警告每 30 tick 刷屏。此处命中即清理（不扣全局），本次预留静默失败
+            // （不打 LogCouldNotReserveError），副本脱离候选后循环终止。必须放在穿戴排队分支之前：
+            // 条目空时排队无物可取，同样应拒绝并清理。
+            GameComponent_OuterrealmStorage gs0 = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry e0 = gs0 != null ? gs0.FindEntry(OuterrealmEntryKey.From(t)) : null;
+            if (e0 == null || e0.Count <= 0)
+            {
+                view.DisposeOrphanCopy(t);
+                __result = false;
+                return false;
+            }
             if (maxPawns > 1 && stackCount == 1)
             {
                 // 穿戴排队预留（§穿戴 patch：maxPawns=8, stackCount=1）：允许多个 pawn 排队同一副本，

@@ -435,6 +435,34 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>
+        /// 孤儿副本自愈清理（§3.3）：条目已空（e==null / Count&lt;=0）但副本仍残留在视图时调用。
+        /// 与 TryDisposeCopyIfObsolete 不同：不检查 IsReserved——条目无物可取，引用它的 job 本就
+        /// 无法完成，强制清理使残留副本立即脱离 OptimizeApparel 候选（防"空条目副本被反复选中 →
+        /// 预留失败"刷屏循环）；非取出语义，不扣全局。供 Reserve 预留命中空条目的兜底路径调用。
+        /// </summary>
+        public void DisposeOrphanCopy(Thing copy)
+        {
+            if (copy == null || !Contains(copy))
+            {
+                return;
+            }
+            SuppressRemovalSync = true;
+            try
+            {
+                Remove(copy);
+            }
+            finally
+            {
+                SuppressRemovalSync = false;
+            }
+            copy.Destroy();
+            if (Vault.Spawned && !copy.Spawned)
+            {
+                Vault.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+            }
+        }
+
         private bool IsReserved(Thing copy)
         {
             Map map = copy.MapHeld;

@@ -149,6 +149,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (entry.Count == 0)
             {
                 RemoveEntry(entry);
+                // 与 Withdraw 取空一致：立即通知所有建筑视图移除残留副本（§3.3 同步补到变更点）。
+                // Subtract 取空路径包括穿戴取出（RemoveApparel → Notify_ItemRemoved）、整堆移除等，
+                // 若不通知，残留副本要等 60 tick 懒同步才清理——窗口期内 JobGiver_OptimizeApparel
+                // 会反复选中空条目副本（枚举 GetDirectlyHeldThings 且无冷却）→ Wear job 预留失败 →
+                // "Could not reserve ... No existing reserver" 每 30 tick 刷屏。
+                NotifyEntriesEmptied(key);
             }
             version++;
             AddToChangeLog(key);
