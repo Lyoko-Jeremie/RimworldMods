@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
@@ -418,7 +419,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public StorageGroup Group
         {
             get => storageGroup;
-            set => storageGroup = value;
+            set
+            {
+                if (value == storageGroup)
+                {
+                    return;
+                }
+                if (value == null && storageGroup != null)
+                {
+                    // §4.1e 写回：覆盖组 gizmo 取消链接路径的类型特判缺口——
+                    // StorageGroupUtility.StorageGroupMemberGizmos 的取消链接只对 Building_Storage
+                    // 写回组设置（member is Building_Storage），本建筑须在 setter 置 null 时自行
+                    // CopyFrom 保留最新组设置（与 SetStorageGroup 内建写回重复执行亦幂等）。
+                    settings.CopyFrom(storageGroup.GetStoreSettings());
+                }
+                storageGroup = value;
+            }
         }
 
         Map IStorageGroupMember.Map => MapHeld;
@@ -450,6 +466,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             string s = base.GetInspectString();
             if (!s.NullOrEmpty())
             {
+                s += "\n";
+            }
+            // 存储组信息（§4.1e，对齐 Building_Storage.GetInspectString）
+            if (storageGroup != null)
+            {
+                s += "StorageGroupLabel".Translate() + ": " + storageGroup.RenamableLabel.CapitalizeFirst() + " ";
+                s += storageGroup.MemberCount > 1
+                    ? "(" + "NumBuildings".Translate(storageGroup.MemberCount) + ")"
+                    : "(" + "OneBuilding".Translate() + ")";
                 s += "\n";
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
@@ -543,6 +568,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 yield return o;
             }
+            // §4 仿 OutfitStand（Building_OutfitStand.cs:540-555）：为视图内容生成穿戴/强制穿戴/装备选项
+            if (selPawn.IsColonistPlayerControlled && view != null)
+            {
+                List<Thing> copies = view.InnerListForReading;
+                for (int i = 0; i < copies.Count; i++)
+                {
+                    Thing copy = copies[i];
+                    if (copy is Apparel ap)
+                    {
+                        yield return GetFloatMenuOptionToWear(selPawn, ap);
+                        yield return GetFloatMenuOptionForForceWear(selPawn, ap);
+                    }
+                    if (copy.def.IsWeapon)
+                    {
+                        yield return GetFloatMenuOptionToEquipWeapon(selPawn, copy);
+                    }
+                }
+            }
             // §6.1：指定 pawn 拿 X 到背包（自定义 job：以建筑为行走目标，取物目标为视图副本）
             if (selPawn.IsColonistPlayerControlled && view != null)
             {
@@ -590,6 +633,154 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         });
                     }
                 }
+            }
+        }
+
+        // ── 穿戴/装备浮菜单选项（§4，逐行照抄 Building_OutfitStand.cs:554-704 原版逻辑） ──
+
+        private FloatMenuOption GetFloatMenuOptionToWear(Pawn selPawn, Apparel apparel)
+        {
+            string key1 = "CannotWear";
+            string key2 = "ForceWear";
+            if (apparel.def.apparel.LastLayer.IsUtilityLayer)
+            {
+                key1 = "CannotEquipApparel";
+                key2 = "ForceEquipApparel";
+            }
+            if (!selPawn.CanReach((LocalTargetInfo)(Thing)apparel, PathEndMode.ClosestTouch, Danger.Deadly))
+                return new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "NoPath".Translate().CapitalizeFirst()), (Action)null, (Thing)apparel, Color.white);
+            if (apparel.IsBurning())
+                return new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "Burning".Translate()), (Action)null, (Thing)apparel, Color.white);
+            if (selPawn.apparel.WouldReplaceLockedApparel(apparel))
+                return new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "WouldReplaceLockedApparel".Translate().CapitalizeFirst()), (Action)null, (Thing)apparel, Color.white);
+            if (selPawn.IsMutant && selPawn.mutant.Def.disableApparel)
+                return new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + selPawn.mutant.Def.LabelCap), (Action)null, (Thing)apparel, Color.white);
+            if (!ApparelUtility.HasPartsToWear(selPawn, apparel.def))
+                return new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "CannotWearBecauseOfMissingBodyParts".Translate().CapitalizeFirst()), (Action)null, (Thing)apparel, Color.white);
+            string cantReason;
+            return !EquipmentUtility.CanEquip((Thing)apparel, selPawn, out cantReason) ? new FloatMenuOption((string)(key1.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + cantReason), (Action)null, (Thing)apparel, Color.white) : FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption((string)key2.Translate((NamedArgument)apparel.LabelShort, (NamedArgument)(Thing)apparel), (Action)(() =>
+            {
+                Action confirmAct = (Action)(() => selPawn.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.Wear, (LocalTargetInfo)(Thing)apparel)));
+                Apparel replacedByNewApparel = ApparelUtility.GetApparelReplacedByNewApparel(selPawn, apparel);
+                if (replacedByNewApparel != null && ModsConfig.BiotechActive && MechanitorUtility.TryConfirmBandwidthLossFromDroppingThing(selPawn, (Thing)replacedByNewApparel, confirmAct))
+                    return;
+                confirmAct();
+            }), (Thing)apparel, Color.white), selPawn, (LocalTargetInfo)(Thing)apparel);
+        }
+
+        private FloatMenuOption GetFloatMenuOptionForForceWear(Pawn selPawn, Apparel apparel)
+        {
+            string cannotForceTargetText = "CannotForceTargetToWear";
+            string key = "ForceTargetToWear";
+            if (apparel.def.apparel.LastLayer.IsUtilityLayer)
+            {
+                cannotForceTargetText = "CannotForceTargetToEquipApparel";
+                key = "ForceTargetToEquipApparel";
+            }
+            if (!selPawn.CanReach((LocalTargetInfo)(Thing)apparel, PathEndMode.ClosestTouch, Danger.Deadly))
+                return new FloatMenuOption((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "NoPath".Translate().CapitalizeFirst()), (Action)null, (Thing)apparel, Color.white);
+            return apparel.IsBurning() ? new FloatMenuOption((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "Burning".Translate()), (Action)null, (Thing)apparel, Color.white) : FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption((string)key.Translate((NamedArgument)apparel.LabelShort, (NamedArgument)(Thing)apparel), (Action)(() =>
+            {
+                bool queueOrder = KeyBindingDefOf.QueueOrder.IsDownEvent;
+                Find.Targeter.BeginTargeting(TargetingParameters.ForForceWear(selPawn), (Action<LocalTargetInfo>)(target =>
+                {
+                    Pawn targetPawn;
+                    if (!target.TryGetPawn(out targetPawn))
+                    {
+                        if (!ModsConfig.OdysseyActive || !(target.Thing is Building_OutfitStand thing2))
+                            return;
+                        if (!thing2.CanEverStoreThing((Thing)apparel))
+                        {
+                            Messages.Message((string)"CannotStoreThingOnTarget".Translate(apparel.Named("THING"), thing2.Named("TARGET")), MessageTypeDefOf.RejectInput, false);
+                        }
+                        else
+                        {
+                            Pawn_JobTracker jobs = selPawn.jobs;
+                            Job job = JobMaker.MakeJob(JobDefOf.PutApparelOnOutfitStand, (LocalTargetInfo)(Thing)apparel, (LocalTargetInfo)(Thing)thing2);
+                            bool flag = queueOrder;
+                            JobTag? tag = new JobTag?(JobTag.Misc);
+                            int num = flag ? 1 : 0;
+                            jobs.TryTakeOrderedJob(job, tag, num != 0);
+                        }
+                    }
+                    else if (targetPawn.apparel.WouldReplaceLockedApparel(apparel))
+                        Messages.Message((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "WouldReplaceLockedApparel".Translate().CapitalizeFirst()), (LookTargets)(Thing)targetPawn, MessageTypeDefOf.RejectInput, false);
+                    else if (targetPawn.IsMutant && targetPawn.mutant.Def.disableApparel)
+                        Messages.Message((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + targetPawn.mutant.Def.LabelCap), (LookTargets)(Thing)targetPawn, MessageTypeDefOf.RejectInput, false);
+                    else if (!ApparelUtility.HasPartsToWear(targetPawn, apparel.def))
+                    {
+                        Messages.Message((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + "CannotWearBecauseOfMissingBodyParts".Translate().CapitalizeFirst()), (LookTargets)(Thing)targetPawn, MessageTypeDefOf.RejectInput, false);
+                    }
+                    else
+                    {
+                        string cantReason;
+                        if (!EquipmentUtility.CanEquip((Thing)apparel, targetPawn, out cantReason))
+                        {
+                            Messages.Message((string)(cannotForceTargetText.Translate((NamedArgument)apparel.Label, (NamedArgument)(Thing)apparel) + ": " + cantReason), (LookTargets)(Thing)targetPawn, MessageTypeDefOf.RejectInput, false);
+                        }
+                        else
+                        {
+                            Action confirmAct = (Action)(() =>
+                            {
+                                Pawn_JobTracker jobs = selPawn.jobs;
+                                Job job = JobMaker.MakeJob(JobDefOf.ForceTargetWear, (LocalTargetInfo)(Thing)targetPawn, (LocalTargetInfo)(Thing)apparel);
+                                bool flag = queueOrder;
+                                JobTag? tag = new JobTag?(JobTag.Misc);
+                                int num = flag ? 1 : 0;
+                                jobs.TryTakeOrderedJob(job, tag, num != 0);
+                            });
+                            Apparel replacedByNewApparel = ApparelUtility.GetApparelReplacedByNewApparel(targetPawn, apparel);
+                            if (replacedByNewApparel != null && ModsConfig.BiotechActive && MechanitorUtility.TryConfirmBandwidthLossFromDroppingThing(targetPawn, (Thing)replacedByNewApparel, confirmAct))
+                                return;
+                            confirmAct();
+                        }
+                    }
+                }));
+            }), (Thing)apparel, Color.white), selPawn, (LocalTargetInfo)(Thing)apparel);
+        }
+
+        private FloatMenuOption GetFloatMenuOptionToEquipWeapon(Pawn selPawn, Thing weapon)
+        {
+            if (!weapon.HasComp<CompEquippable>())
+                return (FloatMenuOption)null;
+            string labelShort = weapon.LabelShort;
+            if (weapon.def.IsWeapon && selPawn.WorkTagIsDisabled(WorkTags.Violent))
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "IsIncapableOfViolenceLower".Translate((NamedArgument)selPawn.LabelShort, (NamedArgument)(Thing)selPawn)), (Action)null, weapon, Color.white);
+            if (weapon.def.IsRangedWeapon && selPawn.WorkTagIsDisabled(WorkTags.Shooting))
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "IsIncapableOfShootingLower".Translate((NamedArgument)(Thing)selPawn)), (Action)null, weapon, Color.white);
+            if (!selPawn.CanReach((LocalTargetInfo)weapon, PathEndMode.ClosestTouch, Danger.Deadly))
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "NoPath".Translate().CapitalizeFirst()), (Action)null, weapon, Color.white);
+            if (!selPawn.health.capacities.CapableOf(PawnCapacityDefOf.Manipulation))
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "Incapable".Translate().CapitalizeFirst()), (Action)null, weapon, Color.white);
+            if (weapon.IsBurning())
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "BurningLower".Translate()), (Action)null, weapon, Color.white);
+            if (selPawn.IsQuestLodger() && !EquipmentUtility.QuestLodgerCanEquip(weapon, selPawn))
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "QuestRelated".Translate().CapitalizeFirst()), (Action)null, weapon, Color.white);
+            string cantReason;
+            if (!EquipmentUtility.CanEquip(weapon, selPawn, out cantReason, false))
+                return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + cantReason.CapitalizeFirst()), (Action)null, weapon, Color.white);
+            string label1 = (string)"Equip".Translate((NamedArgument)labelShort);
+            if (weapon.def.IsRangedWeapon && selPawn.story != null && selPawn.story.traits.HasTrait(TraitDefOf.Brawler))
+                label1 = (string)(label1 + (" " + "EquipWarningBrawler".Translate()));
+            if (!EquipmentUtility.AlreadyBondedToWeapon(weapon, selPawn))
+                return FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption(label1, (Action)(() =>
+                {
+                    string confirmationText = EquipmentUtility.GetPersonaWeaponConfirmationText(weapon, selPawn);
+                    if (!confirmationText.NullOrEmpty())
+                        Find.WindowStack.Add((Window)new Dialog_MessageBox((TaggedString)confirmationText, (string)"Yes".Translate(), (Action)(() => Equip()), (string)"No".Translate()));
+                    else
+                        Equip();
+                }), weapon, Color.white), selPawn, (LocalTargetInfo)weapon);
+            string label2 = (string)(label1 + (" " + "BladelinkAlreadyBonded".Translate()));
+            TaggedString dialogText = "BladelinkAlreadyBondedDialog".Translate(selPawn.Named("PAWN"), weapon.Named("WEAPON"), selPawn.equipment.bondedWeapon.Named("BONDEDWEAPON"));
+            return FloatMenuUtility.DecoratePrioritizedTask(new FloatMenuOption(label2, (Action)(() => Find.WindowStack.Add((Window)new Dialog_MessageBox(dialogText))), weapon, Color.white, MenuOptionPriority.High), selPawn, (LocalTargetInfo)weapon);
+
+            void Equip()
+            {
+                weapon.SetForbidden(false);
+                selPawn.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.Equip, (LocalTargetInfo)weapon));
+                FleckMaker.Static(weapon.PositionHeld, weapon.MapHeld, FleckDefOf.FeedbackEquip);
+                PlayerKnowledgeDatabase.KnowledgeDemonstrated(ConceptDefOf.EquippingWeapons, KnowledgeAmount.Total);
             }
         }
 
