@@ -21,7 +21,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         IThingHolderEvents<Thing>,
         IHaulEnroute,
         ISearchableContents,
-        IStorageGroupMember
+        IStorageGroupMember,
+        IApparelSource
     {
         /// <summary>独立存储清单（filter 决定本建筑"能看到/存取哪些条目"，§6.2）。</summary>
         public StorageSettings settings;
@@ -214,6 +215,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public bool HaulDestinationEnabled => Spawned && !noDeposit;
 
         public bool HaulSourceEnabled => Spawned && !noWithdraw;
+
+        // IApparelSource（§装备优化兼容）：让 JobDriver_Wear/JobGiver_OptimizeApparel 走"从衣柜取"路径
+        // ——否则视图里的衣物副本被判为普通候选，穿戴流程对未 Spawned 物品必然失败，
+        // 形成"Wear job 立即失败 → 重复生成"循环（Mia started 10 jobs in one tick 报错）。
+        // ApparelSourceEnabled 与"允许取出"联动：禁止取出时 OptimizeApparel 跳过本建筑衣物。
+        public bool ApparelSourceEnabled => !noWithdraw;
+
+        /// <summary>从视图移除衣物（穿戴即取出：经 Notify_ItemRemoved 扣全局并补回，§3.3）。</summary>
+        public bool RemoveApparel(Apparel apparel)
+        {
+            return view != null && view.Contains(apparel) && view.Remove(apparel);
+        }
 
         public bool Accepts(Thing t)
         {
