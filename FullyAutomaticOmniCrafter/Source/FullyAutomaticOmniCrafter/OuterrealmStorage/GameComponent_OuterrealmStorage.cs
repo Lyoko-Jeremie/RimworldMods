@@ -59,12 +59,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── 存入 ────────────────────────────────────────────────────────────────
 
-        /// <summary>吸收存入（§3.2 吸收路径的全局侧）：把 item 的全部 stackCount 并入对应条目。</summary>
+        /// <summary>吸收存入（§3.2 吸收路径的全局侧）：把 item 的全部 stackCount 并入对应条目。
+        /// Spawned 物品（如弹出后又被搬回/存回的尸体）先 DeSpawn——存入超维空间 = 从地图取出，
+        /// 否则 proto 保持 Spawned，再次弹出时 GenSpawn 会报 "already spawned" 并死循环。</summary>
         public void Deposit(Thing item)
         {
             if (item == null || item.stackCount <= 0)
             {
                 return;
+            }
+            if (item.Spawned)
+            {
+                item.DeSpawn(DestroyMode.Vanish);
             }
             OuterrealmEntryKey key = OuterrealmEntryKey.From(item);
             OuterrealmEntry entry;
@@ -430,13 +436,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 job.Remaining -= withdrawn;
                 MarkEjected(t); // 弹出防回吸：落地后短暂不被本系统建筑自动吸回（§6.4）
                 Thing dropped;
-                bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped);
+                // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
+                bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped, null, c => !IsVaultCell(c, map));
                 int leftover = t.stackCount; // 放置后未落地的剩余（TryDropSpawn 不查 stackLimit，剩余留在原 thing 中，§6.5）
                 if (leftover > 0)
                 {
                     // 全部或部分未放置：退回全局，并恢复 Remaining（该部分仍待弹出，避免"弹出静默失败"）
                     Deposit(t);
                     job.Remaining += leftover;
+                    job.FailCount++;
+                    if (job.FailCount > 20)
+                    {
+                        // 连续失败（如目标实体状态异常）：放弃任务防死循环刷屏，物品保留在全局层
+                        Log.Warning("[OuterrealmStorage] 弹出任务连续失败已放弃: " + job.Key);
+                        ejectQueue.RemoveAt(i);
+                        continue;
+                    }
+                }
+                else
+                {
+                    job.FailCount = 0;
                 }
                 if (job.Remaining <= 0)
                 {
@@ -458,6 +477,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             return map.Center;
+        }
+
+        /// <summary>该格是否被本系统建筑（含正在弹出锚点的建筑）占用——弹出/丢弃放置须避开建筑
+        /// 本体（建筑 PassThroughOnly 允许物品落在建筑格上，须放到建筑外附近）。</summary>
+        public static bool IsVaultCell(IntVec3 c, Map map)
+        {
+            for (int i = 0; i < Instance.vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = Instance.vaults[i];
+                if (v != null && v.Spawned && v.Map == map && v.OccupiedRect().Contains(c))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // ── 存档 ─────────────────────────────────────────────────────────────────
@@ -505,5 +539,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public OuterrealmEntryKey Key;
         public int MapIndex;
         public long Remaining;
+        /// <summary>连续放置失败计数（超限放弃任务，防死循环刷屏）。</summary>
+        public int FailCount;
     }
 }

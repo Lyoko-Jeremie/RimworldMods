@@ -178,7 +178,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(ReservationManager), "Reserve")]
     internal static class Patch_ReservationManager_Reserve
     {
-        private static bool Prefix(Pawn claimant, LocalTargetInfo target, int stackCount, ref bool __result)
+        private static bool Prefix(Pawn claimant, LocalTargetInfo target, int maxPawns, int stackCount, ref bool __result)
         {
             Thing t = target.Thing;
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
@@ -190,9 +190,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true;
             }
+            if (maxPawns > 1 && stackCount == 1)
+            {
+                // 穿戴排队预留（§穿戴 patch：maxPawns=8, stackCount=1）：允许多个 pawn 排队同一副本，
+                // 先到者穿走（副本移除），后到者由穿戴 toil 的 FailOnDespawnedNullOrForbidden 在执行中失败
+                // 一次即恢复——不做数量检查（防排队被 G−R 阻塞而每 tick 循环），实际取物由 SplitOff 校正防超卖。
+                return true;
+            }
             if (req > view.AvailableForReserve(t))
             {
-                // 短路原 Reserve：避免原版 errorOnFailed 的 LogCouldNotReserveError 刷屏（§3.3 静默语义）
+                // 数量不足：静默拒绝（§3.3 静默语义，短路避免原版 LogCouldNotReserveError 刷屏）
                 __result = false;
                 return false;
             }
@@ -244,13 +251,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 穿戴 job 预留修复：衣物来自本系统建筑时预留"副本（1 件）"而非"建筑" ──
-    // 原版 JobDriver_Wear/ForceTargetWear 在 TargetIsOnApparelSource 时 Reserve(建筑)。
-    // ① 本建筑作为无限容量存储目的地常被搬运工 HaulToContainer 预留 → Reserve(建筑) 失败
-    //    → job 无法启动（点击穿戴无动作 / OptimizeApparel 自动穿戴失败后不设冷却而每 tick 重试，
-    //    刷 "TryMakePreToilReservations() returned false" 警告 + pawn 卡"等待中"）。
-    // ② 预留副本必须用 stackCount=1（穿戴只取 1 件）：若用 -1（整堆）会按副本全部量计入 R，
-    //    一件穿戴即阻塞同条目其他 pawn 的穿戴（聚合副本模型，见 §3.2）。
+    // ── 穿戴 job 预留修复：衣物来自本系统建筑时预留"副本（1 件，排队）"而非"建筑" ──
+    // ① 原版 JobDriver_Wear/ForceTargetWear 在 TargetIsOnApparelSource 时 Reserve(建筑)。
+    //    本建筑作为无限容量存储目的地常被搬运工 HaulToContainer 预留 → Reserve(建筑) 失败
+    //    → job 无法启动（点击穿戴无动作 / OptimizeApparel 自动穿戴失败后不设冷却而每 tick 重试）。
+    // ② 预留副本用"排队语义"（maxPawns=8, stackCount=1）：多个 pawn 可同时预留同一副本，
+    //    先到者 RemoveApparel 穿走（副本移除），后到者穿戴 delay toil 的 FailOnDespawnedNullOrForbidden(A)
+    //    使 job 在执行中失败一次即恢复——不再出现"检查（建筑）通过但预留（副本）失败"的每 tick 循环。
     [HarmonyPatch(typeof(JobDriver_Wear), "TryMakePreToilReservations")]
     internal static class Patch_JobDriver_Wear_TryMakePreToilReservations
     {
@@ -261,7 +268,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true; // 非本系统：完全走原版
             }
-            __result = __instance.pawn.Reserve(ap, __instance.job, 1, 1, errorOnFailed: errorOnFailed);
+            __result = __instance.pawn.Reserve(ap, __instance.job, 8, 1, errorOnFailed: errorOnFailed);
             return false;
         }
     }
@@ -276,7 +283,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true; // 非本系统：完全走原版
             }
-            // 本系统：复制原版逻辑，仅 ApparelSource 分支改为预留副本 1 件（其余保持不变）
+            // 本系统：复制原版逻辑，仅 ApparelSource 分支改为预留副本 1 件（排队语义，其余保持不变）
             Pawn targetPawn = __instance.job.GetTarget(TargetIndex.A).Thing as Pawn;
             __instance.job.count = 1;
             if (__instance.pawn == targetPawn)
@@ -290,7 +297,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
-            __result = __instance.pawn.Reserve(ap, __instance.job, 1, 1, errorOnFailed: errorOnFailed);
+            __result = __instance.pawn.Reserve(ap, __instance.job, 8, 1, errorOnFailed: errorOnFailed);
             return false;
         }
     }

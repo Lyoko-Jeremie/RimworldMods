@@ -160,7 +160,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 remaining -= t.stackCount;
                 Thing dropped;
-                if (GenDrop.TryDropSpawn(t, vault.InteractionCell, vault.Map, ThingPlaceMode.Near, out dropped))
+                // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
+                if (GenDrop.TryDropSpawn(t, vault.InteractionCell, vault.Map, ThingPlaceMode.Near, out dropped, null, c => !GameComponent_OuterrealmStorage.IsVaultCell(c, vault.Map)))
                 {
                     if (t.stackCount > 0)
                     {

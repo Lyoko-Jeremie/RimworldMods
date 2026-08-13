@@ -281,24 +281,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             else if (copy != null)
             {
-                if (IsReserved(copy))
+                // 条目不存在（count=0/已移除）：无条件移除副本（即使被预留——无物可取，
+                // 引用它的 job 因副本销毁失败一次即恢复）；filter 禁止但条目存在：
+                // 被预留则保留（退休：让既有 job 完成取出），否则移除。
+                if ((e == null || e.Count <= 0) || !IsReserved(copy))
                 {
-                    return; // 简化退休（§3.3）：被 reservation 的副本保留，避免 job 引用失效
-                }
-                // filter 禁止 / 条目消失 ≠ 取出：视图移除不得扣全局（§6.2），抑制通知并手动清理 lister。
-                SuppressRemovalSync = true;
-                try
-                {
-                    Remove(copy);
-                }
-                finally
-                {
-                    SuppressRemovalSync = false;
-                }
-                copy.Destroy();
-                if (Vault.Spawned && !copy.Spawned)
-                {
-                    Vault.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+                    // filter 禁止 / 条目消失 ≠ 取出：视图移除不得扣全局（§6.2），抑制通知并手动清理 lister。
+                    SuppressRemovalSync = true;
+                    try
+                    {
+                        Remove(copy);
+                    }
+                    finally
+                    {
+                        SuppressRemovalSync = false;
+                    }
+                    copy.Destroy();
+                    if (Vault.Spawned && !copy.Spawned)
+                    {
+                        Vault.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+                    }
                 }
             }
         }
@@ -314,7 +316,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             SuppressRemovalSync = true;
             try
             {
-                // 1. 移除不再允许 / 条目已消失的副本（被 reservation 的副本保留，简化退休）。
+                // 1. 移除不再允许 / 条目已消失的副本（条目不存在时无条件移除——无物可取；
+                //    filter 禁止但条目存在时保留被预留副本，即简化退休 §3.3）。
                 for (int i = Count - 1; i >= 0; i--)
                 {
                     Thing copy = this[i];
@@ -324,7 +327,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    if (IsReserved(copy))
+                    if (e != null && e.Count > 0 && IsReserved(copy))
                     {
                         continue;
                     }

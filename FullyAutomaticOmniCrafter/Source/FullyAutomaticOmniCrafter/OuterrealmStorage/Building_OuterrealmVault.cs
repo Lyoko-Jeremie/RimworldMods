@@ -577,10 +577,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // §4 仿 OutfitStand（Building_OutfitStand.cs:540-555）：为视图内容生成穿戴/强制穿戴/装备选项
             if (selPawn.IsColonistPlayerControlled && view != null)
             {
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
                 List<Thing> copies = view.InnerListForReading;
                 for (int i = 0; i < copies.Count; i++)
                 {
                     Thing copy = copies[i];
+                    // 跳过条目已不存在的残留副本（被取空/移除后未及清理的退休副本）
+                    if (gs != null)
+                    {
+                        OuterrealmEntry entryExists = gs.FindEntry(OuterrealmEntryKey.From(copy));
+                        if (entryExists == null || entryExists.Count <= 0)
+                        {
+                            continue;
+                        }
+                    }
                     if (copy is Apparel ap)
                     {
                         yield return GetFloatMenuOptionToWear(selPawn, ap);
@@ -609,7 +619,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
                         if (e == null || e.Count <= 0)
                         {
-                            continue;
+                            continue; // 条目不存在：不显示（残留副本）
                         }
                         Thing copyForClosure = copy;
                         OuterrealmEntry entryForClosure = e;
