@@ -151,6 +151,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // ── §5.2 #8：ReservationManager 预留记账（默认启用） ──
     // 对视图副本 target 用全局可用量 G−R 做数量检查（替代原版 num1 = target.Thing.stackCount），
     // 数量不足静默拒绝（不打 Log.Error）；在入口无条件执行（不因 ignoreOtherReservations 跳过，防 playerForced 强抢）。
+    // 数量足够时直接短路放行：视图副本未 Spawned 且其 stackCount 受视图形态 stackLimit 约束
+    // （如取 740 银而副本仅显示 500），原版 CanReserve 的 `stackCount > target.Thing.stackCount`
+    // 检查会误拒（→ "Could not reserve ... No existing reserver." + job 无法启动）；
+    // 视图副本的预留数量完全由 G−R 记账决定，跳过原版检查即可（Reserve 内部后续会正常添加 reservation）。
     [HarmonyPatch(typeof(ReservationManager), "CanReserve")]
     internal static class Patch_ReservationManager_CanReserve
     {
@@ -171,7 +175,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false; // 数量不足：阻止预留
                 return false;
             }
-            return true;
+            __result = true; // 数量足够：短路放行（见上，避免原版按副本 stackCount 误拒）
+            return false;
         }
     }
 

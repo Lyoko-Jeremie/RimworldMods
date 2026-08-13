@@ -28,7 +28,7 @@
     <graphicData>
       <texPath>Things/Building/Furniture/Shelf</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(2,1)</drawSize>
+      <drawSize>(3,2)</drawSize>
     </graphicData>
     <size>(2,1)</size>
 
