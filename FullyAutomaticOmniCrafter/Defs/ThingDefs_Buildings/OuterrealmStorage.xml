@@ -59,7 +59,7 @@
     <!-- 可打包为小物件带走（内容保留在超维空间，§4.1b） -->
     <minifiedDef>MinifiedThing</minifiedDef>
     <thingCategories>
-      <li>BuildingsStorage</li>
+      <li>BuildingsFurniture</li>
     </thingCategories>
 
     <!-- Tick 类型：Normal 以支持 60 tick 视图刷新（§4.1：勿用 Rare，1.6 中 Rare 走 TickRare 不调 Tick） -->
@@ -76,17 +76,15 @@
       <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
       <!-- 启用原版存储组（§4.1e）：自定义 tag，与原版 Shelf/Bookcase 隔离；组 = 共享 filter + 优先级，内容仍全局共享 -->
       <storageGroupTag>FAOC_Vault</storageGroupTag>
+      <destroySound>BuildingDestroyed_Metal_Big</destroySound>
       <!-- 不配置 defaultStorageSettings：PostMake 后 filter 为空 = 默认全禁止（§6.2） -->
     </building>
 
     <!-- 地形要求 -->
     <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
 
-    <!-- 建造 / 修理音效 -->
+    <!-- 建造音效（repairEffect / soundImpactDefault 继承自 BuildingBase） -->
     <constructEffect>ConstructMetal</constructEffect>
-    <repairEffect>Repair</repairEffect>
-    <soundImpactDefault>BulletImpact_Metal</soundImpactDefault>
-    <destroySound>BuildingDestroyed_Metal_Big</destroySound>
 
   </ThingDef>
 
