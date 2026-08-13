@@ -377,7 +377,40 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     yield return g;
                 }
             }
-            // P2：出入模式三开关（Command_Toggle + groupKey 多选同步）
+            // 出入三开关（§4.1c/d）：Command_Toggle + 相同 groupKey 常量 → 原版多选同步调整。
+            // 图标暂用原版 TexCommand 占位（P2 可替换为专用贴图，[StaticConstructorOnStartup] 预加载）。
+            if (Faction == Faction.OfPlayer)
+            {
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "VaultNoDeposit".Translate(),
+                    defaultDesc = "VaultNoDepositDesc".Translate(),
+                    icon = TexCommand.ForbidOn,
+                    groupKey = VaultGizmoKeys.NoDeposit,
+                    isActive = () => noDeposit,
+                    toggleAction = () => SetNoDeposit(!noDeposit),
+                };
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "VaultNoWithdraw".Translate(),
+                    defaultDesc = "VaultNoWithdrawDesc".Translate(),
+                    icon = TexCommand.ForbidOff,
+                    groupKey = VaultGizmoKeys.NoWithdraw,
+                    isActive = () => noWithdraw,
+                    toggleAction = () => SetNoWithdraw(!noWithdraw),
+                };
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "VaultAllowTakeForUse".Translate(),
+                    defaultDesc = "VaultAllowTakeForUseDesc".Translate(),
+                    icon = TexCommand.SelectCarriedThing,
+                    groupKey = VaultGizmoKeys.AllowTakeForUse,
+                    isActive = () => allowTakeForUse,
+                    toggleAction = () => SetAllowTakeForUse(!allowTakeForUse),
+                    Disabled = !noWithdraw, // 条件开关：禁止取出未开启时置灰（gizmo 随 UI 刷新重新求值）
+                    disabledReason = "VaultAllowTakeForUseDisabledReason".Translate(),
+                };
+            }
         }
 
         public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
@@ -404,5 +437,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Values.Look(ref noWithdraw, "noWithdraw", false);
             Scribe_Values.Look(ref allowTakeForUse, "allowTakeForUse", false);
         }
+    }
+
+    /// <summary>出入三开关的多选合并 groupKey 常量（§4.1d：相同开关在所有建筑实例上必须使用相同 label/icon/groupKey 才能合并同步）。</summary>
+    internal static class VaultGizmoKeys
+    {
+        public const int NoDeposit = 714201;
+        public const int NoWithdraw = 714202;
+        public const int AllowTakeForUse = 714203;
     }
 }

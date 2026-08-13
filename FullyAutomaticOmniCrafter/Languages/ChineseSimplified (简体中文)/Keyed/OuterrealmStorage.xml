@@ -7,4 +7,16 @@
   <OuterrealmVault_InspectSummary>超维存储：{0} 类物品，共 {1} 件</OuterrealmVault_InspectSummary>
   <OuterrealmVault_InspectEmpty>超维存储：空</OuterrealmVault_InspectEmpty>
 
-</LanguageData>
+
+
+  <!-- 内容 Tab -->
+  <TabOuterrealmVaultContents>内容</TabOuterrealmVaultContents>
+
+  <!-- 出入三开关（§4.1c/d） -->
+  <VaultNoDeposit>禁止存入</VaultNoDeposit>
+  <VaultNoDepositDesc>开启后，搬运工不再把本建筑作为存储目标（只出不入）。</VaultNoDepositDesc>
+  <VaultNoWithdraw>禁止取出</VaultNoWithdraw>
+  <VaultNoWithdrawDesc>开启后，搬运工不能自动取走内容，同时关闭工作台原料与进食/治疗搜索，除非开启"允许拿取"。</VaultNoWithdrawDesc>
+  <VaultAllowTakeForUse>禁止取出时允许拿取</VaultAllowTakeForUse>
+  <VaultAllowTakeForUseDesc>开启后，在"禁止取出"状态下，工作台原料与进食/治疗搜索仍可看到本建筑内容（搬运工搬运仍被禁止）。</VaultAllowTakeForUseDesc>
+  <VaultAllowTakeForUseDisabledReason>需先开启"禁止取出"</VaultAllowTakeForUseDisabledReason></LanguageData>

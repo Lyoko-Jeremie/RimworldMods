@@ -68,6 +68,7 @@
     <!-- 检查选项卡：原版清单/优先级 Tab（内容 Tab ITab_OuterrealmVaultContents 于 P2 加入） -->
     <inspectorTabs>
       <li>ITab_Storage</li>
+      <li>FullyAutomaticOmniCrafter.OuterrealmStorage.ITab_OuterrealmVaultContents</li>
     </inspectorTabs>
 
     <!-- 建筑属性 -->

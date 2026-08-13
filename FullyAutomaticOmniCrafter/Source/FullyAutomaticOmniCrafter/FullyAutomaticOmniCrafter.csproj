@@ -423,6 +423,7 @@
     <Compile Include="OmniCrafterUi.cs" />
     <Compile Include="OuterrealmStorage\Building_OuterrealmVault.cs" />
     <Compile Include="OuterrealmStorage\GameComponent_OuterrealmStorage.cs" />
+    <Compile Include="OuterrealmStorage\ITab_OuterrealmVaultContents.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmEntry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />
