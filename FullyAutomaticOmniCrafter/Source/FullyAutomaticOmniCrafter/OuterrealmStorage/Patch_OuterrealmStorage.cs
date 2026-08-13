@@ -357,6 +357,43 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 无限容量豁免：对 Vault 本体豁免"非 HaulToContainer 预留"检查（右键搬运被错误拒绝） ──
+    // 原版 StoreUtility.TryFindBestBetterNonSlotGroupStorageFor 对 IHaulEnroute 容器要求
+    // map.reservationManager.OnlyReservationsForJobDef(容器, JobDefOf.HaulToContainer) 才将其选为
+    // 搬运目标。第三方 Mod（典型如 PickUpAndHaul 的 HaulToInventory job）会对"无限容量容器"本体
+    // 打上 HaulToContainer 之外的 reservation（其源码注释明言 "reserve it so you don't over-haul"，
+    // 属防过度搬运的软预留）→ Vault 在右键搬运的目标搜索中被跳过 → 全图无其他存储时右键菜单
+    // 显示原版 "NoEmptyPlaceLower"（未配置空余的、可到达的储存点）。
+    // Vault 容量无限（SpaceRemainingFor=int.MaxValue、GetCountCanAccept=int.MaxValue），任何预留
+    // 都不构成容量约束，故对 Vault 豁免该检查：requireAtLeastOne=false（搬运目标搜索）时恒放行；
+    // requireAtLeastOne=true 时仍要求存在 HaulToContainer 预留，维持原版"至少一条"语义。
+    // 修复与本 Mod 是否加载 PickUpAndHaul 无关——覆盖一切向 Vault 本体打非 HaulToContainer 预留的路径。
+    [HarmonyPatch(typeof(ReservationManager), "OnlyReservationsForJobDef")]
+    internal static class Patch_ReservationManager_OnlyReservationsForJobDef
+    {
+        private static bool Prefix(ReservationManager __instance, LocalTargetInfo target, JobDef requiredJobDef, bool requireAtLeastOne, ref bool __result)
+        {
+            Thing t = target.Thing;
+            if (t == null || !(t is Building_OuterrealmVault) || requiredJobDef != JobDefOf.HaulToContainer)
+            {
+                return true; // 非本系统：完全走原版
+            }
+            bool hasRequired = false;
+            List<ReservationManager.Reservation> reservations = __instance.ReservationsReadOnly;
+            for (int i = 0; i < reservations.Count; i++)
+            {
+                ReservationManager.Reservation r = reservations[i];
+                if (r.Target == target && r.Job != null && r.Job.def == requiredJobDef)
+                {
+                    hasRequired = true;
+                    break;
+                }
+            }
+            __result = !requireAtLeastOne || hasRequired;
+            return false;
+        }
+    }
+
     // ── §6.3 防回吸：放行条目的搬运目标排除本系统 Vault ──
     // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 放行永不完成、
     // 无限搬运循环。postfix 发现"放行条目 + 目标是本系统 Vault"时置失败（搬运工放弃该 job，
