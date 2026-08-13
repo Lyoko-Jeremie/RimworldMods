@@ -34,32 +34,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ColorArgb = colorArgb;
         }
 
-        /// <summary>从真实 Thing 提取分组键（未 Spawned 亦可，属性取自实例本身）。</summary>
+        /// <summary>从真实 Thing 提取分组键（未 Spawned 亦可，属性取自实例本身）。
+        /// MinifiedThing（打包建筑）：用 InnerThing 的属性做分组（def/stuff/品质/耐久），
+        /// 使不同打包建筑分属不同条目，且与 Materialize 生成的视图副本 key 一致。</summary>
         public static OuterrealmEntryKey From(Thing t)
         {
+            Thing src = t;
+            if (t is MinifiedThing minified && minified.InnerThing != null)
+            {
+                src = minified.InnerThing;
+            }
             int quality = -1;
-            CompQuality cq = t.TryGetComp<CompQuality>();
+            CompQuality cq = src.TryGetComp<CompQuality>();
             if (cq != null)
             {
                 quality = (int)cq.Quality;
             }
             int hpBucket = -1;
-            if (t.def.useHitPoints)
+            if (src.def.useHitPoints)
             {
-                int max = t.MaxHitPoints;
+                int max = src.MaxHitPoints;
                 if (max > 0)
                 {
-                    hpBucket = Mathf.Clamp(t.HitPoints * 10 / max, 0, 9);
+                    hpBucket = Mathf.Clamp(src.HitPoints * 10 / max, 0, 9);
                 }
             }
             int colorArgb = -1;
-            CompColorable cc = t.TryGetComp<CompColorable>();
+            CompColorable cc = src.TryGetComp<CompColorable>();
             if (cc != null && cc.Active)
             {
                 Color c = cc.Color;
                 colorArgb = ((int)(c.r * 255f) << 24) | ((int)(c.g * 255f) << 16) | ((int)(c.b * 255f) << 8) | (int)(c.a * 255f);
             }
-            return new OuterrealmEntryKey(t.def, t.Stuff, quality, hpBucket, t.StyleDef, colorArgb);
+            return new OuterrealmEntryKey(src.def, src.Stuff, quality, hpBucket, src.StyleDef, colorArgb);
         }
 
         public bool Equals(OuterrealmEntryKey other)

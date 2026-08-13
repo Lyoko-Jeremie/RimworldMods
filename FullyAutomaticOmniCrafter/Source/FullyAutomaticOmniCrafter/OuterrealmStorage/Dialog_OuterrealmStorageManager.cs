@@ -69,8 +69,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 stat += "   " + "OuterrealmStorageManager_EjectProgress".Translate(ejecting.ToString("N0"));
             }
-            Widgets.Label(new Rect(inRect.x, y, inRect.width, 24f), stat);
-            y += 28f;
+            Widgets.Label(new Rect(inRect.x, y, inRect.width - 250f, 24f), stat);
+            // 全部取出所有物品（追加到弹出队列，逐 tick 限速执行）
+            if (Widgets.ButtonText(new Rect(inRect.x + inRect.width - 250f, y, 250f, 26f), "OuterrealmStorageManager_EjectAllEntries".Translate(), true, false, true))
+            {
+                List<OuterrealmEntry> all = gs.EntriesForReading;
+                for (int i = 0; i < all.Count; i++)
+                {
+                    OuterrealmEntry e = all[i];
+                    if (e.Count > 0)
+                    {
+                        gs.EnqueueEject(e.Key, TargetMap(), e.Count);
+                    }
+                }
+            }
+            y += 30f;
 
             // 搜索 + 不可见筛选 + 地图选择
             searchWidget.OnGUI(new Rect(inRect.x, y, 260f, 28f), () => dirty = true, () => dirty = true);

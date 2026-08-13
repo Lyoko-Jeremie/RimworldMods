@@ -13,19 +13,16 @@
   <TabOuterrealmVaultContents>Contents</TabOuterrealmVaultContents>
 
   <!-- Access mode toggles -->
-  <VaultNoDeposit>Disallow depositing</VaultNoDeposit>
-  <VaultNoDepositDesc>When enabled, haulers will no longer choose this building as a storage destination (withdraw-only).</VaultNoDepositDesc>
-  <VaultNoWithdraw>Disallow withdrawing</VaultNoWithdraw>
-  <VaultNoWithdrawDesc>When enabled, haulers cannot automatically take items, and workbench/food/medicine search is disabled unless "Allow taking for use" is on.</VaultNoWithdrawDesc>
-  <VaultAllowTakeForUse>Allow taking for use while disallowed</VaultAllowTakeForUse>
-  <VaultAllowTakeForUseDesc>When enabled together with "Disallow withdrawing", workbench ingredients and eating/treatment search still see this building's contents (hauling remains disabled).</VaultAllowTakeForUseDesc>
-  <VaultAllowTakeForUseDisabledReason>Requires "Disallow withdrawing" first</VaultAllowTakeForUseDisabledReason>
+  <VaultAllowDeposit>Allow depositing</VaultAllowDeposit>
+  <VaultAllowDepositDesc>When enabled, haulers may store items in this building (enabled by default).</VaultAllowDepositDesc>
+  <VaultAllowWithdraw>Allow withdrawing</VaultAllowWithdraw>
+  <VaultAllowWithdrawDesc>When enabled, haulers may automatically take items, and workbench ingredients and eating/treatment search see this building's contents (enabled by default).</VaultAllowWithdrawDesc>
+  <VaultAllowTakeForUse>Allow taking for use while withdrawing is disallowed</VaultAllowTakeForUse>
+  <VaultAllowTakeForUseDesc>When "Allow withdrawing" is off, enabling this keeps workbench ingredients and eating/treatment search visible (hauling remains disabled).</VaultAllowTakeForUseDesc>
+  <VaultAllowTakeForUseDisabledReason>Requires "Allow withdrawing" to be off</VaultAllowTakeForUseDisabledReason>
   <!-- Release / move-out (§6.3) -->
   <OuterrealmVault_Release>Move out this type</OuterrealmVault_Release>
   <OuterrealmVault_StopRelease>Stop moving out</OuterrealmVault_StopRelease>
-  <OuterrealmVault_ReleaseAll>Move out everything</OuterrealmVault_ReleaseAll>
-  <OuterrealmVault_StopReleaseAll>Stop moving out everything</OuterrealmVault_StopReleaseAll>
-  <OuterrealmVault_ReleaseAllDesc>Release every entry; haulers will carry them to other allowed storage (items leave subspace). Released entries are cleared automatically once empty.</OuterrealmVault_ReleaseAllDesc>
 
   <!-- Global storage manager (§6.4) -->
   <OuterrealmStorageManagerTitle>Outerrealm Storage Manager</OuterrealmStorageManagerTitle>
@@ -46,4 +43,7 @@
 
   <!-- P6 extension (§7 A3) -->
   <OuterrealmVault_ProductDeposited>{0} deposited into outerrealm storage</OuterrealmVault_ProductDeposited>
+
+  <!-- Storage manager: eject everything -->
+  <OuterrealmStorageManager_EjectAllEntries>Eject everything</OuterrealmStorageManager_EjectAllEntries>
 </LanguageData>

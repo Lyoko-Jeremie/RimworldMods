@@ -475,25 +475,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             // 出入三开关（§4.1c/d）：Command_Toggle + 相同 groupKey 常量 → 原版多选同步调整。
+            // "允许存入/允许取出"为正向语义（开关 on = 允许，默认允许）；"允许拿取"为条件开关。
             // 图标暂用原版 TexCommand 占位（P2 可替换为专用贴图，[StaticConstructorOnStartup] 预加载）。
             if (Faction == Faction.OfPlayer)
             {
                 yield return new Command_Toggle
                 {
-                    defaultLabel = "VaultNoDeposit".Translate(),
-                    defaultDesc = "VaultNoDepositDesc".Translate(),
+                    defaultLabel = "VaultAllowDeposit".Translate(),
+                    defaultDesc = "VaultAllowDepositDesc".Translate(),
                     icon = TexCommand.ForbidOn,
-                    groupKey = VaultGizmoKeys.NoDeposit,
-                    isActive = () => noDeposit,
+                    groupKey = VaultGizmoKeys.AllowDeposit,
+                    isActive = () => !noDeposit,
                     toggleAction = () => SetNoDeposit(!noDeposit),
                 };
                 yield return new Command_Toggle
                 {
-                    defaultLabel = "VaultNoWithdraw".Translate(),
-                    defaultDesc = "VaultNoWithdrawDesc".Translate(),
+                    defaultLabel = "VaultAllowWithdraw".Translate(),
+                    defaultDesc = "VaultAllowWithdrawDesc".Translate(),
                     icon = TexCommand.ForbidOff,
-                    groupKey = VaultGizmoKeys.NoWithdraw,
-                    isActive = () => noWithdraw,
+                    groupKey = VaultGizmoKeys.AllowWithdraw,
+                    isActive = () => !noWithdraw,
                     toggleAction = () => SetNoWithdraw(!noWithdraw),
                 };
                 yield return new Command_Toggle
@@ -504,32 +505,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     groupKey = VaultGizmoKeys.AllowTakeForUse,
                     isActive = () => allowTakeForUse,
                     toggleAction = () => SetAllowTakeForUse(!allowTakeForUse),
-                    Disabled = !noWithdraw, // 条件开关：禁止取出未开启时置灰（gizmo 随 UI 刷新重新求值）
+                    Disabled = !noWithdraw, // 条件开关：允许取出开启时无意义置灰；禁止取出（允许取出 off）时才生效
                     disabledReason = "VaultAllowTakeForUseDisabledReason".Translate(),
                 };
-                // 移出全部 / 停止移出全部（§6.3 路线 A：视图放行，搬运工自动搬往其他存储区）
-                yield return new Command_Action
-                {
-                    defaultLabel = (releasedKeys.Count > 0 ? "OuterrealmVault_StopReleaseAll" : "OuterrealmVault_ReleaseAll").Translate(),
-                    defaultDesc = "OuterrealmVault_ReleaseAllDesc".Translate(),
-                    icon = TexCommand.SelectShelf,
-                    action = () =>
-                    {
-                        if (releasedKeys.Count > 0)
-                        {
-                            releasedKeys.Clear();
-                            if (Spawned)
-                            {
-                                MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
-                            }
-                        }
-                        else
-                        {
-                            ReleaseAll();
-                        }
-                    },
-                };
-                // 打开全局存储管理器（§6.4：无视 filter 的内容总览与死锁逃生口）
+                // 打开全局存储管理器（§6.4：无视 filter 的内容总览与死锁逃生口；含全部弹出/取出功能）
                 yield return new Command_Action
                 {
                     defaultLabel = "OuterrealmStorageManager_Open".Translate(),
@@ -638,11 +617,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    /// <summary>出入三开关的多选合并 groupKey 常量（§4.1d：相同开关在所有建筑实例上必须使用相同 label/icon/groupKey 才能合并同步）。</summary>
+    /// <summary>出入开关的多选合并 groupKey 常量（§4.1d：相同开关在所有建筑实例上必须使用相同 label/icon/groupKey 才能合并同步）。</summary>
     internal static class VaultGizmoKeys
     {
-        public const int NoDeposit = 714201;
-        public const int NoWithdraw = 714202;
+        public const int AllowDeposit = 714201;
+        public const int AllowWithdraw = 714202;
         public const int AllowTakeForUse = 714203;
     }
 }

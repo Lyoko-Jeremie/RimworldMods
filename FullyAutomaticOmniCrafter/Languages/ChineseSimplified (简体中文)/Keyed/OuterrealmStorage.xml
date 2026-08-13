@@ -13,19 +13,16 @@
   <TabOuterrealmVaultContents>内容</TabOuterrealmVaultContents>
 
   <!-- 出入三开关（§4.1c/d） -->
-  <VaultNoDeposit>禁止存入</VaultNoDeposit>
-  <VaultNoDepositDesc>开启后，搬运工不再把本建筑作为存储目标（只出不入）。</VaultNoDepositDesc>
-  <VaultNoWithdraw>禁止取出</VaultNoWithdraw>
-  <VaultNoWithdrawDesc>开启后，搬运工不能自动取走内容，同时关闭工作台原料与进食/治疗搜索，除非开启"允许拿取"。</VaultNoWithdrawDesc>
+  <VaultAllowDeposit>允许存入</VaultAllowDeposit>
+  <VaultAllowDepositDesc>开启后，搬运工可将物品存入本建筑（默认开启）。</VaultAllowDepositDesc>
+  <VaultAllowWithdraw>允许取出</VaultAllowWithdraw>
+  <VaultAllowWithdrawDesc>开启后，搬运工可自动取走内容，工作台原料与进食/治疗搜索可见本建筑内容（默认开启）。</VaultAllowWithdrawDesc>
   <VaultAllowTakeForUse>禁止取出时允许拿取</VaultAllowTakeForUse>
-  <VaultAllowTakeForUseDesc>开启后，在"禁止取出"状态下，工作台原料与进食/治疗搜索仍可看到本建筑内容（搬运工搬运仍被禁止）。</VaultAllowTakeForUseDesc>
-  <VaultAllowTakeForUseDisabledReason>需先开启"禁止取出"</VaultAllowTakeForUseDisabledReason>
+  <VaultAllowTakeForUseDesc>关闭"允许取出"时，开启此项可让工作台原料与进食/治疗搜索仍看到本建筑内容（搬运工搬运仍被禁止）。</VaultAllowTakeForUseDesc>
+  <VaultAllowTakeForUseDisabledReason>需先关闭"允许取出"</VaultAllowTakeForUseDisabledReason>
   <!-- 移出/放行（§6.3） -->
   <OuterrealmVault_Release>移出该类</OuterrealmVault_Release>
   <OuterrealmVault_StopRelease>停止移出</OuterrealmVault_StopRelease>
-  <OuterrealmVault_ReleaseAll>移出全部</OuterrealmVault_ReleaseAll>
-  <OuterrealmVault_StopReleaseAll>停止移出全部</OuterrealmVault_StopReleaseAll>
-  <OuterrealmVault_ReleaseAllDesc>放行全部条目，搬运工会把它们搬到其他允许的存储区（物品从超维空间取出）。条目搬空后放行状态自动清除。</OuterrealmVault_ReleaseAllDesc>
 
   <!-- 全局管理面板（§6.4） -->
   <OuterrealmStorageManagerTitle>超维存储管理器</OuterrealmStorageManagerTitle>
@@ -46,4 +43,7 @@
 
   <!-- P6 扩展（§7 A3） -->
   <OuterrealmVault_ProductDeposited>{0} 已存入超维存储</OuterrealmVault_ProductDeposited>
+
+  <!-- 存储管理器：全部取出 -->
+  <OuterrealmStorageManager_EjectAllEntries>全部取出所有物品</OuterrealmStorageManager_EjectAllEntries>
 </LanguageData>

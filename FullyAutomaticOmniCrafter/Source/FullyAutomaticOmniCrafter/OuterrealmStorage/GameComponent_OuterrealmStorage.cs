@@ -184,28 +184,45 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return t;
         }
 
-        /// <summary>从 Proto 物化新实例并复制 P1 基础属性（def/stuff/耐久/品质/样式/颜色）。</summary>
+        /// <summary>从 Proto 物化新实例并复制 P1 基础属性（def/stuff/耐久/品质/样式/颜色）。
+        /// MinifiedThing（打包建筑）特殊处理：MakeThing 生成的 MinifiedThing 的 InnerThing 为 null，
+        /// 会令 ThingFilter.Allows 的 GetInnerIfMinified() 返回 null 而 NRE——须从 proto 复制并设置 InnerThing。</summary>
         public static Thing Materialize(Thing proto)
         {
             Thing t = ThingMaker.MakeThing(proto.def, proto.Stuff);
-            if (proto.def.useHitPoints)
+            MinifiedThing sourceMin = proto as MinifiedThing;
+            if (t is MinifiedThing minified && sourceMin != null && sourceMin.InnerThing != null)
             {
-                t.HitPoints = proto.HitPoints;
+                // 打包建筑：复制 InnerThing（def/stuff/基础属性）
+                Thing inner = ThingMaker.MakeThing(sourceMin.InnerThing.def, sourceMin.InnerThing.Stuff);
+                CopyBaseProperties(sourceMin.InnerThing, inner);
+                minified.InnerThing = inner;
+                return t;
             }
-            CompQuality qFrom = proto.TryGetComp<CompQuality>();
-            CompQuality qTo = t.TryGetComp<CompQuality>();
+            CopyBaseProperties(proto, t);
+            return t;
+        }
+
+        /// <summary>复制 P1 基础属性（耐久/品质/样式/颜色）。</summary>
+        private static void CopyBaseProperties(Thing from, Thing to)
+        {
+            if (from.def.useHitPoints)
+            {
+                to.HitPoints = from.HitPoints;
+            }
+            CompQuality qFrom = from.TryGetComp<CompQuality>();
+            CompQuality qTo = to.TryGetComp<CompQuality>();
             if (qFrom != null && qTo != null)
             {
                 qTo.SetQuality(qFrom.Quality, ArtGenerationContext.Colony);
             }
-            t.StyleDef = proto.StyleDef != null ? proto.StyleDef : t.StyleDef;
-            CompColorable cFrom = proto.TryGetComp<CompColorable>();
-            CompColorable cTo = t.TryGetComp<CompColorable>();
+            to.StyleDef = from.StyleDef != null ? from.StyleDef : to.StyleDef;
+            CompColorable cFrom = from.TryGetComp<CompColorable>();
+            CompColorable cTo = to.TryGetComp<CompColorable>();
             if (cFrom != null && cTo != null && cFrom.Active)
             {
                 cTo.DesiredColor = cFrom.Color;
             }
-            return t;
         }
 
         // ── 变更日志（§3.3 方案 A） ─────────────────────────────────────────────
