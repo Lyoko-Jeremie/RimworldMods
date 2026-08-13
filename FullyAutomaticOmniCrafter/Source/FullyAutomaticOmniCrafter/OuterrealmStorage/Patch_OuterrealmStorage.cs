@@ -295,6 +295,56 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 装备 job 修复：原版 JobDriver_Equip 的容器武器路径硬编码 Building_OutfitStand ──
+    // （TargetIsOnOutfitStand）。本系统武器副本走普通路径时 GotoThing(副本) +
+    // FailOnDespawnedNullOrForbidden(A) 对未 Spawned 副本（Despawned=true）在起始即失败——
+    // pawn 停住后不走向建筑、不装备，立即转做其他任务（点击后只闪一下目标标记）。
+    // 本系统场景替换为自定义 toils：走到建筑（targetB）→ 副本 SplitOff(1) → AddEquipment。
+    [HarmonyPatch(typeof(JobDriver_Equip), "MakeNewToils")]
+    internal static class Patch_JobDriver_Equip_MakeNewToils
+    {
+        private static bool Prefix(JobDriver_Equip __instance, ref IEnumerable<Toil> __result)
+        {
+            Thing weapon = __instance.job.GetTarget(TargetIndex.A).Thing;
+            if (!(weapon is ThingWithComps) || weapon.Spawned || !(weapon.ParentHolder is Building_OuterrealmVault))
+            {
+                return true; // 非本系统：完全走原版
+            }
+            __result = VaultEquipToils(__instance);
+            return false;
+        }
+
+        private static IEnumerable<Toil> VaultEquipToils(JobDriver_Equip driver)
+        {
+            driver.FailOnDestroyedOrNull<JobDriver_Equip>(TargetIndex.A);
+            Thing weapon = driver.job.GetTarget(TargetIndex.A).Thing;
+            // 行走目标 = 建筑（副本未 Spawned，不能作为 GotoThing 目标；原版 OutfitStand 路径同样以容器为行走目标）
+            driver.job.targetB = (LocalTargetInfo)(Thing)weapon.ParentHolder;
+            yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.InteractionCell)
+                .FailOnDespawnedNullOrForbidden(TargetIndex.B);
+            yield return new Toil
+            {
+                initAction = () =>
+                {
+                    Thing copy = driver.job.GetTarget(TargetIndex.A).Thing;
+                    if (copy == null || copy.stackCount <= 0)
+                    {
+                        return;
+                    }
+                    // 从视图副本取 1 件（SplitOff 经 §3.3 同步全局：整堆分支走 Notify_ItemRemoved 扣减）
+                    Thing piece = copy.SplitOff(1);
+                    if (piece is ThingWithComps twc && driver.pawn.equipment != null)
+                    {
+                        // 先腾出主武器槽（旧武器入背包或落地，对齐原版 JobDriver_Equip 流程）；
+                        // 否则 AddEquipment 在 pawn 已有主武器时会 Log.Error（"got primaryInt equipment ... while already having ..."）
+                        driver.pawn.equipment.MakeRoomFor(twc);
+                        driver.pawn.equipment.AddEquipment(twc);
+                    }
+                }
+            };
+        }
+    }
+
     // ── §6.3 防回吸：放行条目的搬运目标排除本系统 Vault ──
     // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 放行永不完成、
     // 无限搬运循环。postfix 发现"放行条目 + 目标是本系统 Vault"时置失败（搬运工放弃该 job，

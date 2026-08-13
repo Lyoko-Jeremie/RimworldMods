@@ -23,8 +23,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public readonly ThingStyleDef Style;
         /// <summary>-1 = 无颜色；否则为 Color 的 ARGB 压缩值。</summary>
         public readonly int ColorArgb;
+        /// <summary>唯一实体标识（默认 -1）。Corpse 用 InnerPawn.thingIDNumber——保证每具尸体独立条目
+        /// （尸体为唯一实体不可合并/复制，见 §3.2 注释与 GameComponent_OuterrealmStorage.Withdraw）。</summary>
+        public readonly int UniqueId;
 
-        public OuterrealmEntryKey(ThingDef def, ThingDef stuff, int quality, int hpBucket, ThingStyleDef style, int colorArgb)
+        public OuterrealmEntryKey(ThingDef def, ThingDef stuff, int quality, int hpBucket, ThingStyleDef style, int colorArgb, int uniqueId = -1)
         {
             Def = def;
             Stuff = stuff;
@@ -32,17 +35,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             HpBucket = hpBucket;
             Style = style;
             ColorArgb = colorArgb;
+            UniqueId = uniqueId;
         }
 
         /// <summary>从真实 Thing 提取分组键（未 Spawned 亦可，属性取自实例本身）。
         /// MinifiedThing（打包建筑）：用 InnerThing 的属性做分组（def/stuff/品质/耐久），
-        /// 使不同打包建筑分属不同条目，且与 Materialize 生成的视图副本 key 一致。</summary>
+        /// 使不同打包建筑分属不同条目，且与 Materialize 生成的视图副本 key 一致。
+        /// Corpse：UniqueId = InnerPawn.thingIDNumber——每具尸体独立条目（尸体为唯一实体）。</summary>
         public static OuterrealmEntryKey From(Thing t)
         {
             Thing src = t;
             if (t is MinifiedThing minified && minified.InnerThing != null)
             {
                 src = minified.InnerThing;
+            }
+            int uniqueId = -1;
+            if (src is Corpse corpse && corpse.InnerPawn != null)
+            {
+                uniqueId = corpse.InnerPawn.thingIDNumber;
             }
             int quality = -1;
             CompQuality cq = src.TryGetComp<CompQuality>();
@@ -66,7 +76,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Color c = cc.Color;
                 colorArgb = ((int)(c.r * 255f) << 24) | ((int)(c.g * 255f) << 16) | ((int)(c.b * 255f) << 8) | (int)(c.a * 255f);
             }
-            return new OuterrealmEntryKey(src.def, src.Stuff, quality, hpBucket, src.StyleDef, colorArgb);
+            return new OuterrealmEntryKey(src.def, src.Stuff, quality, hpBucket, src.StyleDef, colorArgb, uniqueId);
         }
 
         public bool Equals(OuterrealmEntryKey other)
@@ -76,7 +86,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 && Quality == other.Quality
                 && HpBucket == other.HpBucket
                 && Style == other.Style
-                && ColorArgb == other.ColorArgb;
+                && ColorArgb == other.ColorArgb
+                && UniqueId == other.UniqueId;
         }
 
         public override bool Equals(object obj)
@@ -104,13 +115,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 h = h * 397 ^ HpBucket;
                 h = h * 397 ^ (Style != null ? Style.shortHash : 0);
                 h = h * 397 ^ ColorArgb;
+                h = h * 397 ^ UniqueId;
                 return h;
             }
         }
 
         public override string ToString()
         {
-            return (Def != null ? Def.defName : "null") + (Stuff != null ? "+" + Stuff.defName : "") + " q" + Quality + " hp" + HpBucket + " s" + (Style != null ? Style.defName : "-") + " c" + ColorArgb;
+            return (Def != null ? Def.defName : "null") + (Stuff != null ? "+" + Stuff.defName : "") + " q" + Quality + " hp" + HpBucket + " s" + (Style != null ? Style.defName : "-") + " c" + ColorArgb + " u" + UniqueId;
         }
 
         /// <summary>从 ToString 格式恢复分组键（放行列表存档用）。解析失败返回 false（跳过该放行项，无害）。</summary>
@@ -136,6 +148,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             int quality = -1;
             int hpBucket = -1;
             int colorArgb = -1;
+            int uniqueId = -1;
             ThingStyleDef style = null;
             for (int i = 1; i < parts.Length; i++)
             {
@@ -157,8 +170,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     int.TryParse(p.Substring(1), out colorArgb);
                 }
+                else if (p.StartsWith("u"))
+                {
+                    int.TryParse(p.Substring(1), out uniqueId);
+                }
             }
-            key = new OuterrealmEntryKey(def, stuff, quality, hpBucket, style, colorArgb);
+            key = new OuterrealmEntryKey(def, stuff, quality, hpBucket, style, colorArgb, uniqueId);
             return true;
         }
     }

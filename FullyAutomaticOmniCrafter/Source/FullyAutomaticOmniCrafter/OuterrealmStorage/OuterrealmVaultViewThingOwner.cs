@@ -240,6 +240,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            if (e.Proto is Corpse)
+            {
+                return; // 尸体为唯一实体（InnerPawn 不可复制）：不物化视图副本，UI 直接显示条目 proto
+            }
             Thing copy = FindCopy(key);
             if (copy != null)
             {
@@ -335,6 +339,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     if (e.Count <= 0 || !Vault.GetStoreSettings().AllowedToAccept(e.Proto))
                     {
                         continue;
+                    }
+                    if (e.Proto is Corpse)
+                    {
+                        continue; // 尸体不物化视图副本（唯一实体）
                     }
                     Thing copy = FindCopy(e.Key);
                     if (copy != null)

@@ -51,7 +51,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     Thing copy = vault.view.FindCopy(entry.Key);
                     if (copy == null)
                     {
-                        continue; // 本建筑 filter 不可见（§6.2）
+                        // 尸体：不物化视图副本（唯一实体），直接用条目 proto 渲染
+                        if (entry.Proto is Corpse)
+                        {
+                            copy = entry.Proto;
+                        }
+                        else
+                        {
+                            continue; // 本建筑 filter 不可见（§6.2）
+                        }
                     }
                     any = true;
                     DoVaultRow(vault, copy, entry, inRect.width, ref curY);
@@ -105,9 +113,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 GUI.color = ThingHighlightColor;
                 GUI.DrawTexture(rect, TexUI.HighlightTex);
             }
-            Widgets.InfoCardButton(rect.width - 24f, curY, copy);
+            if (copy is Corpse corpseForCard && corpseForCard.Bugged)
+            {
+                Widgets.InfoCardButton(rect.width - 24f, curY, copy.def);
+            }
+            else
+            {
+                Widgets.InfoCardButton(rect.width - 24f, curY, copy);
+            }
             rect.width -= 24f;
-            Widgets.ThingIcon(new Rect(4f, curY, 28f, 28f), copy);
+            OuterrealmVaultUtil.ThingIconSafe(new Rect(4f, curY, 28f, 28f), copy);
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.MiddleLeft;
             string labelText = OuterrealmVaultUtil.SafeLabelCapNoCount(copy) + " x" + entry.Count.ToString("N0");

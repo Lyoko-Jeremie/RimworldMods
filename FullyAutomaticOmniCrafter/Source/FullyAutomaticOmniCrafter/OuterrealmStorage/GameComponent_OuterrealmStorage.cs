@@ -40,6 +40,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
         private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
 
+        // ── 弹出防回吸：弹出落地的物品短期内不被本系统建筑自动吸回（§6.4 分流语义） ──
+        // 键为物化实例，值为弹出时的 TicksGame；超时（EjectNoReabsorbTicks）或物品销毁后自动清除，
+        // 之后物品恢复可正常存入。不序列化（读档后清空，落地物品属存档实体由玩家处置）。
+        private readonly Dictionary<Thing, int> ejectedTicks = new Dictionary<Thing, int>();
+        private const int EjectNoReabsorbTicks = 600; // 10 秒：弹出可见期，防立即被搬回
+
         public int Version => version;
         public bool NeedFullRebuild => changeLogOverflow;
         public List<OuterrealmEntry> EntriesForReading => entries;
@@ -160,6 +166,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 从全局层取出 count 个：物化新 Thing（从 Proto 复制全部属性）并扣减全局。
         /// 物化实例由调用方负责放置（GenDrop.TryDropSpawn / carryTracker 等）。
         /// 超过 stackLimit 的数量由调用方分批处理；此处单次最多取 int 上限。
+        /// Corpse（唯一实体，InnerPawn 同一 pawn 只能属于一具尸体）：整体转移 proto 本身（不可复制）。
+        /// 条目被取空后立即通知所有建筑视图移除残留副本（防 OptimizeApparel 等选中空条目副本 →
+        /// 预留失败 → "TryMakePreToilReservations returned false" 警告 + pawn 卡住循环）。
         /// </summary>
         public Thing Withdraw(OuterrealmEntry entry, int count)
         {
@@ -172,21 +181,54 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 take = entry.Count;
             }
-            Thing t = Materialize(entry.Proto);
-            t.stackCount = (int)take;
-            entry.Count -= take;
-            if (entry.Count == 0)
+            Thing t;
+            if (entry.Proto is Corpse)
             {
-                RemoveEntry(entry);
+                // 尸体不可复制：直接转移 proto 本身（条目随 1 具尸体清空）
+                t = entry.Proto;
+                t.stackCount = 1;
+                entry.Count -= 1;
+                if (entry.Count == 0)
+                {
+                    entry.Proto = null; // 已整体转移给调用方：防止 RemoveEntry 销毁它
+                    RemoveEntry(entry);
+                    NotifyEntriesEmptied(entry.Key);
+                }
+            }
+            else
+            {
+                t = Materialize(entry.Proto);
+                t.stackCount = (int)take;
+                entry.Count -= take;
+                if (entry.Count == 0)
+                {
+                    RemoveEntry(entry);
+                    NotifyEntriesEmptied(entry.Key);
+                }
             }
             version++;
             AddToChangeLog(entry.Key);
             return t;
         }
 
+        /// <summary>条目被取空后：立即让所有建筑视图移除残留副本（§3.3 同步补到变更点，防空条目副本被自动 job 选中）。</summary>
+        private void NotifyEntriesEmptied(OuterrealmEntryKey key)
+        {
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v != null && v.view != null)
+                {
+                    v.view.SyncKey(key);
+                }
+            }
+        }
+
         /// <summary>从 Proto 物化新实例并复制 P1 基础属性（def/stuff/耐久/品质/样式/颜色）。
-        /// MinifiedThing（打包建筑）特殊处理：MakeThing 生成的 MinifiedThing 的 InnerThing 为 null，
-        /// 会令 ThingFilter.Allows 的 GetInnerIfMinified() 返回 null 而 NRE——须从 proto 复制并设置 InnerThing。</summary>
+        /// MinifiedThing（打包建筑）：MakeThing 生成的 MinifiedThing 的 InnerThing 为 null，
+        /// 会令 ThingFilter.Allows 的 GetInnerIfMinified() 返回 null 而 NRE——须从 proto 复制并设置 InnerThing。
+        /// 注意：Corpse 是"唯一实体"（InnerPawn 同一 pawn 只能属于一具尸体），不可物化复制——
+        /// 物化/取出尸体必须整体转移（见 Withdraw），此处不为 Corpse 复制 InnerPawn。</summary>
         public static Thing Materialize(Thing proto)
         {
             Thing t = ThingMaker.MakeThing(proto.def, proto.Stuff);
@@ -316,6 +358,30 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ejectQueue.Add(new VaultEjectJob { Key = key, MapIndex = mapIndex, Remaining = count });
         }
 
+        /// <summary>标记弹出物品（落地后短暂防回吸，§6.4）。</summary>
+        public void MarkEjected(Thing t)
+        {
+            if (t != null)
+            {
+                ejectedTicks[t] = Find.TickManager.TicksGame;
+            }
+        }
+
+        /// <summary>弹出物品在限时窗口内返回 true（本系统建筑 Accepts 应拒绝，防止弹出自吸回）。</summary>
+        public bool IsEjected(Thing t)
+        {
+            if (t == null || !ejectedTicks.TryGetValue(t, out int tick))
+            {
+                return false;
+            }
+            if (t.Destroyed || Find.TickManager.TicksGame - tick > EjectNoReabsorbTicks)
+            {
+                ejectedTicks.Remove(t);
+                return false;
+            }
+            return true;
+        }
+
         private bool FindEntryExists(OuterrealmEntryKey key)
         {
             OuterrealmEntry e = FindEntry(key);
@@ -360,18 +426,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     ejectQueue.RemoveAt(i);
                     continue;
                 }
-                job.Remaining -= t.stackCount;
+                int withdrawn = t.stackCount;
+                job.Remaining -= withdrawn;
+                MarkEjected(t); // 弹出防回吸：落地后短暂不被本系统建筑自动吸回（§6.4）
                 Thing dropped;
-                if (GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped))
+                bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped);
+                int leftover = t.stackCount; // 放置后未落地的剩余（TryDropSpawn 不查 stackLimit，剩余留在原 thing 中，§6.5）
+                if (leftover > 0)
                 {
-                    if (t.stackCount > 0)
-                    {
-                        Deposit(t); // 放置未完全（Near 模式极少）：退回全局，job.Remaining 保持待处理
-                    }
-                }
-                else
-                {
-                    Deposit(t); // 放置失败：退回全局
+                    // 全部或部分未放置：退回全局，并恢复 Remaining（该部分仍待弹出，避免"弹出静默失败"）
+                    Deposit(t);
+                    job.Remaining += leftover;
                 }
                 if (job.Remaining <= 0)
                 {
@@ -428,6 +493,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 changeLogOverflow = false;
                 // 弹出队列不序列化（目标地图索引在重载后不可靠；条目仍在全局层，玩家可重新弹出）。
                 ejectQueue.Clear();
+                // 弹出防回吸标记不序列化（读档后清空；落地物品属存档实体由玩家处置）。
+                ejectedTicks.Clear();
             }
         }
     }

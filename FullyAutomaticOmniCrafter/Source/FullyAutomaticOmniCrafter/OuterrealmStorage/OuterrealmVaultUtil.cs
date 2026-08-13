@@ -1,3 +1,4 @@
+using UnityEngine;
 using Verse;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
@@ -22,6 +23,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return corpse.def.label.CapitalizeFirst();
             }
             return t.LabelCapNoCount;
+        }
+
+        /// <summary>
+        /// 安全的物品图标：Corpse 在 Bugged 状态（InnerPawn==null）时，原版 Widgets.GetIconFor
+        /// 会执行 thing = corpse.InnerPawn 然后访问 thing.StyleDef 而 NRE——用 def 图标兜底；其余走原版 ThingIcon。
+        /// </summary>
+        public static void ThingIconSafe(Rect rect, Thing thing)
+        {
+            if (thing == null)
+            {
+                return;
+            }
+            if (thing is Corpse corpse && corpse.Bugged)
+            {
+                Widgets.ThingIcon(rect, thing.def);
+                return;
+            }
+            Widgets.ThingIcon(rect, thing);
         }
     }
 }

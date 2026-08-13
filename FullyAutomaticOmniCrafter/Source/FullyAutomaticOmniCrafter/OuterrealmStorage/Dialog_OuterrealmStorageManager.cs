@@ -195,9 +195,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             rect.width -= 190f;
 
-            Widgets.InfoCardButton(rect.width - 24f, curY, entry.Proto);
+            if (entry.Proto is Corpse protoCorpse && protoCorpse.Bugged)
+            {
+                Widgets.InfoCardButton(rect.width - 24f, curY, entry.Proto.def);
+            }
+            else
+            {
+                Widgets.InfoCardButton(rect.width - 24f, curY, entry.Proto);
+            }
             rect.width -= 24f;
-            Widgets.ThingIcon(new Rect(4f, curY, 28f, 28f), entry.Proto);
+            OuterrealmVaultUtil.ThingIconSafe(new Rect(4f, curY, 28f, 28f), entry.Proto);
 
             string text = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto) + " x" + entry.Count.ToString("N0");
             if (visibleBuildings == 0)

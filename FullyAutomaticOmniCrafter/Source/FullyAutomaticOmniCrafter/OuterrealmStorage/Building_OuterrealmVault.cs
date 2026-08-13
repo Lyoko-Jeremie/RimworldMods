@@ -233,6 +233,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             // §6.3：放行条目 Accepts 返回 false（视图保留、可 haulable → 搬运工搬走）；
             // filter 门控照常（允许=可存入，禁止=不可见）。
+            // §6.4：弹出防回吸——刚弹出的物品限时内不被本建筑自动吸回。
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs != null && gs.IsEjected(t))
+            {
+                return false;
+            }
             return GetStoreSettings().AllowedToAccept(t) && !IsReleased(t);
         }
 
