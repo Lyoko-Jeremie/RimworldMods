@@ -294,7 +294,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < entries.Count; i++)
             {
                 OuterrealmEntry e = entries[i];
-                if (e.Count > 0 && view.FindCopy(e.Key) != null && !releasedKeys.Contains(e.Key))
+                // 可见性判定与 UI 一致：尸体不物化视图副本，以 filter 判定；其余条目以副本存在性判定
+                bool visible = e.Proto is Corpse
+                    ? GetStoreSettings().AllowedToAccept(e.Proto)
+                    : view.FindCopy(e.Key) != null;
+                if (e.Count > 0 && visible && !releasedKeys.Contains(e.Key))
                 {
                     releasedKeys.Add(e.Key);
                     any = true;
