@@ -244,6 +244,57 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 穿戴 job 预留修复：衣物来自本系统建筑时预留"副本（1 件）"而非"建筑" ──
+    // 原版 JobDriver_Wear/ForceTargetWear 在 TargetIsOnApparelSource 时 Reserve(建筑)。
+    // ① 本建筑作为无限容量存储目的地常被搬运工 HaulToContainer 预留 → Reserve(建筑) 失败
+    //    → job 无法启动（点击穿戴无动作 / OptimizeApparel 自动穿戴失败后不设冷却而每 tick 重试，
+    //    刷 "TryMakePreToilReservations() returned false" 警告 + pawn 卡"等待中"）。
+    // ② 预留副本必须用 stackCount=1（穿戴只取 1 件）：若用 -1（整堆）会按副本全部量计入 R，
+    //    一件穿戴即阻塞同条目其他 pawn 的穿戴（聚合副本模型，见 §3.2）。
+    [HarmonyPatch(typeof(JobDriver_Wear), "TryMakePreToilReservations")]
+    internal static class Patch_JobDriver_Wear_TryMakePreToilReservations
+    {
+        private static bool Prefix(JobDriver_Wear __instance, bool errorOnFailed, ref bool __result)
+        {
+            Thing apparelThing = __instance.job.GetTarget(TargetIndex.A).Thing;
+            if (!(apparelThing is Apparel ap) || ap.Spawned || !(ap.ParentHolder is Building_OuterrealmVault))
+            {
+                return true; // 非本系统：完全走原版
+            }
+            __result = __instance.pawn.Reserve(ap, __instance.job, 1, 1, errorOnFailed: errorOnFailed);
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(JobDriver_ForceTargetWear), "TryMakePreToilReservations")]
+    internal static class Patch_JobDriver_ForceTargetWear_TryMakePreToilReservations
+    {
+        private static bool Prefix(JobDriver_ForceTargetWear __instance, bool errorOnFailed, ref bool __result)
+        {
+            Thing apparelThing = __instance.job.GetTarget(TargetIndex.B).Thing;
+            if (!(apparelThing is Apparel ap) || ap.Spawned || !(ap.ParentHolder is Building_OuterrealmVault))
+            {
+                return true; // 非本系统：完全走原版
+            }
+            // 本系统：复制原版逻辑，仅 ApparelSource 分支改为预留副本 1 件（其余保持不变）
+            Pawn targetPawn = __instance.job.GetTarget(TargetIndex.A).Thing as Pawn;
+            __instance.job.count = 1;
+            if (__instance.pawn == targetPawn)
+            {
+                Log.Error($"Pawn {__instance.pawn} tried to do ForceTargetWear with self as target; this should not happen.");
+                __result = false;
+                return false;
+            }
+            if (!__instance.pawn.Reserve(targetPawn, __instance.job, errorOnFailed: errorOnFailed))
+            {
+                __result = false;
+                return false;
+            }
+            __result = __instance.pawn.Reserve(ap, __instance.job, 1, 1, errorOnFailed: errorOnFailed);
+            return false;
+        }
+    }
+
     // ── §6.3 防回吸：放行条目的搬运目标排除本系统 Vault ──
     // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 放行永不完成、
     // 无限搬运循环。postfix 发现"放行条目 + 目标是本系统 Vault"时置失败（搬运工放弃该 job，
