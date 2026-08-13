@@ -40,4 +40,7 @@
   <OuterrealmStorageManager_NoEntries>超维存储为空</OuterrealmStorageManager_NoEntries>
   <OuterrealmStorageManager_Open>打开全局存储管理器</OuterrealmStorageManager_Open>
   <OuterrealmStorageManager_OpenDesc>查看超维空间中的全部内容（无视任何终端的存储清单），可强制弹出或转移到指定地图。</OuterrealmStorageManager_OpenDesc>
+
+  <!-- 取到背包（§6.1） -->
+  <OuterrealmVault_TakeToInventory>把 {0} 拿到背包</OuterrealmVault_TakeToInventory>
 </LanguageData>

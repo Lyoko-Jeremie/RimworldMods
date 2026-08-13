@@ -40,4 +40,7 @@
   <OuterrealmStorageManager_NoEntries>Outerrealm storage is empty</OuterrealmStorageManager_NoEntries>
   <OuterrealmStorageManager_Open>Open global storage manager</OuterrealmStorageManager_Open>
   <OuterrealmStorageManager_OpenDesc>View all contents of subspace (ignoring every terminal filter), and force-eject or transfer them to a chosen map.</OuterrealmStorageManager_OpenDesc>
+
+  <!-- Take to inventory (§6.1) -->
+  <OuterrealmVault_TakeToInventory>Take {0} to inventory</OuterrealmVault_TakeToInventory>
 </LanguageData>

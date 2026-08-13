@@ -90,4 +90,13 @@
 
   </ThingDef>
 
+
+  <!-- 取 X 到背包（§6.1）：TargetA=建筑（行走目标），TargetB=视图副本（取物目标） -->
+  <JobDef>
+    <defName>FAOC_VaultTakeToInventory</defName>
+    <driverClass>FullyAutomaticOmniCrafter.OuterrealmStorage.JobDriver_VaultTakeToInventory</driverClass>
+    <reportString>taking TargetB to inventory.</reportString>
+    <suspendable>false</suspendable>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
 </Defs>

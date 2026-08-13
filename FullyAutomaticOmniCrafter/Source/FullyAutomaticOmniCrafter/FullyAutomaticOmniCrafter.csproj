@@ -425,6 +425,7 @@
     <Compile Include="OuterrealmStorage\Dialog_OuterrealmStorageManager.cs" />
     <Compile Include="OuterrealmStorage\GameComponent_OuterrealmStorage.cs" />
     <Compile Include="OuterrealmStorage\ITab_OuterrealmVaultContents.cs" />
+    <Compile Include="OuterrealmStorage\JobDriver_VaultTakeToInventory.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmEntry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using RimWorld;
+using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
@@ -548,6 +550,54 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             foreach (FloatMenuOption o in HaulSourceUtility.GetFloatMenuOptions(this, selPawn))
             {
                 yield return o;
+            }
+            // §6.1：指定 pawn 拿 X 到背包（自定义 job：以建筑为行走目标，取物目标为视图副本）
+            if (selPawn.IsColonistPlayerControlled && view != null)
+            {
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+                if (gs != null)
+                {
+                    List<Thing> copies = view.InnerListForReading;
+                    for (int i = 0; i < copies.Count; i++)
+                    {
+                        Thing copy = copies[i];
+                        OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+                        if (e == null || e.Count <= 0)
+                        {
+                            continue;
+                        }
+                        Thing copyForClosure = copy;
+                        OuterrealmEntry entryForClosure = e;
+                        yield return new FloatMenuOption("OuterrealmVault_TakeToInventory".Translate(copy.LabelCapNoCount), () =>
+                        {
+                            int max = (int)Mathf.Min(entryForClosure.Count, int.MaxValue);
+                            if (max <= 0)
+                            {
+                                return;
+                            }
+                            string label = copyForClosure.LabelCapNoCount;
+                            Find.WindowStack.Add(new Dialog_Slider(
+                                (int v) => label + " x" + v.ToString("N0"),
+                                1,
+                                max,
+                                (int v) =>
+                                {
+                                    if (v <= 0)
+                                    {
+                                        return;
+                                    }
+                                    JobDef jobDef = DefDatabase<JobDef>.GetNamedSilentFail("FAOC_VaultTakeToInventory");
+                                    if (jobDef == null)
+                                    {
+                                        return;
+                                    }
+                                    Job job = JobMaker.MakeJob(jobDef, this, copyForClosure);
+                                    job.count = v;
+                                    selPawn.jobs.TryTakeOrderedJob(job);
+                                }));
+                        });
+                    }
+                }
             }
         }
 
