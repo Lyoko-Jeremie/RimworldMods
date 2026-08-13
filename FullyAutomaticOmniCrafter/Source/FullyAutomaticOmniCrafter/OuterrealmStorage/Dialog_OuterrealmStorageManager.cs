@@ -10,7 +10,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// 全局存储管理器（§6.4，必须实现）：无视任何建筑 filter 查看超维空间全部内容，
     /// 是"全禁用死锁"（§6.2）的唯一逃生口。功能：内容列表（图标/名称/long 数量/可见建筑数）、
     /// 搜索（QuickSearchWidget）、"仅显示不可见条目"快捷筛选（死锁定位）、按地图强制弹出（限速队列）、
-    /// 左侧原版风格树状分类（参考万能制造机 OmniCrafterUi 的 Listing_TreeCategorySelect）。
+    /// 左侧原版风格树状分类（参考万能制造机 OmniCrafterUi 的 Listing_TreeCategorySelect），
+    /// 每项右侧显示该分类（含子分类）的条目总数（随全局内容版本号自动刷新）。
     /// </summary>
     public class Dialog_OuterrealmStorageManager : Window
     {
@@ -25,6 +26,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool dirty = true;
         private int selectedMapIndex;
         private readonly List<OuterrealmEntry> visibleEntries = new List<OuterrealmEntry>();
+
+        /// <summary>分类树缓存：有效分类集合 + 各分类（含子分类）条目总数。仅内容版本变化时重建（复用字段避免每帧分配）。</summary>
+        private readonly HashSet<ThingCategoryDef> validCategories = new HashSet<ThingCategoryDef>();
+        private readonly Dictionary<ThingCategoryDef, long> categoryCounts = new Dictionary<ThingCategoryDef, long>();
+        /// <summary>上次已同步的全局内容版本号（不等比较抗回绕，与 GameComponent 注释一致）。</summary>
+        private int lastSeenVersion = int.MinValue;
 
         /// <summary>当前分类筛选（null = 全部分类）。</summary>
         private ThingCategoryDef selectedCategory;
@@ -53,8 +60,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Widgets.Label(inRect, "OuterrealmStorageManager_NoEntries".Translate());
                 return;
             }
-            if (dirty)
+            if (dirty || gs.Version != lastSeenVersion)
             {
+                if (gs.Version != lastSeenVersion)
+                {
+                    // 全局内容变化（存入/取出/弹出）：分类集合与数量一并重建，列表也随弹出实时刷新
+                    lastSeenVersion = gs.Version;
+                    RebuildCategoryCache(gs);
+                }
                 RebuildVisible(gs);
                 dirty = false;
             }
@@ -139,7 +152,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Widgets.DrawBoxSolid(rect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
             rect = rect.ContractedBy(3f);
 
-            HashSet<ThingCategoryDef> validCats = GetValidCategorySet();
+            HashSet<ThingCategoryDef> validCats = validCategories;
             float treeH = ComputeTreeHeight(ThingCategoryDefOf.Root.treeNode, validCats, CategoryLineHeight);
             float totalH = CategoryLineHeight + 2f + 6f + treeH;
 
@@ -168,7 +181,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     selectedCategory = cat;
                     dirty = true;
-                });
+                },
+                categoryCounts);
             listing.SetVisibleRect(visibleRect);
             listing.Begin(treeRect);
             foreach (TreeNode_ThingCategory child in ThingCategoryDefOf.Root.treeNode.ChildCategoryNodes)
@@ -198,16 +212,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>收集当前有内容条目的分类及其全部祖先（树只显示这些分类）。</summary>
-        private HashSet<ThingCategoryDef> GetValidCategorySet()
+        /// <summary>重建分类树缓存：收集当前有内容条目的分类及其全部祖先（树只显示这些分类），
+        /// 并顺带把每条目的 Count 累加到其所属分类链每一层（父分类数量天然含子分类），
+        /// 供分类树每项右侧显示数量。复用字段 Clear 后重填，避免每帧分配容器。</summary>
+        private void RebuildCategoryCache(GameComponent_OuterrealmStorage gs)
         {
-            HashSet<ThingCategoryDef> set = new HashSet<ThingCategoryDef>();
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            List<OuterrealmEntry> all = gs != null ? gs.EntriesForReading : null;
-            if (all == null)
-            {
-                return set;
-            }
+            validCategories.Clear();
+            categoryCounts.Clear();
+            List<OuterrealmEntry> all = gs.EntriesForReading;
             for (int i = 0; i < all.Count; i++)
             {
                 OuterrealmEntry e = all[i];
@@ -216,7 +228,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     continue;
                 }
                 ThingDef def = e.Key.Def;
-                if (def == null || def.thingCategories == null)
+                if (def.thingCategories == null)
                 {
                     continue;
                 }
@@ -225,12 +237,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     ThingCategoryDef c = def.thingCategories[ci];
                     while (c != null)
                     {
-                        set.Add(c);
+                        validCategories.Add(c);
+                        long prev;
+                        categoryCounts.TryGetValue(c, out prev);
+                        categoryCounts[c] = prev + e.Count;
                         c = c.parent;
                     }
                 }
             }
-            return set;
         }
 
         /// <summary>递归计算分类树的总虚拟高度（用于滚动视图，参考万能制造机）。</summary>

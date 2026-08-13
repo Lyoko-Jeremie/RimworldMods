@@ -12,22 +12,26 @@ namespace FullyAutomaticOmniCrafter
     /// <summary>
     /// 原版风格树状菜单，用于单选 ThingCategoryDef。
     /// 继承自游戏原版 Listing_Tree，复用其展开/折叠小部件与缩进逻辑。
+    /// 可选传入 counts 字典：非空时在每项右侧右对齐显示该分类（含子分类）的条目总数。
     /// </summary>
     public class Listing_TreeCategorySelect : Listing_Tree
     {
         private readonly ThingCategoryDef _selected;
         private readonly Action<ThingCategoryDef> _onSelect;
         private readonly HashSet<ThingCategoryDef> _validCats;
+        private readonly Dictionary<ThingCategoryDef, long> _counts;
         private Rect _visibleRect;
 
         public Listing_TreeCategorySelect(
             HashSet<ThingCategoryDef> validCats,
             ThingCategoryDef selected,
-            Action<ThingCategoryDef> onSelect)
+            Action<ThingCategoryDef> onSelect,
+            Dictionary<ThingCategoryDef, long> counts = null)
         {
             _validCats = validCats;
             _selected = selected;
             _onSelect = onSelect;
+            _counts = counts;
             lineHeight = 24f;
         }
 
@@ -64,7 +68,25 @@ namespace FullyAutomaticOmniCrafter
                 if (hasChildren)
                     OpenCloseWidget(node, indentLevel, openMask);
 
-                LabelLeft(node.LabelCap, node.catDef.description, indentLevel);
+                // 可选数量显示：右侧右对齐，label 通过 widthOffset 预留空间避免重叠
+                string countText = null;
+                float countWidth = 0f;
+                long cnt;
+                if (_counts != null && _counts.TryGetValue(node.catDef, out cnt) && cnt > 0)
+                {
+                    countText = cnt.ToString("N0");
+                    countWidth = Text.CalcSize(countText).x + 4f;
+                }
+                LabelLeft(node.LabelCap, node.catDef.description, indentLevel, countText != null ? -countWidth : 0f);
+                if (countText != null)
+                {
+                    Rect countRect = new Rect(ColumnWidth - countWidth, curY, countWidth, lineHeight);
+                    Text.Anchor = TextAnchor.MiddleRight;
+                    GUI.color = new Color(0.7f, 0.7f, 0.7f);
+                    Widgets.Label(countRect, countText);
+                    Text.Anchor = TextAnchor.UpperLeft;
+                    GUI.color = Color.white;
+                }
 
                 // 点击整行选中该分类
                 float xMin = XAtIndentLevel(indentLevel);
