@@ -438,7 +438,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Thing dropped;
                 // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
                 bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped, null, c => !IsVaultCell(c, map));
-                int leftover = t.stackCount; // 放置后未落地的剩余（TryDropSpawn 不查 stackLimit，剩余留在原 thing 中，§6.5）
+                // 1.6 放置语义：take ≤ stackLimit 时 TryDropSpawn 成功会把整个堆 Spawn（t.Spawned）
+                // 或并入已有堆（t 被吸收销毁）——此时 t.stackCount 不再代表"未放置剩余"，
+                // 不能再用它判定 leftover（否则会把刚落地的物品经 Deposit 收回，弹出永远失败）。
+                // 仅放置失败（placed=false）或防御性部分放置（t 未 Spawned 且未销毁）时才需退回全局。
+                int leftover = 0;
+                if (!placed || (t != null && !t.Spawned && !t.Destroyed))
+                {
+                    leftover = t != null && !t.Destroyed ? t.stackCount : 0;
+                }
                 if (leftover > 0)
                 {
                     // 全部或部分未放置：退回全局，并恢复 Remaining（该部分仍待弹出，避免"弹出静默失败"）

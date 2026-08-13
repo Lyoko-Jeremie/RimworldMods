@@ -158,19 +158,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     break;
                 }
-                remaining -= t.stackCount;
                 Thing dropped;
                 // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
+                // 1.6 放置语义：take ≤ stackLimit 时 TryDropSpawn 成功会把整个堆 Spawn（t.Spawned）
+                // 或并入已有堆（t 被吸收销毁）——t.stackCount 不代表"未放置剩余"。
+                // 仅放置失败 / 防御性部分放置时才退回全局（remaining 不变 → 循环重试，safety 保护）。
                 if (GenDrop.TryDropSpawn(t, vault.InteractionCell, vault.Map, ThingPlaceMode.Near, out dropped, null, c => !GameComponent_OuterrealmStorage.IsVaultCell(c, vault.Map)))
                 {
-                    if (t.stackCount > 0)
+                    remaining -= take; // 成功：整个堆落地（或并入已有堆 / destroyOnDrop 销毁）
+                    if (t != null && !t.Spawned && !t.Destroyed)
                     {
-                        remaining += t.stackCount; // 放置未完全（Near 模式极少），剩余退回待处理
+                        // 防御：部分放置残余退回全局，remaining 恢复待重试（take ≤ stackLimit 时不会发生）
+                        gs.Deposit(t);
+                        remaining += t.stackCount;
                     }
                 }
                 else
                 {
-                    gs.Deposit(t); // 放置失败退回全局层
+                    gs.Deposit(t); // 放置失败退回全局层（remaining 不变，下次循环重试）
                 }
             }
             vault.view.SyncKey(entry.Key); // 即时刷新本建筑视图副本数字（§3.3 补回到变更点）
