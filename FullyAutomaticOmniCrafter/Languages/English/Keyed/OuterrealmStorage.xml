@@ -46,4 +46,5 @@
 
   <!-- Storage manager: eject everything -->
   <OuterrealmStorageManager_EjectAllEntries>Eject everything</OuterrealmStorageManager_EjectAllEntries>
+  <OuterrealmStorageManager_AllCategories>All categories</OuterrealmStorageManager_AllCategories>
 </LanguageData>

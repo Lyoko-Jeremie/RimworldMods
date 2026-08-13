@@ -28,9 +28,9 @@
     <graphicData>
       <texPath>Things/Building/Furniture/Shelf</texPath>
       <graphicClass>Graphic_Multi</graphicClass>
-      <drawSize>(3,2)</drawSize>
+      <drawSize>(2,1)</drawSize>
     </graphicData>
-    <size>(2,2)</size>
+    <size>(2,1)</size>
 
     <!-- 布局 -->
     <altitudeLayer>Building</altitudeLayer>

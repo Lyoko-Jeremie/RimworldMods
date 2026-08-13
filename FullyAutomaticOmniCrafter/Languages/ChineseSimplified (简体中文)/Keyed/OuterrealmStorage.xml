@@ -46,4 +46,7 @@
 
   <!-- 存储管理器：全部取出 -->
   <OuterrealmStorageManager_EjectAllEntries>全部取出所有物品</OuterrealmStorageManager_EjectAllEntries>
+
+  <!-- 存储管理器：分类树 -->
+  <OuterrealmStorageManager_AllCategories>全部分类</OuterrealmStorageManager_AllCategories>
 </LanguageData>
