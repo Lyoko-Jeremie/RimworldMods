@@ -37,6 +37,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>已注册的建筑实例（SpawnSetup 注册 / DeSpawn 注销）。</summary>
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
 
+        /// <summary>帧末微批同步用缓存列表（§3.3 实时同步方案 B：复用避免每帧分配）。</summary>
+        private readonly List<OuterrealmEntryKey> tmpSyncKeys = new List<OuterrealmEntryKey>();
+
         // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
         private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
 
@@ -322,13 +325,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>读取窗口内全部变更 key（不清空；各建筑独立消费）。</summary>
-        public void ReadChangeLog(List<OuterrealmEntryKey> outList)
-        {
-            outList.Clear();
-            outList.AddRange(changeLog);
-        }
-
         // ── 建筑注册 ────────────────────────────────────────────────────────────
 
         public void RegisterVault(Building_OuterrealmVault vault)
@@ -404,79 +400,133 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public override void GameComponentTick()
         {
             base.GameComponentTick();
-            if (ejectQueue.Count == 0)
+            if (ejectQueue.Count > 0)
             {
-                return;
-            }
-            int spawnedThisTick = 0;
-            for (int i = ejectQueue.Count - 1; i >= 0 && spawnedThisTick < 4; i--)
-            {
-                VaultEjectJob job = ejectQueue[i];
-                if (job.MapIndex < 0 || job.MapIndex >= Find.Maps.Count || Find.Maps[job.MapIndex] == null)
+                int spawnedThisTick = 0;
+                for (int i = ejectQueue.Count - 1; i >= 0 && spawnedThisTick < 4; i--)
                 {
-                    ejectQueue.RemoveAt(i);
-                    continue;
-                }
-                Map map = Find.Maps[job.MapIndex];
-                OuterrealmEntry entry = FindEntry(job.Key);
-                if (entry == null || entry.Count <= 0)
-                {
-                    ejectQueue.RemoveAt(i);
-                    continue;
-                }
-                int stackLimit = entry.Proto != null && entry.Proto.def != null ? entry.Proto.def.stackLimit : 75;
-                int take = (int)Math.Min(job.Remaining, Math.Min((long)stackLimit, entry.Count));
-                take = Math.Min(take, int.MaxValue);
-                if (take <= 0)
-                {
-                    ejectQueue.RemoveAt(i);
-                    continue;
-                }
-                Thing t = Withdraw(entry, take);
-                if (t == null)
-                {
-                    ejectQueue.RemoveAt(i);
-                    continue;
-                }
-                int withdrawn = t.stackCount;
-                job.Remaining -= withdrawn;
-                MarkEjected(t); // 弹出防回吸：落地后短暂不被本系统建筑自动吸回（§6.4）
-                Thing dropped;
-                // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
-                bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped, null, c => !IsVaultCell(c, map));
-                // 1.6 放置语义：take ≤ stackLimit 时 TryDropSpawn 成功会把整个堆 Spawn（t.Spawned）
-                // 或并入已有堆（t 被吸收销毁）——此时 t.stackCount 不再代表"未放置剩余"，
-                // 不能再用它判定 leftover（否则会把刚落地的物品经 Deposit 收回，弹出永远失败）。
-                // 仅放置失败（placed=false）或防御性部分放置（t 未 Spawned 且未销毁）时才需退回全局。
-                int leftover = 0;
-                if (!placed || (t != null && !t.Spawned && !t.Destroyed))
-                {
-                    leftover = t != null && !t.Destroyed ? t.stackCount : 0;
-                }
-                if (leftover > 0)
-                {
-                    // 全部或部分未放置：退回全局，并恢复 Remaining（该部分仍待弹出，避免"弹出静默失败"）
-                    Deposit(t);
-                    job.Remaining += leftover;
-                    job.FailCount++;
-                    if (job.FailCount > 20)
+                    VaultEjectJob job = ejectQueue[i];
+                    if (job.MapIndex < 0 || job.MapIndex >= Find.Maps.Count || Find.Maps[job.MapIndex] == null)
                     {
-                        // 连续失败（如目标实体状态异常）：放弃任务防死循环刷屏，物品保留在全局层
-                        Log.Warning("[OuterrealmStorage] 弹出任务连续失败已放弃: " + job.Key);
                         ejectQueue.RemoveAt(i);
                         continue;
                     }
+                    Map map = Find.Maps[job.MapIndex];
+                    OuterrealmEntry entry = FindEntry(job.Key);
+                    if (entry == null || entry.Count <= 0)
+                    {
+                        ejectQueue.RemoveAt(i);
+                        continue;
+                    }
+                    int stackLimit = entry.Proto != null && entry.Proto.def != null ? entry.Proto.def.stackLimit : 75;
+                    int take = (int)Math.Min(job.Remaining, Math.Min((long)stackLimit, entry.Count));
+                    take = Math.Min(take, int.MaxValue);
+                    if (take <= 0)
+                    {
+                        ejectQueue.RemoveAt(i);
+                        continue;
+                    }
+                    Thing t = Withdraw(entry, take);
+                    if (t == null)
+                    {
+                        ejectQueue.RemoveAt(i);
+                        continue;
+                    }
+                    int withdrawn = t.stackCount;
+                    job.Remaining -= withdrawn;
+                    MarkEjected(t); // 弹出防回吸：落地后短暂不被本系统建筑自动吸回（§6.4）
+                    Thing dropped;
+                    // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
+                    bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped, null, c => !IsVaultCell(c, map));
+                    // 1.6 放置语义：take ≤ stackLimit 时 TryDropSpawn 成功会把整个堆 Spawn（t.Spawned）
+                    // 或并入已有堆（t 被吸收销毁）——此时 t.stackCount 不再代表"未放置剩余"，
+                    // 不能再用它判定 leftover（否则会把刚落地的物品经 Deposit 收回，弹出永远失败）。
+                    // 仅放置失败（placed=false）或防御性部分放置（t 未 Spawned 且未销毁）时才需退回全局。
+                    int leftover = 0;
+                    if (!placed || (t != null && !t.Spawned && !t.Destroyed))
+                    {
+                        leftover = t != null && !t.Destroyed ? t.stackCount : 0;
+                    }
+                    if (leftover > 0)
+                    {
+                        // 全部或部分未放置：退回全局，并恢复 Remaining（该部分仍待弹出，避免"弹出静默失败"）
+                        Deposit(t);
+                        job.Remaining += leftover;
+                        job.FailCount++;
+                        if (job.FailCount > 20)
+                        {
+                            // 连续失败（如目标实体状态异常）：放弃任务防死循环刷屏，物品保留在全局层
+                            Log.Warning("[OuterrealmStorage] 弹出任务连续失败已放弃: " + job.Key);
+                            ejectQueue.RemoveAt(i);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        job.FailCount = 0;
+                    }
+                    if (job.Remaining <= 0)
+                    {
+                        ejectQueue.RemoveAt(i);
+                    }
+                    spawnedThisTick++;
                 }
-                else
-                {
-                    job.FailCount = 0;
-                }
-                if (job.Remaining <= 0)
-                {
-                    ejectQueue.RemoveAt(i);
-                }
-                spawnedThisTick++;
+            } // 弹出队列处理块（§6.4）
+            SyncViewsToChangeLog(); // 帧末微批（§3.3 实时同步方案 B）
+        }
+
+        /// <summary>
+        /// 帧末微批（§3.3 实时同步方案 B）：每帧统一消费变更日志并同步所有 vault 视图，
+        /// 替代各建筑 60 tick 懒同步（Building_OuterrealmVault.Tick 已相应精简）。
+        /// 视图滞后 ≤1 tick，消除"条目已空但副本残留 60 tick"窗口（OptimizeApparel 等
+        /// 选中空条目副本 → 预留失败刷屏的根因）。
+        /// 空帧 O(1) 短路（changeLog.Count == 0）；有变更帧 O(变更 key × vault 数 × SyncKey)，
+        /// SyncKey 经副本索引（方案 E）为 O(1)。统一消费后清空日志——所有 vault 同帧消费，
+        /// 日志不再需要多消费者保留（原 60 tick 各建筑独立消费的机制随之移除）。
+        /// </summary>
+        private void SyncViewsToChangeLog()
+        {
+            if (vaults.Count == 0)
+            {
+                return;
             }
+            if (changeLogOverflow)
+            {
+                // 变更窗口溢出：增量会丢变更，全量重建兜底（AddToChangeLog 溢出后首个新变更会复位溢出标记）
+                for (int i = 0; i < vaults.Count; i++)
+                {
+                    Building_OuterrealmVault v = vaults[i];
+                    if (v != null && v.view != null)
+                    {
+                        v.view.RebuildView();
+                    }
+                }
+                changeLogOverflow = false;
+                changeLog.Clear();
+                changeLogSet.Clear();
+                return;
+            }
+            if (changeLog.Count == 0)
+            {
+                return;
+            }
+            tmpSyncKeys.Clear();
+            tmpSyncKeys.AddRange(changeLog);
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v == null || v.view == null)
+                {
+                    continue;
+                }
+                for (int j = 0; j < tmpSyncKeys.Count; j++)
+                {
+                    v.view.SyncKey(tmpSyncKeys[j]);
+                }
+            }
+            // 统一消费：清空（所有 vault 已同步完毕）
+            changeLog.Clear();
+            changeLogSet.Clear();
         }
 
         /// <summary>弹出锚点：优先该地图上任一 Vault 的交互格，其次地图中心。</summary>

@@ -54,10 +54,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ── 设置签名（§3.3：filter 摘要 + 优先级；覆盖 StorageGroup 通知断链） ──
         private string cachedSettingsSignature;
 
-        /// <summary>建筑上次同步的全局版本号（§3.3 懒同步）。</summary>
+        /// <summary>建筑上次同步的全局版本号（§3.3 懒同步，随帧末微批迁移后仅作状态记录）。</summary>
         private int lastSeenVersion;
-
-        private readonly List<OuterrealmEntryKey> tmpChangeKeys = new List<OuterrealmEntryKey>();
 
         // ── 构造 / 生命周期 ────────────────────────────────────────────────────
 
@@ -134,7 +132,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             base.Notify_MinifiedThingAboutToBeDestroyed(mode);
         }
 
-        // ── 60 tick 视图同步（§3.3 变更驱动） ──────────────────────────────────
+        // ── 视图同步（§3.3 实时同步方案 B：内容由全局层帧末微批统一驱动） ──
 
         protected override void Tick()
         {
@@ -148,24 +146,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            // §3.3 实时同步方案 B：视图内容同步已由 GameComponent_OuterrealmStorage 的帧末微批
+            // 统一驱动（滞后 ≤1 tick，空条目副本残留窗口消除），此处仅处理需全量重建的低频条件
+            // （filter/优先级签名变化；变更日志溢出时微批已全量重建，此分支为兜底），
+            // 并维持 60 tick 的放行条目清理（§6.3）。
             if (gs.NeedFullRebuild || HasSettingsSignatureChanged())
             {
                 view.RebuildView();
                 lastSeenVersion = gs.Version;
-                CleanupReleasedKeys();
-                return;
             }
-            if (gs.Version == lastSeenVersion)
-            {
-                return;
-            }
-            // 增量：只处理变更日志中的 key（O(变化量)，与 L1 总量解耦）
-            gs.ReadChangeLog(tmpChangeKeys);
-            for (int i = 0; i < tmpChangeKeys.Count; i++)
-            {
-                view.SyncKey(tmpChangeKeys[i]);
-            }
-            lastSeenVersion = gs.Version;
             CleanupReleasedKeys(); // 条目搬空后移除放行项（§6.3）
         }
 

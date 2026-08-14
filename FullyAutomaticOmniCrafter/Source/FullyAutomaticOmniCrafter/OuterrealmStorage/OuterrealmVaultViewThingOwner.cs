@@ -32,6 +32,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>TryAbsorbStack prefix 记录的吸收量（回滚补偿；§3.3）。</summary>
         public int LastAbsorbAmount;
 
+        /// <summary>副本查找索引（§3.3 实时同步方案 E）：key → 副本，FindCopy 由线性扫描降为 O(1)。
+        /// 不序列化——读档后索引为空，由 SpawnSetup 的全量 RebuildView 末尾 RebuildIndex 重建；
+        /// FindCopy 索引 miss 时回退线性扫描并补索引（自愈）。
+        /// 维护约定：增 = EnsureCopyFor 物化处 IndexAdd（RebuildView 由 RebuildIndex 统一重建）；
+        /// 删 = override Remove(Thing) 统一处理（所有视图移除路径均经 Remove）。</summary>
+        private readonly Dictionary<OuterrealmEntryKey, Thing> copyIndex = new Dictionary<OuterrealmEntryKey, Thing>();
+
         public OuterrealmVaultViewThingOwner(Building_OuterrealmVault vault)
             : base(vault, false, LookMode.Deep, false)
         {
@@ -216,15 +223,59 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public Thing FindCopy(OuterrealmEntryKey key)
         {
+            Thing copy;
+            if (copyIndex.TryGetValue(key, out copy))
+            {
+                return copy;
+            }
+            // 索引 miss（读档初期 / 防御性回退）：线性扫描并补索引（自愈）。
             List<Thing> list = InnerListForReading;
             for (int i = 0; i < list.Count; i++)
             {
                 if (OuterrealmEntryKey.From(list[i]) == key)
                 {
+                    copyIndex[key] = list[i];
                     return list[i];
                 }
             }
             return null;
+        }
+
+        private void IndexAdd(Thing copy)
+        {
+            copyIndex[OuterrealmEntryKey.From(copy)] = copy;
+        }
+
+        private void IndexRemove(Thing copy)
+        {
+            if (copy != null)
+            {
+                copyIndex.Remove(OuterrealmEntryKey.From(copy));
+            }
+        }
+
+        /// <summary>从当前视图列表重建索引（RebuildView 末尾调用；读档后索引为空，全量重建必须重建索引）。</summary>
+        private void RebuildIndex()
+        {
+            copyIndex.Clear();
+            List<Thing> list = InnerListForReading;
+            for (int i = 0; i < list.Count; i++)
+            {
+                copyIndex[OuterrealmEntryKey.From(list[i])] = list[i];
+            }
+        }
+
+        /// <summary>统一移除入口：基类行为（holdingOwner 置 null、Notify_ItemRemoved 事件）保留，同步维护索引。
+        /// 视图内一切副本移除路径（SyncKey/RebuildView/ClearView/DisposeOrphanCopy/TryDisposeCopyIfObsolete/
+        /// PostSplitOff/RemoveApparel）均经此处，索引不会因遗漏而过期。</summary>
+        public override bool Remove(Thing item)
+        {
+            bool removed = base.Remove(item);
+            if (removed)
+            {
+                IndexRemove(item);
+            }
+            return removed;
         }
 
         /// <summary>确保本建筑视图包含该条目的副本（物化或更新数字）。filter 不允许则不做。</summary>
@@ -254,7 +305,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
             // 标准加入（canMerge=false：视图内同 key 恒单副本，避免合并触发 TryAbsorbStack 补回全局的误判）；
             // 触发 Notify_ItemAdded → 建筑 hook → listerHaulables 单物品通知（锁定条目经 #6 短路不加）。
-            base.TryAdd(newCopy, false);
+            if (base.TryAdd(newCopy, false))
+            {
+                IndexAdd(newCopy);
+            }
         }
 
         /// <summary>增量同步单个 key（§3.3 方案 A）：filter 允许则物化/更新，禁止或条目消失则移除。</summary>
@@ -364,6 +418,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 SuppressRemovalSync = false;
             }
+            RebuildIndex(); // 全量重建后统一重建索引（覆盖保留副本与新增副本，读档后索引为空必须重建）
             if (Vault.Spawned)
             {
                 Vault.MapHeld.listerHaulables.Notify_HaulSourceChanged(Vault);
