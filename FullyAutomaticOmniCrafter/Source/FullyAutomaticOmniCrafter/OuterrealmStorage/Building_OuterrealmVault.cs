@@ -51,9 +51,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private string cachedInspectString;
         private int cachedInspectVersion = -1;
 
-        // ── 设置签名（§3.3：filter 摘要 + 优先级；覆盖 StorageGroup 通知断链） ──
-        private string cachedSettingsSignature;
-
         /// <summary>建筑上次同步的全局版本号（§3.3 懒同步，随帧末微批迁移后仅作状态记录）。</summary>
         private int lastSeenVersion;
 
@@ -91,7 +88,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 gs.RegisterVault(this);
                 view.RebuildView(); // 初始化/重连：全量重建（§3.3）
                 lastSeenVersion = gs.Version;
-                cachedSettingsSignature = BuildSettingsSignature();
             }
         }
 
@@ -146,33 +142,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            // §3.3 实时同步方案 B：视图内容同步已由 GameComponent_OuterrealmStorage 的帧末微批
-            // 统一驱动（滞后 ≤1 tick，空条目副本残留窗口消除），此处仅处理需全量重建的低频条件
-            // （filter/优先级签名变化；变更日志溢出时微批已全量重建，此分支为兜底），
-            // 并维持 60 tick 的放行条目清理（§6.3）。
-            if (gs.NeedFullRebuild || HasSettingsSignatureChanged())
+            // §3.3 事件驱动方案：视图内容同步由 GameComponent_OuterrealmStorage 的帧末微批统一驱动，
+            // 设置变化（含 StorageGroup 组设置，经 Patch_StorageGroup_Notify_SettingsChanged 补链）由
+            // Notify_SettingsChanged 事件即时触发 RebuildView——无需轮询。此处仅保留变更日志溢出的
+            // 全量重建兜底与 60 tick 的放行条目清理（§6.3）。
+            if (gs.NeedFullRebuild)
             {
                 view.RebuildView();
                 lastSeenVersion = gs.Version;
             }
             CleanupReleasedKeys(); // 条目搬空后移除放行项（§6.3）
-        }
-
-        private bool HasSettingsSignatureChanged()
-        {
-            string sig = BuildSettingsSignature();
-            if (sig != cachedSettingsSignature)
-            {
-                cachedSettingsSignature = sig;
-                return true;
-            }
-            return false;
-        }
-
-        private string BuildSettingsSignature()
-        {
-            StorageSettings s = GetStoreSettings();
-            return (s != null && s.filter != null ? s.filter.ToString() : "null") + "|" + (s != null ? (int)s.Priority : -1);
         }
 
         // ── IStoreSettingsParent / IHaulDestination / IHaulSource ───────────────
@@ -197,7 +176,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
             MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
-            // filter/优先级变化 → 视图按新 filter 重建（§4 表）；60 tick 签名检查同步覆盖组设置变化
+            // filter/优先级变化 → 视图按新 filter 重建（§4 表）；组设置变化经
+            // Patch_StorageGroup_Notify_SettingsChanged 补链后同样到达此处（事件驱动，无需轮询）
             view?.RebuildView();
             lastSeenVersion = GameComponent_OuterrealmStorage.Instance != null ? GameComponent_OuterrealmStorage.Instance.Version : lastSeenVersion;
         }

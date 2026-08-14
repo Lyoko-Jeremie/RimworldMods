@@ -133,6 +133,32 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §3.3 设置变更事件补链：StorageGroup.Notify_SettingsChanged 原版只通知 ISlotGroupParent 成员 ──
+    // （Building_Storage / Zone_Stockpile 等有格子的存储）。无限容量容器（本 Mod vault 等非
+    // ISlotGroupParent 成员）收不到组设置变更事件——此前靠 60 tick 签名轮询兜底（且组 filter
+    // 内容变化因 ToString=Summary 本就漏检）。补链：额外通知非 ISlotGroupParent 的
+    // IStoreSettingsParent 成员（语义与原版本意一致），使 vault 的设置变更检测完全事件驱动，
+    // 从而移除 60 tick 指纹轮询（Building_OuterrealmVault 已同步精简）。
+    // 前提：组 settings 的一切修改最终都触发本方法——filter 内容经
+    // ThingFilter.settingsChangedCallback → StorageSettings.TryNotifyChanged；Priority 经
+    // ITab_Storage 的 SettingsOwner.Notify_SettingsChanged（组场景返回 Group）。
+    [HarmonyPatch(typeof(StorageGroup), "Notify_SettingsChanged")]
+    internal static class Patch_StorageGroup_Notify_SettingsChanged
+    {
+        private static void Postfix(StorageGroup __instance)
+        {
+            List<IStorageGroupMember> members = __instance.members;
+            for (int i = 0; i < members.Count; i++)
+            {
+                IStorageGroupMember m = members[i];
+                if (m is IStoreSettingsParent settingsParent && !(m is ISlotGroupParent))
+                {
+                    settingsParent.Notify_SettingsChanged();
+                }
+            }
+        }
+    }
+
     // ── §5.2 #6：ListerHaulables 锁定短路（必需，默认启用） ──
     // 视图内条目 Accepts==true → 恒不 haulable（锁定，O(1) 短路，跳过 IsInValidBestStorage 全图搜索）；
     // 放行条目（Accepts==false）绝不短路（否则 §6.3 移出机制失效）。同时消除 M10 无限搬运循环。
