@@ -518,6 +518,33 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>
+        /// 批量清理孤儿副本（§3.3 兜底）：移除视图内所有条目已空（e==null / Count&lt;=0）的残留副本。
+        /// 正常路径由 Subtract 取空 → NotifyEntriesEmptied → SyncKey 即时清理；本方法用于
+        /// JobGiver_OptimizeApparel 运行前（见 Patch_JobGiver_OptimizeApparel_TryGiveJob），把
+        /// "枚举 GetDirectlyHeldThings 与条目取空之间的竞态残留"挡在 Wear job 生成之前——
+        /// 否则空条目副本被选中 → StartJob 预留失败 → 原版 "TryMakePreToilReservations() returned
+        /// false" 警告。语义与 DisposeOrphanCopy 一致：不检查 IsReserved，非取出语义不扣全局。
+        /// </summary>
+        public void CleanOrphanCopies()
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            List<Thing> list = InnerListForReading;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                Thing copy = list[i];
+                OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+                if (e == null || e.Count <= 0)
+                {
+                    DisposeOrphanCopy(copy);
+                }
+            }
+        }
+
         private bool IsReserved(Thing copy)
         {
             Map map = copy.MapHeld;

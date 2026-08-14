@@ -590,4 +590,58 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return true;
         }
     }
+
+    // ── 穿戴候选前置清理：JobGiver_OptimizeApparel 运行前移除孤儿副本（§3.3 兜底） ──
+    // 原版 JobGiver_OptimizeApparel 枚举所有 HaulSource 的 GetDirectlyHeldThings()（含本系统
+    // vault 视图副本）生成 Wear job，且不检查条目数量——空条目残留副本被选中 → StartJob 预留
+    // 失败 → 原版 "TryMakePreToilReservations() returned false" 警告。正常路径已由
+    // Subtract 取空 → NotifyEntriesEmptied → SyncKey 即时清理；本 prefix 兜底"枚举与取空之间"
+    // 的竞态残留窗口：先清理本 pawn 地图上所有 vault 的孤儿副本，候选列表即不含空条目副本，
+    // 从源头消除该警告（Reserve 的孤儿分支保留为执行期兜底）。
+    [HarmonyPatch(typeof(JobGiver_OptimizeApparel), "TryGiveJob")]
+    internal static class Patch_JobGiver_OptimizeApparel_TryGiveJob
+    {
+        private static void Prefix(Pawn pawn)
+        {
+            if (pawn == null || pawn.Map == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v != null && v.Spawned && v.Map == pawn.Map && v.view != null)
+                {
+                    v.view.CleanOrphanCopies();
+                }
+            }
+        }
+    }
+
+    // ── ITab_ContentsBase.IsVisible null 防护（修复 vanilla 通病 NRE 刷屏） ──
+    // 原版 IsVisible => this.SelThing.Faction == Faction.OfPlayer，其中 SelThing =
+    // Selector.SingleSelectedThing：MainTabWindow_Inspect 打开期间 selection 被清空/切换的帧
+    // （点击空白取消选择、多选非 Thing 等）会返回 null → null.Faction 直接 NRE，且
+    // UpdateTabs/PaneWidthFor/DoTabs 三处每帧调用导致刷屏。本系统 vault 的
+    // ITab_OuterrealmVaultContents 继承 ITab_ContentsBase，玩家管理 vault 时高频触发；
+    // prefix 短路 null 场景（无选中物时 Tab 本应隐藏，语义不变）。
+    [HarmonyPatch(typeof(ITab_ContentsBase), "IsVisible", MethodType.Getter)]
+    internal static class Patch_ITab_ContentsBase_IsVisible
+    {
+        private static bool Prefix(ref bool __result)
+        {
+            if (Find.Selector.SingleSelectedThing == null)
+            {
+                __result = false;
+                return false;
+            }
+            return true;
+        }
+    }
 }
