@@ -22,9 +22,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private const string TypeName = "BetterArchitect.ArchitectCategoryTab_DesignationTabOnGUI_Patch";
 
-        /// <summary>复用列表：BetterArchitect 仅在调用点立即消费（.Any()/.Count），不会跨帧持有引用。</summary>
-        private static readonly List<Thing> VaultSentinel = new List<Thing>();
-
         public static bool TryPatch(Harmony harmony)
         {
             if (harmony == null)
@@ -83,9 +80,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return list;
             }
-            VaultSentinel.Clear();
-            VaultSentinel.Add(copy);
-            return VaultSentinel;
+            // 仅在 UI 主线程、且“地面无此材料但 vault 有”时分配（低频），返回后即被 .Any()/.Count 消费；
+            // 不共享可变静态列表，避免多线程环境下的数据竞争。
+            return new List<Thing> { copy };
         }
 
         private static Thing FindVaultCopy(GameComponent_OuterrealmStorage gs, Map map, ThingDef def)
