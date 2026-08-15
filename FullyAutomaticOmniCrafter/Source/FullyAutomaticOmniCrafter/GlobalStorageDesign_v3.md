@@ -60,8 +60,9 @@ public void Add(Thing t)
 `ListerThings.ThingsOfDef` / `ThingsInGroup` 都收敛到 `ThingsMatching`，而 `ThingsMatching` 读的就是
 `listsByDef` / `listsByGroup` 这两个索引。
 
-> 结论：**把副本 `Add` 进 `map.listerThings`，但不 `Register` 进 `map.thingGrid`，即可让“查询”看到它、
-> 而“渲染/美观/爆炸/点击”看不到它。**
+> 结论：**把副本 `Add` 进 `map.listerThings`（进 `listsByDef` + 所有 `listsByGroup`），但不 `Register` 进 `map.thingGrid`，
+> 并在 `Map.ExposeData` 存档时临时摘除、存档后加回。这样“按 def / 按 group 的查询”都能看到副本，
+> 而“渲染/美观/爆炸/点击/存档”都不感知它。**
 
 ---
 
@@ -71,16 +72,20 @@ public void Add(Thing t)
 
 对 vault 视图副本维护“半 Spawned”状态：
 
-- **查询可见**：`map.listerThings.ThingsOfDef/ThingsMatching`、`GenClosest` 全局搜索能找到副本。
-- **物理隐形**：不进 `thingGrid`、不进 `dynamicDrawManager`、不进 region lister。
+- **按 def / 按 group 查询均可见**：进 `listsByDef` + 所有 `listsByGroup`，`ThingsOfDef` / `ThingsInGroup` / `GenClosest` 全局兜底都能找到副本。
+- **物理隐形**：不进 `thingGrid`、不进 `dynamicDrawManager`、不进 region lister（渲染/美观/爆炸/点击不感知）。
+- **存档隐形（动态摘除）**：`Map.ExposeData` 存档时临时从 `listerThings` 摘除，存档后加回，避免被 `AllThings` 遍历保存。
 - **可寻路**：寻路目标是副本的 `PositionHeld`（经 `ParentHolder` 解析到 vault 建筑位置）。
 - **拿取即物化**：任何路径走到副本并执行 `SplitOff` / `TryStartCarry` 时，命中已有的物化 patch。
 
 ### 3.2 三个改动点
 
-1. **维护副本的查询索引**
+1. **维护副本的查询索引（进 `listsByDef` + 所有 `listsByGroup`）**
    - 物化副本处（`OuterrealmVaultViewThingOwner.EnsureCopyFor` / `RebuildView` 中 `base.TryAdd` 成功处）
-     调用 `Vault.MapHeld.listerThings.Add(newCopy)`。
+     调用 `Vault.MapHeld.listerThings.Add(newCopy)`（走原版 Add，进 `listsByDef` + 所有 group）。
+   - 新增 `Patch_Map_ExposeData`：`Saving` 时 Prefix 把本地图所有 vault 副本从 `listerThings` 移除（不进 `AllThings`，
+     不被存档），Postfix 加回（Harmony 的 Postfix 在 finally 语义下执行，异常时也会恢复）。
+   - 新增 `Patch_Thing_DrawGUIOverlay` + `Patch_ThingWithComps_DrawGUIOverlay`：屏蔽副本的堆叠数字 overlay。
    - 统一移除处（`OuterrealmVaultViewThingOwner.Remove(Thing)` 里）调用 `Vault.MapHeld.listerThings.Remove(item)`。
    - 副本 `Spawned == false`，因此 `Thing.Position` 的 setter 只改写 `positionInt`、不触发 `thingGrid.Deregister/Register`；
      物化时将 `copy.positionInt` 设为 `Vault.InteractionCell`（保证任何直接读 `Position` 的代码不 NRE）。
@@ -91,6 +96,8 @@ public void Add(Thing t)
      会在 `listsByDef`/`listsByGroup` 产生重复项）。
    - `listerThings.Remove` 挂在 `Remove(Thing)` 统一入口，且必须在 `base.Remove` 之前执行；`ClearView`（DeSpawn / minify）
      逐个 `Remove` 时即自动清理索引，避免残留指向已 `Destroy` 副本的引用。
+   - `Patch_Map_ExposeData` 只处理 `Scribe.mode == Saving`，且按 `v.MapHeld == __instance` 过滤本地图 vault，
+     避免跨地图误摘/误加。
 
 2. **补齐 `ClosestThing_Global_Reachable` 的 Spawned 豁免（Postfix 兜底，非 Transpiler）**
    - `Verse/GenClosest.cs` 里两条路径对未 Spawned 物品的容忍度不一致：
@@ -124,17 +131,22 @@ public void Add(Thing t)
 
 | 系统 | 遍历来源 | 副本是否可见 | 结论 |
 |---|---|---|---|
-| `ThingsOfDef` / `ThingsMatching`（按 def/group 查询） | `listerThings` 索引 | ✅ 可见 | 目标行为 |
+| `ThingsOfDef` / `ThingsMatching(ForDef)`（按 def 查询） | `listsByDef` | ✅ 可见 | 目标行为 |
+| `ThingsInGroup` / `ThingsMatching(ForGroup)`（按 group 查询） | `listsByGroup` | ✅ 可见 | 目标行为（食物/药/毒品/书等） |
 | `GenClosest.ClosestThingReachable`（全局兜底） | `listerThings.ThingsMatching` | ✅ 可见 | 目标行为 |
+| 存档 `Map.ExposeData`（遍历 `AllThings` 保存） | `listerThings.AllThings` | ⏸ 存档时摘除 | **Patch 摘除后不被保存**（修复“读档后物品落地”） |
+| 堆叠数字 `ThingOverlays`（HasGUIOverlay） | `listerThings.ThingsInGroup(HasGUIOverlay)` | ✅ 可见 | 由 DrawGUIOverlay patch 屏蔽 |
 | 美观 `BeautyUtility` | `map.thingGrid.ThingsListAt(c)` | ❌ 不可见 | 无美观污染 |
 | 爆炸伤害 `DamageWorker` | `map.thingGrid` | ❌ 不可见 | 不会被炸 |
 | 爆炸 `Notify_Explosion` | region 的 `ListerThings.AllThings`（且判 `Spawned`） | ❌ 不可见 | 不受影响 |
 | 渲染（动态 / 静态网格） | `dynamicDrawManager.drawThings` / `thingGrid` | ❌ 不可见 | 不渲染 |
 | 点击选中 | `thingGrid.ThingsAt` | ❌ 不可见 | 不可选中 |
 
-> 依据：`RimWorld/BeautyUtility.cs` 使用 `map.thingGrid.ThingsListAt(c)`；`Verse/Explosion.cs` 的
+> 依据：`Map.ExposeData` 的 Saving 分支遍历 `listerThings.AllThings` 并 `Scribe_Deep.Look` 保存不可压缩 Thing——
+> 副本通过 `Patch_Map_ExposeData` 在 Saving 时被临时摘除，故不进 `AllThings`、不被保存。
+> `RimWorld/BeautyUtility.cs` 使用 `map.thingGrid.ThingsListAt(c)`；`Verse/Explosion.cs` 的
 > `RegionTraverser` 遍历 region `ListerThings.AllThings` 且 `if (allThings[index].Spawned)`，
-> 对物品的直接伤害走 `thingGrid`。副本不进 region lister、不进 thingGrid、未 `RegisterDrawable`，故三者均不受影响。
+> 对物品的直接伤害走 `thingGrid`。副本不进 region lister、不进 thingGrid、未 `RegisterDrawable`，故均不受影响。
 
 ---
 
@@ -145,13 +157,14 @@ public void Add(Thing t)
    region 数可能不足 30，导致 regionwise 遍历完全部 region 后提前终止而**不触发全局兜底**，从而偶尔找不到副本。
    这是原版对容器内物品的既有行为，非本方案新引入，但需评估是否需要额外处理。
 
-2. **`AllThings`（Everything group）**：副本进入 `listerThings` 的 `listsByGroup[Everything]` 后，
-   所有遍历 `AllThings` 的逻辑都会枚举到它。绝大多数此类逻辑会检查 `Spawned` 或依赖 `thingGrid`，
-   但需实测确认是否存在对 `AllThings` 中未 Spawned 物品做无差别操作的逻辑。
+2. **发狂破坏天然免疫（无需 patch）**：`TantrumMentalStateUtility.GetSmashableThingsNear` 遍历的是
+   **region lister**（`r.ListerThings.ThingsInGroup(HaulableEver)`），而副本不进 region lister（未 `RegisterInRegions`）；
+   且其 `CanSmash` 有硬性 `if (thing.Destroyed || !thing.Spawned || ...) return false;`。双重保障下，
+   副本不会被发狂 pawn 当作破坏目标。爆炸同理（region lister + thingGrid，副本均不在）。
 
-3. **group 归属**：副本的 `def` 决定其进入哪些 `ThingRequestGroup`（如 `HaulableEver`、`HaulableAlways` 等），
-   这些 group 被 haul 相关逻辑查询。需确认副本进入这些 group 后不会触发“把副本当作可搬运地面物品”的误判
-   （正常由 `listerHaulables` 系统门控，副本未 `Notify_Spawned`，预期不会进入 haulables，但需验证）。
+3. **存档/读档一致性（Patch_Map_ExposeData）**：副本进 `AllThings`，故必须由 patch 在 `Saving` 时摘除、存档后加回；
+   `Postfix` 走 finally 语义，异常时也会恢复。需验证：多地图存档时按 `v.MapHeld == __instance` 过滤正确、
+   读档后 `RebuildView` 重新物化并重建索引（`Remove` 统一入口保证无残留、无重复）。
 
 4. **读档时序**：副本索引在 `SpawnSetup → RebuildView` 阶段重建，需确保读档后 `listerThings` 的增删
    与视图生命周期严格同步（增在物化处、删在 `Remove` 统一入口），避免索引残留或重复。

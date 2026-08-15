@@ -1078,8 +1078,70 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
+    // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
+    // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
+    // 并被 Spawn 到 positionInt（InteractionCell）→ 物品出现在地上。
+    // 因此：Saving 时 Prefix 把本地图所有 vault 副本从 listerThings 移除，Postfix 加回（Harmony 的 Postfix
+    // 在 finally 语义下执行，原方法异常时也会恢复）。副本恢复后重新进入 listsByDef + 所有 group，
+    // 从而保留“按 group 查询（食物/药/毒品/书等）”的可见性。
+    [HarmonyPatch(typeof(Map), "ExposeData")]
+    internal static class Patch_Map_ExposeData
+    {
+        private static void Prefix(Map __instance, ref List<Thing> __state)
+        {
+            __state = null;
+            if (Scribe.mode != LoadSaveMode.Saving)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            __state = new List<Thing>();
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v == null || v.MapHeld != __instance || v.view == null)
+                {
+                    continue;
+                }
+                List<Thing> copies = v.view.InnerListForReading;
+                for (int j = 0; j < copies.Count; j++)
+                {
+                    Thing copy = copies[j];
+                    if (copy == null)
+                    {
+                        continue;
+                    }
+                    __state.Add(copy);
+                    __instance.listerThings.Remove(copy);
+                }
+            }
+        }
+
+        private static void Postfix(Map __instance, List<Thing> __state)
+        {
+            if (Scribe.mode != LoadSaveMode.Saving || __state == null)
+            {
+                return;
+            }
+            for (int i = 0; i < __state.Count; i++)
+            {
+                Thing copy = __state[i];
+                if (copy != null && !copy.Destroyed && copy.MapHeld == __instance)
+                {
+                    __instance.listerThings.Add(copy);
+                }
+            }
+        }
+    }
+
     // ── 半 Spawned 投影配套：屏蔽 vault 副本的堆叠数字 overlay ──
-    // 副本进入 listerThings 的 HasGUIOverlay group 后，ThingOverlays 会遍历到它并调用 DrawGUIOverlay，
+    // 副本进入 HasGUIOverlay group 后，ThingOverlays 会遍历到它并调用 DrawGUIOverlay，
     // 在副本 Position（InteractionCell）处绘制 x 数字，多个副本堆叠同一格形成数字堆叠。
     // 对 vault 视图副本短路 DrawGUIOverlay（覆盖 Thing 与 ThingWithComps 两类副本），避免绘制。
     [HarmonyPatch(typeof(Thing), "DrawGUIOverlay")]
