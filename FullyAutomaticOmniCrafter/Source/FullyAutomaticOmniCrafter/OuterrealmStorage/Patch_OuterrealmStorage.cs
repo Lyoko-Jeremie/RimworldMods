@@ -1078,6 +1078,28 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 半 Spawned 投影配套：屏蔽 vault 副本的堆叠数字 overlay ──
+    // 副本进入 listerThings 的 HasGUIOverlay group 后，ThingOverlays 会遍历到它并调用 DrawGUIOverlay，
+    // 在副本 Position（InteractionCell）处绘制 x 数字，多个副本堆叠同一格形成数字堆叠。
+    // 对 vault 视图副本短路 DrawGUIOverlay（覆盖 Thing 与 ThingWithComps 两类副本），避免绘制。
+    [HarmonyPatch(typeof(Thing), "DrawGUIOverlay")]
+    internal static class Patch_Thing_DrawGUIOverlay
+    {
+        private static bool Prefix(Thing __instance)
+        {
+            return !(__instance.holdingOwner is OuterrealmVaultViewThingOwner);
+        }
+    }
+
+    [HarmonyPatch(typeof(ThingWithComps), "DrawGUIOverlay")]
+    internal static class Patch_ThingWithComps_DrawGUIOverlay
+    {
+        private static bool Prefix(ThingWithComps __instance)
+        {
+            return !(__instance.holdingOwner is OuterrealmVaultViewThingOwner);
+        }
+    }
+
     // 计数：RecipeWorkerCounter.CountProducts（账单"已有数量"用全局量）。
     [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
     internal static class Patch_RecipeWorkerCounter_CountProducts
