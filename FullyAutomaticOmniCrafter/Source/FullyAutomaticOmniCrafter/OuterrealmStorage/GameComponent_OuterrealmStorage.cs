@@ -114,6 +114,48 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return entry != null ? entry.Count : 0L;
         }
 
+        /// <summary>该地图上是否存在已 Spawned 的超维存储仓（决定该地图能否访问全局存储内容）。</summary>
+        public bool HasVaultOnMap(Map map)
+        {
+            if (map == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v != null && v.Spawned && v.Map == map)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>全局层中指定 ThingDef 的总数量（仅统计 Proto 经 GetInnerIfMinified 后 def 匹配的条目，即原始资源类物品）。</summary>
+        public long TotalCountOf(ThingDef def)
+        {
+            if (def == null)
+            {
+                return 0L;
+            }
+            long total = 0L;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry e = entries[i];
+                if (e == null || e.Proto == null || e.Count <= 0)
+                {
+                    continue;
+                }
+                Thing inner = e.Proto.GetInnerIfMinified();
+                if (inner != null && inner.def == def)
+                {
+                    total += e.Count;
+                }
+            }
+            return total;
+        }
+
         /// <summary>全局层总条目数与总数量（InspectString 用）。</summary>
         public void GetSummary(out int entryCount, out long totalCount)
         {

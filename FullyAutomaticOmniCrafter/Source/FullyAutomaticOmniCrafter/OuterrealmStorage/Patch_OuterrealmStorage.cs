@@ -657,6 +657,192 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── ResourceCounter 计数：全局存储计入资源计数（设计文档 §5.2 表 #3） ──
+    // 原版 UpdateResourceCounts 只统计 SlotGroup（格子型存储），无限容量容器（本 Mod Vault）
+    // 不参与 → 存储在其中的资源在 resourceCounter 中恒为 0，导致建造设计器
+    // DrawPanelReadout / DrawPlaceMouseAttachments 显示"库存不足"、StuffDef 默认材料误判。
+    // 本 postfix 在按地图判定"该地图存在已 Spawned 的 Vault"后，把全局层各条目数量
+    // 并入 countedAmounts（仅 CountAsResource 的 def；Proto 经 GetInnerIfMinified 取真实 def）。
+    [HarmonyPatch(typeof(ResourceCounter), "UpdateResourceCounts")]
+    internal static class Patch_ResourceCounter_UpdateResourceCounts
+    {
+        private static readonly FieldInfo MapField = AccessTools.Field(typeof(ResourceCounter), "map");
+
+        private static void Postfix(ResourceCounter __instance)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            Map map = MapField != null ? (Map)MapField.GetValue(__instance) : null;
+            if (map == null || !gs.HasVaultOnMap(map))
+            {
+                return;
+            }
+            Dictionary<ThingDef, int> amounts = __instance.AllCountedAmounts;
+            List<OuterrealmEntry> entries = gs.EntriesForReading;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry e = entries[i];
+                if (e == null || e.Proto == null || e.Count <= 0)
+                {
+                    continue;
+                }
+                Thing inner = e.Proto.GetInnerIfMinified();
+                if (inner == null || inner.def == null || !inner.def.CountAsResource)
+                {
+                    continue;
+                }
+                int cur;
+                if (amounts.TryGetValue(inner.def, out cur))
+                {
+                    amounts[inner.def] = (int)Math.Min((long)cur + e.Count, int.MaxValue);
+                }
+            }
+        }
+    }
+
+    // ── 建造设计器材料选择：vault 材料纳入 stuff 候选与可用性判定 ──
+    // 原版 Designator_Build.ProcessInput 对 MadeFromStuff 建筑用
+    //   resourceCounter.AllCountedAmounts.Keys 作为候选来源，
+    //   并以 map.listerThings.ThingsOfDef(def).Count > 0 判定"确实持有该材料"。
+    // vault 的视图副本未 Spawned，既不在 resourceCounter 也不在 listerThings，
+    // 因此 vault 里纵有足够钢材也会走到 options.Count == 0 → "NoStuffsToBuildWith"。
+    // 本 prefix 仅在当前地图存在 vault 时接管该分支：候选来源并入 vault 内的 stuff def，
+    // 可用性判定并入"全局层中有该 def 的条目"，其余（排序/浮菜单/材质选择动作）与原版逐行一致。
+    [HarmonyPatch(typeof(Designator_Build), "ProcessInput")]
+    internal static class Patch_Designator_Build_ProcessInput
+    {
+        private static readonly MethodInfo CheckCanInteractMethod = AccessTools.Method(typeof(Designator), "CheckCanInteract");
+        private static readonly FieldInfo WriteStuffField = AccessTools.Field(typeof(Designator_Build), "writeStuff");
+
+        private static bool Prefix(Designator_Build __instance, Event ev)
+        {
+            if (!(__instance.PlacingDef is ThingDef entDef) || !entDef.MadeFromStuff)
+            {
+                return true; // 非 stuff 建筑：完全走原版
+            }
+            Map map = __instance.Map;
+            if (map == null)
+            {
+                return true;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return true; // 当前地图无 vault：完全走原版
+            }
+            if (CheckCanInteractMethod != null && !(bool)CheckCanInteractMethod.Invoke(__instance, null))
+            {
+                return false; // 对齐原版方法首行：不可交互则直接返回
+            }
+
+            // 候选 stuff def：resourceCounter 已有键 + vault 全局层中的 stuff def（去重）
+            List<ThingDef> candidates = new List<ThingDef>();
+            HashSet<ThingDef> seen = new HashSet<ThingDef>();
+            Dictionary<ThingDef, int> counted = map.resourceCounter.AllCountedAmounts;
+            foreach (ThingDef d in counted.Keys)
+            {
+                if (d != null && seen.Add(d))
+                {
+                    candidates.Add(d);
+                }
+            }
+            List<OuterrealmEntry> entries = gs.EntriesForReading;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry e = entries[i];
+                if (e == null || e.Proto == null || e.Count <= 0)
+                {
+                    continue;
+                }
+                Thing inner = e.Proto.GetInnerIfMinified();
+                ThingDef d = inner != null ? inner.def : null;
+                if (d != null && d.IsStuff && seen.Add(d))
+                {
+                    candidates.Add(d);
+                }
+            }
+
+            // 排序对齐原版：commonality 降序、BaseMarketValue 升序
+            candidates.Sort(CompareStuffCandidates);
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                ThingDef thingDef = candidates[i];
+                if (!thingDef.IsStuff || thingDef.stuffProps == null || !thingDef.stuffProps.CanMake(entDef))
+                {
+                    continue;
+                }
+                bool available = DebugSettings.godMode
+                    || map.listerThings.ThingsOfDef(thingDef).Count > 0
+                    || gs.TotalCountOf(thingDef) > 0;
+                if (!available)
+                {
+                    continue;
+                }
+                ThingDef localStuffDef = thingDef;
+                options.Add(new FloatMenuOption(
+                    (__instance.sourcePrecept == null
+                        ? GenLabel.ThingLabel(entDef, localStuffDef)
+                        : (string)"ThingMadeOfStuffLabel".Translate(localStuffDef.LabelAsStuff, __instance.sourcePrecept.Label)).CapitalizeFirst(),
+                    () =>
+                    {
+                        // 对齐原版闭包：base.ProcessInput(ev)（= Designator.ProcessInput：
+                        // 检查交互 + 播放激活音 + 选中）→ 选中 → 设置 stuffDef + writeStuff
+                        if (CheckCanInteractMethod != null && (bool)CheckCanInteractMethod.Invoke(__instance, null))
+                        {
+                            __instance.CurActivateSound?.PlayOneShotOnCamera();
+                        }
+                        Find.DesignatorManager.Select(__instance);
+                        __instance.SetStuffDef(localStuffDef);
+                        if (WriteStuffField != null)
+                        {
+                            WriteStuffField.SetValue(__instance, true);
+                        }
+                    },
+                    thingDef)
+                {
+                    tutorTag = $"SelectStuff-{entDef.defName}-{localStuffDef.defName}"
+                });
+            }
+
+            if (options.Count == 0)
+            {
+                Messages.Message((string)"NoStuffsToBuildWith".Translate(), MessageTypeDefOf.RejectInput, false);
+            }
+            else
+            {
+                Find.WindowStack.Add(new FloatMenu(options)
+                {
+                    onCloseCallback = () =>
+                    {
+                        if (WriteStuffField != null)
+                        {
+                            WriteStuffField.SetValue(__instance, true);
+                        }
+                    }
+                });
+                Find.DesignatorManager.Select(__instance);
+            }
+            return false;
+        }
+
+        private static int CompareStuffCandidates(ThingDef a, ThingDef b)
+        {
+            float ca = a.stuffProps != null ? a.stuffProps.commonality : float.PositiveInfinity;
+            float cb = b.stuffProps != null ? b.stuffProps.commonality : float.PositiveInfinity;
+            int c = cb.CompareTo(ca); // commonality 降序
+            if (c != 0)
+            {
+                return c;
+            }
+            return a.BaseMarketValue.CompareTo(b.BaseMarketValue); // 市场价值升序
+        }
+    }
+
     // 计数：RecipeWorkerCounter.CountProducts（账单"已有数量"用全局量）。
     [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
     internal static class Patch_RecipeWorkerCounter_CountProducts
