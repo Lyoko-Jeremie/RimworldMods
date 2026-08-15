@@ -97,4 +97,13 @@
     <suspendable>false</suspendable>
     <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
   </JobDef>
+
+  <!-- 施工配送（从超维存储取料送往蓝图/Frame）：TargetA=建筑（行走目标），TargetB=视图副本（取料目标），TargetC=蓝图/Frame（送达目标） -->
+  <JobDef>
+    <defName>FAOC_VaultDeliverResources</defName>
+    <driverClass>FullyAutomaticOmniCrafter.OuterrealmStorage.JobDriver_VaultDeliverResources</driverClass>
+    <reportString>hauling TargetB to TargetC.</reportString>
+    <suspendable>false</suspendable>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
 </Defs>

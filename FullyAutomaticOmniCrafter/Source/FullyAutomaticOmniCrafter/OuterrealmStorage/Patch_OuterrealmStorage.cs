@@ -843,6 +843,154 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 施工配送兜底：地面/可自动搬运材料不足时，从超维存储取料送往蓝图/Frame ──
+    // 原版 WorkGiver_ConstructDeliverResources.ResourceDeliverJobFor 只通过
+    // itemAvailability（listerThings）与 GenClosest.ClosestThingReachable 寻找已 Spawned 的
+    // 地面材料；vault 的视图副本未 Spawned，故永远不被考虑。本 postfix 在原版返回 null
+    // （无法生成地面配送 job）时，逐个材料成本检查"地面可用量不足但 vault 有"，命中则生成
+    // FAOC_VaultDeliverResources job（走到 vault → 取料入 carry → 送到蓝图/Frame）。
+    [HarmonyPatch(typeof(WorkGiver_ConstructDeliverResources), "ResourceDeliverJobFor")]
+    internal static class Patch_WorkGiver_ConstructDeliverResources_ResourceDeliverJobFor
+    {
+        private static JobDef vaultDeliverJobDef;
+
+        private static void Postfix(Pawn pawn, IConstructible c, ref Job __result)
+        {
+            if (__result != null || pawn == null || c == null)
+            {
+                return;
+            }
+            // 安装既有建筑（Blueprint_Install）无需从 vault 配送材料
+            if (c is Blueprint_Install)
+            {
+                return;
+            }
+            Map map = pawn.Map;
+            if (map == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return;
+            }
+            List<ThingDefCountClass> costs = c.TotalMaterialCost();
+            for (int i = 0; i < costs.Count; i++)
+            {
+                ThingDefCountClass need = costs[i];
+                if (need.thingDef == null || need.count <= 0)
+                {
+                    continue;
+                }
+                int num = !(c is IHaulEnroute enroute)
+                    ? c.ThingCountNeeded(need.thingDef)
+                    : enroute.GetSpaceRemainingWithEnroute(need.thingDef, pawn);
+                if (num <= 0)
+                {
+                    continue;
+                }
+                // 地面已有足够的可自动搬运材料：原版会处理，这里不越权
+                if (MapHasEnough(pawn, need.thingDef, num))
+                {
+                    continue;
+                }
+                if (gs.TotalCountOf(need.thingDef) <= 0)
+                {
+                    continue;
+                }
+                if (!TryFindVaultCopy(gs, map, need.thingDef, out Building_OuterrealmVault vault, out Thing copy))
+                {
+                    continue;
+                }
+                Job job = MakeVaultDeliverJob(c, vault, copy, num);
+                if (job != null)
+                {
+                    __result = job;
+                    return;
+                }
+            }
+        }
+
+        private static Job MakeVaultDeliverJob(IConstructible c, Building_OuterrealmVault vault, Thing copy, int count)
+        {
+            if (vaultDeliverJobDef == null)
+            {
+                vaultDeliverJobDef = DefDatabase<JobDef>.GetNamedSilentFail("FAOC_VaultDeliverResources");
+            }
+            if (vaultDeliverJobDef == null)
+            {
+                return null;
+            }
+            Job job = JobMaker.MakeJob(vaultDeliverJobDef);
+            job.targetA = vault;
+            job.targetB = copy;
+            job.targetC = (Thing)c;
+            job.count = count;
+            return job;
+        }
+
+        private static bool MapHasEnough(Pawn pawn, ThingDef def, int amount)
+        {
+            List<Thing> things = pawn.Map.listerThings.ThingsOfDef(def);
+            int total = 0;
+            for (int i = 0; i < things.Count; i++)
+            {
+                Thing t = things[i];
+                if (t == null || t.IsForbidden(pawn))
+                {
+                    continue;
+                }
+                if (!HaulAIUtility.PawnCanAutomaticallyHaulFast(pawn, t, false))
+                {
+                    continue;
+                }
+                total += t.stackCount;
+                if (total >= amount)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool TryFindVaultCopy(GameComponent_OuterrealmStorage gs, Map map, ThingDef def, out Building_OuterrealmVault vault, out Thing copy)
+        {
+            vault = null;
+            copy = null;
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v == null || !v.Spawned || v.Map != map || v.view == null)
+                {
+                    continue;
+                }
+                List<Thing> copies = v.view.InnerListForReading;
+                for (int j = 0; j < copies.Count; j++)
+                {
+                    Thing c = copies[j];
+                    if (c == null)
+                    {
+                        continue;
+                    }
+                    Thing inner = c.GetInnerIfMinified();
+                    if (inner != null && inner.def == def)
+                    {
+                        OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(c));
+                        if (e != null && e.Count > 0)
+                        {
+                            vault = v;
+                            copy = c;
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
     // 计数：RecipeWorkerCounter.CountProducts（账单"已有数量"用全局量）。
     [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
     internal static class Patch_RecipeWorkerCounter_CountProducts

@@ -36,6 +36,8 @@ namespace FullyAutomaticOmniCrafter
             // HarmonyLib.Harmony.DEBUG = true;
             HarmonyInstance = new HarmonyLib.Harmony("Jeremie.Fully.Automatic.OmniCrafter");
             HarmonyInstance.PatchAll();
+            // 可选兼容：BetterArchitect（3563882422）加载时，让其"按材料显示地板/默认材料"逻辑识别 vault 材料
+            FullyAutomaticOmniCrafter.OuterrealmStorage.BetterArchitectCompat.TryPatch(HarmonyInstance);
         }
 
         // ── Formula evaluation ────────────────────────────────────────────────

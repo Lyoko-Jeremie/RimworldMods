@@ -421,11 +421,13 @@
     <Compile Include="OmniCrafterSettings.cs" />
     <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
     <Compile Include="OmniCrafterUi.cs" />
+    <Compile Include="OuterrealmStorage\BetterArchitectCompat.cs" />
     <Compile Include="OuterrealmStorage\Building_OuterrealmVault.cs" />
     <Compile Include="OuterrealmStorage\Dialog_OuterrealmStorageManager.cs" />
     <Compile Include="OuterrealmStorage\GameComponent_OuterrealmStorage.cs" />
     <Compile Include="OuterrealmStorage\ITab_OuterrealmVaultContents.cs" />
     <Compile Include="OuterrealmStorage\JobDriver_VaultTakeToInventory.cs" />
+    <Compile Include="OuterrealmStorage\JobDriver_VaultDeliverResources.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmEntry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />
