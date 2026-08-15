@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using RimWorld;
+using UnityEngine;
 using Verse;
 using Verse.AI;
+using Verse.Sound;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
@@ -482,15 +485,175 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
     // ── §5.2 #9：数量替换（"无限容量对外可见"，默认启用） ──
     // 取料：Pawn_CarryTracker.TryStartCarry 对视图副本临时提升 stackCount，使单趟取物量不受 stackLimit 封顶。
+    // 修复 1/2/3：
+    //   1. 回滚兜底——TryAdd 失败时把已扣全局的 splitStack 退回（split 分支 TryAbsorbStack 补回全局；
+    //      整堆分支重新吸收回全局层）。
+    //   2. 预检——carry 满且不能堆叠时提前拒绝，避免 SplitOff 扣全局后 TryAdd 失败丢物品
+    //      （原版 AvailableStackSpace 无条件减 CarriedThing.stackCount，会在"满且不同 def"时误报正数）。
+    //   3. Boost 生效——配合 Patch_Toils_Haul_StartCarryThing 让取料量感知全局剩余量。
     [HarmonyPatch(typeof(Pawn_CarryTracker), "TryStartCarry", new Type[] { typeof(Thing), typeof(int), typeof(bool) })]
     internal static class Patch_Pawn_CarryTracker_TryStartCarry
     {
-        private static void Prefix(Thing item)
+        // 缓存原版 private 方法 TryUpdateTransferables 的调用委托（避免每次反射）。
+        private static readonly Action<Pawn_CarryTracker, Thing> TryUpdateTransferablesInvoker = BuildTryUpdateTransferablesInvoker();
+
+        private static Action<Pawn_CarryTracker, Thing> BuildTryUpdateTransferablesInvoker()
         {
-            if (item.holdingOwner is OuterrealmVaultViewThingOwner view)
+            try
             {
-                view.BoostCopy(item);
+                MethodInfo method = AccessTools.Method(typeof(Pawn_CarryTracker), "TryUpdateTransferables");
+                if (method == null)
+                {
+                    return null;
+                }
+                return (Action<Pawn_CarryTracker, Thing>)Delegate.CreateDelegate(typeof(Action<Pawn_CarryTracker, Thing>), method);
             }
+            catch
+            {
+                // 反射失败（版本/签名变化）时跳过 TryUpdateTransferables，仅影响装运输舱场景的 transferable 列表，不影响物品正确性。
+                return null;
+            }
+        }
+
+        private static bool Prefix(Pawn_CarryTracker __instance, Thing item, int count, bool reserve, ref int __result)
+        {
+            if (!(item.holdingOwner is OuterrealmVaultViewThingOwner view))
+            {
+                return true; // 非视图副本：完全走原版
+            }
+            __result = TryStartCarryFromVault(__instance, item, count, reserve, view);
+            return false;
+        }
+
+        private static int TryStartCarryFromVault(Pawn_CarryTracker carry, Thing item, int count, bool reserve, OuterrealmVaultViewThingOwner view)
+        {
+            Pawn pawn = carry.pawn;
+            if (pawn.Dead || pawn.Downed)
+            {
+                Log.Error($"Dead/downed/deathresting pawn {pawn?.ToString()} tried to start carry {item.ToStringSafe<Thing>()}");
+                return 0;
+            }
+
+            // 修复 2：预检——carry 已满且不能与 item 堆叠时直接拒绝（避免 SplitOff 扣全局后 TryAdd 失败丢物品）。
+            if (carry.CarriedThing != null && !carry.CarriedThing.CanStackWith(item))
+            {
+                return 0;
+            }
+
+            // Boost：使 count 与 failIfStackCountLessThanJobCount 感知全局剩余量（配合 Patch_Toils_Haul_StartCarryThing）。
+            view.BoostCopy(item);
+
+            count = Mathf.Min(count, carry.AvailableStackSpace(item.def));
+            count = Mathf.Min(count, item.stackCount);
+            if (count <= 0)
+            {
+                // 防御：避免 count 为 0 时 SplitOff 抛异常（原版调用方通常已保证 >0，此处兜底）。
+                // 恢复 Boost 前的 stackCount，避免 Boost 状态残留（非 StartCarryThing 路径无外层 finally 恢复）。
+                view.UnboostCopy(item);
+                return 0;
+            }
+            bool selected = Find.Selector.IsSelected(item);
+            Thing splitStack = item.SplitOff(count);
+            int num = carry.innerContainer.TryAdd(splitStack, count, true);
+            if (num > 0 && splitStack != item && TryUpdateTransferablesInvoker != null)
+            {
+                TryUpdateTransferablesInvoker(carry, splitStack);
+            }
+            if (num <= 0)
+            {
+                // 修复 1：回滚兜底——TryAdd 失败（预检未能拦截的边界），把已扣全局的 splitStack 退回。
+                RollbackVaultTake(item, splitStack, view);
+                return num;
+            }
+            item.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(item.Position, pawn.Map));
+            if (reserve)
+            {
+                pawn.Reserve((LocalTargetInfo)carry.CarriedThing, pawn.CurJob);
+            }
+            if (selected)
+            {
+                if (!splitStack.Destroyed)
+                {
+                    Find.Selector.Select(splitStack);
+                }
+                Find.Selector.Select(carry.CarriedThing);
+            }
+            pawn.MapHeld.resourceCounter.UpdateResourceCounts();
+            return num;
+        }
+
+        private static void RollbackVaultTake(Thing item, Thing splitStack, OuterrealmVaultViewThingOwner view)
+        {
+            if (splitStack == null || splitStack.Destroyed)
+            {
+                return;
+            }
+            if (splitStack == item)
+            {
+                // 整堆分支：item 已从视图移除（holdingOwner=null），全局已由 Notify_ItemRemoved 扣减。
+                // 回滚 = 把 item 重新吸收回全局层（view.TryAdd 要求 holdingOwner==null，整堆后满足）。
+                if (item.holdingOwner == null && item.stackCount > 0)
+                {
+                    view.TryAdd(item);
+                }
+            }
+            else
+            {
+                // split 分支：item 仍在视图中，splitStack 是独立 piece。
+                // 回滚 = item.TryAbsorbStack(splitStack) → Patch_Thing_TryAbsorbStack 补回全局。
+                if (item.holdingOwner is OuterrealmVaultViewThingOwner v)
+                {
+                    item.TryAbsorbStack(splitStack, false);
+                    v.UnboostCopy(item); // 纠正 TryAbsorbStack 后可能超过 stackLimit 的 stackCount
+                }
+            }
+        }
+    }
+
+    // ── §5.2 #9 配套（修复 3）：Toils_Haul.StartCarryThing 执行期 Boost ──
+    // StartCarryThing 的 initAction 在取料前读取 thing.stackCount（=min(全局剩余, stackLimit)）计算
+    // count 并做 failIfStackCountLessThanJobCount 检查——执行期未 Boost 会导致"单份需求 > stackLimit"
+    // 的账单反复 Incompletable，且单趟取料量被 stackLimit 封顶。此处包装 initAction：执行时对视图副本
+    // BoostCopy（幂等），执行后仅在副本仍留在视图中时 UnboostCopy（整堆分支已移出视图，不可误改 carry 物品）。
+    [HarmonyPatch(typeof(Toils_Haul), "StartCarryThing")]
+    internal static class Patch_Toils_Haul_StartCarryThing
+    {
+        private static void Postfix(ref Toil __result, TargetIndex haulableInd)
+        {
+            if (__result == null || __result.initAction == null)
+            {
+                return;
+            }
+            Toil toil = __result;
+            Action original = toil.initAction;
+            toil.initAction = () =>
+            {
+                Pawn actor = toil.actor;
+                Thing thing = actor != null && actor.jobs != null && actor.jobs.curJob != null
+                    ? actor.jobs.curJob.GetTarget(haulableInd).Thing
+                    : null;
+                OuterrealmVaultViewThingOwner view = thing != null ? thing.holdingOwner as OuterrealmVaultViewThingOwner : null;
+                if (view != null)
+                {
+                    view.BoostCopy(thing);
+                    try
+                    {
+                        original();
+                    }
+                    finally
+                    {
+                        // 仅当副本仍留在视图中时恢复（整堆分支已移出视图，不能误改 carry 物品）。
+                        if (thing.holdingOwner is OuterrealmVaultViewThingOwner v)
+                        {
+                            v.UnboostCopy(thing);
+                        }
+                    }
+                }
+                else
+                {
+                    original();
+                }
+            };
         }
     }
 

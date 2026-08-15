@@ -471,6 +471,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>恢复单个副本为 min(全局剩余, stackLimit)。</summary>
+        public void UnboostCopy(Thing copy)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+            copy.stackCount = e != null && e.Count > 0
+                ? (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue))
+                : 0;
+        }
+
         /// <summary>恢复全部副本为 min(全局剩余, stackLimit)。</summary>
         public void UnboostCopies()
         {
@@ -482,11 +496,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             List<Thing> list = InnerListForReading;
             for (int i = 0; i < list.Count; i++)
             {
-                Thing copy = list[i];
-                OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
-                copy.stackCount = e != null && e.Count > 0
-                    ? (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue))
-                    : 0;
+                UnboostCopy(list[i]);
             }
         }
 
