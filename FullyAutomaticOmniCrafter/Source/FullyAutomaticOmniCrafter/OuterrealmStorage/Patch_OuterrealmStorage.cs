@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -159,23 +160,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     settingsParent.Notify_SettingsChanged();
                 }
             }
-        }
-    }
-
-    // ── §5.2 #6：ListerHaulables 锁定短路（必需，默认启用） ──
-    // 视图内条目 Accepts==true → 恒不 haulable（锁定，O(1) 短路，跳过 IsInValidBestStorage 全图搜索）；
-    // 放行条目（Accepts==false）绝不短路（否则 §6.3 移出机制失效）。同时消除 M10 无限搬运循环。
-    [HarmonyPatch(typeof(ListerHaulables), "ShouldBeHaulable")]
-    internal static class Patch_ListerHaulables_ShouldBeHaulable
-    {
-        private static bool Prefix(Thing t, ref bool __result)
-        {
-            if (t.ParentHolder is Building_OuterrealmVault vault && vault.Accepts(t))
-            {
-                __result = false;
-                return false;
-            }
-            return true;
         }
     }
 
@@ -474,9 +458,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             if (haulDestination is Building_OuterrealmVault
-                && t.ParentHolder is Building_OuterrealmVault sourceVault
-                && !sourceVault.Accepts(t))
+                && t.ParentHolder is Building_OuterrealmVault)
             {
+                // 阻止 vault→vault 搬运（无论放行/锁定）：目标是 vault 时失败，
+                // 避免无限搬运循环；vault→普通存储区不受影响（目标不是 vault）。
                 haulDestination = null;
                 __result = false;
             }
@@ -1075,6 +1060,82 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             result = t;
             closestDistSquared = horizontalSquared;
             bestPrio = a;
+        }
+    }
+
+    // ── 半 Spawned 投影配套：自动食用豁免 vault 副本的 Spawned 检查 ──
+    // FoodUtility.SpawnedFoodSearchInnerScan 里硬性 `search.Spawned`，副本未 Spawned 被跳过，
+    // 导致 pawn 不自动取食 vault 食物。此处把 Thing.get_Spawned 替换为 IsUsableForIngest
+    // （Spawned || IsInHaulableInventory），对齐 ClosestThing_Global 的豁免语义。
+    [HarmonyPatch(typeof(FoodUtility), "SpawnedFoodSearchInnerScan")]
+    internal static class Patch_FoodUtility_SpawnedFoodSearchInnerScan
+    {
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            MethodInfo spawnGetter = AccessTools.PropertyGetter(typeof(Thing), "Spawned");
+            MethodInfo helper = AccessTools.Method(typeof(Patch_FoodUtility_SpawnedFoodSearchInnerScan), nameof(IsUsableForIngest));
+            foreach (CodeInstruction code in instructions)
+            {
+                if (spawnGetter != null && helper != null && code.Calls(spawnGetter))
+                {
+                    yield return new CodeInstruction(OpCodes.Call, helper);
+                }
+                else
+                {
+                    yield return code;
+                }
+            }
+        }
+
+        private static bool IsUsableForIngest(Thing t)
+        {
+            return t.Spawned || HaulAIUtility.IsInHaulableInventory(t);
+        }
+    }
+
+    // ── 半 Spawned 投影配套：食用执行——从 vault 取食送到嘴边 ──
+    // 自动食用 / 右键“食用”都会生成 JobDefOf.Ingest（targetA = 食物副本）。原版 PrepareToIngestToils_ToolUser
+    // 用 GotoThing(A).FailOnDespawnedNullOrForbidden 走到食物，副本未 Spawned 会在起始失败。
+    // 此处对 vault 副本重写“取食”阶段：走到 vault 建筑交互格 → PickupIngestible（内部 TryStartCarry 已 patch，
+    // 对副本 Boost+SplitOff+入 carry）→ 后续 CarryIngestibleToChewSpot / FindAdjacentEatSurface 原样复用。
+    [HarmonyPatch(typeof(JobDriver_Ingest), "PrepareToIngestToils_ToolUser")]
+    internal static class Patch_JobDriver_Ingest_PrepareToIngestToils_ToolUser
+    {
+        private static bool Prefix(JobDriver_Ingest __instance, ref IEnumerable<Toil> __result)
+        {
+            Thing food = __instance.job.GetTarget(TargetIndex.A).Thing;
+            if (food == null || food.Spawned || !(food.ParentHolder is Building_OuterrealmVault))
+            {
+                return true; // 非 vault 副本：完全走原版
+            }
+            __result = VaultPrepareToIngestToils(__instance);
+            return false;
+        }
+
+        private static IEnumerable<Toil> VaultPrepareToIngestToils(JobDriver_Ingest driver)
+        {
+            // 走到 vault 建筑交互格（副本未 Spawned，不能作为行走目标）
+            yield return new Toil
+            {
+                initAction = () =>
+                {
+                    Thing food = driver.job.GetTarget(TargetIndex.A).Thing;
+                    Thing vault = food != null ? food.ParentHolder as Thing : null;
+                    if (vault != null)
+                    {
+                        driver.pawn.pather.StartPath((LocalTargetInfo)vault, PathEndMode.InteractionCell);
+                    }
+                },
+                defaultCompleteMode = ToilCompleteMode.PatherArrival
+            };
+            // 拿起食物：PickupIngestible 内部 TryStartCarry 已由 Patch_Pawn_CarryTracker_TryStartCarry 处理副本
+            yield return Toils_Ingest.PickupIngestible(TargetIndex.A, driver.pawn);
+            // 后续走到桌边/找餐桌，与原版 ToolUser 路径一致
+            if (!driver.pawn.Drafted)
+            {
+                yield return Toils_Ingest.CarryIngestibleToChewSpot(driver.pawn, TargetIndex.A).FailOnDestroyedOrNull(TargetIndex.A);
+            }
+            yield return Toils_Ingest.FindAdjacentEatSurface(TargetIndex.B, TargetIndex.A);
         }
     }
 

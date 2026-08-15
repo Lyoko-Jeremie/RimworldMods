@@ -547,34 +547,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 yield return o;
             }
-            // §4 仿 OutfitStand（Building_OutfitStand.cs:540-555）：为视图内容生成穿戴/强制穿戴/装备选项
-            if (selPawn.IsColonistPlayerControlled && view != null)
-            {
-                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-                List<Thing> copies = view.InnerListForReading;
-                for (int i = 0; i < copies.Count; i++)
-                {
-                    Thing copy = copies[i];
-                    // 跳过条目已不存在的残留副本（被取空/移除后未及清理的退休副本）
-                    if (gs != null)
-                    {
-                        OuterrealmEntry entryExists = gs.FindEntry(OuterrealmEntryKey.From(copy));
-                        if (entryExists == null || entryExists.Count <= 0)
-                        {
-                            continue;
-                        }
-                    }
-                    if (copy is Apparel ap)
-                    {
-                        yield return GetFloatMenuOptionToWear(selPawn, ap);
-                        yield return GetFloatMenuOptionForForceWear(selPawn, ap);
-                    }
-                    if (copy.def.IsWeapon)
-                    {
-                        yield return GetFloatMenuOptionToEquipWeapon(selPawn, copy);
-                    }
-                }
-            }
+            // §4：穿戴/装备/食用等浮菜单选项交由原版 FloatMenuOptionProvider 统一生成。
+            // ThingDef 已设 containedItemsSelectable=true → ContainingSelectionUtility.SelectableContainedThings
+            // 会把视图副本纳入右键 ClickedThings，所有 provider（含第三方 mod 新增的操作）自动适配，
+            // 不再逐项手动生成选项。
             // §6.1：指定 pawn 拿 X 到背包（自定义 job：以建筑为行走目标，取物目标为视图副本）
             if (selPawn.IsColonistPlayerControlled && view != null)
             {

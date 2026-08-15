@@ -42,6 +42,7 @@
     <fillPercent>0.5</fillPercent>
     <canOverlapZones>false</canOverlapZones>
     <rotatable>true</rotatable>
+    <containedItemsSelectable>true</containedItemsSelectable>
 
     <!-- 属性基础值 -->
     <statBases>
