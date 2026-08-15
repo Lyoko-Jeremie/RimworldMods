@@ -254,6 +254,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>
+        /// 半 Spawned 投影（§v3）：把副本注册进地图查询索引（listerThings），但不进入 thingGrid / 渲染，
+        /// 使直查 listerThings / GenClosest 的拿取路径能发现它，而渲染/美观/爆炸/点击不可见。
+        /// 未 Spawned 副本的 Position setter 只改写 positionInt，不触碰 thingGrid。
+        /// </summary>
+        private void RegisterInLister(Thing copy)
+        {
+            if (copy == null || copy.Spawned || !Vault.Spawned || Vault.MapHeld == null)
+            {
+                return;
+            }
+            copy.Position = Vault.InteractionCell; // 未 Spawned：仅设置 positionInt，保证直接读 Position 的代码不 NRE
+            List<Thing> indexed = Vault.MapHeld.listerThings.ThingsOfDef(copy.def);
+            if (indexed == null || !indexed.Contains(copy))
+            {
+                Vault.MapHeld.listerThings.Add(copy);
+            }
+        }
+
+        /// <summary>半 Spawned 投影：从查询索引移除副本（须在 base.Remove 之前，防残留指向已销毁副本）。</summary>
+        private void UnregisterFromLister(Thing copy)
+        {
+            if (copy == null || !Vault.Spawned || Vault.MapHeld == null)
+            {
+                return;
+            }
+            Vault.MapHeld.listerThings.Remove(copy);
+        }
+
         /// <summary>从当前视图列表重建索引（RebuildView 末尾调用；读档后索引为空，全量重建必须重建索引）。</summary>
         private void RebuildIndex()
         {
@@ -277,6 +306,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // （全局已扣 + 物品已销毁 → 拿取即消失）。索引提前失效后 FindCopy 对 innerList 线性扫描
             // 也已移除该副本，返回 null，SyncKey 不会误 Destroy。IndexRemove 幂等，Remove 失败亦无害。
             IndexRemove(item);
+            UnregisterFromLister(item); // 半 Spawned 投影：先摘查询索引，避免残留指向即将被销毁的副本
             return base.Remove(item);
         }
 
@@ -310,6 +340,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (base.TryAdd(newCopy, false))
             {
                 IndexAdd(newCopy);
+                RegisterInLister(newCopy); // 半 Spawned 投影：进入查询索引（不进入 thingGrid/渲染）
             }
         }
 
@@ -412,7 +443,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         Thing newCopy = GameComponent_OuterrealmStorage.Materialize(e.Proto);
                         newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
-                        base.TryAdd(newCopy, false);
+                        if (base.TryAdd(newCopy, false))
+                        {
+                            RegisterInLister(newCopy); // 半 Spawned 投影：读档/重建后随物化进入查询索引
+                        }
                     }
                 }
             }

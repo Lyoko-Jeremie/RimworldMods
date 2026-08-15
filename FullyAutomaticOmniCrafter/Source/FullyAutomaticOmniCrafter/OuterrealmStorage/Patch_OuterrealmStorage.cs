@@ -991,6 +991,93 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 半 Spawned 投影配套：补齐 ClosestThing_Global_Reachable 对 vault 副本的可见性 ──
+    // 原版 ClosestThing_Global_Reachable 的局部函数 Process 里硬性 if (t == null || !t.Spawned) return，
+    // 会跳过“未 Spawned 但处于 HaulSource 容器”的 vault 视图副本（染料/血包等少数路径用此方法）。
+    // 该检查位于编译器生成的 display class 方法内，Transpiler 无法稳定定位 Thing.get_Spawned 调用点，
+    // 故用 Postfix 兜底：原方法返回 null 时，遍历 searchSet 中未 Spawned 但 IsInHaulableInventory 的副本，
+    // 复刻其可达性 + validator + priority 判定并回填 __result。
+    [HarmonyPatch(typeof(GenClosest), "ClosestThing_Global_Reachable")]
+    internal static class Patch_GenClosest_ClosestThing_Global_Reachable
+    {
+        private static void Postfix(
+            IntVec3 center, Map map, IEnumerable<Thing> searchSet,
+            PathEndMode peMode, TraverseParms traverseParams, float maxDistance,
+            Predicate<Thing> validator, Func<Thing, float> priorityGetter,
+            ref Thing __result)
+        {
+            if (__result != null || map == null || searchSet == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return;
+            }
+
+            Thing result = null;
+            float closestDistSquared = float.MaxValue;
+            float bestPrio = float.MinValue;
+            float maxDistanceSquared = maxDistance * maxDistance;
+
+            if (searchSet is IList<Thing> list)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    ConsiderCandidate(list[i], center, map, peMode, traverseParams, maxDistanceSquared,
+                        validator, priorityGetter, ref result, ref closestDistSquared, ref bestPrio);
+                }
+            }
+            else
+            {
+                foreach (Thing t in searchSet)
+                {
+                    ConsiderCandidate(t, center, map, peMode, traverseParams, maxDistanceSquared,
+                        validator, priorityGetter, ref result, ref closestDistSquared, ref bestPrio);
+                }
+            }
+            __result = result;
+        }
+
+        private static void ConsiderCandidate(
+            Thing t, IntVec3 center, Map map, PathEndMode peMode, TraverseParms traverseParams,
+            float maxDistanceSquared, Predicate<Thing> validator, Func<Thing, float> priorityGetter,
+            ref Thing result, ref float closestDistSquared, ref float bestPrio)
+        {
+            if (t == null || t.Spawned || !HaulAIUtility.IsInHaulableInventory(t))
+            {
+                return;
+            }
+            float horizontalSquared = (center - t.PositionHeld).LengthHorizontalSquared;
+            if (horizontalSquared > maxDistanceSquared)
+            {
+                return;
+            }
+            if (priorityGetter == null && horizontalSquared >= closestDistSquared)
+            {
+                return;
+            }
+            if (!map.reachability.CanReach(center, (LocalTargetInfo)t.SpawnedParentOrMe, peMode, traverseParams)
+                || validator != null && !validator(t))
+            {
+                return;
+            }
+            float a = 0f;
+            if (priorityGetter != null)
+            {
+                a = priorityGetter(t);
+                if (a < bestPrio || Mathf.Approximately(a, bestPrio) && horizontalSquared >= closestDistSquared)
+                {
+                    return;
+                }
+            }
+            result = t;
+            closestDistSquared = horizontalSquared;
+            bestPrio = a;
+        }
+    }
+
     // 计数：RecipeWorkerCounter.CountProducts（账单"已有数量"用全局量）。
     [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
     internal static class Patch_RecipeWorkerCounter_CountProducts
