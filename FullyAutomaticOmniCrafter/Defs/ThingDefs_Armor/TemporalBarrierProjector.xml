@@ -199,6 +199,7 @@
             </tags>
             <useDeflectMetalEffect>false</useDeflectMetalEffect>
             <careIfWornByCorpse>false</careIfWornByCorpse> <!-- 即使是尸体穿过，也不会有“死人衣服”Debuff -->
+            <countsAsClothingForNudity>false</countsAsClothingForNudity> <!-- 时空立场是力场而非布料，天体主义者穿戴不会产生“穿着衣服”的负面想法 -->
         </apparel>
 
         <modExtensions>

@@ -3,7 +3,7 @@
     <!-- 核心特质：重写 -->
     <TraitDef>
         <defName>ArtificialMaidTrait_AbsoluteLoyalty</defName>
-        <commonality>0.5</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>灵魂羁绊</label>
@@ -19,7 +19,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_EfficientLogic</defName>
-        <commonality>0.5</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>万能辅助</label>
@@ -34,11 +34,11 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_CombatMode</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>优雅影卫</label>
-                <description>在温婉的外表下，{PAWN_nameDef} 隐藏着足以毁灭星辰的战斗算法。作为守护长姐与终极卫士，她能瞬间从轻声细语的伴侣切换为收割一切威胁的修罗，用身体为主人筑起绝对安全的壁垒。</description>
+                <description>在温婉的外表下，{PAWN_nameDef} 隐藏着足以毁灭星辰的战斗算法。作为守护女仆与终极卫士，她能瞬间从轻声细语的伴侣切换为收割一切威胁的修罗，用身体为主人筑起绝对安全的壁垒。</description>
                 <statOffsets>
                     <ShootingAccuracyPawn>2000</ShootingAccuracyPawn>
                     <MeleeHitChance>2000</MeleeHitChance>
@@ -50,7 +50,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_EmotionalSynchrony</defName>
-        <commonality>0.3</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>心灵港湾</label>
@@ -65,7 +65,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_CulinaryMaster</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>爱的飨宴</label>
@@ -80,7 +80,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_NatureSoul</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>伊甸执事</label>
@@ -96,7 +96,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_TechnologicalOracle</defName>
-        <commonality>0.1</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>真理共鸣</label>
@@ -112,7 +112,7 @@
     <!-- 新增特质 -->
     <TraitDef>
         <defName>ArtificialMaidTrait_EternalLover</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>永恒恋人</label>
@@ -128,7 +128,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_DesireVessel</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>欲望化身</label>
@@ -144,7 +144,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_NurturingOrigin</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>慈爱之母</label>
@@ -160,7 +160,7 @@
 
     <TraitDef>
         <defName>ArtificialMaidTrait_ChildhoodPlaymate</defName>
-        <commonality>0.2</commonality>
+        <commonality>0</commonality>
         <degreeDatas>
             <li>
                 <label>纯真玩伴</label>

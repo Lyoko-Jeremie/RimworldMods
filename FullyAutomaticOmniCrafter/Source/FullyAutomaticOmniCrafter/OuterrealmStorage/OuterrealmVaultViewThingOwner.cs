@@ -270,12 +270,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// PostSplitOff/RemoveApparel）均经此处，索引不会因遗漏而过期。</summary>
         public override bool Remove(Thing item)
         {
-            bool removed = base.Remove(item);
-            if (removed)
-            {
-                IndexRemove(item);
-            }
-            return removed;
+            // 先移除索引：整堆 SplitOff 走 holdingOwner.Remove(this) → base.Remove → NotifyRemoved →
+            // Notify_ItemRemoved → Subtract(扣到 0) → NotifyEntriesEmptied → SyncKey 这条同步回调链。
+            // 若索引滞后（IndexRemove 放在 base.Remove 之后），SyncKey 的 FindCopy 会经 copyIndex 命中
+            // 这个"正在被移除"的副本并 copy.Destroy()，导致 splitStack 在 TryAdd 进 carry 之前被销毁
+            // （全局已扣 + 物品已销毁 → 拿取即消失）。索引提前失效后 FindCopy 对 innerList 线性扫描
+            // 也已移除该副本，返回 null，SyncKey 不会误 Destroy。IndexRemove 幂等，Remove 失败亦无害。
+            IndexRemove(item);
+            return base.Remove(item);
         }
 
         /// <summary>确保本建筑视图包含该条目的副本（物化或更新数字）。filter 不允许则不做。</summary>

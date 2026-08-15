@@ -176,28 +176,32 @@ namespace OuterrealmTechRobot
                     pawn.story.traits.GainTrait(new Trait(ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony));
                 }
 
-                // 如果除了情感同步之外没有其他特质，随机再给一个符合要求的特质
-                if (pawn.story.traits.allTraits.Count <= 1)
+                // 从装饰性特质池中等权随机抽取，至少给女仆 3 个装饰性特质。
+                // （AbsoluteLoyalty 已由 PawnKindDef.forcedTraits 保证；
+                //   EmotionalSynchrony / MasterProtocol / Subdued 是功能或标记特质，不参与随机。）
+                List<TraitDef> randomPool = new List<TraitDef>();
+                foreach (var t in DefDatabase<TraitDef>.AllDefs)
                 {
-                    List<TraitDef> possibleTraits = new List<TraitDef>();
-                    foreach (var t in DefDatabase<TraitDef>.AllDefs)
+                    if (t.defName != null && t.defName.StartsWith("ArtificialMaidTrait_") &&
+                        t.defName != "ArtificialMaidTrait_AbsoluteLoyalty" &&
+                        t.defName != "ArtificialMaidTrait_EmotionalSynchrony" &&
+                        t.defName != "ArtificialMaidTrait_MasterProtocol" &&
+                        t.defName != "ArtificialMaidTrait_Subdued")
                     {
-                        if (t.defName != null && t.defName.StartsWith("ArtificialMaidTrait_") &&
-                            t != ArtificialMaidDefOf.ArtificialMaidTrait_EmotionalSynchrony)
-                        {
-                            possibleTraits.Add(t);
-                        }
+                        randomPool.Add(t);
                     }
+                }
 
-                    if (possibleTraits.Count > 0)
+                const int MinRandomTraits = 3;
+                int granted = 0;
+                while (granted < MinRandomTraits && randomPool.Count > 0)
+                {
+                    TraitDef def = randomPool.RandomElement();
+                    randomPool.Remove(def);
+                    if (!pawn.story.traits.HasTrait(def))
                     {
-                        TraitDef maidTraitDef =
-                            possibleTraits.RandomElementByWeightWithDefault(
-                                t => t.GetGenderSpecificCommonality(pawn.gender), 0f);
-                        if (maidTraitDef != null)
-                        {
-                            pawn.story.traits.GainTrait(new Trait(maidTraitDef));
-                        }
+                        pawn.story.traits.GainTrait(new Trait(def));
+                        granted++;
                     }
                 }
             }
