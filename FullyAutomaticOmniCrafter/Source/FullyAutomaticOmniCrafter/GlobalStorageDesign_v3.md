@@ -78,7 +78,7 @@ public void Add(Thing t)
 - **可寻路**：寻路目标是副本的 `PositionHeld`（经 `ParentHolder` 解析到 vault 建筑位置）。
 - **拿取即物化**：任何路径走到副本并执行 `SplitOff` / `TryStartCarry` 时，命中已有的物化 patch。
 
-### 3.2 三个改动点
+### 3.2 改动点
 
 1. **维护副本的查询索引（进 `listsByDef` + 所有 `listsByGroup`）**
    - 物化副本处（`OuterrealmVaultViewThingOwner.EnsureCopyFor` / `RebuildView` 中 `base.TryAdd` 成功处）
@@ -115,6 +115,27 @@ public void Add(Thing t)
      `holdingOwner is OuterrealmVaultViewThingOwner` 的副本做 Boost → SplitOff → 入 carry 的物化，
      并即时同步全局数量。副本进入 `listerThings` 后，任意拿取路径走到它、执行 `SplitOff`/`TryStartCarry` 时即自然命中。
 
+4. **基于优先级的自动搬运 + 阻止 vault→vault**
+   - 删除 `Patch_ListerHaulables_ShouldBeHaulable`（原先把 vault 锁定条目无条件短路为“不 haulable”）；
+     vault 条目恢复走原版 `ShouldBeHaulable` 的 `!IsInValidBestStorage()` 优先级判断——vault 优先级低于普通存储区时会被判定“该搬”。
+   - 修改 `Patch_StoreUtility_TryFindBestBetterNonSlotGroupStorageFor`：只要**源是 vault 且目标是 vault** 就置失败
+     （去掉原先仅限“放行条目”的条件），阻止 vault↔vault 无限循环；vault→普通存储区不受影响。
+
+5. **自动食用（找到 + 执行）**
+   - `Patch_FoodUtility_SpawnedFoodSearchInnerScan`（Transpiler）：把硬性 `search.Spawned` 替换为
+     `Spawned || IsInHaulableInventory`，让 `FoodUtility` 能找到 vault 食物副本。
+   - `Patch_JobDriver_Ingest_PrepareToIngestToils_ToolUser`：对 vault 副本重写“取食”阶段——走到 vault 建筑交互格 →
+     `PickupIngestible`（内部 `TryStartCarry` 已 patch）→ 复用 `CarryIngestibleToChewSpot` / `FindAdjacentEatSurface`。
+
+6. **通用右键 FloatMenu（`containedItemsSelectable`）**
+   - vault 的 `ThingDef` 设置 `<containedItemsSelectable>true</containedItemsSelectable>`：
+     `GenUI.ThingsUnderMouse → thingGrid.ThingsAt(vault) → ContainingSelectionUtility.SelectableContainedThings(vault)`
+     会把视图副本纳入右键 `FloatMenuContext.ClickedThings`，随后 `FloatMenuMakerMap.GetProviderOptions`
+     对**所有 `FloatMenuOptionProvider`**（Ingest/Wear/Equip/PickUpItem/Reload 及任意第三方 mod 新增的）自动生成选项。
+   - 删除 `Building_OuterrealmVault.GetFloatMenuOptions` 里手动生成的穿戴/装备选项（否则与 provider 重复）；
+     代价是“强制他人穿戴（ForceTargetWear）”原版 provider 不提供，暂丢失。
+   - 副本选项会被 `FloatMenuMakerMap` 标 `targetsDespawned = true`，配合 `FloatMenuMap.StillValid` 不会被置灰。
+
 ### 3.3 为什么未 Spawned 副本能通过寻路
 
 - `HaulAIUtility.IsInHaulableInventory(thing)` = `!thing.Spawned && thing.ParentHolder is IHaulSource`
@@ -141,6 +162,7 @@ public void Add(Thing t)
 | 爆炸 `Notify_Explosion` | region 的 `ListerThings.AllThings`（且判 `Spawned`） | ❌ 不可见 | 不受影响 |
 | 渲染（动态 / 静态网格） | `dynamicDrawManager.drawThings` / `thingGrid` | ❌ 不可见 | 不渲染 |
 | 点击选中 | `thingGrid.ThingsAt` | ❌ 不可见 | 不可选中 |
+| 右键 FloatMenu（`FloatMenuOptionProvider`，含第三方 mod） | `GenUI.ThingsUnderMouse → SelectableContainedThings` | ✅ 可见 | 目标行为（`containedItemsSelectable=true`） |
 
 > 依据：`Map.ExposeData` 的 Saving 分支遍历 `listerThings.AllThings` 并 `Scribe_Deep.Look` 保存不可压缩 Thing——
 > 副本通过 `Patch_Map_ExposeData` 在 Saving 时被临时摘除，故不进 `AllThings`、不被保存。
@@ -169,6 +191,16 @@ public void Add(Thing t)
 4. **读档时序**：副本索引在 `SpawnSetup → RebuildView` 阶段重建，需确保读档后 `listerThings` 的增删
    与视图生命周期严格同步（增在物化处、删在 `Remove` 统一入口），避免索引残留或重复。
 
+5. **基于优先级的搬运**：取消锁定短路后，vault 条目走原版 `IsInValidBestStorage`（全图搜索最佳存储），
+   每次 `ShouldBeHaulable` 比原先多一次全图搜索（性能代价，换取优先级搬运正确性）。需验证：
+   vault 优先级低→自动搬到普通存储；vault→vault 被 `Patch_StoreUtility` 阻止，不产生循环。
+
+6. **食用执行链路**：`Patch_JobDriver_Ingest` 重写了 ToolUser 取食阶段（走到建筑→`PickupIngestible`→桌边）。
+   需实测 pawn 自动取食 / 右键“食用”能真正吃下（SplitOff 物化 + TryStartCarry + 咀嚼/消化），且不留残留预留。
+
+7. **ForceTargetWear 丢失**：删除手动穿戴/装备选项、改由 provider 统一生成后，“强制他人穿戴”原版 provider 不提供，
+   暂时丢失。若需要，可单独补一个不与 provider 重复的手动项。
+
 ---
 
 ## 6. 实现步骤（建议顺序）
@@ -180,10 +212,15 @@ public void Add(Thing t)
    - 读档后 view 为空、`RebuildView` 走物化分支，索引随物化自动重建（见 §3.2 存读档要求）。
 2. 新增 `Patch_GenClosest_ClosestThing_Global_Reachable`（Postfix 兜底），在原方法返回 `null` 时把
    “未 Spawned 但 `IsInHaulableInventory`”的 vault 副本按可达性/validator/priority 回填进 `__result`。
-3. 用现有拿取闭环（`JobDriver_VaultTakeToInventory` / `JobDriver_VaultDeliverResources` / 工作台原料）
-   做回归，确认 Boost/SplitOff/预留记账未被索引改动破坏。
-4. 专项验证 §5 的三类残余风险（regionwise 边界、`AllThings` 遍历、haul group 误判）。
-5. 若 regionwise 边界影响明显，再评估是否对 `ClosestThingReachable` 增加“强制全局兜底”的最小 patch。
+3. 删除 `Patch_ListerHaulables_ShouldBeHaulable`，并修改 `Patch_StoreUtility_TryFindBestBetterNonSlotGroupStorageFor`
+   阻止 vault→vault，实现基于优先级的搬运。
+4. 新增 `Patch_FoodUtility_SpawnedFoodSearchInnerScan` + `Patch_JobDriver_Ingest_PrepareToIngestToils_ToolUser`，
+   打通自动/右键食用。
+5. vault `ThingDef` 设 `<containedItemsSelectable>true</containedItemsSelectable>`，删除手动穿戴/装备选项，
+   交由 `FloatMenuOptionProvider` 统一生成。
+6. 用现有拿取闭环（`JobDriver_VaultTakeToInventory` / `JobDriver_VaultDeliverResources` / 工作台原料 / 食物）
+   做回归，确认 Boost/SplitOff/预留记账未被改动破坏。
+7. 专项验证 §5 的残余风险（regionwise 边界、搬运循环、食用执行、存档读档、ForceTargetWear）。
 
 ---
 
