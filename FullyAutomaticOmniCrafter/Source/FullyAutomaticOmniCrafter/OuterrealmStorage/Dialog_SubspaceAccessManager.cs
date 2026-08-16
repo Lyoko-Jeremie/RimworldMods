@@ -25,10 +25,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool filterAnimal = true;
         private bool filterMechanoid = true;
 
+        // 是否显示 pawn 图像（默认关闭以加速界面打开；开启后才加载并显示）
+        private bool showPawnIcons;
+
         private readonly List<Pawn> candidates = new List<Pawn>();
         private readonly List<Pawn> authorized = new List<Pawn>();
 
-        public override Vector2 InitialSize => new Vector2(920f, 640f);
+        public override Vector2 InitialSize => new Vector2(920f, 720f);
 
         public Dialog_SubspaceAccessManager()
         {
@@ -120,6 +123,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Checkbox(new Rect(filterW + 10f, y, filterW, 30f), "SubspaceAccess_FilterAnimal", ref filterAnimal, ref filterChanged);
             Checkbox(new Rect((filterW + 10f) * 2f, y, filterW, 30f), "SubspaceAccess_FilterMechanoid", ref filterMechanoid, ref filterChanged);
             y += 35f;
+            // 显示图像开关（默认关闭以加速界面打开）
+            Checkbox(new Rect(0f, y, inRect.width / 2f, 30f), "SubspaceAccess_ShowIcons", ref showPawnIcons, ref filterChanged);
+            y += 35f;
             if (filterChanged)
             {
                 dirty = true;
@@ -168,8 +174,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
 
             Rect iconRect = new Rect(rowRect.x + 4f, rowRect.y + 5f, 30f, 30f);
-            Widgets.DrawRectFast(iconRect, new Color(0.16f, 0.16f, 0.16f, 0.55f));
-            Widgets.DrawBox(iconRect, 1);
+            if (showPawnIcons)
+            {
+                Widgets.ThingIcon(iconRect, p);
+            }
+            else
+            {
+                Widgets.DrawRectFast(iconRect, new Color(0.16f, 0.16f, 0.16f, 0.55f));
+                Widgets.DrawBox(iconRect, 1);
+            }
 
             string nameLine = p.LabelCap;
             if (p.Faction != null)

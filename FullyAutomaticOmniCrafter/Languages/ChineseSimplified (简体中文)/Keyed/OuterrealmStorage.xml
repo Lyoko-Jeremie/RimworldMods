@@ -69,4 +69,6 @@
   <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
   <SubspaceAccess_FilterHuman>人类</SubspaceAccess_FilterHuman>
   <SubspaceAccess_FilterAnimal>动物</SubspaceAccess_FilterAnimal>
-  <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid></LanguageData>
+  <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid>
+  <SubspaceAccess_ShowIcons>显示图像</SubspaceAccess_ShowIcons>
+</LanguageData>

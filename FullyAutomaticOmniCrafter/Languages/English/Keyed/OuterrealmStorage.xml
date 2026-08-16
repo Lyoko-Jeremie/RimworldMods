@@ -67,4 +67,6 @@
   <SubspaceAccess_PutIntoStorage>Put {0} into subspace storage</SubspaceAccess_PutIntoStorage>
   <SubspaceAccess_FilterHuman>Human</SubspaceAccess_FilterHuman>
   <SubspaceAccess_FilterAnimal>Animal</SubspaceAccess_FilterAnimal>
-  <SubspaceAccess_FilterMechanoid>Mechanoid</SubspaceAccess_FilterMechanoid></LanguageData>
+  <SubspaceAccess_FilterMechanoid>Mechanoid</SubspaceAccess_FilterMechanoid>
+  <SubspaceAccess_ShowIcons>Show icons</SubspaceAccess_ShowIcons>
+</LanguageData>
