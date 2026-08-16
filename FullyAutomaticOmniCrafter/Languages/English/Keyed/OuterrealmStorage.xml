@@ -51,4 +51,19 @@
   <!-- Storage manager: eject everything -->
   <OuterrealmStorageManager_EjectAllEntries>Eject everything</OuterrealmStorageManager_EjectAllEntries>
   <OuterrealmStorageManager_AllCategories>All categories</OuterrealmStorageManager_AllCategories>
+  <!-- §v3 Subspace Access -->
+  <SubspaceAccessManagerTitle>Subspace access authorization</SubspaceAccessManagerTitle>
+  <SubspaceAccessManagerOpen>Access authorization</SubspaceAccessManagerOpen>
+  <SubspaceAccessManagerOpenDesc>Manage which pawns have subspace access (draw/deposit remotely).</SubspaceAccessManagerOpenDesc>
+  <SubspaceAccess_Search>Search</SubspaceAccess_Search>
+  <SubspaceAccess_LeftTitle>Your faction (authorizable)</SubspaceAccess_LeftTitle>
+  <SubspaceAccess_RightTitle>Authorized (removable)</SubspaceAccess_RightTitle>
+  <SubspaceAccess_Authorize>Authorize</SubspaceAccess_Authorize>
+  <SubspaceAccess_Deauthorize>Deauthorize</SubspaceAccess_Deauthorize>
+  <SubspaceAccess_Authorized>Authorized</SubspaceAccess_Authorized>
+  <SubspaceAccess_Empty>None</SubspaceAccess_Empty>
+  <SubspaceAccess_OpenManager>Subspace storage manager</SubspaceAccess_OpenManager>
+  <SubspaceAccess_OpenManagerDesc>Open the subspace storage manager to eject items nearby.</SubspaceAccess_OpenManagerDesc>
+  <SubspaceAccess_PutIntoStorage>Put {0} into subspace storage</SubspaceAccess_PutIntoStorage>
+  <subspace access>Subspace access</subspace access>
 </LanguageData>

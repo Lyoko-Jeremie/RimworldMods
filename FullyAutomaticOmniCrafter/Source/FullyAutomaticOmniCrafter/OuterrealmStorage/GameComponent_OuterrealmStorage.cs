@@ -404,6 +404,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>把 count 个条目物化弹出到指定地图（追加到弹出队列，逐 tick 限速执行）。</summary>
         public void EnqueueEject(OuterrealmEntryKey key, Map map, long count)
         {
+            EnqueueEject(key, map, count, IntVec3.Invalid);
+        }
+
+        /// <summary>弹出到指定锚点（§v3 随身弹出：anchor = pawn 位置；Invalid = FindEjectAnchor 默认）。</summary>
+        public void EnqueueEject(OuterrealmEntryKey key, Map map, long count, IntVec3 anchor)
+        {
             if (count <= 0 || map == null || !FindEntryExists(key))
             {
                 return;
@@ -416,13 +422,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < ejectQueue.Count; i++)
             {
                 VaultEjectJob job = ejectQueue[i];
-                if (job.Key == key && job.MapIndex == mapIndex)
+                if (job.Key == key && job.MapIndex == mapIndex && job.Anchor == anchor)
                 {
                     job.Remaining += count;
                     return;
                 }
             }
-            ejectQueue.Add(new VaultEjectJob { Key = key, MapIndex = mapIndex, Remaining = count });
+            ejectQueue.Add(new VaultEjectJob { Key = key, MapIndex = mapIndex, Remaining = count, Anchor = anchor });
         }
 
         /// <summary>标记弹出物品（落地后短暂防回吸，§6.4）。</summary>
@@ -495,8 +501,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     job.Remaining -= withdrawn;
                     MarkEjected(t); // 弹出防回吸：落地后短暂不被本系统建筑自动吸回（§6.4）
                     Thing dropped;
+                    // 锚点：随身弹出用 pawn 位置；否则 vault 交互格 / 地图中心。
+                    IntVec3 anchor = job.Anchor.IsValid ? job.Anchor : FindEjectAnchor(map);
                     // 放置时排除本系统建筑占位格（建筑 PassThroughOnly，物品可落在建筑格上——需放到建筑外附近）
-                    bool placed = GenDrop.TryDropSpawn(t, FindEjectAnchor(map), map, ThingPlaceMode.Near, out dropped, null, c => !IsVaultCell(c, map));
+                    bool placed = GenDrop.TryDropSpawn(t, anchor, map, ThingPlaceMode.Near, out dropped, null, c => !IsVaultCell(c, map));
                     // 1.6 放置语义：take ≤ stackLimit 时 TryDropSpawn 成功会把整个堆 Spawn（t.Spawned）
                     // 或并入已有堆（t 被吸收销毁）——此时 t.stackCount 不再代表"未放置剩余"，
                     // 不能再用它判定 leftover（否则会把刚落地的物品经 Deposit 收回，弹出永远失败）。
@@ -665,5 +673,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public long Remaining;
         /// <summary>连续放置失败计数（超限放弃任务，防死循环刷屏）。</summary>
         public int FailCount;
+        /// <summary>弹出锚点（§v3 随身弹出）：Invalid = 用 FindEjectAnchor（vault 交互格 / 地图中心）。</summary>
+        public IntVec3 Anchor = IntVec3.Invalid;
     }
 }

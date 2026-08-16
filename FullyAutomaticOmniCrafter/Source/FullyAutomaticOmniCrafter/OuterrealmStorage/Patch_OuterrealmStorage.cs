@@ -1190,6 +1190,68 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §v3 随身访问：授权 pawn 右键物品 → "放入超维存储"（直接 Deposit 进全局库） ──
+    [HarmonyPatch(typeof(FloatMenuMakerMap), "GetOptions")]
+    internal static class Patch_FloatMenuMakerMap_GetOptions_SubspaceDeposit
+    {
+        private static void Postfix(List<Pawn> selectedPawns, ref FloatMenuContext context, List<FloatMenuOption> __result)
+        {
+            if (__result == null || context == null)
+            {
+                return;
+            }
+            Pawn pawn = context.FirstSelectedPawn;
+            if (pawn == null || !SubspaceAccessUtility.IsAuthorized(pawn))
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            List<Thing> clicked = context.ClickedThings;
+            if (clicked == null)
+            {
+                return;
+            }
+            for (int i = 0; i < clicked.Count; i++)
+            {
+                Thing t = clicked[i];
+                if (!CanDeposit(t))
+                {
+                    continue;
+                }
+                Thing target = t;
+                __result.Add(new FloatMenuOption(
+                    "SubspaceAccess_PutIntoStorage".Translate(target.LabelCapNoCount),
+                    () => Deposit(target, gs)));
+            }
+        }
+
+        private static bool CanDeposit(Thing t)
+        {
+            if (t == null || t.Destroyed || t is Pawn)
+            {
+                return false;
+            }
+            if (t.holdingOwner is OuterrealmVaultViewThingOwner)
+            {
+                return false;
+            }
+            return t.def.EverStorable(false);
+        }
+
+        private static void Deposit(Thing t, GameComponent_OuterrealmStorage gs)
+        {
+            if (t == null || t.Destroyed)
+            {
+                return;
+            }
+            gs.Deposit(t);
+        }
+    }
+
     // ── 半 Spawned 投影配套：搬运可达性——对 vault 副本用建筑做 CanReach/Fogged ──
     // 原版 PawnCanAutomaticallyHaulFast 对 t 做 t.Fogged() / CanReserve(t) / CanReach(t)。副本未 Spawned，
     // CanReach(t) 依赖 t.PositionHeld（=vault 建筑格）虽理论可达，但为稳妥，对 vault 副本改用 vault 建筑做
@@ -1333,6 +1395,36 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §v3 随身访问：授权 pawn 附带"超维存储管理器"Gizmo（随身弹出到身旁） ──
+    [HarmonyPatch(typeof(Pawn), "GetGizmos")]
+    internal static class Patch_Pawn_GetGizmos_SubspaceAccess
+    {
+        private static void Postfix(ref IEnumerable<Gizmo> __result, Pawn __instance)
+        {
+            if (!SubspaceAccessUtility.IsAuthorized(__instance))
+            {
+                return;
+            }
+            IEnumerable<Gizmo> original = __result;
+            __result = Append(original, __instance);
+        }
+
+        private static IEnumerable<Gizmo> Append(IEnumerable<Gizmo> original, Pawn pawn)
+        {
+            foreach (Gizmo g in original)
+            {
+                yield return g;
+            }
+            yield return new Command_Action
+            {
+                defaultLabel = "SubspaceAccess_OpenManager".Translate(),
+                defaultDesc = "SubspaceAccess_OpenManagerDesc".Translate(),
+                icon = TexCommand.SelectShelf,
+                action = () => Find.WindowStack.Add(new Dialog_OuterrealmStorageManager(pawn)),
+            };
+        }
+    }
+
     // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
@@ -1457,6 +1549,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 OuterrealmPatchUtil.UnboostMapVaults(pawn.Map);
             }
+        }
+
+        // ── §v3 随身取料：在原版 relevantThings.Clear() 之后注入授权 pawn 的随身副本 ──
+        // 仅单点插入一个 helper 调用（ldarg pawn / ldarg billGiver / ldsfld relevantThings / call InjectPawnCopies），
+        // 不做 IL 重写。匹配目标（ldsfld relevantThings + callvirt List<Thing>::Clear）唯一，失败即 Log.Error。
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            FieldInfo relevantThingsField = AccessTools.Field(typeof(WorkGiver_DoBill), "relevantThings");
+            MethodInfo listClear = AccessTools.Method(typeof(List<Thing>), "Clear");
+            MethodInfo inject = AccessTools.Method(typeof(SubspaceAccessUtility), "InjectPawnCopies");
+
+            List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+            bool injected = false;
+            for (int i = 0; i < codes.Count - 1; i++)
+            {
+                if (codes[i].LoadsField(relevantThingsField) && codes[i + 1].Calls(listClear))
+                {
+                    codes.InsertRange(i + 2, new[]
+                    {
+                        new CodeInstruction(OpCodes.Ldarg_3),                    // pawn（第 4 参）
+                        new CodeInstruction(OpCodes.Ldarg_S, (sbyte)4),          // billGiver（第 5 参）
+                        new CodeInstruction(OpCodes.Ldsfld, relevantThingsField),
+                        new CodeInstruction(OpCodes.Call, inject),
+                    });
+                    injected = true;
+                    break;
+                }
+            }
+            if (!injected)
+            {
+                Log.Error("[OuterrealmStorage] Transpiler 未匹配到 relevantThings.Clear()，随身取料注入失效");
+            }
+            return codes;
         }
     }
 

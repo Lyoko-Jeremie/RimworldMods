@@ -53,4 +53,19 @@
 
   <!-- 存储管理器：分类树 -->
   <OuterrealmStorageManager_AllCategories>全部分类</OuterrealmStorageManager_AllCategories>
+  <!-- §v3 超维存储访问能力 -->
+  <SubspaceAccessManagerTitle>超维存储访问授权</SubspaceAccessManagerTitle>
+  <SubspaceAccessManagerOpen>访问授权</SubspaceAccessManagerOpen>
+  <SubspaceAccessManagerOpenDesc>管理哪些 pawn 拥有超维存储访问能力（随身取料/存料）。</SubspaceAccessManagerOpenDesc>
+  <SubspaceAccess_Search>搜索</SubspaceAccess_Search>
+  <SubspaceAccess_LeftTitle>我方派系（可授权）</SubspaceAccess_LeftTitle>
+  <SubspaceAccess_RightTitle>已授权（可移除）</SubspaceAccess_RightTitle>
+  <SubspaceAccess_Authorize>授权</SubspaceAccess_Authorize>
+  <SubspaceAccess_Deauthorize>取消授权</SubspaceAccess_Deauthorize>
+  <SubspaceAccess_Authorized>已授权</SubspaceAccess_Authorized>
+  <SubspaceAccess_Empty>无</SubspaceAccess_Empty>
+  <SubspaceAccess_OpenManager>超维存储管理器</SubspaceAccess_OpenManager>
+  <SubspaceAccess_OpenManagerDesc>打开超维存储管理器，可把物品弹出到身旁。</SubspaceAccess_OpenManagerDesc>
+  <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
+  <subspace access>超维存储访问能力</subspace access>
 </LanguageData>

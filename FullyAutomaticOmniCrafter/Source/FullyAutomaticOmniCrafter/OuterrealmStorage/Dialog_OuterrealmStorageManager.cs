@@ -25,6 +25,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool dirtyUnseenFlag;
         private bool dirty = true;
         private int selectedMapIndex;
+        /// <summary>随身弹出目标（§v3）：null = 按地图默认锚点弹出。</summary>
+        private readonly Pawn ejectTarget;
         private readonly List<OuterrealmEntry> visibleEntries = new List<OuterrealmEntry>();
 
         /// <summary>分类树缓存：有效分类集合 + 各分类（含子分类）条目总数。仅内容版本变化时重建（复用字段避免每帧分配）。</summary>
@@ -50,6 +52,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 selectedMapIndex = 0;
             }
+        }
+
+        /// <summary>随身弹出（§v3）：授权 pawn 打开时，弹出锚点 = pawn 位置；否则按地图默认锚点。</summary>
+        public Dialog_OuterrealmStorageManager(Pawn ejectTarget) : this()
+        {
+            this.ejectTarget = ejectTarget;
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -101,7 +109,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     OuterrealmEntry e = all[i];
                     if (e.Count > 0)
                     {
-                        gs.EnqueueEject(e.Key, TargetMap(), e.Count);
+                        gs.EnqueueEject(e.Key, TargetMap(), e.Count, TargetAnchor());
                     }
                 }
             }
@@ -378,7 +386,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
             if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 2f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
             {
-                gs.EnqueueEject(entry.Key, TargetMap(), entry.Count);
+                gs.EnqueueEject(entry.Key, TargetMap(), entry.Count, TargetAnchor());
             }
             if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 2f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
             {
@@ -390,7 +398,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         (int v) => label + " x" + v.ToString("N0"),
                         1,
                         max,
-                        (int v) => gs.EnqueueEject(entry.Key, TargetMap(), v)));
+                        (int v) => gs.EnqueueEject(entry.Key, TargetMap(), v, TargetAnchor())));
                 }
             }
             rect.width -= 190f;
@@ -424,11 +432,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private Map TargetMap()
         {
+            if (ejectTarget != null && ejectTarget.Map != null)
+            {
+                return ejectTarget.Map;
+            }
             if (selectedMapIndex >= 0 && selectedMapIndex < Find.Maps.Count)
             {
                 return Find.Maps[selectedMapIndex];
             }
             return Find.CurrentMap;
+        }
+
+        /// <summary>弹出锚点：随身弹出 = pawn 位置；否则 Invalid（走 FindEjectAnchor 默认）。</summary>
+        private IntVec3 TargetAnchor()
+        {
+            return ejectTarget != null ? ejectTarget.Position : IntVec3.Invalid;
         }
     }
 }

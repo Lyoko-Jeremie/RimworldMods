@@ -23,9 +23,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>该 pawn 是否携带量子链路植入体（§7）。</summary>
+        /// <summary>
+        /// 该 pawn 是否被标记（§7 / §v3）：优先新的"超维存储访问能力"Hediff，
+        /// 兼容旧的量子链路植入体（FAOC_QuantumLinkImplant），避免旧存档失效。
+        /// </summary>
         public static bool IsMarked(Pawn pawn)
         {
+            if (SubspaceAccessUtility.IsAuthorized(pawn))
+            {
+                return true;
+            }
             return pawn != null
                 && MarkHediffDef != null
                 && pawn.health != null

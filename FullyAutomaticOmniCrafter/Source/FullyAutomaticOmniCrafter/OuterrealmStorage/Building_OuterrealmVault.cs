@@ -23,7 +23,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         IHaulEnroute,
         ISearchableContents,
         IStorageGroupMember,
-        IApparelSource
+        IApparelSource,
+        IOuterrealmVaultContext
     {
         /// <summary>独立存储清单（filter 决定本建筑"能看到/存取哪些条目"，§6.2）。</summary>
         public StorageSettings settings;
@@ -583,6 +584,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     defaultDesc = "OuterrealmStorageManager_OpenDesc".Translate(),
                     icon = TexCommand.SelectShelf,
                     action = () => Find.WindowStack.Add(new Dialog_OuterrealmStorageManager()),
+                };
+                // 超维存储访问能力授权（§v3）：双栏授权界面
+                yield return new Command_Action
+                {
+                    defaultLabel = "SubspaceAccessManagerOpen".Translate(),
+                    defaultDesc = "SubspaceAccessManagerOpenDesc".Translate(),
+                    icon = TexCommand.Draft,
+                    action = () => Find.WindowStack.Add(new Dialog_SubspaceAccessManager()),
                 };
             }
         }

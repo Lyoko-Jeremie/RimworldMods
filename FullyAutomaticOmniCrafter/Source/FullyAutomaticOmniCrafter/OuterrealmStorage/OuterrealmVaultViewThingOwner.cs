@@ -21,7 +21,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     public class OuterrealmVaultViewThingOwner : ThingOwner<Thing>
     {
-        public readonly Building_OuterrealmVault Vault;
+        /// <summary>上下文（§v3）：建筑 vault 或授权 pawn 随身视图。随身上下文 Spawned=false，副本不进 lister。</summary>
+        public readonly IOuterrealmVaultContext Context;
 
         /// <summary>视图重建/注销期间抑制 Notify_ItemRemoved 的全局同步（§3.3）。</summary>
         public bool SuppressRemovalSync;
@@ -51,10 +52,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private readonly Dictionary<Thing, long> reservedByCopy = new Dictionary<Thing, long>();
         private int reservedCacheVersion = -1;
 
-        public OuterrealmVaultViewThingOwner(Building_OuterrealmVault vault)
-            : base(vault, false, LookMode.Deep, false)
+        public OuterrealmVaultViewThingOwner(IOuterrealmVaultContext context)
+            : base(context, false, LookMode.Deep, false)
         {
-            Vault = vault;
+            Context = context;
             dontTickContents = true; // 冻结强制项 2（§1.4）
         }
 
@@ -189,7 +190,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             reservedByKey.Clear();
             reservedByCopy.Clear();
-            Map map = Vault != null ? Vault.MapHeld : null;
+            Map map = Context != null ? Context.MapHeld : null;
             if (map != null)
             {
                 List<ReservationManager.Reservation> reservations = map.reservationManager.ReservationsReadOnly;
@@ -303,27 +304,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         private void RegisterInLister(Thing copy)
         {
-            if (copy == null || copy.Spawned || !Vault.Spawned || Vault.MapHeld == null)
+            if (copy == null || copy.Spawned || !Context.Spawned || Context.MapHeld == null)
             {
                 return;
             }
-            copy.Position = Vault.InteractionCell; // 未 Spawned：仅设置 positionInt，保证直接读 Position 的代码不 NRE
+            copy.Position = Context.InteractionCell; // 未 Spawned：仅设置 positionInt，保证直接读 Position 的代码不 NRE
             // 判重不用 ThingsOfDef：对 MinifiedThing（打包建筑）会触发 RimWorld 防御性报错，
             // 且 ThingsOfDef 按 def 索引会把所有打包建筑混为一组。Contains 直接按实例判重，语义更准确。
-            if (!Vault.MapHeld.listerThings.Contains(copy))
+            if (!Context.MapHeld.listerThings.Contains(copy))
             {
-                Vault.MapHeld.listerThings.Add(copy);
+                Context.MapHeld.listerThings.Add(copy);
             }
         }
 
         /// <summary>半 Spawned 投影：从查询索引移除副本（须在 base.Remove 之前，防残留指向已销毁副本）。</summary>
         private void UnregisterFromLister(Thing copy)
         {
-            if (copy == null || !Vault.Spawned || Vault.MapHeld == null)
+            if (copy == null || !Context.Spawned || Context.MapHeld == null)
             {
                 return;
             }
-            Vault.MapHeld.listerThings.Remove(copy);
+            Context.MapHeld.listerThings.Remove(copy);
         }
 
         /// <summary>从当前视图列表重建索引（RebuildView 末尾调用；读档后索引为空，全量重建必须重建索引）。</summary>
@@ -362,7 +363,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             OuterrealmEntry e = gs.FindEntry(key);
-            if (e == null || e.Count <= 0 || !Vault.CanShow(e.Proto))
+            if (e == null || e.Count <= 0 || !Context.CanShow(e.Proto))
             {
                 return;
             }
@@ -396,7 +397,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             OuterrealmEntry e = gs.FindEntry(key);
-            bool allowed = e != null && e.Count > 0 && Vault.CanShow(e.Proto);
+            bool allowed = e != null && e.Count > 0 && Context.CanShow(e.Proto);
             Thing copy = FindCopy(key);
             if (allowed)
             {
@@ -427,9 +428,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         SuppressRemovalSync = false;
                     }
                     copy.Destroy();
-                    if (Vault.Spawned && !copy.Spawned)
+                    if (Context.Spawned && !copy.Spawned)
                     {
-                        Vault.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+                        Context.MapHeld.listerHaulables.Notify_DeSpawned(copy);
                     }
                 }
             }
@@ -452,7 +453,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     Thing copy = this[i];
                     OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
-                    bool allowed = e != null && e.Count > 0 && Vault.CanShow(e.Proto);
+                    bool allowed = e != null && e.Count > 0 && Context.CanShow(e.Proto);
                     if (allowed)
                     {
                         continue;
@@ -469,7 +470,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 for (int i = 0; i < list.Count; i++)
                 {
                     OuterrealmEntry e = list[i];
-                    if (e.Count <= 0 || !Vault.CanShow(e.Proto))
+                    if (e.Count <= 0 || !Context.CanShow(e.Proto))
                     {
                         continue;
                     }
@@ -499,9 +500,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             RebuildIndex(); // 全量重建后统一重建索引（覆盖保留副本与新增副本，读档后索引为空必须重建）
             reservedCacheVersion = -1; // 预留缓存强制失效（§P0）：读档/重建时 reservations 可能尚未加载，下次查询懒重建
-            if (Vault.Spawned)
+            if (Context.Spawned && Context is IHaulSource haulSource)
             {
-                Vault.MapHeld.listerHaulables.Notify_HaulSourceChanged(Vault);
+                Context.MapHeld.listerHaulables.Notify_HaulSourceChanged(haulSource);
             }
         }
 
@@ -602,9 +603,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 SuppressRemovalSync = false;
             }
             copy.Destroy();
-            if (Vault.Spawned && !copy.Spawned)
+            if (Context.Spawned && !copy.Spawned)
             {
-                Vault.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+                Context.MapHeld.listerHaulables.Notify_DeSpawned(copy);
             }
         }
 
@@ -654,7 +655,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(copy)) : null;
-            bool allowed = e != null && e.Count > 0 && Vault.CanShow(e.Proto);
+            bool allowed = e != null && e.Count > 0 && Context.CanShow(e.Proto);
             if (allowed)
             {
                 return;
@@ -673,9 +674,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 SuppressRemovalSync = false;
             }
             copy.Destroy();
-            if (Vault.Spawned && !copy.Spawned)
+            if (Context.Spawned && !copy.Spawned)
             {
-                Vault.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+                Context.MapHeld.listerHaulables.Notify_DeSpawned(copy);
             }
         }
     }
