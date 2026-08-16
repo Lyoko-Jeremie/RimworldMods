@@ -1314,6 +1314,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 交易可售位置：让 vault 副本通过 TradeDeal.InSellablePosition 的未 Spawned 白名单 ──
+    // TradeDeal.InSellablePosition 对未 Spawned 物品只放行 GenepackContainer / Bookcase / OutfitStand 三类持有者；
+    // vault 副本（ParentHolder = Building_OuterrealmVault）不在白名单，会被判“不在可售位置”而静默跳过，
+    // 导致交易界面不显示。此处对 vault 副本直接视为可售（容器位置 = vault 建筑，未雾且无附近阻止出售物）。
+    [HarmonyPatch(typeof(TradeDeal), "InSellablePosition")]
+    internal static class Patch_TradeDeal_InSellablePosition
+    {
+        private static bool Prefix(Thing t, ref string reason, ref bool __result)
+        {
+            if (t != null && t.ParentHolder is Building_OuterrealmVault)
+            {
+                reason = null;
+                __result = true;
+                return false; // 跳过原版：vault 副本视为可售
+            }
+            return true;
+        }
+    }
+
     // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
