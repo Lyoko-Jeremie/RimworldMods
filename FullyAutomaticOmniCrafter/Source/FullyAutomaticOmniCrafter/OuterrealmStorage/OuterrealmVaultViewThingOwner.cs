@@ -308,8 +308,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             copy.Position = Vault.InteractionCell; // 未 Spawned：仅设置 positionInt，保证直接读 Position 的代码不 NRE
-            List<Thing> indexed = Vault.MapHeld.listerThings.ThingsOfDef(copy.def);
-            if (indexed == null || !indexed.Contains(copy))
+            // 判重不用 ThingsOfDef：对 MinifiedThing（打包建筑）会触发 RimWorld 防御性报错，
+            // 且 ThingsOfDef 按 def 索引会把所有打包建筑混为一组。Contains 直接按实例判重，语义更准确。
+            if (!Vault.MapHeld.listerThings.Contains(copy))
             {
                 Vault.MapHeld.listerThings.Add(copy);
             }
