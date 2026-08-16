@@ -77,14 +77,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private void DoVaultRow(Building_OuterrealmVault vault, Thing copy, OuterrealmEntry entry, float width, ref float curY)
         {
             Rect rect = new Rect(0f, curY, width, 28f);
-            // 放行/停止放行（§6.3 路线 A）：放行条目可被搬运工搬往其他存储区
-            bool released = vault.IsReleased(entry.Key);
-            string releaseLabel = released ? "OuterrealmVault_StopRelease".Translate() : "OuterrealmVault_Release".Translate();
-            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 84f, curY + 2f, 80f, 24f), releaseLabel, true, false, true))
-            {
-                vault.SetReleased(entry.Key, !released);
-            }
-            rect.width -= 88f;
             if (canRemoveThings)
             {
                 // 滑条丢弃（指定数量；全局量可能超 int，上限取 int.MaxValue，实际丢弃分批循环）

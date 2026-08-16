@@ -477,10 +477,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── §6.3 防回吸：放行条目的搬运目标排除本系统 Vault ──
-    // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 放行永不完成、
-    // 无限搬运循环。postfix 发现"放行条目 + 目标是本系统 Vault"时置失败（搬运工放弃该 job，
-    // 物品滞留；存在普通存储区时正常搬走）。
+    // ── 防搬运循环：vault 条目的搬运目标排除本系统 Vault ──
+    // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 无限搬运循环。
+    // postfix 发现"来源是 vault + 目标是本系统 Vault"时置失败（搬运工放弃该 job；
+    // vault→普通存储区不受影响，目标不是 vault）。
     [HarmonyPatch(typeof(StoreUtility), "TryFindBestBetterNonSlotGroupStorageFor")]
     internal static class Patch_StoreUtility_TryFindBestBetterNonSlotGroupStorageFor
     {

@@ -40,15 +40,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool allowTakeForUse; // 条件开关：noWithdraw 开启时放宽工作台/食物搜索（§5.2 #7，P4 实现）
         private bool frozen;       // 冻结开关：隐藏全部物品并暂停建筑工作，但保持 filter 不变
 
-        // ── 放行列表（§6.3 移出路线 A）：放行条目保留在视图但 Accepts 返回 false → 可 haulable，
-        //    由搬运工搬到其他存储区；条目搬空后自动清除（CleanupReleasedKeys）。存档随建筑序列化。
-        private List<OuterrealmEntryKey> releasedKeys = new List<OuterrealmEntryKey>();
-
         public bool NoDeposit => noDeposit;
         public bool NoWithdraw => noWithdraw;
         public bool AllowTakeForUse => allowTakeForUse;
         public bool Frozen => frozen;
-        public List<OuterrealmEntryKey> ReleasedKeysForReading => releasedKeys;
 
         // ── InspectString 摘要缓存（§4：InspectPaneFiller 每帧调用，避免每帧拼接几百条目） ──
         private string cachedInspectString;
@@ -148,13 +143,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // §3.3 事件驱动方案：视图内容同步由 GameComponent_OuterrealmStorage 的帧末微批统一驱动，
             // 设置变化（含 StorageGroup 组设置，经 Patch_StorageGroup_Notify_SettingsChanged 补链）由
             // Notify_SettingsChanged 事件即时触发 RebuildView——无需轮询。此处仅保留变更日志溢出的
-            // 全量重建兜底与 60 tick 的放行条目清理（§6.3）。
+            // 全量重建兜底。
             if (gs.NeedFullRebuild)
             {
                 view.RebuildView();
                 lastSeenVersion = gs.Version;
             }
-            CleanupReleasedKeys(); // 条目搬空后移除放行项（§6.3）
         }
 
         // ── IStoreSettingsParent / IHaulDestination / IHaulSource ───────────────
@@ -203,111 +197,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public bool Accepts(Thing t)
         {
-            // §6.3：放行条目 Accepts 返回 false（视图保留、可 haulable → 搬运工搬走）；
-            // filter 门控照常（允许=可存入，禁止=不可见）。
             // §6.4：弹出防回吸——刚弹出的物品限时内不被本建筑自动吸回。
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs != null && gs.IsEjected(t))
             {
                 return false;
             }
-            return CanShow(t) && !IsReleased(t);
+            return CanShow(t);
         }
 
         /// <summary>是否向该建筑展示/物化某物品：冻结时恒 false；否则取决于 filter。保持 filter 不变。</summary>
         public bool CanShow(Thing t)
         {
             return !frozen && GetStoreSettings().AllowedToAccept(t);
-        }
-
-        // ── 放行（§6.3 移出路线 A） ────────────────────────────────────────────
-
-        public bool IsReleased(Thing t)
-        {
-            return IsReleased(OuterrealmEntryKey.From(t));
-        }
-
-        public bool IsReleased(OuterrealmEntryKey key)
-        {
-            return releasedKeys.Contains(key);
-        }
-
-        /// <summary>设置放行状态（§6.3）：放行 = 该条目可被搬运工搬去其他存储；取消 = 恢复锁定。</summary>
-        public void SetReleased(OuterrealmEntryKey key, bool released)
-        {
-            bool had = releasedKeys.Contains(key);
-            if (released && !had)
-            {
-                releasedKeys.Add(key);
-            }
-            else if (!released && had)
-            {
-                releasedKeys.Remove(key);
-            }
-            else
-            {
-                return;
-            }
-            // 放行状态变化 → listerHaulables 重算（放行条目进入 haulables / 恢复锁定）
-            if (Spawned)
-            {
-                MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
-            }
-        }
-
-        /// <summary>放行全部视图条目（gizmo"移出全部"）。</summary>
-        public void ReleaseAll()
-        {
-            if (view == null)
-            {
-                return;
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            bool any = false;
-            List<OuterrealmEntry> entries = gs.EntriesForReading;
-            for (int i = 0; i < entries.Count; i++)
-            {
-                OuterrealmEntry e = entries[i];
-                // 可见性判定与 UI 一致：尸体不物化视图副本，以 filter 判定；其余条目以副本存在性判定
-                bool visible = e.Proto is Corpse
-                    ? CanShow(e.Proto)
-                    : view.FindCopy(e.Key) != null;
-                if (e.Count > 0 && visible && !releasedKeys.Contains(e.Key))
-                {
-                    releasedKeys.Add(e.Key);
-                    any = true;
-                }
-            }
-            if (any && Spawned)
-            {
-                MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
-            }
-        }
-
-        /// <summary>条目搬空后自动移除放行项（§6.3：放行状态保留直到清空），防止同 key 重新存入后立即被搬走。</summary>
-        private void CleanupReleasedKeys()
-        {
-            if (releasedKeys.Count == 0)
-            {
-                return;
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            for (int i = releasedKeys.Count - 1; i >= 0; i--)
-            {
-                OuterrealmEntry e = gs.FindEntry(releasedKeys[i]);
-                if (e == null || e.Count <= 0)
-                {
-                    releasedKeys.RemoveAt(i);
-                }
-            }
         }
 
         // IHaulEnroute：无限容量（§1.2）。注意该值不做 filter 检查——filter 门控在存储选择阶段 Accepts。
@@ -797,30 +699,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Values.Look(ref noWithdraw, "noWithdraw", false);
             Scribe_Values.Look(ref allowTakeForUse, "allowTakeForUse", false);
             Scribe_Values.Look(ref frozen, "frozen", false);
-            // 放行列表存档（§4.1b：放行状态随建筑实例序列化）。OuterrealmEntryKey 为 struct，
-            // 经 ToString/TryParse 字符串中转；解析失败项跳过（无害）。
-            List<string> releasedKeyStrings = null;
-            if (Scribe.mode == LoadSaveMode.Saving)
-            {
-                releasedKeyStrings = new List<string>(releasedKeys.Count);
-                for (int i = 0; i < releasedKeys.Count; i++)
-                {
-                    releasedKeyStrings.Add(releasedKeys[i].ToString());
-                }
-            }
-            Scribe_Collections.Look(ref releasedKeyStrings, "releasedKeys", LookMode.Value);
-            if (Scribe.mode == LoadSaveMode.PostLoadInit && releasedKeyStrings != null)
-            {
-                releasedKeys.Clear();
-                for (int i = 0; i < releasedKeyStrings.Count; i++)
-                {
-                    OuterrealmEntryKey key;
-                    if (OuterrealmEntryKey.TryParse(releasedKeyStrings[i], out key))
-                    {
-                        releasedKeys.Add(key);
-                    }
-                }
-            }
         }
     }
 
