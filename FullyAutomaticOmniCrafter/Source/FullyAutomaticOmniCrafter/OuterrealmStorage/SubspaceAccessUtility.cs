@@ -14,6 +14,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     public static class SubspaceAccessUtility
     {
         private static HediffDef cachedAccessDef;
+        private static JobDef cachedDepositJobDef;
+
+        /// <summary>右键"放入超维存储"的取货 job（§v3）。</summary>
+        public static JobDef DepositFromGroundJobDef
+        {
+            get
+            {
+                if (cachedDepositJobDef == null)
+                {
+                    cachedDepositJobDef = DefDatabase<JobDef>.GetNamedSilentFail("FAOC_VaultDepositFromGround");
+                }
+                return cachedDepositJobDef;
+            }
+        }
 
         public static HediffDef AccessHediffDef
         {

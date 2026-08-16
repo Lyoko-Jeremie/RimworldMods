@@ -67,4 +67,6 @@
   <SubspaceAccess_OpenManager>超维存储管理器</SubspaceAccess_OpenManager>
   <SubspaceAccess_OpenManagerDesc>打开超维存储管理器，可把物品弹出到身旁。</SubspaceAccess_OpenManagerDesc>
   <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
-</LanguageData>
+  <SubspaceAccess_FilterHuman>人类</SubspaceAccess_FilterHuman>
+  <SubspaceAccess_FilterAnimal>动物</SubspaceAccess_FilterAnimal>
+  <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid></LanguageData>

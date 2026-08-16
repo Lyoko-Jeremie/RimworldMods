@@ -1225,7 +1225,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Thing target = t;
                 __result.Add(new FloatMenuOption(
                     "SubspaceAccess_PutIntoStorage".Translate(target.LabelCapNoCount),
-                    () => Deposit(target, gs)));
+                    () => StartDepositJob(pawn, target)));
             }
         }
 
@@ -1242,13 +1242,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return t.def.EverStorable(false);
         }
 
-        private static void Deposit(Thing t, GameComponent_OuterrealmStorage gs)
+        /// <summary>生成"走到物品→拿取→吸收进全局库"的取货 job（§v3）。</summary>
+        private static void StartDepositJob(Pawn pawn, Thing t)
         {
-            if (t == null || t.Destroyed)
+            JobDef def = SubspaceAccessUtility.DepositFromGroundJobDef;
+            if (def == null || pawn == null || t == null || t.Destroyed)
             {
                 return;
             }
-            gs.Deposit(t);
+            Job job = JobMaker.MakeJob(def, t);
+            job.count = Mathf.Max(1, t.stackCount); // 拿取全部（ErrorCheckForCarry 要求 count > 0）
+            pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
         }
     }
 

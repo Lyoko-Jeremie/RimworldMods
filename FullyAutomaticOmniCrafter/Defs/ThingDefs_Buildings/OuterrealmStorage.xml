@@ -99,4 +99,13 @@
     <suspendable>false</suspendable>
     <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
   </JobDef>
+
+  <!-- 授权 pawn 右键"放入超维存储"（§v3）：TargetA=地面物品（走到→拿取→吸收进全局库） -->
+  <JobDef>
+    <defName>FAOC_VaultDepositFromGround</defName>
+    <driverClass>FullyAutomaticOmniCrafter.OuterrealmStorage.JobDriver_VaultDepositFromGround</driverClass>
+    <reportString>depositing TargetA into subspace storage.</reportString>
+    <suspendable>false</suspendable>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
 </Defs>

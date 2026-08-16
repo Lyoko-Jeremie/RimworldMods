@@ -428,6 +428,7 @@
     <Compile Include="OuterrealmStorage\IOuterrealmVaultContext.cs" />
     <Compile Include="OuterrealmStorage\ITab_OuterrealmVaultContents.cs" />
     <Compile Include="OuterrealmStorage\JobDriver_VaultDeliverResources.cs" />
+    <Compile Include="OuterrealmStorage\JobDriver_VaultDepositFromGround.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmEntry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />

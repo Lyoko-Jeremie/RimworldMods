@@ -65,4 +65,6 @@
   <SubspaceAccess_OpenManager>Subspace storage manager</SubspaceAccess_OpenManager>
   <SubspaceAccess_OpenManagerDesc>Open the subspace storage manager to eject items nearby.</SubspaceAccess_OpenManagerDesc>
   <SubspaceAccess_PutIntoStorage>Put {0} into subspace storage</SubspaceAccess_PutIntoStorage>
-</LanguageData>
+  <SubspaceAccess_FilterHuman>Human</SubspaceAccess_FilterHuman>
+  <SubspaceAccess_FilterAnimal>Animal</SubspaceAccess_FilterAnimal>
+  <SubspaceAccess_FilterMechanoid>Mechanoid</SubspaceAccess_FilterMechanoid></LanguageData>

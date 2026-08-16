@@ -20,6 +20,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private string searchText = "";
         private bool dirty = true;
 
+        // 类型筛选（仅左栏；右栏恒显示全部已授权）
+        private bool filterHuman = true;
+        private bool filterAnimal = true;
+        private bool filterMechanoid = true;
+
         private readonly List<Pawn> candidates = new List<Pawn>();
         private readonly List<Pawn> authorized = new List<Pawn>();
 
@@ -45,7 +50,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < alive.Count; i++)
             {
                 Pawn p = alive[i];
-                if (p == null || p.Discarded || p.Faction != Faction.OfPlayer || !MatchesSearch(p))
+                if (p == null || p.Discarded || p.Faction != Faction.OfPlayer || !MatchesSearch(p) || !MatchesFilters(p))
                 {
                     continue;
                 }
@@ -80,6 +85,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return p.LabelCap.ToLower().Contains(lower) || p.def.defName.ToLower().Contains(lower);
         }
 
+        private bool MatchesFilters(Pawn p)
+        {
+            return (filterHuman && p.RaceProps.Humanlike)
+                || (filterAnimal && p.RaceProps.Animal)
+                || (filterMechanoid && p.RaceProps.IsMechanoid);
+        }
+
         public override void DoWindowContents(Rect inRect)
         {
             if (dirty)
@@ -100,6 +112,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 dirty = true;
             }
             y += 40f;
+
+            // 类型筛选（仅左栏）
+            float filterW = (inRect.width - 20f) / 3f;
+            bool filterChanged = false;
+            Checkbox(new Rect(0f, y, filterW, 30f), "SubspaceAccess_FilterHuman", ref filterHuman, ref filterChanged);
+            Checkbox(new Rect(filterW + 10f, y, filterW, 30f), "SubspaceAccess_FilterAnimal", ref filterAnimal, ref filterChanged);
+            Checkbox(new Rect((filterW + 10f) * 2f, y, filterW, 30f), "SubspaceAccess_FilterMechanoid", ref filterMechanoid, ref filterChanged);
+            y += 35f;
+            if (filterChanged)
+            {
+                dirty = true;
+            }
 
             float gap = 12f;
             float leftW = (inRect.width - gap) * 0.55f;
@@ -193,6 +217,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (hediff != null && p?.health != null)
             {
                 p.health.RemoveHediff(hediff);
+            }
+        }
+
+        /// <summary>复选框行（点击整行切换），风格与 Dialog_OmniResurrector 一致。</summary>
+        private void Checkbox(Rect rect, string labelKey, ref bool flag, ref bool changed)
+        {
+            bool old = flag;
+            Widgets.CheckboxDraw(rect.x, rect.y + (rect.height - 24f) / 2f, flag, false);
+            Rect labelRect = new Rect(rect.x + 28f, rect.y, rect.width - 28f, rect.height);
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(labelRect, labelKey.Translate());
+            Text.Anchor = TextAnchor.UpperLeft;
+            if (Widgets.ButtonInvisible(rect))
+            {
+                flag = !flag;
+            }
+            if (flag != old)
+            {
+                changed = true;
             }
         }
     }

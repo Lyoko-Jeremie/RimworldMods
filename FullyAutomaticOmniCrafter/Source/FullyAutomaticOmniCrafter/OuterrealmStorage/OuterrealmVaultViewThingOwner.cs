@@ -327,6 +327,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Context.MapHeld.listerThings.Remove(copy);
         }
 
+        /// <summary>
+        /// 从 listerHaulables 摘除副本（须在 base.Remove 之前，此时 holdingOwner 尚未置 null）。
+        /// 恒执行（不受 SuppressRemovalSync 影响）：视图重建/注销抑制了 Notify_ItemRemoved 的
+        /// Notify_DeSpawned，若不在此摘除，已 Destroy 副本会残留 listerHaulables，
+        /// 被 TryOpportunisticJob → PawnCanAutomaticallyHaulFast → Fogged 命中（MapHeld=null → NRE）。
+        /// </summary>
+        private void UnregisterFromHaulables(Thing copy)
+        {
+            if (copy == null || copy.Spawned || !Context.Spawned || Context.MapHeld == null)
+            {
+                return;
+            }
+            Context.MapHeld.listerHaulables.Notify_DeSpawned(copy);
+        }
+
         /// <summary>从当前视图列表重建索引（RebuildView 末尾调用；读档后索引为空，全量重建必须重建索引）。</summary>
         private void RebuildIndex()
         {
@@ -351,6 +366,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // 也已移除该副本，返回 null，SyncKey 不会误 Destroy。IndexRemove 幂等，Remove 失败亦无害。
             IndexRemove(item);
             UnregisterFromLister(item); // 半 Spawned 投影：先摘查询索引，避免残留指向即将被销毁的副本
+            UnregisterFromHaulables(item); // 恒摘 listerHaulables（含 SuppressRemovalSync 期间），防残留已 Destroy 副本被 TryOpportunisticJob 命中 → MapHeld=null NRE
             return base.Remove(item);
         }
 
