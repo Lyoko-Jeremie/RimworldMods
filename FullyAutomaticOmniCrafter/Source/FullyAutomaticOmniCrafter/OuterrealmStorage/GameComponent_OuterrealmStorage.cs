@@ -28,6 +28,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 游戏生命周期内不可能重合到旧值。</summary>
         private int version;
 
+        /// <summary>原版 ReservationManager 预留变更版本号（每次 Reserve/Release* +1）。
+        /// 供各 vault 视图的预留缓存（reservedByKey/reservedByCopy）做 O(1) 失效判定：
+        /// 视图缓存记录上次重建时的 ReservationVersion，不等即重建。不序列化——
+        /// 读档时重置为 0，且 RebuildView 会把视图缓存版本置 -1 强制失效（§P0 预订记账优化）。</summary>
+        private int reservationVersion;
+
         // ── 增量变更日志（§3.3 方案 A）：环形去重窗口 ──
         private List<OuterrealmEntryKey> changeLog = new List<OuterrealmEntryKey>();
         private HashSet<OuterrealmEntryKey> changeLogSet = new HashSet<OuterrealmEntryKey>();
@@ -50,6 +56,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private const int EjectNoReabsorbTicks = 600; // 10 秒：弹出可见期，防立即被搬回
 
         public int Version => version;
+        public int ReservationVersion => reservationVersion;
         public bool NeedFullRebuild => changeLogOverflow;
         public List<OuterrealmEntry> EntriesForReading => entries;
         public List<Building_OuterrealmVault> VaultsForReading => vaults;
@@ -331,6 +338,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             version++;
             AddToChangeLog(key);
+        }
+
+        /// <summary>原版 ReservationManager 预留变更通知：版本号 +1（§P0 预订记账优化）。
+        /// 由 ReservationManager 的 Reserve/Release/ReleaseAllForTarget/ReleaseClaimedBy/
+        /// ReleaseAllClaimedBy 各 patch 在预留增删后调用，使各 vault 视图的预留缓存失效，
+        /// 把 AvailableForReserve/PreSplitOff 从"每次全图扫描 reservations"降为 O(1) 查表。
+        /// 仅版本号 +1（O(1)），不定位具体副本——失效与重建在视图查询侧惰性完成。</summary>
+        public void NotifyReservationChanged()
+        {
+            reservationVersion++;
         }
 
         /// <summary>回滚重建条目（TryAbsorbStack 回滚时条目已被取空移除；§3.3 回滚补偿）。</summary>
@@ -628,6 +645,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     index[e.Key] = e;
                 }
                 version = 0;
+                reservationVersion = 0;
                 changeLog.Clear();
                 changeLogSet.Clear();
                 changeLogOverflow = false;

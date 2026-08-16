@@ -260,6 +260,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             return true;
         }
+
+        // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
+        // __result 可能为 true（本体放行）而原方法未执行——多触发一次失效仅多一次 O(全图) 重建，无害。
+        private static void Postfix(bool __result)
+        {
+            if (__result)
+            {
+                GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+            }
+        }
     }
 
     [HarmonyPatch(typeof(ReservationManager), "CanReserveStack")]
@@ -286,6 +296,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static void Postfix(LocalTargetInfo target)
         {
+            GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
             Thing t = target.Thing;
             if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner view)
             {
@@ -299,10 +310,32 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static void Postfix(Thing t)
         {
+            GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
             if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner view)
             {
                 view.TryDisposeCopyIfObsolete(t);
             }
+        }
+    }
+
+    // §P0：ReleaseClaimedBy / ReleaseAllClaimedBy 无 target 参数，无法定位具体副本做退休销毁，
+    // 但必须使预留缓存失效——否则 job 结束（最常见释放路径）后缓存陈旧，可用量被低估/高估。
+    // 仅版本号 +1，失效后各视图在下次查询时懒重建（语义与全量扫描一致）。
+    [HarmonyPatch(typeof(ReservationManager), "ReleaseClaimedBy")]
+    internal static class Patch_ReservationManager_ReleaseClaimedBy
+    {
+        private static void Postfix()
+        {
+            GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+        }
+    }
+
+    [HarmonyPatch(typeof(ReservationManager), "ReleaseAllClaimedBy")]
+    internal static class Patch_ReservationManager_ReleaseAllClaimedBy
+    {
+        private static void Postfix()
+        {
+            GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
         }
     }
 
