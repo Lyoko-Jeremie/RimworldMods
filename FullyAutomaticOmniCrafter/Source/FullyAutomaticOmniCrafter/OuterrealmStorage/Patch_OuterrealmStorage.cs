@@ -1139,6 +1139,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 通用右键 FloatMenu：让 vault 副本通过 provider 的 Spawned 检查 ──
+    // containedItemsSelectable=true 让副本进入 ClickedThings，但 FloatMenuOptionProvider.TargetThingValid
+    // 默认返回 (CanTargetDespawned || thing.Spawned)，副本未 Spawned 会被过滤 → 所有 provider 选项都不出现。
+    // 此处对 vault 副本短路 TargetThingValid，视为有效目标，使 Ingest/Wear/Equip 及第三方 provider 自动生成选项。
+    [HarmonyPatch(typeof(FloatMenuOptionProvider), "TargetThingValid")]
+    internal static class Patch_FloatMenuOptionProvider_TargetThingValid
+    {
+        private static bool Prefix(Thing thing, ref bool __result)
+        {
+            if (thing != null && thing.holdingOwner is OuterrealmVaultViewThingOwner)
+            {
+                __result = true;
+                return false;
+            }
+            return true;
+        }
+    }
+
     // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
