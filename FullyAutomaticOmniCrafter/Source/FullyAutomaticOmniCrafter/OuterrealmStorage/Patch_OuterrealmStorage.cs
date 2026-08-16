@@ -1399,6 +1399,49 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 商队交易：未 Spawned 副本在 Fogged(IntVec3, Map) 中 Map=null → NRE ──
+    // Pawn_TraderTracker.ColonyThingsWillingToBuy 的 lambda 遍历 listerThings.AllThings（含半 Spawned
+    // 投影副本）并调 x.Position.Fogged(x.Map)，副本未 Spawned → x.Map=null → map.fogGrid NRE。
+    // 语义：不在任何地图 → 不雾 → false。仅对 map==null 边界短路，不影响正常调用。
+    [HarmonyPatch(typeof(GridsUtility), "Fogged", new[] { typeof(IntVec3), typeof(Map) })]
+    internal static class Patch_GridsUtility_Fogged
+    {
+        private static bool Prefix(IntVec3 c, Map map, ref bool __result)
+        {
+            if (map == null)
+            {
+                __result = false;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // ── 商队交易去重：副本既在 listerThings.AllThings（半 Spawned 投影）又在 IHaulSource 循环里 ──
+    // Pawn_TraderTracker.ColonyThingsWillingToBuy 会因此把同一副本 yield 两次 → 交易数量翻倍。
+    // Postfix 包装迭代器按实例去重（与 TradeUtility.AllLaunchableThingsForTrade 原版 HashSet 去重一致）。
+    [HarmonyPatch(typeof(Pawn_TraderTracker), "ColonyThingsWillingToBuy")]
+    internal static class Patch_Pawn_TraderTracker_ColonyThingsWillingToBuy
+    {
+        private static void Postfix(ref IEnumerable<Thing> __result)
+        {
+            IEnumerable<Thing> original = __result;
+            __result = Deduplicate(original);
+        }
+
+        private static IEnumerable<Thing> Deduplicate(IEnumerable<Thing> original)
+        {
+            HashSet<Thing> seen = new HashSet<Thing>();
+            foreach (Thing t in original)
+            {
+                if (t != null && seen.Add(t))
+                {
+                    yield return t;
+                }
+            }
+        }
+    }
+
     // ── §v3 随身访问：授权 pawn 附带"超维存储管理器"Gizmo（随身弹出到身旁） ──
     [HarmonyPatch(typeof(Pawn), "GetGizmos")]
     internal static class Patch_Pawn_GetGizmos_SubspaceAccess
