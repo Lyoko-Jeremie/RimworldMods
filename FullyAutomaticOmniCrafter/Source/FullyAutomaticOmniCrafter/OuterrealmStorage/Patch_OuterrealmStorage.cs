@@ -1157,6 +1157,46 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 半 Spawned 投影配套：搬运可达性——对 vault 副本用建筑做 CanReach/Fogged ──
+    // 原版 PawnCanAutomaticallyHaulFast 对 t 做 t.Fogged() / CanReserve(t) / CanReach(t)。副本未 Spawned，
+    // CanReach(t) 依赖 t.PositionHeld（=vault 建筑格）虽理论可达，但为稳妥，对 vault 副本改用 vault 建筑做
+    // 可达/雾检查、用副本做预留（CanReserve 已由 Patch_ReservationManager_CanReserve 处理数量）。
+    // 否则“无报错但无搬运选项/不自动搬运”往往源于此处在无 JobFailReason 的情况下返回 false。
+    [HarmonyPatch(typeof(HaulAIUtility), "PawnCanAutomaticallyHaulFast")]
+    internal static class Patch_HaulAIUtility_PawnCanAutomaticallyHaulFast
+    {
+        private static bool Prefix(Pawn p, Thing t, bool forced, ref bool __result)
+        {
+            if (!(t.holdingOwner is OuterrealmVaultViewThingOwner))
+            {
+                return true; // 非 vault 副本：完全走原版
+            }
+            Thing vault = t.ParentHolder as Thing;
+            if (vault == null || !vault.Spawned || vault.Map != p.Map)
+            {
+                __result = false;
+                return false;
+            }
+            if (!p.health.capacities.CapableOf(PawnCapacityDefOf.Manipulation))
+            {
+                __result = false;
+                return false;
+            }
+            if (!p.CanReserve((LocalTargetInfo)t, ignoreOtherReservations: forced))
+            {
+                __result = false;
+                return false;
+            }
+            if (!p.CanReach((LocalTargetInfo)vault, PathEndMode.ClosestTouch, p.NormalMaxDanger()))
+            {
+                __result = false;
+                return false;
+            }
+            __result = true;
+            return false;
+        }
+    }
+
     // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
