@@ -20,6 +20,10 @@
   <VaultAllowTakeForUse>Allow taking for use while withdrawing is disallowed</VaultAllowTakeForUse>
   <VaultAllowTakeForUseDesc>When "Allow withdrawing" is off, enabling this keeps workbench ingredients and eating/treatment search visible (hauling remains disabled).</VaultAllowTakeForUseDesc>
   <VaultAllowTakeForUseDisabledReason>Requires "Allow withdrawing" to be off</VaultAllowTakeForUseDisabledReason>
+  <!-- Freeze toggle -->
+  <VaultFrozen>Frozen</VaultFrozen>
+  <VaultFrozenDesc>When enabled, hides all items in this building and pauses its work (the storage filter is left unchanged, and items remain in the outerrealm storage). Disable to show them again.</VaultFrozenDesc>
+
   <!-- Release / move-out (§6.3) -->
   <OuterrealmVault_Release>Move out this type</OuterrealmVault_Release>
   <OuterrealmVault_StopRelease>Stop moving out</OuterrealmVault_StopRelease>

@@ -361,7 +361,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             OuterrealmEntry e = gs.FindEntry(key);
-            if (e == null || e.Count <= 0 || !Vault.GetStoreSettings().AllowedToAccept(e.Proto))
+            if (e == null || e.Count <= 0 || !Vault.CanShow(e.Proto))
             {
                 return;
             }
@@ -395,7 +395,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             OuterrealmEntry e = gs.FindEntry(key);
-            bool allowed = e != null && e.Count > 0 && Vault.GetStoreSettings().AllowedToAccept(e.Proto);
+            bool allowed = e != null && e.Count > 0 && Vault.CanShow(e.Proto);
             Thing copy = FindCopy(key);
             if (allowed)
             {
@@ -451,7 +451,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     Thing copy = this[i];
                     OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
-                    bool allowed = e != null && e.Count > 0 && Vault.GetStoreSettings().AllowedToAccept(e.Proto);
+                    bool allowed = e != null && e.Count > 0 && Vault.CanShow(e.Proto);
                     if (allowed)
                     {
                         continue;
@@ -468,7 +468,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 for (int i = 0; i < list.Count; i++)
                 {
                     OuterrealmEntry e = list[i];
-                    if (e.Count <= 0 || !Vault.GetStoreSettings().AllowedToAccept(e.Proto))
+                    if (e.Count <= 0 || !Vault.CanShow(e.Proto))
                     {
                         continue;
                     }
@@ -653,7 +653,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(copy)) : null;
-            bool allowed = e != null && e.Count > 0 && Vault.GetStoreSettings().AllowedToAccept(e.Proto);
+            bool allowed = e != null && e.Count > 0 && Vault.CanShow(e.Proto);
             if (allowed)
             {
                 return;

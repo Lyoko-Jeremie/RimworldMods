@@ -20,6 +20,10 @@
   <VaultAllowTakeForUse>禁止取出时允许拿取</VaultAllowTakeForUse>
   <VaultAllowTakeForUseDesc>关闭"允许取出"时，开启此项可让工作台原料与进食/治疗搜索仍看到本建筑内容（搬运工搬运仍被禁止）。</VaultAllowTakeForUseDesc>
   <VaultAllowTakeForUseDisabledReason>需先关闭"允许取出"</VaultAllowTakeForUseDisabledReason>
+  <!-- 冻结开关 -->
+  <VaultFrozen>冻结</VaultFrozen>
+  <VaultFrozenDesc>开启后隐藏本建筑内的全部物品并暂停其工作（存储清单 filter 保持不变，物品仍保存在超维空间）。关闭后恢复显示。</VaultFrozenDesc>
+
   <!-- 移出/放行（§6.3） -->
   <OuterrealmVault_Release>移出该类</OuterrealmVault_Release>
   <OuterrealmVault_StopRelease>停止移出</OuterrealmVault_StopRelease>

@@ -1230,6 +1230,90 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 轨道交易信标：把 vault 副本汇报为可售物品 ──
+    // 原版 TradeUtility.AllLaunchableThingsForTrade 只枚举信标覆盖格 thingGrid，并对 Bookcase/OutfitStand/GeneBank
+    // 硬编码特判其持有物；vault 不在特判里，副本又不在 thingGrid，故信标看不到。此处用 Postfix 包装迭代器，
+    // 追加“信标覆盖范围内 vault 的视图副本”。成交时 TradeShip.GiveSoldThingToTrader 对副本 SplitOff，
+    // 已由 Patch_Thing_SplitOff 物化并扣全局，无需额外处理。
+    [HarmonyPatch(typeof(TradeUtility), "AllLaunchableThingsForTrade")]
+    internal static class Patch_TradeUtility_AllLaunchableThingsForTrade
+    {
+        private static void Postfix(Map map, ITrader trader, ref IEnumerable<Thing> __result)
+        {
+            __result = AppendVaultItems(map, trader, __result);
+        }
+
+        private static IEnumerable<Thing> AppendVaultItems(Map map, ITrader trader, IEnumerable<Thing> original)
+        {
+            HashSet<Thing> seen = new HashSet<Thing>();
+            foreach (Thing t in original)
+            {
+                if (seen.Add(t))
+                {
+                    yield return t;
+                }
+            }
+
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || map == null)
+            {
+                yield break;
+            }
+
+            HashSet<IntVec3> beaconCells = new HashSet<IntVec3>();
+            foreach (Building_OrbitalTradeBeacon beacon in Building_OrbitalTradeBeacon.AllPowered(map))
+            {
+                foreach (IntVec3 cell in beacon.TradeableCells)
+                {
+                    beaconCells.Add(cell);
+                }
+            }
+
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v == null || !v.Spawned || v.Map != map || v.view == null)
+                {
+                    continue;
+                }
+                if (!OverlapsBeacon(v, beaconCells))
+                {
+                    continue;
+                }
+                List<Thing> copies = v.view.InnerListForReading;
+                for (int j = 0; j < copies.Count; j++)
+                {
+                    Thing copy = copies[j];
+                    if (copy == null || !TradeUtility.PlayerSellableNow(copy, trader))
+                    {
+                        continue;
+                    }
+                    if (seen.Add(copy))
+                    {
+                        yield return copy;
+                    }
+                }
+            }
+        }
+
+        private static bool OverlapsBeacon(Building_OuterrealmVault vault, HashSet<IntVec3> beaconCells)
+        {
+            CellRect rect = vault.OccupiedRect();
+            for (int x = rect.minX; x <= rect.maxX; x++)
+            {
+                for (int z = rect.minZ; z <= rect.maxZ; z++)
+                {
+                    if (beaconCells.Contains(new IntVec3(x, 0, z)))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
     // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，

@@ -37,6 +37,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool noDeposit;    // on = 禁止存入（HaulDestinationEnabled=false）
         private bool noWithdraw;   // on = 禁止取出（HaulSourceEnabled=false）
         private bool allowTakeForUse; // 条件开关：noWithdraw 开启时放宽工作台/食物搜索（§5.2 #7，P4 实现）
+        private bool frozen;       // 冻结开关：隐藏全部物品并暂停建筑工作，但保持 filter 不变
 
         // ── 放行列表（§6.3 移出路线 A）：放行条目保留在视图但 Accepts 返回 false → 可 haulable，
         //    由搬运工搬到其他存储区；条目搬空后自动清除（CleanupReleasedKeys）。存档随建筑序列化。
@@ -45,6 +46,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public bool NoDeposit => noDeposit;
         public bool NoWithdraw => noWithdraw;
         public bool AllowTakeForUse => allowTakeForUse;
+        public bool Frozen => frozen;
         public List<OuterrealmEntryKey> ReleasedKeysForReading => releasedKeys;
 
         // ── InspectString 摘要缓存（§4：InspectPaneFiller 每帧调用，避免每帧拼接几百条目） ──
@@ -208,7 +210,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            return GetStoreSettings().AllowedToAccept(t) && !IsReleased(t);
+            return CanShow(t) && !IsReleased(t);
+        }
+
+        /// <summary>是否向该建筑展示/物化某物品：冻结时恒 false；否则取决于 filter。保持 filter 不变。</summary>
+        public bool CanShow(Thing t)
+        {
+            return !frozen && GetStoreSettings().AllowedToAccept(t);
         }
 
         // ── 放行（§6.3 移出路线 A） ────────────────────────────────────────────
@@ -265,7 +273,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 OuterrealmEntry e = entries[i];
                 // 可见性判定与 UI 一致：尸体不物化视图副本，以 filter 判定；其余条目以副本存在性判定
                 bool visible = e.Proto is Corpse
-                    ? GetStoreSettings().AllowedToAccept(e.Proto)
+                    ? CanShow(e.Proto)
                     : view.FindCopy(e.Key) != null;
                 if (e.Count > 0 && visible && !releasedKeys.Contains(e.Key))
                 {
@@ -312,6 +320,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public ThingOwner GetDirectlyHeldThings()
         {
             return view;
+        }
+
+        /// <summary>供交易/信标汇报的可售持有物（视图副本）。仿 Building_OutfitStand.HeldItems 的汇报语义。</summary>
+        public IEnumerable<Thing> HeldItemsForTrade
+        {
+            get
+            {
+                if (view == null)
+                {
+                    yield break;
+                }
+                List<Thing> copies = view.InnerListForReading;
+                for (int i = 0; i < copies.Count; i++)
+                {
+                    yield return copies[i];
+                }
+            }
         }
 
         public void GetChildHolders(List<IThingHolder> outChildren)
@@ -391,6 +416,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public void SetAllowTakeForUse(bool value)
         {
             allowTakeForUse = value;
+        }
+
+        /// <summary>冻结开关：隐藏全部物品并暂停建筑工作（filter 保持不变）。冻结时视图清空、副本从 listerThings 移除。</summary>
+        public void SetFrozen(bool value)
+        {
+            if (frozen == value)
+            {
+                return;
+            }
+            frozen = value;
+            if (Spawned)
+            {
+                view?.RebuildView(); // 冻结：CanShow 恒 false → 全部副本被移除；解冻：按 filter 重新物化
+                MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
+                MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
+            }
         }
 
         // ── IStorageGroupMember（§4.1e，逐行对齐 Building_Storage） ────────────
@@ -524,6 +565,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     toggleAction = () => SetAllowTakeForUse(!allowTakeForUse),
                     Disabled = !noWithdraw, // 条件开关：允许取出开启时无意义置灰；禁止取出（允许取出 off）时才生效
                     disabledReason = "VaultAllowTakeForUseDisabledReason".Translate(),
+                };
+                // 冻结开关：隐藏全部物品并暂停建筑工作，但保持 filter 不变
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "VaultFrozen".Translate(),
+                    defaultDesc = "VaultFrozenDesc".Translate(),
+                    icon = TexCommand.ForbidOn,
+                    groupKey = VaultGizmoKeys.Frozen,
+                    isActive = () => frozen,
+                    toggleAction = () => SetFrozen(!frozen),
                 };
                 // 打开全局存储管理器（§6.4：无视 filter 的内容总览与死锁逃生口；含全部弹出/取出功能）
                 yield return new Command_Action
@@ -736,6 +787,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Values.Look(ref noDeposit, "noDeposit", false);
             Scribe_Values.Look(ref noWithdraw, "noWithdraw", false);
             Scribe_Values.Look(ref allowTakeForUse, "allowTakeForUse", false);
+            Scribe_Values.Look(ref frozen, "frozen", false);
             // 放行列表存档（§4.1b：放行状态随建筑实例序列化）。OuterrealmEntryKey 为 struct，
             // 经 ToString/TryParse 字符串中转；解析失败项跳过（无害）。
             List<string> releasedKeyStrings = null;
@@ -769,5 +821,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public const int AllowDeposit = 714201;
         public const int AllowWithdraw = 714202;
         public const int AllowTakeForUse = 714203;
+        public const int Frozen = 714204;
     }
 }
