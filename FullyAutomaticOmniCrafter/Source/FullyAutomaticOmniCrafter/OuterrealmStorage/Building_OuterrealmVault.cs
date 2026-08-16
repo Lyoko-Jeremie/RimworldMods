@@ -551,59 +551,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // ThingDef 已设 containedItemsSelectable=true → ContainingSelectionUtility.SelectableContainedThings
             // 会把视图副本纳入右键 ClickedThings，所有 provider（含第三方 mod 新增的操作）自动适配，
             // 不再逐项手动生成选项。
-            // §6.1：指定 pawn 拿 X 到背包（自定义 job：以建筑为行走目标，取物目标为视图副本）
-            if (selPawn.IsColonistPlayerControlled && view != null)
-            {
-                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-                if (gs != null)
-                {
-                    List<Thing> copies = view.InnerListForReading;
-                    for (int i = 0; i < copies.Count; i++)
-                    {
-                        Thing copy = copies[i];
-                        if (copy is Corpse)
-                        {
-                            continue; // 尸体无"取到背包"意义，且 Corpse.LabelNoCount 在 Bugged 状态会 Log.Error
-                        }
-                        OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
-                        if (e == null || e.Count <= 0)
-                        {
-                            continue; // 条目不存在：不显示（残留副本）
-                        }
-                        Thing copyForClosure = copy;
-                        OuterrealmEntry entryForClosure = e;
-                        string copyLabel = OuterrealmVaultUtil.SafeLabelCapNoCount(copy);
-                        yield return new FloatMenuOption("OuterrealmVault_TakeToInventory".Translate(copyLabel), () =>
-                        {
-                            int max = (int)Mathf.Min(entryForClosure.Count, int.MaxValue);
-                            if (max <= 0)
-                            {
-                                return;
-                            }
-                            string label = copyForClosure.LabelCapNoCount;
-                            Find.WindowStack.Add(new Dialog_Slider(
-                                (int v) => label + " x" + v.ToString("N0"),
-                                1,
-                                max,
-                                (int v) =>
-                                {
-                                    if (v <= 0)
-                                    {
-                                        return;
-                                    }
-                                    JobDef jobDef = DefDatabase<JobDef>.GetNamedSilentFail("FAOC_VaultTakeToInventory");
-                                    if (jobDef == null)
-                                    {
-                                        return;
-                                    }
-                                    Job job = JobMaker.MakeJob(jobDef, this, copyForClosure);
-                                    job.count = v;
-                                    selPawn.jobs.TryTakeOrderedJob(job);
-                                }));
-                        });
-                    }
-                }
-            }
         }
 
         // ── 穿戴/装备浮菜单选项（§4，逐行照抄 Building_OutfitStand.cs:554-704 原版逻辑） ──
