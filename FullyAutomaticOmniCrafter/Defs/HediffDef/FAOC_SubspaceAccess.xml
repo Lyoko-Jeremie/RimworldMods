@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+  <!--
+    ══════════════════════════════════════════════════════════════════════
+    超维存储访问能力 / Subspace Access（§v3 随身访问）
+    普通 Hediff（非植入体）：授权 = 携带此 Hediff。携带者可跨地图从超维存储
+    全局库随身取料（制作）、产物直接存库、打开存储管理器弹出物品、右键存入。
+    授权状态随 pawn hediffSet 存档，天然跨地图 / 随远行队。
+    授权/取消授权通过存储仓上的授权管理界面（Dialog_SubspaceAccessManager）。
+    ══════════════════════════════════════════════════════════════════════
+  -->
+
+  <HediffDef>
+    <defName>FAOC_SubspaceAccess</defName>
+    <label>subspace access</label>
+    <description>Authorized to access the subspace storage network: draw crafting ingredients and deposit crafted products remotely.</description>
+    <hediffClass>FullyAutomaticOmniCrafter.OuterrealmStorage.Hediff_SubspaceAccess</hediffClass>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <makesAlert>false</makesAlert>
+    <tendable>false</tendable>
+    <maxSeverity>1</maxSeverity>
+    <initialSeverity>1</initialSeverity>
+    <defaultLabelColor>(0.4,0.8,1.0)</defaultLabelColor>
+  </HediffDef>
+
+</Defs>

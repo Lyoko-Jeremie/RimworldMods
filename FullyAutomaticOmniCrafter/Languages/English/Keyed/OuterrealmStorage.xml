@@ -65,5 +65,4 @@
   <SubspaceAccess_OpenManager>Subspace storage manager</SubspaceAccess_OpenManager>
   <SubspaceAccess_OpenManagerDesc>Open the subspace storage manager to eject items nearby.</SubspaceAccess_OpenManagerDesc>
   <SubspaceAccess_PutIntoStorage>Put {0} into subspace storage</SubspaceAccess_PutIntoStorage>
-  <subspace access>Subspace access</subspace access>
 </LanguageData>

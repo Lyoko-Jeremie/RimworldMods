@@ -67,5 +67,4 @@
   <SubspaceAccess_OpenManager>超维存储管理器</SubspaceAccess_OpenManager>
   <SubspaceAccess_OpenManagerDesc>打开超维存储管理器，可把物品弹出到身旁。</SubspaceAccess_OpenManagerDesc>
   <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
-  <subspace access>超维存储访问能力</subspace access>
 </LanguageData>
