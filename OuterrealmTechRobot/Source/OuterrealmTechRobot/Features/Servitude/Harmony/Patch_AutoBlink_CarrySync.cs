@@ -1,3 +1,4 @@
+using System;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -60,7 +61,18 @@ namespace OuterrealmTechRobot
             }
 
             carried.Position = targetCell;
-            carried.Notify_Teleported(false);
+            try
+            {
+                carried.Notify_Teleported(false);
+            }
+            catch (Exception ex)
+            {
+                // 防御：Notify_Teleported 会被第三方 mod（如 WeatherApparelFramework）的 Postfix 挂载，
+                // 其内部未判空时可能抛 NRE。位置已在上面同步完毕，异常不影响本次 blink 结果，
+                // 仅记录一次日志便于排查，避免每次 blink 都刷屏。
+                Log.WarningOnce("[OuterrealmTechRobot] 同步被携带者 " + carried.LabelShort +
+                    " 的 Notify_Teleported 时被第三方 mod 的 Postfix 抛出异常，已忽略: " + ex, 85321001);
+            }
         }
     }
 }
