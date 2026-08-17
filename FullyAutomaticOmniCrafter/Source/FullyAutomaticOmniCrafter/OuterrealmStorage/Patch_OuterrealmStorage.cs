@@ -1739,4 +1739,56 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return true;
         }
     }
+
+    // ── 修复：点击选择时过滤 vault 视图副本（隐形物品） ──
+    // 根因：Def 设 containedItemsSelectable=true（右键浮菜单经 FloatMenuContext → GenUI.ThingsUnderMouse
+    // 依赖 ContainingSelectionUtility.SelectableContainedThings 生成穿戴/装备/食用等选项），
+    // 而左键选择路径 Selector.SelectableObjectsUnderMouse → GenUI.ThingsUnderMouse 共用同一
+    // SelectableContainedThings，把未 Spawned 的视图副本纳入点击候选——副本不参与地图绘制（无图像），
+    // 却可被左键选中并在检查面板查看信息，形成"隐形物品"。
+    // 修复：postfix 包装左键候选序列，过滤"未 Spawned 且持有者为 OuterrealmVaultViewThingOwner"的 Thing。
+    // 右键浮菜单走独立路径（FloatMenuContext），不受影响；vault 建筑本体（Spawned、无 holdingOwner）保留。
+    [HarmonyPatch(typeof(Selector), "SelectableObjectsUnderMouse")]
+    internal static class Patch_Selector_SelectableObjectsUnderMouse
+    {
+        private static void Postfix(ref IEnumerable<object> __result)
+        {
+            if (__result == null)
+            {
+                return;
+            }
+            __result = OuterrealmVaultSelectionFilter.Filter(__result);
+        }
+    }
+
+    // 检查面板"上一个/下一个"按钮（MainTabWindow_Inspect.SelectNextAt → Selector.SelectableObjectsAt）
+    // 同样过滤，消除全部"选中隐形物品"入口，行为与左键点击一致。
+    [HarmonyPatch(typeof(Selector), "SelectableObjectsAt")]
+    internal static class Patch_Selector_SelectableObjectsAt
+    {
+        private static void Postfix(ref IEnumerable<object> __result)
+        {
+            if (__result == null)
+            {
+                return;
+            }
+            __result = OuterrealmVaultSelectionFilter.Filter(__result);
+        }
+    }
+
+    /// <summary>选择候选过滤：剔除 vault 视图内未 Spawned 的投影副本（隐形物品）。</summary>
+    internal static class OuterrealmVaultSelectionFilter
+    {
+        public static IEnumerable<object> Filter(IEnumerable<object> src)
+        {
+            foreach (object o in src)
+            {
+                if (o is Thing t && !t.Spawned && t.holdingOwner is OuterrealmVaultViewThingOwner)
+                {
+                    continue; // 隐形副本：不可被左键点选 / 切换选中
+                }
+                yield return o;
+            }
+        }
+    }
 }
