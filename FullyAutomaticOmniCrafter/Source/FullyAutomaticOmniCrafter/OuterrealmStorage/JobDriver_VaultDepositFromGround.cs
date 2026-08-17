@@ -35,7 +35,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Thing carried = pawn.carryTracker.CarriedThing;
             if (carried == null || carried.Destroyed)
             {
-                EndJobWith(JobCondition.Succeeded);
+                // 防御：StartCarryThing 之后 carry 仍为空属异常状态（竞态/其他 Mod 干扰），
+                // 不应以 Succeeded 结束，改为 Incompletable 让 job 正确失败。
+                EndJobWith(JobCondition.Incompletable);
                 return;
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
