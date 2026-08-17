@@ -234,7 +234,12 @@ namespace OuterrealmTechRobot
             public static bool Prefix(FloatMenuContext context, ref FloatMenuOption __result)
             {
                 Pawn first = context.FirstSelectedPawn;
-                if (first == null || !ArtificialMaidHighDimUtility.IsHighDim(first) || !context.ClickedCell.IsValid)
+                // ClickedCell.IsValid 只保证不是 Invalid 占位值，越界坐标（右键点击地图外/UI 区域）
+                // 仍是有效 IntVec3，必须同时检查 InBounds，否则生成的 GoHere 选项会把越界格泄露给
+                // 其他 Mod 的 FloatMenuMakerMap.GetOptions Postfix（其 GetThingList 无越界守卫会抛
+                // "ThingsListAt out of bounds"）。
+                if (first == null || !ArtificialMaidHighDimUtility.IsHighDim(first) ||
+                    !context.ClickedCell.IsValid || !context.ClickedCell.InBounds(context.map))
                 {
                     return true;
                 }
@@ -419,6 +424,9 @@ namespace OuterrealmTechRobot
         /// 战争迷雾（未探明的山体内部等）时返回 false，导致 GetOptions/GetSingleOption 根本不被调用，
         /// 高维女仆右键移动的 patch 没有执行机会。此 patch 在选中单位中存在"高维且已征召"的女仆时
         /// 放行 fogged 判定，让右键菜单正常生成。
+        /// 注意：点击格越界（如右键点击地图外/UI 区域）时仍按原版走——原版会因越界返回 false 而不生成
+        /// 选项，避免把越界坐标泄露给其他 Mod 的 FloatMenuMakerMap.GetOptions Postfix（其内部
+        /// GetThingList 无越界守卫会抛 "ThingsListAt out of bounds"）。
         /// </summary>
         [HarmonyPatch(typeof(FloatMenuOptionProvider), nameof(FloatMenuOptionProvider.Applies))]
         public static class Patch_FloatMenuOptionProvider_Applies_HighDim
@@ -427,6 +435,12 @@ namespace OuterrealmTechRobot
             public static bool Prefix(FloatMenuOptionProvider __instance, FloatMenuContext context, ref bool __result)
             {
                 if (!(__instance is FloatMenuOptionProvider_DraftedMove))
+                {
+                    return true;
+                }
+
+                // 点击格越界：交给原版（返回 false），不强制放行
+                if (!context.ClickedCell.InBounds(context.map))
                 {
                     return true;
                 }
