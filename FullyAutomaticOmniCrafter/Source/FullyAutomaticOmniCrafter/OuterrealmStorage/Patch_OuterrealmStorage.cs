@@ -1172,6 +1172,58 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 半 Spawned 投影配套：治疗取药——从 vault 取药为病人治疗 ──
+    // 自动治疗 / 征召治疗（TendPatient / TendEntity）的 JobOnThing 用 HealthAIUtility.FindBestMedicine
+    // （扫 map.listerThings.ThingsInGroup(Medicine)）选药，vault 视图药品副本（未 Spawned 的半 Spawned
+    // 投影）会被选中为 targetB；WorkGiver_Tend 额外把 targetC = bestMedicine.SpawnedParentOrMe = vault
+    // 建筑（副本未 Spawned，ParentHolder 链解析到建筑）。
+    // 原版 JobDriver_TendPatient.CollectMedicineToils 的取药 toil 序列对 targetB 带
+    // FailOnDespawnedNullOrForbidden：副本未 Spawned → job 启动即 Incompletable 失败 → 每 tick 重试
+    // → "started 10 jobs in one tick" 报错（与 §穿戴 Mia 报错同构，此处为治疗路径）。
+    // 本分支对 vault 副本重写"取药"阶段：走到 vault 建筑交互格 → ReserveMedicine（副本预留，不带
+    // FailOnDespawned——副本未 Spawned）→ PickupMedicine（内部 TryStartCarry 已由
+    // Patch_Pawn_CarryTracker_TryStartCarry 接管：Boost + SplitOff + 入 carry）→ 去病人处治疗。
+    // 行走目标动态取 job.targetB.Thing.ParentHolder（TendEntity job 无 targetC，不能依赖）。
+    // 该 patch 打在 static 方法上，JobDriver_TendEntity 的取药路径（同样调用 CollectMedicineToils）一并覆盖。
+    [HarmonyPatch(typeof(JobDriver_TendPatient), "CollectMedicineToils")]
+    internal static class Patch_JobDriver_TendPatient_CollectMedicineToils
+    {
+        private static bool Prefix(Pawn doctor, Pawn patient, Job job, Toil gotoToil, out Toil reserveMedicine, ref List<Toil> __result)
+        {
+            Thing medicineUsed = job.targetB.Thing;
+            if (medicineUsed == null || medicineUsed.Spawned || !(medicineUsed.ParentHolder is Building_OuterrealmVault))
+            {
+                reserveMedicine = null;
+                return true; // 非本系统：完全走原版
+            }
+            List<Toil> toils = new List<Toil>();
+            // ① 医生已携带该药（FindMoreMedicineToil 补药后）：直接去病人处治疗
+            toils.Add(Toils_Jump.JumpIf(gotoToil, () => medicineUsed != null && doctor.inventory.Contains(medicineUsed)));
+            // ② 预留药品副本（排队语义；不能带 FailOnDespawnedNullOrForbidden——副本未 Spawned 会在起始即失败）
+            reserveMedicine = Toils_Tend.ReserveMedicine(TargetIndex.B, patient);
+            toils.Add(reserveMedicine);
+            // ③ 走到 vault 建筑交互格（副本未 Spawned 不能作为行走目标；动态从副本 ParentHolder 取建筑）
+            toils.Add(new Toil
+            {
+                initAction = () =>
+                {
+                    Thing vault = job.GetTarget(TargetIndex.B).Thing?.ParentHolder as Thing;
+                    if (vault != null)
+                    {
+                        doctor.pather.StartPath((LocalTargetInfo)vault, PathEndMode.InteractionCell);
+                    }
+                },
+                defaultCompleteMode = ToilCompleteMode.PatherArrival
+            }.FailOnDestroyedOrNull(TargetIndex.B));
+            // ④ 取药：PickupMedicine 内部 TryStartCarry → Patch_Pawn_CarryTracker_TryStartCarry 的 vault 分支
+            toils.Add(Toils_Tend.PickupMedicine(TargetIndex.B, patient).FailOnDestroyedOrNull(TargetIndex.B));
+            // ⑤ 取药完成：去病人处治疗
+            toils.Add(Toils_Jump.Jump(gotoToil));
+            __result = toils;
+            return false;
+        }
+    }
+
     // ── 通用右键 FloatMenu：让 vault 副本通过 provider 的 Spawned 检查 ──
     // containedItemsSelectable=true 让副本进入 ClickedThings，但 FloatMenuOptionProvider.TargetThingValid
     // 默认返回 (CanTargetDespawned || thing.Spawned)，副本未 Spawned 会被过滤 → 所有 provider 选项都不出现。
