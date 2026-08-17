@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -546,6 +547,82 @@ namespace OuterrealmTechRobot
                 }
 
                 return true;
+            }
+        }
+
+        // ==================== 寻路：跳过 StartPath 的 PassDoors 可达性门槛 ====================
+
+        /// <summary>
+        /// 修复"高维征召右键点山体无寻路路径"：
+        /// 原版 Pawn_PathFollower.StartPath 内部有一道硬性可达性检查
+        ///   reachability.CanReach(position, dest, peMode, TraverseParms.For(TraverseMode.PassDoors))
+        /// 该 TraverseParms 的 pawn 为 null，高维的 Patch_Reachability_CanReach_HighDim（守卫 pawn != null）
+        /// 拦不住它，原版普通网格判定山体目标不可达 → PatherFailed()，寻路请求根本不会发出。
+        /// 本 Prefix 在高维女仆时完整替代 StartPath 主体：跳过该门槛，直接派发寻路请求
+        /// （高维网格由 GetPathContext / ParameterizeGridJob 的既有 patch 提供）。
+        /// 非高维完全放行原版。反射一次性缓存，StartPath 仅在每次移动命令时调用（低频）。
+        /// </summary>
+        [HarmonyPatch(typeof(Pawn_PathFollower), nameof(Pawn_PathFollower.StartPath))]
+        public static class Patch_StartPath_HighDim
+        {
+            private static readonly FieldInfo F_peMode = AccessTools.Field(typeof(Pawn_PathFollower), "peMode");
+            private static readonly FieldInfo F_destination = AccessTools.Field(typeof(Pawn_PathFollower), "destination");
+            private static readonly FieldInfo F_moving = AccessTools.Field(typeof(Pawn_PathFollower), "moving");
+            private static readonly FieldInfo F_cachedMovePercentage = AccessTools.Field(typeof(Pawn_PathFollower), "cachedMovePercentage");
+            private static readonly FieldInfo F_cachedWillCollideNextCell = AccessTools.Field(typeof(Pawn_PathFollower), "cachedWillCollideNextCell");
+            private static readonly FieldInfo F_curPathJobIsStale = AccessTools.Field(typeof(Pawn_PathFollower), "curPathJobIsStale");
+            private static readonly MethodInfo M_AtDestinationPosition = AccessTools.Method(typeof(Pawn_PathFollower), "AtDestinationPosition");
+            private static readonly MethodInfo M_PatherArrived = AccessTools.Method(typeof(Pawn_PathFollower), "PatherArrived");
+            private static readonly MethodInfo M_SetNewPathRequest = AccessTools.Method(typeof(Pawn_PathFollower), "SetNewPathRequest");
+
+            [HarmonyPrefix]
+            public static bool Prefix(Pawn_PathFollower __instance, Pawn ___pawn, LocalTargetInfo dest, PathEndMode peMode)
+            {
+                if (!ArtificialMaidHighDimUtility.IsHighDim(___pawn))
+                {
+                    return true; // 非高维：完全放行原版
+                }
+
+                dest = (LocalTargetInfo)GenPath.ResolvePathMode(___pawn, dest.ToTargetInfo(___pawn.Map), ref peMode);
+
+                // 已站在目标格：与 Toils_Goto.GotoCell 语义一致（停步并完成当前 toil）
+                if (___pawn.Position == dest.Cell)
+                {
+                    ___pawn.pather.StopDead();
+                    if (___pawn.jobs != null && ___pawn.jobs.curDriver != null)
+                    {
+                        ___pawn.jobs.curDriver.ReadyForNextToil();
+                    }
+                    return false;
+                }
+
+                // 重复命令（目标与模式未变且正在移动）：维持现状
+                if ((bool)F_moving.GetValue(__instance) && __instance.curPath != null &&
+                    (LocalTargetInfo)F_destination.GetValue(__instance) == dest &&
+                    (PathEndMode)F_peMode.GetValue(__instance) == peMode)
+                {
+                    return false;
+                }
+
+                // 设置目标并派发寻路（高维下跳过 PassDoors 可达性门槛，目标必可达）
+                F_peMode.SetValue(__instance, peMode);
+                F_destination.SetValue(__instance, dest);
+
+                if ((bool)M_AtDestinationPosition.Invoke(__instance, null))
+                {
+                    M_PatherArrived.Invoke(__instance, null);
+                }
+                else
+                {
+                    F_moving.SetValue(__instance, true);
+                    ___pawn.jobs.posture = PawnPosture.Standing;
+                    F_cachedMovePercentage.SetValue(__instance, 0f);
+                    F_cachedWillCollideNextCell.SetValue(__instance, false);
+                    F_curPathJobIsStale.SetValue(__instance, true);
+                    M_SetNewPathRequest.Invoke(__instance, null);
+                }
+
+                return false;
             }
         }
     }
