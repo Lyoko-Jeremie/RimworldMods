@@ -664,17 +664,15 @@ namespace FullyAutomaticOmniCrafter
             ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconCleanFilth =
-            ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearFilth", false)
+            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_ClearFilth", false)
             ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconCleanGas =
-            ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearGas", false)
-            ?? ContentFinder<Texture2D>.Get("UI/Designators/CleanFilth", false)
+            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_ClearGas", false)
             ?? BaseContent.WhiteTex;
 
         public static readonly Texture2D IconCleanCorpses =
-            ContentFinder<Texture2D>.Get("UI/Designators/VoidDeleter_ClearCorpses", false)
-            ?? ContentFinder<Texture2D>.Get("UI/Designators/Cremate", false)
+            ContentFinder<Texture2D>.Get("UI/Commands/VoidDeleter_ClearCorpses", false)
             ?? BaseContent.WhiteTex;
     }
 }
