@@ -112,12 +112,12 @@ namespace OuterrealmTechRobot
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconAutoHibernate =
-            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_AutoHibernate", false) ?? 
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_AutoHibernate", false) ??
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconImmediateHibernate =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ImmediateHibernate", false) ??
-            IconAutoHibernate;
+            BaseContent.WhiteTex;
 
         public static readonly Texture2D IconHealingProtocol =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_HealingProtocol", false) ??
@@ -144,16 +144,16 @@ namespace OuterrealmTechRobot
             IconModifyMaid;
 
         public static readonly Texture2D IconAura =
-            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ModifyMaid", false) ??
+            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_Aura", false) ??
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconNonLethalMode =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_NonLethalMode", false) ??
-            IconHuntMode;
+            BaseContent.WhiteTex;
 
         public static readonly Texture2D IconReleaseSubdued =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_ReleaseSubdued", false) ??
-            IconHealingProtocol;
+            BaseContent.WhiteTex;
 
         public static readonly Texture2D IconHighDim =
             ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_HighDim", false) ??
@@ -161,7 +161,7 @@ namespace OuterrealmTechRobot
 
         // —— 侍奉系统（Servitude）——
         public static readonly Texture2D IconServitudeBond =
-            ContentFinder<Texture2D>.Get("UI/Commands/ServitudeBond", false) ??
+            ContentFinder<Texture2D>.Get("UI/Commands/AM_Servitude_Bond", false) ??
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconServitudeUnbind =
@@ -169,7 +169,7 @@ namespace OuterrealmTechRobot
             BaseContent.WhiteTex;
 
         public static readonly Texture2D IconStandby =
-            ContentFinder<Texture2D>.Get("UI/Commands/ArtificialMaidTerminal_Standby", false) ??
-            IconAutoHibernate;
+            ContentFinder<Texture2D>.Get("UI/Commands/AM_Servitude_Standby", false) ??
+            BaseContent.WhiteTex;
     }
 }
