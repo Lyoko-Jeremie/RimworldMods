@@ -7,6 +7,36 @@ using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
+    
+    [StaticConstructorOnStartup]
+    public static class OuterrealmStorageTex
+    {
+        public static readonly Texture2D VaultAllowDepositIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultAllowDeposit") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D VaultAllowWithdrawIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultAllowWithdraw") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D VaultAllowTakeForUseIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultAllowTakeForUse") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D VaultFrozenIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultFrozen") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D StorageManagerOpenIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_StorageManagerOpen") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D SubspaceAccessManagerOpenIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessManagerOpen") ?? 
+            BaseContent.WhiteTex;
+        
+    }
+    
     /// <summary>
     /// 超维存储仓建筑：超维空间的"存储终端"（§4）。
     /// 对外行为 = 1.6 原版容器型存储（Building_OutfitStand / Building_Bookcase 同类）：
@@ -444,7 +474,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     defaultLabel = "VaultAllowDeposit".Translate(),
                     defaultDesc = "VaultAllowDepositDesc".Translate(),
-                    icon = TexCommand.ForbidOn,
+                    icon = OuterrealmStorageTex.VaultAllowDepositIcon,
                     groupKey = VaultGizmoKeys.AllowDeposit,
                     isActive = () => !noDeposit,
                     toggleAction = () => SetNoDeposit(!noDeposit),
@@ -453,7 +483,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     defaultLabel = "VaultAllowWithdraw".Translate(),
                     defaultDesc = "VaultAllowWithdrawDesc".Translate(),
-                    icon = TexCommand.ForbidOff,
+                    icon = OuterrealmStorageTex.VaultAllowWithdrawIcon,
                     groupKey = VaultGizmoKeys.AllowWithdraw,
                     isActive = () => !noWithdraw,
                     toggleAction = () => SetNoWithdraw(!noWithdraw),
@@ -462,7 +492,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     defaultLabel = "VaultAllowTakeForUse".Translate(),
                     defaultDesc = "VaultAllowTakeForUseDesc".Translate(),
-                    icon = TexCommand.SelectCarriedThing,
+                    icon = OuterrealmStorageTex.VaultAllowTakeForUseIcon,
                     groupKey = VaultGizmoKeys.AllowTakeForUse,
                     isActive = () => allowTakeForUse,
                     toggleAction = () => SetAllowTakeForUse(!allowTakeForUse),
@@ -474,7 +504,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     defaultLabel = "VaultFrozen".Translate(),
                     defaultDesc = "VaultFrozenDesc".Translate(),
-                    icon = TexCommand.ForbidOn,
+                    icon = OuterrealmStorageTex.VaultFrozenIcon,
                     groupKey = VaultGizmoKeys.Frozen,
                     isActive = () => frozen,
                     toggleAction = () => SetFrozen(!frozen),
@@ -484,7 +514,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     defaultLabel = "OuterrealmStorageManager_Open".Translate(),
                     defaultDesc = "OuterrealmStorageManager_OpenDesc".Translate(),
-                    icon = TexCommand.SelectShelf,
+                    icon = OuterrealmStorageTex.StorageManagerOpenIcon,
                     action = () => Find.WindowStack.Add(new Dialog_OuterrealmStorageManager()),
                 };
                 // 超维存储访问能力授权（§v3）：双栏授权界面
@@ -492,7 +522,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     defaultLabel = "SubspaceAccessManagerOpen".Translate(),
                     defaultDesc = "SubspaceAccessManagerOpenDesc".Translate(),
-                    icon = TexCommand.Draft,
+                    icon = OuterrealmStorageTex.SubspaceAccessManagerOpenIcon,
                     action = () => Find.WindowStack.Add(new Dialog_SubspaceAccessManager()),
                 };
             }

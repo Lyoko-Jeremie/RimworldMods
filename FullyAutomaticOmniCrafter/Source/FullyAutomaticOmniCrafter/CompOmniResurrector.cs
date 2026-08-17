@@ -44,7 +44,7 @@ namespace FullyAutomaticOmniCrafter
     public static class OmniResurrectorTex
     {
         public static readonly Texture2D IconResurrect =
-            ContentFinder<Texture2D>.Get("UI/Commands/OmniResurrector", false) ?? BaseContent.WhiteTex;
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniResurrectorManager", false) ?? BaseContent.WhiteTex;
     }
 
     /// <summary>
