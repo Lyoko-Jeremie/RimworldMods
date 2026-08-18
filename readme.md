@@ -14,6 +14,6 @@
 * 重新发布（Folk/Reupload/Continue）时，必须保留作者信息，开放源代码。
 
 例外： 
-TemporalBarrierProjector 及其贴图，来自于 `Ambition of the Cosmic: Custom Edition` ，感谢。 
-EggSafeBox 参考自 边缘农科之孵蛋器 的设计，感谢。
+* TemporalBarrierProjector 及其贴图，来自于 `Ambition of the Cosmic: Custom Edition` ，感谢。 
+* EggSafeBox 参考自 边缘农科之孵蛋器 的设计，感谢。
 
