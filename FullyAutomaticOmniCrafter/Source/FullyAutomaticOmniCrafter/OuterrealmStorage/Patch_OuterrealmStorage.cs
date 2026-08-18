@@ -1027,12 +1027,74 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §v5 伪 Spawned 防御：第三方对锚点直接 DeSpawn/Destroy ──
+    // 伪 Spawned 锚点（holdingOwner == view 且 Spawned）不是真地图物品，原版 Thing.DeSpawn
+    // 会走 thingGrid / coverGrid / overlayDrawer 等未注册路径（可能 Log.Error 刷屏），并把
+    // 锚点留在视图变成"未 Spawned 半失效状态"。本 Prefix 命中时直接走视图移除：
+    // SuppressRemovalSync（非取出语义不扣全局——全局是真相，锚点只是投影），并恢复未 Spawned。
+    // 真 Spawned 借出副本经 GenSpawn.Spawn 已从视图移除（holdingOwner=null），不命中；
+    // 未 Spawned 锚点维持原版行为（原版对未 Spawned 物品调 DeSpawn 会 Log.Error，现状如此，不扩大范围）。
+    [HarmonyPatch(typeof(Thing), "DeSpawn")]
+    internal static class Patch_Thing_DeSpawn_PseudoSpawned
+    {
+        private static bool Prefix(Thing __instance)
+        {
+            if (__instance == null || __instance.Destroyed ||
+                !(__instance.holdingOwner is OuterrealmVaultViewThingOwner view))
+            {
+                return true;
+            }
+            if (!__instance.Spawned)
+            {
+                return true; // 未 Spawned 锚点：维持原版行为
+            }
+            bool wasSuppressed = view.SuppressRemovalSync;
+            view.SuppressRemovalSync = true;
+            try
+            {
+                view.Remove(__instance);
+            }
+            finally
+            {
+                view.SuppressRemovalSync = wasSuppressed;
+            }
+            __instance.ForceSetStateToUnspawned(); // Remove 的 UnregisterFromLister 已做，此处幂等兜底（vault 已拆除等场景）
+            return false; // 跳过原版 DeSpawn 注销流程（伪 Spawned 未注册 thingGrid/渲染，无需注销）
+        }
+    }
+
+    // ── §v5 伪 Spawned：region 重建事件触发（脏标记批量合并，替代轮询的持续开销） ──
+    // 原版 region 重建（RegionMaker）会对新 region 覆盖区域及其相邻格逐格调用
+    // RegionListersUpdater.RegisterAllAt 从 thingGrid 恢复物品注册；伪 Spawned 副本不在
+    // thingGrid，不会被恢复。本 Postfix 在重建格为 vault 存储格时仅置脏（O(1)），
+    // 由 Building_OuterrealmVault.Tick 每 60 tick 检查脏标记并批量刷新一次（O(副本数)，
+    // 每 60 tick 最多一次）——建设高峰每帧多次重建也不会放大瞬时成本。
+    // 未命中 vault 格时仅一次 O(1) slotGroup 查询（RegionMaker 每重建一格调一次本方法）。
+    [HarmonyPatch(typeof(RegionListersUpdater), "RegisterAllAt")]
+    internal static class Patch_RegionListersUpdater_RegisterAllAt
+    {
+        private static void Postfix(IntVec3 c, Map map)
+        {
+            if (map == null || map.haulDestinationManager == null)
+            {
+                return;
+            }
+            ISlotGroupParent parent = c.GetSlotGroup(map)?.parent;
+            if (parent is Building_OuterrealmVault vault && vault.view != null)
+            {
+                vault.view.MarkRegionDirty(); // O(1) 置脏，刷新由 vault Tick 批量执行
+            }
+        }
+    }
+
     // ── 半 Spawned 投影配套：补齐 ClosestThing_Global_Reachable 对 vault 副本的可见性 ──
     // 原版 ClosestThing_Global_Reachable 的局部函数 Process 里硬性 if (t == null || !t.Spawned) return，
     // 会跳过“未 Spawned 但处于 HaulSource 容器”的 vault 视图副本（染料/血包等少数路径用此方法）。
     // 该检查位于编译器生成的 display class 方法内，Transpiler 无法稳定定位 Thing.get_Spawned 调用点，
     // 故用 Postfix 兜底：原方法返回 null 时，遍历 searchSet 中未 Spawned 但 IsInHaulableInventory 的副本，
     // 复刻其可达性 + validator + priority 判定并回填 __result。
+    // §v5 伪 Spawned：副本 Spawned=true 后原版 Process 不再跳过，本兜底条件（未 Spawned）恒不命中，
+    // 已冗余但保留无害（零风险，避免回归）。
     [HarmonyPatch(typeof(GenClosest), "ClosestThing_Global_Reachable")]
     internal static class Patch_GenClosest_ClosestThing_Global_Reachable
     {

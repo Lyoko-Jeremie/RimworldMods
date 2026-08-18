@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -39,6 +40,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 维护约定：增 = EnsureCopyFor 物化处 IndexAdd（RebuildView 由 RebuildIndex 统一重建）；
         /// 删 = override Remove(Thing) 统一处理（所有视图移除路径均经 Remove）。</summary>
         private readonly Dictionary<OuterrealmEntryKey, Thing> copyIndex = new Dictionary<OuterrealmEntryKey, Thing>();
+
+        /// <summary>§v5 伪 Spawned：Thing.mapIndexOrState 是 private sbyte 字段，反射读写并缓存
+        /// FieldInfo（高频注册/撤销路径，避免每次反射查找）。字段名与 1.6 反编译一致；
+        /// 若为 null（版本异常）则 RegisterInLister 回退为原半 Spawned 行为（不提升状态）。</summary>
+        private static readonly System.Reflection.FieldInfo MapIndexOrStateField =
+            AccessTools.Field(typeof(Thing), "mapIndexOrState");
 
         // ── 预留记账缓存（§P0 预订记账优化，借鉴 Digital-Storage 的 reservedTotals） ──
         // 原 ReservedOn 每次全图扫描 map.reservationManager.ReservationsReadOnly 求 rThis/rAll
@@ -303,7 +310,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             borrowedByKey[key] = copy;
             // 2) 借出即取出：扣全局全量（账目守恒）
             gs.Subtract(key, copy.stackCount);
-            // 3) 物化：Spawn 到存储格（GenSpawn 自动从 view 容器移除；Notify_ReceivedThing 经 IsBorrowed 跳过吸收）
+            // 3) §v5 伪 Spawned：先撤销伪 Spawned（真 Spawn 要求未 Spawned——SpawnSetup
+            //    对已 Spawned 物品 Log.Error 并拒绝），再真 Spawn 到存储格。
+            //    GenSpawn 自动从 view 容器移除（view.Remove → Notify_ItemRemoved →
+            //    IsBorrowed 短路，防双扣）；Notify_ReceivedThing 经 IsBorrowed 跳过吸收。
+            UnregisterFromLister(copy);
             GenSpawn.Spawn(copy, cell, vault.MapHeld);
             return true;
         }
@@ -416,9 +427,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 半 Spawned 投影（§v3）：把副本注册进地图查询索引（listerThings），但不进入 thingGrid / 渲染，
-        /// 使直查 listerThings / GenClosest 的拿取路径能发现它，而渲染/美观/爆炸/点击不可见。
-        /// 未 Spawned 副本的 Position setter 只改写 positionInt，不触碰 thingGrid。
+        /// 伪 Spawned 投影（§v5）：把副本注册为"伪 Spawned"——mapIndexOrState = map.Index，
+        /// 使 Thing.Spawned / Map / MapHeld / Position 全部表现为"在地图上"；并注册进地图级
+        /// listerThings 与 region.ListerThings（GenClosest region 搜索可见）。
+        /// 刻意不注册 thingGrid / coverGrid / gasGrid / mapMesh → 无物理存在、无渲染、不可点击。
+        /// 这样所有第三方"thing.Spawned 校验 + region 搜索"的取货逻辑（Raven 物流箱、
+        /// 牵引光束搬运器等）无需补丁即可发现 vault 物品；执行经预留物化（TryLendCopy）
+        /// 走真 Spawned 原版路径（层 2）。
+        /// 顺序要求：先设 positionInt（此时未 Spawned，Position setter 只写 positionInt），
+        /// 再提升 mapIndexOrState（Spawned 后 Position setter 会做完整地理注册，见 Thing.Position）。
         /// </summary>
         private void RegisterInLister(Thing copy)
         {
@@ -426,23 +443,44 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            copy.Position = Context.InteractionCell; // 未 Spawned：仅设置 positionInt，保证直接读 Position 的代码不 NRE
+            copy.Position = Context.InteractionCell; // 伪 Spawned 前：未 Spawned 仅写 positionInt
+            Map map = Context.MapHeld;
+            if (MapIndexOrStateField != null)
+            {
+                MapIndexOrStateField.SetValue(copy, (sbyte)map.Index); // 提升为伪 Spawned
+            }
             // 判重不用 ThingsOfDef：对 MinifiedThing（打包建筑）会触发 RimWorld 防御性报错，
             // 且 ThingsOfDef 按 def 索引会把所有打包建筑混为一组。Contains 直接按实例判重，语义更准确。
-            if (!Context.MapHeld.listerThings.Contains(copy))
+            if (!map.listerThings.Contains(copy))
             {
-                Context.MapHeld.listerThings.Add(copy);
+                map.listerThings.Add(copy);
             }
+            RegionListersUpdater.RegisterInRegions(copy, map); // region 级索引（幂等：Contains 判重）
         }
 
-        /// <summary>半 Spawned 投影：从查询索引移除副本（须在 base.Remove 之前，防残留指向已销毁副本）。</summary>
+        /// <summary>伪 Spawned 投影：撤销注册并恢复未 Spawned（须在 base.Remove 之前，
+        /// 防残留指向已销毁副本）。只处理伪 Spawned 锚点（IsPseudoSpawned）；真 Spawned
+        /// 借出副本由正常 DeSpawn 流程处理，未注册副本无需处理。</summary>
         private void UnregisterFromLister(Thing copy)
         {
             if (copy == null || !Context.Spawned || Context.MapHeld == null)
             {
                 return;
             }
+            if (!IsPseudoSpawned(copy))
+            {
+                return;
+            }
+            RegionListersUpdater.DeregisterInRegions(copy, Context.MapHeld);
             Context.MapHeld.listerThings.Remove(copy);
+            copy.ForceSetStateToUnspawned(); // mapIndexOrState = -1（public API，恢复未 Spawned）
+        }
+
+        /// <summary>伪 Spawned 判定：视图持有（holdingOwner == this）且 Spawned 的副本。
+        /// 真 Spawned 借出副本经 GenSpawn.Spawn 已从视图移除（holdingOwner 置 null），不满足。</summary>
+        private bool IsPseudoSpawned(Thing copy)
+        {
+            return copy != null && copy.Spawned && copy.holdingOwner == this;
         }
 
         /// <summary>
@@ -450,10 +488,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 恒执行（不受 SuppressRemovalSync 影响）：视图重建/注销抑制了 Notify_ItemRemoved 的
         /// Notify_DeSpawned，若不在此摘除，已 Destroy 副本会残留 listerHaulables，
         /// 被 TryOpportunisticJob → PawnCanAutomaticallyHaulFast → Fogged 命中（MapHeld=null → NRE）。
+        /// §v5 伪 Spawned：副本 Spawned=true 时也会被 ShouldBeHaulable 加入 haulables，
+        /// 同样须摘除（Notify_DeSpawned 内部按集合 Contains 判空，幂等安全）。
         /// </summary>
         private void UnregisterFromHaulables(Thing copy)
         {
-            if (copy == null || copy.Spawned || !Context.Spawned || Context.MapHeld == null)
+            if (copy == null || !Context.Spawned || Context.MapHeld == null)
             {
                 return;
             }
@@ -646,6 +686,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             RebuildIndex(); // 全量重建后统一重建索引（覆盖保留副本与新增副本，读档后索引为空必须重建）
             reservedCacheVersion = -1; // 预留缓存强制失效（§P0）：读档/重建时 reservations 可能尚未加载，下次查询懒重建
+            EnsureAllRegistered(); // §v5：读档后副本 mapIndexOrState 被原版重置为 -1，重新注册为伪 Spawned（幂等）
             if (Context.Spawned && Context is IHaulSource haulSource)
             {
                 Context.MapHeld.listerHaulables.Notify_HaulSourceChanged(haulSource);
@@ -668,6 +709,71 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             finally
             {
                 SuppressRemovalSync = false;
+            }
+        }
+
+        // ── §v5 伪 Spawned：注册兜底（读档 / region 拓扑重建） ─────────────────
+
+        /// <summary>region 重建脏标记（§v5 批量合并）：Postfix（RegisterAllAt 命中 vault 格）
+        /// 只置位 O(1)，由 Building_OuterrealmVault.Tick 每 60 tick 检查并批量刷新一次——
+        /// 避免建设高峰每帧多次重建时每次都做 O(副本数) 全量 region 注册。
+        /// 主线程单线程访问，无需同步。</summary>
+        private bool regionDirty;
+
+        /// <summary>置脏（重建事件触发，O(1)）。</summary>
+        public void MarkRegionDirty()
+        {
+            regionDirty = true;
+        }
+
+        /// <summary>读取并清除脏标记（vault Tick 60 tick 调用）；返回是否有重建发生。</summary>
+        public bool ConsumeRegionDirty()
+        {
+            bool wasDirty = regionDirty;
+            regionDirty = false;
+            return wasDirty;
+        }
+
+        /// <summary>确保视图内全部锚点副本处于伪 Spawned 注册状态（RebuildView 末尾调用）。
+        /// 读档后原版 ExposeData 会把所有物品 mapIndexOrState 重置为 -1，视图内已有副本
+        /// （非新物化）须在此重新注册；幂等——已伪 Spawned 的副本被 RegisterInLister 的
+        /// copy.Spawned 检查跳过。</summary>
+        private void EnsureAllRegistered()
+        {
+            if (!Context.Spawned || Context.MapHeld == null)
+            {
+                return;
+            }
+            List<Thing> list = InnerListForReading;
+            for (int i = 0; i < list.Count; i++)
+            {
+                Thing copy = list[i];
+                if (copy != null && !copy.Spawned)
+                {
+                    RegisterInLister(copy);
+                }
+            }
+        }
+
+        /// <summary>region 拓扑重建后补注册（§v5 兜底）：region 合并/分割时 Region.ListerThings
+        /// 随 region 实例重建而清空，而伪 Spawned 副本不在 thingGrid，重建不会自动恢复注册
+        /// （region 搜索因此短暂不可见）。Building_OuterrealmVault.Tick 每 60 tick 调用，
+        /// 幂等（RegisterInRegions 内部 Contains 判重）；副本数量有限，开销可接受。</summary>
+        public void RefreshRegionRegistrations()
+        {
+            if (!Context.Spawned || Context.MapHeld == null)
+            {
+                return;
+            }
+            Map map = Context.MapHeld;
+            List<Thing> list = InnerListForReading;
+            for (int i = 0; i < list.Count; i++)
+            {
+                Thing copy = list[i];
+                if (IsPseudoSpawned(copy))
+                {
+                    RegionListersUpdater.RegisterInRegions(copy, map);
+                }
             }
         }
 

@@ -198,6 +198,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             // §v4：回收已释放预留的借出副本（剩余量回全局、重建锚点）
             view.ReturnUnreservedBorrowed();
+            // §v5：region 重建脏标记批量刷新（Postfix 只置脏；此处每 60 tick 最多一次
+            // O(副本数) region 补注册——静置零开销，重建后 ≤60 tick 内恢复可见性）
+            if (view.ConsumeRegionDirty())
+            {
+                view.RefreshRegionRegistrations();
+            }
             // §3.3 事件驱动方案：视图内容同步由 GameComponent_OuterrealmStorage 的帧末微批统一驱动，
             if (gs.NeedFullRebuild)
             {
