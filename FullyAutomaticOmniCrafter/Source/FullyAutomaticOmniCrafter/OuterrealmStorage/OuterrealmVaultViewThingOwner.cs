@@ -262,6 +262,124 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return available < 0 ? 0 : available;
         }
 
+        // ── 借出/回收（§v4 预留驱动物化） ──────────────────────────────────────
+        // 借出 = 预留时把锚点副本真 Spawn 到 vault 存储格（借出即取出：扣全局全量，
+        // 消耗差额不再扣；剩余由 ReturnCopy 存回 → 账目守恒）。回收 = reservation 全部
+        // 释放后剩余量 Deposit 回全局并重建锚点。
+
+        private readonly HashSet<Thing> borrowedCopies = new HashSet<Thing>();
+        private readonly Dictionary<OuterrealmEntryKey, Thing> borrowedByKey = new Dictionary<OuterrealmEntryKey, Thing>();
+
+        public bool IsBorrowed(Thing copy)
+        {
+            return copy != null && borrowedCopies.Contains(copy);
+        }
+
+        /// <summary>预留物化：把锚点副本借出到存储格（§v4）。返回 false = 无空位/无效状态（调用方应拒绝预留）。</summary>
+        public bool TryLendCopy(Thing copy)
+        {
+            if (copy == null || !Contains(copy) || IsBorrowed(copy) || !Context.Spawned)
+            {
+                return false;
+            }
+            Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
+            if (vault == null || !vault.Spawned)
+            {
+                return false;
+            }
+            IntVec3 cell = vault.FindStorageCellFor(copy);
+            if (!cell.IsValid)
+            {
+                return false; // 存储格满：预留调用方拒绝（等价原版"存储区满"）
+            }
+            OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return false;
+            }
+            // 1) 登记借出（保护：Subtract 取空触发的 SyncKey 清理跳过本副本）
+            borrowedCopies.Add(copy);
+            borrowedByKey[key] = copy;
+            // 2) 借出即取出：扣全局全量（账目守恒）
+            gs.Subtract(key, copy.stackCount);
+            // 3) 物化：Spawn 到存储格（GenSpawn 自动从 view 容器移除；Notify_ReceivedThing 经 IsBorrowed 跳过吸收）
+            GenSpawn.Spawn(copy, cell, vault.MapHeld);
+            return true;
+        }
+
+        /// <summary>回收借出副本：剩余量存回全局，重建锚点（§v4）。</summary>
+        public void ReturnCopy(Thing copy)
+        {
+            if (copy == null || !IsBorrowed(copy))
+            {
+                return;
+            }
+            OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
+            borrowedCopies.Remove(copy);
+            borrowedByKey.Remove(key);
+            // 仅回收仍驻留存储格的借出副本：被 job 取走（carry/穿戴等，已扣全局全量）属"取出"语义，
+            // 剩余物已离开 vault，不再回收；被销毁（爆炸等）无剩余。
+            bool stillInStorageCell = copy.Spawned
+                && Context is Building_OuterrealmVault vault && vault.AllSlotCellsList().Contains(copy.Position);
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (stillInStorageCell && !copy.Destroyed && copy.stackCount > 0 && gs != null)
+            {
+                gs.Deposit(copy); // 剩余量存回全局（DeSpawn + 并入条目）
+            }
+            else if (stillInStorageCell && !copy.Destroyed)
+            {
+                copy.Destroy(); // 无剩余：直接销毁借出副本
+            }
+            if (Context.Spawned)
+            {
+                EnsureCopyFor(key); // 重建半 Spawn 锚点（条目仍存在且可见时）
+            }
+        }
+
+        /// <summary>回收所有已无 reservation 引用的借出副本（vault Tick 调用，§v4）。</summary>
+        public void ReturnUnreservedBorrowed()
+        {
+            if (borrowedCopies.Count == 0)
+            {
+                return;
+            }
+            List<Thing> toReturn = null;
+            foreach (Thing copy in borrowedCopies)
+            {
+                if (!IsReserved(copy))
+                {
+                    if (toReturn == null)
+                    {
+                        toReturn = new List<Thing>();
+                    }
+                    toReturn.Add(copy);
+                }
+            }
+            if (toReturn == null)
+            {
+                return;
+            }
+            for (int i = 0; i < toReturn.Count; i++)
+            {
+                ReturnCopy(toReturn[i]);
+            }
+        }
+
+        /// <summary>回收全部借出副本（vault 拆除时，§v4）。</summary>
+        public void ReturnAllBorrowed()
+        {
+            if (borrowedCopies.Count == 0)
+            {
+                return;
+            }
+            List<Thing> copies = new List<Thing>(borrowedCopies);
+            for (int i = 0; i < copies.Count; i++)
+            {
+                ReturnCopy(copies[i]);
+            }
+        }
+
         // ── 副本管理 ───────────────────────────────────────────────────────────
 
         public Thing FindCopy(OuterrealmEntryKey key)
@@ -373,6 +491,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>确保本建筑视图包含该条目的副本（物化或更新数字）。filter 不允许则不做。</summary>
         public void EnsureCopyFor(OuterrealmEntryKey key)
         {
+            if (borrowedByKey.ContainsKey(key))
+            {
+                return; // §v4：条目副本已借出（预留物化中），不重建锚点
+            }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs == null)
             {
@@ -428,6 +550,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             else if (copy != null)
             {
+                if (IsBorrowed(copy))
+                {
+                    return; // §v4：借出副本（预留物化中）不清理，由 ReturnCopy 回收
+                }
                 // 条目不存在（count=0/已移除）：无条件移除副本（即使被预留——无物可取，
                 // 引用它的 job 因副本销毁失败一次即恢复）；filter 禁止但条目存在：
                 // 被预留则保留（退休：让既有 job 完成取出），否则移除。
@@ -493,6 +619,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     if (e.Proto is Corpse)
                     {
                         continue; // 尸体不物化视图副本（唯一实体）
+                    }
+                    if (borrowedByKey.ContainsKey(e.Key))
+                    {
+                        continue; // §v4：条目副本已借出（预留物化中），不重建锚点
                     }
                     Thing copy = FindCopy(e.Key);
                     if (copy != null)
@@ -605,9 +735,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public void DisposeOrphanCopy(Thing copy)
         {
-            if (copy == null || !Contains(copy))
+            if (copy == null || !Contains(copy) || IsBorrowed(copy))
             {
-                return;
+                return; // §v4：借出副本不清理（由 ReturnCopy 回收）
             }
             SuppressRemovalSync = true;
             try
@@ -665,9 +795,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public void TryDisposeCopyIfObsolete(Thing copy)
         {
-            if (copy == null || !Contains(copy))
+            if (copy == null || !Contains(copy) || IsBorrowed(copy))
             {
-                return;
+                return; // §v4：借出副本不清理（由 ReturnCopy 回收）
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(copy)) : null;

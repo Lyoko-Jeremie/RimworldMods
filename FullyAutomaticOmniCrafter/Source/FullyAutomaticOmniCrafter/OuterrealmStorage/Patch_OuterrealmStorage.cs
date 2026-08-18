@@ -199,6 +199,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false; // 数量不足：阻止预留
                 return false;
             }
+            // §v4：存储格满 → 拒绝预留（等价原版"存储区满"；防物化失败导致 job 目标未 Spawned 循环）
+            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
+            {
+                __result = false;
+                return false;
+            }
             __result = true; // 数量足够：短路放行（见上，避免原版按副本 stackCount 误拒）
             return false;
         }
@@ -258,16 +264,28 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
+            // §v4：存储格满 → 拒绝预留（防物化失败 → job 目标未 Spawned → 循环）
+            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
+            {
+                __result = false;
+                return false;
+            }
             return true;
         }
 
         // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
         // __result 可能为 true（本体放行）而原方法未执行——多触发一次失效仅多一次 O(全图) 重建，无害。
-        private static void Postfix(bool __result)
+        private static void Postfix(Pawn claimant, LocalTargetInfo target, bool __result)
         {
             if (__result)
             {
                 GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+                // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）
+                Thing t = target.Thing;
+                if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner view && !view.IsBorrowed(t))
+                {
+                    view.TryLendCopy(t);
+                }
             }
         }
     }

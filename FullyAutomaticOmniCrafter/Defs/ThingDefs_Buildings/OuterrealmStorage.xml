@@ -78,6 +78,8 @@
       <!-- 启用原版存储组（§4.1e）：自定义 tag，与原版 Shelf/Bookcase 隔离；组 = 共享 filter + 优先级，内容仍全局共享 -->
       <storageGroupTag>FAOC_Vault</storageGroupTag>
       <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+      <!-- 存储格容量：每格最多 255 堆（v4 预留驱动物化；预留中的物品短暂驻留） -->
+      <maxItemsInCell>255</maxItemsInCell>
       <!-- 不配置 defaultStorageSettings：PostMake 后 filter 为空 = 默认全禁止（§6.2） -->
     </building>
 

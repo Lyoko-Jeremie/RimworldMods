@@ -50,6 +50,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     public class Building_OuterrealmVault : Building,
         IHaulDestination,
+        ISlotGroupParent,
         IStoreSettingsParent,
         IHaulSource,
         IThingHolder,
@@ -67,6 +68,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public OuterrealmVaultViewThingOwner view;
 
         private StorageGroup storageGroup;
+
+        /// <summary>存储格（§v4）：vault 作为 ISlotGroupParent 的 SlotGroup，格子 = 建筑占格（2×1 × MaxItemsInCell）。</summary>
+        private SlotGroup slotGroup;
+
+        /// <summary>外来物品吸收倒计时（§v4）：物品落格 → 倒计时（AbsorbDelayTicks）→ 到期吸收进全局层。
+        /// 分散吸收时机（避免统一 60 tick 批处理）且缩短竞争窗口（第三方选中前即吸收）。不序列化（读档后走兕底）。</summary>
+        private readonly Dictionary<Thing, int> absorbTimers = new Dictionary<Thing, int>();
+        private const int AbsorbDelayTicks = 15; // 0.25s：足够 haul 放置 toil 完成，且竞争窗口极短
 
         // ── 出入模式（§4.1c；gizmo UI 于 P2 提供） ──
         private bool noDeposit;    // on = 禁止存入（HaulDestinationEnabled=false）
@@ -91,6 +100,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public Building_OuterrealmVault()
         {
             view = new OuterrealmVaultViewThingOwner(this);
+            slotGroup = new SlotGroup(this); // §v4 存储格
         }
 
         public override void PostMake()
@@ -132,6 +142,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (view != null)
             {
+                view.ReturnAllBorrowed(); // §v4：回收格上借出副本（剩余量回全局；锚点重建仅 Spawned 时执行）
                 view.ClearView(); // 内容保留在全局层（§4.1b 断开访问，不落地）
             }
             if (storageGroup != null)
@@ -165,6 +176,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         protected override void Tick()
         {
             base.Tick();
+            // §v4：吸收倒计时处理（每 tick 检查小集合；物品到期且条件满足则吸收进全局层）
+            if (absorbTimers.Count > 0)
+            {
+                ProcessAbsorbTimers();
+            }
+            // §v4：外来物品吸收兜底（rare tick，250 tick ≈ 4s）：只处理未登记异常残留（读档后/绕过钩子），
+            // 正常吸收已由每物品倒计时完成，低频兜底足够
+            if (this.IsHashIntervalTick(250))
+            {
+                AbsorbForeignItems();
+            }
             if (!this.IsHashIntervalTick(60))
             {
                 return;
@@ -174,15 +196,190 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            // §v4：回收已释放预留的借出副本（剩余量回全局、重建锚点）
+            view.ReturnUnreservedBorrowed();
             // §3.3 事件驱动方案：视图内容同步由 GameComponent_OuterrealmStorage 的帧末微批统一驱动，
-            // 设置变化（含 StorageGroup 组设置，经 Patch_StorageGroup_Notify_SettingsChanged 补链）由
-            // Notify_SettingsChanged 事件即时触发 RebuildView——无需轮询。此处仅保留变更日志溢出的
-            // 全量重建兜底。
             if (gs.NeedFullRebuild)
             {
                 view.RebuildView();
                 lastSeenVersion = gs.Version;
             }
+        }
+
+        /// <summary>吸收存储格上的外来未预留物品（§v4 兜底）：只处理未登记倒计时的异常残留
+        /// （正常路径经 Notify_ReceivedThing 登记后由 ProcessAbsorbTimers 吸收）。</summary>
+        private void AbsorbForeignItems()
+        {
+            List<IntVec3> cells = AllSlotCellsList();
+            List<Thing> toAbsorb = null;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                List<Thing> things = MapHeld.thingGrid.ThingsListAt(cells[i]);
+                for (int j = 0; j < things.Count; j++)
+                {
+                    Thing t = things[j];
+                    if (t == null || t.Destroyed || t.def.category != ThingCategory.Item)
+                    {
+                        continue;
+                    }
+                    if (absorbTimers.ContainsKey(t) || view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanShow(t))
+                    {
+                        continue;
+                    }
+                    if (toAbsorb == null)
+                    {
+                        toAbsorb = new List<Thing>();
+                    }
+                    toAbsorb.Add(t);
+                }
+            }
+            if (toAbsorb == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            for (int i = 0; i < toAbsorb.Count; i++)
+            {
+                gs?.Deposit(toAbsorb[i]);
+            }
+        }
+
+        /// <summary>吸收倒计时处理（§v4）：遍历登记，到期且条件满足 → Deposit；失效（被取走/销毁/预留/filter 禁止）→ 清理登记。</summary>
+        private void ProcessAbsorbTimers()
+        {
+            List<Thing> toAbsorb = null;
+            List<Thing> toClear = null;
+            foreach (KeyValuePair<Thing, int> kv in absorbTimers)
+            {
+                Thing t = kv.Key;
+                if (t == null || t.Destroyed || !t.Spawned)
+                {
+                    // 物品被取走/销毁（hauler 拿走、玩家 haul 等）→ 清理登记
+                    if (toClear == null)
+                    {
+                        toClear = new List<Thing>();
+                    }
+                    toClear.Add(t);
+                    continue;
+                }
+                if (GenTicks.TicksGame < kv.Value)
+                {
+                    continue; // 未到期
+                }
+                if (view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanShow(t))
+                {
+                    // 到期但被预留使用 / filter 已禁止 → 不再吸收（物品归游戏/玩家），清理登记
+                    if (toClear == null)
+                    {
+                        toClear = new List<Thing>();
+                    }
+                    toClear.Add(t);
+                    continue;
+                }
+                if (toAbsorb == null)
+                {
+                    toAbsorb = new List<Thing>();
+                }
+                toAbsorb.Add(t);
+                if (toClear == null)
+                {
+                    toClear = new List<Thing>();
+                }
+                toClear.Add(t);
+            }
+            if (toClear != null)
+            {
+                for (int i = 0; i < toClear.Count; i++)
+                {
+                    absorbTimers.Remove(toClear[i]);
+                }
+            }
+            if (toAbsorb != null)
+            {
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+                for (int i = 0; i < toAbsorb.Count; i++)
+                {
+                    gs?.Deposit(toAbsorb[i]);
+                }
+            }
+        }
+
+        // ── ISlotGroupParent / 存储格（§v4） ────────────────────────────────────
+
+        /// <summary>存储格容量：每格最多 255 堆（v4 预留驱动物化；预留中物品短暂驻留，不设并发限制）。</summary>
+        public override int MaxItemsInCell => 255;
+
+        public SlotGroup GetSlotGroup() => slotGroup;
+
+        public IEnumerable<IntVec3> AllSlotCells()
+        {
+            if (Spawned)
+            {
+                foreach (IntVec3 c in GenAdj.CellsOccupiedBy(this))
+                {
+                    yield return c;
+                }
+            }
+        }
+
+        public List<IntVec3> AllSlotCellsList()
+        {
+            // 现算不缓存：vault 可 rotatable，缓存会在旋转后过期（HaulDestinationManager 的格子注册
+            // 由原版在 SpawnSetup 时设置，旋转为边缘场景，拆建即可恢复）
+            List<IntVec3> cells = new List<IntVec3>();
+            if (Spawned)
+            {
+                foreach (IntVec3 c in GenAdj.CellsOccupiedBy(this))
+                {
+                    cells.Add(c);
+                }
+            }
+            return cells;
+        }
+
+        public bool IgnoreStoredThingsBeauty => def.building.ignoreStoredThingsBeauty;
+
+        public string SlotYielderLabel() => LabelCap;
+
+        public string GroupingLabel => def.building.groupingLabel;
+
+        public int GroupingOrder => def.building.groupingOrder;
+
+        /// <summary>物品落格钩子（Thing.SpawnSetup → Position.GetSlotGroup().parent 触发，§v4）：
+        /// 登记吸收倒计时（延迟吸收：先完成 haul 放置 toil，到期后由 ProcessAbsorbTimers 吸收进全局层）。</summary>
+        public void Notify_ReceivedThing(Thing newItem)
+        {
+            if (newItem == null || newItem.Destroyed || !Spawned || view == null)
+            {
+                return;
+            }
+            if (view.IsBorrowed(newItem))
+            {
+                return; // 借出副本（预留物化）不登记
+            }
+            if (!CanShow(newItem))
+            {
+                return; // filter 不允许：不吸收，物品留格子由玩家处置
+            }
+            absorbTimers[newItem] = GenTicks.TicksGame + AbsorbDelayTicks;
+        }
+
+        public void Notify_LostThing(Thing newItem)
+        {
+        }
+
+        /// <summary>找存储格空位（每格 < MaxItemsInCell 堆；返回 Invalid 表示无空位，§v4）。</summary>
+        public IntVec3 FindStorageCellFor(Thing copy)
+        {
+            List<IntVec3> cells = AllSlotCellsList();
+            for (int i = 0; i < cells.Count; i++)
+            {
+                if (cells[i].GetItemCount(MapHeld) < MaxItemsInCell)
+                {
+                    return cells[i];
+                }
+            }
+            return IntVec3.Invalid;
         }
 
         // ── IStoreSettingsParent / IHaulDestination / IHaulSource ───────────────
@@ -303,6 +500,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (view.SuppressRemovalSync)
             {
                 return; // 视图重建/注销期间（§3.3）
+            }
+            if (view.IsBorrowed(item))
+            {
+                return; // §v4：借出副本由 TryLendCopy 移除（已扣全局全量），此处不再扣减防双扣
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs != null)
