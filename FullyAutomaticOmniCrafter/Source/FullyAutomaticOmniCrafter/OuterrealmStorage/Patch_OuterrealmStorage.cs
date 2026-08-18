@@ -1396,9 +1396,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // （HaulToContainer → view.TryAdd → Deposit 直接吸收，无倒计时竞争/视觉闪烁/haul 时序问题）；
     // v4 存储格仅服务预留物化（取出/使用）与自动吸回（掉落物）。此处拦截 HaulToCellStorageJob：
     // 目标格属于 vault 时改返回 HaulToContainerJob（vault 的 GetDirectlyHeldThings → view，v3 成熟路径）。
-    // 判定用 GetEdifice（edificeGrid）而非 SlotGroupAt（groupGrid）：不依赖格子注册——
-    // 格子未注册时（时序/异常）原版判定失效会导致物品落格 → Notify_ReceivedThing 不触发
-    // （同样依赖 SlotGroupAt）→ 倒计时不启动 → 直到 raretick 兜底才吸收（存入延迟）。
+    // 判定用 GetEdifice（edificeGrid）优先：不依赖 SlotGroup 格子注册——格子未注册时（时序/异常）
+    // 原版判定失效会导致物品落格 → Notify_ReceivedThing 不触发（同样依赖 SlotGroupAt）→ 倒计时不
+    // 启动 → 直到 raretick 兜底才吸收（存入延迟）。
+    // §v5 加固：GetEdifice 未命中（边缘时序/网格重建）时用 SlotGroupAt（groupGrid）兜底——若漏判，
+    // A 的 job 会以 HaulToCellStorageJob 形态执行，其 JobDriver_HaulToCell.TryMakePreToilReservations
+    // 会 Reserve(存储格=vault 格)，搬运进行中其他搬运工对该物品右键的目标搜索
+    // （TryFindBestBetterStorageFor → IsGoodStoreCell → CanReserveNew）失败 → 原版"NoEmptyPlace"
+    // （未配置空余的、可到达的储存点）；A 完成释放预留后恢复。两者互补消除该窗口，使 vault 格 100%
+    // 走 v3 容器路径（HaulToContainer 对 IHaulEnroute 容器跳过 Reserve(容器本体)，不预留 vault 格）。
     [HarmonyPatch(typeof(HaulAIUtility), "HaulToCellStorageJob")]
     internal static class Patch_HaulAIUtility_HaulToCellStorageJob
     {
@@ -1408,7 +1414,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true;
             }
-            if (storeCell.GetEdifice(p.Map) is Building_OuterrealmVault vault && vault.Spawned)
+            Building_OuterrealmVault vault = storeCell.GetEdifice(p.Map) as Building_OuterrealmVault;
+            if (vault == null || !vault.Spawned)
+            {
+                // groupGrid 兜底：vault 的 SlotGroup 注册格（GenAdj.CellsOccupiedBy 占格）的直接判定，
+                // 覆盖 GetEdifice 在边缘时序/网格重建下未命中的情况（§v5 加固）
+                vault = storeCell.GetSlotGroup(p.Map)?.parent as Building_OuterrealmVault;
+            }
+            if (vault != null && vault.Spawned)
             {
                 // 双接口：存入走 v3 容器（HaulToContainer → view 吸收），不经存储格落地
                 __result = HaulAIUtility.HaulToContainerJob(p, t, vault);
