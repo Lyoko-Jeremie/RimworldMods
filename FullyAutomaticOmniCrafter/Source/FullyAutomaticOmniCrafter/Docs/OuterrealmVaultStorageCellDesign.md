@@ -154,7 +154,7 @@ Raven Mod 的休闲 job（`Raven_Job_PlayWithFluid`）把 vault 里的渡鸦养�
 
 | 组件 | 实现 | 文件 |
 |---|---|---|
-| 存储格 | `ISlotGroupParent`（AllSlotCells = 建筑占格）+ Def `<maxItemsInCell>255</maxItemsInCell>`（PS 写入）+ 代码 `MaxItemsInCell => 255` 双保险 + SlotGroup 生命周期 | Building_OuterrealmVault.cs / Defs |
+| 存储格 | `ISlotGroupParent`（AllSlotCells = 建筑占格）+ Def `<maxItemsInCell>255</maxItemsInCell>`（PS 写入）+ 代码 `MaxItemsInCell => 255` 双保险 + **Def `<surfaceType>Item</surfaceType>`（物品架语义：否则 `StoreUtility.NoStorageBlockersIn` 把 vault 建筑判为存储 blocker，格子不可用 → 右键"收起来"提示"未配置空余存储点"）** + SlotGroup 生命周期 | Building_OuterrealmVault.cs / Defs |
 | 物化 | `Reserve` Postfix → `TryLendCopy`（借出=扣全局全量 + GenSpawn 到存储格）；CanReserve/Reserve 存储格满拒绝 | Patch_OuterrealmStorage.cs / OuterrealmVaultViewThingOwner.cs |
 | 回收 | vault Tick → `ReturnUnreservedBorrowed`（IsReserved 判定，覆盖所有 Release 路径）；拆除 → `ReturnAllBorrowed` | Building_OuterrealmVault.cs / OuterrealmVaultViewThingOwner.cs |
 | 外来吸收 | **每物品吸收倒计时**（落格登记 15 tick → 到期 Deposit）+ rare tick（250）兜底（未登记异常残留） | Building_OuterrealmVault.cs |
