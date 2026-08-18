@@ -44,10 +44,12 @@
     <fillPercent>0.5</fillPercent>
     <canOverlapZones>false</canOverlapZones>
     <rotatable>true</rotatable>
-    <!-- §v5 虚拟存储内容不参与地图点击选中：若为 true，伪 Spawned 副本会被
-         ContainingSelectionUtility.SelectableContainedThings 枚举为可选中（点击 vault 循环选中
-         不可见的内容物）；借出副本（真 Spawned 短暂驻留）不受此字段影响，仍按地图物品处理。 -->
-    <containedItemsSelectable>false</containedItemsSelectable>
+    <!-- §v5 虚拟存储内容参与右键菜单（provider 生成穿戴/使用/拿取选项需要副本进入 ClickedThings，
+         SelectableContainedThings 按此字段枚举容器内容物）。伪 Spawned 副本会因此进入左键点击选中候选
+         （点击 vault 循环选中不可见内容物）——由 Patch_ThingSelectionUtility_SelectableByMapClick
+         在左键/Tab 路径过滤（右键菜单 ForThing() 不设 mustBeSelectable，不受影响）。
+         借出副本（真 Spawned 短暂驻留）不受此字段影响，仍按地图物品处理。 -->
+    <containedItemsSelectable>true</containedItemsSelectable>
 
     <!-- 属性基础值 -->
     <statBases>

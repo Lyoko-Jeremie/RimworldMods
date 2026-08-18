@@ -1932,10 +1932,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // 根因：Def 设 containedItemsSelectable=true（右键浮菜单经 FloatMenuContext → GenUI.ThingsUnderMouse
     // 依赖 ContainingSelectionUtility.SelectableContainedThings 生成穿戴/装备/食用等选项），
     // 而左键选择路径 Selector.SelectableObjectsUnderMouse → GenUI.ThingsUnderMouse 共用同一
-    // SelectableContainedThings，把未 Spawned 的视图副本纳入点击候选——副本不参与地图绘制（无图像），
+    // SelectableContainedThings，把视图副本纳入点击候选——副本不参与地图绘制（无图像），
     // 却可被左键选中并在检查面板查看信息，形成"隐形物品"。
-    // 修复：postfix 包装左键候选序列，过滤"未 Spawned 且持有者为 OuterrealmVaultViewThingOwner"的 Thing。
-    // 右键浮菜单走独立路径（FloatMenuContext），不受影响；vault 建筑本体（Spawned、无 holdingOwner）保留。
+    // §v5 后副本为伪 Spawned（Spawned=true，ParentHolder=建筑），旧条件 !Spawned 已失效；
+    // 现按 ParentHolder 判定锚点副本（借出副本真 Spawned 于格上、ParentHolder=null，不受影响）。
+    // 右键浮菜单走独立路径（FloatMenuContext 用 TargetingParameters.ForThing()，mustBeSelectable=false），
+    // 不受此处与 Patch_ThingSelectionUtility_SelectableByMapClick 影响；vault 建筑本体保留。
     [HarmonyPatch(typeof(Selector), "SelectableObjectsUnderMouse")]
     internal static class Patch_Selector_SelectableObjectsUnderMouse
     {
@@ -1964,19 +1966,40 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    /// <summary>选择候选过滤：剔除 vault 视图内未 Spawned 的投影副本（隐形物品）。</summary>
+    /// <summary>选择候选过滤：剔除 vault 视图锚点副本（伪 Spawned 隐形物品，ParentHolder=建筑）。
+    /// 借出副本（真 Spawned 驻留格上，holdingOwner=null）与随身视图副本（ParentHolder=SubspaceAccessPawn）
+    /// 不命中，保持原行为。</summary>
     internal static class OuterrealmVaultSelectionFilter
     {
         public static IEnumerable<object> Filter(IEnumerable<object> src)
         {
             foreach (object o in src)
             {
-                if (o is Thing t && !t.Spawned && t.holdingOwner is OuterrealmVaultViewThingOwner)
+                if (o is Thing t && t.ParentHolder is Building_OuterrealmVault)
                 {
-                    continue; // 隐形副本：不可被左键点选 / 切换选中
+                    continue; // 隐形锚点副本：不可被左键点选 / 切换选中
                 }
                 yield return o;
             }
+        }
+    }
+
+    // ── 补充：地图点击可选中判定过滤（覆盖框选/其余调用者） ──
+    // SelectableByMapClick 决定"地图上可点击选中"（TargetingParameters.mustBeSelectable 的
+    // CanTarget、Selector.SelectableObjectsAt、ThingSelectionUtility 框选等全部入口）。
+    // vault 锚点副本（伪 Spawned 隐形物品）在此直接返回 false：左键/框选/Tab 均不可选中，
+    // 右键浮菜单（ForThing() 不设 mustBeSelectable）不受影响。
+    [HarmonyPatch(typeof(ThingSelectionUtility), "SelectableByMapClick")]
+    internal static class Patch_ThingSelectionUtility_SelectableByMapClick
+    {
+        private static bool Prefix(Thing t, ref bool __result)
+        {
+            if (t != null && t.ParentHolder is Building_OuterrealmVault)
+            {
+                __result = false; // 隐形锚点副本：不可地图点击选中
+                return false;
+            }
+            return true;
         }
     }
 }

@@ -680,9 +680,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 yield return o;
             }
             // §4：穿戴/装备/食用等浮菜单选项交由原版 FloatMenuOptionProvider 统一生成。
-            // ThingDef 已设 containedItemsSelectable=true → ContainingSelectionUtility.SelectableContainedThings
-            // 会把视图副本纳入右键 ClickedThings，所有 provider（含第三方 mod 新增的操作）自动适配，
-            // 不再逐项手动生成选项。
+            // ThingDef 已设 containedItemsSelectable=true（OuterrealmStorage.xml §v5）→
+            // ContainingSelectionUtility.SelectableContainedThings 会把视图副本纳入右键 ClickedThings，
+            // 所有 provider（含第三方 mod 新增的操作）自动适配，不再逐项手动生成选项；
+            // 副本进入左键选中候选的副作用由 Patch_ThingSelectionUtility_SelectableByMapClick
+            // 与 Patch_Selector_* 过滤（右键路径 ForThing() 不设 mustBeSelectable，不受影响）。
         }
 
         // ── 穿戴/装备浮菜单选项（§4，逐行照抄 Building_OutfitStand.cs:554-704 原版逻辑） ──
