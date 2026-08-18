@@ -436,6 +436,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 走真 Spawned 原版路径（层 2）。
         /// 顺序要求：先设 positionInt（此时未 Spawned，Position setter 只写 positionInt），
         /// 再提升 mapIndexOrState（Spawned 后 Position setter 会做完整地理注册，见 Thing.Position）。
+        /// Position 必须落在 vault 占格（GetProjectionCell）：伪 Spawned 后
+        /// StoreUtility.CurrentHaulDestinationOf 的 Spawned 分支按 SlotGroupParentAt(Position)
+        /// 判定副本"所在存储"——若用建筑占格外的交互格，副本会被判定为"位于交互格处存储/无存储"
+        /// 而非"位于 vault"，优先级错乱后 TryFindBestBetterStorageFor 把 vault 自身选为"更好存储"，
+        /// 搬运工取出（v4 物化）→ 放入（v3 HaulToContainer 吸收）→ 副本重生 → 无限搬运循环。
         /// </summary>
         private void RegisterInLister(Thing copy)
         {
@@ -443,7 +448,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            copy.Position = Context.InteractionCell; // 伪 Spawned 前：未 Spawned 仅写 positionInt
+            copy.Position = GetProjectionCell(); // 伪 Spawned 前：未 Spawned 仅写 positionInt
             Map map = Context.MapHeld;
             if (MapIndexOrStateField != null)
             {
@@ -456,6 +461,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 map.listerThings.Add(copy);
             }
             RegionListersUpdater.RegisterInRegions(copy, map); // region 级索引（幂等：Contains 判重）
+        }
+
+        /// <summary>伪 Spawned 副本的投影格：vault 上下文须用建筑锚点格（占格，SlotGroup 内），
+        /// 使 CurrentHaulDestinationOf → SlotGroupParentAt(Position) = vault（见 RegisterInLister 注释）；
+        /// 非 vault 上下文（随身视图，不注册 lister）退回 InteractionCell。</summary>
+        private IntVec3 GetProjectionCell()
+        {
+            if (Context is Building_OuterrealmVault vault && vault.Spawned)
+            {
+                return vault.Position;
+            }
+            return Context.InteractionCell;
         }
 
         /// <summary>伪 Spawned 投影：撤销注册并恢复未 Spawned（须在 base.Remove 之前，
