@@ -345,8 +345,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public int GroupingOrder => def.building.groupingOrder;
 
-        /// <summary>物品落格钩子（Thing.SpawnSetup → Position.GetSlotGroup().parent 触发，§v4）：
-        /// 登记吸收倒计时（延迟吸收：先完成 haul 放置 toil，到期后由 ProcessAbsorbTimers 吸收进全局层）。</summary>
+        /// <summary>物品落格钩子（Thing.SpawnSetup → Position.GetSlotGroup().parent 触发，§v4）。
+        /// 双接口后搬运工存入已走 v3 容器（HaulToContainer → view 吸收），不落格；本钩子只服务
+        /// 掉落物/异常 Spawn 在 vault 格上的物品：登记吸收倒计时（15 tick）→ 到期吸收进全局层。</summary>
         public void Notify_ReceivedThing(Thing newItem)
         {
             if (newItem == null || newItem.Destroyed || !Spawned || view == null)

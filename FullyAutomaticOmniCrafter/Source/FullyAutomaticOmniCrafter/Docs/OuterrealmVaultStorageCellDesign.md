@@ -86,12 +86,12 @@ Raven Mod 的休闲 job（`Raven_Job_PlayWithFluid`）把 vault 里的渡鸦养�
   3. 借出登记清除。
 - **语义**：job 用完即还，**物品不外流**（vault 现有"内容保留全局层"行为保持）。
 
-### 5.4 存入（外来物品放置 → 自动吸收）
-- vault 实现 `ISlotGroupParent` 后 haul 存入自动变格子型（原版 `HaulToStorageJob` 对 `ISlotGroupParent` 走 `HaulToCellStorageJob`）：hauler 把物品**真 Spawn 到存储格**（物品架语义）。
-- **每物品吸收倒计时（§v4 实现）**：物品落格 → `Notify_ReceivedThing` 登记 `absorbTimers[物品] = TicksGame + 15`（0.25s）→ 到期且未预留/filter 允许 → `Deposit` 吸收进全局层。
-  - 分散吸收时机（无统一 60 tick 批处理）；竞争窗口仅 0.25s（第三方选中前即吸收）；haul 放置 toil 先完成（不误判失败）。
-  - 到期时被预留使用 / filter 已禁止 / 物品被取走 → 清理登记（物品归游戏/玩家，不强制吸收）。
-- 兜底：异常路径（读档后无登记、绕过钩子）由 vault `Tick`（**rare tick，250 tick ≈ 4s**）扫格子吸收未登记物品。
+### 5.4 存入（双接口：v3 容器路径）
+- **双接口设计（§v4 实施）**：vault 同时实现 v3 容器（`IHaulDestination`/`IHaulSource` + view）与 v4 存储格（`ISlotGroupParent`）两套接口，职责分离：
+  - **存入（搬运工 haul）走 v3 容器**：`Patch_HaulAIUtility_HaulToCellStorageJob` 拦截——目标格属于 vault 时改返回 `HaulToContainerJob`（vault 的 `GetDirectlyHeldThings` → view）→ `DepositHauledThingInContainer` → `TryTransferToContainer`（SplitOff 产物 holdingOwner=null）→ `view.TryAdd` → `Deposit` **直接吸收进全局层**（无倒计时竞争/视觉闪烁/haul 时序问题）。
+  - **取出/预留/使用走 v4 存储格**（§5.2 物化）；**自动吸回**（掉落物落在 vault 格）走倒计时吸收。
+- **吸收倒计时（仅掉落物/异常）**：物品落格（非 haul 存入，如掉落）→ `Notify_ReceivedThing` 登记 15 tick → 到期未预留且 filter 允许 → `Deposit`；被取走/预留/filter 禁止 → 清理登记。
+- 兜底：rare tick（250，≈4s）扫格子吸收未登记异常残留（读档后/绕过钩子）。
 - **预留中的物品不会被误吸收**（借出登记排除）。
 - 物品架式交互：玩家也可手动把物品放到格子上（与 haul 一致）。
 
@@ -157,7 +157,8 @@ Raven Mod 的休闲 job（`Raven_Job_PlayWithFluid`）把 vault 里的渡鸦养�
 | 存储格 | `ISlotGroupParent`（AllSlotCells = 建筑占格）+ Def `<maxItemsInCell>255</maxItemsInCell>`（PS 写入）+ 代码 `MaxItemsInCell => 255` 双保险 + **Def `<surfaceType>Item</surfaceType>`（物品架语义：否则 `StoreUtility.NoStorageBlockersIn` 把 vault 建筑判为存储 blocker，格子不可用 → 右键"收起来"提示"未配置空余存储点"）** + SlotGroup 生命周期 | Building_OuterrealmVault.cs / Defs |
 | 物化 | `Reserve` Postfix → `TryLendCopy`（借出=扣全局全量 + GenSpawn 到存储格）；CanReserve/Reserve 存储格满拒绝 | Patch_OuterrealmStorage.cs / OuterrealmVaultViewThingOwner.cs |
 | 回收 | vault Tick → `ReturnUnreservedBorrowed`（IsReserved 判定，覆盖所有 Release 路径）；拆除 → `ReturnAllBorrowed` | Building_OuterrealmVault.cs / OuterrealmVaultViewThingOwner.cs |
-| 外来吸收 | **每物品吸收倒计时**（落格登记 15 tick → 到期 Deposit）+ rare tick（250）兜底（未登记异常残留） | Building_OuterrealmVault.cs |
+| 外来吸收 | **每物品吸收倒计时**（落格登记 15 tick → 到期 Deposit，仅掉落物/异常）+ rare tick（250）兜底 | Building_OuterrealmVault.cs |
+| **双接口分流** | `Patch_HaulAIUtility_HaulToCellStorageJob`：存入目标格属 vault → 改走 `HaulToContainerJob`（v3 容器直接吸收，不经存储格） | Patch_OuterrealmStorage.cs |
 | 记账延续 | 借出副本 holdingOwner=null 天然跳过 view 记账；`Notify_ItemRemoved` 加 IsBorrowed 防双扣 | Building_OuterrealmVault.cs |
 | 锚点保护 | `borrowedByKey` 防双锚点（EnsureCopyFor/RebuildView）；SyncKey/DisposeOrphanCopy/TryDisposeCopyIfObsolete 跳过借出副本 | OuterrealmVaultViewThingOwner.cs |
 

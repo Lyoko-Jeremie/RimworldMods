@@ -1328,6 +1328,32 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
     // ── 半 Spawned 投影配套：搬运可达性——对 vault 副本用建筑做 CanReach/Fogged ──
     // 原版 PawnCanAutomaticallyHaulFast 对 t 做 t.Fogged() / CanReserve(t) / CanReach(t)。副本未 Spawned，
+    // ── 双接口（§v4）：存入分流到 v3 容器路径 ──
+    // vault 实现 ISlotGroupParent 后，原版 HaulToStorageJob 的 switch 对 ISlotGroupParent 一律走
+    // HaulToCellStorageJob（物品真 Spawn 到存储格）。双接口设计：搬运工存入应走 v3 容器路径
+    // （HaulToContainer → view.TryAdd → Deposit 直接吸收，无倒计时竞争/视觉闪烁/haul 时序问题）；
+    // v4 存储格仅服务预留物化（取出/使用）与自动吸回（掉落物）。此处拦截 HaulToCellStorageJob：
+    // 目标格属于 vault 时改返回 HaulToContainerJob（vault 的 GetDirectlyHeldThings → view，v3 成熟路径）。
+    [HarmonyPatch(typeof(HaulAIUtility), "HaulToCellStorageJob")]
+    internal static class Patch_HaulAIUtility_HaulToCellStorageJob
+    {
+        private static bool Prefix(Pawn p, Thing t, IntVec3 storeCell, bool fitInStoreCell, ref Job __result)
+        {
+            if (!storeCell.InBounds(p.Map))
+            {
+                return true;
+            }
+            if (p.Map.haulDestinationManager.SlotGroupAt(storeCell)?.parent is Building_OuterrealmVault vault
+                && vault.Spawned)
+            {
+                // 双接口：存入走 v3 容器（HaulToContainer → view 吸收），不经存储格落地
+                __result = HaulAIUtility.HaulToContainerJob(p, t, vault);
+                return false;
+            }
+            return true;
+        }
+    }
+
     // CanReach(t) 依赖 t.PositionHeld（=vault 建筑格）虽理论可达，但为稳妥，对 vault 副本改用 vault 建筑做
     // 可达/雾检查、用副本做预留（CanReserve 已由 Patch_ReservationManager_CanReserve 处理数量）。
     // 否则“无报错但无搬运选项/不自动搬运”往往源于此处在无 JobFailReason 的情况下返回 false。
