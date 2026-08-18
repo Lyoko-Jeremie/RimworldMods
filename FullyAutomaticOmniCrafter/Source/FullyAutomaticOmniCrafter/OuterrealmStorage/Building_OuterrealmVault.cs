@@ -35,6 +35,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessManagerOpen") ?? 
             BaseContent.WhiteTex;
         
+        public static readonly Texture2D SubspaceAccessOpenManagerSelfIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessOpenManagerSelf") ?? 
+            BaseContent.WhiteTex;
+        
     }
     
     /// <summary>

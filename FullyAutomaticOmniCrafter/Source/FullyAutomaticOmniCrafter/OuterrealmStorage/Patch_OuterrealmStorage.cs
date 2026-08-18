@@ -1518,7 +1518,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 defaultLabel = "SubspaceAccess_OpenManager".Translate(),
                 defaultDesc = "SubspaceAccess_OpenManagerDesc".Translate(),
-                icon = TexCommand.SelectShelf,
+                icon = OuterrealmStorageTex.SubspaceAccessOpenManagerSelfIcon,
                 action = () => Find.WindowStack.Add(new Dialog_OuterrealmStorageManager(pawn)),
             };
         }
