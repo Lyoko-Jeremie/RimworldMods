@@ -47,8 +47,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// 搬运工可存入（HaulToContainer）、可取出（HaulSource / 工作台原料 / 装备取用）、
     /// 有存储清单 UI（ITab_Storage）与优先级；内容始终保存在全局层（GameComponent_OuterrealmStorage），
     /// 本建筑只持有"视图"（OuterrealmVaultViewThingOwner = 全局条目的投影副本缓存）。
+    /// 
+    /// 继承 Building_Storage（而非 Building）的原因：让第三方 Mod 的"原版存储"判定
+    /// （is Building_Storage / is Zone_Stockpile，如鸦族无人机物流箱的"输出到原版存储"）
+    /// 直接放行本建筑；内部行为全部按 vault 语义覆盖（见各 `new` 隐藏成员与 override）。
+    /// 基类 public 字段 settings / storageGroup / slotGroup 直接复用，不重复声明。
     /// </summary>
-    public class Building_OuterrealmVault : Building,
+    public class Building_OuterrealmVault : Building_Storage,
         IHaulDestination,
         ISlotGroupParent,
         IStoreSettingsParent,
@@ -61,16 +66,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         IApparelSource,
         IOuterrealmVaultContext
     {
-        /// <summary>独立存储清单（filter 决定本建筑"能看到/存取哪些条目"，§6.2）。</summary>
-        public StorageSettings settings;
+        /// <summary>独立存储清单（filter 决定本建筑"能看到/存取哪些条目"，§6.2）。复用基类 Building_Storage 的 public settings 字段。</summary>
 
         /// <summary>视图容器（§3.2：owner=建筑 是 haulable 判定链命门；构造内已设 dontTickContents）。</summary>
         public OuterrealmVaultViewThingOwner view;
 
-        private StorageGroup storageGroup;
-
-        /// <summary>存储格（§v4）：vault 作为 ISlotGroupParent 的 SlotGroup，格子 = 建筑占格（2×1 × MaxItemsInCell）。</summary>
-        private SlotGroup slotGroup;
+        // 存储组（storageGroup）与存储格（slotGroup）复用基类 Building_Storage 的 public 字段，
+        // 不再重复声明；GetStoreSettings/GetSlotGroup 等基类非虚实现直接适用。
 
         /// <summary>外来物品吸收倒计时（§v4）：物品落格 → 倒计时（AbsorbDelayTicks）→ 到期吸收进全局层。
         /// 分散吸收时机（避免统一 60 tick 批处理）且缩短竞争窗口（第三方选中前即吸收）。不序列化（读档后走兕底）。</summary>
@@ -100,30 +102,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public Building_OuterrealmVault()
         {
             view = new OuterrealmVaultViewThingOwner(this);
-            slotGroup = new SlotGroup(this); // §v4 存储格
+            // slotGroup 由基类 Building_Storage 构造函数创建（new SlotGroup(this)）
         }
 
         public override void PostMake()
         {
-            base.PostMake();
-            settings = new StorageSettings(this);
-            if (def.building.defaultStorageSettings != null)
-            {
-                settings.CopyFrom(def.building.defaultStorageSettings);
-            }
+            base.PostMake(); // Building_Storage：创建 settings 并 CopyFrom(defaultStorageSettings)
+            // 不配置 defaultStorageSettings：PostMake 后 filter 为空 = 默认全禁止（§6.2）
         }
 
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
-            // 跨地图自动断开存储组（原版模式，Building_Storage.cs:141-153）
-            if (storageGroup != null && map != storageGroup.Map)
-            {
-                StorageSettings storeSettings = storageGroup.GetStoreSettings();
-                storageGroup.RemoveMember(this);
-                storageGroup = null;
-                settings.CopyFrom(storeSettings);
-            }
+            // 跨地图自动断开存储组已由 Building_Storage.SpawnSetup 处理（Building_Storage.cs:130-140）
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs != null)
             {
@@ -153,16 +144,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             base.DeSpawn(mode);
         }
 
-        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
-        {
-            base.Destroy(mode);
-            if (storageGroup == null)
-            {
-                return;
-            }
-            storageGroup.RemoveMember(this);
-            storageGroup = null;
-        }
+        // Destroy 无需 override：Building_Storage.Destroy 已处理存储组移除与
+        // BillUtility.Notify_ISlotGroupRemoved（bill 存储模式引用清理，vault 此前缺失，继承后自动补上）。
 
         public override void Notify_MinifiedThingAboutToBeDestroyed(DestroyMode mode)
         {
@@ -315,23 +298,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>存储格容量：每格最多 255 堆（v4 预留驱动物化；预留中物品短暂驻留，不设并发限制）。</summary>
         public override int MaxItemsInCell => 255;
 
-        public SlotGroup GetSlotGroup() => slotGroup;
+        // GetSlotGroup / AllSlotCells / IgnoreStoredThingsBeauty / SlotYielderLabel /
+        // GroupingLabel / GroupingOrder 与基类 Building_Storage 实现一致，直接继承。
 
-        public IEnumerable<IntVec3> AllSlotCells()
+        /// <summary>存储格列表：现算不缓存（new 隐藏基类缓存版）——vault 可 rotatable，
+        /// 缓存会在旋转后过期（HaulDestinationManager 的格子注册由原版在 SpawnSetup 时设置，
+        /// 旋转为边缘场景，拆建即可恢复）。经 ISlotGroupParent 接口（SlotGroup.CellsList）访问同样命中本实现。</summary>
+        public new List<IntVec3> AllSlotCellsList()
         {
-            if (Spawned)
-            {
-                foreach (IntVec3 c in GenAdj.CellsOccupiedBy(this))
-                {
-                    yield return c;
-                }
-            }
-        }
-
-        public List<IntVec3> AllSlotCellsList()
-        {
-            // 现算不缓存：vault 可 rotatable，缓存会在旋转后过期（HaulDestinationManager 的格子注册
-            // 由原版在 SpawnSetup 时设置，旋转为边缘场景，拆建即可恢复）
             List<IntVec3> cells = new List<IntVec3>();
             if (Spawned)
             {
@@ -341,38 +315,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             return cells;
-        }
-
-        public bool IgnoreStoredThingsBeauty => def.building.ignoreStoredThingsBeauty;
-
-        public string SlotYielderLabel() => LabelCap;
-
-        public string GroupingLabel => def.building.groupingLabel;
-
-        public int GroupingOrder => def.building.groupingOrder;
-
-        /// <summary>物品落格钩子（Thing.SpawnSetup → Position.GetSlotGroup().parent 触发，§v4）。
-        /// 双接口后搬运工存入已走 v3 容器（HaulToContainer → view 吸收），不落格；本钩子只服务
-        /// 掉落物/异常 Spawn 在 vault 格上的物品：登记吸收倒计时（15 tick）→ 到期吸收进全局层。</summary>
-        public void Notify_ReceivedThing(Thing newItem)
-        {
-            if (newItem == null || newItem.Destroyed || !Spawned || view == null)
-            {
-                return;
-            }
-            if (view.IsBorrowed(newItem))
-            {
-                return; // 借出副本（预留物化）不登记
-            }
-            if (!CanShow(newItem))
-            {
-                return; // filter 不允许：不吸收，物品留格子由玩家处置
-            }
-            absorbTimers[newItem] = GenTicks.TicksGame + AbsorbDelayTicks;
-        }
-
-        public void Notify_LostThing(Thing newItem)
-        {
         }
 
         /// <summary>找存储格空位（每格 < MaxItemsInCell 堆；返回 Invalid 表示无空位，§v4）。</summary>
@@ -389,21 +331,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return IntVec3.Invalid;
         }
 
+        /// <summary>物品落格钩子（Thing.SpawnSetup → Position.GetSlotGroup().parent 触发，§v4）。
+        /// 双接口后搬运工存入已走 v3 容器（HaulToContainer → view 吸收），不落格；本钩子只服务
+        /// 掉落物/异常 Spawn 在 vault 格上的物品：登记吸收倒计时（15 tick）→ 到期吸收进全局层。
+        /// override 基类 Building_Storage（原版教学提示经 base 保留）。</summary>
+        public override void Notify_ReceivedThing(Thing newItem)
+        {
+            base.Notify_ReceivedThing(newItem); // 原版 storedConceptLearnOpportunity 教学提示
+            if (newItem == null || newItem.Destroyed || !Spawned || view == null)
+            {
+                return;
+            }
+            if (view.IsBorrowed(newItem))
+            {
+                return; // 借出副本（预留物化）不登记
+            }
+            if (!CanShow(newItem))
+            {
+                return; // filter 不允许：不吸收，物品留格子由玩家处置
+            }
+            absorbTimers[newItem] = GenTicks.TicksGame + AbsorbDelayTicks;
+        }
+
+        // Notify_LostThing 继承基类空实现。
+
         // ── IStoreSettingsParent / IHaulDestination / IHaulSource ───────────────
 
-        public bool StorageTabVisible => true;
+        // StorageTabVisible / GetStoreSettings / GetParentStoreSettings 与基类 Building_Storage
+        // 实现一致，直接继承（filter 的读写统一走基类 public settings / storageGroup 字段）。
 
-        public StorageSettings GetStoreSettings()
-        {
-            return storageGroup != null ? storageGroup.GetStoreSettings() : settings;
-        }
-
-        public StorageSettings GetParentStoreSettings()
-        {
-            return def.building.fixedStorageSettings ?? StorageSettings.EverStorableFixedSettings();
-        }
-
-        public void Notify_SettingsChanged()
+        /// <summary>new 隐藏基类 Notify_SettingsChanged：除通知原版 haul 目标/来源重排外，
+        /// 还要按新 filter 重建视图（§4 表）；组设置变化经 Patch_StorageGroup_Notify_SettingsChanged
+        /// 补链后同样到达此处（事件驱动，无需轮询）。</summary>
+        public new void Notify_SettingsChanged()
         {
             if (!Spawned)
             {
@@ -411,13 +371,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
             MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
-            // filter/优先级变化 → 视图按新 filter 重建（§4 表）；组设置变化经
-            // Patch_StorageGroup_Notify_SettingsChanged 补链后同样到达此处（事件驱动，无需轮询）
+            // filter/优先级变化 → 视图按新 filter 重建（§4 表）
             view?.RebuildView();
             lastSeenVersion = GameComponent_OuterrealmStorage.Instance != null ? GameComponent_OuterrealmStorage.Instance.Version : lastSeenVersion;
         }
 
-        public bool HaulDestinationEnabled => Spawned && !noDeposit;
+        /// <summary>new 隐藏基类恒 true：vault 的"允许存入"开关（noDeposit）关闭时停止作为 haul 目标。
+        /// 第三方（含鸦族无人机）经 IHaulDestination 接口访问，接口调度命中本实现。</summary>
+        public new bool HaulDestinationEnabled => Spawned && !noDeposit;
 
         public bool HaulSourceEnabled => Spawned && !noWithdraw;
 
@@ -433,7 +394,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return view != null && view.Contains(apparel) && view.Remove(apparel);
         }
 
-        public bool Accepts(Thing t)
+        /// <summary>new 隐藏基类 Accepts（仅 filter 判定）：vault 增加 frozen 门控——冻结时拒绝一切存入。</summary>
+        public new bool Accepts(Thing t)
         {
             // 弹出落地已排除建筑占格（吸收机制只处理落格物品），不再需要防回吸门卫；仅按 filter 门控。
             return CanShow(t);
@@ -446,7 +408,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         // IHaulEnroute：无限容量（§1.2）。注意该值不做 filter 检查——filter 门控在存储选择阶段 Accepts。
-        public int SpaceRemainingFor(ThingDef def)
+        /// <summary>new 隐藏基类 SpaceRemainingFor（按落格堆数计算）：vault 内容在全局层，格上驻留物仅为
+        /// 短暂预留副本，容量视为无限（§1.2）。</summary>
+        public new int SpaceRemainingFor(ThingDef def)
         {
             return int.MaxValue;
         }
@@ -576,6 +540,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── IStorageGroupMember（§4.1e，逐行对齐 Building_Storage） ────────────
 
+        /// <summary>存储组读写。仅保留 Group 的隐式实现（含 §4.1e 写回）：
+        /// 继承 Building_Storage 后原版"member is Building_Storage"取消链接特判已覆盖本建筑，
+        /// 原版写回与本 setter 写回重复执行亦幂等；其余 IStorageGroupMember 成员继承基类显式实现。</summary>
         public StorageGroup Group
         {
             get => storageGroup;
@@ -597,44 +564,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        Map IStorageGroupMember.Map => MapHeld;
-
-        public StorageSettings StoreSettings => GetStoreSettings();
-
-        public StorageSettings ParentStoreSettings => GetParentStoreSettings();
-
-        public StorageSettings ThingStoreSettings => settings;
-
-        public string StorageGroupTag => def.building.storageGroupTag;
-
-        public bool DrawConnectionOverlay => Spawned;
-
-        public bool DrawStorageTab => true;
-
-        public bool ShowRenameButton => Faction == Faction.OfPlayer;
-
-        public override void DrawExtraSelectionOverlays()
-        {
-            base.DrawExtraSelectionOverlays();
-            StorageGroupUtility.DrawSelectionOverlaysFor(this);
-        }
+        // Map / StoreSettings / ParentStoreSettings / ThingStoreSettings / StorageGroupTag /
+        // DrawConnectionOverlay / DrawStorageTab / ShowRenameButton / DrawExtraSelectionOverlays
+        // 均与基类 Building_Storage 一致，直接继承。
 
         // ── UI ─────────────────────────────────────────────────────────────────
 
         public override string GetInspectString()
         {
+            // base = Building_Storage.GetInspectString（含存储组信息与落格驻留物摘要，
+            // 落格物仅短暂驻留 15 tick，平时为空）
             string s = base.GetInspectString();
             if (!s.NullOrEmpty())
             {
-                s += "\n";
-            }
-            // 存储组信息（§4.1e，对齐 Building_Storage.GetInspectString）
-            if (storageGroup != null)
-            {
-                s += "StorageGroupLabel".Translate() + ": " + storageGroup.RenamableLabel.CapitalizeFirst() + " ";
-                s += storageGroup.MemberCount > 1
-                    ? "(" + "NumBuildings".Translate(storageGroup.MemberCount) + ")"
-                    : "(" + "OneBuilding".Translate() + ")";
                 s += "\n";
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
@@ -657,20 +599,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public override IEnumerable<Gizmo> GetGizmos()
         {
+            // base = Building_Storage.GetGizmos（含 CopyPaste 存储设置 / 存储组 gizmos / 选择存储物品），
+            // vault 不再重复添加；下面只追加 vault 专属开关。
             foreach (Gizmo g in base.GetGizmos())
             {
                 yield return g;
-            }
-            foreach (Gizmo g in StorageSettingsClipboard.CopyPasteGizmosFor(GetStoreSettings()))
-            {
-                yield return g;
-            }
-            if (StorageTabVisible && MapHeld != null)
-            {
-                foreach (Gizmo g in StorageGroupUtility.StorageGroupMemberGizmos(this))
-                {
-                    yield return g;
-                }
             }
             // 出入三开关（§4.1c/d）：Command_Toggle + 相同 groupKey 常量 → 原版多选同步调整。
             // "允许存入/允许取出"为正向语义（开关 on = 允许，默认允许）；"允许拿取"为条件开关。
@@ -929,9 +862,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public override void ExposeData()
         {
-            base.ExposeData();
-            Scribe_Deep.Look(ref settings, "settings", this);
-            Scribe_References.Look(ref storageGroup, "storageGroup");
+            base.ExposeData(); // Building_Storage：保存 settings / storageGroup / label（节点名不变，旧档兼容）
             Scribe_Values.Look(ref noDeposit, "noDeposit", false);
             Scribe_Values.Look(ref noWithdraw, "noWithdraw", false);
             Scribe_Values.Look(ref allowTakeForUse, "allowTakeForUse", false);
