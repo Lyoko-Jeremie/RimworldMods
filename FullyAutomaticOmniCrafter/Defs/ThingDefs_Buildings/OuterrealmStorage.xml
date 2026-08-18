@@ -35,6 +35,8 @@
     <!-- 布局 -->
     <altitudeLayer>Building</altitudeLayer>
     <passability>PassThroughOnly</passability>
+    <!-- 物品架语义（v4）：surfaceType=Item 使 vault 建筑自身不构成存储 blocker（StoreUtility.NoStorageBlockersIn），格子可作合法存储格 -->
+    <surfaceType>Item</surfaceType>
     <pathCost>1</pathCost>
     <blockWind>false</blockWind>
     <castEdgeShadows>false</castEdgeShadows>
