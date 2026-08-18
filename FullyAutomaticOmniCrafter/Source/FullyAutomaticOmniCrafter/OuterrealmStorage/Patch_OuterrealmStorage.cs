@@ -1716,6 +1716,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §v5 伪 Spawned 配套：屏蔽 vault 副本的 glow（光效）注册 ──
+    // 读档时 Map.FinalizeInit 遍历 listerThings.AllThings（含 vault 副本）调用 Thing.PostMapInit，
+    // 副本的 CompGlower.PostMapInit → RefreshGlower → UpdateLit：伪 Spawned 副本 parent.Spawned=true
+    // → ShouldBeLitNow=true → glowGrid.RegisterGlower → 光效显示在 vault 位置（物品本体不在
+    // thingGrid，不可见）——即"看不到物品但看到光效"。在 GlowGrid.RegisterGlower 入口屏蔽
+    // vault 视图副本的 glower；借出副本（真 Spawned，holdingOwner=null）不受影响，短暂驻留时正常发光。
+    [HarmonyPatch(typeof(GlowGrid), "RegisterGlower")]
+    internal static class Patch_GlowGrid_RegisterGlower
+    {
+        private static bool Prefix(CompGlower newGlow)
+        {
+            return newGlow == null || newGlow.parent == null || !(newGlow.parent.holdingOwner is OuterrealmVaultViewThingOwner);
+        }
+    }
+
     // 计数：RecipeWorkerCounter.CountProducts（账单"已有数量"用全局量）。
     [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
     internal static class Patch_RecipeWorkerCounter_CountProducts
