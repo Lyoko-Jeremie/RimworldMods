@@ -49,12 +49,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
         private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
 
-        // ── 弹出防回吸：弹出落地的物品短期内不被本系统建筑自动吸回（§6.4 分流语义） ──
-        // 键为物化实例，值为弹出时的 TicksGame；超时（EjectNoReabsorbTicks）或物品销毁后自动清除，
-        // 之后物品恢复可正常存入。不序列化（读档后清空，落地物品属存档实体由玩家处置）。
-        private readonly Dictionary<Thing, int> ejectedTicks = new Dictionary<Thing, int>();
-        private const int EjectNoReabsorbTicks = 600; // 10 秒：弹出可见期，防立即被搬回
-
         public int Version => version;
         public int ReservationVersion => reservationVersion;
         public bool NeedFullRebuild => changeLogOverflow;
@@ -431,30 +425,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ejectQueue.Add(new VaultEjectJob { Key = key, MapIndex = mapIndex, Remaining = count, Anchor = anchor });
         }
 
-        /// <summary>标记弹出物品（落地后短暂防回吸，§6.4）。</summary>
-        public void MarkEjected(Thing t)
-        {
-            if (t != null)
-            {
-                ejectedTicks[t] = Find.TickManager.TicksGame;
-            }
-        }
-
-        /// <summary>弹出物品在限时窗口内返回 true（本系统建筑 Accepts 应拒绝，防止弹出自吸回）。</summary>
-        public bool IsEjected(Thing t)
-        {
-            if (t == null || !ejectedTicks.TryGetValue(t, out int tick))
-            {
-                return false;
-            }
-            if (t.Destroyed || Find.TickManager.TicksGame - tick > EjectNoReabsorbTicks)
-            {
-                ejectedTicks.Remove(t);
-                return false;
-            }
-            return true;
-        }
-
         private bool FindEntryExists(OuterrealmEntryKey key)
         {
             OuterrealmEntry e = FindEntry(key);
@@ -499,7 +469,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                     int withdrawn = t.stackCount;
                     job.Remaining -= withdrawn;
-                    MarkEjected(t); // 弹出防回吸：落地后短暂不被本系统建筑自动吸回（§6.4）
                     Thing dropped;
                     // 锚点：随身弹出用 pawn 位置；否则 vault 交互格 / 地图中心。
                     IntVec3 anchor = job.Anchor.IsValid ? job.Anchor : FindEjectAnchor(map);
@@ -659,8 +628,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 changeLogOverflow = false;
                 // 弹出队列不序列化（目标地图索引在重载后不可靠；条目仍在全局层，玩家可重新弹出）。
                 ejectQueue.Clear();
-                // 弹出防回吸标记不序列化（读档后清空；落地物品属存档实体由玩家处置）。
-                ejectedTicks.Clear();
             }
         }
     }

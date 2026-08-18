@@ -428,12 +428,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public bool Accepts(Thing t)
         {
-            // §6.4：弹出防回吸——刚弹出的物品限时内不被本建筑自动吸回。
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs != null && gs.IsEjected(t))
-            {
-                return false;
-            }
+            // 弹出落地已排除建筑占格（吸收机制只处理落格物品），不再需要防回吸门卫；仅按 filter 门控。
             return CanShow(t);
         }
 
