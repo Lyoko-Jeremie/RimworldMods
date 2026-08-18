@@ -1334,6 +1334,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // （HaulToContainer → view.TryAdd → Deposit 直接吸收，无倒计时竞争/视觉闪烁/haul 时序问题）；
     // v4 存储格仅服务预留物化（取出/使用）与自动吸回（掉落物）。此处拦截 HaulToCellStorageJob：
     // 目标格属于 vault 时改返回 HaulToContainerJob（vault 的 GetDirectlyHeldThings → view，v3 成熟路径）。
+    // 判定用 GetEdifice（edificeGrid）而非 SlotGroupAt（groupGrid）：不依赖格子注册——
+    // 格子未注册时（时序/异常）原版判定失效会导致物品落格 → Notify_ReceivedThing 不触发
+    // （同样依赖 SlotGroupAt）→ 倒计时不启动 → 直到 raretick 兜底才吸收（存入延迟）。
     [HarmonyPatch(typeof(HaulAIUtility), "HaulToCellStorageJob")]
     internal static class Patch_HaulAIUtility_HaulToCellStorageJob
     {
@@ -1343,8 +1346,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true;
             }
-            if (p.Map.haulDestinationManager.SlotGroupAt(storeCell)?.parent is Building_OuterrealmVault vault
-                && vault.Spawned)
+            if (storeCell.GetEdifice(p.Map) is Building_OuterrealmVault vault && vault.Spawned)
             {
                 // 双接口：存入走 v3 容器（HaulToContainer → view 吸收），不经存储格落地
                 __result = HaulAIUtility.HaulToContainerJob(p, t, vault);
