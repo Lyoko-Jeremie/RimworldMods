@@ -51,9 +51,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     Thing copy = vault.view.FindCopy(entry.Key);
                     if (copy == null)
                     {
-                        // 尸体：不物化视图副本（唯一实体），可见时直接用条目 proto 渲染；
-                        // 必须显式检查 CanShow（含 frozen）——尸体无副本，SyncKey 的"filter 禁止→移除副本"机制对尸体不生效（§6.2）
-                        if (entry.Proto is Corpse && vault.CanShow(entry.Proto))
+                        // 副本未物化（尸体唯一实体不物化 / filter 刚允许但帧末微批尚未执行）：
+                        // 直接用条目 proto 渲染——filter 是视图过滤语义，可见性以 CanShow 判定，
+                        // 不依赖副本物化（暂停时帧末微批不执行，UI 仍须正确显示，§filter 视图过滤简化）
+                        if (vault.CanShow(entry.Proto))
                         {
                             copy = entry.Proto;
                         }

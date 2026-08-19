@@ -361,18 +361,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // 实现一致，直接继承（filter 的读写统一走基类 public settings / storageGroup 字段）。
 
         /// <summary>new 隐藏基类 Notify_SettingsChanged：除通知原版 haul 目标/来源重排外，
-        /// 还要按新 filter 重建视图（§4 表）；组设置变化经 Patch_StorageGroup_Notify_SettingsChanged
-        /// 补链后同样到达此处（事件驱动，无需轮询）。</summary>
+        /// 按新 filter 同步视图（§4 表 + §filter 视图过滤简化）：
+        /// filter 只控制视图"可见/可访问"，不触发任何物品物理移动（内容始终在全局层），
+        /// 故同步只移除不再允许的副本（O(视图副本数)，"禁止"权限语义须立即生效）；
+        /// 新允许条目的物化延迟到帧末微批（"允许"仅影响可见性，物品不丢失，无紧迫性），
+        /// 避免每次 filter 点击触发 O(全局条目数) 全量重建 + 物化 + region 注册导致卡顿。
+        /// 组设置变化经 Patch_StorageGroup_Notify_SettingsChanged 补链后同样到达此处（事件驱动，无需轮询）。</summary>
         public new void Notify_SettingsChanged()
         {
             if (!Spawned)
             {
                 return;
             }
+            view?.RemoveDisallowedCopies(); // 同步移除（先摘除被禁副本，再重排 haul 源/目标）
             MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
             MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
-            // filter/优先级变化 → 视图按新 filter 重建（§4 表）
-            view?.RebuildView();
+            view?.MarkMaterializeDirty(); // 帧末微批物化新允许条目（O(1) 置脏）
             lastSeenVersion = GameComponent_OuterrealmStorage.Instance != null ? GameComponent_OuterrealmStorage.Instance.Version : lastSeenVersion;
         }
 
@@ -522,7 +526,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             allowTakeForUse = value;
         }
 
-        /// <summary>冻结开关：隐藏全部物品并暂停建筑工作（filter 保持不变）。冻结时视图清空、副本从 listerThings 移除。</summary>
+        /// <summary>冻结开关：隐藏全部物品并暂停建筑工作（filter 保持不变）。冻结时视图清空、副本从 listerThings 移除。
+        /// §filter 视图过滤简化：冻结 = CanShow 恒 false → 同步移除全部可见副本（O(视图副本数)）；
+        /// 解冻 = 同步无操作，置脏由帧末微批按 filter 重新物化。</summary>
         public void SetFrozen(bool value)
         {
             if (frozen == value)
@@ -532,9 +538,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             frozen = value;
             if (Spawned)
             {
-                view?.RebuildView(); // 冻结：CanShow 恒 false → 全部副本被移除；解冻：按 filter 重新物化
+                view?.RemoveDisallowedCopies(); // 冻结时移除全部可见副本；解冻时无副本可移除（O(1)）
                 MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
                 MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
+                view?.MarkMaterializeDirty(); // 解冻时帧末微批重新物化；冻结时置脏无害（物化按 CanShow 过滤）
             }
         }
 

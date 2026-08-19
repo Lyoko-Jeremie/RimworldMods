@@ -635,8 +635,37 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>全量重建视图（SpawnSetup / 溢出 / 设置签名变化时；一次性成本 O(L1)）。</summary>
+        /// <summary>
+        /// 全量重建视图（SpawnSetup / 溢出时；一次性成本 O(副本数 + 全局条目数)）。
+        /// = RemoveDisallowedCopies（同步移除）+ MaterializeMissingCopies（物化缺失）+ 索引/注册收尾。
+        /// filter 变更路径不走本方法：改为同步移除 + 帧末微批物化（见 Building_OuterrealmVault.Notify_SettingsChanged），
+        /// 避免每次 filter 点击触发全量重建（§filter 视图过滤简化）。
+        /// </summary>
         public void RebuildView()
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            RemoveDisallowedCopies();
+            MaterializeMissingCopies();
+            RebuildIndex(); // 全量重建后统一重建索引（覆盖保留副本与新增副本，读档后索引为空必须重建）
+            reservedCacheVersion = -1; // 预留缓存强制失效（§P0）：读档/重建时 reservations 可能尚未加载，下次查询懒重建
+            EnsureAllRegistered(); // §v5：读档后副本 mapIndexOrState 被原版重置为 -1，重新注册为伪 Spawned（幂等）
+            if (Context.Spawned && Context is IHaulSource haulSource)
+            {
+                Context.MapHeld.listerHaulables.Notify_HaulSourceChanged(haulSource);
+            }
+        }
+
+        /// <summary>
+        /// 移除 filter 不再允许 / 条目已消失的副本（filter 变更的同步部分，O(视图副本数)）。
+        /// 条目不存在时无条件移除（无物可取）；filter 禁止但条目存在时保留被预留副本，即简化退休 §3.3。
+        /// 同步执行：filter 是视图过滤语义，"禁止"须立即生效（不可见 / 不可访问）。
+        /// 注意：filter 禁止 / 条目消失 ≠ 取出——视图移除不得扣全局，包 SuppressRemovalSync（§6.2）。
+        /// </summary>
+        public void RemoveDisallowedCopies()
         {
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs == null)
@@ -646,8 +675,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             SuppressRemovalSync = true;
             try
             {
-                // 1. 移除不再允许 / 条目已消失的副本（条目不存在时无条件移除——无物可取；
-                //    filter 禁止但条目存在时保留被预留副本，即简化退休 §3.3）。
                 for (int i = Count - 1; i >= 0; i--)
                 {
                     Thing copy = this[i];
@@ -664,49 +691,57 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     Remove(copy);
                     copy.Destroy();
                 }
-                // 2. 物化缺失的允许条目（保留副本仅更新数字）。
-                List<OuterrealmEntry> list = gs.EntriesForReading;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    OuterrealmEntry e = list[i];
-                    if (e.Count <= 0 || !Context.CanShow(e.Proto))
-                    {
-                        continue;
-                    }
-                    if (e.Proto is Corpse)
-                    {
-                        continue; // 尸体不物化视图副本（唯一实体）
-                    }
-                    if (borrowedByKey.ContainsKey(e.Key))
-                    {
-                        continue; // §v4：条目副本已借出（预留物化中），不重建锚点
-                    }
-                    Thing copy = FindCopy(e.Key);
-                    if (copy != null)
-                    {
-                        copy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
-                    }
-                    else
-                    {
-                        Thing newCopy = GameComponent_OuterrealmStorage.Materialize(e.Proto);
-                        newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
-                        if (base.TryAdd(newCopy, false))
-                        {
-                            RegisterInLister(newCopy); // 半 Spawned 投影：读档/重建后随物化进入查询索引
-                        }
-                    }
-                }
             }
             finally
             {
                 SuppressRemovalSync = false;
             }
-            RebuildIndex(); // 全量重建后统一重建索引（覆盖保留副本与新增副本，读档后索引为空必须重建）
-            reservedCacheVersion = -1; // 预留缓存强制失效（§P0）：读档/重建时 reservations 可能尚未加载，下次查询懒重建
-            EnsureAllRegistered(); // §v5：读档后副本 mapIndexOrState 被原版重置为 -1，重新注册为伪 Spawned（幂等）
-            if (Context.Spawned && Context is IHaulSource haulSource)
+        }
+
+        /// <summary>
+        /// 物化缺失的允许条目（filter 变更的异步部分，帧末微批执行；O(全局条目数)）。
+        /// 保留副本仅更新数字；尸体不物化（唯一实体）。filter 允许但副本缺失时物化——
+        /// filter 是视图过滤语义，"允许"的生效无紧迫性（物品始终在全局层，不丢失不移动），
+        /// 延迟到帧末微批执行，避免阻塞 UI 点击（§filter 视图过滤简化）。
+        /// 新物化副本经 base.TryAdd → Notify_ItemAdded 钩子自动进入 listerHaulables。
+        /// </summary>
+        public void MaterializeMissingCopies()
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
             {
-                Context.MapHeld.listerHaulables.Notify_HaulSourceChanged(haulSource);
+                return;
+            }
+            List<OuterrealmEntry> list = gs.EntriesForReading;
+            for (int i = 0; i < list.Count; i++)
+            {
+                OuterrealmEntry e = list[i];
+                if (e.Count <= 0 || !Context.CanShow(e.Proto))
+                {
+                    continue;
+                }
+                if (e.Proto is Corpse)
+                {
+                    continue; // 尸体不物化视图副本（唯一实体）
+                }
+                if (borrowedByKey.ContainsKey(e.Key))
+                {
+                    continue; // §v4：条目副本已借出（预留物化中），不重建锚点
+                }
+                Thing copy = FindCopy(e.Key);
+                if (copy != null)
+                {
+                    copy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
+                }
+                else
+                {
+                    Thing newCopy = GameComponent_OuterrealmStorage.Materialize(e.Proto);
+                    newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
+                    if (base.TryAdd(newCopy, false))
+                    {
+                        RegisterInLister(newCopy); // 半 Spawned 投影：物化后进入查询索引
+                    }
+                }
             }
         }
 
@@ -748,6 +783,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             bool wasDirty = regionDirty;
             regionDirty = false;
+            return wasDirty;
+        }
+
+        // ── §filter 视图过滤简化：物化脏标记 ─────────────────────────────────
+        // filter 变更（Notify_SettingsChanged / SetFrozen）只同步移除不再允许的副本（O(副本数)），
+        // 新允许条目的物化延迟到帧末微批（GameComponent_OuterrealmStorage.MaterializeDirtyViews），
+        // 把 O(全局条目数) 物化从 UI 点击同步路径移出。主线程单线程访问，无需同步。
+
+        private bool materializeDirty;
+
+        /// <summary>置脏（filter 变更后，O(1)）：请求帧末微批物化缺失的允许条目。</summary>
+        public void MarkMaterializeDirty()
+        {
+            materializeDirty = true;
+        }
+
+        /// <summary>读取并清除脏标记（帧末微批调用）；返回是否需要物化。</summary>
+        public bool ConsumeMaterializeDirty()
+        {
+            bool wasDirty = materializeDirty;
+            materializeDirty = false;
             return wasDirty;
         }
 

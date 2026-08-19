@@ -509,6 +509,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             } // 弹出队列处理块（§6.4）
             SyncViewsToChangeLog(); // 帧末微批（§3.3 实时同步方案 B）
+            MaterializeDirtyViews(); // §filter 视图过滤简化：消费各视图物化脏标记（filter 变更的异步物化）
         }
 
         /// <summary>
@@ -563,6 +564,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // 统一消费：清空（所有 vault 已同步完毕）
             changeLog.Clear();
             changeLogSet.Clear();
+        }
+
+        /// <summary>消费各 vault 视图的物化脏标记（§filter 视图过滤简化）：filter 变更后由建筑
+        /// 置脏（O(1)），帧末统一物化缺失的允许条目（O(视图数 × 全局条目数)）——把物化从
+        /// UI 点击同步路径移到帧末微批，避免 filter 点击卡顿。空标记帧 O(1) 短路。
+        /// 注：暂停时本方法不执行（GameComponentTick 仅运行 tick 调用），新允许条目的可见性
+        /// 由 UI 以 CanShow 直接判定（副本未物化时用 proto 渲染），取用路径在运行时才需要副本。</summary>
+        private void MaterializeDirtyViews()
+        {
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault v = vaults[i];
+                if (v != null && v.view != null && v.view.ConsumeMaterializeDirty())
+                {
+                    v.view.MaterializeMissingCopies();
+                }
+            }
         }
 
         /// <summary>弹出锚点：优先该地图上任一 Vault 的交互格，其次地图中心。</summary>

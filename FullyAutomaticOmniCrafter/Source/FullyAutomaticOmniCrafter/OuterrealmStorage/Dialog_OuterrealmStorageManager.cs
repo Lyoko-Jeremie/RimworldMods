@@ -344,7 +344,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
-        /// <summary>该条目当前被几座终端可见（帮助定位死锁条目，§6.4）。</summary>
+        /// <summary>该条目当前被几座终端可见（帮助定位死锁条目，§6.4）。
+        /// 可见性直接以 filter 判定（§filter 视图过滤简化）：filter 是视图过滤语义，
+        /// 副本物化仅影响取用/查询投影，不参与可见性判定——副本可能因"刚允许尚未帧末物化"
+        /// 而缺失，但条目仍应计为可见；用 CanShow（含 frozen）与"副本存在 ⟺ 可见"等价且更稳。</summary>
         private static int CountVisibleBuildings(GameComponent_OuterrealmStorage gs, OuterrealmEntry entry)
         {
             int count = 0;
@@ -356,11 +359,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                // 尸体不物化视图副本（唯一实体）：可见性直接以 filter 判定；
-                // 其余条目以副本存在性判定（副本存在 ⟺ filter 允许，由 SyncKey/RebuildView 保证，§6.2）
-                bool visible = entry.Proto is Corpse
-                    ? v.GetStoreSettings().AllowedToAccept(entry.Proto)
-                    : v.view.FindCopy(entry.Key) != null;
+                bool visible = v.CanShow(entry.Proto);
                 if (visible)
                 {
                     count++;
