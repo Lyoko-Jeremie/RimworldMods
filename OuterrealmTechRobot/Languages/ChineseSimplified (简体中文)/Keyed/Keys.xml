@@ -187,4 +187,8 @@
     <AM_Servitude_Letter_SeduceText>{0} 向 {1} 投去了渴求的目光，她的身体已经做好了准备...</AM_Servitude_Letter_SeduceText>
     <AM_Servitude_GuardLabel>紧跟并守卫主人</AM_Servitude_GuardLabel>
     <AM_Servitude_GuardDesc>开启后，征召状态下自动紧跟主人并拦截对主人的威胁（开启将关闭猎杀模式）。</AM_Servitude_GuardDesc>
+    <AM_CarryMaster_Label>抱起主人</AM_CarryMaster_Label>
+    <AM_CarryMaster_Desc>命令女仆把主人抱起来（公主抱）。女仆会抱着主人前往可用休息点；若主人需要救援而附近没有床，女仆也会先抱起主人并护送，绝不丢下。</AM_CarryMaster_Desc>
+    <AM_CarryMaster_DropLabel>放下主人</AM_CarryMaster_DropLabel>
+    <AM_CarryMaster_DropDesc>把抱在怀里的主人放到附近地面。</AM_CarryMaster_DropDesc>
 </LanguageData>

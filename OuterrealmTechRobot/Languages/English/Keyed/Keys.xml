@@ -187,4 +187,8 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <AM_Servitude_Letter_SeduceText>{0} casts a longing gaze at {1}, her body already prepared...</AM_Servitude_Letter_SeduceText>
     <AM_Servitude_GuardLabel>Guard and follow master</AM_Servitude_GuardLabel>
     <AM_Servitude_GuardDesc>While enabled, the drafted maid automatically follows her master and intercepts threats against her (enabling this disables Hunt Mode).</AM_Servitude_GuardDesc>
+    <AM_CarryMaster_Label>Carry master</AM_CarryMaster_Label>
+    <AM_CarryMaster_Desc>Order the maid to pick her master up (princess carry). She will carry her master to an available resting spot; if the master needs rescue and no bed is available nearby, she will still pick her master up and escort her, never letting go.</AM_CarryMaster_Desc>
+    <AM_CarryMaster_DropLabel>Put master down</AM_CarryMaster_DropLabel>
+    <AM_CarryMaster_DropDesc>Place the master held in the maid's arms onto the ground nearby.</AM_CarryMaster_DropDesc>
 </LanguageData>

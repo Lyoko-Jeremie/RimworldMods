@@ -25,4 +25,12 @@
     <reportString>giving master a lap pillow.</reportString>
     <casualInterruptible>false</casualInterruptible>
   </JobDef>
+
+  <!-- 侍奉系统：抱起主人（公主抱/救援护送） -->
+  <JobDef>
+    <defName>AM_Job_CarryMaster</defName>
+    <driverClass>OuterrealmTechRobot.JobDriver_AMCarryMaster</driverClass>
+    <reportString>carrying master.</reportString>
+    <casualInterruptible>false</casualInterruptible>
+  </JobDef>
 </Defs>

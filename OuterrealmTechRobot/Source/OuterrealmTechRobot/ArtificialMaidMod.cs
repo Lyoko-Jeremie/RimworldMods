@@ -32,6 +32,7 @@ namespace OuterrealmTechRobot
         public static JobDef AM_Job_FollowMaster;
         public static JobDef AM_Job_FeedMaster;
         public static JobDef AM_Job_LapPillow;
+        public static JobDef AM_Job_CarryMaster;
         public static ThoughtDef AM_Thought_HasServant;
         public static ThinkTreeDef AM_ServitudeAI;
 

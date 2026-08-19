@@ -11,6 +11,8 @@
         <!-- 后续里程碑按优先级插入：携带跟随 > 陪伴 > 勾引 -->
         <li Class="OuterrealmTechRobot.JobGiver_AMProtectMaster"/>
         <li Class="OuterrealmTechRobot.JobGiver_AMRescueMaster"/>
+        <!-- 携带救援兜底：无床时公主抱护送；已抱着主人时保持携带（绝不丢下） -->
+        <li Class="OuterrealmTechRobot.JobGiver_AMCarryFollow"/>
         <li Class="OuterrealmTechRobot.JobGiver_AMFeedMaster"/>
         <li Class="OuterrealmTechRobot.JobGiver_AMCompanion"/>
         <li Class="OuterrealmTechRobot.JobGiver_AMFollowMaster"/>
