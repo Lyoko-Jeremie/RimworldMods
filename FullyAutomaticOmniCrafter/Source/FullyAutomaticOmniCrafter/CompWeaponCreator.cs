@@ -333,10 +333,12 @@ namespace FullyAutomaticOmniCrafter
                     if (searchText.NullOrEmpty()) return true;
                     if (usePinyinForWeapons)
                     {
-                        return PinyinSearchEngine.MatchesPinyin(d, searchLower, PinyinSource.Weapon) || 
-                               d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0;
+                        return PinyinSearchEngine.MatchesPinyin(d, searchLower, PinyinSource.Weapon) ||
+                               (!string.IsNullOrEmpty(d.label) &&
+                                d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0);
                     }
-                    return d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0;
+                    return !string.IsNullOrEmpty(d.label) &&
+                           d.label.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0;
                 })
                 .ToList();
 

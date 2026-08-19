@@ -335,7 +335,8 @@ namespace FullyAutomaticOmniCrafter
             {
                 cachedAllHediffs = DefDatabase<HediffDef>.AllDefs
                     .Where(d => !typeof(Hediff_Injury).IsAssignableFrom(d.hediffClass) &&
-                                !typeof(Hediff_MissingPart).IsAssignableFrom(d.hediffClass))
+                                !typeof(Hediff_MissingPart).IsAssignableFrom(d.hediffClass) &&
+                                !string.IsNullOrEmpty(d.label)) // 过滤掉无 label 的 Def，避免搜索时空引用
                     .OrderBy(d => d.label)
                     .ToList();
             }
@@ -552,7 +553,10 @@ namespace FullyAutomaticOmniCrafter
             var filtered = cachedAllHediffs.Where(d =>
             {
                 if (string.IsNullOrEmpty(query)) return true;
-                if (d.label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (!string.IsNullOrEmpty(d.label) &&
+                    d.label.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (!string.IsNullOrEmpty(d.defName) &&
+                    d.defName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) return true;
                 if (usePinyin && PinyinSearchEngine.MatchesPinyin(d, query, PinyinSource.StatusTerminal)) return true;
                 return false;
             }).ToList();
@@ -563,7 +567,9 @@ namespace FullyAutomaticOmniCrafter
             foreach (var def in filtered)
             {
                 Rect rowRect = new Rect(0f, y, viewRect.width, 30f);
-                Widgets.Label(new Rect(0f, y + 5f, viewRect.width - 65f, 25f), def.LabelCap);
+                // 以 "label [defName]" 格式显示，便于按 defName 识别；ToString 避免 [] 被当作翻译标记解析
+                Widgets.Label(new Rect(0f, y + 5f, viewRect.width - 65f, 25f),
+                    def.LabelCap.ToString() + " [" + def.defName + "]");
                 TooltipHandler.TipRegion(rowRect, def.description);
 
                 float btnX = viewRect.width - 30f;
