@@ -9,6 +9,7 @@ using UnityEngine;
 using Verse;
 using Verse.AI;
 using Verse.Sound;
+using FullyAutomaticOmniCrafter;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
@@ -1353,36 +1354,71 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── §4 右键菜单性能：vault 场景降频重验（每 4 帧 → 每 60 帧） ──
-    // 右键菜单打开期间 FloatMenuMap.DoWindowContents 每 4 帧执行一次全量重生成
-    // （FloatMenuMakerMap.GetOptions），其中 FloatMenuOptionProvider_WorkGivers 对每个
-    // vault 副本（注册在 listerHaulables）跑 haul 类 workgiver 的重型检查；副本数十~数百时
-    // 每 4 帧重复导致卡顿。此处 Prefix 只接管"含 vault 选项的菜单"（options 中存在
-    // revalidateClickTarget is Building_OuterrealmVault 的项）：全量重生成从每 4 帧降为
-    // 每 RefreshIntervalFrames 帧（1 次/秒），其余帧直接绘制（非虚调用基类
-    // FloatMenu.DoWindowContents）；首次打开（lastOptionsForRevalidation == null）仍立即生成，
-    // 菜单内容正确显示。非 vault 菜单完全走原版 4 帧节奏，零影响。
+    // ── §4 右键菜单性能：vault 场景多模式刷新（Lazy 快照 / Periodic 帧 / Adaptive 时间） ──
+    // 右键 vault 建筑时，containedItemsSelectable=true 使全部视图副本进入 ClickedThings，
+    // 每次全量重生成（FloatMenuMakerMap.GetOptions）对每个副本遍历全部 workgiver 做重型检查，
+    // 开销 O(副本数×workgiver数) 且产生海量字符串/对象垃圾——原版每 4 帧一次 → 打开菜单即卡
+    // （暂停状态也卡，因为全是 UI 路径）。此处 Prefix 只接管"含 vault 选项的菜单"：
+    //   Lazy（默认）：打开即快照，永不重新生成，点击时由
+    //     Patch_FloatMenuMap_PreOptionChosen_VaultClickValidation + 原版 PreOptionChosen 校验兜底；
+    //   Periodic：每 vaultMenuRefreshFrames 帧全量重新生成一次（默认 60）；
+    //   Adaptive：每 vaultMenuRefreshHundredths/100 真实秒重新生成一次（最少 4 帧间隔）。
+    // 其余帧直接绘制（DynamicMethod 强类型委托调基类 FloatMenu.DoWindowContents，零反射零装箱）；
+    // 首次打开（lastOptionsForRevalidation == null）仍立即生成，菜单内容正确显示。
     // 逐选项重验（原版每帧 1/3 的 StillValid 分支）在 vault 场景跳过：vault 选项
     // revalidateClickTarget 恒为 Spawned 建筑且打开期间极少失效；点击时 PreOptionChosen
     // 仍会做最终校验兜底，一致性由点击后的 job 预留/物化链路保证。
+    // 非 vault 菜单完全走原版 4 帧节奏，零影响。
     [HarmonyPatch(typeof(FloatMenuMap), "DoWindowContents")]
     internal static class Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh
     {
-        private const int RefreshIntervalFrames = 60; // 1 秒（以 60 FPS 为基准），可按需调整
+        private const int MinimumAdaptiveIntervalFrames = 4;
 
         private static readonly FieldInfo optionsField = AccessTools.Field(typeof(FloatMenu), "options");
         private static readonly FieldInfo clickPosField = AccessTools.Field(typeof(FloatMenuMap), "clickPos");
         private static readonly FieldInfo lastOptionsField = AccessTools.Field(typeof(FloatMenuMap), "lastOptionsForRevalidation");
         private static readonly FieldInfo cachedChoicesField = AccessTools.Field(typeof(FloatMenuMap), "cachedChoices");
-        private static readonly MethodInfo floatMenuDoWindowContents = AccessTools.Method(typeof(FloatMenu), "DoWindowContents");
 
-        /// <summary>每个 FloatMenuMap 实例上次全量重生成所在帧（实例级，避免静态字典泄漏/跨菜单污染）。</summary>
-        private sealed class FrameStamp
+        private delegate void BaseWindowDraw(FloatMenu instance, Rect inRect);
+        private static readonly BaseWindowDraw DrawBaseWindow = CreateBaseWindowDraw();
+
+        /// <summary>每个 FloatMenuMap 实例的刷新调度状态（实例级，避免静态字典泄漏/跨菜单污染）。</summary>
+        private sealed class MenuState
         {
-            public int Frame;
+            public bool IsVaultKnown;
+            public bool IsVault; // options 构造后恒定，首次判定后缓存，避免每帧反射扫描
+            public bool Initialized;
+            public VaultMenuRefreshMode Mode;
+            public int SettingValue;
+            public int LastFrame;
+            public float LastRealtime;
         }
 
-        private static readonly ConditionalWeakTable<FloatMenuMap, FrameStamp> lastRefreshFrames = new ConditionalWeakTable<FloatMenuMap, FrameStamp>();
+        private static readonly ConditionalWeakTable<FloatMenuMap, MenuState> menuStates = new ConditionalWeakTable<FloatMenuMap, MenuState>();
+
+        /// <summary>菜单选项是否含 vault 副本生成的项（revalidateClickTarget 指向超维存储仓建筑）。判定结果按实例缓存。</summary>
+        internal static bool IsVaultMenu(FloatMenuMap menu)
+        {
+            MenuState state = menuStates.GetOrCreateValue(menu);
+            if (state.IsVaultKnown)
+            {
+                return state.IsVault;
+            }
+            List<FloatMenuOption> options = (List<FloatMenuOption>)optionsField.GetValue(menu);
+            if (options != null)
+            {
+                for (int i = 0; i < options.Count; i++)
+                {
+                    if (options[i] != null && options[i].revalidateClickTarget is Building_OuterrealmVault)
+                    {
+                        state.IsVault = true;
+                        break;
+                    }
+                }
+            }
+            state.IsVaultKnown = true;
+            return state.IsVault;
+        }
 
         private static bool Prefix(FloatMenuMap __instance, Rect inRect)
         {
@@ -1395,12 +1431,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Find.WindowStack.TryRemove(__instance); // 与基类一致：无选中 pawn 时关闭菜单（不绘制）
                 return false;
             }
-            List<FloatMenuOption> lastOptions = (List<FloatMenuOption>)lastOptionsField.GetValue(__instance);
-            FrameStamp stamp = lastRefreshFrames.GetOrCreateValue(__instance);
-            if (lastOptions == null || Time.frameCount - stamp.Frame >= RefreshIntervalFrames)
+            MenuState state = menuStates.GetOrCreateValue(__instance);
+            OmniCrafterSettings settings = OmniCrafterMod.Settings;
+            VaultMenuRefreshMode mode = settings != null ? settings.vaultMenuRefreshMode : VaultMenuRefreshMode.Lazy;
+            int settingValue = ModeSettingValue(mode, settings);
+            if (!state.Initialized || state.Mode != mode || state.SettingValue != settingValue)
             {
-                // 到点（或首次）：全量重生成并填充位置缓存（供 StillValid 使用）
-                stamp.Frame = Time.frameCount;
+                // 首次或设置变更（模式/间隔指纹失效）：重建调度状态
+                state.Initialized = true;
+                state.Mode = mode;
+                state.SettingValue = settingValue;
+                state.LastFrame = Time.frameCount;
+                state.LastRealtime = Time.realtimeSinceStartup;
+            }
+            List<FloatMenuOption> lastOptions = (List<FloatMenuOption>)lastOptionsField.GetValue(__instance);
+            bool due = lastOptions == null || ShouldRefresh(mode, state, settingValue);
+            if (due)
+            {
+                // 到点（或首次打开）：全量重生成并填充位置缓存（供 StillValid 使用）
+                state.LastFrame = Time.frameCount;
+                state.LastRealtime = Time.realtimeSinceStartup;
                 Vector3 clickPos = (Vector3)clickPosField.GetValue(__instance);
                 List<FloatMenuOption> refreshed = FloatMenuMakerMap.GetOptions(Find.Selector.SelectedPawns, clickPos, out FloatMenuContext _);
                 lastOptionsField.SetValue(__instance, refreshed);
@@ -1408,27 +1458,78 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 cachedChoices.Clear();
                 cachedChoices.Add(clickPos, refreshed);
             }
-            // 逐选项重验跳过（见类注释）；仅绘制菜单
-            floatMenuDoWindowContents.Invoke(__instance, new object[] { inRect });
+            // 逐选项重验跳过（见类注释）；仅绘制菜单（基类调用，零装箱）
+            DrawBaseWindow(__instance, inRect);
             return false;
         }
 
-        /// <summary>菜单选项是否含 vault 副本生成的项（revalidateClickTarget 指向超维存储仓建筑）。</summary>
-        private static bool IsVaultMenu(FloatMenuMap menu)
+        private static int ModeSettingValue(VaultMenuRefreshMode mode, OmniCrafterSettings settings)
         {
-            List<FloatMenuOption> options = (List<FloatMenuOption>)optionsField.GetValue(menu);
-            if (options == null)
+            if (mode == VaultMenuRefreshMode.Periodic)
             {
-                return false;
+                return settings != null ? Math.Max(1, settings.vaultMenuRefreshFrames) : 60;
             }
-            for (int i = 0; i < options.Count; i++)
+            if (mode == VaultMenuRefreshMode.Adaptive)
             {
-                if (options[i] != null && options[i].revalidateClickTarget is Building_OuterrealmVault)
-                {
-                    return true;
-                }
+                return settings != null ? Math.Max(0, settings.vaultMenuRefreshHundredths) : 100;
             }
-            return false;
+            return 0;
+        }
+
+        /// <summary>是否到点需要全量重生成（模式分派，对应 FMPO RegenerationGate 的 vault 白名单版）。</summary>
+        private static bool ShouldRefresh(VaultMenuRefreshMode mode, MenuState state, int settingValue)
+        {
+            if (mode == VaultMenuRefreshMode.Lazy)
+            {
+                return false; // 快照模式：永不重新生成，仅点击时校验
+            }
+            if (mode == VaultMenuRefreshMode.Periodic)
+            {
+                return Time.frameCount - state.LastFrame >= settingValue;
+            }
+            // Adaptive：真实时间达标 且 至少间隔 4 帧（防超高帧率连续重生成）
+            return Time.frameCount - state.LastFrame >= MinimumAdaptiveIntervalFrames
+                && Time.realtimeSinceStartup - state.LastRealtime >= settingValue / 100f;
+        }
+
+        /// <summary>用 DynamicMethod 创建强类型基类绘制委托，替代 MethodInfo.Invoke 消除每帧 object[] 装箱与反射调用。</summary>
+        private static BaseWindowDraw CreateBaseWindowDraw()
+        {
+            MethodInfo method = AccessTools.Method(typeof(FloatMenu), "DoWindowContents", new[] { typeof(Rect) });
+            DynamicMethod dynamicMethod = new DynamicMethod(
+                "FAOC_Vault_FloatMenu_DoWindowContents_BaseCall",
+                typeof(void),
+                new[] { typeof(FloatMenu), typeof(Rect) },
+                typeof(Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh),
+                skipVisibility: true);
+            ILGenerator il = dynamicMethod.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Call, method);
+            il.Emit(OpCodes.Ret);
+            return (BaseWindowDraw)dynamicMethod.CreateDelegate(typeof(BaseWindowDraw));
+        }
+    }
+
+    // ── §4 Lazy 模式配套：点击时强制按当前状态重验 ──
+    // 快照模式下 cachedChoices 停留在打开时刻，原版 PreOptionChosen → StillValid 对
+    // revalidateClickTarget != null 的 vault 选项会命中旧缓存，导致点击校验用旧状态裁决。
+    // 此处仅对 vault 菜单在点击前清空 cachedChoices，强制点击时按最新状态重新生成再比对
+    // （FMPO ClickValidationPatch 同款思路，白名单限定避免影响其他菜单的缓存命中）。
+    // 注意：Periodic/Adaptive 下缓存随重生成刷新，清空后点击时仍会重新生成一次，校验更准，无副作用。
+    [HarmonyPatch(typeof(FloatMenuMap), "PreOptionChosen")]
+    internal static class Patch_FloatMenuMap_PreOptionChosen_VaultClickValidation
+    {
+        private static readonly FieldInfo cachedChoicesField = AccessTools.Field(typeof(FloatMenuMap), "cachedChoices");
+
+        private static void Prefix(FloatMenuMap __instance)
+        {
+            if (!Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh.IsVaultMenu(__instance))
+            {
+                return; // 非 vault 菜单：不动缓存，保持原版
+            }
+            Dictionary<Vector3, List<FloatMenuOption>> cachedChoices = (Dictionary<Vector3, List<FloatMenuOption>>)cachedChoicesField.GetValue(null);
+            cachedChoices.Clear();
         }
     }
 

@@ -69,4 +69,15 @@
   <SubspaceAccess_FilterAnimal>动物</SubspaceAccess_FilterAnimal>
   <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid>
   <SubspaceAccess_ShowIcons>显示图像</SubspaceAccess_ShowIcons>
+  <!-- Vault right-click menu refresh mode -->
+  <VaultMenuRefreshModeLabel>超维存储仓右键菜单刷新模式</VaultMenuRefreshModeLabel>
+  <VaultMenuRefreshModeDesc>控制右键菜单打开期间的重新生成频率。存储条目较多时重新生成开销很大，此设置可缓解卡顿。</VaultMenuRefreshModeDesc>
+  <VaultMenuRefreshModeLazy>快照模式（推荐）：打开后不重新生成</VaultMenuRefreshModeLazy>
+  <VaultMenuRefreshModeLazyDesc>菜单内容在打开期间保持不变，点击选项时按当前游戏状态重新校验。性能最好；适合存储菜单打开期间内容几乎不变的场景。</VaultMenuRefreshModeLazyDesc>
+  <VaultMenuRefreshModePeriodic>帧模式：每 N 帧重新生成一次</VaultMenuRefreshModePeriodic>
+  <VaultMenuRefreshModePeriodicDesc>每隔指定渲染帧数全量重新生成菜单（默认 60 帧）。数值越小菜单越实时，但每次重新生成在条目较多时会占用较多时间。</VaultMenuRefreshModePeriodicDesc>
+  <VaultMenuRefreshFramesLabel>刷新间隔（帧）</VaultMenuRefreshFramesLabel>
+  <VaultMenuRefreshModeAdaptive>时间模式：每 N 秒重新生成一次</VaultMenuRefreshModeAdaptive>
+  <VaultMenuRefreshModeAdaptiveDesc>每隔指定真实秒数全量重新生成菜单（最少间隔 4 帧），与帧率无关。</VaultMenuRefreshModeAdaptiveDesc>
+  <VaultMenuRefreshSecondsLabel>刷新间隔（秒）</VaultMenuRefreshSecondsLabel>
 </LanguageData>

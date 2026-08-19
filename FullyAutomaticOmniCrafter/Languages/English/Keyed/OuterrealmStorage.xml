@@ -67,4 +67,15 @@
   <SubspaceAccess_FilterAnimal>Animal</SubspaceAccess_FilterAnimal>
   <SubspaceAccess_FilterMechanoid>Mechanoid</SubspaceAccess_FilterMechanoid>
   <SubspaceAccess_ShowIcons>Show icons</SubspaceAccess_ShowIcons>
+  <!-- Vault right-click menu refresh mode -->
+  <VaultMenuRefreshModeLabel>Outerrealm vault right-click menu refresh mode</VaultMenuRefreshModeLabel>
+  <VaultMenuRefreshModeDesc>Controls how often the right-click menu is regenerated while open. Regenerating is expensive when the vault holds many item types; this reduces stutter.</VaultMenuRefreshModeDesc>
+  <VaultMenuRefreshModeLazy>Snapshot (recommended): never regenerate while open</VaultMenuRefreshModeLazy>
+  <VaultMenuRefreshModeLazyDesc>Menu content stays fixed while open; options are re-validated against the current game state when clicked. Best performance; ideal because vault menu content barely changes while open.</VaultMenuRefreshModeLazyDesc>
+  <VaultMenuRefreshModePeriodic>Frame-based: regenerate every N rendered frames</VaultMenuRefreshModePeriodic>
+  <VaultMenuRefreshModePeriodicDesc>Fully regenerates the menu every N rendered frames (default 60). Lower values keep the menu more up to date but each regeneration costs time when many items are stored.</VaultMenuRefreshModePeriodicDesc>
+  <VaultMenuRefreshFramesLabel>Refresh interval (frames)</VaultMenuRefreshFramesLabel>
+  <VaultMenuRefreshModeAdaptive>Time-based: regenerate every N real seconds</VaultMenuRefreshModeAdaptive>
+  <VaultMenuRefreshModeAdaptiveDesc>Fully regenerates the menu every N real seconds (at least 4 frames apart), independent of framerate.</VaultMenuRefreshModeAdaptiveDesc>
+  <VaultMenuRefreshSecondsLabel>Refresh interval (seconds)</VaultMenuRefreshSecondsLabel>
 </LanguageData>

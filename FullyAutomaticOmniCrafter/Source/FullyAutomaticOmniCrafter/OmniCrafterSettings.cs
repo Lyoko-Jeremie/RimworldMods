@@ -4,11 +4,37 @@ using UnityEngine;
 
 namespace FullyAutomaticOmniCrafter
 {
+    /// <summary>
+    /// 超维存储仓右键菜单的重新生成模式（§4 右键菜单性能优化）。
+    /// 右键 vault 建筑时全部视图副本进入点击目标集，全量重生成开销 O(副本数×workgiver数)，
+    /// 此设置控制菜单打开期间的重新生成频率以缓解卡顿。
+    /// </summary>
+    public enum VaultMenuRefreshMode
+    {
+        /// <summary>快照模式：打开后永不重新生成，点击选项时由 PreOptionChosen 校验兜底。性能最好，默认。</summary>
+        Lazy,
+        /// <summary>每 N 渲染帧全量重新生成一次（默认 60 帧）。</summary>
+        Periodic,
+        /// <summary>每 N 真实秒全量重新生成一次（最少 4 帧间隔），帧率无关。</summary>
+        Adaptive,
+    }
+
     // ─── Global Settings (cross-save favorites) ───────────────────────────────
     public class OmniCrafterSettings : ModSettings
     {
         public List<string> globalFavorites = new List<string>();
         public List<SurgeryTemplate> globalSurgeryTemplates = new List<SurgeryTemplate>();
+
+        /// <summary>
+        /// 超维存储仓右键菜单重新生成模式（§4）。
+        /// </summary>
+        public VaultMenuRefreshMode vaultMenuRefreshMode = VaultMenuRefreshMode.Lazy;
+
+        /// <summary>Periodic 模式的重新生成间隔（渲染帧数，默认 60 = 1 秒 @60FPS）。</summary>
+        public int vaultMenuRefreshFrames = 60;
+
+        /// <summary>Adaptive 模式的重新生成间隔（百分之一秒，默认 100 = 1.0 秒）。</summary>
+        public int vaultMenuRefreshHundredths = 100;
 
         /// <summary>
         /// 是否启用拼音搜索（支持全拼和首字母缩写）。
@@ -71,6 +97,16 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref enablePinyinSearch, "enablePinyinSearch", false);
             if (Scribe.mode == LoadSaveMode.LoadingVars) enablePinyinSearch = false;
             Scribe_Values.Look(ref resurrectorShowPawnIcons, "resurrectorShowPawnIcons", false);
+
+            // ── §4 超维存储仓右键菜单刷新模式 ──
+            Scribe_Values.Look(ref vaultMenuRefreshMode, "vaultMenuRefreshMode", VaultMenuRefreshMode.Lazy);
+            Scribe_Values.Look(ref vaultMenuRefreshFrames, "vaultMenuRefreshFrames", 60);
+            Scribe_Values.Look(ref vaultMenuRefreshHundredths, "vaultMenuRefreshHundredths", 100);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                vaultMenuRefreshFrames = Mathf.Max(1, vaultMenuRefreshFrames);
+                vaultMenuRefreshHundredths = Mathf.Max(0, vaultMenuRefreshHundredths);
+            }
             Scribe_Values.Look(ref powerCostA, "powerCostA", 0f);
             Scribe_Values.Look(ref powerCostB, "powerCostB", 1f);
             Scribe_Values.Look(ref powerCostC, "powerCostC", 0f);

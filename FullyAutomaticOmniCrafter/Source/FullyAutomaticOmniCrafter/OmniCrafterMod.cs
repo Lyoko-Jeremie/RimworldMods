@@ -13,6 +13,10 @@ namespace FullyAutomaticOmniCrafter
         public static OmniCrafterSettings Settings;
         private Vector2 _scrollPos = Vector2.zero;
 
+        // 超维存储仓右键菜单刷新间隔输入缓冲（避免 TextField 重绘吞掉中间输入）
+        private string _vaultFramesBuffer;
+        private string _vaultSecondsBuffer;
+
         // Graph display range / scale options
         private float _powerGraphXMin = 0f;
         private float _powerGraphXMax = 500f;
@@ -194,6 +198,7 @@ namespace FullyAutomaticOmniCrafter
             const float checkH = 30f;
 
             // Estimate total scrollable content height
+            float vaultSectionH = 190f; // 超维存储仓右键菜单刷新模式区（3 RadioButton + 条件输入行）
             float sectionH =
                 48f + 4f                  // 2 section header labels + gap
                 + checkH * 2 + 4f         // 2 X-composition toggles + gap
@@ -203,7 +208,7 @@ namespace FullyAutomaticOmniCrafter
                 + checkH * 2              // logX + logY toggles
                 + 12f + 30f;              // gap + reset button
 
-            float contentH = checkH + 12f + checkH + 4f + sectionH + 16f + sectionH;
+            float contentH = vaultSectionH + checkH + 12f + checkH + 4f + sectionH + 16f + sectionH;
 
             Rect viewRect = new Rect(0f, 0f, inRect.width - 20f, contentH);
             Widgets.BeginScrollView(inRect, ref _scrollPos, viewRect);
@@ -215,6 +220,79 @@ namespace FullyAutomaticOmniCrafter
             listing.CheckboxLabeled(
                 "OmniCrafter_EnablePinyinSearch".Translate(),
                 ref Settings.enablePinyinSearch);
+
+            // ── 超维存储仓右键菜单刷新模式（§4） ────────────────────────
+            listing.GapLine(12f);
+            listing.Label("VaultMenuRefreshModeLabel".Translate());
+            listing.Label("VaultMenuRefreshModeDesc".Translate());
+            listing.Gap(4f);
+            if (listing.RadioButton(
+                "VaultMenuRefreshModeLazy".Translate(),
+                Settings.vaultMenuRefreshMode == VaultMenuRefreshMode.Lazy,
+                tooltip: "VaultMenuRefreshModeLazyDesc".Translate()))
+            {
+                Settings.vaultMenuRefreshMode = VaultMenuRefreshMode.Lazy;
+            }
+            if (listing.RadioButton(
+                "VaultMenuRefreshModePeriodic".Translate(),
+                Settings.vaultMenuRefreshMode == VaultMenuRefreshMode.Periodic,
+                tooltip: "VaultMenuRefreshModePeriodicDesc".Translate()))
+            {
+                Settings.vaultMenuRefreshMode = VaultMenuRefreshMode.Periodic;
+            }
+            if (Settings.vaultMenuRefreshMode == VaultMenuRefreshMode.Periodic)
+            {
+                Rect framesRow = listing.GetRect(lineH);
+                const float inputW = 80f;
+                Widgets.Label(
+                    new Rect(framesRow.x, framesRow.y, framesRow.width - inputW - 6f, framesRow.height),
+                    "VaultMenuRefreshFramesLabel".Translate());
+                if (_vaultFramesBuffer == null)
+                {
+                    _vaultFramesBuffer = Settings.vaultMenuRefreshFrames.ToString();
+                }
+                string framesEdited = Widgets.TextField(
+                    new Rect(framesRow.x + framesRow.width - inputW, framesRow.y, inputW, framesRow.height),
+                    _vaultFramesBuffer);
+                if (framesEdited != _vaultFramesBuffer)
+                {
+                    _vaultFramesBuffer = framesEdited;
+                    if (int.TryParse(framesEdited, out int parsed) && parsed > 0)
+                    {
+                        Settings.vaultMenuRefreshFrames = parsed;
+                    }
+                }
+            }
+            if (listing.RadioButton(
+                "VaultMenuRefreshModeAdaptive".Translate(),
+                Settings.vaultMenuRefreshMode == VaultMenuRefreshMode.Adaptive,
+                tooltip: "VaultMenuRefreshModeAdaptiveDesc".Translate()))
+            {
+                Settings.vaultMenuRefreshMode = VaultMenuRefreshMode.Adaptive;
+            }
+            if (Settings.vaultMenuRefreshMode == VaultMenuRefreshMode.Adaptive)
+            {
+                Rect secondsRow = listing.GetRect(lineH);
+                const float inputW = 80f;
+                Widgets.Label(
+                    new Rect(secondsRow.x, secondsRow.y, secondsRow.width - inputW - 6f, secondsRow.height),
+                    "VaultMenuRefreshSecondsLabel".Translate());
+                if (_vaultSecondsBuffer == null)
+                {
+                    _vaultSecondsBuffer = (Settings.vaultMenuRefreshHundredths / 100f).ToString("0.##");
+                }
+                string secondsEdited = Widgets.TextField(
+                    new Rect(secondsRow.x + secondsRow.width - inputW, secondsRow.y, inputW, secondsRow.height),
+                    _vaultSecondsBuffer);
+                if (secondsEdited != _vaultSecondsBuffer)
+                {
+                    _vaultSecondsBuffer = secondsEdited;
+                    if (float.TryParse(secondsEdited, out float sec) && sec >= 0f)
+                    {
+                        Settings.vaultMenuRefreshHundredths = Mathf.RoundToInt(sec * 100f);
+                    }
+                }
+            }
 
             // ── Omni Resurrector UI options ──────────────────────────────
             listing.CheckboxLabeled(
