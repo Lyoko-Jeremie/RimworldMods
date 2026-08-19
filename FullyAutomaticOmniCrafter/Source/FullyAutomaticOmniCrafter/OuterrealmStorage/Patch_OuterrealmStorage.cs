@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -1349,6 +1350,85 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 option.revalidateClickTarget = vault;
             }
+        }
+    }
+
+    // ── §4 右键菜单性能：vault 场景降频重验（每 4 帧 → 每 60 帧） ──
+    // 右键菜单打开期间 FloatMenuMap.DoWindowContents 每 4 帧执行一次全量重生成
+    // （FloatMenuMakerMap.GetOptions），其中 FloatMenuOptionProvider_WorkGivers 对每个
+    // vault 副本（注册在 listerHaulables）跑 haul 类 workgiver 的重型检查；副本数十~数百时
+    // 每 4 帧重复导致卡顿。此处 Prefix 只接管"含 vault 选项的菜单"（options 中存在
+    // revalidateClickTarget is Building_OuterrealmVault 的项）：全量重生成从每 4 帧降为
+    // 每 RefreshIntervalFrames 帧（1 次/秒），其余帧直接绘制（非虚调用基类
+    // FloatMenu.DoWindowContents）；首次打开（lastOptionsForRevalidation == null）仍立即生成，
+    // 菜单内容正确显示。非 vault 菜单完全走原版 4 帧节奏，零影响。
+    // 逐选项重验（原版每帧 1/3 的 StillValid 分支）在 vault 场景跳过：vault 选项
+    // revalidateClickTarget 恒为 Spawned 建筑且打开期间极少失效；点击时 PreOptionChosen
+    // 仍会做最终校验兜底，一致性由点击后的 job 预留/物化链路保证。
+    [HarmonyPatch(typeof(FloatMenuMap), "DoWindowContents")]
+    internal static class Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh
+    {
+        private const int RefreshIntervalFrames = 60; // 1 秒（以 60 FPS 为基准），可按需调整
+
+        private static readonly FieldInfo optionsField = AccessTools.Field(typeof(FloatMenu), "options");
+        private static readonly FieldInfo clickPosField = AccessTools.Field(typeof(FloatMenuMap), "clickPos");
+        private static readonly FieldInfo lastOptionsField = AccessTools.Field(typeof(FloatMenuMap), "lastOptionsForRevalidation");
+        private static readonly FieldInfo cachedChoicesField = AccessTools.Field(typeof(FloatMenuMap), "cachedChoices");
+        private static readonly MethodInfo floatMenuDoWindowContents = AccessTools.Method(typeof(FloatMenu), "DoWindowContents");
+
+        /// <summary>每个 FloatMenuMap 实例上次全量重生成所在帧（实例级，避免静态字典泄漏/跨菜单污染）。</summary>
+        private sealed class FrameStamp
+        {
+            public int Frame;
+        }
+
+        private static readonly ConditionalWeakTable<FloatMenuMap, FrameStamp> lastRefreshFrames = new ConditionalWeakTable<FloatMenuMap, FrameStamp>();
+
+        private static bool Prefix(FloatMenuMap __instance, Rect inRect)
+        {
+            if (!IsVaultMenu(__instance))
+            {
+                return true; // 非 vault 菜单：原版 4 帧节奏不受影响
+            }
+            if (!Find.Selector.AnyPawnSelected)
+            {
+                Find.WindowStack.TryRemove(__instance); // 与基类一致：无选中 pawn 时关闭菜单（不绘制）
+                return false;
+            }
+            List<FloatMenuOption> lastOptions = (List<FloatMenuOption>)lastOptionsField.GetValue(__instance);
+            FrameStamp stamp = lastRefreshFrames.GetOrCreateValue(__instance);
+            if (lastOptions == null || Time.frameCount - stamp.Frame >= RefreshIntervalFrames)
+            {
+                // 到点（或首次）：全量重生成并填充位置缓存（供 StillValid 使用）
+                stamp.Frame = Time.frameCount;
+                Vector3 clickPos = (Vector3)clickPosField.GetValue(__instance);
+                List<FloatMenuOption> refreshed = FloatMenuMakerMap.GetOptions(Find.Selector.SelectedPawns, clickPos, out FloatMenuContext _);
+                lastOptionsField.SetValue(__instance, refreshed);
+                Dictionary<Vector3, List<FloatMenuOption>> cachedChoices = (Dictionary<Vector3, List<FloatMenuOption>>)cachedChoicesField.GetValue(null);
+                cachedChoices.Clear();
+                cachedChoices.Add(clickPos, refreshed);
+            }
+            // 逐选项重验跳过（见类注释）；仅绘制菜单
+            floatMenuDoWindowContents.Invoke(__instance, new object[] { inRect });
+            return false;
+        }
+
+        /// <summary>菜单选项是否含 vault 副本生成的项（revalidateClickTarget 指向超维存储仓建筑）。</summary>
+        private static bool IsVaultMenu(FloatMenuMap menu)
+        {
+            List<FloatMenuOption> options = (List<FloatMenuOption>)optionsField.GetValue(menu);
+            if (options == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < options.Count; i++)
+            {
+                if (options[i] != null && options[i].revalidateClickTarget is Building_OuterrealmVault)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
