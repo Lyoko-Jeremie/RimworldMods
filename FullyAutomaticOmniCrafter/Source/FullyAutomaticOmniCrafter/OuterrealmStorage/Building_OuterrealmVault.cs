@@ -815,42 +815,68 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }), (Thing)apparel, Color.white), selPawn, apparel);
         }
 
+        /// <summary>
+        /// 生成"装备武器"的右键浮菜单选项（§4，逐行照抄原版 Building_OutfitStand.GetFloatMenuOptionToEquipWeapon，RimWorld 1.6）。
+        /// 流程分两段：
+        /// 1) 前置检查：武器须带 CompEquippable，且该小人须满足——未禁用暴力/射击工作标签、可寻路到达、
+        ///    具备操作（Manipulation）能力、武器未燃烧、非任务寄宿者限制、通过 EquipmentUtility.CanEquip
+        ///    通用装备检查（体型/义体/意识形态等）。任一不满足即返回置灰的"CannotEquip"选项（带具体原因文案），
+        ///    满足才进入第 2 段。
+        /// 2) 生成可执行选项：未绑定的武器 → 点击后先做 persona 武器绑定确认（有确认文案则弹 Dialog_MessageBox），
+        ///    确认后经本地函数 Equip() 下达装备工作；已绑定（bladelink）给该小人的武器 → 不可装备，点击直接弹提示框。
+        /// 与原版唯一差异：装饰用 DecorateVaultOption——ReservedBy 检查针对武器副本自身（语义准确），
+        /// revalidateClickTarget 指向本建筑（副本未 Spawned，FloatMenu 有效性校验会把选项置灰，见 DecorateVaultOption 注释）。
+        /// </summary>
         private FloatMenuOption GetFloatMenuOptionToEquipWeapon(Pawn selPawn, Thing weapon)
         {
+            // 无 CompEquippable 的物品（非武器）不提供本选项
             if (!weapon.HasComp<CompEquippable>())
                 return (FloatMenuOption)null;
             string labelShort = weapon.LabelShort;
+            // 禁用"暴力"工作标签（如和平主义者）：不可装备任何武器（含近战）
             if (weapon.def.IsWeapon && selPawn.WorkTagIsDisabled(WorkTags.Violent))
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "IsIncapableOfViolenceLower".Translate((NamedArgument)selPawn.LabelShort, (NamedArgument)(Thing)selPawn)), (Action)null, weapon, Color.white);
+            // 禁用"射击"工作标签：不可装备远程武器
             if (weapon.def.IsRangedWeapon && selPawn.WorkTagIsDisabled(WorkTags.Shooting))
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "IsIncapableOfShootingLower".Translate((NamedArgument)(Thing)selPawn)), (Action)null, weapon, Color.white);
+            // 无法寻路到达武器位置
             if (!selPawn.CanReach((LocalTargetInfo)weapon, PathEndMode.ClosestTouch, Danger.Deadly))
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "NoPath".Translate().CapitalizeFirst()), (Action)null, weapon, Color.white);
+            // 缺"操作"身体能力（手部伤残等）：无法持械
             if (!selPawn.health.capacities.CapableOf(PawnCapacityDefOf.Manipulation))
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "Incapable".Translate().CapitalizeFirst()), (Action)null, weapon, Color.white);
+            // 武器正在燃烧，无法取用装备
             if (weapon.IsBurning())
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "BurningLower".Translate()), (Action)null, weapon, Color.white);
+            // 任务寄宿者（如皇权任务客居者）限制其可装备的武器范围
             if (selPawn.IsQuestLodger() && !EquipmentUtility.QuestLodgerCanEquip(weapon, selPawn))
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + "QuestRelated".Translate().CapitalizeFirst()), (Action)null, weapon, Color.white);
+            // 通用装备检查（体型、义体、意识形态禁令等），具体原因由 cantReason 带回并展示
             string cantReason;
             if (!EquipmentUtility.CanEquip(weapon, selPawn, out cantReason, false))
                 return new FloatMenuOption((string)("CannotEquip".Translate((NamedArgument)labelShort) + ": " + cantReason.CapitalizeFirst()), (Action)null, weapon, Color.white);
+            // 前置检查全部通过：构建"Equip"标签
             string label1 = (string)"Equip".Translate((NamedArgument)labelShort);
+            // 武斗家（Brawler）特性厌恶远程武器，装备会有心情惩罚，追加警告字样
             if (weapon.def.IsRangedWeapon && selPawn.story != null && selPawn.story.traits.HasTrait(TraitDefOf.Brawler))
                 label1 = (string)(label1 + (" " + "EquipWarningBrawler".Translate()));
+            // 未与该小人绑定的武器：正常装备路径
             if (!EquipmentUtility.AlreadyBondedToWeapon(weapon, selPawn))
                 return DecorateVaultOption(new FloatMenuOption(label1, (Action)(() =>
                 {
+                    // persona 武器（灵能绑定）装备即绑定、不可反悔，先弹确认框；无确认文案则直接装备
                     string confirmationText = EquipmentUtility.GetPersonaWeaponConfirmationText(weapon, selPawn);
                     if (!confirmationText.NullOrEmpty())
                         Find.WindowStack.Add((Window)new Dialog_MessageBox((TaggedString)confirmationText, (string)"Yes".Translate(), (Action)(() => Equip()), (string)"No".Translate()));
                     else
                         Equip();
                 }), weapon, Color.white), selPawn, weapon);
+            // 该武器已绑定（bladelink）给此小人：不可再装备，弹出提示框说明绑定关系（含已绑定武器）
             string label2 = (string)(label1 + (" " + "BladelinkAlreadyBonded".Translate()));
             TaggedString dialogText = "BladelinkAlreadyBondedDialog".Translate(selPawn.Named("PAWN"), weapon.Named("WEAPON"), selPawn.equipment.bondedWeapon.Named("BONDEDWEAPON"));
             return DecorateVaultOption(new FloatMenuOption(label2, (Action)(() => Find.WindowStack.Add((Window)new Dialog_MessageBox(dialogText))), weapon, Color.white, MenuOptionPriority.High), selPawn, weapon);
 
+            // 实际执行装备：解除禁止 → 下达 Equip 工作 → 播放反馈特效 → 记录"装备武器"教学知识
             void Equip()
             {
                 weapon.SetForbidden(false);
