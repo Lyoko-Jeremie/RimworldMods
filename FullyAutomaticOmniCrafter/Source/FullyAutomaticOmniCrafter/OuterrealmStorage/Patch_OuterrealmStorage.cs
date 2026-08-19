@@ -2120,28 +2120,37 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     //   · haulSources：vault 实现 IHaulSource，GetDirectlyHeldThings() 返回 view（含全部副本）。
     // 副本同时通过两条路径的 IsValidCaravanItem 判定（Spawned 分支 + IsInAnyStorage），
     // 同一实例被加入返回列表两次 → Dialog_FormCaravan.AddItemsToTransferables 逐项
-    // AddToTransferables 时第二次添加触发原版 "Tried to add the same thing twice"
-    // 刷屏（每条 vault 条目一条报错）。
-    // 修复：Postfix 剔除 holdingOwner 为视图的伪 Spawned 副本——副本只是投影，不是
-    // 可装载的真实物品（真实数量在全局账目）；借出副本（真 Spawned，holdingOwner=null）
-    // 与普通地图物品不受影响，仍可正常装入远行队/运输舱/传送门。
-    // 实现用单遍原地压缩（O(n)，无额外分配），避免逐项 RemoveAt 的 O(n²)。
+    // AddToTransferables 时第二次添加触发原版 "Tried to add the same thing twice" 刷屏。
+    // 修复：Postfix 按实例去重（保留首次出现，剔除重复项）。vault 副本保留在列表中——
+    // 收集阶段由既有 patch 链接管（Toils_Haul.StartCarryThing 执行期 Boost →
+    // Pawn_CarryTracker.TryStartCarry 走视图取出 → Thing.SplitOff 同步全局账目），
+    // 使参与远行队的 pawn 能发现并携带 vault 物品；借出副本（真 Spawned，
+    // holdingOwner=null）与普通地图物品本就在单条路径，不受影响。
+    // 实现：惰性 HashSet（无 vault 副本时零分配）+ 单遍原地压缩（O(n)）。
     [HarmonyPatch(typeof(RimWorld.Planet.CaravanFormingUtility), "AllReachableColonyItems")]
     internal static class Patch_CaravanFormingUtility_AllReachableColonyItems
     {
         private static void Postfix(List<Thing> __result)
         {
-            if (__result == null || __result.Count == 0)
+            if (__result == null || __result.Count < 2)
             {
                 return;
             }
+            HashSet<Thing> seenVaultCopies = null;
             int write = 0;
             for (int read = 0; read < __result.Count; read++)
             {
                 Thing t = __result[read];
                 if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner)
                 {
-                    continue; // 伪 Spawned 锚点副本：剔除
+                    if (seenVaultCopies == null)
+                    {
+                        seenVaultCopies = new HashSet<Thing>();
+                    }
+                    if (!seenVaultCopies.Add(t))
+                    {
+                        continue; // 同一伪 Spawned 副本重复出现（AllThings + haulSources 双路径）：只保留首次
+                    }
                 }
                 if (write != read)
                 {
@@ -2152,6 +2161,47 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (write < __result.Count)
             {
                 __result.RemoveRange(write, __result.Count - write);
+            }
+        }
+    }
+
+    // ── vault 物品可装载远行队：Dialog_FormCaravan 打开期间提升副本数量 ──
+    // 远行队物品行的可选上限（TransferableOneWay.GetMaximumToTransfer）是对 things 中
+    // 全部实例 stackCount 的动态求和。vault 副本常态 stackCount = min(全局剩余, stackLimit)，
+    // 不提升则玩家最多只能选择 stackLimit（如 75）个——与"无限容量"语义不符，且与
+    // 普通储物建筑（真 Spawn 物品可多堆叠）行为不一致。
+    // 方案：PostOpen 时 BoostMapVaults（副本 stackCount = 全局真实量），使列表构建
+    // （CalculateAndRecacheTransferables → AddItemsToTransferables）与玩家调量期间
+    // MaxCount 等于全局量；PostClose 时 UnboostMapVaults 恢复常态。
+    // 收集阶段不依赖此 Boost（Toils_Haul.StartCarryThing 执行期自行 BoostCopy），
+    // 故 PostClose 立即恢复无碍。Boost 幂等（纯 stackCount 赋值），与其他 Boost 场景
+    // （CountProducts / 选料）嵌套安全。
+    [HarmonyPatch(typeof(Dialog_FormCaravan), "PostOpen")]
+    internal static class Patch_Dialog_FormCaravan_PostOpen
+    {
+        private static readonly FieldInfo MapField = AccessTools.Field(typeof(Dialog_FormCaravan), "map");
+
+        private static void Prefix(Dialog_FormCaravan __instance)
+        {
+            Map map = MapField != null ? MapField.GetValue(__instance) as Map : null;
+            if (map != null)
+            {
+                OuterrealmPatchUtil.BoostMapVaults(map);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Dialog_FormCaravan), "PostClose")]
+    internal static class Patch_Dialog_FormCaravan_PostClose
+    {
+        private static readonly FieldInfo MapField = AccessTools.Field(typeof(Dialog_FormCaravan), "map");
+
+        private static void Postfix(Dialog_FormCaravan __instance)
+        {
+            Map map = MapField != null ? MapField.GetValue(__instance) as Map : null;
+            if (map != null)
+            {
+                OuterrealmPatchUtil.UnboostMapVaults(map);
             }
         }
     }
