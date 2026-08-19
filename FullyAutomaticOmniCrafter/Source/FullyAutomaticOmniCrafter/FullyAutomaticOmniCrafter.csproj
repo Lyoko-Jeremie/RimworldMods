@@ -433,6 +433,7 @@
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
+    <Compile Include="OuterrealmStorage\Patch_ManipulatorBeamCompat.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />
     <Compile Include="OuterrealmStorage\SubspaceAccessPawn.cs" />
     <Compile Include="OuterrealmStorage\SubspaceAccessUtility.cs" />
