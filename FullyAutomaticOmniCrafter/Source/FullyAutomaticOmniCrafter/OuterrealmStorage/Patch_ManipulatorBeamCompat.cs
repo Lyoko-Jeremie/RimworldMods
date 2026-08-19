@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
@@ -13,18 +14,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// 所有目标方法经 AccessTools 字符串解析（TypeByName / Method(string)），
     /// 未安装或版本签名变化时返回 null → Harmony 自动跳过本组 patch，零副作用。
     ///
-    /// 兼容策略（借出物化 + 取出记账，两条路径）：
+    /// 兼容策略（种子 + 注入 + 取出记账，三条路径）：
     ///  · 普通取货（TryBuildBatchFromCell / TryBuildBatchFromCellAuto）：牵引光束的源扫描
     ///    最终落在 cell.GetThingList（thingGrid），而 vault 伪 Spawned 副本刻意不进 thingGrid
-    ///    （见 OuterrealmVaultViewThingOwner.RegisterInLister）。prefix 把该 vault 格上的锚点
-    ///    副本经 TryLendCopy 借出物化（真 Spawn 到存储格 → 进 thingGrid → 借出即取出扣全局全量），
-    ///    原方法随即按普通地面物品生成 BeamTransfer；未被搬走的借出副本由 vault Tick 的
-    ///    ReturnUnreservedBorrowed 自动回收（剩余量存回全局、重建锚点），天然自愈。
+    ///    （见 OuterrealmVaultViewThingOwner.RegisterInLister）。prefix 只借出 1 个"判定通过"的
+    ///    种子副本（TryLendCopy 真 Spawn 到存储格 → 进 thingGrid → 借出即取出扣全局全量），
+    ///    保证原方法 batch 非 null；postfix 再把其余判定通过的锚点副本反射注入 batch.transfers
+    ///    （不借出、保持伪 Spawned）——"先确定要搬（transfer 生成）、后取出"，物品在确定之前
+    ///    不离开 vault、不显示，彻底避免"全部物品显示在格子上"的瞬间卡顿。
     ///  · 施工配送/运输舱加载（TryFindConstructionTransfer 等）：源扫描用 listerThings
     ///    （伪 Spawned 副本已注册其中），会直接把锚点副本放进 BeamTransfer。整堆取出若走原版
     ///    Thing.DeSpawn 会命中 Patch_Thing_DeSpawn_PseudoSpawned 的 Suppress 分支（不扣全局）
     ///    导致复制 —— LiftThingForTransfer prefix 兜底：锚点副本改走 view.Remove
     ///    （不 Suppress → Notify_ItemRemoved → 全局扣全量）或 SplitOff（视图记账）。
+    ///    注入的副本 transfer 与施工配送路径同经 LiftThingForTransfer，共用此记账。
     /// </summary>
     internal static class BeamManipulatorCompat
     {
@@ -34,12 +37,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static readonly MethodInfo TryFindBestStorageCellMethod =
             BeamManipulatorUtilityType == null ? null :
             AccessTools.Method(BeamManipulatorUtilityType, "TryFindBestStorageCellIgnoringReachability");
+        private static readonly MethodInfo TryFindBestStorageCellAutoMethod =
+            BeamManipulatorUtilityType == null ? null :
+            AccessTools.Method(BeamManipulatorUtilityType, "TryFindBestStorageCellIgnoringReachabilityAuto");
         private static readonly Type BeamTransferType =
             AccessTools.TypeByName("ManipulatorBeam.BeamTransfer");
         internal static readonly FieldInfo BeamTransferThingField =
             BeamTransferType == null ? null : AccessTools.Field(BeamTransferType, "thing");
         internal static readonly FieldInfo BeamTransferCountField =
             BeamTransferType == null ? null : AccessTools.Field(BeamTransferType, "count");
+        private static readonly Type BeamHaulBatchType =
+            AccessTools.TypeByName("ManipulatorBeam.BeamHaulBatch");
+        private static readonly FieldInfo BeamHaulBatchTransfersField =
+            BeamHaulBatchType == null ? null : AccessTools.Field(BeamHaulBatchType, "transfers");
+        private static readonly ConstructorInfo BeamTransferCtor =
+            BeamTransferType == null ? null :
+            AccessTools.Constructor(BeamTransferType, new[] { typeof(Thing), typeof(IntVec3), typeof(IntVec3) });
 
         /// <summary>该格是否为某 vault 的存储格；是则返回 vault，否则 null（O(1) slotGroup 查询）。</summary>
         public static Building_OuterrealmVault VaultAtCell(IntVec3 cell, Map map)
@@ -51,8 +64,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return cell.GetSlotGroup(map)?.parent as Building_OuterrealmVault;
         }
 
-        /// <summary>借出该 vault 格上的全部锚点副本（真 Spawn 到存储格 → 进入 thingGrid 可见）。</summary>
-        public static void LendAnchorCopiesAtCell(Building_OuterrealmVault vault, IntVec3 cell)
+        /// <summary>借出该 vault 格上第一个"需要搬运"的锚点副本（种子）：真 Spawn 到存储格 →
+        /// 进入 thingGrid → 保证原方法 TryBuildBatchFromCell 返回 true（batch 非 null）。
+        /// 种子在借出前用牵引光束自身的存储目标搜索判定可搬（存在更高优先级存储可去），
+        /// 因此种子必然会被原方法生成 transfer；其余副本不借出（见 InjectTransferableCopies），
+        /// 避免"全部物品显示在格子上"的瞬间卡顿。pawn 与 autoBuilding 二选一（手动/自动判定器）。</summary>
+        public static void LendFirstTransferableCopy(
+            Building_OuterrealmVault vault, IntVec3 cell,
+            Pawn pawn, object autoBuilding, HashSet<IntVec3> excludedDestinations, int ownerKey)
         {
             if (vault == null || vault.view == null || !vault.Spawned)
             {
@@ -68,7 +87,59 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
+                IntVec3 _;
+                bool transferable = pawn != null
+                    ? TryFindStorageCellFor(pawn, copy, excludedDestinations, ownerKey, out _)
+                    : TryFindStorageCellForAuto(autoBuilding, copy, excludedDestinations, ownerKey, out _);
+                if (!transferable)
+                {
+                    continue;
+                }
                 vault.view.TryLendCopy(copy); // 借出即取出：扣全局全量 + 真 Spawn 到存储格
+                return;
+            }
+        }
+
+        /// <summary>把该 vault 格上其余"需要搬运"的锚点副本反射注入 batch.transfers（不借出、不真 Spawn）：
+        /// 副本保持伪 Spawned 留在视图，仅在取货时（LiftThingForTransfer → view.Remove）才离开 vault——
+        /// 即"先确定要搬（transfer 生成）→ 后取出"，物品在确定之前完全不显示、不离开全局账目。
+        /// 注入上限 maxInject = beam 单轮通道数 4（含原方法已生成的 transfer 数）。</summary>
+        public static void InjectTransferableCopies(
+            object batch, Building_OuterrealmVault vault, IntVec3 cell, int maxInject,
+            Pawn pawn, object autoBuilding, HashSet<IntVec3> excludedDestinations, int ownerKey)
+        {
+            if (batch == null || vault == null || vault.view == null || maxInject <= 0 ||
+                BeamHaulBatchTransfersField == null || BeamTransferCtor == null)
+            {
+                return;
+            }
+            IList transfers = BeamHaulBatchTransfersField.GetValue(batch) as IList; // List<BeamTransfer>
+            if (transfers == null || transfers.Count >= maxInject)
+            {
+                return;
+            }
+            List<Thing> copies = vault.view.InnerListForReading;
+            for (int i = 0; i < copies.Count && transfers.Count < maxInject; i++)
+            {
+                Thing copy = copies[i];
+                // 伪 Spawned 锚点：Spawned 且仍由视图持有、投影在当前格（借出副本/未 Spawned 均排除）
+                if (copy == null || copy.Destroyed || !copy.Spawned ||
+                    copy.holdingOwner != vault.view || copy.Position != cell)
+                {
+                    continue;
+                }
+                // 判定"该副本确实能被搬到某更高优先级存储"（与牵引光束自身语义一致）；
+                // 判定不过的不注入（否则 LiftThingForTransfer 取出时无目的地可放）
+                IntVec3 dest;
+                bool transferable = pawn != null
+                    ? TryFindStorageCellFor(pawn, copy, excludedDestinations, ownerKey, out dest)
+                    : TryFindStorageCellForAuto(autoBuilding, copy, excludedDestinations, ownerKey, out dest);
+                if (!transferable)
+                {
+                    continue;
+                }
+                // 反射构造 BeamTransfer(copy, cell, dest)（count = copy.stackCount，整堆）
+                transfers.Add(BeamTransferCtor.Invoke(new object[] { copy, cell, dest }));
             }
         }
 
@@ -95,16 +166,42 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return false; // 版本差异等：静默降级
             }
         }
+
+        /// <summary>反射调用牵引光束私有静态 TryFindBestStorageCellIgnoringReachabilityAuto
+        /// （自动型版本：内部用 CanAutoTransferThingForOwner + faction 判定）。
+        /// Invoke 的参数为 object[]，运行时按实际类型绑定即可，无需编译期引用其
+        /// Building_BeamManipulatorAuto 类型。</summary>
+        public static bool TryFindStorageCellForAuto(
+            object building, Thing copy, HashSet<IntVec3> excludedDestinations, int ownerKey, out IntVec3 destination)
+        {
+            destination = IntVec3.Invalid;
+            if (TryFindBestStorageCellAutoMethod == null || building == null || copy == null)
+            {
+                return false;
+            }
+            object[] args = { building, copy, excludedDestinations, ownerKey, IntVec3.Invalid };
+            try
+            {
+                bool ok = (bool)TryFindBestStorageCellAutoMethod.Invoke(null, args);
+                destination = (IntVec3)args[4];
+                return ok;
+            }
+            catch (Exception)
+            {
+                return false; // 版本差异等：静默降级
+            }
+        }
     }
 
-    /// <summary>手动型普通取货：取货前借出该 vault 格上的锚点副本（prefix，纯原版类型参数）。</summary>
+    /// <summary>手动型普通取货：借 1 个种子保证原方法成功，postfix 把其余判定通过的锚点副本
+    /// 反射注入 batch（不借出）——"先确定要搬、后取出"，物品确定前不离开 vault、不显示。</summary>
     [HarmonyPatch]
     internal static class Patch_Beam_TryBuildBatchFromCell
     {
         static MethodBase TargetMethod() =>
             AccessTools.Method("ManipulatorBeam.BeamManipulatorUtility:TryBuildBatchFromCell");
 
-        static bool Prefix(Pawn pawn, IntVec3 cell)
+        static bool Prefix(Pawn pawn, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey)
         {
             Map map = pawn?.Map;
             if (map == null)
@@ -114,9 +211,28 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Building_OuterrealmVault vault = BeamManipulatorCompat.VaultAtCell(cell, map);
             if (vault != null)
             {
-                BeamManipulatorCompat.LendAnchorCopiesAtCell(vault, cell);
+                // 只借 1 个"判定通过"的种子：让原方法 batch 非 null；其余副本由 postfix 注入（不借出）
+                BeamManipulatorCompat.LendFirstTransferableCopy(
+                    vault, cell, pawn, null, excludedDestinations, ownerKey);
             }
-            return true; // 继续原方法：借出副本已进 thingGrid，会被 cell.GetThingList 发现
+            return true; // 继续原方法：种子副本已进 thingGrid，会被 cell.GetThingList 发现
+        }
+
+        static void Postfix(Pawn pawn, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey, object batch)
+        {
+            Map map = pawn?.Map;
+            if (map == null)
+            {
+                return;
+            }
+            Building_OuterrealmVault vault = BeamManipulatorCompat.VaultAtCell(cell, map);
+            if (vault == null)
+            {
+                return;
+            }
+            // 注入上限 4 = beam 单轮通道数（含原方法已生成的 transfer，如种子）
+            BeamManipulatorCompat.InjectTransferableCopies(
+                batch, vault, cell, 4, pawn, null, excludedDestinations, ownerKey);
         }
     }
 
@@ -127,7 +243,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         static MethodBase TargetMethod() =>
             AccessTools.Method("ManipulatorBeam.BeamManipulatorUtility:TryBuildBatchFromCellAuto");
 
-        static bool Prefix(object building, IntVec3 cell)
+        static bool Prefix(object building, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey)
         {
             Thing bt = building as Thing; // Building_BeamManipulatorAuto 是 Thing 子类，Object→Thing 转换无需其类型
             Map map = bt?.Map;
@@ -138,9 +254,29 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Building_OuterrealmVault vault = BeamManipulatorCompat.VaultAtCell(cell, map);
             if (vault != null)
             {
-                BeamManipulatorCompat.LendAnchorCopiesAtCell(vault, cell);
+                // 只借 1 个"判定通过"的种子：让原方法 batch 非 null；其余副本由 postfix 注入（不借出）
+                BeamManipulatorCompat.LendFirstTransferableCopy(
+                    vault, cell, null, building, excludedDestinations, ownerKey);
             }
             return true;
+        }
+
+        static void Postfix(object building, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey, object batch)
+        {
+            Thing bt = building as Thing;
+            Map map = bt?.Map;
+            if (map == null)
+            {
+                return;
+            }
+            Building_OuterrealmVault vault = BeamManipulatorCompat.VaultAtCell(cell, map);
+            if (vault == null)
+            {
+                return;
+            }
+            // 注入上限 4 = beam 单轮通道数（含原方法已生成的 transfer，如种子）
+            BeamManipulatorCompat.InjectTransferableCopies(
+                batch, vault, cell, 4, null, building, excludedDestinations, ownerKey);
         }
     }
 
