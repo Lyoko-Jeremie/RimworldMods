@@ -1322,6 +1322,36 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §4 右键选项有效性：vault 副本的 revalidateClickTarget 重定向到建筑 ──
+    // 原版 FloatMenuUtility.DecoratePrioritizedTask 会把 option.revalidateClickTarget 设为 target.Thing（副本）。
+    // 副本未 Spawned，FloatMenuMap.StillValid 的 (!revalidateClickTarget.Spawned) 检查依赖 targetsDespawned
+    // 跳过与 PositionHeld 隐式解析到建筑，链路脆弱（第三方 provider 或异常场景下选项会被置灰）。
+    // 此处 Postfix 显式把 revalidateClickTarget 指向 vault 建筑（Spawned），与原版 Building_OutfitStand
+    // 的装备选项（revalidateClickTarget=OutfitStand 建筑）语义对齐；StillValid 以建筑位置重新生成选项时，
+    // 副本经 ContainingSelectionUtility.SelectableContainedThings 再次进入 ClickedThings，Label 匹配成功。
+    // ReservedBy 检查走原版 pawn.CanReserve(副本)，由 Patch_ReservationManager_CanReserve 处理副本预留。
+    // 影响面仅限 holdingOwner 为 OuterrealmVaultViewThingOwner 的目标，其余调用零影响。
+    [HarmonyPatch(typeof(FloatMenuUtility), "DecoratePrioritizedTask")]
+    internal static class Patch_FloatMenuUtility_DecoratePrioritizedTask
+    {
+        private static void Postfix(FloatMenuOption option, LocalTargetInfo target)
+        {
+            if (option == null || option.action == null)
+            {
+                return; // 置灰选项（CannotEquip 等）：与原版提前返回语义一致，不设置 revalidateClickTarget
+            }
+            Thing t = target.Thing;
+            if (t == null || t.Spawned || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
+            {
+                return; // 非 vault 副本目标（原版 OutfitStand/床/商队等）：完全不受影响
+            }
+            if (view.Context is Building_OuterrealmVault vault && vault.Spawned)
+            {
+                option.revalidateClickTarget = vault;
+            }
+        }
+    }
+
     // ── §v3 随身访问：授权 pawn 右键物品 → "放入超维存储"（直接 Deposit 进全局库） ──
     [HarmonyPatch(typeof(FloatMenuMakerMap), "GetOptions")]
     internal static class Patch_FloatMenuMakerMap_GetOptions_SubspaceDeposit
