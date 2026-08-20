@@ -117,7 +117,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
             // 搜索 + 不可见筛选 + 地图选择
             searchWidget.OnGUI(new Rect(inRect.x, y, 260f, 28f), () => dirty = true, () => dirty = true);
-            Widgets.CheckboxLabeled(new Rect(inRect.x + 270f, y, 240f, 28f), "OuterrealmStorageManager_ShowOnlyUnseen".Translate(), ref showOnlyUnseen, true);
+            Widgets.CheckboxLabeled(new Rect(inRect.x + 270f, y, 240f, 28f), "OuterrealmStorageManager_ShowOnlyUnseen".Translate(), ref showOnlyUnseen);
             if (showOnlyUnseen != dirtyUnseenFlag)
             {
                 dirtyUnseenFlag = showOnlyUnseen;
