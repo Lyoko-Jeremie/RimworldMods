@@ -414,18 +414,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmVaultUtil.ThingIconSafe(new Rect(4f, curY, 28f, 28f), entry.Proto);
 
             string text = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto) + " x" + entry.Count.ToString("N0");
-            if (visibleBuildings == 0)
-            {
-                text += "  (" + "OuterrealmStorageManager_Unseen".Translate() + ")";
-            }
-            else
-            {
-                text += "  " + "OuterrealmStorageManager_VisibleBuildings".Translate(visibleBuildings);
-            }
+            string flagText = visibleBuildings == 0
+                ? "OuterrealmStorageManager_Unseen".Translate()
+                : "OuterrealmStorageManager_VisibleBuildings".Translate(visibleBuildings);
+            // 名称左对齐、可见性标志右对齐：标志与名称分离显示，避免与长名称挤在一起难以查看
             Text.Anchor = TextAnchor.MiddleLeft;
-            Widgets.Label(new Rect(36f, curY, rect.width - 36f, rect.height), text.StripTags().Truncate(rect.width - 36f));
+            float flagWidth = Text.CalcSize(flagText).x;
+            float nameWidth = rect.width - 36f - flagWidth - 12f;
+            if (nameWidth < 20f)
+            {
+                nameWidth = 20f;
+            }
+            Widgets.Label(new Rect(36f, curY, nameWidth, rect.height), text.StripTags().Truncate(nameWidth));
+            Text.Anchor = TextAnchor.MiddleRight;
+            Widgets.Label(new Rect(rect.width - flagWidth, curY, flagWidth, rect.height), flagText);
             Text.Anchor = TextAnchor.UpperLeft;
-            TooltipHandler.TipRegion(rect, text);
+            TooltipHandler.TipRegion(rect, text + "  " + flagText);
             curY += RowHeight;
         }
 
