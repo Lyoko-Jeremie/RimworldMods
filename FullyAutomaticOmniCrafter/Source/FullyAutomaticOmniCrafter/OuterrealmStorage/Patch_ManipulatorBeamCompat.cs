@@ -11,8 +11,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
     /// <summary>
     /// 牵引光束搬运器（ManipulatorBeam）可选兼容 —— 不编译期引用其 dll。
-    /// 所有目标方法经 AccessTools 字符串解析（TypeByName / Method(string)），
-    /// 未安装或版本签名变化时返回 null → Harmony 自动跳过本组 patch，零副作用。
+    /// 所有目标方法经 AccessTools 字符串解析（TypeByName / Method(string)）。
+    /// 未安装或版本签名变化时方法为 null：各 patch 类通过 Prepare() 返回 false
+    /// 让 Harmony 跳过整组 patch（注意 TargetMethod() 返回 null 会抛异常，不能依赖它跳过）。
     ///
     /// 兼容策略（种子 + 注入 + 取出记账，三条路径）：
     ///  · 普通取货（TryBuildBatchFromCell / TryBuildBatchFromCellAuto）：牵引光束的源扫描
@@ -40,6 +41,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static readonly MethodInfo TryFindBestStorageCellAutoMethod =
             BeamManipulatorUtilityType == null ? null :
             AccessTools.Method(BeamManipulatorUtilityType, "TryFindBestStorageCellIgnoringReachabilityAuto");
+        // ── 各 patch 的目标方法（缓存 + 供 Prepare() 判空；未安装/签名变化时为 null）──
+        internal static readonly MethodInfo TryBuildBatchFromCellMethod =
+            BeamManipulatorUtilityType == null ? null :
+            AccessTools.Method(BeamManipulatorUtilityType, "TryBuildBatchFromCell");
+        internal static readonly MethodInfo TryBuildBatchFromCellAutoMethod =
+            BeamManipulatorUtilityType == null ? null :
+            AccessTools.Method(BeamManipulatorUtilityType, "TryBuildBatchFromCellAuto");
+        internal static readonly MethodInfo HasAnyStorageTransferFromCellMethod =
+            BeamManipulatorUtilityType == null ? null :
+            AccessTools.Method(BeamManipulatorUtilityType, "HasAnyStorageTransferFromCell");
+        internal static readonly MethodInfo LiftThingForTransferMethod =
+            BeamManipulatorUtilityType == null ? null :
+            AccessTools.Method(BeamManipulatorUtilityType, "LiftThingForTransfer");
         private static readonly Type BeamTransferType =
             AccessTools.TypeByName("ManipulatorBeam.BeamTransfer");
         internal static readonly FieldInfo BeamTransferThingField =
@@ -198,8 +212,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch]
     internal static class Patch_Beam_TryBuildBatchFromCell
     {
-        static MethodBase TargetMethod() =>
-            AccessTools.Method("ManipulatorBeam.BeamManipulatorUtility:TryBuildBatchFromCell");
+        // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
+        static bool Prepare() => BeamManipulatorCompat.TryBuildBatchFromCellMethod != null;
+
+        static MethodBase TargetMethod() => BeamManipulatorCompat.TryBuildBatchFromCellMethod;
 
         static bool Prefix(Pawn pawn, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey)
         {
@@ -240,8 +256,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch]
     internal static class Patch_Beam_TryBuildBatchFromCellAuto
     {
-        static MethodBase TargetMethod() =>
-            AccessTools.Method("ManipulatorBeam.BeamManipulatorUtility:TryBuildBatchFromCellAuto");
+        // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
+        static bool Prepare() => BeamManipulatorCompat.TryBuildBatchFromCellAutoMethod != null;
+
+        static MethodBase TargetMethod() => BeamManipulatorCompat.TryBuildBatchFromCellAutoMethod;
 
         static bool Prefix(object building, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey)
         {
@@ -284,8 +302,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch]
     internal static class Patch_Beam_HasAnyStorageTransferFromCell
     {
-        static MethodBase TargetMethod() =>
-            AccessTools.Method("ManipulatorBeam.BeamManipulatorUtility:HasAnyStorageTransferFromCell");
+        // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
+        static bool Prepare() => BeamManipulatorCompat.HasAnyStorageTransferFromCellMethod != null;
+
+        static MethodBase TargetMethod() => BeamManipulatorCompat.HasAnyStorageTransferFromCellMethod;
 
         static void Postfix(Pawn pawn, IntVec3 cell, int ownerKey, ref bool __result)
         {
@@ -321,8 +341,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch]
     internal static class Patch_Beam_LiftThingForTransfer
     {
-        static MethodBase TargetMethod() =>
-            AccessTools.Method("ManipulatorBeam.BeamManipulatorUtility:LiftThingForTransfer");
+        // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
+        static bool Prepare() => BeamManipulatorCompat.LiftThingForTransferMethod != null;
+
+        static MethodBase TargetMethod() => BeamManipulatorCompat.LiftThingForTransferMethod;
 
         static bool Prefix(object transfer, ref Thing __result)
         {
