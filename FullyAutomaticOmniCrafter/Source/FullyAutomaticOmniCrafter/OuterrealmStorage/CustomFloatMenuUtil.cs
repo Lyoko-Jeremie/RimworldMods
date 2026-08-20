@@ -149,7 +149,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             float contentH = visible.Count * rowH;
-            Widgets.BeginScrollView(listRect, ref state.ScrollPosition, new Rect(0f, 0f, listRect.width, contentH));
+            // viewRect 宽度让出垂直滚动条，避免出现多余的水平滚动条（与原版/项目其他对话框一致）。
+            float contentW = Mathf.Max(1f, listRect.width - 16f);
+            Widgets.BeginScrollView(listRect, ref state.ScrollPosition, new Rect(0f, 0f, contentW, contentH));
             float scrollY = state.ScrollPosition.y;
             int first = Mathf.FloorToInt(scrollY / rowH);
             int last = Mathf.Min(visible.Count - 1, Mathf.CeilToInt((scrollY + listRect.height) / rowH));
@@ -162,7 +164,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                Rect row = new Rect(0f, i * rowH - scrollY, listRect.width, rowH);
+                // BeginScrollView 已按 scrollPosition 平移+裁剪，行坐标必须用内容绝对坐标（i * rowH），
+                // 不能再减 scrollY，否则滚动后行会被二次偏移并裁出可视区，导致列表后面部分不显示。
+                Rect row = new Rect(0f, i * rowH, contentW, rowH);
                 if (DrawRow(row, opt, iconSize))
                 {
                     executed = true;
