@@ -1326,13 +1326,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
     // ── §4 右键选项有效性：vault 副本的 revalidateClickTarget 重定向到建筑 ──
     // 原版 FloatMenuUtility.DecoratePrioritizedTask 会把 option.revalidateClickTarget 设为 target.Thing（副本）。
-    // 副本未 Spawned，FloatMenuMap.StillValid 的 (!revalidateClickTarget.Spawned) 检查依赖 targetsDespawned
+    // 副本未 Spawned（或 §v5 伪 Spawned），FloatMenuMap.StillValid 的 (!revalidateClickTarget.Spawned) 检查依赖 targetsDespawned
     // 跳过与 PositionHeld 隐式解析到建筑，链路脆弱（第三方 provider 或异常场景下选项会被置灰）。
     // 此处 Postfix 显式把 revalidateClickTarget 指向 vault 建筑（Spawned），与原版 Building_OutfitStand
     // 的装备选项（revalidateClickTarget=OutfitStand 建筑）语义对齐；StillValid 以建筑位置重新生成选项时，
     // 副本经 ContainingSelectionUtility.SelectableContainedThings 再次进入 ClickedThings，Label 匹配成功。
     // ReservedBy 检查走原版 pawn.CanReserve(副本)，由 Patch_ReservationManager_CanReserve 处理副本预留。
-    // 影响面仅限 holdingOwner 为 OuterrealmVaultViewThingOwner 的目标，其余调用零影响。
+    // 注意：vault 副本可能是"伪 Spawned"（§v5 反射提升 mapIndexOrState → Thing.Spawned==true，
+    // 见 OuterrealmVaultViewThingOwner.IsPseudoSpawned），因此**不能按 t.Spawned 过滤**——
+    // 否则重定向被跳过，revalidateClickTarget 停留在副本，IsVaultMenu 判定失败，大列表/降频全部失效。
+    // 判定改用"holdingOwner 是否为 vault 视图"（借出副本真 Spawned 时 holdingOwner 已置 null，天然排除）。
     [HarmonyPatch(typeof(FloatMenuUtility), "DecoratePrioritizedTask")]
     internal static class Patch_FloatMenuUtility_DecoratePrioritizedTask
     {
@@ -1343,7 +1346,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return; // 置灰选项（CannotEquip 等）：与原版提前返回语义一致，不设置 revalidateClickTarget
             }
             Thing t = target.Thing;
-            if (t == null || t.Spawned || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
+            if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return; // 非 vault 副本目标（原版 OutfitStand/床/商队等）：完全不受影响
             }
@@ -1396,7 +1399,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static readonly ConditionalWeakTable<FloatMenuMap, MenuState> menuStates = new ConditionalWeakTable<FloatMenuMap, MenuState>();
 
-        /// <summary>菜单选项是否含 vault 副本生成的项（revalidateClickTarget 指向超维存储仓建筑）。判定结果按实例缓存。</summary>
+        /// <summary>菜单选项是否含 vault 副本生成的项。判定结果按实例缓存。
+        /// 双条件命中（任一即可，防御重定向链变化）：
+        ///   · revalidateClickTarget 指向超维存储仓建筑（Postfix 重定向后）；
+        ///   · iconThing 是 vault 视图副本（无需依赖重定向）。</summary>
         internal static bool IsVaultMenu(FloatMenuMap menu)
         {
             MenuState state = menuStates.GetOrCreateValue(menu);
@@ -1409,7 +1415,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 for (int i = 0; i < options.Count; i++)
                 {
-                    if (options[i] != null && options[i].revalidateClickTarget is Building_OuterrealmVault)
+                    FloatMenuOption opt = options[i];
+                    if (opt == null)
+                    {
+                        continue;
+                    }
+                    if (opt.revalidateClickTarget is Building_OuterrealmVault)
+                    {
+                        state.IsVault = true;
+                        break;
+                    }
+                    if (opt.iconThing != null && opt.iconThing.holdingOwner is OuterrealmVaultViewThingOwner)
                     {
                         state.IsVault = true;
                         break;
