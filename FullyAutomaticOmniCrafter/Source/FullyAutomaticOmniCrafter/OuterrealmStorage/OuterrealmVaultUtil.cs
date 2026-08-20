@@ -1,3 +1,4 @@
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -21,6 +22,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (t is Corpse corpse && corpse.Bugged)
             {
                 return corpse.def.label.CapitalizeFirst();
+            }
+            if (t is MinifiedThing minified && minified.InnerThing == null)
+            {
+                // MinifiedThing 内物丢失（InnerThing == null，原版非法状态，如打包箱曾
+                // 被 Destroy / 内物被转移）：原版 LabelNoCount => InnerThing.LabelNoCount
+                // 会直接 NRE——用 def 标签兜底（与 Corpse.Bugged 同模式）。
+                return t.def.label.CapitalizeFirst();
             }
             return t.LabelCapNoCount;
         }

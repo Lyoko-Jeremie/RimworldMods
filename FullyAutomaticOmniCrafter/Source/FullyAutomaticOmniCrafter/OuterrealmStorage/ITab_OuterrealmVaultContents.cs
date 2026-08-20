@@ -107,8 +107,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 GUI.color = ThingHighlightColor;
                 GUI.DrawTexture(rect, TexUI.HighlightTex);
             }
-            if (copy is Corpse corpseForCard && corpseForCard.Bugged)
+            if ((copy is Corpse corpseForCard && corpseForCard.Bugged)
+                || (copy is MinifiedThing minForCard && minForCard.InnerThing == null))
             {
+                // Corpse.Bugged / MinifiedThing 空 InnerThing：实例访问会 NRE，用 def 打开信息卡
                 Widgets.InfoCardButton(rect.width - 24f, curY, copy.def);
             }
             else
