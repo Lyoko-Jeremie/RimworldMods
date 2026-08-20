@@ -115,9 +115,6 @@
     <OmniCrafter_GraphLogYDesc>Display the Y axis in log10 scale.</OmniCrafter_GraphLogYDesc>
     <!-- Unlock Available Research -->
     <OmniCrafter_UnlockAvailableResearch>Unlock Available Research</OmniCrafter_UnlockAvailableResearch>
-    <OmniCrafter_UnlockAvailableResearchDesc>Instantly unlock all research projects with satisfied prerequisites. When Rimatomics is active, all of its custom research projects are also completed.</OmniCrafter_UnlockAvailableResearchDesc>
-    <OmniCrafter_NoUnlockAvailableResearch>No research to unlock</OmniCrafter_NoUnlockAvailableResearch>
-    <OmniCrafter_OkUnlockAvailableResearch>Research unlocked! {0} research projects unlocked</OmniCrafter_OkUnlockAvailableResearch>
-    <OmniCrafter_OkUnlockAvailableResearchWithRimatomics>Research unlocked! {0} regular research projects and {1} Rimatomics research projects unlocked</OmniCrafter_OkUnlockAvailableResearchWithRimatomics>
+    <OmniCrafter_UnlockAvailableResearchDesc>Open the research management window to preview and instantly unlock available research projects. Supports research from other mods such as Raven Race and Rimatomics.</OmniCrafter_UnlockAvailableResearchDesc>
 
 </LanguageData>

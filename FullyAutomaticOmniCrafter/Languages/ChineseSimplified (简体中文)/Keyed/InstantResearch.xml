@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <OmniCrafter_Research_Title>立即解锁可用研究</OmniCrafter_Research_Title>
+    <OmniCrafter_Research_GroupVanilla>原版</OmniCrafter_Research_GroupVanilla>
+    <OmniCrafter_Research_GroupRaven>渡鸦（Raven Race）</OmniCrafter_Research_GroupRaven>
+    <OmniCrafter_Research_GroupRimatomics>Rimatomics</OmniCrafter_Research_GroupRimatomics>
+    <OmniCrafter_Research_GroupHeader>{0}（可解锁 {1}）</OmniCrafter_Research_GroupHeader>
+    <OmniCrafter_Research_StatSummary>共 {0} 项 · 可解锁 {1} 项 · 已勾选 {2} 项</OmniCrafter_Research_StatSummary>
+    <OmniCrafter_Research_ShowAvailableOnly>仅显示可解锁</OmniCrafter_Research_ShowAvailableOnly>
+    <OmniCrafter_Research_IgnorePrerequisites>忽略前置条件</OmniCrafter_Research_IgnorePrerequisites>
+    <OmniCrafter_Research_UnlockAll>解锁全部</OmniCrafter_Research_UnlockAll>
+    <OmniCrafter_Research_UnlockGroup>解锁本组</OmniCrafter_Research_UnlockGroup>
+    <OmniCrafter_Research_DeselectAll>全不选</OmniCrafter_Research_DeselectAll>
+    <OmniCrafter_Research_UnlockSelected>解锁 {0} 项</OmniCrafter_Research_UnlockSelected>
+    <OmniCrafter_Research_Close>关闭</OmniCrafter_Research_Close>
+    <OmniCrafter_Research_StateUnlocked>已完成</OmniCrafter_Research_StateUnlocked>
+    <OmniCrafter_Research_StateAvailable>可解锁</OmniCrafter_Research_StateAvailable>
+    <OmniCrafter_Research_StateAvailableIgnored>可解锁（忽略前置）</OmniCrafter_Research_StateAvailableIgnored>
+    <OmniCrafter_Research_StateMissingPrereq>前置不足</OmniCrafter_Research_StateMissingPrereq>
+    <OmniCrafter_Research_StateHidden>未解锁</OmniCrafter_Research_StateHidden>
+    <OmniCrafter_Research_CostLabel>成本：{0}</OmniCrafter_Research_CostLabel>
+    <OmniCrafter_Research_Prerequisites>前置：{0}</OmniCrafter_Research_Prerequisites>
+    <OmniCrafter_Research_Running>正在解锁研究… {0}/{1}</OmniCrafter_Research_Running>
+    <OmniCrafter_Research_Stop>停止</OmniCrafter_Research_Stop>
+    <OmniCrafter_Research_Done>解锁完成！共完成 {0} 项研究</OmniCrafter_Research_Done>
+    <OmniCrafter_Research_NoSelection>请先勾选要解锁的研究</OmniCrafter_Research_NoSelection>
+    <OmniCrafter_Research_NoAvailable>当前没有可以解锁的研究</OmniCrafter_Research_NoAvailable>
+</LanguageData>

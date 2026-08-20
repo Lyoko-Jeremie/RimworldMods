@@ -116,9 +116,5 @@
     <OmniCrafter_GraphLogYDesc>以 log10 对数刻度显示 Y 轴。</OmniCrafter_GraphLogYDesc>
     <!-- 解锁可用研究 -->
     <OmniCrafter_UnlockAvailableResearch>立即解锁可用研究</OmniCrafter_UnlockAvailableResearch>
-    <OmniCrafter_UnlockAvailableResearchDesc>瞬间解锁当前所有前置条件已满足的研究项目；启用 Rimatomics 时，还会完成其全部自定义研究。</OmniCrafter_UnlockAvailableResearchDesc>
-    <OmniCrafter_NoUnlockAvailableResearch>当前没有可以解锁的研究</OmniCrafter_NoUnlockAvailableResearch>
-    <OmniCrafter_OkUnlockAvailableResearch>解锁完成！共解锁了 {0} 项研究</OmniCrafter_OkUnlockAvailableResearch>
-    <OmniCrafter_OkUnlockAvailableResearchWithRimatomics>解锁完成！共解锁了 {0} 项常规研究和 {1} 项 Rimatomics 研究</OmniCrafter_OkUnlockAvailableResearchWithRimatomics>
-    
+    <OmniCrafter_UnlockAvailableResearchDesc>打开研究管理窗口，预览并立即解锁当前可用的研究项目；支持渡鸦、Rimatomics 等其他 Mod 的研究。</OmniCrafter_UnlockAvailableResearchDesc>
 </LanguageData>

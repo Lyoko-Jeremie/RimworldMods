@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <OmniCrafter_Research_Title>Unlock Available Research</OmniCrafter_Research_Title>
+    <OmniCrafter_Research_GroupVanilla>Vanilla</OmniCrafter_Research_GroupVanilla>
+    <OmniCrafter_Research_GroupRaven>Raven Race</OmniCrafter_Research_GroupRaven>
+    <OmniCrafter_Research_GroupRimatomics>Rimatomics</OmniCrafter_Research_GroupRimatomics>
+    <OmniCrafter_Research_GroupHeader>{0} (unlockable: {1})</OmniCrafter_Research_GroupHeader>
+    <OmniCrafter_Research_StatSummary>{0} total · {1} unlockable · {2} selected</OmniCrafter_Research_StatSummary>
+    <OmniCrafter_Research_ShowAvailableOnly>Show unlockable only</OmniCrafter_Research_ShowAvailableOnly>
+    <OmniCrafter_Research_IgnorePrerequisites>Ignore prerequisites</OmniCrafter_Research_IgnorePrerequisites>
+    <OmniCrafter_Research_UnlockAll>Select all</OmniCrafter_Research_UnlockAll>
+    <OmniCrafter_Research_UnlockGroup>Select group</OmniCrafter_Research_UnlockGroup>
+    <OmniCrafter_Research_DeselectAll>Deselect all</OmniCrafter_Research_DeselectAll>
+    <OmniCrafter_Research_UnlockSelected>Unlock {0}</OmniCrafter_Research_UnlockSelected>
+    <OmniCrafter_Research_Close>Close</OmniCrafter_Research_Close>
+    <OmniCrafter_Research_StateUnlocked>Completed</OmniCrafter_Research_StateUnlocked>
+    <OmniCrafter_Research_StateAvailable>Unlockable</OmniCrafter_Research_StateAvailable>
+    <OmniCrafter_Research_StateAvailableIgnored>Unlockable (ignoring prerequisites)</OmniCrafter_Research_StateAvailableIgnored>
+    <OmniCrafter_Research_StateMissingPrereq>Missing prerequisites</OmniCrafter_Research_StateMissingPrereq>
+    <OmniCrafter_Research_StateHidden>Locked</OmniCrafter_Research_StateHidden>
+    <OmniCrafter_Research_CostLabel>Cost: {0}</OmniCrafter_Research_CostLabel>
+    <OmniCrafter_Research_Prerequisites>Prerequisite: {0}</OmniCrafter_Research_Prerequisites>
+    <OmniCrafter_Research_Running>Unlocking research... {0}/{1}</OmniCrafter_Research_Running>
+    <OmniCrafter_Research_Stop>Stop</OmniCrafter_Research_Stop>
+    <OmniCrafter_Research_Done>Research unlocked! {0} projects completed</OmniCrafter_Research_Done>
+    <OmniCrafter_Research_NoSelection>Select at least one research project to unlock</OmniCrafter_Research_NoSelection>
+    <OmniCrafter_Research_NoAvailable>No research to unlock</OmniCrafter_Research_NoAvailable>
+</LanguageData>
