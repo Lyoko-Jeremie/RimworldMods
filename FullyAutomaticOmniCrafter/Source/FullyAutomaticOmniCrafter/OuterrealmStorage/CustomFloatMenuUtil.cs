@@ -35,6 +35,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static readonly FieldInfo optionsField = AccessTools.Field(typeof(FloatMenu), "options");
         private static readonly FieldInfo titleField = AccessTools.Field(typeof(FloatMenu), "title");
+        // 第三方 provider 常用构造只设置私有字段（shownItem / iconTex），反射读取以对齐原版绘制；
+        // 仅在绘制无 iconThing 或需优先 shownItem 时读取，FieldInfo 静态缓存避免重复反射。
+        private static readonly FieldInfo shownItemField = AccessTools.Field(typeof(FloatMenuOption), "shownItem");
+        private static readonly FieldInfo iconTexField = AccessTools.Field(typeof(FloatMenuOption), "iconTex");
+        private static readonly FieldInfo drawPlaceHolderIconField = AccessTools.Field(typeof(FloatMenuOption), "drawPlaceHolderIcon");
+        private static readonly FieldInfo thingStyleField = AccessTools.Field(typeof(FloatMenuOption), "thingStyle");
+        private static readonly FieldInfo forceBasicStyleField = AccessTools.Field(typeof(FloatMenuOption), "forceBasicStyle");
+        private static readonly FieldInfo graphicIndexOverrideField = AccessTools.Field(typeof(FloatMenuOption), "graphicIndexOverride");
+        private static readonly FieldInfo forceThingColorField = AccessTools.Field(typeof(FloatMenuOption), "forceThingColor");
 
         /// <summary>每个 vault 菜单实例的自制列表状态（实例级，CWT 自动回收，无泄漏）。</summary>
         private sealed class CustomMenuState
@@ -60,52 +69,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>Label → 拼音缓存（菜单打开时清空一次；选项列表打开期间固定，命中率高）。</summary>
         private static readonly Dictionary<string, PinyinPair> PinyinCache = new Dictionary<string, PinyinPair>();
 
-        /// <summary>自定义模式是否对指定 vault 菜单生效（模式开关 ∧ 含 vault 选项）。</summary>
+        /// <summary>自制大列表是否对指定 vault 菜单生效：菜单对应建筑的实例模式为 CustomList。
+        /// 每建筑独立（原全局 Mod 设置已迁移到建筑字段，随存档保存）；
+        /// 非 vault 菜单 / 该建筑为原版模式 → 返回 false，走原版绘制与降频 patch。</summary>
         internal static bool IsCustomVaultMenuActive(FloatMenuMap menu)
         {
-            OmniCrafterSettings settings = OmniCrafterMod.Settings;
-            if (settings == null || settings.rightClickMenuMode != RightClickMenuMode.CustomList)
-            {
-                return false;
-            }
-            bool isVault = Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh.IsVaultMenu(menu);
-            if (!isVault && !diagnosticLogged)
-            {
-                // 一次性诊断（§4 排障）：模式已切换但 IsVaultMenu 未命中时输出菜单构成，便于定位
-                diagnosticLogged = true;
-                List<FloatMenuOption> options = (List<FloatMenuOption>)optionsField.GetValue(menu);
-                int vaultOpts = 0;
-                int copyOpts = 0;
-                if (options != null)
-                {
-                    for (int i = 0; i < options.Count; i++)
-                    {
-                        FloatMenuOption o = options[i];
-                        if (o == null)
-                        {
-                            continue;
-                        }
-                        if (o.revalidateClickTarget is Building_OuterrealmVault)
-                        {
-                            vaultOpts++;
-                        }
-                        if (o.iconThing != null && o.iconThing.holdingOwner is OuterrealmVaultViewThingOwner)
-                        {
-                            copyOpts++;
-                        }
-                    }
-                }
-                Log.Message(
-                    "[FAOC] CustomMenu 诊断: settings=" + settings.rightClickMenuMode
-                    + ", isVault=" + isVault
-                    + ", options=" + (options != null ? options.Count : -1)
-                    + ", vaultRevalidateOpts=" + vaultOpts
-                    + ", vaultCopyOpts=" + copyOpts);
-            }
-            return isVault;
+            Building_OuterrealmVault vault =
+                Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh.GetMenuVault(menu);
+            return vault != null && vault.RightClickMenuMode == RightClickMenuMode.CustomList;
         }
-
-        private static bool diagnosticLogged;
 
         /// <summary>供 FloatMenu 层面 patch 使用（如 SetInitialSizeAndPosition / PostClose）。</summary>
         internal static bool IsCustomVaultMenuActive(FloatMenu menu)
@@ -220,15 +192,52 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 GUI.color = new Color(0.55f, 0.55f, 0.55f, 1f);
             }
-            // 图标（优先 iconThing；无则灰占位）
+            // 图标（与原版 FloatMenuOption.DoGUI 同优先级：shownItem/占位 → iconTex → iconThing → 灰占位）。
+            // 第三方 provider 若只设置私有字段（shownItem / iconTex）也能正确显示，与原版菜单视觉一致。
             Rect iconRect = new Rect(row.x + 4f, row.y + (row.height - iconSize) / 2f, iconSize, iconSize);
-            if (opt.iconThing != null)
+            ThingDef shownItem = (ThingDef)shownItemField.GetValue(opt);
+            bool drawPlaceholder = (bool)drawPlaceHolderIconField.GetValue(opt);
+            if (shownItem != null || drawPlaceholder)
             {
-                Widgets.ThingIcon(iconRect, opt.iconThing);
+                ThingStyleDef style = (ThingStyleDef)thingStyleField.GetValue(opt);
+                if ((bool)forceBasicStyleField.GetValue(opt))
+                {
+                    style = null;
+                }
+                Color? thingColor = (Color?)forceThingColorField.GetValue(opt);
+                if (!thingColor.HasValue)
+                {
+                    thingColor = shownItem == null
+                        ? Color.white
+                        : (shownItem.MadeFromStuff
+                            ? shownItem.GetColorForStuff(GenStuff.DefaultStuffFor(shownItem))
+                            : shownItem.uiIconColor);
+                }
+                Widgets.DefIcon(
+                    iconRect,
+                    shownItem,
+                    thingStyleDef: style,
+                    drawPlaceholder: drawPlaceholder,
+                    color: thingColor,
+                    graphicIndexOverride: (int?)graphicIndexOverrideField.GetValue(opt));
             }
             else
             {
-                GUI.DrawTexture(iconRect, BaseContent.GreyTex);
+                Texture2D iconTex = (Texture2D)iconTexField.GetValue(opt);
+                if (iconTex != null)
+                {
+                    GUI.color = opt.iconColor;
+                    Widgets.DrawTextureFitted(iconRect, iconTex, 1f, new Vector2(1f, 1f), opt.iconTexCoords);
+                    GUI.color = Color.white;
+                }
+                else if (opt.iconThing != null)
+                {
+                    Widgets.ThingIcon(iconRect, opt.iconThing);
+                }
+                else
+                {
+                    GUI.DrawTexture(iconRect, BaseContent.GreyTex);
+                }
             }
             // 文本（与原版同 Label，自动裁切）
             Rect labelRect = new Rect(iconRect.xMax + 8f, row.y, row.xMax - iconRect.xMax - 8f - 8f, row.height);

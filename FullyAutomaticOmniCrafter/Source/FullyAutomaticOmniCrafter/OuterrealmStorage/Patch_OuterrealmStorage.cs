@@ -1390,6 +1390,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             public bool IsVaultKnown;
             public bool IsVault; // options 构造后恒定，首次判定后缓存，避免每帧反射扫描
+            public Building_OuterrealmVault Vault; // 菜单命中的 vault 建筑（IsVault 判定时记录；可能为 null）
             public bool Initialized;
             public VaultMenuRefreshMode Mode;
             public int SettingValue;
@@ -1402,7 +1403,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>菜单选项是否含 vault 副本生成的项。判定结果按实例缓存。
         /// 双条件命中（任一即可，防御重定向链变化）：
         ///   · revalidateClickTarget 指向超维存储仓建筑（Postfix 重定向后）；
-        ///   · iconThing 是 vault 视图副本（无需依赖重定向）。</summary>
+        ///   · iconThing 是 vault 视图副本（无需依赖重定向）。
+        /// 命中时同时记录首个命中的 vault 建筑到 state.Vault（供按建筑模式判定使用）。</summary>
         internal static bool IsVaultMenu(FloatMenuMap menu)
         {
             MenuState state = menuStates.GetOrCreateValue(menu);
@@ -1420,14 +1422,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    if (opt.revalidateClickTarget is Building_OuterrealmVault)
+                    if (opt.revalidateClickTarget is Building_OuterrealmVault vault)
                     {
                         state.IsVault = true;
+                        state.Vault = vault;
                         break;
                     }
-                    if (opt.iconThing != null && opt.iconThing.holdingOwner is OuterrealmVaultViewThingOwner)
+                    if (opt.iconThing != null && opt.iconThing.holdingOwner is OuterrealmVaultViewThingOwner view)
                     {
                         state.IsVault = true;
+                        state.Vault = view.Context as Building_OuterrealmVault; // 视图副本的 Context 恒为该建筑；兜底可 null
                         break;
                     }
                 }
@@ -1435,6 +1439,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             state.IsVaultKnown = true;
             return state.IsVault;
         }
+
+        /// <summary>返回菜单对应的 vault 建筑（IsVaultMenu 判定时记录；非 vault 菜单或无建筑上下文返回 null）。
+        /// 无建筑上下文（如 SubspaceAccessPawn 随身视图副本生成的菜单）按原版处理，并输出一次性诊断。</summary>
+        internal static Building_OuterrealmVault GetMenuVault(FloatMenuMap menu)
+        {
+            if (!IsVaultMenu(menu))
+            {
+                return null;
+            }
+            Building_OuterrealmVault vault = menuStates.GetOrCreateValue(menu).Vault;
+            if (vault == null && !noVaultContextLogged)
+            {
+                noVaultContextLogged = true;
+                Log.Message(
+                    "[FAOC] vault 菜单无法定位所属存储仓建筑（随身视图/子空间访问等无建筑上下文），"
+                    + "按原版菜单处理；如需大列表请对具体存储仓建筑开启。");
+            }
+            return vault;
+        }
+
+        private static bool noVaultContextLogged;
 
         private static bool Prefix(FloatMenuMap __instance, Rect inRect)
         {

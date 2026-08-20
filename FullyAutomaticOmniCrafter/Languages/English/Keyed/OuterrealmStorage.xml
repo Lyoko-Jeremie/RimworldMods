@@ -78,18 +78,11 @@
   <VaultMenuRefreshModeAdaptive>Time-based: regenerate every N real seconds</VaultMenuRefreshModeAdaptive>
   <VaultMenuRefreshModeAdaptiveDesc>Fully regenerates the menu every N real seconds (at least 4 frames apart), independent of framerate.</VaultMenuRefreshModeAdaptiveDesc>
   <VaultMenuRefreshSecondsLabel>Refresh interval (seconds)</VaultMenuRefreshSecondsLabel>
-  <!-- Vault right-click menu display mode (custom large list) -->
-  <OuterrealmFloatMenuModeLabel>Outerrealm vault right-click menu display mode</OuterrealmFloatMenuModeLabel>
-  <OuterrealmFloatMenuModeDesc>Controls how the right-click menu looks when clicking an outerrealm vault (vault menus only; other right-click menus are unaffected).</OuterrealmFloatMenuModeDesc>
-  <OuterrealmFloatMenuModeVanilla>Vanilla menu (default)</OuterrealmFloatMenuModeVanilla>
-  <OuterrealmFloatMenuModeVanillaDesc>Uses RimWorld's original right-click menu.</OuterrealmFloatMenuModeVanillaDesc>
-  <OuterrealmFloatMenuModeCustom>Large searchable list (pauses the game)</OuterrealmFloatMenuModeCustom>
-  <OuterrealmFloatMenuModeCustomDesc>Opens a large searchable list (supports pinyin) and pauses the game while open. Best performance even with hundreds of stored item types.</OuterrealmFloatMenuModeCustomDesc>
   <OuterrealmFloatMenu_Count>Showing {0} of {1} options</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>No matching options</OuterrealmFloatMenu_NoMatch>
-  <!-- Vault gizmo: toggle right-click menu mode -->
+  <!-- Vault gizmo: toggle right-click menu mode (per-building, saved in save file) -->
   <VaultRightClickMenuModeLabel>Right-click menu: {0}</VaultRightClickMenuModeLabel>
   <VaultRightClickMenuModeVanilla>Vanilla</VaultRightClickMenuModeVanilla>
   <VaultRightClickMenuModeCustom>Large list</VaultRightClickMenuModeCustom>
-  <VaultRightClickMenuModeDesc>Switches how the right-click menu looks when clicking this vault. Vanilla: RimWorld's original menu. Large list: a big searchable list (supports pinyin) that pauses the game while open.</VaultRightClickMenuModeDesc>
+  <VaultRightClickMenuModeDesc>Switches how the right-click menu looks when clicking THIS vault. Each vault is set independently and saved with the save file, so you can use the vanilla menu on some vaults and the large list on others. Vanilla: RimWorld's original menu. Large list: a big searchable list (supports pinyin) that pauses the game while open.</VaultRightClickMenuModeDesc>
 </LanguageData>

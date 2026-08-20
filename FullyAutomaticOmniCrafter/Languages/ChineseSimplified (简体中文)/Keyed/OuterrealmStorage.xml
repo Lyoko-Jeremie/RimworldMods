@@ -80,18 +80,11 @@
   <VaultMenuRefreshModeAdaptive>时间模式：每 N 秒重新生成一次</VaultMenuRefreshModeAdaptive>
   <VaultMenuRefreshModeAdaptiveDesc>每隔指定真实秒数全量重新生成菜单（最少间隔 4 帧），与帧率无关。</VaultMenuRefreshModeAdaptiveDesc>
   <VaultMenuRefreshSecondsLabel>刷新间隔（秒）</VaultMenuRefreshSecondsLabel>
-  <!-- Vault right-click menu display mode (custom large list) -->
-  <OuterrealmFloatMenuModeLabel>超维存储仓右键菜单显示模式</OuterrealmFloatMenuModeLabel>
-  <OuterrealmFloatMenuModeDesc>控制右键超维存储仓时的菜单形态（仅对 vault 菜单生效，其他右键菜单不受影响）。</OuterrealmFloatMenuModeDesc>
-  <OuterrealmFloatMenuModeVanilla>原版菜单（默认）</OuterrealmFloatMenuModeVanilla>
-  <OuterrealmFloatMenuModeVanillaDesc>使用 RimWorld 原版右键菜单。</OuterrealmFloatMenuModeVanillaDesc>
-  <OuterrealmFloatMenuModeCustom>大型可搜索列表（打开时暂停游戏）</OuterrealmFloatMenuModeCustom>
-  <OuterrealmFloatMenuModeCustomDesc>打开大型可搜索列表（支持拼音），打开期间暂停游戏。即使存储数百种物品也能保持流畅。</OuterrealmFloatMenuModeCustomDesc>
   <OuterrealmFloatMenu_Count>显示 {0} / {1} 项</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>无匹配项</OuterrealmFloatMenu_NoMatch>
-  <!-- Vault gizmo: toggle right-click menu mode -->
+  <!-- Vault gizmo: toggle right-click menu mode (per-building, saved in save file) -->
   <VaultRightClickMenuModeLabel>右键菜单：{0}</VaultRightClickMenuModeLabel>
   <VaultRightClickMenuModeVanilla>原版</VaultRightClickMenuModeVanilla>
   <VaultRightClickMenuModeCustom>大列表</VaultRightClickMenuModeCustom>
-  <VaultRightClickMenuModeDesc>切换右键该 vault 时的菜单形态。原版：RimWorld 原版右键菜单；大列表：大型可搜索列表（支持拼音），打开期间暂停游戏。</VaultRightClickMenuModeDesc>
+  <VaultRightClickMenuModeDesc>切换本存储仓的右键菜单形态（每个存储仓独立设置，随存档保存，可让不同存储仓分别使用原版或大列表）。原版：RimWorld 原版右键菜单；大列表：大型可搜索列表（支持拼音），打开期间暂停游戏。</VaultRightClickMenuModeDesc>
 </LanguageData>

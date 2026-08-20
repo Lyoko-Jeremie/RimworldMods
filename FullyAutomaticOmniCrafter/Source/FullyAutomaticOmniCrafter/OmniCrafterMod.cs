@@ -294,25 +294,8 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            // ── 右键 vault 菜单显示形态（§4 自制大列表） ──────────────────
-            listing.GapLine(12f);
-            listing.Label("OuterrealmFloatMenuModeLabel".Translate());
-            listing.Label("OuterrealmFloatMenuModeDesc".Translate());
-            listing.Gap(4f);
-            if (listing.RadioButton(
-                "OuterrealmFloatMenuModeVanilla".Translate(),
-                Settings.rightClickMenuMode == RightClickMenuMode.Vanilla,
-                tooltip: "OuterrealmFloatMenuModeVanillaDesc".Translate()))
-            {
-                Settings.rightClickMenuMode = RightClickMenuMode.Vanilla;
-            }
-            if (listing.RadioButton(
-                "OuterrealmFloatMenuModeCustom".Translate(),
-                Settings.rightClickMenuMode == RightClickMenuMode.CustomList,
-                tooltip: "OuterrealmFloatMenuModeCustomDesc".Translate()))
-            {
-                Settings.rightClickMenuMode = RightClickMenuMode.CustomList;
-            }
+            // ── 右键 vault 菜单显示形态：已迁移为每建筑独立设置（建筑 gizmo 切换，随存档保存），
+            // 不再提供全局 Mod 设置项。此处仅保留刷新模式相关设置（见上）。 ──────────
 
             // ── Omni Resurrector UI options ──────────────────────────────
             listing.CheckboxLabeled(

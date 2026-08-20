@@ -94,10 +94,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool allowTakeForUse; // 条件开关：noWithdraw 开启时放宽工作台/食物搜索（§5.2 #7，P4 实现）
         private bool frozen;       // 冻结开关：隐藏全部物品并暂停建筑工作，但保持 filter 不变
 
+        // ── 右键菜单显示形态（每建筑独立，随存档保存） ──
+        // 原为全局 Mod 设置（跨存档），改为建筑实例字段后每个存储仓可单独选择
+        // 原版菜单或自制大列表；由建筑 gizmo 切换，ExposeData 序列化。
+        private RightClickMenuMode rightClickMenuMode = RightClickMenuMode.Vanilla;
+
         public bool NoDeposit => noDeposit;
         public bool NoWithdraw => noWithdraw;
         public bool AllowTakeForUse => allowTakeForUse;
         public bool Frozen => frozen;
+
+        /// <summary>本建筑的右键菜单显示形态（原版 / 自制大列表），每建筑独立、随存档保存。</summary>
+        public RightClickMenuMode RightClickMenuMode => rightClickMenuMode;
 
         // ── InspectString 摘要缓存（§4：InspectPaneFiller 每帧调用，避免每帧拼接几百条目） ──
         private string cachedInspectString;
@@ -681,11 +689,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     icon = OuterrealmStorageTex.SubspaceAccessManagerOpenIcon,
                     action = () => Find.WindowStack.Add(new Dialog_SubspaceAccessManager()),
                 };
-                // 右键菜单模式切换（§4 自制大列表）：原版 ↔ 大列表，点击即切换并持久化；
-                // label 每帧随 GetGizmos 重建，显示当前模式；Toggle 高亮 = 大列表模式激活。
-                RightClickMenuMode curMode = OmniCrafterMod.Settings != null
-                    ? OmniCrafterMod.Settings.rightClickMenuMode
-                    : RightClickMenuMode.Vanilla;
+                // 右键菜单模式切换（§4 自制大列表）：原版 ↔ 大列表，每建筑独立、随存档保存；
+                // label 每帧随 GetGizmos 重建，显示本建筑当前模式；Toggle 高亮 = 本建筑大列表模式。
+                RightClickMenuMode curMode = rightClickMenuMode;
                 yield return new Command_Toggle
                 {
                     defaultLabel = "VaultRightClickMenuModeLabel".Translate(
@@ -697,26 +703,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         ? OuterrealmStorageTex.VaultRightClickMenuModeIcon_List
                         : OuterrealmStorageTex.VaultRightClickMenuModeIcon_Menu,
                     groupKey = VaultGizmoKeys.RightClickMenuMode,
-                    isActive = () => OmniCrafterMod.Settings != null
-                        && OmniCrafterMod.Settings.rightClickMenuMode == RightClickMenuMode.CustomList,
+                    isActive = () => rightClickMenuMode == RightClickMenuMode.CustomList,
                     toggleAction = ToggleRightClickMenuMode,
                 };
             }
         }
 
-        /// <summary>切换右键 vault 菜单显示形态（原版 ↔ 自制大列表）并立即持久化设置。</summary>
+        /// <summary>切换本建筑的右键菜单显示形态（原版 ↔ 自制大列表）；每建筑独立，随存档保存。</summary>
         private void ToggleRightClickMenuMode()
         {
-            OmniCrafterSettings settings = OmniCrafterMod.Settings;
-            if (settings == null)
-            {
-                return;
-            }
-            settings.rightClickMenuMode = settings.rightClickMenuMode == RightClickMenuMode.CustomList
+            rightClickMenuMode = rightClickMenuMode == RightClickMenuMode.CustomList
                 ? RightClickMenuMode.Vanilla
                 : RightClickMenuMode.CustomList;
-            settings.Write();
-            Log.Message("[FAOC] 右键菜单模式切换为: " + settings.rightClickMenuMode);
+            Log.Message("[FAOC] 存储仓右键菜单模式切换为: " + rightClickMenuMode);
         }
 
         public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
@@ -747,6 +746,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Values.Look(ref noWithdraw, "noWithdraw", false);
             Scribe_Values.Look(ref allowTakeForUse, "allowTakeForUse", false);
             Scribe_Values.Look(ref frozen, "frozen", false);
+            // 每建筑右键菜单形态（默认原版；旧档无此节点自动取默认值，兼容）
+            Scribe_Values.Look(ref rightClickMenuMode, "rightClickMenuMode", RightClickMenuMode.Vanilla);
         }
     }
 
