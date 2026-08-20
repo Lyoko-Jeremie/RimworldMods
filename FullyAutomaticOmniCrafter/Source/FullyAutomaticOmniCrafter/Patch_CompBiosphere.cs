@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -676,7 +677,11 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Room), nameof(Room.OpenRoofCount), MethodType.Getter)]
     public static class Patch_Room_OpenRoofCount
     {
-        private static Dictionary<int, bool> protectedRoomsCache = new Dictionary<int, bool>();
+        // ConcurrentDictionary 保证跨线程读/写/清空都不会损坏内部状态。
+        // Room.OpenRoofCount 可能被 UI（GlobalControls）、其他 Mod（如 SOS2 的
+        // VacuumUtility）乃至未来并行渲染路径调用，普通 Dictionary 会被并发写坏。
+        private static readonly ConcurrentDictionary<int, bool> protectedRoomsCache =
+            new ConcurrentDictionary<int, bool>();
         private static int lastCacheTick = -1;
 
         public static void Postfix(Room __instance, ref int __result)
@@ -687,6 +692,8 @@ namespace FullyAutomaticOmniCrafter
             if (!CompBiosphereManager.AnyBiosphereHasVacuumProtection(__instance.Map)) return;
 
             // 优化2：同 Tick 结果缓存。避免在单帧内对同一个房间进行多次重复计算。
+            // int 的读写是原子的；即使并发线程看到轻微过期的 lastCacheTick，
+            // 也只会多触发一次 Clear/重建，缓存语义不受影响（结果由重算兜底）。
             int currentTick = Find.TickManager.TicksGame;
             if (currentTick != lastCacheTick)
             {

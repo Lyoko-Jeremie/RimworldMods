@@ -4,6 +4,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using FullyAutomaticOmniCrafter;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
@@ -37,6 +38,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         
         public static readonly Texture2D SubspaceAccessOpenManagerSelfIcon = 
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessOpenManagerSelf") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D VaultRightClickMenuModeIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniPower_Mode") ?? 
             BaseContent.WhiteTex;
         
     }
@@ -672,7 +677,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     icon = OuterrealmStorageTex.SubspaceAccessManagerOpenIcon,
                     action = () => Find.WindowStack.Add(new Dialog_SubspaceAccessManager()),
                 };
+                // 右键菜单模式切换（§4 自制大列表）：原版 ↔ 大列表，点击即切换并持久化；
+                // label 每帧随 GetGizmos 重建，显示当前模式；Toggle 高亮 = 大列表模式激活。
+                RightClickMenuMode curMode = OmniCrafterMod.Settings != null
+                    ? OmniCrafterMod.Settings.rightClickMenuMode
+                    : RightClickMenuMode.Vanilla;
+                yield return new Command_Toggle
+                {
+                    defaultLabel = "VaultRightClickMenuModeLabel".Translate(
+                        curMode == RightClickMenuMode.CustomList
+                            ? "VaultRightClickMenuModeCustom".Translate()
+                            : "VaultRightClickMenuModeVanilla".Translate()),
+                    defaultDesc = "VaultRightClickMenuModeDesc".Translate(),
+                    icon = OuterrealmStorageTex.VaultRightClickMenuModeIcon,
+                    groupKey = VaultGizmoKeys.RightClickMenuMode,
+                    isActive = () => OmniCrafterMod.Settings != null
+                        && OmniCrafterMod.Settings.rightClickMenuMode == RightClickMenuMode.CustomList,
+                    toggleAction = ToggleRightClickMenuMode,
+                };
             }
+        }
+
+        /// <summary>切换右键 vault 菜单显示形态（原版 ↔ 自制大列表）并立即持久化设置。</summary>
+        private void ToggleRightClickMenuMode()
+        {
+            OmniCrafterSettings settings = OmniCrafterMod.Settings;
+            if (settings == null)
+            {
+                return;
+            }
+            settings.rightClickMenuMode = settings.rightClickMenuMode == RightClickMenuMode.CustomList
+                ? RightClickMenuMode.Vanilla
+                : RightClickMenuMode.CustomList;
+            settings.Write();
         }
 
         public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
@@ -713,5 +750,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public const int AllowWithdraw = 714202;
         public const int AllowTakeForUse = 714203;
         public const int Frozen = 714204;
+        public const int RightClickMenuMode = 714205;
     }
 }

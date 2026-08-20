@@ -89,4 +89,9 @@
   <OuterrealmFloatMenuModeCustomDesc>打开大型可搜索列表（支持拼音），打开期间暂停游戏。即使存储数百种物品也能保持流畅。</OuterrealmFloatMenuModeCustomDesc>
   <OuterrealmFloatMenu_Count>显示 {0} / {1} 项</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>无匹配项</OuterrealmFloatMenu_NoMatch>
+  <!-- Vault gizmo: toggle right-click menu mode -->
+  <VaultRightClickMenuModeLabel>右键菜单：{0}</VaultRightClickMenuModeLabel>
+  <VaultRightClickMenuModeVanilla>原版</VaultRightClickMenuModeVanilla>
+  <VaultRightClickMenuModeCustom>大列表</VaultRightClickMenuModeCustom>
+  <VaultRightClickMenuModeDesc>切换右键该 vault 时的菜单形态。原版：RimWorld 原版右键菜单；大列表：大型可搜索列表（支持拼音），打开期间暂停游戏。</VaultRightClickMenuModeDesc>
 </LanguageData>

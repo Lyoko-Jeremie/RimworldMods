@@ -87,4 +87,9 @@
   <OuterrealmFloatMenuModeCustomDesc>Opens a large searchable list (supports pinyin) and pauses the game while open. Best performance even with hundreds of stored item types.</OuterrealmFloatMenuModeCustomDesc>
   <OuterrealmFloatMenu_Count>Showing {0} of {1} options</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>No matching options</OuterrealmFloatMenu_NoMatch>
+  <!-- Vault gizmo: toggle right-click menu mode -->
+  <VaultRightClickMenuModeLabel>Right-click menu: {0}</VaultRightClickMenuModeLabel>
+  <VaultRightClickMenuModeVanilla>Vanilla</VaultRightClickMenuModeVanilla>
+  <VaultRightClickMenuModeCustom>Large list</VaultRightClickMenuModeCustom>
+  <VaultRightClickMenuModeDesc>Switches how the right-click menu looks when clicking this vault. Vanilla: RimWorld's original menu. Large list: a big searchable list (supports pinyin) that pauses the game while open.</VaultRightClickMenuModeDesc>
 </LanguageData>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -60,8 +61,11 @@ namespace FullyAutomaticOmniCrafter
 
         // 每张地图独立缓存二代墙的涂色结果。Region 重建期间会频繁调用
         // GetExpectedRegionType；缓存让大多数调用只需要一次数组索引。
-        private static readonly Dictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
-            new Dictionary<Map, PhantomWall2RegionColorCache>();
+        // ConcurrentDictionary 保证跨线程惰性创建/读取不会损坏内部状态
+        // （RegionGrid 的 getter 访问会触发 TryRebuildDirtyRegionsAndRooms，
+        // 理论上任何线程都可能进入 GetExpectedRegionType）。
+        private static readonly ConcurrentDictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
+            new ConcurrentDictionary<Map, PhantomWall2RegionColorCache>();
 
         private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker =
             CreateNotifyWalkabilityChangedInvoker();
@@ -185,31 +189,21 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         private static PhantomWall2RegionColorCache GetPhantomWall2ColorCache(Map map)
         {
-            PhantomWall2RegionColorCache cache;
-            if (!PhantomWall2ColorCaches.TryGetValue(map, out cache) || !cache.MatchesMap)
-            {
-                cache = new PhantomWall2RegionColorCache(map, PhantomWall2RegionTypeBuckets);
-                PhantomWall2ColorCaches[map] = cache;
-            }
-            return cache;
+            // GetOrAdd 是原子的：并发惰性创建时只发布一个有效缓存，不会像
+            // 普通 Dictionary 那样因并发写入破坏内部状态。
+            // 缓存实例本身是 copy-on-write（Rebuild 发布新数组），可安全跨线程读取。
+            return PhantomWall2ColorCaches.GetOrAdd(map, m => new PhantomWall2RegionColorCache(m, PhantomWall2RegionTypeBuckets));
         }
 
         private sealed class PhantomWall2RegionColorCache
         {
             // regionTypeByCell: 最终给 RegionMaker 使用的 cell -> RegionType。
-            // wallIndexByCell: 只在 Rebuild 期间使用，用于 O(1) 判断某格是否二代墙。
-            // componentByCell: 只在 Rebuild 期间使用，用于把相同规则的相邻墙归入同一组件。
+            // copy-on-write：Rebuild 在局部构建新数组，最后通过 volatile 写一次性
+            // 发布。读取方拿到的总是完整快照；并发 Rebuild 各自构建互不干扰的
+            // 局部状态，最多导致重复计算，不会破坏共享数据（无锁、无死锁风险）。
             private readonly Map map;
             private readonly RegionType[] buckets;
-            private readonly List<Building_OmniPhantomWall2> walls = new List<Building_OmniPhantomWall2>();
-            private readonly List<int> wallCells = new List<int>();
-            private readonly List<IntVec3> floodStack = new List<IntVec3>();
-            private readonly List<Component> components = new List<Component>();
-            private readonly List<int> colorOrder = new List<int>();
-
-            private int[] regionTypeByCell;
-            private int[] wallIndexByCell;
-            private int[] componentByCell;
+            private volatile int[] regionTypeByCell;
             private bool dirty = true;
 
             /// <summary>
@@ -228,9 +222,10 @@ namespace FullyAutomaticOmniCrafter
             {
                 get
                 {
+                    int[] arr = regionTypeByCell;
                     return map != null
-                        && regionTypeByCell != null
-                        && regionTypeByCell.Length == map.cellIndices.NumGridCells;
+                        && arr != null
+                        && arr.Length == map.cellIndices.NumGridCells;
                 }
             }
 
@@ -250,8 +245,9 @@ namespace FullyAutomaticOmniCrafter
                 if (dirty || !MatchesMap)
                     Rebuild();
 
+                int[] arr = regionTypeByCell;
                 int index = map.cellIndices.CellToIndex(c);
-                int regionType = regionTypeByCell[index];
+                int regionType = arr[index];
                 return regionType != 0 ? (RegionType)regionType : buckets[0];
             }
 
@@ -260,59 +256,49 @@ namespace FullyAutomaticOmniCrafter
             /// </summary>
             private void Rebuild()
             {
-                // 重建分为五步：
-                //   1. 收集当前地图上的二代墙占用格；
-                //   2. flood-fill 出“相邻且规则相同”的组件；
-                //   3. 为相邻且规则不同的组件建冲突边；
-                //   4. 按度数降序贪心涂色，从小桶开始使用；
-                //   5. 把组件颜色写回 cell -> RegionType 数组。
-                EnsureArrays();
-                ClearArrays();
-                CollectWalls(map.listerBuildings.allBuildingsColonist);
-                CollectWalls(map.listerBuildings.allBuildingsNonColonist);
-                BuildComponents();
-                BuildEdges();
-                ColorComponents();
-                ApplyColorsToCells();
-                dirty = false;
-            }
-
-            /// <summary>
-            /// 确保按地图格索引访问的缓存数组存在且长度正确。
-            /// </summary>
-            private void EnsureArrays()
-            {
                 int cellCount = map.cellIndices.NumGridCells;
-                if (regionTypeByCell == null || regionTypeByCell.Length != cellCount)
-                {
-                    regionTypeByCell = new int[cellCount];
-                    wallIndexByCell = new int[cellCount];
-                    componentByCell = new int[cellCount];
-                }
-            }
 
-            /// <summary>
-            /// 清空上一次重建留下的数组标记和临时列表。
-            /// </summary>
-            private void ClearArrays()
-            {
-                for (int i = 0; i < regionTypeByCell.Length; i++)
+                // 全部中间状态放入局部变量：并发 Rebuild 互不共享、互不干扰。
+                int[] newRegionType = new int[cellCount];
+                int[] newWallIndex = new int[cellCount];
+                int[] newComponent = new int[cellCount];
+                for (int i = 0; i < cellCount; i++)
                 {
-                    regionTypeByCell[i] = 0;
-                    wallIndexByCell[i] = -1;
-                    componentByCell[i] = -1;
+                    newWallIndex[i] = -1;
+                    newComponent[i] = -1;
                 }
-                walls.Clear();
-                wallCells.Clear();
-                floodStack.Clear();
-                components.Clear();
-                colorOrder.Clear();
+
+                List<Building_OmniPhantomWall2> walls = new List<Building_OmniPhantomWall2>();
+                List<int> wallCells = new List<int>();
+                List<IntVec3> floodStack = new List<IntVec3>();
+                List<Component> components = new List<Component>();
+                List<int> colorOrder = new List<int>();
+
+                // 1. 收集当前地图上的二代墙占用格；
+                CollectWalls(map.listerBuildings.allBuildingsColonist, walls, wallCells, newWallIndex);
+                CollectWalls(map.listerBuildings.allBuildingsNonColonist, walls, wallCells, newWallIndex);
+                // 2. flood-fill 出“相邻且规则相同”的组件；
+                BuildComponents(walls, wallCells, newWallIndex, newComponent, components, floodStack);
+                // 3. 为相邻且规则不同的组件建冲突边；
+                BuildEdges(wallCells, newComponent, components);
+                // 4. 按度数降序贪心涂色，从小桶开始使用；
+                ColorComponents(components, colorOrder);
+                // 5. 把组件颜色写回 cell -> RegionType 数组。
+                ApplyColorsToCells(wallCells, newComponent, components, newRegionType);
+
+                // volatile 写原子发布完整结果；此后读取方只会看到整数组快照。
+                regionTypeByCell = newRegionType;
+                dirty = false;
             }
 
             /// <summary>
             /// 从建筑列表中收集二代幻影墙，并记录每个占用格对应的墙体索引。
             /// </summary>
-            private void CollectWalls(List<Building> buildings)
+            private void CollectWalls(
+                List<Building> buildings,
+                List<Building_OmniPhantomWall2> walls,
+                List<int> wallCells,
+                int[] wallIndexByCell)
             {
                 if (buildings == null)
                     return;
@@ -349,7 +335,13 @@ namespace FullyAutomaticOmniCrafter
             /// <summary>
             /// 将相邻且规则签名相同的二代墙格合并为同一个涂色组件。
             /// </summary>
-            private void BuildComponents()
+            private void BuildComponents(
+                List<Building_OmniPhantomWall2> walls,
+                List<int> wallCells,
+                int[] wallIndexByCell,
+                int[] componentByCell,
+                List<Component> components,
+                List<IntVec3> floodStack)
             {
                 // 组件是“规则签名相同且 4 邻接连通”的二代墙格集合。
                 // 同组件必须拿同一个 RegionType，让 RegionMaker 把它们 flood-fill 成同一 Region。
@@ -418,7 +410,7 @@ namespace FullyAutomaticOmniCrafter
             /// <summary>
             /// 为相邻且规则签名不同的组件建立冲突边。
             /// </summary>
-            private void BuildEdges()
+            private void BuildEdges(List<int> wallCells, int[] componentByCell, List<Component> components)
             {
                 // 组件图只记录“相邻且规则不同”的冲突。
                 // 这些组件必须使用不同 RegionType，否则 RegionMaker 会跨规则边界合并。
@@ -454,7 +446,7 @@ namespace FullyAutomaticOmniCrafter
             /// <summary>
             /// 按组件度数降序进行线性贪心涂色，并优先使用较小的 RegionType 桶。
             /// </summary>
-            private void ColorComponents()
+            private void ColorComponents(List<Component> components, List<int> colorOrder)
             {
                 // 线性贪心涂色：先处理邻居多的组件，通常能把颜色数压得很低。
                 // 对每个组件从 buckets[0] 开始找第一个未被相邻已染色组件占用的桶，
@@ -465,7 +457,7 @@ namespace FullyAutomaticOmniCrafter
                     colorOrder.Add(i);
                 }
 
-                colorOrder.Sort(CompareComponentsForColoring);
+                colorOrder.Sort((a, b) => CompareComponentsForColoring(a, b, components));
                 bool[] used = new bool[buckets.Length];
 
                 for (int i = 0; i < colorOrder.Count; i++)
@@ -487,7 +479,7 @@ namespace FullyAutomaticOmniCrafter
                     int colorIndex = FirstAvailableColor(used);
                     if (colorIndex < 0)
                     {
-                        colorIndex = LeastConflictingColor(component);
+                        colorIndex = LeastConflictingColor(component, components);
                         Log.Warning($"[OmniPhantomWall2] RegionType 桶池已耗尽，使用 {buckets[colorIndex]}，可能产生局部冲突。");
                     }
                     component.colorIndex = colorIndex;
@@ -497,7 +489,7 @@ namespace FullyAutomaticOmniCrafter
             /// <summary>
             /// 比较两个组件的涂色优先级：邻居多者优先，其次优先处理不能使用 18 的组件。
             /// </summary>
-            private int CompareComponentsForColoring(int a, int b)
+            private int CompareComponentsForColoring(int a, int b, List<Component> components)
             {
                 Component componentA = components[a];
                 Component componentB = components[b];
@@ -528,7 +520,7 @@ namespace FullyAutomaticOmniCrafter
             /// <summary>
             /// 在所有桶都被占用时，选择与相邻组件冲突数量最少的保底颜色。
             /// </summary>
-            private int LeastConflictingColor(Component component)
+            private int LeastConflictingColor(Component component, List<Component> components)
             {
                 // 正常情况下 14 个桶远多于平面邻接图需要的颜色数。
                 // 如果未来出现非平面或异常邻接导致桶耗尽，选择冲突最少的桶并打 warning，
@@ -558,7 +550,11 @@ namespace FullyAutomaticOmniCrafter
             /// <summary>
             /// 把每个组件分配到的颜色桶写回到每个墙格的 RegionType 缓存数组。
             /// </summary>
-            private void ApplyColorsToCells()
+            private void ApplyColorsToCells(
+                List<int> wallCells,
+                int[] componentByCell,
+                List<Component> components,
+                int[] regionTypeByCell)
             {
                 for (int i = 0; i < wallCells.Count; i++)
                 {

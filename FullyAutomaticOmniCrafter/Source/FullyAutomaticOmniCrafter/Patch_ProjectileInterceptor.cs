@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Verse;
 using UnityEngine;
 using Verse.AI;
@@ -11,8 +12,9 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(OrbitalStrike), "Tick")]
     public static class Patch_OrbitalStrike_Tick
     {
-        private static Map cachedMap;
-        private static OmniInterceptorTracker cachedTracker;
+        // ThreadLocal：每线程独立缓存，无锁无竞争。patch 可能被任意线程调用（tick/其他 Mod 线程）。
+        private static readonly ThreadLocal<Map> cachedMap = new ThreadLocal<Map>();
+        private static readonly ThreadLocal<OmniInterceptorTracker> cachedTracker = new ThreadLocal<OmniInterceptorTracker>();
 
         public static void Postfix(OrbitalStrike __instance)
         {
@@ -20,19 +22,19 @@ namespace FullyAutomaticOmniCrafter
             Map map = __instance.Map;
             if (map == null) return;
 
-            if (map != cachedMap || cachedTracker == null)
+            if (map != cachedMap.Value || cachedTracker.Value == null)
             {
-                cachedMap = map;
-                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+                cachedMap.Value = map;
+                cachedTracker.Value = map.GetComponent<OmniInterceptorTracker>();
             }
 
-            if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return;
+            if (cachedTracker.Value == null || cachedTracker.Value.allInterceptors.Count == 0) return;
 
             float radius = 0f;
             if (__instance is PowerBeam) radius = 15f;
             else if (__instance is Bombardment b) radius = b.impactAreaRadius + 8f; // 加上爆炸半径
 
-            if (cachedTracker.IsAreaProtected(__instance.Position, radius, __instance.instigator, out _))
+            if (cachedTracker.Value.IsAreaProtected(__instance.Position, radius, __instance.instigator, out _))
             {
                 __instance.Destroy();
             }
@@ -43,8 +45,8 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Verb), "CanHitTargetFrom")]
     public static class Patch_Verb_LaunchProjectile_CanHitTargetFrom
     {
-        private static Map cachedMap;
-        private static OmniInterceptorTracker cachedTracker;
+        private static readonly ThreadLocal<Map> cachedMap = new ThreadLocal<Map>();
+        private static readonly ThreadLocal<OmniInterceptorTracker> cachedTracker = new ThreadLocal<OmniInterceptorTracker>();
 
         public static void Postfix(Verb __instance, IntVec3 root, LocalTargetInfo targ, ref bool __result)
         {
@@ -55,24 +57,24 @@ namespace FullyAutomaticOmniCrafter
             Map map = caster.Map;
             if (map == null) return;
 
-            if (map != cachedMap || cachedTracker == null)
+            if (map != cachedMap.Value || cachedTracker.Value == null)
             {
-                cachedMap = map;
-                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+                cachedMap.Value = map;
+                cachedTracker.Value = map.GetComponent<OmniInterceptorTracker>();
             }
 
-            if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return;
+            if (cachedTracker.Value == null || cachedTracker.Value.allInterceptors.Count == 0) return;
 
             // 如果攻击者是敌人，且目标位置受保护，拦截
-            if (cachedTracker.IsTargetProtected(targ.Thing, caster) || 
-                (targ.HasThing == false && cachedTracker.IsCellProtected(targ.Cell, caster, out _)))
+            if (cachedTracker.Value.IsTargetProtected(targ.Thing, caster) || 
+                (targ.HasThing == false && cachedTracker.Value.IsCellProtected(targ.Cell, caster, out _)))
             {
                 __result = false;
                 return;
             }
 
             // 如果攻击者自己就在受保护位置（敌方护盾内），也不能向外射击
-            if (cachedTracker.IsCellProtected(root, caster, out _))
+            if (cachedTracker.Value.IsCellProtected(root, caster, out _))
             {
                 __result = false;
                 return;
@@ -83,8 +85,8 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Pawn_PathFollower), "CostToMoveIntoCell", typeof(Pawn), typeof(IntVec3))]
     public static class Patch_Pawn_PathFollower_CostToMoveIntoCell
     {
-        private static Map cachedMap;
-        private static OmniInterceptorTracker cachedTracker;
+        private static readonly ThreadLocal<Map> cachedMap = new ThreadLocal<Map>();
+        private static readonly ThreadLocal<OmniInterceptorTracker> cachedTracker = new ThreadLocal<OmniInterceptorTracker>();
 
         public static void Postfix(Pawn pawn, IntVec3 c, ref float __result)
         {
@@ -93,15 +95,15 @@ namespace FullyAutomaticOmniCrafter
             Map map = pawn.Map;
             if (map == null) return;
 
-            if (map != cachedMap || cachedTracker == null)
+            if (map != cachedMap.Value || cachedTracker.Value == null)
             {
-                cachedMap = map;
-                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+                cachedMap.Value = map;
+                cachedTracker.Value = map.GetComponent<OmniInterceptorTracker>();
             }
 
-            if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return;
+            if (cachedTracker.Value == null || cachedTracker.Value.allInterceptors.Count == 0) return;
 
-            if (cachedTracker.IsCellProtected(c, pawn, out _))
+            if (cachedTracker.Value.IsCellProtected(c, pawn, out _))
             {
                 __result = 10000f;
             }
@@ -111,8 +113,8 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(AttackTargetFinder), "BestAttackTarget")]
     public static class Patch_AttackTargetFinder_BestAttackTarget
     {
-        private static Map cachedMap;
-        private static OmniInterceptorTracker cachedTracker;
+        private static readonly ThreadLocal<Map> cachedMap = new ThreadLocal<Map>();
+        private static readonly ThreadLocal<OmniInterceptorTracker> cachedTracker = new ThreadLocal<OmniInterceptorTracker>();
 
         public static void Postfix(ref IAttackTarget __result, IAttackTargetSearcher searcher)
         {
@@ -123,23 +125,23 @@ namespace FullyAutomaticOmniCrafter
             Map map = searcherThing.Map;
             if (map == null) return;
 
-            if (map != cachedMap || cachedTracker == null)
+            if (map != cachedMap.Value || cachedTracker.Value == null)
             {
-                cachedMap = map;
-                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+                cachedMap.Value = map;
+                cachedTracker.Value = map.GetComponent<OmniInterceptorTracker>();
             }
 
-            if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return;
+            if (cachedTracker.Value == null || cachedTracker.Value.allInterceptors.Count == 0) return;
 
             // 如果已经有了目标，检查目标是否受保护（如果是敌人在攻击，则拦截）
-            if (cachedTracker.IsTargetProtected(__result.Thing, searcherThing))
+            if (cachedTracker.Value.IsTargetProtected(__result.Thing, searcherThing))
             {
                 __result = null;
                 return;
             }
 
             // 额外逻辑：如果攻击者自己就在某个敌方护盾内，他也不能攻击任何人
-            if (cachedTracker.IsCellProtected(searcherThing.Position, searcherThing, out _))
+            if (cachedTracker.Value.IsCellProtected(searcherThing.Position, searcherThing, out _))
             {
                 __result = null;
             }
@@ -149,24 +151,24 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Explosion), "StartExplosion")]
     public static class Patch_Explosion_StartExplosion
     {
-        private static Map cachedMap;
-        private static OmniInterceptorTracker cachedTracker;
+        private static readonly ThreadLocal<Map> cachedMap = new ThreadLocal<Map>();
+        private static readonly ThreadLocal<OmniInterceptorTracker> cachedTracker = new ThreadLocal<OmniInterceptorTracker>();
 
         public static bool Prefix(Explosion __instance)
         {
             Map map = __instance.Map;
             if (map == null) return true;
 
-            if (map != cachedMap || cachedTracker == null)
+            if (map != cachedMap.Value || cachedTracker.Value == null)
             {
-                cachedMap = map;
-                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+                cachedMap.Value = map;
+                cachedTracker.Value = map.GetComponent<OmniInterceptorTracker>();
             }
 
-            if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return true;
+            if (cachedTracker.Value == null || cachedTracker.Value.allInterceptors.Count == 0) return true;
 
             // 如果爆炸范围涉及受保护区域（且来源是敌人/无主），则抑制
-            if (cachedTracker.IsAreaProtected(__instance.Position, __instance.radius, __instance.instigator, out _))
+            if (cachedTracker.Value.IsAreaProtected(__instance.Position, __instance.radius, __instance.instigator, out _))
             {
                 return false;
             }
@@ -195,8 +197,8 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        private static Map cachedMap;
-        private static OmniInterceptorTracker cachedTracker;
+        private static readonly ThreadLocal<Map> cachedMap = new ThreadLocal<Map>();
+        private static readonly ThreadLocal<OmniInterceptorTracker> cachedTracker = new ThreadLocal<OmniInterceptorTracker>();
         private static readonly ConditionalWeakTable<Skyfaller, SkyfallerRelationCacheEntry> relationCache =
             new ConditionalWeakTable<Skyfaller, SkyfallerRelationCacheEntry>();
 
@@ -206,13 +208,13 @@ namespace FullyAutomaticOmniCrafter
             Map map = __instance.Map;
             if (map == null) return;
 
-            if (map != cachedMap || cachedTracker == null)
+            if (map != cachedMap.Value || cachedTracker.Value == null)
             {
-                cachedMap = map;
-                cachedTracker = map.GetComponent<OmniInterceptorTracker>();
+                cachedMap.Value = map;
+                cachedTracker.Value = map.GetComponent<OmniInterceptorTracker>();
             }
 
-            if (cachedTracker == null || cachedTracker.allInterceptors.Count == 0) return;
+            if (cachedTracker.Value == null || cachedTracker.Value.allInterceptors.Count == 0) return;
 
             // Skyfaller 同时覆盖降落和起飞动画。明确属于玩家或非敌对派系的运输物必须放行。
             SkyfallerRelation relation = relationCache.GetValue(
@@ -224,7 +226,7 @@ namespace FullyAutomaticOmniCrafter
             }
 
             // 敌对和无法确认来源的物体继续采用保守策略拦截。
-            if (cachedTracker.IsCellWithinShield(__instance.Position, out var protector))
+            if (cachedTracker.Value.IsCellWithinShield(__instance.Position, out var protector))
             {
                 if (protector.interceptSkyfallers)
                 {
