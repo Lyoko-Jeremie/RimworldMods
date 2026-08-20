@@ -29,6 +29,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     ///    导致复制 —— LiftThingForTransfer prefix 兜底：锚点副本改走 view.Remove
     ///    （不 Suppress → Notify_ItemRemoved → 全局扣全量）或 SplitOff（视图记账）。
     ///    注入的副本 transfer 与施工配送路径同经 LiftThingForTransfer，共用此记账。
+    ///  · 目的地门控（vault 作为目的地时的 noDeposit 语义）：牵引光束 TryFindBestStorageCellCore
+    ///    只查 filter 与阵营、不查 IHaulDestination.HaulDestinationEnabled（原版 StoreUtility 有查），
+    ///    否则关闭"允许存入"后 vault 格仍会被当作搬入目的地、物品落格后被吸收进全局层。
+    ///    Patch_Beam_IsBeamStorageGroupAllowed 在组级/格级判定汇合点排除 noDeposit 的 vault 组，
+    ///    使 Core 继续遍历下一优先级存储组（与原版跳过禁用存储一致）。
     /// </summary>
     internal static class BeamManipulatorCompat
     {
@@ -54,6 +59,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         internal static readonly MethodInfo LiftThingForTransferMethod =
             BeamManipulatorUtilityType == null ? null :
             AccessTools.Method(BeamManipulatorUtilityType, "LiftThingForTransfer");
+        internal static readonly MethodInfo IsBeamStorageGroupAllowedMethod =
+            BeamManipulatorUtilityType == null ? null :
+            AccessTools.Method(BeamManipulatorUtilityType, "IsBeamStorageGroupAllowed");
         private static readonly Type BeamTransferType =
             AccessTools.TypeByName("ManipulatorBeam.BeamTransfer");
         internal static readonly FieldInfo BeamTransferThingField =
@@ -384,6 +392,37 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             __result = result;
             return false;
+        }
+    }
+
+    /// <summary>目的地格门控（vault 作为目的地时的 noDeposit 语义）：牵引光束的存储搜索
+    /// TryFindBestStorageCellCore 只检查 filter（AllowedToAccept）与阵营，不检查
+    /// IHaulDestination.HaulDestinationEnabled（原版 StoreUtility 有查、牵引光束没有），
+    /// 导致关闭"允许存入"后仍把 vault 格当作合法目的地（物品落格后被吸收进全局层）。
+    /// IsBeamStorageGroupAllowed 是组级判定、且被格级 IsBeamStorageCellAllowed 内部调用，
+    /// 是该问题的唯一汇合点：noDeposit 关闭的 vault 组整体排除 → FindBestCellInSlotGroup
+    /// 返回 Invalid → TryFindBestStorageCellCore 继续遍历下一优先级存储组（与原版跳过
+    /// 禁用存储的行为一致，而非直接放弃搬运）。覆盖手动/自动取货、飞行中换目的地、
+    /// 施工配送等全部经 Core 的目的地搜索。</summary>
+    [HarmonyPatch]
+    internal static class Patch_Beam_IsBeamStorageGroupAllowed
+    {
+        // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
+        static bool Prepare() => BeamManipulatorCompat.IsBeamStorageGroupAllowedMethod != null;
+
+        static MethodBase TargetMethod() => BeamManipulatorCompat.IsBeamStorageGroupAllowedMethod;
+
+        static void Postfix(SlotGroup group, ref bool __result)
+        {
+            if (!__result || group == null)
+            {
+                return;
+            }
+            // vault 关闭"允许存入"（noDeposit）：该存储组对牵引光束不再可作目的地
+            if (group.parent is Building_OuterrealmVault vault && vault.NoDeposit)
+            {
+                __result = false;
+            }
         }
     }
 }

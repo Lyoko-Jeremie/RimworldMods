@@ -228,7 +228,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    if (absorbTimers.ContainsKey(t) || view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanShow(t))
+                    if (absorbTimers.ContainsKey(t) || view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanAbsorb(t))
                     {
                         continue;
                     }
@@ -272,9 +272,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue; // 未到期
                 }
-                if (view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanShow(t))
+                if (view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanAbsorb(t))
                 {
-                    // 到期但被预留使用 / filter 已禁止 → 不再吸收（物品归游戏/玩家），清理登记
+                    // 到期但被预留使用 / filter 已禁止 / 禁止存入 → 不再吸收（物品归游戏/玩家），清理登记
                     if (toClear == null)
                     {
                         toClear = new List<Thing>();
@@ -351,6 +351,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>物品落格钩子（Thing.SpawnSetup → Position.GetSlotGroup().parent 触发，§v4）。
         /// 双接口后搬运工存入已走 v3 容器（HaulToContainer → view 吸收），不落格；本钩子只服务
         /// 掉落物/异常 Spawn 在 vault 格上的物品：登记吸收倒计时（15 tick）→ 到期吸收进全局层。
+        /// 禁止存入（noDeposit）开启时不登记——物品留格子由玩家处置（§noDeposit 落格门控）。
         /// override 基类 Building_Storage（原版教学提示经 base 保留）。</summary>
         public override void Notify_ReceivedThing(Thing newItem)
         {
@@ -363,9 +364,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return; // 借出副本（预留物化）不登记
             }
-            if (!CanShow(newItem))
+            if (!CanAbsorb(newItem))
             {
-                return; // filter 不允许：不吸收，物品留格子由玩家处置
+                return; // 禁止存入/冻结/filter 不允许：不吸收，物品留格子由玩家处置
             }
             absorbTimers[newItem] = GenTicks.TicksGame + AbsorbDelayTicks;
         }
@@ -426,6 +427,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public bool CanShow(Thing t)
         {
             return !frozen && GetStoreSettings().AllowedToAccept(t);
+        }
+
+        /// <summary>落格物品是否可吸收进全局层：noDeposit（禁止存入）开启时恒 false（物品留格子由玩家处置，
+        /// 与"允许存入"开关语义一致），否则取决于 CanShow（冻结/filter）。</summary>
+        private bool CanAbsorb(Thing t)
+        {
+            return !noDeposit && CanShow(t);
         }
 
         // IHaulEnroute：无限容量（§1.2）。注意该值不做 filter 检查——filter 门控在存储选择阶段 Accepts。
