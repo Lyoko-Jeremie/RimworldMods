@@ -41,7 +41,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             BaseContent.WhiteTex;
         
         public static readonly Texture2D VaultRightClickMenuModeIcon = 
-            ContentFinder<Texture2D>.Get("UI/Commands/OmniPower_Mode") ?? 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultRightClickMenuMode") ?? 
             BaseContent.WhiteTex;
         
     }
