@@ -82,6 +82,13 @@
     <!-- 建筑属性 -->
     <building>
       <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <!--
+        必须指定 blueprintClass = Blueprint_Storage，否则默认使用 Blueprint_Build（BuildingProperties.cs），
+        Blueprint_Build.MakeSolidThing 不会给 Frame 创建 storageSettings → Frame.CompleteConstruction 时
+        member.ThingStoreSettings.CopyFrom(this.storageSettings) 传入 null → StorageSettings.CopyFrom(null) 抛 NullReferenceException。
+        （与 MatterEnergyConverter.xml 同源问题）
+      -->
+      <blueprintClass>Blueprint_Storage</blueprintClass>
       <!-- 启用原版存储组（§4.1e）：自定义 tag，与原版 Shelf/Bookcase 隔离；组 = 共享 filter + 优先级，内容仍全局共享 -->
       <storageGroupTag>FAOC_Vault</storageGroupTag>
       <destroySound>BuildingDestroyed_Metal_Big</destroySound>
