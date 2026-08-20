@@ -68,8 +68,44 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            return Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh.IsVaultMenu(menu);
+            bool isVault = Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh.IsVaultMenu(menu);
+            if (!isVault && !diagnosticLogged)
+            {
+                // 一次性诊断（§4 排障）：模式已切换但 IsVaultMenu 未命中时输出菜单构成，便于定位
+                diagnosticLogged = true;
+                List<FloatMenuOption> options = (List<FloatMenuOption>)optionsField.GetValue(menu);
+                int vaultOpts = 0;
+                int copyOpts = 0;
+                if (options != null)
+                {
+                    for (int i = 0; i < options.Count; i++)
+                    {
+                        FloatMenuOption o = options[i];
+                        if (o == null)
+                        {
+                            continue;
+                        }
+                        if (o.revalidateClickTarget is Building_OuterrealmVault)
+                        {
+                            vaultOpts++;
+                        }
+                        if (o.iconThing != null && o.iconThing.holdingOwner is OuterrealmVaultViewThingOwner)
+                        {
+                            copyOpts++;
+                        }
+                    }
+                }
+                Log.Message(
+                    "[FAOC] CustomMenu 诊断: settings=" + settings.rightClickMenuMode
+                    + ", isVault=" + isVault
+                    + ", options=" + (options != null ? options.Count : -1)
+                    + ", vaultRevalidateOpts=" + vaultOpts
+                    + ", vaultCopyOpts=" + copyOpts);
+            }
+            return isVault;
         }
+
+        private static bool diagnosticLogged;
 
         /// <summary>供 FloatMenu 层面 patch 使用（如 SetInitialSizeAndPosition / PostClose）。</summary>
         internal static bool IsCustomVaultMenuActive(FloatMenu menu)

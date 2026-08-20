@@ -710,6 +710,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 ? RightClickMenuMode.Vanilla
                 : RightClickMenuMode.CustomList;
             settings.Write();
+            Log.Message("[FAOC] 右键菜单模式切换为: " + settings.rightClickMenuMode);
         }
 
         public override IEnumerable<FloatMenuOption> GetFloatMenuOptions(Pawn selPawn)
