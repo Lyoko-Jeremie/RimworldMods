@@ -40,8 +40,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessOpenManagerSelf") ?? 
             BaseContent.WhiteTex;
         
-        public static readonly Texture2D VaultRightClickMenuModeIcon = 
-            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultRightClickMenuMode") ?? 
+        public static readonly Texture2D VaultRightClickMenuModeIcon_Menu = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultRightClickMenuMode_Menu") ?? 
+            BaseContent.WhiteTex;
+        
+        public static readonly Texture2D VaultRightClickMenuModeIcon_List = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultRightClickMenuMode_List") ?? 
             BaseContent.WhiteTex;
         
     }
@@ -689,7 +693,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                             ? "VaultRightClickMenuModeCustom".Translate()
                             : "VaultRightClickMenuModeVanilla".Translate()),
                     defaultDesc = "VaultRightClickMenuModeDesc".Translate(),
-                    icon = OuterrealmStorageTex.VaultRightClickMenuModeIcon,
+                    icon = curMode == RightClickMenuMode.CustomList
+                        ? OuterrealmStorageTex.VaultRightClickMenuModeIcon_List
+                        : OuterrealmStorageTex.VaultRightClickMenuModeIcon_Menu,
                     groupKey = VaultGizmoKeys.RightClickMenuMode,
                     isActive = () => OmniCrafterMod.Settings != null
                         && OmniCrafterMod.Settings.rightClickMenuMode == RightClickMenuMode.CustomList,
