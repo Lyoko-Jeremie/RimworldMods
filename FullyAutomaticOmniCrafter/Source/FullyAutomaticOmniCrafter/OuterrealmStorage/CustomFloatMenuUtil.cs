@@ -182,7 +182,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         /// <summary>
         /// 绘制一行选项；返回 true 表示该行被点击且执行了 action（调用方应关闭菜单）。
-        /// Disabled 项灰度显示，点击仅播 ClickReject（与原版 Chosen 行为一致）。
+        /// Disabled 项铺原版同款深灰背景（ColorBGDisabled）并以淡灰文字/图标显示，
+        /// 点击仅播 ClickReject（与原版 Chosen 行为一致）。
         /// </summary>
         private static bool DrawRow(Rect row, FloatMenuOption opt, float iconSize)
         {
@@ -194,7 +195,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (disabled)
             {
-                GUI.color = new Color(0.55f, 0.55f, 0.55f, 1f);
+                // 与原版 FloatMenuOption.DoGUI 一致：禁用项先铺深灰背景（ColorBGDisabled）
+                // 提示禁用，文字/图标随后以淡灰（ColorTextDisabled）绘制。
+                GUI.color = FloatMenuOption.ColorBGDisabled;
+                GUI.DrawTexture(row, BaseContent.WhiteTex);
+                GUI.color = FloatMenuOption.ColorTextDisabled;
             }
             // 图标（与原版 FloatMenuOption.DoGUI 同优先级：shownItem/占位 → iconTex → iconThing → 灰占位）。
             // 第三方 provider 若只设置私有字段（shownItem / iconTex）也能正确显示，与原版菜单视觉一致。
