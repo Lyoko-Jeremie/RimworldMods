@@ -1422,6 +1422,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static bool Prefix(FloatMenuMap __instance, Rect inRect)
         {
+            if (CustomFloatMenuUtil.IsCustomVaultMenuActive(__instance))
+            {
+                // 自制大列表模式：绘制与重生成完全交给 Patch_FloatMenuMap_DoWindowContents_CustomMenu
+                // （其 Prefix 会绘制自定义 UI 并 return false），本 Prefix 不重生成、不绘制，避免双绘制。
+                return false;
+            }
             if (!IsVaultMenu(__instance))
             {
                 return true; // 非 vault 菜单：原版 4 帧节奏不受影响

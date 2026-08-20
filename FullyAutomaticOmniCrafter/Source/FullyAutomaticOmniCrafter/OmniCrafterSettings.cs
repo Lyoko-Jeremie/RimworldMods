@@ -19,6 +19,18 @@ namespace FullyAutomaticOmniCrafter
         Adaptive,
     }
 
+    /// <summary>
+    /// 超维存储仓右键菜单的显示形态（自制大列表模式开关）。
+    /// 自定义模式：右键 vault 时打开大型可搜索列表界面并暂停游戏（仅 vault 菜单生效）。
+    /// </summary>
+    public enum RightClickMenuMode
+    {
+        /// <summary>原版右键菜单（默认）。</summary>
+        Vanilla,
+        /// <summary>自制大列表（搜索 + 暂停 + 视口裁剪）。</summary>
+        CustomList,
+    }
+
     // ─── Global Settings (cross-save favorites) ───────────────────────────────
     public class OmniCrafterSettings : ModSettings
     {
@@ -35,6 +47,9 @@ namespace FullyAutomaticOmniCrafter
 
         /// <summary>Adaptive 模式的重新生成间隔（百分之一秒，默认 100 = 1.0 秒）。</summary>
         public int vaultMenuRefreshHundredths = 100;
+
+        /// <summary>右键 vault 菜单的显示形态（自制大列表模式开关，默认原版）。</summary>
+        public RightClickMenuMode rightClickMenuMode = RightClickMenuMode.Vanilla;
 
         /// <summary>
         /// 是否启用拼音搜索（支持全拼和首字母缩写）。
@@ -107,6 +122,8 @@ namespace FullyAutomaticOmniCrafter
                 vaultMenuRefreshFrames = Mathf.Max(1, vaultMenuRefreshFrames);
                 vaultMenuRefreshHundredths = Mathf.Max(0, vaultMenuRefreshHundredths);
             }
+            // ── §4 右键 vault 菜单显示形态 ──
+            Scribe_Values.Look(ref rightClickMenuMode, "rightClickMenuMode", RightClickMenuMode.Vanilla);
             Scribe_Values.Look(ref powerCostA, "powerCostA", 0f);
             Scribe_Values.Look(ref powerCostB, "powerCostB", 1f);
             Scribe_Values.Look(ref powerCostC, "powerCostC", 0f);

@@ -198,7 +198,7 @@ namespace FullyAutomaticOmniCrafter
             const float checkH = 30f;
 
             // Estimate total scrollable content height
-            float vaultSectionH = 190f; // 超维存储仓右键菜单刷新模式区（3 RadioButton + 条件输入行）
+            float vaultSectionH = 320f; // 超维存储仓右键菜单刷新模式区 + 显示形态区
             float sectionH =
                 48f + 4f                  // 2 section header labels + gap
                 + checkH * 2 + 4f         // 2 X-composition toggles + gap
@@ -292,6 +292,26 @@ namespace FullyAutomaticOmniCrafter
                         Settings.vaultMenuRefreshHundredths = Mathf.RoundToInt(sec * 100f);
                     }
                 }
+            }
+
+            // ── 右键 vault 菜单显示形态（§4 自制大列表） ──────────────────
+            listing.GapLine(12f);
+            listing.Label("OuterrealmFloatMenuModeLabel".Translate());
+            listing.Label("OuterrealmFloatMenuModeDesc".Translate());
+            listing.Gap(4f);
+            if (listing.RadioButton(
+                "OuterrealmFloatMenuModeVanilla".Translate(),
+                Settings.rightClickMenuMode == RightClickMenuMode.Vanilla,
+                tooltip: "OuterrealmFloatMenuModeVanillaDesc".Translate()))
+            {
+                Settings.rightClickMenuMode = RightClickMenuMode.Vanilla;
+            }
+            if (listing.RadioButton(
+                "OuterrealmFloatMenuModeCustom".Translate(),
+                Settings.rightClickMenuMode == RightClickMenuMode.CustomList,
+                tooltip: "OuterrealmFloatMenuModeCustomDesc".Translate()))
+            {
+                Settings.rightClickMenuMode = RightClickMenuMode.CustomList;
             }
 
             // ── Omni Resurrector UI options ──────────────────────────────
