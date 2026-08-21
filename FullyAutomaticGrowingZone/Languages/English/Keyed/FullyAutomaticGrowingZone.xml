@@ -3,6 +3,8 @@
 <LanguageData>
     <FullyAutomaticGrowingZone_autoSow>Auto Sow</FullyAutomaticGrowingZone_autoSow>
     <FullyAutomaticGrowingZone_autoSowDesc>When enabled, this zone will automatically sow crops.</FullyAutomaticGrowingZone_autoSowDesc>
+    <FullyAutomaticGrowingZone_syncSow>Sync Sow</FullyAutomaticGrowingZone_syncSow>
+    <FullyAutomaticGrowingZone_syncSowDesc>When enabled, all pending cells in this zone will be sown in a single tick so every crop grows at the same pace (ideal for decorative gardens). Requires Auto Sow to take effect. Note: enabling this on very large zones may cause a brief stutter.</FullyAutomaticGrowingZone_syncSowDesc>
     <FullyAutomaticGrowingZone_autoHarvest>Auto Harvest</FullyAutomaticGrowingZone_autoHarvest>
     <FullyAutomaticGrowingZone_autoHarvestDesc>When enabled, this zone will automatically harvest mature crops.</FullyAutomaticGrowingZone_autoHarvestDesc>
     <FullyAutomaticGrowingZone_autoStore>Auto Store</FullyAutomaticGrowingZone_autoStore>

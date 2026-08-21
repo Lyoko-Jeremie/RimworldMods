@@ -21,6 +21,10 @@ namespace FullyAutomaticGrowingZone
         public HashSet<Zone_Growing> autoHarvestZones = new HashSet<Zone_Growing>();
         public HashSet<Zone_Growing> autoStoreZones = new HashSet<Zone_Growing>();
 
+        // 同步种植区集合：开启后该区域所有待播种格子在同一 tick 一次性种满，
+        // 保证生长进度一致（默认关闭，仅影响显式开启的区域，其他区域仍按每 tick 80 格分批）
+        public HashSet<Zone_Growing> syncSowZones = new HashSet<Zone_Growing>();
+
         // 兼容性：任意开关开启即视为活跃区
         public HashSet<Zone_Growing> activeAutoZones => _activeAutoZonesCache;
         private HashSet<Zone_Growing> _activeAutoZonesCache = new HashSet<Zone_Growing>();
@@ -48,6 +52,7 @@ namespace FullyAutomaticGrowingZone
         private List<Zone_Growing> _saveSowList;
         private List<Zone_Growing> _saveHarvestList;
         private List<Zone_Growing> _saveStoreList;
+        private List<Zone_Growing> _saveSyncList;
 
         public Queue<Plant> plantsToHarvest = new Queue<Plant>();
 
@@ -72,11 +77,13 @@ namespace FullyAutomaticGrowingZone
                 _saveSowList = autoSowZones.ToList();
                 _saveHarvestList = autoHarvestZones.ToList();
                 _saveStoreList = autoStoreZones.ToList();
+                _saveSyncList = syncSowZones.ToList();
             }
 
             Scribe_Collections.Look(ref _saveSowList, "autoSowZones", LookMode.Reference);
             Scribe_Collections.Look(ref _saveHarvestList, "autoHarvestZones", LookMode.Reference);
             Scribe_Collections.Look(ref _saveStoreList, "autoStoreZones", LookMode.Reference);
+            Scribe_Collections.Look(ref _saveSyncList, "syncSowZones", LookMode.Reference);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -85,6 +92,7 @@ namespace FullyAutomaticGrowingZone
                 autoSowZones = new HashSet<Zone_Growing>();
                 autoHarvestZones = new HashSet<Zone_Growing>();
                 autoStoreZones = new HashSet<Zone_Growing>();
+                syncSowZones = new HashSet<Zone_Growing>();
 
                 if (_saveSowList != null)
                     foreach (var z in _saveSowList)
@@ -104,9 +112,16 @@ namespace FullyAutomaticGrowingZone
                         if (z != null) autoStoreZones.Add(z);
                     }
 
+                if (_saveSyncList != null)
+                    foreach (var z in _saveSyncList)
+                    {
+                        if (z != null) syncSowZones.Add(z);
+                    }
+
                 _saveSowList = null;
                 _saveHarvestList = null;
                 _saveStoreList = null;
+                _saveSyncList = null;
 
                 RebuildActiveCache();
 
@@ -144,26 +159,45 @@ namespace FullyAutomaticGrowingZone
                 autoSowZones.RemoveWhere(z => z == null || z.Map == null);
                 autoHarvestZones.RemoveWhere(z => z == null || z.Map == null);
                 autoStoreZones.RemoveWhere(z => z == null || z.Map == null);
+                syncSowZones.RemoveWhere(z => z == null || z.Map == null);
                 RebuildActiveCache();
             }
 
             // 定期将延迟重试集合中的格子分批移回待播种集合，避免一次性涌入数万格子
             if (Find.TickManager.TicksGame % DeferredRetryInterval == 0 && deferredCellsToSow.Count > 0)
             {
-                int batch = Mathf.Min(deferredCellsToSow.Count, 500);
-                int moved = 0;
-                _deferredIterBuffer.Clear();
-                foreach (IntVec3 cell in deferredCellsToSow)
+                // 同步种植区：失败格子全量移回，保证该区域所有格子仍在同一 tick 重试，维持生长进度一致
+                if (syncSowZones.Count > 0)
                 {
-                    _deferredIterBuffer.Add(cell);
-                    if (++moved >= batch) break;
+                    foreach (var zone in syncSowZones)
+                    {
+                        if (zone == null || zone.Map != map) continue;
+                        foreach (IntVec3 cell in zone.Cells)
+                        {
+                            if (deferredCellsToSow.Remove(cell))
+                                pendingCellsToSow.Add(cell);
+                        }
+                    }
                 }
 
-                for (int i = 0; i < _deferredIterBuffer.Count; i++)
+                // 普通种植区：保持每周期最多 500 格的分批回迁
+                if (deferredCellsToSow.Count > 0)
                 {
-                    IntVec3 cell = _deferredIterBuffer[i];
-                    deferredCellsToSow.Remove(cell);
-                    pendingCellsToSow.Add(cell);
+                    int batch = Mathf.Min(deferredCellsToSow.Count, 500);
+                    int moved = 0;
+                    _deferredIterBuffer.Clear();
+                    foreach (IntVec3 cell in deferredCellsToSow)
+                    {
+                        _deferredIterBuffer.Add(cell);
+                        if (++moved >= batch) break;
+                    }
+
+                    for (int i = 0; i < _deferredIterBuffer.Count; i++)
+                    {
+                        IntVec3 cell = _deferredIterBuffer[i];
+                        deferredCellsToSow.Remove(cell);
+                        pendingCellsToSow.Add(cell);
+                    }
                 }
             }
 
@@ -201,48 +235,102 @@ namespace FullyAutomaticGrowingZone
             // 每 tick 限制为 80 棵，兼顾速度与帧率（52900格约11秒种完）
             if (pendingCellsToSow.Count > 0)
             {
-                int toProcess = Mathf.Min(pendingCellsToSow.Count, 80);
-
-                _iterBuffer.Clear();
-                int count = 0;
-                foreach (IntVec3 cell in pendingCellsToSow)
+                // 同步种植区：该区域所有待种格子一次性全部种下，保证生长进度一致
+                if (syncSowZones.Count > 0)
                 {
-                    _iterBuffer.Add(cell);
-                    if (++count >= toProcess) break;
-                }
+                    _iterBuffer.Clear();
 
-                for (int i = 0; i < _iterBuffer.Count; i++)
-                {
-                    IntVec3 cell = _iterBuffer[i];
-                    pendingCellsToSow.Remove(cell);
-
-                    ThingDef plantDef = GetPlantDefForCell(cell);
-                    if (plantDef == null)
+                    // 自适应遍历方向：统计同步区总格子数（O(区数量)，Count 为 O(1)），
+                    // 选同步区面积与待种格子数中较小者遍历，避免同步区已种满时每 tick 无谓全量扫描
+                    int syncArea = 0;
+                    foreach (var z in syncSowZones)
                     {
-                        continue;
+                        if (z != null && z.Map == map) syncArea += z.Cells.Count;
                     }
 
-                    // 仅在 CanAutoSowAndClear 调用期间抑制 DeSpawn 重播种，
-                    // 避免清除旧植物时触发 patch 重新加入队列；
-                    // 作用域缩小到单次调用，即使中途出错也不会影响后续格子
-                    suppressDeSpawnResow = true;
-                    bool canSow = CanAutoSowAndClear(plantDef, cell, map);
-                    suppressDeSpawnResow = false;
-
-                    if (canSow)
+                    if (syncArea <= pendingCellsToSow.Count)
                     {
-                        Plant newPlant = (Plant)ThingMaker.MakeThing(plantDef);
-                        newPlant.Growth = Plant.BaseSownGrowthPercent;
-                        newPlant.sown = true;
-                        newPlant.Rotation = Rot4.North;
-                        newPlant.Position = cell;
-                        newPlant.SpawnSetup(map, false);
+                        foreach (var zone in syncSowZones)
+                        {
+                            if (zone == null || zone.Map != map) continue;
+                            foreach (IntVec3 cell in zone.Cells)
+                            {
+                                if (pendingCellsToSow.Remove(cell))
+                                    _iterBuffer.Add(cell);
+                            }
+                        }
                     }
                     else
                     {
-                        deferredCellsToSow.Add(cell);
+                        foreach (IntVec3 cell in pendingCellsToSow)
+                        {
+                            if (IsSyncSow(cell))
+                                _iterBuffer.Add(cell);
+                        }
+
+                        for (int i = 0; i < _iterBuffer.Count; i++)
+                        {
+                            pendingCellsToSow.Remove(_iterBuffer[i]);
+                        }
+                    }
+
+                    for (int i = 0; i < _iterBuffer.Count; i++)
+                    {
+                        SowPendingCell(_iterBuffer[i]);
                     }
                 }
+
+                // 普通种植区：保持每 tick 最多 80 格的分批播种
+                if (pendingCellsToSow.Count > 0)
+                {
+                    int toProcess = Mathf.Min(pendingCellsToSow.Count, 80);
+
+                    _iterBuffer.Clear();
+                    int count = 0;
+                    foreach (IntVec3 cell in pendingCellsToSow)
+                    {
+                        _iterBuffer.Add(cell);
+                        if (++count >= toProcess) break;
+                    }
+
+                    for (int i = 0; i < _iterBuffer.Count; i++)
+                    {
+                        IntVec3 cell = _iterBuffer[i];
+                        pendingCellsToSow.Remove(cell);
+                        SowPendingCell(cell);
+                    }
+                }
+            }
+        }
+
+        // 对单个待播种格子执行播种；失败则移入延迟重试集合
+        private void SowPendingCell(IntVec3 cell)
+        {
+            ThingDef plantDef = GetPlantDefForCell(cell);
+            if (plantDef == null)
+            {
+                return;
+            }
+
+            // 仅在 CanAutoSowAndClear 调用期间抑制 DeSpawn 重播种，
+            // 避免清除旧植物时触发 patch 重新加入队列；
+            // 作用域缩小到单次调用，即使中途出错也不会影响后续格子
+            suppressDeSpawnResow = true;
+            bool canSow = CanAutoSowAndClear(plantDef, cell, map);
+            suppressDeSpawnResow = false;
+
+            if (canSow)
+            {
+                Plant newPlant = (Plant)ThingMaker.MakeThing(plantDef);
+                newPlant.Growth = Plant.BaseSownGrowthPercent;
+                newPlant.sown = true;
+                newPlant.Rotation = Rot4.North;
+                newPlant.Position = cell;
+                newPlant.SpawnSetup(map, false);
+            }
+            else
+            {
+                deferredCellsToSow.Add(cell);
             }
         }
 
@@ -448,6 +536,14 @@ namespace FullyAutomaticGrowingZone
             return false;
         }
 
+        public bool IsSyncSow(IntVec3 cell)
+        {
+            Zone zone = map.zoneManager.ZoneAt(cell);
+            if (zone is Zone_Growing growingZone)
+                return syncSowZones.Contains(growingZone);
+            return false;
+        }
+
         public bool IsAutoStore(IntVec3 cell)
         {
             Zone zone = map.zoneManager.ZoneAt(cell);
@@ -558,6 +654,9 @@ namespace FullyAutomaticGrowingZone
         public static readonly Texture2D IconAutoSow =
             ContentFinder<Texture2D>.Get("UI/Commands/autoSowGrowingZone", true) ?? BaseContent.WhiteTex;
 
+        public static readonly Texture2D IconSyncSow =
+            ContentFinder<Texture2D>.Get("UI/Commands/syncSowGrowingZone", true) ?? BaseContent.WhiteTex;
+
         public static readonly Texture2D IconAutoStore =
             ContentFinder<Texture2D>.Get("UI/Commands/autoStoreGrowingZone", true) ?? BaseContent.WhiteTex;
 
@@ -606,6 +705,25 @@ namespace FullyAutomaticGrowingZone
                     }
 
                     comp.RebuildActiveCache();
+                }
+            };
+
+            yield return new Command_Toggle
+            {
+                defaultLabel = "FullyAutomaticGrowingZone_syncSow".Translate(),
+                defaultDesc = "FullyAutomaticGrowingZone_syncSowDesc".Translate(),
+                icon = FullyAutomaticGrowingZoneTex.IconSyncSow,
+                isActive = () => comp.syncSowZones.Contains(__instance),
+                toggleAction = () =>
+                {
+                    if (comp.syncSowZones.Contains(__instance))
+                    {
+                        comp.syncSowZones.Remove(__instance);
+                    }
+                    else
+                    {
+                        comp.syncSowZones.Add(__instance);
+                    }
                 }
             };
 

@@ -3,6 +3,8 @@
 <LanguageData>
     <FullyAutomaticGrowingZone_autoSow>自动播种</FullyAutomaticGrowingZone_autoSow>
     <FullyAutomaticGrowingZone_autoSowDesc>开启后，本区域将自动播种作物。</FullyAutomaticGrowingZone_autoSowDesc>
+    <FullyAutomaticGrowingZone_syncSow>同步种植</FullyAutomaticGrowingZone_syncSow>
+    <FullyAutomaticGrowingZone_syncSowDesc>开启后，本区域所有待播种格子将在同一时刻一次性种满，所有作物生长进度一致（适合观赏区）。需配合自动播种使用。注意：超大区域开启时可能造成瞬时卡顿。</FullyAutomaticGrowingZone_syncSowDesc>
     <FullyAutomaticGrowingZone_autoHarvest>自动收获</FullyAutomaticGrowingZone_autoHarvest>
     <FullyAutomaticGrowingZone_autoHarvestDesc>开启后，本区域将自动收割成熟作物。</FullyAutomaticGrowingZone_autoHarvestDesc>
     <FullyAutomaticGrowingZone_autoStore>自动存储</FullyAutomaticGrowingZone_autoStore>
