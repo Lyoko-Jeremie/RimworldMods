@@ -80,6 +80,9 @@
   <VaultMenuRefreshModeAdaptive>时间模式：每 N 秒重新生成一次</VaultMenuRefreshModeAdaptive>
   <VaultMenuRefreshModeAdaptiveDesc>每隔指定真实秒数全量重新生成菜单（最少间隔 4 帧），与帧率无关。</VaultMenuRefreshModeAdaptiveDesc>
   <VaultMenuRefreshSecondsLabel>刷新间隔（秒）</VaultMenuRefreshSecondsLabel>
+  <!-- 全局开关：超维存储仓物品是否计入殖民地财富 -->
+  <OmniCrafter_VaultExcludeFromWealth>超维存储仓物品不计入殖民地财富</OmniCrafter_VaultExcludeFromWealth>
+  <OmniCrafter_VaultExcludeFromWealthDesc>开启后，存储仓中的物品不计入殖民地财富（WealthItems），也不会进入袭击点数计算。已取出或正在搬运中的物品仍正常计入。默认开启。</OmniCrafter_VaultExcludeFromWealthDesc>
   <OuterrealmFloatMenu_Count>显示 {0} / {1} 项</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>无匹配项</OuterrealmFloatMenu_NoMatch>
   <!-- Vault gizmo: toggle right-click menu mode (per-building, saved in save file) -->

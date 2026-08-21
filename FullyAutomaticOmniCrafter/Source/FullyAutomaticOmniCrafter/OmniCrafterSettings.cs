@@ -49,6 +49,13 @@ namespace FullyAutomaticOmniCrafter
         public int vaultMenuRefreshHundredths = 100;
 
         /// <summary>
+        /// 超维存储仓中的物品是否不计入殖民地财富（默认开启）。
+        /// 开启后，vault 视图副本的市值从 WealthWatcher.CalculateWealthItems 结果中排除，
+        /// 不影响袭击点数计算（借出/正在搬运中的物化副本仍正常计入，因其已真 Spawned 在地图上）。
+        /// </summary>
+        public bool vaultExcludeFromWealth = true;
+
+        /// <summary>
         /// 是否启用拼音搜索（支持全拼和首字母缩写）。
         /// 可在搜索栏旁的"拼"按钮中切换，也可在 Mod 设置页面切换。
         /// </summary>
@@ -109,6 +116,9 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref enablePinyinSearch, "enablePinyinSearch", false);
             if (Scribe.mode == LoadSaveMode.LoadingVars) enablePinyinSearch = false;
             Scribe_Values.Look(ref resurrectorShowPawnIcons, "resurrectorShowPawnIcons", false);
+
+            // ── 超维存储仓物品是否计入殖民地财富（默认不计入） ──
+            Scribe_Values.Look(ref vaultExcludeFromWealth, "vaultExcludeFromWealth", true);
 
             // ── §4 超维存储仓右键菜单刷新模式 ──
             Scribe_Values.Look(ref vaultMenuRefreshMode, "vaultMenuRefreshMode", VaultMenuRefreshMode.Lazy);

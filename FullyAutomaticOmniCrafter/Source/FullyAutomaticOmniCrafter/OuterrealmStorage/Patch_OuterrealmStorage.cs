@@ -2353,4 +2353,64 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
     }
+
+    // ── 财富统计排除（全局开关 OmniCrafterSettings.vaultExcludeFromWealth，默认开启） ──
+    // vault 视图副本为"伪 Spawned"（mapIndexOrState 被提升 + 注册进 listerThings/listerHaulables），
+    // 会被 WealthWatcher.CalculateWealthItems 计入 wealthItems（进而经 Map.PlayerWealthForStoryteller
+    // 进入袭击点数计算）。开关开启时：从 __result 中减去本地图所有 vault 视图内
+    // （holdingOwner == view，即伪 Spawned 锚点副本）的 MarketValue × stackCount；
+    // 借出副本（真 Spawned 物化中，已从视图移除）不在视图内，仍正常计入。
+    // 排除条件与原版计入条件一致（非迷雾格），保证扣减精确；低频路径（5000 tick 一次），
+    // 遍历开销 O(副本总数) 可接受。
+    [HarmonyPatch(typeof(WealthWatcher), "CalculateWealthItems")]
+    internal static class Patch_WealthWatcher_CalculateWealthItems
+    {
+        private static readonly FieldInfo MapField = AccessTools.Field(typeof(WealthWatcher), "map");
+
+        private static void Postfix(WealthWatcher __instance, ref float __result)
+        {
+            if (!OmniCrafterMod.Settings.vaultExcludeFromWealth)
+            {
+                return;
+            }
+            Map map = MapField != null ? MapField.GetValue(__instance) as Map : null;
+            if (map == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            float excluded = 0f;
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault == null || !vault.Spawned || vault.Map != map || vault.view == null)
+                {
+                    continue;
+                }
+                List<Thing> copies = vault.view.InnerListForReading;
+                for (int j = 0; j < copies.Count; j++)
+                {
+                    Thing copy = copies[j];
+                    if (copy == null || copy.Destroyed || copy.holdingOwner != vault.view)
+                    {
+                        continue; // 仅排除视图内伪 Spawned 锚点副本（借出副本真 Spawned，正常计入）
+                    }
+                    if (copy.PositionHeld.Fogged(map))
+                    {
+                        continue; // 与原版计入条件一致：迷雾格不计入也不扣减
+                    }
+                    excluded += copy.MarketValue * copy.stackCount;
+                }
+            }
+            if (excluded > 0f)
+            {
+                __result = Mathf.Max(0f, __result - excluded);
+            }
+        }
+    }
 }

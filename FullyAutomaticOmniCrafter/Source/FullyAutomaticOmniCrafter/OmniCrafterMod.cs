@@ -198,7 +198,7 @@ namespace FullyAutomaticOmniCrafter
             const float checkH = 30f;
 
             // Estimate total scrollable content height
-            float vaultSectionH = 320f; // 超维存储仓右键菜单刷新模式区 + 显示形态区
+            float vaultSectionH = 320f + checkH + 4f; // 超维存储仓右键菜单刷新模式区 + 显示形态区 + 财富排除开关
             float sectionH =
                 48f + 4f                  // 2 section header labels + gap
                 + checkH * 2 + 4f         // 2 X-composition toggles + gap
@@ -293,6 +293,13 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+
+            // ── 超维存储仓物品是否计入殖民地财富 ──────────────────────
+            listing.Gap(4f);
+            listing.CheckboxLabeled(
+                "OmniCrafter_VaultExcludeFromWealth".Translate(),
+                ref Settings.vaultExcludeFromWealth,
+                "OmniCrafter_VaultExcludeFromWealthDesc".Translate());
 
             // ── 右键 vault 菜单显示形态：已迁移为每建筑独立设置（建筑 gizmo 切换，随存档保存），
             // 不再提供全局 Mod 设置项。此处仅保留刷新模式相关设置（见上）。 ──────────

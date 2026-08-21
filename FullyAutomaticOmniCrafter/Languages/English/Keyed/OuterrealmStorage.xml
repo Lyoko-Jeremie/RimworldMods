@@ -78,6 +78,9 @@
   <VaultMenuRefreshModeAdaptive>Time-based: regenerate every N real seconds</VaultMenuRefreshModeAdaptive>
   <VaultMenuRefreshModeAdaptiveDesc>Fully regenerates the menu every N real seconds (at least 4 frames apart), independent of framerate.</VaultMenuRefreshModeAdaptiveDesc>
   <VaultMenuRefreshSecondsLabel>Refresh interval (seconds)</VaultMenuRefreshSecondsLabel>
+  <!-- Global toggle: whether outerrealm vault items count toward colony wealth -->
+  <OmniCrafter_VaultExcludeFromWealth>Outerrealm vault items do not count toward colony wealth</OmniCrafter_VaultExcludeFromWealth>
+  <OmniCrafter_VaultExcludeFromWealthDesc>When enabled, items inside the vault do not count toward colony wealth (WealthItems) and do not contribute to raid points. Items already taken out or being hauled still count normally. Enabled by default.</OmniCrafter_VaultExcludeFromWealthDesc>
   <OuterrealmFloatMenu_Count>Showing {0} of {1} options</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>No matching options</OuterrealmFloatMenu_NoMatch>
   <!-- Vault gizmo: toggle right-click menu mode (per-building, saved in save file) -->
