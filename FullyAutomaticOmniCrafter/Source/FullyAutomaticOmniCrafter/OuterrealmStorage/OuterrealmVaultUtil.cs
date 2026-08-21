@@ -50,5 +50,65 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             Widgets.ThingIcon(rect, thing);
         }
+
+        /// <summary>
+        /// 计算"存储中"物品的理想保存温度（§5.1 自适应温度读数）。
+        /// 超维空间内物品时间被冻结（副本 dontTickContents、Proto 不 tick），实际不会腐烂/孵化/
+        /// 受温度损坏；本读数只用于让 UI 状态与腐烂/损坏判定呈现"物品被妥善保存"的语义，
+        /// 并按物品自身的温度约束自适应：
+        ///   - 会腐烂的物品（CompRottable.Active）：尽量低温——无低温约束则 -30°C（显示"已冷冻"、
+        ///     腐烂完全停止）；有最低安全温度（怕冷）则取该下界（显示"冷藏"，腐烂减速且不损坏）。
+        ///   - 不腐烂或腐烂不可见的物品（受精卵等 disableIfHatcher）：返回安全区间内的室温 21°C，
+        ///     不触发 CompTemperatureRuinable 的 Freezing/Overheating 显示与损坏。
+        /// 温度约束取交集：CompTemperatureRuinable（min/maxSafeTemperature）、
+        /// CompTemperatureDamaged（safeTemperatureRange）。
+        /// 仅影响温度读数，不修改物品任何状态；取出物化（Materialize 不复制 comp 状态）不受影响。
+        /// </summary>
+        public static float IdealStorageTemperature(Thing t)
+        {
+            if (t == null)
+            {
+                return 21f;
+            }
+            float minSafe = float.MinValue;
+            float maxSafe = float.MaxValue;
+            CompTemperatureRuinable ruin = t.TryGetComp<CompTemperatureRuinable>();
+            if (ruin != null)
+            {
+                if (ruin.Props.minSafeTemperature > minSafe)
+                {
+                    minSafe = ruin.Props.minSafeTemperature;
+                }
+                if (ruin.Props.maxSafeTemperature < maxSafe)
+                {
+                    maxSafe = ruin.Props.maxSafeTemperature;
+                }
+            }
+            CompTemperatureDamaged dmg = t.TryGetComp<CompTemperatureDamaged>();
+            if (dmg != null)
+            {
+                if (dmg.Props.safeTemperatureRange.min > minSafe)
+                {
+                    minSafe = dmg.Props.safeTemperatureRange.min;
+                }
+                if (dmg.Props.safeTemperatureRange.max < maxSafe)
+                {
+                    maxSafe = dmg.Props.safeTemperatureRange.max;
+                }
+            }
+            CompRottable rot = t.TryGetComp<CompRottable>();
+            float target;
+            if (rot != null && rot.Active)
+            {
+                // 会腐烂：优先冷冻（<0°C 腐烂完全停止）；怕冷则取最低安全温度（冷藏减速）
+                target = minSafe <= float.MinValue ? -30f : Mathf.Min(0f, minSafe);
+            }
+            else
+            {
+                // 不腐烂（或受精卵等腐烂不可见）：安全室温
+                target = 21f;
+            }
+            return Mathf.Clamp(target, minSafe, maxSafe);
+        }
     }
 }

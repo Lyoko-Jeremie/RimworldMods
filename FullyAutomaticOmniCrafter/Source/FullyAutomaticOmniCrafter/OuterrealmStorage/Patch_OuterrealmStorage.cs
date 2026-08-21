@@ -2114,17 +2114,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── §5.1 必需：ThingOwnerUtility.TryGetFixedTemperature（冻结温度读数） ──
-    // 硬编码 switch 无法从 mod 扩展；对持有者是本系统建筑的条目返回"冷冻"读数。
-    // 使用 prefix 短路并严格限定本 mod holder，其余放行。
+    // ── §5.1 必需：ThingOwnerUtility.TryGetFixedTemperature（自适应保存温度读数） ──
+    // 硬编码 switch 无法从 mod 扩展；对本系统存储持有链（建筑 / 随身视图，IOuterrealmVaultContext）
+    // 上的物品返回按物品温度约束自适应计算的"理想保存温度"（OuterrealmVaultUtil.IdealStorageTemperature）：
+    // 可腐烂物品 → 冷冻读数（显示"已冷冻"、腐烂停止）；受精卵等怕冷 / 腐烂不可见物品 → 安全室温，
+    // 不触发 CompTemperatureRuinable 的 Freezing/Overheating。仅影响读数，不修改物品状态。
+    // 使用 prefix 短路并严格限定本 mod 持有者，其余放行。
     [HarmonyPatch(typeof(ThingOwnerUtility), "TryGetFixedTemperature")]
     internal static class Patch_ThingOwnerUtility_TryGetFixedTemperature
     {
-        private static bool Prefix(IThingHolder holder, ref float temperature, ref bool __result)
+        private static bool Prefix(IThingHolder holder, Thing forThing, ref float temperature, ref bool __result)
         {
-            if (holder is Building_OuterrealmVault)
+            if (holder is IOuterrealmVaultContext)
             {
-                temperature = -30f; // 显示为"冷冻"（§5.1）
+                temperature = OuterrealmVaultUtil.IdealStorageTemperature(forThing);
                 __result = true;
                 return false;
             }
