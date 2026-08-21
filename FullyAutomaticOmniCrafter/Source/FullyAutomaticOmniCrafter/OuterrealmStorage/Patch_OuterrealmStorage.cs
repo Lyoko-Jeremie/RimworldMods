@@ -2135,6 +2135,29 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── §v4 借出副本温度修复：Thing.get_AmbientTemperature 短路 ──
+    // 借出副本（TryLendCopy 真 Spawn 到 vault 存储格，真 Spawned、holdingOwner=null）的
+    // AmbientTemperature 走 Spawned 分支（GetTemperatureForCell 地图真实温度），不查 ParentHolder
+    // 链——TryGetFixedTemperature patch 覆盖不到。后果：Building_Storage.GetGizmos 的
+    // "选择存储物品"gizmo tooltip（含 heldThing.GetInspectString()）与选中检查面板显示
+    // "未冷藏 于X天后腐烂"，且借出期间被 tick 按地图温度真实腐烂（组链接共享 filter 后
+    // 取用频繁，借出副本常见，问题显著）。prefix 对全局登记（OuterrealmVaultUtil.
+    // IsOuterrealmBorrowed）的借出副本短路为自适应保存温度：显示"已冷冻"、借出期间不腐烂、
+    // 温度敏感物品（受精卵）不损坏。副本被取走 / 回收 / 销毁后由 CWT 注销自动恢复真实读数。
+    [HarmonyPatch(typeof(Thing), "AmbientTemperature", MethodType.Getter)]
+    internal static class Patch_Thing_AmbientTemperature_OuterrealmBorrowed
+    {
+        private static bool Prefix(Thing __instance, ref float __result)
+        {
+            if (OuterrealmVaultUtil.IsOuterrealmBorrowed(__instance))
+            {
+                __result = OuterrealmVaultUtil.IdealStorageTemperature(__instance);
+                return false;
+            }
+            return true;
+        }
+    }
+
     // ── 穿戴候选前置清理：JobGiver_OptimizeApparel 运行前移除孤儿副本（§3.3 兜底） ──
     // 原版 JobGiver_OptimizeApparel 枚举所有 HaulSource 的 GetDirectlyHeldThings()（含本系统
     // vault 视图副本）生成 Wear job，且不检查条目数量——空条目残留副本被选中 → StartJob 预留

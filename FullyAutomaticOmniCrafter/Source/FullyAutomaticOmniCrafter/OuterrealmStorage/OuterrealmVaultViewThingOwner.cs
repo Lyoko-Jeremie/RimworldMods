@@ -316,6 +316,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             //    IsBorrowed 短路，防双扣）；Notify_ReceivedThing 经 IsBorrowed 跳过吸收。
             UnregisterFromLister(copy);
             GenSpawn.Spawn(copy, cell, vault.MapHeld);
+            // 借出副本温度修复：真 Spawned 后 AmbientTemperature 走地图温度分支，
+            // 绕过 TryGetFixedTemperature 自适应链——全局登记后由
+            // Patch_Thing_AmbientTemperature_OuterrealmBorrowed 短路为自适应保存温度
+            // （借出期间不腐烂、显示"已冷冻"）。
+            OuterrealmVaultUtil.MarkOuterrealmBorrowed(copy);
             return true;
         }
 
@@ -329,6 +334,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
             borrowedCopies.Remove(copy);
             borrowedByKey.Remove(key);
+            // 注销借出标记：副本离开 vault 借出状态（回收回全局 / 被 job 取走 / 销毁）后，
+            // 温度恢复真实读数——被取走成为真实物品按地图温度正常腐烂，剩余回收后回全局层。
+            OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(copy);
             // 仅回收仍驻留存储格的借出副本：被 job 取走（carry/穿戴等，已扣全局全量）属"取出"语义，
             // 剩余物已离开 vault，不再回收；被销毁（爆炸等）无剩余。
             bool stillInStorageCell = copy.Spawned

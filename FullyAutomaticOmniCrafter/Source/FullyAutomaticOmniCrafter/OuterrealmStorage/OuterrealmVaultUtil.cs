@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -9,6 +10,43 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     public static class OuterrealmVaultUtil
     {
+        // ── 借出副本全局索引（§v4 借出温度修复） ──
+        // 借出副本 = TryLendCopy 真 Spawn 到 vault 存储格的锚点副本（真 Spawned、holdingOwner=null），
+        // 其 AmbientTemperature 走地图温度分支（Spawned → GetTemperatureForCell），绕过
+        // ThingOwnerUtility.TryGetFixedTemperature 的自适应链——导致 UI 显示"未冷藏"且借出期间
+        // 按地图温度真实腐烂（CompRottable.TickInterval 被 tick 驱动）。
+        // 用 CWT 登记借出中的副本：TryLendCopy 登记 / ReturnCopy 注销；副本被 Destroy 后
+        // 由弱引用自动清理（无需手动注销、无泄漏）。Thing 键仅弱引用，不阻碍 GC。
+        private static readonly ConditionalWeakTable<Thing, object> BorrowedCopies =
+            new ConditionalWeakTable<Thing, object>();
+
+        /// <summary>登记借出副本（TryLendCopy 成功 Spawn 后调用）。</summary>
+        public static void MarkOuterrealmBorrowed(Thing t)
+        {
+            if (t == null)
+            {
+                return;
+            }
+            BorrowedCopies.Remove(t);
+            BorrowedCopies.Add(t, null);
+        }
+
+        /// <summary>注销借出副本（ReturnCopy 回收 / 被 job 取走离开 vault 时调用）。</summary>
+        public static void UnmarkOuterrealmBorrowed(Thing t)
+        {
+            if (t != null)
+            {
+                BorrowedCopies.Remove(t);
+            }
+        }
+
+        /// <summary>该 Thing 是否为"借出中"的 vault 副本（温度读数应走自适应保存温度）。</summary>
+        public static bool IsOuterrealmBorrowed(Thing t)
+        {
+            object _;
+            return t != null && BorrowedCopies.TryGetValue(t, out _);
+        }
+
         /// <summary>
         /// 安全的物品显示名：Corpse 在 Bugged 状态（Corpse.LabelNoCount 会 Log.Error
         /// "LabelNoCount on Corpse while Bugged" 并返回空串）——用 def 标签兜底；其余走原版 LabelCapNoCount。
