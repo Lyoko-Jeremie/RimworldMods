@@ -187,7 +187,7 @@ namespace FullyAutomaticOmniCrafter
             GUI.EndClip();
         }
 
-        public override string SettingsCategory() => "FullyAutomaticOmniCrafter";
+        public override string SettingsCategory() => "OuterrealmTech 超维科技";
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
