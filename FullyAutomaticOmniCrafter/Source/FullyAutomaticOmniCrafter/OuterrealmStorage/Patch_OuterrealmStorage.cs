@@ -277,18 +277,83 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
         // __result 可能为 true（本体放行）而原方法未执行——多触发一次失效仅多一次 O(全图) 重建，无害。
-        private static void Postfix(Pawn claimant, LocalTargetInfo target, bool __result)
+        // §v6 远行队收集按需物化：仅对 PrepareCaravan_GatherItems job 生效。把副本 stackCount
+        // 临时提升为该 transferable 的需求缺口（CountLeftToTransfer − 已携带同 def 量），
+        // 使借出物化量 = 所需量而非固定一组（stackLimit）：
+        //   · carry 空间足够 → 一趟取完；
+        //   · 空间不足 → 借出堆剩余留在存储格（things 中同一实例、真 Spawned 可见），
+        //     部分取走时 StartCarryThing 即释放 reservation → 他人可接着取剩余，无需等锚点重建。
+        // 账目守恒：借出扣 min(need, 全局剩余)，取走 x，剩余由 ReturnCopy → Deposit 存回。
+        private static void Postfix(Pawn claimant, Job job, LocalTargetInfo target, bool __result)
         {
-            if (__result)
+            if (!__result)
             {
-                GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
-                // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）
-                Thing t = target.Thing;
-                if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner view && !view.IsBorrowed(t))
+                return;
+            }
+            GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+            // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）
+            Thing t = target.Thing;
+            if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view) || view.IsBorrowed(t))
+            {
+                return;
+            }
+            int need = CalculateCaravanGatherNeed(claimant, job, t);
+            if (need > 0)
+            {
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+                OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(t)) : null;
+                if (e != null && e.Count > 0)
                 {
-                    view.TryLendCopy(t);
+                    int oldStackCount = t.stackCount;
+                    t.stackCount = (int)Mathf.Min(need, Mathf.Min(e.Count, int.MaxValue));
+                    if (view.TryLendCopy(t))
+                    {
+                        return; // 借出成功（副本已移出视图，超限 stackCount 随物化堆）
+                    }
+                    t.stackCount = oldStackCount; // 借出失败（存储格满等）：恢复原值，走默认借出
                 }
             }
+            view.TryLendCopy(t);
+        }
+
+        /// <summary>远行队收集 job 的需求缺口（§v6）；非收集 job / 匹配失败返回 0 = 保持默认借出。</summary>
+        private static int CalculateCaravanGatherNeed(Pawn claimant, Job job, Thing t)
+        {
+            if (claimant == null || job == null || job.def != JobDefOf.PrepareCaravan_GatherItems
+                || job.lord == null || !(job.lord.LordJob is LordJob_FormAndSendCaravan lordJob))
+            {
+                return 0;
+            }
+            List<TransferableOneWay> transferables = lordJob.transferables;
+            if (transferables == null || transferables.Count == 0)
+            {
+                return 0;
+            }
+            TransferableOneWay transferable;
+            try
+            {
+                transferable = TransferableUtility.TransferableMatchingDesperate(t, transferables, TransferAsOneMode.PodsOrCaravanPacking);
+            }
+            catch
+            {
+                return 0; // 匹配异常（防御）：保持默认借出
+            }
+            if (transferable == null || !transferable.HasAnyThing)
+            {
+                return 0;
+            }
+            int need = GatherItemsForCaravanUtility.CountLeftToTransfer(claimant, transferable, job.lord);
+            if (need <= 0)
+            {
+                return 0;
+            }
+            // 减去自己已携带的同 def 可堆叠量（对齐 DetermineNumToHaul 语义）
+            Thing carried = claimant.carryTracker != null ? claimant.carryTracker.CarriedThing : null;
+            if (carried != null && carried.CanStackWith(t))
+            {
+                need -= carried.stackCount;
+            }
+            return need <= 0 ? 0 : need;
         }
     }
 
