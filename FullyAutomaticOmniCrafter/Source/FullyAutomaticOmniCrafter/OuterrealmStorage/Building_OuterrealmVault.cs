@@ -492,26 +492,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            if (view.SuppressRemovalSync)
-            {
-                return; // 视图重建/注销期间（§3.3）
-            }
-            if (view.IsBorrowed(item))
-            {
-                return; // §v4：借出副本由 TryLendCopy 移除（已扣全局全量），此处不再扣减防双扣
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs != null)
-            {
-                // 整堆移除（SplitOff 整堆 / Take / TryDrop 整堆 / Destroy）：按副本当前量扣减全局
-                OuterrealmEntryKey key = OuterrealmEntryKey.From(item);
-                gs.Subtract(key, item.stackCount);
-                OuterrealmEntry e = gs.FindEntry(key);
-                if (e != null && e.Count > 0)
-                {
-                    view.EnsureCopyFor(key); // 即时补回新副本（§3.3）
-                }
-            }
+            view.SyncRemoveFromGlobal(item); // 扣减全局 + 即时补回（含 SuppressRemovalSync / IsBorrowed 短路，§3.3）
             if (!item.Spawned)
             {
                 MapHeld.listerHaulables.Notify_DeSpawned(item);

@@ -177,6 +177,38 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>
+        /// 视图整堆移除（Remove 语义）的全局同步：按副本当前量扣减全局，剩余时即时补回新副本（§3.3）。
+        /// 建筑视图经 Building_OuterrealmVault.Notify_ItemRemoved 调用；随身视图经
+        /// SubspaceAccessPawn.Notify_ItemRemoved 调用（§v3 随身同步）。两处必须共用本逻辑——
+        /// 随身 owner 若缺失 IThingHolderEvents 同步，整堆 SplitOff（Thing.SplitOff 整堆分支走
+        /// holdingOwner.Remove → NotifyRemoved，PostSplitOff 对整堆直接跳过防双扣）将不扣全局，
+        /// "bill 需求 ≥ 全局剩余量"时物品被取走却不清零 → 复制。
+        /// </summary>
+        public void SyncRemoveFromGlobal(Thing item)
+        {
+            if (SuppressRemovalSync)
+            {
+                return; // 视图重建/注销期间（§3.3）
+            }
+            if (IsBorrowed(item))
+            {
+                return; // §v4：借出副本由 TryLendCopy 移除（已扣全局全量），此处不再扣减防双扣
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            OuterrealmEntryKey key = OuterrealmEntryKey.From(item);
+            gs.Subtract(key, item.stackCount);
+            OuterrealmEntry e = gs.FindEntry(key);
+            if (e != null && e.Count > 0)
+            {
+                EnsureCopyFor(key); // 即时补回新副本（§3.3）
+            }
+        }
+
         // ── 预留记账（§3.3 → §P0 预订记账优化）：O(1) 查表 + 版本号惰性重建 ──
 
         /// <summary>确保预留缓存新鲜：与全局 ReservationVersion 不等时全量重建一次
