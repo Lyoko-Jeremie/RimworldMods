@@ -1197,7 +1197,9 @@ namespace FullyAutomaticOmniCrafter
             // 先处理离开穹顶或离图的 Pawn，再给当前穹顶内友方补状态。
             foreach (Pawn pawn in pawnsGrantedHediff)
             {
-                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsDomeCell(pawn.Position))
+                // 阵营变化（如访客/殖民者叛变）也必须立即清理并移除 buff，
+                // 否则叛变者只要还站在穹顶内，buff 就会一直残留。
+                if (pawn == null || !pawn.Spawned || pawn.Map != map || !IsFriendlyPawn(pawn) || !IsDomeCell(pawn.Position))
                 {
                     tmpPawnsToRemove.Add(pawn);
                     continue;
@@ -1225,8 +1227,16 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < pawns.Count; i++)
             {
                 Pawn pawn = pawns[i];
-                if (pawn == null || pawn.health == null || !IsFriendlyPawn(pawn))
+                if (pawn == null || pawn.health == null)
                 {
+                    continue;
+                }
+
+                // 硬性保证：只有玩家派系能持有穹顶 buff。
+                // 非玩家派系（敌对、盟友、来宾）即使通过其他途径获得了该 hediff，也主动移除。
+                if (!IsFriendlyPawn(pawn))
+                {
+                    RemoveDomeHediffIfNeeded(pawn);
                     continue;
                 }
 

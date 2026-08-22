@@ -2380,6 +2380,90 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── vault 远行队收集兜底：候选补充（修复"只取一组"后不再拿取） ──
+    // 原版 GatherItemsForCaravanUtility.FindThingToHaul 只从 transferable.things（对话框打开时的
+    // 静态实例列表）构建 neededItems 再搜索。vault 的借出机制（§v4：Reserve → TryLendCopy）会把
+    // 视图副本真 Spawn 到存储格并从视图移除；借出副本被取走后锚点重建（ReturnCopy → EnsureCopyFor）
+    // 产生的是新实例，不在 transferable.things 中 → 下一趟 FindThingToHaul 搜不到任何 vault 候选
+    // → 返回 null → 远行队只取走"一组"（stackLimit）就判定收集完成。
+    // 修复：Postfix 兜底——仅当原方法返回 null 时，按 CountLeftToTransfer > 0 的 transferable
+    // 匹配本图上所有 vault 视图内的锚点副本，用与原方法相同的搜索（最近可达 + CanReserve）
+    // 重新查找。原方法成功时零开销；失败路径低频，候选构建 O(transferable × vault × 副本) 可接受。
+    [HarmonyPatch(typeof(GatherItemsForCaravanUtility), "FindThingToHaul")]
+    internal static class Patch_GatherItemsForCaravanUtility_FindThingToHaul
+    {
+        private static void Postfix(Pawn p, Verse.AI.Group.Lord lord, ref Thing __result)
+        {
+            if (__result != null || p == null || lord == null
+                || !(lord.LordJob is LordJob_FormAndSendCaravan lordJob))
+            {
+                return;
+            }
+            Map map = p.Map;
+            if (map == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return;
+            }
+            List<TransferableOneWay> transferables = lordJob.transferables;
+            if (transferables == null || transferables.Count == 0)
+            {
+                return;
+            }
+            // 候选集：仍有搬运需求的 transferable 所匹配的视图锚点副本（伪 Spawned，
+            // holdingOwner = view；借出中的副本已移出视图，不会误入候选）。
+            List<Thing> candidates = null;
+            for (int i = 0; i < transferables.Count; i++)
+            {
+                TransferableOneWay transferable = transferables[i];
+                if (!transferable.HasAnyThing
+                    || GatherItemsForCaravanUtility.CountLeftToTransfer(p, transferable, lord) <= 0)
+                {
+                    continue;
+                }
+                for (int v = 0; v < gs.VaultsForReading.Count; v++)
+                {
+                    Building_OuterrealmVault vault = gs.VaultsForReading[v];
+                    if (vault == null || !vault.Spawned || vault.MapHeld != map || vault.view == null)
+                    {
+                        continue;
+                    }
+                    List<Thing> copies = vault.view.InnerListForReading;
+                    for (int k = 0; k < copies.Count; k++)
+                    {
+                        Thing copy = copies[k];
+                        if (copy == null || copy.Destroyed || copy.stackCount <= 0
+                            || !TransferableUtility.TransferAsOne(transferable.AnyThing, copy, TransferAsOneMode.PodsOrCaravanPacking))
+                        {
+                            continue;
+                        }
+                        if (candidates == null)
+                        {
+                            candidates = new List<Thing>();
+                        }
+                        if (!candidates.Contains(copy))
+                        {
+                            candidates.Add(copy);
+                        }
+                    }
+                }
+            }
+            if (candidates == null || candidates.Count == 0)
+            {
+                return;
+            }
+            __result = GenClosest.ClosestThingReachable(
+                p.Position, map, ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
+                PathEndMode.Touch, TraverseParms.For(p),
+                validator: (Thing x) => candidates.Contains(x) && p.CanReserve((LocalTargetInfo)x),
+                lookInHaulSources: true);
+        }
+    }
+
     // ── 财富统计排除（全局开关 OmniCrafterSettings.vaultExcludeFromWealth，默认开启） ──
     // vault 视图副本为"伪 Spawned"（mapIndexOrState 被提升 + 注册进 listerThings/listerHaulables），
     // 会被 WealthWatcher.CalculateWealthItems 计入 wealthItems（进而经 Map.PlayerWealthForStoryteller
