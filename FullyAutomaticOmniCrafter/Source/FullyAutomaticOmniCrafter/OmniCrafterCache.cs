@@ -203,6 +203,11 @@ namespace FullyAutomaticOmniCrafter
                             count += t.stackCount;
                 }
 
+                // 加上搬运中（carryTracker）与 IHaulSource 直接持有物（原版 RecipeWorkerCounter 同语义，
+                // 防止补货期间搬运工正搬入的物品被重复制造）
+                count += CountCarriedByPawns(def, map);
+                count += CountHeldByHaulSources(def, map);
+
                 // 加上超维存储仓（vault）全局层中的真实数量
                 count += CountInOuterrealmVault(def, map);
             }
@@ -236,6 +241,11 @@ namespace FullyAutomaticOmniCrafter
                         if (t.Position.GetSlotGroup(map) != null && !IsOuterrealmViewCopy(t))
                             count += t.stackCount;
                 }
+
+                // 加上搬运中（carryTracker）与 IHaulSource 直接持有物（原版 RecipeWorkerCounter 同语义，
+                // 防止补货期间搬运工正搬入的物品被重复制造）
+                count += CountCarriedByPawns(def, map);
+                count += CountHeldByHaulSources(def, map);
 
                 // 加上超维存储仓（vault）全局层中的真实数量
                 count += CountInOuterrealmVault(def, map);
@@ -272,6 +282,63 @@ namespace FullyAutomaticOmniCrafter
             if (gs == null || !gs.HasVaultOnMap(map)) return 0;
             long total = gs.TotalCountOf(def);
             return total > int.MaxValue ? int.MaxValue : (int)total;
+        }
+
+        /// <summary>
+        /// 统计被殖民地 pawn 搬运中（carryTracker.CarriedThing）的物品数量。
+        /// 与原版 RecipeWorkerCounter.GetCarriedCount 同语义：搬运中的物品即将进入目标地，
+        /// 计入可避免补货期间搬运工正搬入的物品被重复制造。
+        /// 搬运中的物品未 Spawned，不在 listerThings 中，不会与地图统计重复。
+        /// </summary>
+        private static int CountCarriedByPawns(ThingDef def, Map map)
+        {
+            List<Pawn> pawns = map.mapPawns.SpawnedPawnsInFaction(Faction.OfPlayer);
+            int count = 0;
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Thing carried = pawns[i].carryTracker?.CarriedThing;
+                if (carried == null) continue;
+                // MinifiedThing（打包建筑）按内层 def 匹配；普通物品 GetInnerIfMinified 返回自身
+                Thing inner = carried.GetInnerIfMinified();
+                if (inner != null && inner.def == def)
+                    count += carried.stackCount;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// 统计 IHaulSource（衣物架等存储源）直接持有的、未 Spawned 的物品数量。
+        /// 与原版 RecipeWorkerCounter 的 haulSources 遍历同语义。
+        /// 注意：超维存储仓建筑（Building_OuterrealmVault）实现 IHaulSource，
+        /// 随建筑 SpawnSetup 自动注册进 haulDestinationManager（原版 Thing.cs），
+        /// 其 GetDirectlyHeldThings() 返回视图副本（全局条目的投影）——内容已由
+        /// CountInOuterrealmVault 全局层计数，此处跳过整体遍历（兼性能：副本数可能较多）。
+        /// </summary>
+        private static int CountHeldByHaulSources(ThingDef def, Map map)
+        {
+            List<IHaulSource> sources = map.haulDestinationManager.AllHaulSourcesListForReading;
+            int count = 0;
+            for (int i = 0; i < sources.Count; i++)
+            {
+                IHaulSource holder = sources[i];
+                // vault 的内容全部在全局层（TotalCountOf），视图副本只是投影，跳过整体遍历
+                if (holder == null || holder is Building_OuterrealmVault) continue;
+                ThingOwner directlyHeld = holder.GetDirectlyHeldThings();
+                if (directlyHeld == null) continue;
+                for (int j = 0; j < directlyHeld.Count; j++)
+                {
+                    Thing t = directlyHeld[j];
+                    // 排除防重复：
+                    //  1) 已 Spawned 的物品（含 vault 伪 Spawned 视图副本）已在 listerThings 路径处理；
+                    //  2) vault 视图副本（OuterrealmVaultViewThingOwner 持有，含潜在未 Spawned 形态）：
+                    //     全局层投影，由 CountInOuterrealmVault 计数——不依赖具体 holder 类型，防御性兜底。
+                    if (t == null || t.Spawned || IsOuterrealmViewCopy(t)) continue;
+                    Thing inner = t.GetInnerIfMinified();
+                    if (inner != null && inner.def == def)
+                        count += t.stackCount;
+                }
+            }
+            return count;
         }
 
         public static List<ThingDef> GetValidStuffs(ThingDef def)
