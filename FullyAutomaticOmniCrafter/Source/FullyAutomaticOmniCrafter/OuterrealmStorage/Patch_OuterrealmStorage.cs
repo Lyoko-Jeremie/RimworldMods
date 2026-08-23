@@ -2459,6 +2459,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            // §v6 补强（方案 B）：候选构建前先同步回收本图 vault 未预留借出副本，
+            // 使被搬空的借出副本立即释放 borrowedByKey 并重建锚点——否则本兜底也会因
+            // 锚点缺失返回 null，job 提前结束（随后靠 AllItemsLoadedOntoCaravan 复核兜底）。
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int b = 0; b < vaults.Count; b++)
+            {
+                Building_OuterrealmVault vault = vaults[b];
+                if (vault == null || !vault.Spawned || vault.MapHeld != map || vault.view == null)
+                {
+                    continue;
+                }
+                vault.view.ReturnUnreservedBorrowed();
+            }
             // 候选集：仍有搬运需求的 transferable 所匹配的视图锚点副本（伪 Spawned，
             // holdingOwner = view；借出中的副本已移出视图，不会误入候选）。
             List<Thing> candidates = null;
@@ -2506,6 +2519,71 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 PathEndMode.Touch, TraverseParms.For(p),
                 validator: (Thing x) => candidates.Contains(x) && p.CanReserve((LocalTargetInfo)x),
                 lookInHaulSources: true);
+        }
+    }
+
+    // ── vault 远行队收集完成判定复核：阻止"锚点空窗"误判提前出发（§v6 补强，方案 A） ──
+    // 原版 LordToil_PrepareCaravan_GatherItems 每 120 tick 调 AllItemsLoadedOntoCaravan 判定收集完成：
+    // 只看殖民者 lastJobTag == WaitingForOthersToFinishGatheringItems 且无 gather job 在执行，
+    // 完全不检查 transferable.CountToTransfer。vault 借出副本被搬空后，锚点重建要等建筑 Tick
+    // 每 60 tick 的 ReturnUnreservedBorrowed；这个最长 60 tick 的空窗内 FindThingToHaul 返回 null
+    // → 殖民者 wander（tag=Waiting）→ 120 tick 检查误判 AllItemsGathered → 远行队只带走几组就出发。
+    // 修复：原判定为 true 时，先同步回收本图 vault 未预留借出副本（消除空窗，与建筑 Tick
+    // 维护语义一致），再逐殖民者调 FindThingToHaul 复核（复用 vault 兜底与可达/可预留校验）；
+    // 只要还有人能找到可搬物品，就改判为 false（未完成）。vault 确实没货/filter 隐藏/不可达时
+    // 复核为 null，保持原版"带不齐也能出发"的语义。
+    [HarmonyPatch(typeof(RimWorld.Planet.CaravanFormingUtility), "AllItemsLoadedOntoCaravan")]
+    internal static class Patch_CaravanFormingUtility_AllItemsLoadedOntoCaravan
+    {
+        private static void Postfix(Verse.AI.Group.Lord lord, Map map, ref bool __result)
+        {
+            if (!__result || lord == null || map == null)
+            {
+                return;
+            }
+            if (!(lord.LordJob is LordJob_FormAndSendCaravan lordJob))
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return;
+            }
+            if (lordJob.transferables == null || lordJob.transferables.Count == 0)
+            {
+                return;
+            }
+            // 同步回收本图 vault 未预留借出副本，立即重建锚点（消除最长 60 tick 空窗）。
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault == null || !vault.Spawned || vault.MapHeld != map || vault.view == null)
+                {
+                    continue;
+                }
+                vault.view.ReturnUnreservedBorrowed();
+            }
+            // 复核：仍有人能找到可搬物品 → 收集未完成。
+            List<Pawn> ownedPawns = lord.ownedPawns;
+            if (ownedPawns == null)
+            {
+                return;
+            }
+            for (int i = 0; i < ownedPawns.Count; i++)
+            {
+                Pawn p = ownedPawns[i];
+                if (p == null || !p.IsColonist || !p.Spawned || p.Downed)
+                {
+                    continue;
+                }
+                if (GatherItemsForCaravanUtility.FindThingToHaul(p, lord) != null)
+                {
+                    __result = false;
+                    return;
+                }
+            }
         }
     }
 
