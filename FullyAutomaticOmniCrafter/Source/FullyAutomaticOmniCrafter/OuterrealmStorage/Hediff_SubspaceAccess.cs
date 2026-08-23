@@ -24,12 +24,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>自动存入：制作完成后自动把产物 Deposit 进全局库（默认开）。关闭后产物留在原地 / 由玩家处置，手动存入不受影响。</summary>
         public bool autoStore = true;
 
+        /// <summary>自动存入的类别限制（默认关，保持"自动全部存入"既有行为）：开启后逐个核对当前地图上的所有超维存储仓，
+        /// 仅当产物能被至少一个仓接受（filter 允许且未冻结、未禁止存入）时才自动存入；其余产物按原版流程放置
+        /// （可落到指定存储区）。仅 autoStore 开启时有意义。</summary>
+        public bool autoStoreFiltered = false;
+
         public override void ExposeData()
         {
             base.ExposeData();
             // 随 pawn hediffSet 存档；旧档无节点自动取默认值 true，保持既有行为。
             Scribe_Values.Look(ref autoTake, "autoTake", true);
             Scribe_Values.Look(ref autoStore, "autoStore", true);
+            // 旧档无此节点自动取默认值 false（= 自动全部存入），行为不变。
+            Scribe_Values.Look(ref autoStoreFiltered, "autoStoreFiltered", false);
         }
 
         public override void PostAdd(DamageInfo? dinfo)
@@ -88,6 +95,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 isActive = () => autoStore,
                 toggleAction = () => autoStore = !autoStore,
             };
+            yield return new Command_Toggle
+            {
+                defaultLabel = "SubspaceAccess_AutoStoreFiltered".Translate(),
+                defaultDesc = "SubspaceAccess_AutoStoreFilteredDesc".Translate(),
+                icon = OuterrealmStorageTex.VaultAllowDepositIcon,
+                groupKey = SubspaceAccessGizmoKeys.AutoStoreFiltered,
+                isActive = () => autoStoreFiltered,
+                toggleAction = () => autoStoreFiltered = !autoStoreFiltered,
+                // 条件开关：自动存入关闭时无意义，置灰（与 vault 的 allowTakeForUse 联动模式一致）。
+                Disabled = !autoStore,
+                disabledReason = "SubspaceAccess_AutoStoreFilteredDisabledReason".Translate(),
+            };
             yield return new Command_Action
             {
                 defaultLabel = "SubspaceAccess_OpenManager".Translate(),
@@ -103,5 +122,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         public const int AutoTake = 714206;
         public const int AutoStore = 714207;
+        public const int AutoStoreFiltered = 714208;
     }
 }

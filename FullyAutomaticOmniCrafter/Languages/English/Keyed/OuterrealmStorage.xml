@@ -66,6 +66,9 @@
   <SubspaceAccess_AutoTakeDesc>Automatically take ingredients from the pawn's subspace storage while crafting. When off, crafting uses the normal ingredient flow instead; manual take is unaffected.</SubspaceAccess_AutoTakeDesc>
   <SubspaceAccess_AutoStore>Auto store</SubspaceAccess_AutoStore>
   <SubspaceAccess_AutoStoreDesc>Automatically deposit finished products into outerrealm storage after crafting. When off, products are handled by the vanilla flow; manual deposit is unaffected.</SubspaceAccess_AutoStoreDesc>
+  <SubspaceAccess_AutoStoreFiltered>Filtered auto store</SubspaceAccess_AutoStoreFiltered>
+  <SubspaceAccess_AutoStoreFilteredDesc>When auto-storing, check every outerrealm vault on the current map: a product is deposited only if at least one vault accepts it (allowed by its storage filter and not frozen / not deposit-blocked). If any other stockpile or storage building with a higher storage priority also accepts the product, it follows the vanilla priority rules and is not deposited, so it can end up in a designated stockpile. Off = auto-store everything.</SubspaceAccess_AutoStoreFilteredDesc>
+  <SubspaceAccess_AutoStoreFilteredDisabledReason>Requires "Auto store" to be enabled first.</SubspaceAccess_AutoStoreFilteredDisabledReason>
   <SubspaceAccess_PutIntoStorage>Put {0} into subspace storage</SubspaceAccess_PutIntoStorage>
   <SubspaceAccess_FilterHuman>Human</SubspaceAccess_FilterHuman>
   <SubspaceAccess_FilterAnimal>Animal</SubspaceAccess_FilterAnimal>

@@ -2118,12 +2118,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // 逐个 Deposit 吸收进全局层，再返回空列表（原版 thingList.Count==0 → EndCurrentJob(Succeeded)，
     // 无放置/自持）。Bill_Mech 分支走 FinalizeGestatedPawns，不受影响。
     // 随身访问授权 pawn 受"自动存入"开关控制（关闭则不干预产物，走原版流程）；旧量子链路植入体无开关、保持原行为。
+    // "类别限制存入"模式（autoStoreFiltered）：逐个核对当前地图上的超维存储仓，产物不被任何仓接受时不 Deposit，
+    // 留在 __result 里交给原版放置（可落到指定存储区）；同时适配原版存储优先级语义——若存在优先级高于
+    // 接受仓的其他存储区/存储建筑也接受该产物，同样不 Deposit（原版会把物品运往那里，避免存入后再搬出）。
     [HarmonyPatch(typeof(GenRecipe), "MakeRecipeProducts")]
     internal static class Patch_GenRecipe_MakeRecipeProducts
     {
         private static void Postfix(Pawn worker, ref IEnumerable<Thing> __result)
         {
             Hediff_SubspaceAccess access = SubspaceAccessUtility.GetAccessHediff(worker);
+            bool filtered = false;
             if (access != null)
             {
                 // 随身访问授权 pawn：仅当"自动存入"开关开启时才自动存入（关闭后产物落原版流程，手动存入不受影响）。
@@ -2131,6 +2135,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     return;
                 }
+                filtered = access.autoStoreFiltered;
             }
             else if (!OuterrealmMarkUtility.IsMarked(worker))
             {
@@ -2141,21 +2146,99 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            List<Thing> products = new List<Thing>();
+            List<Thing> deposited = new List<Thing>();
+            List<Thing> leftover = null;
             foreach (Thing product in __result)
             {
                 if (product == null)
                 {
                     continue;
                 }
-                products.Add(product);
+                if (filtered && !ShouldAutoStoreToVault(worker, product))
+                {
+                    // 受限模式：产物不被当前地图任何超维存储仓接受，或存在优先级更高的其他存储目标接受它
+                    // （原版优先级语义）——不存入，交给原版流程放置（含落到指定存储区）。
+                    if (leftover == null)
+                    {
+                        leftover = new List<Thing>();
+                    }
+                    leftover.Add(product);
+                    continue;
+                }
+                deposited.Add(product);
                 gs.Deposit(product); // 吸收（冻结在超维空间）
             }
-            __result = new List<Thing>();
-            if (products.Count > 0)
+            __result = leftover ?? new List<Thing>();
+            if (deposited.Count > 0)
             {
-                MoteMaker.ThrowText(worker.DrawPos, worker.Map, "OuterrealmVault_ProductDeposited".Translate(products[0].LabelCapNoCount));
+                MoteMaker.ThrowText(worker.DrawPos, worker.Map, "OuterrealmVault_ProductDeposited".Translate(deposited[0].LabelCapNoCount));
             }
+        }
+
+        /// <summary>
+        /// 受限模式判定：该产物是否应自动存入超维存储仓。
+        /// 1. 必须存在当前地图上"允许存入"的超维存储仓（noDeposit 未开、未冻结、filter 允许），取其中最高存储优先级；
+        /// 2. 若存在比该优先级更高的其他存储目标（存储区 Zone_Stockpile / 存储建筑 Building_Storage 等，
+        ///    即 IHaulDestination 且非本 Mod vault）也接受该产物，则按原版优先级语义物品应运往那里，
+        ///    不自动存入超维存储仓（避免存入后又需搬运工搬出）。
+        /// </summary>
+        private static bool ShouldAutoStoreToVault(Pawn worker, Thing product)
+        {
+            Map map = worker.Map;
+            if (map == null)
+            {
+                return false;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return false;
+            }
+            // 1. vault 侧：接受该产物的当前地图 vault 的最高存储优先级
+            StoragePriority maxVaultPriority = StoragePriority.Unstored;
+            bool anyVaultAccepts = false;
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault == null || !vault.Spawned || vault.MapHeld != map || vault.NoDeposit)
+                {
+                    continue;
+                }
+                if (!vault.CanShow(product))
+                {
+                    continue;
+                }
+                anyVaultAccepts = true;
+                StoragePriority p = vault.GetStoreSettings().Priority;
+                if (p > maxVaultPriority)
+                {
+                    maxVaultPriority = p;
+                }
+            }
+            if (!anyVaultAccepts)
+            {
+                return false;
+            }
+            // 2. 优先级语义：存在更高优先级的非 vault 存储目标接受该产物 → 不自动存入
+            List<IHaulDestination> destinations = map.haulDestinationManager.AllHaulDestinationsListForReading;
+            for (int i = 0; i < destinations.Count; i++)
+            {
+                IHaulDestination dest = destinations[i];
+                if (dest == null || dest is Building_OuterrealmVault || !dest.HaulDestinationEnabled)
+                {
+                    continue;
+                }
+                if (dest.GetStoreSettings().Priority <= maxVaultPriority)
+                {
+                    continue;
+                }
+                if (dest.Accepts(product))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
