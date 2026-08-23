@@ -2508,6 +2508,67 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── vault 远行队收集数量截断修复：TransferableOneWay.MaxCount 感知全局量 ──
+    // 收集阶段 vault 视图副本常态 stackCount = min(全局剩余, stackLimit)（如钢铁 75）。
+    // TransferableOneWay.MaxCount 是对 things 中实例 stackCount 的直接求和；当同一
+    // transferable 同时包含普通地面物品与 vault 副本（或 vault 副本尚未物化）时，
+    // MaxCount 被低估（如地面 75 + vault 副本 75 = 150）。
+    // JobDriver_PrepareCaravan_GatherItems 每放入 inventory 后调用
+    // Transferable.AdjustTo(CountToTransfer - taken)，而 AdjustTo → ClampAmount 按
+    // MaxCount 截断——于是 CountToTransfer 从剩余需求（如 525）被截断为 MaxCount（如 150），
+    // 远行队把"还需搬多少"改小了，收集提前完成，只带走几组。
+    // 修复：MaxCount getter 对 vault 视图副本（holdingOwner = view，伪 Spawned 锚点）用
+    // 全局条目 Count 参与求和，使 MaxCount 反映真实可用量；借出副本（真 Spawned，已从
+    // 视图移出且全局已扣）保持 stackCount 参与，避免重复计算。对话框打开期间视图副本已
+    // Boost（stackCount = 全局量），本 patch 与原行为一致；收集阶段则修正被 stackLimit
+    // 低估的部分。
+    [HarmonyPatch(typeof(TransferableOneWay), "MaxCount", MethodType.Getter)]
+    internal static class Patch_TransferableOneWay_MaxCount
+    {
+        private static void Postfix(TransferableOneWay __instance, ref int __result)
+        {
+            List<Thing> things = __instance.things;
+            if (things == null || things.Count == 0)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return;
+            }
+            bool hasVaultCopy = false;
+            long total = 0L;
+            for (int i = 0; i < things.Count; i++)
+            {
+                Thing t = things[i];
+                if (t == null)
+                {
+                    continue;
+                }
+                OuterrealmVaultViewThingOwner view = t.holdingOwner as OuterrealmVaultViewThingOwner;
+                if (view != null)
+                {
+                    hasVaultCopy = true;
+                    OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(t));
+                    if (e != null && e.Count > 0)
+                    {
+                        total += e.Count;
+                    }
+                }
+                else
+                {
+                    total += t.stackCount;
+                }
+            }
+            if (!hasVaultCopy)
+            {
+                return;
+            }
+            __result = total > int.MaxValue ? int.MaxValue : (int)total;
+        }
+    }
+
     // ── vault 远行队收集兜底：候选补充（修复"只取一组"后不再拿取） ──
     // 原版 GatherItemsForCaravanUtility.FindThingToHaul 只从 transferable.things（对话框打开时的
     // 静态实例列表）构建 neededItems 再搜索。vault 的借出机制（§v4：Reserve → TryLendCopy）会把
