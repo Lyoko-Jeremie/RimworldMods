@@ -23,6 +23,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private List<OuterrealmEntry> entries = new List<OuterrealmEntry>();
         private Dictionary<OuterrealmEntryKey, OuterrealmEntry> index = new Dictionary<OuterrealmEntryKey, OuterrealmEntry>();
 
+        // ── 按 ThingDef 聚合总量缓存（TotalCountOf 用，§兼容） ──
+        // 万能制造机补货判断/UI 每帧按订单查询 vault 存量；entries 遍历 O(n)
+        // 摊薄到内容变更后的首次查询（version 不等即重建，其余调用 O(1) 命中）。
+        // 不序列化——读档重建条目后显式失效。所有数量变更点均已 version++。
+        private Dictionary<ThingDef, long> totalByDef;
+        private int totalByDefVersion = -1;
+
         /// <summary>内容变更版本号（每次存入/取出/移除 +1，供建筑懒同步）。
         /// 使用不等比较（非大小比较）：天然抗 int 回绕——回绕周期 2^32 次变更，
         /// 游戏生命周期内不可能重合到旧值。</summary>
@@ -133,28 +140,48 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
-        /// <summary>全局层中指定 ThingDef 的总数量（仅统计 Proto 经 GetInnerIfMinified 后 def 匹配的条目，即原始资源类物品）。</summary>
+        /// <summary>全局层中指定 ThingDef 的总数量（仅统计 Proto 经 GetInnerIfMinified 后 def 匹配的条目，即原始资源类物品）。
+        /// 经 totalByDef 缓存 O(1) 查询：version 不变时直接命中，变更后首次调用重建（O(entries)）。</summary>
         public long TotalCountOf(ThingDef def)
         {
             if (def == null)
             {
                 return 0L;
             }
-            long total = 0L;
+            EnsureTotalByDef();
+            long total;
+            return totalByDef.TryGetValue(def, out total) ? total : 0L;
+        }
+
+        /// <summary>按 ThingDef 聚合总量缓存：version 变化（任意数量变更点 version++）后惰性重建。</summary>
+        private void EnsureTotalByDef()
+        {
+            if (totalByDef != null && totalByDefVersion == version)
+            {
+                return;
+            }
+            Dictionary<ThingDef, long> dict = new Dictionary<ThingDef, long>();
             for (int i = 0; i < entries.Count; i++)
             {
                 OuterrealmEntry e = entries[i];
-                if (e == null || e.Proto == null || e.Count <= 0)
+                if (e == null || e.Count <= 0)
                 {
                     continue;
                 }
-                Thing inner = e.Proto.GetInnerIfMinified();
-                if (inner != null && inner.def == def)
+                // 分组键 Def 与 TotalCountOf 原逐条判断语义一致：
+                // MinifiedThing 的 key.Def 已是 InnerThing.def（OuterrealmEntryKey.From 内层化），
+                // Corpse 的 key.Def 即 Corpse def（GetInnerIfMinified 返回自身）。
+                ThingDef d = e.Key.Def;
+                if (d == null)
                 {
-                    total += e.Count;
+                    continue;
                 }
+                long old;
+                dict.TryGetValue(d, out old);
+                dict[d] = old + e.Count;
             }
-            return total;
+            totalByDef = dict;
+            totalByDefVersion = version;
         }
 
         /// <summary>全局层总条目数与总数量（InspectString 用）。</summary>
@@ -641,6 +668,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 version = 0;
                 reservationVersion = 0;
+                totalByDef = null; // 总量缓存失效（version 重置为 0，显式置空避免误命中旧会话缓存）
+                totalByDefVersion = -1;
                 changeLog.Clear();
                 changeLogSet.Clear();
                 changeLogOverflow = false;

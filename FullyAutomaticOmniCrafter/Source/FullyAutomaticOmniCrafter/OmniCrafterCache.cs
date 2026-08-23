@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
 using Verse;
+using FullyAutomaticOmniCrafter.OuterrealmStorage;
 
 namespace FullyAutomaticOmniCrafter
 {
@@ -191,14 +192,19 @@ namespace FullyAutomaticOmniCrafter
                 {
                     foreach (Thing t in map.listerThings.ThingsMatching(
                                  ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)))
-                        if (t is MinifiedThing mt && mt.InnerThing?.def == def)
+                        if (t is MinifiedThing mt && mt.InnerThing?.def == def
+                                                  && !IsOuterrealmViewCopy(t))
                             count += t.stackCount;
                 }
                 else
                 {
                     foreach (Thing t in map.listerThings.ThingsOfDef(def))
-                        count += t.stackCount;
+                        if (!IsOuterrealmViewCopy(t))
+                            count += t.stackCount;
                 }
+
+                // 加上超维存储仓（vault）全局层中的真实数量
+                count += CountInOuterrealmVault(def, map);
             }
             catch (Exception ex)
             {
@@ -220,15 +226,19 @@ namespace FullyAutomaticOmniCrafter
                     foreach (Thing t in map.listerThings.ThingsMatching(
                                  ThingRequest.ForGroup(ThingRequestGroup.MinifiedThing)))
                         if (t is MinifiedThing mt && mt.InnerThing?.def == def
-                                                  && t.Position.GetSlotGroup(map) != null)
+                                                  && t.Position.GetSlotGroup(map) != null
+                                                  && !IsOuterrealmViewCopy(t))
                             count += t.stackCount;
                 }
                 else
                 {
                     foreach (Thing t in map.listerThings.ThingsOfDef(def))
-                        if (t.Position.GetSlotGroup(map) != null)
+                        if (t.Position.GetSlotGroup(map) != null && !IsOuterrealmViewCopy(t))
                             count += t.stackCount;
                 }
+
+                // 加上超维存储仓（vault）全局层中的真实数量
+                count += CountInOuterrealmVault(def, map);
             }
             catch (Exception ex)
             {
@@ -236,6 +246,32 @@ namespace FullyAutomaticOmniCrafter
             }
 
             return count;
+        }
+
+        /// <summary>
+        /// 判断物品是否为超维存储仓的"视图副本"（伪 Spawned 投影）。
+        /// 视图副本是全局条目的投影，其 stackCount 恒为 min(全局剩余, stackLimit)，
+        /// 不代表真实数量；统计时必须排除，改以全局层真实 long 计数为准，
+        /// 否则会低估（vault 存量超过一摞时）或与全局计数重复。
+        /// 借出副本（真 Spawned、holdingOwner=null，借出时已从全局扣减）不在此列，
+        /// 正常计入地图统计。
+        /// </summary>
+        private static bool IsOuterrealmViewCopy(Thing t)
+        {
+            return t != null && t.holdingOwner is OuterrealmVaultViewThingOwner;
+        }
+
+        /// <summary>
+        /// 超维存储仓（vault）中的真实数量：仅当当前地图存在已生成的 vault 建筑时，
+        /// 计入其全局层中该 ThingDef 的总量（vault 建筑即该地图的存储区）。
+        /// 该地图无 vault 时返回 0（本地图无法存取全局层内容，不应计入补货统计）。
+        /// </summary>
+        private static int CountInOuterrealmVault(ThingDef def, Map map)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map)) return 0;
+            long total = gs.TotalCountOf(def);
+            return total > int.MaxValue ? int.MaxValue : (int)total;
         }
 
         public static List<ThingDef> GetValidStuffs(ThingDef def)
