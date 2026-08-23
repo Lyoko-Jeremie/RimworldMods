@@ -75,12 +75,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>
         /// 制作选料注入（由 Transpiler 在原版 relevantThings.Clear() 后调用）：
         /// 授权 pawn 把随身视图副本（提升为全局剩余量）加入 relevantThings，供原版选料匹配。
+        /// 仅当 pawn 的"自动取用"开关开启时注入（关闭后制作走原版选料，不自动从身上取料）。
         /// </summary>
         public static void InjectPawnCopies(Pawn pawn, Thing billGiver, List<Thing> relevantThings)
         {
             Hediff_SubspaceAccess hediff = GetAccessHediff(pawn);
-            if (hediff == null)
+            if (hediff == null || !hediff.autoTake)
             {
+                // 未授权，或该 pawn 关闭了"自动取用"开关：不注入随身副本（手动取用不受影响）。
                 return;
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;

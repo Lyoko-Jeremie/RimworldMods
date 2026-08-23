@@ -1938,36 +1938,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── §v3 随身访问：授权 pawn 附带"超维存储管理器"Gizmo（随身弹出到身旁） ──
-    [HarmonyPatch(typeof(Pawn), "GetGizmos")]
-    internal static class Patch_Pawn_GetGizmos_SubspaceAccess
-    {
-        private static void Postfix(ref IEnumerable<Gizmo> __result, Pawn __instance)
-        {
-            if (!SubspaceAccessUtility.IsAuthorized(__instance))
-            {
-                return;
-            }
-            IEnumerable<Gizmo> original = __result;
-            __result = Append(original, __instance);
-        }
-
-        private static IEnumerable<Gizmo> Append(IEnumerable<Gizmo> original, Pawn pawn)
-        {
-            foreach (Gizmo g in original)
-            {
-                yield return g;
-            }
-            yield return new Command_Action
-            {
-                defaultLabel = "SubspaceAccess_OpenManager".Translate(),
-                defaultDesc = "SubspaceAccess_OpenManagerDesc".Translate(),
-                icon = OuterrealmStorageTex.SubspaceAccessOpenManagerSelfIcon,
-                action = () => Find.WindowStack.Add(new Dialog_OuterrealmStorageManager(pawn)),
-            };
-        }
-    }
-
     // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
@@ -2147,14 +2117,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // GenRecipe.MakeRecipeProducts 的迭代器在 initAction 里被 ToList() 枚举——postfix 物化枚举后
     // 逐个 Deposit 吸收进全局层，再返回空列表（原版 thingList.Count==0 → EndCurrentJob(Succeeded)，
     // 无放置/自持）。Bill_Mech 分支走 FinalizeGestatedPawns，不受影响。
+    // 随身访问授权 pawn 受"自动存入"开关控制（关闭则不干预产物，走原版流程）；旧量子链路植入体无开关、保持原行为。
     [HarmonyPatch(typeof(GenRecipe), "MakeRecipeProducts")]
     internal static class Patch_GenRecipe_MakeRecipeProducts
     {
         private static void Postfix(Pawn worker, ref IEnumerable<Thing> __result)
         {
-            if (!OuterrealmMarkUtility.IsMarked(worker))
+            Hediff_SubspaceAccess access = SubspaceAccessUtility.GetAccessHediff(worker);
+            if (access != null)
             {
-                return;
+                // 随身访问授权 pawn：仅当"自动存入"开关开启时才自动存入（关闭后产物落原版流程，手动存入不受影响）。
+                if (!access.autoStore)
+                {
+                    return;
+                }
+            }
+            else if (!OuterrealmMarkUtility.IsMarked(worker))
+            {
+                return; // 未授权且非旧量子链路植入体：不干预
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs == null)

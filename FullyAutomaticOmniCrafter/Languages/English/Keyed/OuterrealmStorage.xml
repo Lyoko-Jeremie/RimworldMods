@@ -62,6 +62,10 @@
   <SubspaceAccess_Empty>None</SubspaceAccess_Empty>
   <SubspaceAccess_OpenManager>Subspace storage manager</SubspaceAccess_OpenManager>
   <SubspaceAccess_OpenManagerDesc>Open the subspace storage manager to eject items nearby.</SubspaceAccess_OpenManagerDesc>
+  <SubspaceAccess_AutoTake>Auto take</SubspaceAccess_AutoTake>
+  <SubspaceAccess_AutoTakeDesc>Automatically take ingredients from the pawn's subspace storage while crafting. When off, crafting uses the normal ingredient flow instead; manual take is unaffected.</SubspaceAccess_AutoTakeDesc>
+  <SubspaceAccess_AutoStore>Auto store</SubspaceAccess_AutoStore>
+  <SubspaceAccess_AutoStoreDesc>Automatically deposit finished products into outerrealm storage after crafting. When off, products are handled by the vanilla flow; manual deposit is unaffected.</SubspaceAccess_AutoStoreDesc>
   <SubspaceAccess_PutIntoStorage>Put {0} into subspace storage</SubspaceAccess_PutIntoStorage>
   <SubspaceAccess_FilterHuman>Human</SubspaceAccess_FilterHuman>
   <SubspaceAccess_FilterAnimal>Animal</SubspaceAccess_FilterAnimal>

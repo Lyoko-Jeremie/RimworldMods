@@ -64,6 +64,10 @@
   <SubspaceAccess_Empty>无</SubspaceAccess_Empty>
   <SubspaceAccess_OpenManager>超维存储管理器</SubspaceAccess_OpenManager>
   <SubspaceAccess_OpenManagerDesc>打开超维存储管理器，可把物品弹出到身旁。</SubspaceAccess_OpenManagerDesc>
+  <SubspaceAccess_AutoTake>自动取用</SubspaceAccess_AutoTake>
+  <SubspaceAccess_AutoTakeDesc>制作时自动从随身空间取用材料。关闭后制作不再自动从身上取料（需由搬运工取货），右键手动取用不受影响。</SubspaceAccess_AutoTakeDesc>
+  <SubspaceAccess_AutoStore>自动存入</SubspaceAccess_AutoStore>
+  <SubspaceAccess_AutoStoreDesc>制作完成后自动将产物存入超维存储。关闭后产物留在原地按原版流程处理，右键手动存入不受影响。</SubspaceAccess_AutoStoreDesc>
   <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
   <SubspaceAccess_FilterHuman>人类</SubspaceAccess_FilterHuman>
   <SubspaceAccess_FilterAnimal>动物</SubspaceAccess_FilterAnimal>
