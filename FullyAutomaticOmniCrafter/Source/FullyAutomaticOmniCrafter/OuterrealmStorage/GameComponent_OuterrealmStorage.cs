@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -21,7 +22,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public static GameComponent_OuterrealmStorage Instance;
 
         private List<OuterrealmEntry> entries = new List<OuterrealmEntry>();
-        private Dictionary<OuterrealmEntryKey, OuterrealmEntry> index = new Dictionary<OuterrealmEntryKey, OuterrealmEntry>();
+        // §B 设计（CanStackWith 动态分组）：条目不再按 OuterrealmEntryKey 哈希索引——
+        // 合并判据 = 原版 Thing.CanStackWith + def.stackLimit > 1（原版容量语义：stackLimit=1
+        // 的基因组/异种胚芽等"唯一实体"类物品永不合并，每实例独立条目，内容不丢失）。
+        // 查找经 byDef 粗索引（def 不同必不能堆叠）缩小候选后线性 CanStackWith 判定（O(同 def 条目数)）。
+        private Dictionary<ThingDef, List<OuterrealmEntry>> byDef = new Dictionary<ThingDef, List<OuterrealmEntry>>();
 
         // ── 按 ThingDef 聚合总量缓存（TotalCountOf 用，§兼容） ──
         // 万能制造机补货判断/UI 每帧按订单查询 vault 存量；entries 遍历 O(n)
@@ -36,14 +41,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private int version;
 
         /// <summary>原版 ReservationManager 预留变更版本号（每次 Reserve/Release* +1）。
-        /// 供各 vault 视图的预留缓存（reservedByKey/reservedByCopy）做 O(1) 失效判定：
+        /// 供各 vault 视图的预留缓存（reservedByEntry/reservedByCopy）做 O(1) 失效判定：
         /// 视图缓存记录上次重建时的 ReservationVersion，不等即重建。不序列化——
         /// 读档时重置为 0，且 RebuildView 会把视图缓存版本置 -1 强制失效（§P0 预订记账优化）。</summary>
         private int reservationVersion;
 
         // ── 增量变更日志（§3.3 方案 A）：环形去重窗口 ──
-        private List<OuterrealmEntryKey> changeLog = new List<OuterrealmEntryKey>();
-        private HashSet<OuterrealmEntryKey> changeLogSet = new HashSet<OuterrealmEntryKey>();
+        // §B：日志改存条目引用（key 不再标识条目——stackLimit=1 物品多条目可同 key）。
+        private List<OuterrealmEntry> changeLog = new List<OuterrealmEntry>();
+        private HashSet<OuterrealmEntry> changeLogSet = new HashSet<OuterrealmEntry>();
         private bool changeLogOverflow;
         private const int ChangeLogCapacity = 4096;
 
@@ -51,7 +57,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
 
         /// <summary>帧末微批同步用缓存列表（§3.3 实时同步方案 B：复用避免每帧分配）。</summary>
-        private readonly List<OuterrealmEntryKey> tmpSyncKeys = new List<OuterrealmEntryKey>();
+        private readonly List<OuterrealmEntry> tmpSyncKeys = new List<OuterrealmEntry>();
 
         // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
         private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
@@ -72,55 +78,131 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         /// <summary>吸收存入（§3.2 吸收路径的全局侧）：把 item 的全部 stackCount 并入对应条目。
         /// Spawned 物品（如弹出后又被搬回/存回的尸体）先 DeSpawn——存入超维空间 = 从地图取出，
-        /// 否则 proto 保持 Spawned，再次弹出时 GenSpawn 会报 "already spawned" 并死循环。</summary>
-        public void Deposit(Thing item)
+        /// 否则 proto 保持 Spawned，再次弹出时 GenSpawn 会报 "already spawned" 并死循环。
+        /// §B：合并判据 = 原版 CanStackWith + stackLimit>1（FindEntry 动态判定）；不满足则新建条目。
+        /// 返回条目（新增或已有），供视图层物化/更新副本。</summary>
+        public OuterrealmEntry Deposit(Thing item)
         {
             if (item == null || item.stackCount <= 0)
             {
-                return;
+                return null;
             }
             if (item.Spawned)
             {
                 item.DeSpawn(DestroyMode.Vanish);
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(item);
-            OuterrealmEntry entry;
-            if (index.TryGetValue(key, out entry))
+            OuterrealmEntry existing = FindEntry(item);
+            if (existing != null)
             {
-                entry.Count += item.stackCount;
-                if (entry.Proto == null)
+                existing.Count += item.stackCount;
+                if (existing.Proto == null)
                 {
-                    entry.Proto = item;
+                    existing.Proto = item;
                 }
                 else
                 {
                     // 已吸收：实例不再需要（属性已并入条目）。立即销毁防止泄漏。
                     item.Destroy();
                 }
+                version++;
+                AddToChangeLog(existing);
+                return existing;
             }
-            else
+            OuterrealmEntry entry = new OuterrealmEntry
             {
-                entry = new OuterrealmEntry { Key = key, Proto = item, Count = item.stackCount };
-                entries.Add(entry);
-                index[key] = entry;
-            }
+                Key = OuterrealmEntryKey.From(item),
+                Proto = item,
+                Count = item.stackCount
+            };
+            AddEntry(entry);
             version++;
-            AddToChangeLog(key);
+            AddToChangeLog(entry);
+            return entry;
+        }
+
+        /// <summary>合并判据（§B）：原版"是否允许合并放置"= CanStackWith（def/stuff/非relic/Item 类别/
+        /// 各 comp AllowStackWith，含第三方覆写）+ 原版容量语义 stackLimit>1（stackLimit=1 的
+        /// 基因组/异种胚芽/尸体/武器等"唯一实体"永不合并，内容随实例保存，杜绝合并丢失）。
+        /// 纯通用判定、无物品类型特判（Corpse 的 stackLimit=1 自然走"不合并"分支，与原 UniqueId
+        /// 分组行为等价：每具尸体独立条目）。MinifiedThing（打包建筑）def 未写 stackLimit（默认 1）
+        /// → 按原版语义亦不可堆叠、每实例独立条目（对齐原版；旧版按 InnerThing.def 聚合的行为取消，
+        /// 数量不丢）。不检查"当前堆未满"：vault 条目是多个原版堆的聚合，long 计数可超 stackLimit。</summary>
+        private static bool CanMergeInto(OuterrealmEntry entry, Thing item)
+        {
+            if (entry == null || entry.Count <= 0 || entry.Proto == null || entry.Proto.Destroyed
+                || item == null || item.Destroyed)
+            {
+                return false;
+            }
+            ThingDef def = item.def;
+            if (def == null || def.stackLimit <= 1 || def.category != ThingCategory.Item)
+            {
+                return false;
+            }
+            return entry.Proto.CanStackWith(item);
+        }
+
+        /// <summary>动态查找可合并条目（§B）：byDef 粗索引 + CanStackWith 线性判定。
+        /// 语义 = 原版"该物品可并入该堆"；stackLimit=1 物品恒返回 null（永不合并，调用方新建条目）。
+        /// 唯一特判：Corpse（唯一实体，InnerPawn 同一 pawn 只能属于一具尸体）按 InnerPawn.thingIDNumber
+        /// 匹配原条目（保留 UniqueId 分组语义）；其余物品一律走通用 CanStackWith 判定。
+        /// 注意：仅用于存入合并查找；副本→条目的关联由视图层 GetEntryOf 维护（见 OuterrealmVaultViewThingOwner）。</summary>
+        public OuterrealmEntry FindEntry(Thing item)
+        {
+            if (item == null || item.def == null)
+            {
+                return null;
+            }
+            // 尸体特判（唯一 pawn 标识）：同一具尸体再次存入时并入原条目。
+            if (item is Corpse corpse && corpse.InnerPawn != null)
+            {
+                int id = corpse.InnerPawn.thingIDNumber;
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    OuterrealmEntry e = entries[i];
+                    if (e != null && e.Count > 0 && e.Proto is Corpse cp
+                        && cp.InnerPawn != null && cp.InnerPawn.thingIDNumber == id)
+                    {
+                        return e;
+                    }
+                }
+                return null;
+            }
+            List<OuterrealmEntry> cands;
+            if (!byDef.TryGetValue(item.def, out cands))
+            {
+                return null;
+            }
+            for (int i = 0; i < cands.Count; i++)
+            {
+                OuterrealmEntry e = cands[i];
+                if (e != null && CanMergeInto(e, item))
+                {
+                    return e;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>按 def 粗索引登记条目（Proto.def 为键：CanStackWith 要求 def 相同，粗过滤足够）。</summary>
+        private void AddEntry(OuterrealmEntry entry)
+        {
+            if (entry == null || entry.Proto == null)
+            {
+                return;
+            }
+            entries.Add(entry);
+            ThingDef def = entry.Proto.def;
+            List<OuterrealmEntry> list;
+            if (!byDef.TryGetValue(def, out list))
+            {
+                list = new List<OuterrealmEntry>();
+                byDef[def] = list;
+            }
+            list.Add(entry);
         }
 
         // ── 查询 ────────────────────────────────────────────────────────────────
-
-        public OuterrealmEntry FindEntry(OuterrealmEntryKey key)
-        {
-            OuterrealmEntry entry;
-            return index.TryGetValue(key, out entry) ? entry : null;
-        }
-
-        public long CountOf(OuterrealmEntryKey key)
-        {
-            OuterrealmEntry entry = FindEntry(key);
-            return entry != null ? entry.Count : 0L;
-        }
 
         /// <summary>该地图上是否存在已 Spawned 的超维存储仓（决定该地图能否访问全局存储内容）。</summary>
         public bool HasVaultOnMap(Map map)
@@ -198,15 +280,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── 扣减（SplitOff 差额 / 整堆移除，§3.3） ──────────────────────────────
 
-        /// <summary>按条目扣减全局数量；扣到 0 时移除条目。</summary>
-        public void Subtract(OuterrealmEntryKey key, long amount)
+        /// <summary>按条目扣减全局数量；扣到 0 时移除条目。§B：调用方持有条目引用（视图 GetEntryOf / 动态 FindEntry）。</summary>
+        public void Subtract(OuterrealmEntry entry, long amount)
         {
-            if (amount <= 0)
+            if (entry == null || amount <= 0)
             {
+                if (entry == null && amount > 0)
+                {
+                    // §B 防御路径：副本→条目映射 miss（stackLimit=1 物品异常场景）时静默不扣账
+                    // 会导致物品复制——记录以便定位（正常路径不触发，频率极低）。
+                    Log.Warning("[OuterrealmStorage] Subtract with null entry, amount=" + amount + ": copy->entry mapping miss, global count NOT deducted.");
+                }
                 return;
             }
-            OuterrealmEntry entry;
-            if (!index.TryGetValue(key, out entry))
+            if (entry.Count <= 0)
             {
                 // 条目已被取空移除（副本残留的账外量，如退休副本最后被取走）：全局已为 0，静默返回，
                 // 避免"全局已空 + reservation 残留副本"场景刷屏（§3.3 退休副本生命周期）。
@@ -227,22 +314,40 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 若不通知，残留副本要等 60 tick 懒同步才清理——窗口期内 JobGiver_OptimizeApparel
                 // 会反复选中空条目副本（枚举 GetDirectlyHeldThings 且无冷却）→ Wear job 预留失败 →
                 // "Could not reserve ... No existing reserver" 每 30 tick 刷屏。
-                NotifyEntriesEmptied(key);
+                NotifyEntriesEmptied(entry);
             }
             version++;
-            AddToChangeLog(key);
+            AddToChangeLog(entry);
         }
 
-        /// <summary>移除条目（计数归零时）。Proto 随之销毁。</summary>
-        private void RemoveEntry(OuterrealmEntry entry)
+        /// <summary>移除条目（计数归零时）。Proto 随之销毁；尸体整体转移路径传 destroyProto=false
+        ///（Proto 已交给调用方，仅解除引用，byDef 索引仍正常清理）。</summary>
+        private void RemoveEntry(OuterrealmEntry entry, bool destroyProto = true)
         {
-            if (entry.Proto != null)
+            if (entry == null)
+            {
+                return;
+            }
+            // 先取 def（byDef 索引键）再销毁 Proto——索引清理依赖 Proto.def。
+            ThingDef def = entry.Proto != null ? entry.Proto.def : null;
+            if (destroyProto && entry.Proto != null)
             {
                 entry.Proto.Destroy();
-                entry.Proto = null;
             }
+            entry.Proto = null;
             entries.Remove(entry);
-            index.Remove(entry.Key);
+            if (def != null)
+            {
+                List<OuterrealmEntry> list;
+                if (byDef.TryGetValue(def, out list))
+                {
+                    list.Remove(entry);
+                    if (list.Count == 0)
+                    {
+                        byDef.Remove(def);
+                    }
+                }
+            }
         }
 
         // ── 取出（物化，未放置） ────────────────────────────────────────────────
@@ -275,9 +380,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 entry.Count -= 1;
                 if (entry.Count == 0)
                 {
-                    entry.Proto = null; // 已整体转移给调用方：防止 RemoveEntry 销毁它
-                    RemoveEntry(entry);
-                    NotifyEntriesEmptied(entry.Key);
+                    // 已整体转移给调用方：移除条目但不销毁 Proto（byDef 索引照常清理）
+                    RemoveEntry(entry, false);
+                    NotifyEntriesEmptied(entry);
                 }
             }
             else
@@ -288,26 +393,31 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (entry.Count == 0)
                 {
                     RemoveEntry(entry);
-                    NotifyEntriesEmptied(entry.Key);
+                    NotifyEntriesEmptied(entry);
                 }
             }
             version++;
-            AddToChangeLog(entry.Key);
+            AddToChangeLog(entry);
             return t;
         }
 
         /// <summary>条目被取空后：立即让所有建筑视图移除残留副本（§3.3 同步补到变更点，防空条目副本被自动 job 选中）。</summary>
-        private void NotifyEntriesEmptied(OuterrealmEntryKey key)
+        private void NotifyEntriesEmptied(OuterrealmEntry entry)
         {
             for (int i = 0; i < vaults.Count; i++)
             {
                 Building_OuterrealmVault v = vaults[i];
                 if (v != null && v.view != null)
                 {
-                    v.view.SyncKey(key);
+                    v.view.SyncEntry(entry);
                 }
             }
         }
+
+        /// <summary>GeneSetHolderBase.geneSet 字段反射引用（§B 物化基因内容复制的通用补丁；
+        /// 静态缓存避免重复反射。字段名为 1.6 反编译一致，null 时跳过复制（防御）。</summary>
+        private static readonly System.Reflection.FieldInfo GeneSetField =
+            AccessTools.Field(typeof(GeneSetHolderBase), "geneSet");
 
         /// <summary>从 Proto 物化新实例并复制 P1 基础属性（def/stuff/耐久/品质/样式/颜色）。
         /// MinifiedThing（打包建筑）：MakeThing 生成的 MinifiedThing 的 InnerThing 为 null，
@@ -350,15 +460,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 cTo.DesiredColor = cFrom.Color;
             }
+            // §B 基因组修复（通用补丁）：GeneSetHolderBase 是 Genepack / Xenogerm 的公共基类，
+            // 基因内容存于 protected geneSet 字段。ThingMaker.MakeThing 会触发 PostMake——
+            // Genepack.PostMake 随机生成 geneSet、Xenogerm 的 geneSet 保持 null，物化实例的
+            // 基因内容必然与 Proto 不一致（"基因组类型变了"的根因 1）。此处从基类统一复制
+            // geneSet（GeneSet.Copy 保留 name），一次覆盖全部子类，不针对具体子类特判。
+            // 反射字段引用静态缓存（低频物化路径，避免每次反射查找）。
+            GeneSetHolderBase gFrom = from as GeneSetHolderBase;
+            GeneSetHolderBase gTo = to as GeneSetHolderBase;
+            if (gFrom != null && gTo != null && GeneSetField != null && gFrom.GeneSet != null)
+            {
+                GeneSetField.SetValue(gTo, gFrom.GeneSet.Copy());
+            }
         }
 
         // ── 变更日志（§3.3 方案 A） ─────────────────────────────────────────────
 
-        /// <summary>内容变更统一入口：版本号 +1 并写入变更日志（所有数量变动点调用）。</summary>
-        public void NotifyContentChanged(OuterrealmEntryKey key)
+        /// <summary>内容变更统一入口：版本号 +1 并写入变更日志（所有数量变动点调用）。§B：条目引用。</summary>
+        public void NotifyContentChanged(OuterrealmEntry entry)
         {
             version++;
-            AddToChangeLog(key);
+            AddToChangeLog(entry);
         }
 
         /// <summary>原版 ReservationManager 预留变更通知：版本号 +1（§P0 预订记账优化）。
@@ -378,14 +500,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            entries.Add(entry);
-            index[entry.Key] = entry;
+            AddEntry(entry);
             version++;
-            AddToChangeLog(entry.Key);
+            AddToChangeLog(entry);
         }
 
-        private void AddToChangeLog(OuterrealmEntryKey key)
+        private void AddToChangeLog(OuterrealmEntry entry)
         {
+            if (entry == null)
+            {
+                return;
+            }
             if (changeLogOverflow)
             {
                 // 溢出窗口后的首个新变化：重置日志，恢复正常记录。
@@ -393,9 +518,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 changeLog.Clear();
                 changeLogSet.Clear();
             }
-            if (changeLogSet.Add(key))
+            if (changeLogSet.Add(entry))
             {
-                changeLog.Add(key);
+                changeLog.Add(entry);
                 if (changeLog.Count >= ChangeLogCapacity)
                 {
                     changeLogOverflow = true;
@@ -422,16 +547,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── 弹出队列（§6.4） ────────────────────────────────────────────────────
 
-        /// <summary>把 count 个条目物化弹出到指定地图（追加到弹出队列，逐 tick 限速执行）。</summary>
-        public void EnqueueEject(OuterrealmEntryKey key, Map map, long count)
+        /// <summary>把 count 个条目物化弹出到指定地图（追加到弹出队列，逐 tick 限速执行）。§B：条目引用。</summary>
+        public void EnqueueEject(OuterrealmEntry entry, Map map, long count)
         {
-            EnqueueEject(key, map, count, IntVec3.Invalid);
+            EnqueueEject(entry, map, count, IntVec3.Invalid);
         }
 
         /// <summary>弹出到指定锚点（§v3 随身弹出：anchor = pawn 位置；Invalid = FindEjectAnchor 默认）。</summary>
-        public void EnqueueEject(OuterrealmEntryKey key, Map map, long count, IntVec3 anchor)
+        public void EnqueueEject(OuterrealmEntry entry, Map map, long count, IntVec3 anchor)
         {
-            if (count <= 0 || map == null || !FindEntryExists(key))
+            if (count <= 0 || map == null || entry == null || entry.Count <= 0)
             {
                 return;
             }
@@ -443,19 +568,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < ejectQueue.Count; i++)
             {
                 VaultEjectJob job = ejectQueue[i];
-                if (job.Key == key && job.MapIndex == mapIndex && job.Anchor == anchor)
+                if (job.Entry == entry && job.MapIndex == mapIndex && job.Anchor == anchor)
                 {
                     job.Remaining += count;
                     return;
                 }
             }
-            ejectQueue.Add(new VaultEjectJob { Key = key, MapIndex = mapIndex, Remaining = count, Anchor = anchor });
-        }
-
-        private bool FindEntryExists(OuterrealmEntryKey key)
-        {
-            OuterrealmEntry e = FindEntry(key);
-            return e != null && e.Count > 0;
+            ejectQueue.Add(new VaultEjectJob { Entry = entry, MapIndex = mapIndex, Remaining = count, Anchor = anchor });
         }
 
         /// <summary>每 tick 物化 ≤ 4 堆（每堆 ≤ stackLimit）到目标地图，防瞬间物化爆炸（§6.4/§6.5）。</summary>
@@ -474,8 +593,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         continue;
                     }
                     Map map = Find.Maps[job.MapIndex];
-                    OuterrealmEntry entry = FindEntry(job.Key);
-                    if (entry == null || entry.Count <= 0)
+                    OuterrealmEntry entry = job.Entry;
+                    if (entry == null || entry.Count <= 0 || entry.Proto == null)
                     {
                         ejectQueue.RemoveAt(i);
                         continue;
@@ -519,7 +638,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         if (job.FailCount > 20)
                         {
                             // 连续失败（如目标实体状态异常）：放弃任务防死循环刷屏，物品保留在全局层
-                            Log.Warning("[OuterrealmStorage] 弹出任务连续失败已放弃: " + job.Key);
+                            Log.Warning("[OuterrealmStorage] 弹出任务连续失败已放弃: " + (job.Entry != null && job.Entry.Proto != null ? job.Entry.Proto.LabelCap : "null"));
                             ejectQueue.RemoveAt(i);
                             continue;
                         }
@@ -544,8 +663,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 替代各建筑 60 tick 懒同步（Building_OuterrealmVault.Tick 已相应精简）。
         /// 视图滞后 ≤1 tick，消除"条目已空但副本残留 60 tick"窗口（OptimizeApparel 等
         /// 选中空条目副本 → 预留失败刷屏的根因）。
-        /// 空帧 O(1) 短路（changeLog.Count == 0）；有变更帧 O(变更 key × vault 数 × SyncKey)，
-        /// SyncKey 经副本索引（方案 E）为 O(1)。统一消费后清空日志——所有 vault 同帧消费，
+        /// 空帧 O(1) 短路（changeLog.Count == 0）；有变更帧 O(变更条目 × vault 数 × SyncEntry)，
+        /// SyncEntry 经副本索引（方案 E）为 O(1)。统一消费后清空日志——所有 vault 同帧消费，
         /// 日志不再需要多消费者保留（原 60 tick 各建筑独立消费的机制随之移除）。
         /// </summary>
         private void SyncViewsToChangeLog()
@@ -585,7 +704,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 for (int j = 0; j < tmpSyncKeys.Count; j++)
                 {
-                    v.view.SyncKey(tmpSyncKeys[j]);
+                    v.view.SyncEntry(tmpSyncKeys[j]);
                 }
             }
             // 统一消费：清空（所有 vault 已同步完毕）
@@ -651,8 +770,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     entries = new List<OuterrealmEntry>();
                 }
-                // 重建索引 + 从 Proto 重建分组键；重置版本号/变更日志（早于建筑 SpawnSetup 的视图重建）。
-                index.Clear();
+                // 重建 byDef 粗索引 + 从 Proto 重建展示签名（Key）；重置版本号/变更日志
+                // （早于建筑 SpawnSetup 的视图重建）。§B：合并不再依赖 Key，仅作展示/统计/放行签名。
+                byDef.Clear();
                 for (int i = 0; i < entries.Count; i++)
                 {
                     OuterrealmEntry e = entries[i];
@@ -664,7 +784,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                     e.Key = OuterrealmEntryKey.From(e.Proto);
                     e.LastSeenVersion = 0;
-                    index[e.Key] = e;
+                    ThingDef def = e.Proto.def;
+                    List<OuterrealmEntry> list;
+                    if (!byDef.TryGetValue(def, out list))
+                    {
+                        list = new List<OuterrealmEntry>();
+                        byDef[def] = list;
+                    }
+                    list.Add(e);
                 }
                 version = 0;
                 reservationVersion = 0;
@@ -682,7 +809,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// <summary>弹出任务（§6.4）：条目 + 目标地图索引 + 剩余数量。挂在全局层，与建筑生命周期解耦。</summary>
     public class VaultEjectJob
     {
-        public OuterrealmEntryKey Key;
+        /// <summary>目标条目引用（§B：条目可能被取空移除，引用保留但 Count/Proto 置空，执行时校验跳过）。</summary>
+        public OuterrealmEntry Entry;
         public int MapIndex;
         public long Remaining;
         /// <summary>连续放置失败计数（超限放弃任务，防死循环刷屏）。</summary>

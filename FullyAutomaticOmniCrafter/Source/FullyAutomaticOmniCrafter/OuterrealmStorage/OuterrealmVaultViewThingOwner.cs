@@ -34,12 +34,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>TryAbsorbStack prefix 记录的吸收量（回滚补偿；§3.3）。</summary>
         public int LastAbsorbAmount;
 
-        /// <summary>副本查找索引（§3.3 实时同步方案 E）：key → 副本，FindCopy 由线性扫描降为 O(1)。
-        /// 不序列化——读档后索引为空，由 SpawnSetup 的全量 RebuildView 末尾 RebuildIndex 重建；
-        /// FindCopy 索引 miss 时回退线性扫描并补索引（自愈）。
-        /// 维护约定：增 = EnsureCopyFor 物化处 IndexAdd（RebuildView 由 RebuildIndex 统一重建）；
-        /// 删 = override Remove(Thing) 统一处理（所有视图移除路径均经 Remove）。</summary>
-        private readonly Dictionary<OuterrealmEntryKey, Thing> copyIndex = new Dictionary<OuterrealmEntryKey, Thing>();
+        /// <summary>副本查找索引（§3.3 实时同步方案 E + §B 条目引用化）：entry → 副本，FindCopy 由
+        /// 线性扫描降为 O(1)。配套 entryByCopy（副本 → 条目）双向维护。不序列化——读档后索引为空，
+        /// 由 SpawnSetup 的 RebuildView 全量重建（映射缺失时先 ClearView 再按条目重新物化，顺带
+        /// 修复旧档"物化实例基因随机化"的残留副本）；FindCopy 索引 miss 时回退线性扫描并补索引（自愈）。
+        /// 维护约定：增 = EnsureCopyFor/MaterializeMissingCopies 物化处登记（IndexAdd）；
+        /// 删 = override Remove(Thing) 统一处理（借出副本延迟到 ReturnCopy 清理，见 §v4）。</summary>
+        private readonly Dictionary<OuterrealmEntry, Thing> copyByEntry = new Dictionary<OuterrealmEntry, Thing>();
+        private readonly Dictionary<Thing, OuterrealmEntry> entryByCopy = new Dictionary<Thing, OuterrealmEntry>();
 
         /// <summary>§v5 伪 Spawned：Thing.mapIndexOrState 是 private sbyte 字段，反射读写并缓存
         /// FieldInfo（高频注册/撤销路径，避免每次反射查找）。字段名与 1.6 反编译一致；
@@ -50,12 +52,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ── 预留记账缓存（§P0 预订记账优化，借鉴 Digital-Storage 的 reservedTotals） ──
         // 原 ReservedOn 每次全图扫描 map.reservationManager.ReservationsReadOnly 求 rThis/rAll
         // （CanReserve/Reserve/CanReserveStack/PreSplitOff 高频调用，O(全图 reservation)）。
-        // 现改为惰性重建缓存：reservedByKey[key]=本视图内该 key 预留总量（rAll），
+        // 现改为惰性重建缓存：reservedByEntry[entry]=本视图内该条目预留总量（rAll），
         // reservedByCopy[copy]=该副本自身预留量（rThis）；查询 O(1)。重建由 ReservationVersion
         // 版本号驱动（Reserve/Release* 各 patch 调 GameComponent.NotifyReservationChanged 使版本 +1），
         // 仅在版本变化后的首次查询做一次 O(全图 reservation) 重建，摊薄到低频预留变更点。
         // 不序列化——读档后由 RebuildView 置 reservedCacheVersion=-1 强制失效，首次查询懒重建。
-        private readonly Dictionary<OuterrealmEntryKey, long> reservedByKey = new Dictionary<OuterrealmEntryKey, long>();
+        private readonly Dictionary<OuterrealmEntry, long> reservedByEntry = new Dictionary<OuterrealmEntry, long>();
         private readonly Dictionary<Thing, long> reservedByCopy = new Dictionary<Thing, long>();
         private int reservedCacheVersion = -1;
 
@@ -86,11 +88,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(item);
-            gs.Deposit(item); // 吸收（复用为 proto 或销毁）
+            OuterrealmEntry entry = gs.Deposit(item); // 吸收（复用为 proto 或销毁），返回合并/新建条目
             // listerHaulables 通知由下方 EnsureCopyFor 物化新副本时的 Notify_ItemAdded 钩子覆盖（锁定条目经 #6 短路不加）；
             // 此处不再手动通知，避免对已吸收（可能已销毁）实例做无意义 Check（§3.2 单一入口）。
-            EnsureCopyFor(key);
+            if (entry != null)
+            {
+                EnsureCopyFor(entry);
+            }
             return true;
         }
 
@@ -107,9 +111,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return 0;
             }
             Thing absorbed = item.SplitOff(take); // 拆分出要吸收的部分（item 保留剩余）
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(absorbed);
-            gs.Deposit(absorbed);
-            EnsureCopyFor(key);
+            OuterrealmEntry entry = gs.Deposit(absorbed);
+            if (entry != null)
+            {
+                EnsureCopyFor(entry);
+            }
             return take;
         }
 
@@ -122,7 +128,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public void PreSplitOff(Thing copy)
         {
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(copy)) : null;
+            OuterrealmEntry e = gs != null ? GetEntryOf(copy) : null;
             if (e == null || e.Count <= 0)
             {
                 lastSplitOffStackCount = copy.stackCount;
@@ -159,21 +165,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
+            OuterrealmEntry entry = GetEntryOf(copy);
             int diff = lastSplitOffStackCount - copy.stackCount;
-            if (diff > 0)
+            if (diff > 0 && entry != null)
             {
-                gs.Subtract(key, diff);
+                gs.Subtract(entry, diff);
             }
-            OuterrealmEntry e = gs.FindEntry(key);
-            if (e == null || e.Count <= 0)
+            if (entry == null || entry.Count <= 0)
             {
                 // 条目已空：副本无意义，移除（Notify_ItemRemoved 扣 0 无害，lister 清理）。
                 Remove(copy);
             }
             else
             {
-                copy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
+                copy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
             }
         }
 
@@ -200,12 +205,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(item);
-            gs.Subtract(key, item.stackCount);
-            OuterrealmEntry e = gs.FindEntry(key);
-            if (e != null && e.Count > 0)
+            OuterrealmEntry entry = GetEntryOf(item);
+            gs.Subtract(entry, item.stackCount);
+            if (entry != null && entry.Count > 0)
             {
-                EnsureCopyFor(key); // 即时补回新副本（§3.3）
+                EnsureCopyFor(entry); // 即时补回新副本（§3.3）
             }
         }
 
@@ -222,12 +226,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             RebuildReservationCache(gs);
         }
 
-        /// <summary>全量重建预留缓存：一次扫描本视图内所有预留，填充 reservedByKey / reservedByCopy。
+        /// <summary>全量重建预留缓存：一次扫描本视图内所有预留，填充 reservedByEntry / reservedByCopy。
         /// 语义与原 ReservedOn 逐条扫描完全一致（只统计 holdingOwner == this 的副本），
         /// 只是把 O(n) 从每次查询摊薄到低频的预留变更点。</summary>
         private void RebuildReservationCache(GameComponent_OuterrealmStorage gs)
         {
-            reservedByKey.Clear();
+            reservedByEntry.Clear();
             reservedByCopy.Clear();
             Map map = Context != null ? Context.MapHeld : null;
             if (map != null)
@@ -248,9 +252,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         {
                             continue;
                         }
-                        OuterrealmEntryKey key = OuterrealmEntryKey.From(t);
+                        OuterrealmEntry entry = GetEntryOf(t);
+                        if (entry == null)
+                        {
+                            continue;
+                        }
                         long existing;
-                        reservedByKey[key] = reservedByKey.TryGetValue(key, out existing) ? existing + c : c;
+                        reservedByEntry[entry] = reservedByEntry.TryGetValue(entry, out existing) ? existing + c : c;
                         reservedByCopy[t] = reservedByCopy.TryGetValue(t, out existing) ? existing + c : c;
                     }
                 }
@@ -269,9 +277,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             EnsureReservationCache(gs);
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
+            OuterrealmEntry entry = GetEntryOf(copy);
             long v;
-            if (reservedByKey.TryGetValue(key, out v))
+            if (entry != null && reservedByEntry.TryGetValue(entry, out v))
             {
                 rAll = v;
             }
@@ -289,7 +297,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return 0;
             }
-            OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+            OuterrealmEntry e = GetEntryOf(copy);
             if (e == null)
             {
                 return 0;
@@ -307,7 +315,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // 释放后剩余量 Deposit 回全局并重建锚点。
 
         private readonly HashSet<Thing> borrowedCopies = new HashSet<Thing>();
-        private readonly Dictionary<OuterrealmEntryKey, Thing> borrowedByKey = new Dictionary<OuterrealmEntryKey, Thing>();
+        private readonly Dictionary<OuterrealmEntry, Thing> borrowedByEntry = new Dictionary<OuterrealmEntry, Thing>();
 
         public bool IsBorrowed(Thing copy)
         {
@@ -331,17 +339,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false; // 存储格满：预留调用方拒绝（等价原版"存储区满"）
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
+            OuterrealmEntry entry = GetEntryOf(copy);
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
+            if (gs == null || entry == null)
             {
                 return false;
             }
-            // 1) 登记借出（保护：Subtract 取空触发的 SyncKey 清理跳过本副本）
+            // 1) 登记借出（保护：Subtract 取空触发的 SyncEntry 清理跳过本副本）
             borrowedCopies.Add(copy);
-            borrowedByKey[key] = copy;
+            borrowedByEntry[entry] = copy;
             // 2) 借出即取出：扣全局全量（账目守恒）
-            gs.Subtract(key, copy.stackCount);
+            gs.Subtract(entry, copy.stackCount);
             // 3) §v5 伪 Spawned：先撤销伪 Spawned（真 Spawn 要求未 Spawned——SpawnSetup
             //    对已 Spawned 物品 Log.Error 并拒绝），再真 Spawn 到存储格。
             //    GenSpawn 自动从 view 容器移除（view.Remove → Notify_ItemRemoved →
@@ -363,9 +371,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(copy);
+            OuterrealmEntry entry = GetEntryOf(copy);
             borrowedCopies.Remove(copy);
-            borrowedByKey.Remove(key);
+            if (entry != null)
+            {
+                borrowedByEntry.Remove(entry);
+                // 借出期间 Remove 因 IsBorrowed 跳过 IndexRemove，copyByEntry 残留指向本副本
+                //（真 Spawned，已不在视图）。此处补清，防 ReturnCopy 末尾 EnsureCopyFor → FindCopy
+                // 命中残留而不物化新锚点、并对已回收副本误写 stackCount（§B 借出映射生命周期）。
+                Thing cur;
+                if (copyByEntry.TryGetValue(entry, out cur) && cur == copy)
+                {
+                    copyByEntry.Remove(entry);
+                }
+            }
+            // 借出期间（Remove 跳过清理）延迟解除副本↔条目映射（§B）
+            entryByCopy.Remove(copy);
             // 注销借出标记：副本离开 vault 借出状态（回收回全局 / 被 job 取走 / 销毁）后，
             // 温度恢复真实读数——被取走成为真实物品按地图温度正常腐烂，剩余回收后回全局层。
             OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(copy);
@@ -376,15 +397,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (stillInStorageCell && !copy.Destroyed && copy.stackCount > 0 && gs != null)
             {
-                gs.Deposit(copy); // 剩余量存回全局（DeSpawn + 并入条目）
+                // 剩余量存回全局（DeSpawn + 并入条目）；借出时已扣全量，条目可能已被移除，
+                // 锚点重建须用 Deposit 返回的（新建/合并）条目。
+                OuterrealmEntry deposited = gs.Deposit(copy);
+                if (deposited != null)
+                {
+                    entry = deposited;
+                }
             }
             else if (stillInStorageCell && !copy.Destroyed)
             {
                 copy.Destroy(); // 无剩余：直接销毁借出副本
             }
-            if (Context.Spawned)
+            if (Context.Spawned && entry != null)
             {
-                EnsureCopyFor(key); // 重建半 Spawn 锚点（条目仍存在且可见时）
+                EnsureCopyFor(entry); // 重建半 Spawn 锚点（条目仍存在且可见时）
             }
         }
 
@@ -433,37 +460,82 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── 副本管理 ───────────────────────────────────────────────────────────
 
-        public Thing FindCopy(OuterrealmEntryKey key)
+        /// <summary>副本 → 条目（§B）：entryByCopy 映射 O(1) 查询；miss 时回退全局动态 FindEntry
+        /// （stackLimit&gt;1 的副本与 Proto CanStackWith 成立可动态命中；stackLimit=1 的副本
+        /// 无通用匹配，完全依赖映射——读档后由 RebuildView 全量重建补全映射）。
+        /// 用于所有"由副本反查条目"的路径（扣减/预留/提升/清理），替代旧 OuterrealmEntryKey.From 哈希。
+        /// 注意：miss 回退是防御路径（正常物化即登记映射）；同 def 多条目时按首个 CanStackWith
+        /// 命中，仅作总量兜底，精确账目依赖映射命中。</summary>
+        public OuterrealmEntry GetEntryOf(Thing copy)
+        {
+            if (copy == null)
+            {
+                return null;
+            }
+            OuterrealmEntry entry;
+            if (entryByCopy.TryGetValue(copy, out entry))
+            {
+                return entry;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            return gs != null ? gs.FindEntry(copy) : null;
+        }
+
+        public Thing FindCopy(OuterrealmEntry entry)
         {
             Thing copy;
-            if (copyIndex.TryGetValue(key, out copy))
+            if (entry != null && copyByEntry.TryGetValue(entry, out copy))
             {
-                return copy;
-            }
-            // 索引 miss（读档初期 / 防御性回退）：线性扫描并补索引（自愈）。
-            List<Thing> list = InnerListForReading;
-            for (int i = 0; i < list.Count; i++)
-            {
-                if (OuterrealmEntryKey.From(list[i]) == key)
+                // 防御：残留映射可能指向已离开视图的副本（借出真 Spawned 后未及时清理、
+                // 已回收销毁）——视为 miss 并清理，避免对不在视图的副本写 stackCount。
+                if (copy == null || copy.Destroyed || copy.holdingOwner != this)
                 {
-                    copyIndex[key] = list[i];
-                    return list[i];
+                    copyByEntry.Remove(entry);
+                    copy = null;
+                }
+                else
+                {
+                    return copy;
+                }
+            }
+            // 索引 miss（防御性回退）：线性扫描 InnerList 用 GetEntryOf 反查并补索引（自愈）。
+            if (entry != null)
+            {
+                List<Thing> list = InnerListForReading;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (GetEntryOf(list[i]) == entry)
+                    {
+                        copyByEntry[entry] = list[i];
+                        return list[i];
+                    }
                 }
             }
             return null;
         }
 
-        private void IndexAdd(Thing copy)
+        private void IndexAdd(Thing copy, OuterrealmEntry entry)
         {
-            copyIndex[OuterrealmEntryKey.From(copy)] = copy;
+            if (copy == null || entry == null)
+            {
+                return;
+            }
+            copyByEntry[entry] = copy;
+            entryByCopy[copy] = entry;
         }
 
         private void IndexRemove(Thing copy)
         {
-            if (copy != null)
+            if (copy == null)
             {
-                copyIndex.Remove(OuterrealmEntryKey.From(copy));
+                return;
             }
+            OuterrealmEntry entry;
+            if (entryByCopy.TryGetValue(copy, out entry))
+            {
+                copyByEntry.Remove(entry);
+            }
+            entryByCopy.Remove(copy);
         }
 
         /// <summary>
@@ -557,92 +629,104 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Context.MapHeld.listerHaulables.Notify_DeSpawned(copy);
         }
 
-        /// <summary>从当前视图列表重建索引（RebuildView 末尾调用；读档后索引为空，全量重建必须重建索引）。</summary>
+        /// <summary>从当前视图列表重建索引（RebuildView 末尾调用；读档后索引为空，全量重建必须重建索引）。
+        /// §B：copyByEntry 从 InnerList + entryByCopy 重建（物化路径已登记 entryByCopy；
+        /// 读档后映射缺失由 RebuildView 开头的全量重建先 ClearView 再重新物化补全）。</summary>
         private void RebuildIndex()
         {
-            copyIndex.Clear();
+            copyByEntry.Clear();
             List<Thing> list = InnerListForReading;
             for (int i = 0; i < list.Count; i++)
             {
-                copyIndex[OuterrealmEntryKey.From(list[i])] = list[i];
+                Thing copy = list[i];
+                OuterrealmEntry entry;
+                if (copy != null && entryByCopy.TryGetValue(copy, out entry))
+                {
+                    copyByEntry[entry] = copy;
+                }
             }
         }
 
         /// <summary>统一移除入口：基类行为（holdingOwner 置 null、Notify_ItemRemoved 事件）保留，同步维护索引。
-        /// 视图内一切副本移除路径（SyncKey/RebuildView/ClearView/DisposeOrphanCopy/TryDisposeCopyIfObsolete/
-        /// PostSplitOff/RemoveApparel）均经此处，索引不会因遗漏而过期。</summary>
+        /// 视图内一切副本移除路径（SyncEntry/RebuildView/ClearView/DisposeOrphanCopy/TryDisposeCopyIfObsolete/
+        /// PostSplitOff/RemoveApparel）均经此处，索引不会因遗漏而过期。
+        /// §B：借出副本（IsBorrowed）延迟清理——TryLendCopy 后真 Spawn 会经本方法移除副本，
+        /// 但 ReturnCopy 仍需 entryByCopy 反查条目，故借出期间跳过 IndexRemove。</summary>
         public override bool Remove(Thing item)
         {
             // 先移除索引：整堆 SplitOff 走 holdingOwner.Remove(this) → base.Remove → NotifyRemoved →
-            // Notify_ItemRemoved → Subtract(扣到 0) → NotifyEntriesEmptied → SyncKey 这条同步回调链。
-            // 若索引滞后（IndexRemove 放在 base.Remove 之后），SyncKey 的 FindCopy 会经 copyIndex 命中
+            // Notify_ItemRemoved → Subtract(扣到 0) → NotifyEntriesEmptied → SyncEntry 这条同步回调链。
+            // 若索引滞后（IndexRemove 放在 base.Remove 之后），SyncEntry 的 FindCopy 会经 copyByEntry 命中
             // 这个"正在被移除"的副本并 copy.Destroy()，导致 splitStack 在 TryAdd 进 carry 之前被销毁
             // （全局已扣 + 物品已销毁 → 拿取即消失）。索引提前失效后 FindCopy 对 innerList 线性扫描
-            // 也已移除该副本，返回 null，SyncKey 不会误 Destroy。IndexRemove 幂等，Remove 失败亦无害。
-            IndexRemove(item);
+            // 也已移除该副本，返回 null，SyncEntry 不会误 Destroy。IndexRemove 幂等，Remove 失败亦无害。
+            if (!IsBorrowed(item))
+            {
+                IndexRemove(item);
+            }
             UnregisterFromLister(item); // 半 Spawned 投影：先摘查询索引，避免残留指向即将被销毁的副本
             UnregisterFromHaulables(item); // 恒摘 listerHaulables（含 SuppressRemovalSync 期间），防残留已 Destroy 副本被 TryOpportunisticJob 命中 → MapHeld=null NRE
             return base.Remove(item);
         }
 
         /// <summary>确保本建筑视图包含该条目的副本（物化或更新数字）。filter 不允许则不做。</summary>
-        public void EnsureCopyFor(OuterrealmEntryKey key)
+        public void EnsureCopyFor(OuterrealmEntry entry)
         {
-            if (borrowedByKey.ContainsKey(key))
+            if (entry == null)
+            {
+                return;
+            }
+            if (borrowedByEntry.ContainsKey(entry))
             {
                 return; // §v4：条目副本已借出（预留物化中），不重建锚点
             }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
+            if (entry.Count <= 0 || entry.Proto == null || !Context.CanShow(entry.Proto))
             {
                 return;
             }
-            OuterrealmEntry e = gs.FindEntry(key);
-            if (e == null || e.Count <= 0 || !Context.CanShow(e.Proto))
-            {
-                return;
-            }
-            if (e.Proto is Corpse)
+            if (entry.Proto is Corpse)
             {
                 return; // 尸体为唯一实体（InnerPawn 不可复制）：不物化视图副本，UI 直接显示条目 proto
             }
-            Thing copy = FindCopy(key);
+            Thing copy = FindCopy(entry);
             if (copy != null)
             {
-                copy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
+                copy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
                 return;
             }
-            Thing newCopy = GameComponent_OuterrealmStorage.Materialize(e.Proto);
-            newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
-            // 标准加入（canMerge=false：视图内同 key 恒单副本，避免合并触发 TryAbsorbStack 补回全局的误判）；
+            Thing newCopy = GameComponent_OuterrealmStorage.Materialize(entry.Proto);
+            newCopy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
+            // 标准加入（canMerge=false：视图内同条目恒单副本，避免合并触发 TryAbsorbStack 补回全局的误判）；
             // 触发 Notify_ItemAdded → 建筑 hook → listerHaulables 单物品通知（锁定条目经 #6 短路不加）。
             if (base.TryAdd(newCopy, false))
             {
-                IndexAdd(newCopy);
+                IndexAdd(newCopy, entry);
                 RegisterInLister(newCopy); // 半 Spawned 投影：进入查询索引（不进入 thingGrid/渲染）
             }
         }
 
-        /// <summary>增量同步单个 key（§3.3 方案 A）：filter 允许则物化/更新，禁止或条目消失则移除。</summary>
-        public void SyncKey(OuterrealmEntryKey key)
+        /// <summary>增量同步单个条目（§3.3 方案 A）：filter 允许则物化/更新，禁止或条目消失则移除。</summary>
+        public void SyncEntry(OuterrealmEntry entry)
         {
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
+            if (entry == null)
             {
                 return;
             }
-            OuterrealmEntry e = gs.FindEntry(key);
-            bool allowed = e != null && e.Count > 0 && Context.CanShow(e.Proto);
-            Thing copy = FindCopy(key);
+            bool allowed = entry.Count > 0 && entry.Proto != null && Context.CanShow(entry.Proto);
+            Thing copy = FindCopy(entry);
             if (allowed)
             {
                 if (copy == null)
                 {
-                    EnsureCopyFor(key);
+                    EnsureCopyFor(entry);
+                }
+                else if (IsBorrowed(copy))
+                {
+                    return; // §v4：借出副本（预留物化中）由 ReturnCopy 回收并重建锚点，此处不更新数字
                 }
                 else
                 {
-                    copy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
+                    copy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
                 }
             }
             else if (copy != null)
@@ -654,7 +738,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 条目不存在（count=0/已移除）：无条件移除副本（即使被预留——无物可取，
                 // 引用它的 job 因副本销毁失败一次即恢复）；filter 禁止但条目存在：
                 // 被预留则保留（退休：让既有 job 完成取出），否则移除。
-                if ((e == null || e.Count <= 0) || !IsReserved(copy))
+                if ((entry.Count <= 0 || entry.Proto == null) || !IsReserved(copy))
                 {
                     // filter 禁止 / 条目消失 ≠ 取出：视图移除不得扣全局（§6.2），抑制通知并手动清理 lister。
                     SuppressRemovalSync = true;
@@ -680,6 +764,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// = RemoveDisallowedCopies（同步移除）+ MaterializeMissingCopies（物化缺失）+ 索引/注册收尾。
         /// filter 变更路径不走本方法：改为同步移除 + 帧末微批物化（见 Building_OuterrealmVault.Notify_SettingsChanged），
         /// 避免每次 filter 点击触发全量重建（§filter 视图过滤简化）。
+        /// §B：读档后序列化恢复的副本无 entryByCopy 映射（且旧档副本可能携带错误内容，如基因组
+        /// 随机基因），检测到"视图非空但映射为空"时先 ClearView 全量销毁，再按条目重新物化——
+        /// 既补全映射，也顺带修复旧档残留的异常副本。
         /// </summary>
         public void RebuildView()
         {
@@ -687,6 +774,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (gs == null)
             {
                 return;
+            }
+            if (entryByCopy.Count == 0 && Count > 0)
+            {
+                // 读档恢复的副本无映射：全量销毁后按条目重新物化（物化路径登记映射）。
+                ClearView();
             }
             RemoveDisallowedCopies();
             MaterializeMissingCopies();
@@ -718,7 +810,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 for (int i = Count - 1; i >= 0; i--)
                 {
                     Thing copy = this[i];
-                    OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+                    OuterrealmEntry e = GetEntryOf(copy);
                     bool allowed = e != null && e.Count > 0 && Context.CanShow(e.Proto);
                     if (allowed)
                     {
@@ -764,11 +856,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue; // 尸体不物化视图副本（唯一实体）
                 }
-                if (borrowedByKey.ContainsKey(e.Key))
+                if (borrowedByEntry.ContainsKey(e))
                 {
                     continue; // §v4：条目副本已借出（预留物化中），不重建锚点
                 }
-                Thing copy = FindCopy(e.Key);
+                Thing copy = FindCopy(e);
                 if (copy != null)
                 {
                     copy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
@@ -779,6 +871,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
                     if (base.TryAdd(newCopy, false))
                     {
+                        IndexAdd(newCopy, e);
                         RegisterInLister(newCopy); // 半 Spawned 投影：物化后进入查询索引
                     }
                 }
@@ -895,12 +988,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>把单个副本的 stackCount 临时提升为全局剩余量（int 上限）。</summary>
         public void BoostCopy(Thing copy)
         {
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+            OuterrealmEntry e = GetEntryOf(copy);
             if (e != null && e.Count > 0)
             {
                 copy.stackCount = (int)Mathf.Min(e.Count, int.MaxValue);
@@ -920,12 +1008,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>恢复单个副本为 min(全局剩余, stackLimit)。</summary>
         public void UnboostCopy(Thing copy)
         {
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+            OuterrealmEntry e = GetEntryOf(copy);
             copy.stackCount = e != null && e.Count > 0
                 ? (int)Mathf.Min(e.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue))
                 : 0;
@@ -976,7 +1059,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         /// <summary>
         /// 批量清理孤儿副本（§3.3 兜底）：移除视图内所有条目已空（e==null / Count&lt;=0）的残留副本。
-        /// 正常路径由 Subtract 取空 → NotifyEntriesEmptied → SyncKey 即时清理；本方法用于
+        /// 正常路径由 Subtract 取空 → NotifyEntriesEmptied → SyncEntry 即时清理；本方法用于
         /// JobGiver_OptimizeApparel 运行前（见 Patch_JobGiver_OptimizeApparel_TryGiveJob），把
         /// "枚举 GetDirectlyHeldThings 与条目取空之间的竞态残留"挡在 Wear job 生成之前——
         /// 否则空条目副本被选中 → StartJob 预留失败 → 原版 "TryMakePreToilReservations() returned
@@ -984,16 +1067,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public void CleanOrphanCopies()
         {
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
             List<Thing> list = InnerListForReading;
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 Thing copy = list[i];
-                OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+                OuterrealmEntry e = GetEntryOf(copy);
                 if (e == null || e.Count <= 0)
                 {
                     DisposeOrphanCopy(copy);
@@ -1018,8 +1096,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return; // §v4：借出副本不清理（由 ReturnCopy 回收）
             }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(copy)) : null;
+            OuterrealmEntry e = GetEntryOf(copy);
             bool allowed = e != null && e.Count > 0 && Context.CanShow(e.Proto);
             if (allowed)
             {

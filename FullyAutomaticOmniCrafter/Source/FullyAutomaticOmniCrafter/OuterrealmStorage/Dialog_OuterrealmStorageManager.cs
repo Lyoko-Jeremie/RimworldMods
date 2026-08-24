@@ -109,7 +109,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     OuterrealmEntry e = all[i];
                     if (e.Count > 0)
                     {
-                        gs.EnqueueEject(e.Key, TargetMap(), e.Count, TargetAnchor());
+                        gs.EnqueueEject(e, TargetMap(), e.Count, TargetAnchor());
                     }
                 }
             }
@@ -385,7 +385,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
             if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 2f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
             {
-                gs.EnqueueEject(entry.Key, TargetMap(), entry.Count, TargetAnchor());
+                gs.EnqueueEject(entry, TargetMap(), entry.Count, TargetAnchor());
             }
             if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 2f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
             {
@@ -397,7 +397,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         (int v) => label + " x" + v.ToString("N0"),
                         1,
                         max,
-                        (int v) => gs.EnqueueEject(entry.Key, TargetMap(), v, TargetAnchor())));
+                        (int v) => gs.EnqueueEject(entry, TargetMap(), v, TargetAnchor())));
                 }
             }
             rect.width -= 190f;

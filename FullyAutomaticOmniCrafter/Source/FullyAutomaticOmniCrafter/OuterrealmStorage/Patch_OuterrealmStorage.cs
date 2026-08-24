@@ -123,19 +123,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            OuterrealmEntryKey key = OuterrealmEntryKey.From(__instance);
-            OuterrealmEntry e = gs.FindEntry(key);
+            // §B：__instance 是视图副本，用 view.GetEntryOf 反查条目（stackLimit=1 物品的
+            // 动态 FindEntry 不命中合并，须走副本↔条目映射）。
+            OuterrealmEntry e = view.GetEntryOf(__instance);
             if (e != null)
             {
                 e.Count += absorbed;
-                gs.NotifyContentChanged(key); // version++ + 变更日志
+                gs.NotifyContentChanged(e); // version++ + 变更日志
             }
             else
             {
                 // 条目已被完全取走并移除（回滚重建）：以副本属性物化新代表 Thing 重建条目。
                 Thing newProto = GameComponent_OuterrealmStorage.Materialize(__instance);
                 newProto.stackCount = 1;
-                gs.RestoreEntry(new OuterrealmEntry { Key = key, Proto = newProto, Count = absorbed });
+                gs.RestoreEntry(new OuterrealmEntry { Key = OuterrealmEntryKey.From(newProto), Proto = newProto, Count = absorbed });
             }
         }
     }
@@ -249,7 +250,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // （不打 LogCouldNotReserveError），副本脱离候选后循环终止。必须放在穿戴排队分支之前：
             // 条目空时排队无物可取，同样应拒绝并清理。
             GameComponent_OuterrealmStorage gs0 = GameComponent_OuterrealmStorage.Instance;
-            OuterrealmEntry e0 = gs0 != null ? gs0.FindEntry(OuterrealmEntryKey.From(t)) : null;
+            OuterrealmEntry e0 = gs0 != null ? view.GetEntryOf(t) : null;
             if (e0 == null || e0.Count <= 0)
             {
                 view.DisposeOrphanCopy(t);
@@ -1077,7 +1078,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     Thing inner = c.GetInnerIfMinified();
                     if (inner != null && inner.def == def)
                     {
-                        OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(c));
+                        OuterrealmEntry e = v.view.GetEntryOf(c);
                         if (e != null && e.Count > 0)
                         {
                             vault = v;
@@ -2287,7 +2288,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // 原版 JobGiver_OptimizeApparel 枚举所有 HaulSource 的 GetDirectlyHeldThings()（含本系统
     // vault 视图副本）生成 Wear job，且不检查条目数量——空条目残留副本被选中 → StartJob 预留
     // 失败 → 原版 "TryMakePreToilReservations() returned false" 警告。正常路径已由
-    // Subtract 取空 → NotifyEntriesEmptied → SyncKey 即时清理；本 prefix 兜底"枚举与取空之间"
+    // Subtract 取空 → NotifyEntriesEmptied → SyncEntry 即时清理；本 prefix 兜底"枚举与取空之间"
     // 的竞态残留窗口：先清理本 pawn 地图上所有 vault 的孤儿副本，候选列表即不含空条目副本，
     // 从源头消除该警告（Reserve 的孤儿分支保留为执行期兜底）。
     [HarmonyPatch(typeof(JobGiver_OptimizeApparel), "TryGiveJob")]
@@ -2547,7 +2548,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (view != null)
                 {
                     hasVaultCopy = true;
-                    OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(t));
+                    OuterrealmEntry e = view.GetEntryOf(t);
                     if (e != null && e.Count > 0)
                     {
                         total += e.Count;
@@ -2601,7 +2602,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             // §v6 补强（方案 B）：候选构建前先同步回收本图 vault 未预留借出副本，
-            // 使被搬空的借出副本立即释放 borrowedByKey 并重建锚点——否则本兜底也会因
+            // 使被搬空的借出副本立即释放 borrowedByEntry 并重建锚点——否则本兜底也会因
             // 锚点缺失返回 null，job 提前结束（随后靠 AllItemsLoadedOntoCaravan 复核兜底）。
             List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
             for (int b = 0; b < vaults.Count; b++)

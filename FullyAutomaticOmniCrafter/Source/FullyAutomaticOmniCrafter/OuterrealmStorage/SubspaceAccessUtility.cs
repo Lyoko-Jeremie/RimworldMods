@@ -96,7 +96,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < copies.Count; i++)
             {
                 Thing copy = copies[i];
-                OuterrealmEntry e = gs.FindEntry(OuterrealmEntryKey.From(copy));
+                OuterrealmEntry e = view.GetEntryOf(copy);
                 if (e == null || e.Count <= 0)
                 {
                     continue;

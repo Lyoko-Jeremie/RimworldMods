@@ -48,7 +48,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    Thing copy = vault.view.FindCopy(entry.Key);
+                    Thing copy = vault.view.FindCopy(entry);
                     if (copy == null)
                     {
                         // 副本未物化（尸体唯一实体不物化 / filter 刚允许但帧末微批尚未执行）：
@@ -174,7 +174,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     gs.Deposit(t); // 放置失败退回全局层（remaining 不变，下次循环重试）
                 }
             }
-            vault.view.SyncKey(entry.Key); // 即时刷新本建筑视图副本数字（§3.3 补回到变更点）
+            vault.view.SyncEntry(entry); // 即时刷新本建筑视图副本数字（§3.3 补回到变更点）
         }
     }
 }
