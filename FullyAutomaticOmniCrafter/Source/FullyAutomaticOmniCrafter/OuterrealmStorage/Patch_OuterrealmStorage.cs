@@ -294,14 +294,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         //   · AdjustTo 的 MaxCount 截断由 Patch_TransferableOneWay_MaxCount 修正 → CountToTransfer
         //     保持真实需求，多趟循环直到归零。
         // 非远行队取物（工作台/搬运等）仍走 §v4 TryLendCopy 物化，不受影响。
-        private static void Postfix(Pawn claimant, Job job, LocalTargetInfo target, bool __result)
+        private static void Postfix(Pawn claimant, Job job, LocalTargetInfo target, int stackCount, bool __result)
         {
             if (!__result)
             {
                 return;
             }
             GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
-            // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）
+            // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）。
+            // 物化量 = min(所需数量, 全局剩余)，严格按需（见 ResolveLendNeed / TryLendCopy）。
             Thing t = target.Thing;
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view) || view.IsBorrowed(t))
             {
@@ -311,7 +312,49 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return; // §v6 虚拟取物：远行队不物化（见上方注释）
             }
-            view.TryLendCopy(t);
+            view.TryLendCopy(t, ResolveLendNeed(job, t, stackCount));
+        }
+
+        /// <summary>物化所需数量：优先取 job 对该目标的原料需求（targetQueueB.countQueue，
+        /// 缺失时用 job.count），兜底用 Reserve 的 stackCount（StackCount_All = 全部）。
+        /// 使借出堆恰好覆盖 job 全程取用（避免"借出量 < 需求 → 取物取不完全"）。</summary>
+        private static int ResolveLendNeed(Job job, Thing t, int stackCount)
+        {
+            int need = stackCount == ReservationManager.StackCount_All ? int.MaxValue : stackCount;
+            if (need <= 0)
+            {
+                need = 1;
+            }
+            if (job == null)
+            {
+                return need;
+            }
+            List<LocalTargetInfo> q = job.targetQueueB;
+            if (q != null)
+            {
+                List<int> cq = job.countQueue;
+                for (int i = 0; i < q.Count; i++)
+                {
+                    if (q[i].Thing == t)
+                    {
+                        int c = cq != null && i < cq.Count ? cq[i] : 0;
+                        if (c <= 0)
+                        {
+                            c = job.count;
+                        }
+                        if (c > need)
+                        {
+                            need = c;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (job.GetTarget(TargetIndex.A).Thing == t && job.count > need)
+            {
+                need = job.count;
+            }
+            return need;
         }
 
         /// <summary>远行队收集 job 的需求缺口（§v6）；非收集 job / 匹配失败返回 0 = 保持默认借出。</summary>

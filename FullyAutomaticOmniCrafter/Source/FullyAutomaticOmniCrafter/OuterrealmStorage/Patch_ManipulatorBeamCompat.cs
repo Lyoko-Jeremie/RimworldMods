@@ -19,7 +19,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     ///  · 普通取货（TryBuildBatchFromCell / TryBuildBatchFromCellAuto）：牵引光束的源扫描
     ///    最终落在 cell.GetThingList（thingGrid），而 vault 伪 Spawned 副本刻意不进 thingGrid
     ///    （见 OuterrealmVaultViewThingOwner.RegisterInLister）。prefix 只借出 1 个"判定通过"的
-    ///    种子副本（TryLendCopy 真 Spawn 到存储格 → 进 thingGrid → 借出即取出扣全局全量），
+    ///    种子副本（TryLendCopy 按需物化到存储格 → 进 thingGrid → 借出即取出：SplitOff 按物化量扣账），
     ///    保证原方法 batch 非 null；postfix 再把其余判定通过的锚点副本反射注入 batch.transfers
     ///    （不借出、保持伪 Spawned）——"先确定要搬（transfer 生成）、后取出"，物品在确定之前
     ///    不离开 vault、不显示，彻底避免"全部物品显示在格子上"的瞬间卡顿。
@@ -117,7 +117,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                vault.view.TryLendCopy(copy); // 借出即取出：扣全局全量 + 真 Spawn 到存储格
+                vault.view.TryLendCopy(copy, copy.stackCount); // 借出整堆（beam 搬整个堆）：按需物化 + SplitOff 记账
                 return;
             }
         }
