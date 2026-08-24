@@ -8,6 +8,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using Verse.AI.Group;
 using Verse.Sound;
 using FullyAutomaticOmniCrafter;
 
@@ -201,8 +202,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false; // 数量不足：阻止预留
                 return false;
             }
-            // §v4：存储格满 → 拒绝预留（等价原版"存储区满"；防物化失败导致 job 目标未 Spawned 循环）
-            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
+            // §v4：存储格满 → 拒绝预留（等价原版"存储区满"；防物化失败导致 job 目标未 Spawned 循环）。
+            // §v6 虚拟取物：远行队收集不物化、不占存储格，豁免该检查。
+            if (claimant != null && !(claimant.GetLord()?.LordJob is LordJob_FormAndSendCaravan)
+                && view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
             {
                 __result = false;
                 return false;
@@ -266,8 +269,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
-            // §v4：存储格满 → 拒绝预留（防物化失败 → job 目标未 Spawned → 循环）
-            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
+            // §v4：存储格满 → 拒绝预留（防物化失败 → job 目标未 Spawned → 循环）。
+            // §v6 虚拟取物：远行队收集不物化、不占存储格，豁免该检查。
+            if (claimant != null && !(claimant.GetLord()?.LordJob is LordJob_FormAndSendCaravan)
+                && view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
             {
                 __result = false;
                 return false;
@@ -277,13 +282,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
         // __result 可能为 true（本体放行）而原方法未执行——多触发一次失效仅多一次 O(全图) 重建，无害。
-        // §v6 远行队收集按需物化：仅对 PrepareCaravan_GatherItems job 生效。把副本 stackCount
-        // 临时提升为该 transferable 的需求缺口（CountLeftToTransfer − 已携带同 def 量），
-        // 使借出物化量 = 所需量而非固定一组（stackLimit）：
-        //   · carry 空间足够 → 一趟取完；
-        //   · 空间不足 → 借出堆剩余留在存储格（things 中同一实例、真 Spawned 可见），
-        //     部分取走时 StartCarryThing 即释放 reservation → 他人可接着取剩余，无需等锚点重建。
-        // 账目守恒：借出扣 min(need, 全局剩余)，取走 x，剩余由 ReturnCopy → Deposit 存回。
+        // §v6 远行队收集"虚拟取物"（重构，替代按需物化）：仅对 PrepareCaravan_GatherItems job
+        // 生效——预留成功但**不物化**，副本保持伪 Spawned 常驻视图。pawn 随后经
+        // Patch_Toils_Haul_StartCarryThing（执行期 Boost）+ Patch_Pawn_CarryTracker_TryStartCarry
+        // 直接对副本 SplitOff 取物（每趟受 availableStackSpace ≤ stackLimit 限制，与普通堆一致），
+        // SplitOff postfix 即时扣全局并补回副本。
+        // 为什么这样能带齐：
+        //   · 副本始终在 transferable.things 且伪 Spawned 可搜索 → FindThingToHaul 每趟可见，
+        //     无需兜底/锚点重建（无借出、无 60 tick 空窗）；
+        //   · AdjustTo 的 MaxCount 截断由 Patch_TransferableOneWay_MaxCount 修正 → CountToTransfer
+        //     保持真实需求，多趟循环直到归零。
+        // 非远行队取物（工作台/搬运等）仍走 §v4 TryLendCopy 物化，不受影响。
         private static void Postfix(Pawn claimant, Job job, LocalTargetInfo target, bool __result)
         {
             if (!__result)
@@ -297,21 +306,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            int need = CalculateCaravanGatherNeed(claimant, job, t);
-            if (need > 0)
+            if (CalculateCaravanGatherNeed(claimant, job, t) > 0)
             {
-                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-                OuterrealmEntry e = gs != null ? gs.FindEntry(OuterrealmEntryKey.From(t)) : null;
-                if (e != null && e.Count > 0)
-                {
-                    int oldStackCount = t.stackCount;
-                    t.stackCount = (int)Mathf.Min(need, Mathf.Min(e.Count, int.MaxValue));
-                    if (view.TryLendCopy(t))
-                    {
-                        return; // 借出成功（副本已移出视图，超限 stackCount 随物化堆）
-                    }
-                    t.stackCount = oldStackCount; // 借出失败（存储格满等）：恢复原值，走默认借出
-                }
+                return; // §v6 虚拟取物：远行队不物化（见上方注释）
             }
             view.TryLendCopy(t);
         }
