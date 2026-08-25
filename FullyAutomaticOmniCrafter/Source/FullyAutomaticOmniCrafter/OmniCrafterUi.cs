@@ -77,7 +77,7 @@ namespace FullyAutomaticOmniCrafter
                 if (hasChildren)
                     OpenCloseWidget(node, indentLevel, openMask);
 
-                // 可选数量显示：右侧右对齐，label 通过 widthOffset 预留空间避免重叠
+                // 可选数量显示：放在最右侧筛选按钮左边，label 通过 widthOffset 预留空间避免重叠
                 string countText = null;
                 float countWidth = 0f;
                 long cnt;
@@ -86,13 +86,14 @@ namespace FullyAutomaticOmniCrafter
                     countText = cnt.ToString("N0");
                     countWidth = Text.CalcSize(countText).x + 4f;
                 }
-                // 可选三态筛选复选框（绿✓/红×/黄~）：位于数量左侧，label 一并预留空间
+                // 可选三态筛选复选框（绿✓/红×/黄~）：紧贴最右边，label 一并预留空间
                 bool hasToggle = _getState != null && _setShow != null;
                 float toggleWidth = hasToggle ? ToggleSize + 4f : 0f;
                 LabelLeft(node.LabelCap, node.catDef.description, indentLevel, -(countWidth + toggleWidth));
                 if (countText != null)
                 {
-                    Rect countRect = new Rect(ColumnWidth - countWidth, curY, countWidth, lineHeight);
+                    float countRight = hasToggle ? ColumnWidth - ToggleSize - 4f : ColumnWidth;
+                    Rect countRect = new Rect(countRight - countWidth, curY, countWidth, lineHeight);
                     Text.Anchor = TextAnchor.MiddleRight;
                     GUI.color = new Color(0.7f, 0.7f, 0.7f);
                     Widgets.Label(countRect, countText);
@@ -101,7 +102,7 @@ namespace FullyAutomaticOmniCrafter
                 }
                 if (hasToggle)
                 {
-                    Rect toggleRect = new Rect(ColumnWidth - countWidth - ToggleSize - 4f, curY, ToggleSize, ToggleSize);
+                    Rect toggleRect = new Rect(ColumnWidth - ToggleSize, curY, ToggleSize, ToggleSize);
                     DoShowToggle(toggleRect, node.catDef);
                 }
 
@@ -129,46 +130,32 @@ namespace FullyAutomaticOmniCrafter
         private const float ToggleSize = 24f;
 
         /// <summary>原版分类树风格三态复选框（子树聚合状态）：绿✓=该分类及子分类全部显示、红×=全部隐藏、
-        /// 黄~=部分显示部分不显示。点击按原版循环：Off→On、On→Off、Partial→Off，并通过 _setShow 递归
-        /// 设置整棵子树为显示/隐藏（由调用方负责刷新列表与聚合状态）。</summary>
+        /// 黄~=部分显示部分不显示。直接复用原版 CheckboxMulti 的点击/拖拽涂抹逻辑：
+        /// Off→On、On→Off、Partial→Off，并由调用方按原版 ThingFilter.SetAllow(category) 语义
+        /// 设置分类的全部后代 ThingDef。</summary>
         private void DoShowToggle(Rect rect, ThingCategoryDef cat)
         {
             MultiCheckboxState state = _getState(cat);
-            Texture2D tex;
             string tip;
             if (state == MultiCheckboxState.On)
             {
-                tex = Widgets.CheckboxOnTex;
                 tip = "OuterrealmStorageManager_CatShowTip".Translate();
             }
             else if (state == MultiCheckboxState.Off)
             {
-                tex = Widgets.CheckboxOffTex;
                 tip = "OuterrealmStorageManager_CatHideTip".Translate();
             }
             else
             {
-                tex = Widgets.CheckboxPartialTex;
                 tip = "OuterrealmStorageManager_CatPartialTip".Translate();
             }
             TooltipHandler.TipRegion(rect, tip);
-            MouseoverSounds.DoRegion(rect);
-            Widgets.DraggableResult result = Widgets.ButtonImageDraggable(rect, tex);
-            if (result != Widgets.DraggableResult.Pressed && result != Widgets.DraggableResult.DraggedThenPressed)
+            MultiCheckboxState newState = Widgets.CheckboxMulti(rect, state, true);
+            if (newState == state)
             {
                 return;
             }
-            // 原版 CheckboxMulti 点击循环：Off→On、On→Off、Partial→Off
-            bool nextShow = state == MultiCheckboxState.Off;
-            if (nextShow)
-            {
-                SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera();
-            }
-            else
-            {
-                SoundDefOf.Checkbox_TurnedOff.PlayOneShotOnCamera();
-            }
-            _setShow(cat, nextShow);
+            _setShow(cat, newState == MultiCheckboxState.On);
         }
     }
 

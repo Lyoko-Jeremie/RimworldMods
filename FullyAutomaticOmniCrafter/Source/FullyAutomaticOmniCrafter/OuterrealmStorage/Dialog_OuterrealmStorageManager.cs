@@ -15,7 +15,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     public class Dialog_OuterrealmStorageManager : Window
     {
-        private readonly Vector2 initialSize = new Vector2(1000f, 700f);
+        private readonly Vector2 initialSize = new Vector2(1500f, 700f);
         public override Vector2 InitialSize => initialSize;
 
         private Vector2 scrollPosition;
@@ -32,8 +32,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>分类树缓存：有效分类集合 + 各分类（含子分类）条目总数。仅内容版本变化时重建（复用字段避免每帧分配）。</summary>
         private readonly HashSet<ThingCategoryDef> validCategories = new HashSet<ThingCategoryDef>();
         private readonly Dictionary<ThingCategoryDef, long> categoryCounts = new Dictionary<ThingCategoryDef, long>();
-        /// <summary>分类树三态聚合缓存（原版 AllowanceStateOf 语义）：按条目遍历累加每个分类（含祖先）的
-        /// 显示/总数，聚合为 绿✓=全部显示 / 红×=全部隐藏 / 黄~=部分显示部分不显示。dirty 或内容变化时重建。</summary>
+        /// <summary>分类树三态聚合缓存（原版 AllowanceStateOf 语义）：按 ThingDef 的直接允许状态
+        /// 累加每个分类（含祖先）的允许数/总数，聚合为 绿✓=全部允许 / 红×=全部禁止 /
+        /// 黄~=部分允许。dirty 或内容变化时重建。</summary>
         private readonly Dictionary<ThingCategoryDef, MultiCheckboxState> categoryStates = new Dictionary<ThingCategoryDef, MultiCheckboxState>();
         private readonly Dictionary<ThingCategoryDef, int> catShownCounts = new Dictionary<ThingCategoryDef, int>();
         private readonly Dictionary<ThingCategoryDef, int> catTotalCounts = new Dictionary<ThingCategoryDef, int>();
@@ -43,7 +44,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>当前分类筛选（null = 全部分类）。</summary>
         private ThingCategoryDef selectedCategory;
 
-        private const float CategoryWidth = 200f;
+        private const float CategoryWidth = 400f;
         private const float RowHeight = 28f;
         private const float CategoryLineHeight = 24f;
 
@@ -272,9 +273,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>重建分类树三态聚合缓存（原版 AllowanceStateOf 语义）：遍历所有条目，把每个条目的
-        /// 实际显示与否（CategoryFilterAllows，依赖显式设置）沿其分类链累加到每个分类（含祖先）的
-        /// 显示数/总数——父分类计数天然含子分类条目。聚合：全显示→绿✓、全隐藏→红×、混合→黄~。
+        /// <summary>重建分类树三态聚合缓存（原版 Listing_TreeThingFilter.AllowanceStateOf 语义）：
+        /// 遍历当前存储中的 ThingDef，直接检查其允许状态，并沿分类链累加到每个分类（含祖先）。
+        /// 父分类计数天然含子分类物品。聚合：全允许→绿✓、全禁止→红×、混合→黄~。
         /// 复用字段 Clear 后重填，避免每帧分配；dirty（点击筛选）与内容变化时重建。</summary>
         private void RebuildCategoryStates(GameComponent_OuterrealmStorage gs)
         {
@@ -289,7 +290,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                bool allowed = CategoryFilterAllows(gs, e);
+                // 原版按 ThingDef 的允许集合统计，不按分类链 OR 后的“最终可见性”统计。
+                bool allowed = gs.ManagerAllows(e.Key.Def);
                 for (int ci = 0; ci < e.Key.Def.thingCategories.Count; ci++)
                 {
                     ThingCategoryDef c = e.Key.Def.thingCategories[ci];
@@ -375,7 +377,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                // 视图三态筛选（绿✓/红×/黄~）：分类被显式隐藏（且无其他分类链允许）则不显示
+                // 视图筛选直接采用原版 ThingFilter.Allows(ThingDef) 语义。
                 if (!CategoryFilterAllows(gs, e))
                 {
                     continue;
@@ -412,24 +414,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
-        /// <summary>视图三态筛选（绿✓/红×/黄~）：条目的每条所属分类链按实际效果（EffectiveManagerCatShow：
-        /// 子分类显式设置覆盖父分类，未设置时跟随上级，根默认显示）判定——任一链允许即显示，全部链隐藏才隐藏。
-        /// 与原版 ThingFilter 的允许语义一致（多分类条目按 OR 合并）。</summary>
+        /// <summary>视图筛选：与原版 ThingFilter.Allows(ThingDef) 一致，物品是否显示只取决于
+        /// 该 ThingDef 的直接允许状态；多分类物品不会因另一条分类链而抵消本次切换。</summary>
         private static bool CategoryFilterAllows(GameComponent_OuterrealmStorage gs, OuterrealmEntry e)
         {
             ThingDef def = e.Key.Def;
-            if (def == null || def.thingCategories == null || def.thingCategories.Count == 0)
-            {
-                return true;
-            }
-            for (int ci = 0; ci < def.thingCategories.Count; ci++)
-            {
-                if (gs.EffectiveManagerCatShow(def.thingCategories[ci]))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return def == null || gs.ManagerAllows(def);
         }
 
         /// <summary>该条目当前被几座终端可见（帮助定位死锁条目，§6.4）。

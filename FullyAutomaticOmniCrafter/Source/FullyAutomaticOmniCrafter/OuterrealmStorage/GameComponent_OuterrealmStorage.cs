@@ -56,10 +56,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>已注册的建筑实例（SpawnSetup 注册 / DeSpawn 注销）。</summary>
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
 
-        // ── 管理器视图筛选（§6.4 UI 层）：分类显式 显示/隐藏 设置（defName → bool） ──
-        // 缺失 = 未设置（跟随上级分类，默认全部显示）。仅影响"超维存储管理器"右侧列表的显示，
-        // 不影响任何建筑的存储清单 filter 与物品本身。随存档保存，玩家设置可跨会话保留。
+        // ── 管理器视图筛选（§6.4 UI 层） ──
+        // 旧版按分类保存继承式状态，会令多分类物品抵消分类点击，现仅用于旧存档迁移。
         private Dictionary<string, bool> managerCatShow = new Dictionary<string, bool>();
+        // 原版 ThingFilter 的核心语义是“每个 ThingDef 有独立允许状态”；这里以稀疏字典只记录
+        // 被隐藏的 ThingDef（缺失 = 默认显示），避免序列化全部已允许 Def。分类点击与原版
+        // ThingFilter.SetAllow(ThingCategoryDef) 相同，遍历 DescendantThingDefs 统一写入。
+        private Dictionary<string, bool> managerThingShow;
 
         /// <summary>帧末微批同步用缓存列表（§3.3 实时同步方案 B：复用避免每帧分配）。</summary>
         private readonly List<OuterrealmEntry> tmpSyncKeys = new List<OuterrealmEntry>();
@@ -209,20 +212,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── 查询 ────────────────────────────────────────────────────────────────
 
-        /// <summary>管理器视图筛选：分类的显式显示设置（null = 未设置/默认，跟随上级分类）。</summary>
-        public bool? ManagerCatShowOf(ThingCategoryDef c)
+        /// <summary>管理器视图筛选：等价于原版 ThingFilter.Allows(ThingDef)。</summary>
+        public bool ManagerAllows(ThingDef def)
         {
-            if (c == null)
+            if (def == null)
             {
-                return null;
+                return true;
             }
-            bool v;
-            return managerCatShow.TryGetValue(c.defName, out v) ? v : (bool?)null;
+            EnsureManagerThingShow();
+            bool show;
+            return !managerThingShow.TryGetValue(def.defName, out show) || show;
         }
 
-        /// <summary>设置管理器视图筛选（原版 ThingFilter.SetAllow 语义）：把该分类及其全部后代分类
-        /// 显式设为 显示(true)/隐藏(false)。父分类设置会覆盖后代的独立设置；无需"清除"操作——
-        /// 原版交互中 ~（混合）是派生状态，点击即转为隐藏（再点转显示）。
+        /// <summary>设置管理器视图筛选：逐个修改该分类的 DescendantThingDefs，完整复刻原版
+        /// ThingFilter.SetAllow(ThingCategoryDef) 的传播范围。~（混合）点击后由 CheckboxMulti
+        /// 转为隐藏，再点转为显示；多分类 ThingDef 也只有一个直接状态，不会互相抵消。
         /// 仅影响管理器右侧列表显示，不改内容版本号（不触发建筑视图同步）。</summary>
         public void SetManagerCatShow(ThingCategoryDef c, bool show)
         {
@@ -230,26 +234,75 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            foreach (ThingCategoryDef sub in c.ThisAndChildCategoryDefs)
+            EnsureManagerThingShow();
+            foreach (ThingDef def in c.DescendantThingDefs)
             {
-                managerCatShow[sub.defName] = show;
+                if (show)
+                {
+                    managerThingShow.Remove(def.defName);
+                }
+                else
+                {
+                    managerThingShow[def.defName] = false;
+                }
             }
         }
 
-        /// <summary>管理器视图筛选的实际效果：沿分类链（含自身）向上找最近显式设置；无任何显式设置时默认显示。
-        /// 供分类树 tooltip 与右侧列表过滤共用，保证两处判定语义一致（子分类显式设置覆盖父分类）。</summary>
-        public bool EffectiveManagerCatShow(ThingCategoryDef c)
+        private void EnsureManagerThingShow()
         {
-            while (c != null)
+            if (managerThingShow == null)
             {
-                bool? show = ManagerCatShowOf(c);
-                if (show.HasValue)
-                {
-                    return show.Value;
-                }
-                c = c.parent;
+                managerThingShow = new Dictionary<string, bool>();
             }
-            return true;
+        }
+
+        /// <summary>把旧版“分类继承 + 多分类 OR”状态一次性折算为逐 ThingDef 状态，
+        /// 保证升级存档后当前可见/隐藏结果不突变；之后所有交互均使用原版 ThingFilter 模型。</summary>
+        private void MigrateLegacyManagerCategoryFilter()
+        {
+            if (managerCatShow == null || managerCatShow.Count == 0)
+            {
+                return;
+            }
+            List<ThingDef> defs = DefDatabase<ThingDef>.AllDefsListForReading;
+            for (int i = 0; i < defs.Count; i++)
+            {
+                ThingDef def = defs[i];
+                if (!LegacyManagerAllows(def))
+                {
+                    managerThingShow[def.defName] = false;
+                }
+            }
+        }
+
+        private bool LegacyManagerAllows(ThingDef def)
+        {
+            if (def == null || def.thingCategories == null || def.thingCategories.Count == 0)
+            {
+                return true;
+            }
+            for (int i = 0; i < def.thingCategories.Count; i++)
+            {
+                ThingCategoryDef category = def.thingCategories[i];
+                while (category != null)
+                {
+                    bool show;
+                    if (managerCatShow.TryGetValue(category.defName, out show))
+                    {
+                        if (show)
+                        {
+                            return true;
+                        }
+                        break;
+                    }
+                    category = category.parent;
+                }
+                if (category == null)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>该地图上是否存在已 Spawned 的超维存储仓（决定该地图能否访问全局存储内容）。</summary>
@@ -812,18 +865,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             base.ExposeData();
             Scribe_Collections.Look(ref entries, "entries", LookMode.Deep);
+            // managerCatShow 仅为读取旧版存档保留；新逻辑保存逐 ThingDef 的稀疏状态。
             Scribe_Collections.Look(ref managerCatShow, "managerCatShow", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref managerThingShow, "managerThingShow", LookMode.Value, LookMode.Value);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (managerCatShow == null)
                 {
                     managerCatShow = new Dictionary<string, bool>();
                 }
-                // 清理管理器视图筛选中已不存在的分类（mod 卸载/改名残留），避免悬挂 defName。
-                List<string> staleKeys = null;
-                foreach (KeyValuePair<string, bool> kv in managerCatShow)
+                if (managerThingShow == null)
                 {
-                    if (DefDatabase<ThingCategoryDef>.GetNamedSilentFail(kv.Key) == null)
+                    managerThingShow = new Dictionary<string, bool>();
+                    MigrateLegacyManagerCategoryFilter();
+                }
+                managerCatShow.Clear();
+
+                // 清理管理器视图筛选中已不存在的 ThingDef（mod 卸载/改名残留），避免悬挂 defName。
+                List<string> staleKeys = null;
+                foreach (KeyValuePair<string, bool> kv in managerThingShow)
+                {
+                    if (DefDatabase<ThingDef>.GetNamedSilentFail(kv.Key) == null)
                     {
                         if (staleKeys == null)
                         {
@@ -836,7 +898,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     for (int i = 0; i < staleKeys.Count; i++)
                     {
-                        managerCatShow.Remove(staleKeys[i]);
+                        managerThingShow.Remove(staleKeys[i]);
                     }
                 }
                 if (entries == null)
