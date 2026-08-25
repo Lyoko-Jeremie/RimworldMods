@@ -49,6 +49,11 @@
   <!-- 存储管理器：全部取出 -->
   <OuterrealmStorageManager_EjectAllEntries>全部取出所有物品</OuterrealmStorageManager_EjectAllEntries>
 
+  <!-- 存储管理器：分类树三态筛选（绿✓/红×/黄~，原版 AllowanceStateOf 语义） -->
+  <OuterrealmStorageManager_CatShowTip>该分类及其子分类的物品全部显示（绿✓）。点击切换为全部隐藏</OuterrealmStorageManager_CatShowTip>
+  <OuterrealmStorageManager_CatHideTip>该分类及其子分类的物品全部隐藏（红×）。点击切换为全部显示</OuterrealmStorageManager_CatHideTip>
+  <OuterrealmStorageManager_CatPartialTip>该分类下部分物品显示、部分隐藏（黄~）。点击切换为全部隐藏</OuterrealmStorageManager_CatPartialTip>
+
   <!-- 存储管理器：分类树 -->
   <OuterrealmStorageManager_AllCategories>全部分类</OuterrealmStorageManager_AllCategories>
   <!-- §v3 超维存储访问能力 -->

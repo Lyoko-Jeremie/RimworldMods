@@ -13,6 +13,9 @@ namespace FullyAutomaticOmniCrafter
     /// 原版风格树状菜单，用于单选 ThingCategoryDef。
     /// 继承自游戏原版 Listing_Tree，复用其展开/折叠小部件与缩进逻辑。
     /// 可选传入 counts 字典：非空时在每项右侧右对齐显示该分类（含子分类）的条目总数。
+    /// 可选传入 getState/setShow：非空时在每项右侧绘制原版分类树风格的三态复选框——
+    /// 状态为子树聚合（绿✓=该分类及子分类全部显示 / 红×=全部隐藏 / 黄~=部分显示部分不显示），
+    /// 点击按原版循环（On↔Off、Partial→Off）并通过 setShow 递归设置整棵子树。
     /// </summary>
     public class Listing_TreeCategorySelect : Listing_Tree
     {
@@ -20,18 +23,24 @@ namespace FullyAutomaticOmniCrafter
         private readonly Action<ThingCategoryDef> _onSelect;
         private readonly HashSet<ThingCategoryDef> _validCats;
         private readonly Dictionary<ThingCategoryDef, long> _counts;
+        private readonly Func<ThingCategoryDef, MultiCheckboxState> _getState;
+        private readonly Action<ThingCategoryDef, bool> _setShow;
         private Rect _visibleRect;
 
         public Listing_TreeCategorySelect(
             HashSet<ThingCategoryDef> validCats,
             ThingCategoryDef selected,
             Action<ThingCategoryDef> onSelect,
-            Dictionary<ThingCategoryDef, long> counts = null)
+            Dictionary<ThingCategoryDef, long> counts = null,
+            Func<ThingCategoryDef, MultiCheckboxState> getState = null,
+            Action<ThingCategoryDef, bool> setShow = null)
         {
             _validCats = validCats;
             _selected = selected;
             _onSelect = onSelect;
             _counts = counts;
+            _getState = getState;
+            _setShow = setShow;
             lineHeight = 24f;
         }
 
@@ -77,7 +86,10 @@ namespace FullyAutomaticOmniCrafter
                     countText = cnt.ToString("N0");
                     countWidth = Text.CalcSize(countText).x + 4f;
                 }
-                LabelLeft(node.LabelCap, node.catDef.description, indentLevel, countText != null ? -countWidth : 0f);
+                // 可选三态筛选复选框（绿✓/红×/黄~）：位于数量左侧，label 一并预留空间
+                bool hasToggle = _getState != null && _setShow != null;
+                float toggleWidth = hasToggle ? ToggleSize + 4f : 0f;
+                LabelLeft(node.LabelCap, node.catDef.description, indentLevel, -(countWidth + toggleWidth));
                 if (countText != null)
                 {
                     Rect countRect = new Rect(ColumnWidth - countWidth, curY, countWidth, lineHeight);
@@ -87,10 +99,20 @@ namespace FullyAutomaticOmniCrafter
                     Text.Anchor = TextAnchor.UpperLeft;
                     GUI.color = Color.white;
                 }
+                if (hasToggle)
+                {
+                    Rect toggleRect = new Rect(ColumnWidth - countWidth - ToggleSize - 4f, curY, ToggleSize, ToggleSize);
+                    DoShowToggle(toggleRect, node.catDef);
+                }
 
-                // 点击整行选中该分类
+                // 点击整行选中该分类（剔除右侧三态按钮区域，避免点按钮时连带切换选中）
                 float xMin = XAtIndentLevel(indentLevel);
-                Rect clickRect = new Rect(xMin, curY, ColumnWidth - xMin, lineHeight);
+                float xMax = ColumnWidth;
+                if (hasToggle)
+                {
+                    xMax = ColumnWidth - countWidth - ToggleSize - 4f;
+                }
+                Rect clickRect = new Rect(xMin, curY, Mathf.Max(0f, xMax - xMin), lineHeight);
                 if (Widgets.ButtonInvisible(clickRect))
                     _onSelect(node.catDef);
             }
@@ -102,6 +124,51 @@ namespace FullyAutomaticOmniCrafter
                 foreach (TreeNode_ThingCategory child in node.ChildCategoryNodes)
                     DoCategoryNode(child, indentLevel + 1, openMask);
             }
+        }
+
+        private const float ToggleSize = 24f;
+
+        /// <summary>原版分类树风格三态复选框（子树聚合状态）：绿✓=该分类及子分类全部显示、红×=全部隐藏、
+        /// 黄~=部分显示部分不显示。点击按原版循环：Off→On、On→Off、Partial→Off，并通过 _setShow 递归
+        /// 设置整棵子树为显示/隐藏（由调用方负责刷新列表与聚合状态）。</summary>
+        private void DoShowToggle(Rect rect, ThingCategoryDef cat)
+        {
+            MultiCheckboxState state = _getState(cat);
+            Texture2D tex;
+            string tip;
+            if (state == MultiCheckboxState.On)
+            {
+                tex = Widgets.CheckboxOnTex;
+                tip = "OuterrealmStorageManager_CatShowTip".Translate();
+            }
+            else if (state == MultiCheckboxState.Off)
+            {
+                tex = Widgets.CheckboxOffTex;
+                tip = "OuterrealmStorageManager_CatHideTip".Translate();
+            }
+            else
+            {
+                tex = Widgets.CheckboxPartialTex;
+                tip = "OuterrealmStorageManager_CatPartialTip".Translate();
+            }
+            TooltipHandler.TipRegion(rect, tip);
+            MouseoverSounds.DoRegion(rect);
+            Widgets.DraggableResult result = Widgets.ButtonImageDraggable(rect, tex);
+            if (result != Widgets.DraggableResult.Pressed && result != Widgets.DraggableResult.DraggedThenPressed)
+            {
+                return;
+            }
+            // 原版 CheckboxMulti 点击循环：Off→On、On→Off、Partial→Off
+            bool nextShow = state == MultiCheckboxState.Off;
+            if (nextShow)
+            {
+                SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera();
+            }
+            else
+            {
+                SoundDefOf.Checkbox_TurnedOff.PlayOneShotOnCamera();
+            }
+            _setShow(cat, nextShow);
         }
     }
 

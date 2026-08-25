@@ -56,6 +56,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>已注册的建筑实例（SpawnSetup 注册 / DeSpawn 注销）。</summary>
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
 
+        // ── 管理器视图筛选（§6.4 UI 层）：分类显式 显示/隐藏 设置（defName → bool） ──
+        // 缺失 = 未设置（跟随上级分类，默认全部显示）。仅影响"超维存储管理器"右侧列表的显示，
+        // 不影响任何建筑的存储清单 filter 与物品本身。随存档保存，玩家设置可跨会话保留。
+        private Dictionary<string, bool> managerCatShow = new Dictionary<string, bool>();
+
         /// <summary>帧末微批同步用缓存列表（§3.3 实时同步方案 B：复用避免每帧分配）。</summary>
         private readonly List<OuterrealmEntry> tmpSyncKeys = new List<OuterrealmEntry>();
 
@@ -203,6 +208,49 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         // ── 查询 ────────────────────────────────────────────────────────────────
+
+        /// <summary>管理器视图筛选：分类的显式显示设置（null = 未设置/默认，跟随上级分类）。</summary>
+        public bool? ManagerCatShowOf(ThingCategoryDef c)
+        {
+            if (c == null)
+            {
+                return null;
+            }
+            bool v;
+            return managerCatShow.TryGetValue(c.defName, out v) ? v : (bool?)null;
+        }
+
+        /// <summary>设置管理器视图筛选（原版 ThingFilter.SetAllow 语义）：把该分类及其全部后代分类
+        /// 显式设为 显示(true)/隐藏(false)。父分类设置会覆盖后代的独立设置；无需"清除"操作——
+        /// 原版交互中 ~（混合）是派生状态，点击即转为隐藏（再点转显示）。
+        /// 仅影响管理器右侧列表显示，不改内容版本号（不触发建筑视图同步）。</summary>
+        public void SetManagerCatShow(ThingCategoryDef c, bool show)
+        {
+            if (c == null)
+            {
+                return;
+            }
+            foreach (ThingCategoryDef sub in c.ThisAndChildCategoryDefs)
+            {
+                managerCatShow[sub.defName] = show;
+            }
+        }
+
+        /// <summary>管理器视图筛选的实际效果：沿分类链（含自身）向上找最近显式设置；无任何显式设置时默认显示。
+        /// 供分类树 tooltip 与右侧列表过滤共用，保证两处判定语义一致（子分类显式设置覆盖父分类）。</summary>
+        public bool EffectiveManagerCatShow(ThingCategoryDef c)
+        {
+            while (c != null)
+            {
+                bool? show = ManagerCatShowOf(c);
+                if (show.HasValue)
+                {
+                    return show.Value;
+                }
+                c = c.parent;
+            }
+            return true;
+        }
 
         /// <summary>该地图上是否存在已 Spawned 的超维存储仓（决定该地图能否访问全局存储内容）。</summary>
         public bool HasVaultOnMap(Map map)
@@ -764,8 +812,33 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             base.ExposeData();
             Scribe_Collections.Look(ref entries, "entries", LookMode.Deep);
+            Scribe_Collections.Look(ref managerCatShow, "managerCatShow", LookMode.Value, LookMode.Value);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
+                if (managerCatShow == null)
+                {
+                    managerCatShow = new Dictionary<string, bool>();
+                }
+                // 清理管理器视图筛选中已不存在的分类（mod 卸载/改名残留），避免悬挂 defName。
+                List<string> staleKeys = null;
+                foreach (KeyValuePair<string, bool> kv in managerCatShow)
+                {
+                    if (DefDatabase<ThingCategoryDef>.GetNamedSilentFail(kv.Key) == null)
+                    {
+                        if (staleKeys == null)
+                        {
+                            staleKeys = new List<string>();
+                        }
+                        staleKeys.Add(kv.Key);
+                    }
+                }
+                if (staleKeys != null)
+                {
+                    for (int i = 0; i < staleKeys.Count; i++)
+                    {
+                        managerCatShow.Remove(staleKeys[i]);
+                    }
+                }
                 if (entries == null)
                 {
                     entries = new List<OuterrealmEntry>();

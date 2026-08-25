@@ -48,6 +48,11 @@
 
   <!-- Storage manager: eject everything -->
   <OuterrealmStorageManager_EjectAllEntries>Eject everything</OuterrealmStorageManager_EjectAllEntries>
+
+  <!-- Storage manager: category tree tri-state filter (green ✓ / red × / yellow ~, vanilla AllowanceStateOf semantics) -->
+  <OuterrealmStorageManager_CatShowTip>All items in this category and its subcategories are shown (green ✓). Click to hide all</OuterrealmStorageManager_CatShowTip>
+  <OuterrealmStorageManager_CatHideTip>All items in this category and its subcategories are hidden (red ×). Click to show all</OuterrealmStorageManager_CatHideTip>
+  <OuterrealmStorageManager_CatPartialTip>Some items in this category are shown and some hidden (yellow ~). Click to hide all</OuterrealmStorageManager_CatPartialTip>
   <OuterrealmStorageManager_AllCategories>All categories</OuterrealmStorageManager_AllCategories>
   <!-- §v3 Subspace Access -->
   <SubspaceAccessManagerTitle>Subspace access authorization</SubspaceAccessManagerTitle>
