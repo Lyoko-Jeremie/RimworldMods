@@ -32,6 +32,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private const float IconSizeNormal = 28f;
         private const float IconSizeTiny = 16f;
         private const float Gap = 6f;
+        private const float CategoryWidth = 340f;
+        private const float CategoryLineHeight = 24f;
 
         private static readonly FieldInfo optionsField = AccessTools.Field(typeof(FloatMenu), "options");
         private static readonly FieldInfo titleField = AccessTools.Field(typeof(FloatMenu), "title");
@@ -54,7 +56,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             public string SearchText = "";   // 当前生效的搜索词（小写）
             public List<FloatMenuOption> Filtered; // 过滤后的可见列表；null = 全部
             public Vector2 ScrollPosition;
+            public Vector2 CategoryScrollPosition;
             public bool Tiny;                // 行高/图标尺寸模式（与 FloatMenu SizeMode 一致）
+            public Building_OuterrealmVault Vault;
+            public ThingCategoryDef SelectedCategory; // null = 全部分类；仅当前菜单生效
+            public readonly HashSet<ThingCategoryDef> ValidCategories = new HashSet<ThingCategoryDef>();
+            public readonly Dictionary<ThingCategoryDef, long> CategoryCounts = new Dictionary<ThingCategoryDef, long>();
+            public readonly HashSet<Thing> CandidateTargets = new HashSet<Thing>();
         }
 
         private static readonly ConditionalWeakTable<FloatMenuMap, CustomMenuState> States =
@@ -101,25 +109,34 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 窗口在 WindowStack 期间 TickManager.ForcePaused → Paused，关闭后自动恢复，无需手动改速度。
                 state.Tiny = options.Count > 60;
                 state.Title = (string)titleField.GetValue(menu);
+                state.Vault = Patch_FloatMenuMap_DoWindowContents_VaultSlowRefresh.GetMenuVault(menu);
+                RebuildCategoryCache(options, state);
                 PinyinCache.Clear();
             }
 
             float rowH = state.Tiny ? RowHeightTiny : RowHeightNormal;
-            float x = inRect.x + Margin;
             float y = inRect.y + Margin;
-            float w = inRect.width - Margin * 2f;
+            float innerX = inRect.x + Margin;
+            float innerW = inRect.width - Margin * 2f;
 
             // ── 标题（原版 title，如 pawn.LabelCap） ──
             if (!string.IsNullOrEmpty(state.Title))
             {
                 Text.Font = GameFont.Medium;
-                Widgets.Label(new Rect(x, y, w, TitleHeight), state.Title);
+                Widgets.Label(new Rect(innerX, y, innerW, TitleHeight), state.Title);
                 Text.Font = GameFont.Small;
                 y += TitleHeight + Gap;
             }
 
-            // ── 搜索框 ──
-            Rect searchRect = new Rect(x, y, w, SearchBoxHeight);
+            // ── 主体：左侧临时分类树 + 右侧搜索和菜单列表 ──
+            float bodyH = Mathf.Max(1f, inRect.yMax - Margin - y);
+            float categoryW = Mathf.Min(CategoryWidth, Mathf.Max(180f, innerW * 0.34f));
+            Rect categoryRect = new Rect(innerX, y, categoryW, bodyH);
+            Rect rightRect = new Rect(categoryRect.xMax + Gap, y, Mathf.Max(1f, innerW - categoryW - Gap), bodyH);
+            DrawCategoryPanel(categoryRect, options, state);
+
+            float rightY = rightRect.y;
+            Rect searchRect = new Rect(rightRect.x, rightY, rightRect.width, SearchBoxHeight);
             string edited = Widgets.TextField(searchRect, state.SearchBuffer);
             if (edited != state.SearchBuffer)
             {
@@ -127,19 +144,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 state.SearchText = edited.Trim().ToLowerInvariant();
                 RebuildFiltered(options, state);
             }
-            y += SearchBoxHeight + Gap;
+            rightY += SearchBoxHeight + Gap;
 
             // ── 计数 ──
             int shown = state.Filtered != null ? state.Filtered.Count : options.Count;
             GUI.color = Color.gray;
             Widgets.Label(
-                new Rect(x, y, w, CountLabelHeight),
+                new Rect(rightRect.x, rightY, rightRect.width, CountLabelHeight),
                 "OuterrealmFloatMenu_Count".Translate(shown, options.Count));
             GUI.color = Color.white;
-            y += CountLabelHeight + Gap;
+            rightY += CountLabelHeight + Gap;
 
             // ── 虚拟化列表（视口裁剪） ──
-            Rect listRect = new Rect(x, y, w, Mathf.Max(1f, inRect.yMax - Margin - y));
+            Rect listRect = new Rect(rightRect.x, rightY, rightRect.width, Mathf.Max(1f, rightRect.yMax - rightY));
             List<FloatMenuOption> visible = state.Filtered != null ? state.Filtered : options;
             if (visible.Count == 0)
             {
@@ -281,10 +298,124 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             States.Remove(menu);
         }
 
-        /// <summary>搜索词变化时重建过滤列表（O(N) 一次；空搜索 = 全部，保持原排序）。</summary>
+        /// <summary>
+        /// 左侧临时分类树。分类集合只来自本次菜单中实际产生了选项的 vault 视图目标，
+        /// 因而天然位于建筑 StorageSettings 已筛选后的物品集合之上；选择状态不写回任何持久筛选。
+        /// </summary>
+        private static void DrawCategoryPanel(Rect rect, List<FloatMenuOption> options, CustomMenuState state)
+        {
+            Widgets.DrawBoxSolid(rect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
+            Rect outRect = rect.ContractedBy(3f);
+            float treeH = ComputeTreeHeight(ThingCategoryDefOf.Root.treeNode, state.ValidCategories, CategoryLineHeight);
+            float totalH = CategoryLineHeight + 2f + Gap + treeH;
+            Rect viewRect = new Rect(0f, 0f, Mathf.Max(1f, outRect.width - 16f), Mathf.Max(1f, totalH));
+
+            Widgets.BeginScrollView(outRect, ref state.CategoryScrollPosition, viewRect);
+            float y = 0f;
+            Rect allRect = new Rect(0f, y, viewRect.width, CategoryLineHeight);
+            DrawCategoryNavItem(allRect, "OuterrealmStorageManager_AllCategories".Translate(), state.SelectedCategory == null, () =>
+            {
+                state.SelectedCategory = null;
+                RebuildFiltered(options, state);
+            });
+            y += CategoryLineHeight + 2f + Gap;
+
+            Rect treeRect = new Rect(0f, y, viewRect.width, Mathf.Max(1f, treeH));
+            Rect visibleRect = new Rect(0f, state.CategoryScrollPosition.y - y, viewRect.width, outRect.height);
+            Listing_TreeCategorySelect listing = new Listing_TreeCategorySelect(
+                state.ValidCategories,
+                state.SelectedCategory,
+                cat =>
+                {
+                    state.SelectedCategory = cat;
+                    RebuildFiltered(options, state);
+                },
+                state.CategoryCounts);
+            listing.SetVisibleRect(visibleRect);
+            listing.Begin(treeRect);
+            foreach (TreeNode_ThingCategory child in ThingCategoryDefOf.Root.treeNode.ChildCategoryNodes)
+            {
+                listing.DoCategoryNode(child, 0, 1);
+            }
+            listing.End();
+            Widgets.EndScrollView();
+        }
+
+        /// <summary>绘制“全部分类”导航项，行为与存储管理器的分类树一致。</summary>
+        private static void DrawCategoryNavItem(Rect rect, string label, bool selected, Action onClick)
+        {
+            if (selected)
+            {
+                Widgets.DrawHighlight(rect);
+            }
+            else if (Mouse.IsOver(rect))
+            {
+                Widgets.DrawHighlightIfMouseover(rect);
+            }
+            Widgets.Label(rect.ContractedBy(2f, 0f), label);
+            if (Widgets.ButtonInvisible(rect))
+            {
+                onClick();
+            }
+        }
+
+        /// <summary>
+        /// 从菜单选项反向收集实际 vault 目标。原版 GetProviderOptions 会在目标选项未自带图标时
+        /// 把 iconThing 设置为目标 Thing；同一目标可生成多个操作，因此用 HashSet 去重后再累计分类。
+        /// </summary>
+        private static void RebuildCategoryCache(List<FloatMenuOption> options, CustomMenuState state)
+        {
+            state.ValidCategories.Clear();
+            state.CategoryCounts.Clear();
+            state.CandidateTargets.Clear();
+            for (int i = 0; i < options.Count; i++)
+            {
+                FloatMenuOption option = options[i];
+                ThingDef def;
+                Thing target;
+                if (!TryGetVaultTarget(option, state, out target, out def) || !state.CandidateTargets.Add(target)
+                    || def.thingCategories == null)
+                {
+                    continue;
+                }
+                for (int ci = 0; ci < def.thingCategories.Count; ci++)
+                {
+                    ThingCategoryDef category = def.thingCategories[ci];
+                    while (category != null)
+                    {
+                        state.ValidCategories.Add(category);
+                        long count;
+                        state.CategoryCounts.TryGetValue(category, out count);
+                        state.CategoryCounts[category] = count + 1L;
+                        category = category.parent;
+                    }
+                }
+            }
+        }
+
+        /// <summary>递归计算当前有效分类树的滚动内容高度。</summary>
+        private static float ComputeTreeHeight(TreeNode_ThingCategory node, HashSet<ThingCategoryDef> validCategories, float lineHeight)
+        {
+            float height = 0f;
+            foreach (TreeNode_ThingCategory child in node.ChildCategoryNodes)
+            {
+                if (!validCategories.Contains(child.catDef))
+                {
+                    continue;
+                }
+                height += lineHeight + 2f;
+                if (child.IsOpen(1))
+                {
+                    height += ComputeTreeHeight(child, validCategories, lineHeight);
+                }
+            }
+            return height;
+        }
+
+        /// <summary>搜索词或临时分类变化时重建过滤列表（O(N) 一次，保持原排序）。</summary>
         private static void RebuildFiltered(List<FloatMenuOption> options, CustomMenuState state)
         {
-            if (state.SearchText.Length == 0)
+            if (state.SearchText.Length == 0 && state.SelectedCategory == null)
             {
                 state.Filtered = null;
                 state.ScrollPosition.y = 0f;
@@ -294,13 +425,68 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < options.Count; i++)
             {
                 FloatMenuOption opt = options[i];
-                if (opt != null && Matches(opt.Label, state.SearchText))
+                if (opt == null)
+                {
+                    continue;
+                }
+                ThingDef targetDef;
+                Thing target;
+                if (state.SelectedCategory != null
+                    && TryGetVaultTarget(opt, state, out target, out targetDef)
+                    && !IsInCategory(targetDef, state.SelectedCategory))
+                {
+                    continue;
+                }
+                if (state.SearchText.Length == 0 || Matches(opt.Label, state.SearchText))
                 {
                     list.Add(opt);
                 }
             }
             state.Filtered = list;
             state.ScrollPosition.y = 0f;
+        }
+
+        /// <summary>
+        /// 识别由当前建筑视图副本生成的目标选项。非 vault 目标（建筑自身、地面对象、通用 provider 项）
+        /// 不参与分类筛选并始终保留，避免分类导航误删同一格上的其他合法命令。
+        /// </summary>
+        private static bool TryGetVaultTarget(FloatMenuOption option, CustomMenuState state, out Thing target, out ThingDef def)
+        {
+            target = option != null ? option.iconThing : null;
+            def = null;
+            if (target == null || state.Vault == null)
+            {
+                return false;
+            }
+            OuterrealmVaultViewThingOwner view = target.holdingOwner as OuterrealmVaultViewThingOwner;
+            if (view == null || !ReferenceEquals(view.Context, state.Vault))
+            {
+                return false;
+            }
+            def = target.def;
+            return def != null;
+        }
+
+        /// <summary>ThingDef 的任一直接分类或其祖先是否命中所选分类。</summary>
+        private static bool IsInCategory(ThingDef def, ThingCategoryDef selectedCategory)
+        {
+            if (def == null || def.thingCategories == null)
+            {
+                return false;
+            }
+            for (int ci = 0; ci < def.thingCategories.Count; ci++)
+            {
+                ThingCategoryDef category = def.thingCategories[ci];
+                while (category != null)
+                {
+                    if (category == selectedCategory)
+                    {
+                        return true;
+                    }
+                    category = category.parent;
+                }
+            }
+            return false;
         }
 
         /// <summary>
