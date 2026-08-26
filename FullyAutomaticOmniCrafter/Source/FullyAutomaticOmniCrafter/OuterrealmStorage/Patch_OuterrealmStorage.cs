@@ -381,6 +381,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             OuterrealmPatchUtil.ReplaceJobThing(job, t, actual);
+            // 方案 C：打包建筑借出后，把引用副本的安装蓝图重定向到真物——否则 pawn 手里
+            // 拿的是真物、蓝图引用的是副本，安装时 MakeSolidThing 用副本的复制品 InnerThing
+            // 生成建筑、真物被 DepositHauledThingInContainer 的 ClearAndDestroyContents 销毁
+            // （复制品 + 真物丢失）。重定向后 pawn 手里、蓝图引用、安装产物三者实例一致。
+            OuterrealmVaultUtil.RedirectBlueprintToActual(t, actual);
             int actualStackCount = stackCount == ReservationManager.StackCount_All
                 ? ReservationManager.StackCount_All
                 : Math.Min(Math.Max(1, stackCount), actual.stackCount);
@@ -1901,6 +1906,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (vault != null && vault.Spawned)
             {
+                // 方案 A：等待安装的打包建筑（被 Blueprint_Install 引用）禁止存入 vault——
+                // 否则蓝图引用的权威实例被藏入全局层后不可达，安装 job 永远"没有路径"卡死。
+                // 自动搬运在此被拦截，物品留在地面，安装工作照常从地面取用；
+                // 玩家强制存入（右键）绕过本检查走 Deposit 吸收，由
+                // OuterrealmVaultUtil.CancelBlueprintIfPendingInstall 兜底取消蓝图（方案 B）。
+                if (OuterrealmVaultUtil.IsPendingInstall(t))
+                {
+                    __result = null;
+                    return false;
+                }
                 // 双接口：存入走 v3 容器（HaulToContainer → view 吸收），不经存储格落地
                 __result = HaulAIUtility.HaulToContainerJob(p, t, vault);
                 return false;

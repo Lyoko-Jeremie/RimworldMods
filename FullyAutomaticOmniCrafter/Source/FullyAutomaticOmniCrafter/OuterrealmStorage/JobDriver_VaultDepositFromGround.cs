@@ -49,6 +49,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // 先从 carry 取出（holdingOwner 置 null），否则 gs.Deposit 内部 Destroy 只通知
             // Notify_ContainedItemDestroyed、不把 item 从 innerContainer 移除，残留已销毁 item。
             pawn.carryTracker.innerContainer.Remove(carried);
+            // 方案 B：吸收"等待安装"的打包建筑前取消引用它的安装蓝图（本 job 为授权 pawn
+            // 右键"放入超维存储"的外部存入入口，不经 view.TryAdd）。
+            OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(carried);
             gs.Deposit(carried); // 吸收进全局库（未 Spawned，直接并入条目）
             EndJobWith(JobCondition.Succeeded);
         }

@@ -246,6 +246,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             for (int i = 0; i < toAbsorb.Count; i++)
             {
+                // 方案 B：落格吸收属外部物品存入，吸收前取消引用该打包建筑的安装蓝图。
+                OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(toAbsorb[i]);
                 gs?.Deposit(toAbsorb[i]);
             }
         }
@@ -305,6 +307,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
                 for (int i = 0; i < toAbsorb.Count; i++)
                 {
+                    // 方案 B：同 AbsorbForeignItems，吸收前取消引用该打包建筑的安装蓝图。
+                    OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(toAbsorb[i]);
                     gs?.Deposit(toAbsorb[i]);
                 }
             }

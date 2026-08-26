@@ -78,6 +78,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
+            // 方案 B：吸收"等待安装"的打包建筑前取消引用它的安装蓝图（兜底强制搬运/竞态
+            // 绕过方案 A 的搬运拦截后，蓝图引用的权威实例将被藏入全局层而不可达）。
+            OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(item);
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs == null)
             {
@@ -99,6 +102,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return 0;
             }
+            // 方案 B（同 TryAdd(Thing)）：吸收前取消引用该打包建筑的安装蓝图。
+            OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(item);
             int take = Mathf.Min(item.stackCount, count);
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs == null)

@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -148,5 +150,81 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             return Mathf.Clamp(target, minSafe, maxSafe);
         }
+
+        // ── 打包建筑安装蓝图兼容（§安装蓝图修复） ───────────────────────────────
+        // 超维存储是"权威实例 + 投影副本"双实例架构：打包建筑（MinifiedThing）被吸收后，
+        // Blueprint_Install 引用的权威实例被藏入全局层（未 Spawned、无 Spawned parent），
+        // 原版安装工作 InstallJob 的 CanReach 检查失败 → 蓝图永远"没有路径"卡死。
+        // 三个配套措施（A/B/C）：
+        //   A. 存入前拦截（Patch_HaulAIUtility_HaulToCellStorageJob）：自动搬运不把
+        //      等待安装的打包建筑搬进 vault，物品留地面，安装照常从地面取用；
+        //   B. 吸收时取消蓝图（CancelBlueprintIfPendingInstall）：兜底强制搬运/竞态
+        //      绕过 A 后，蓝图随权威实例藏入全局层而取消（对齐原版
+        //      MinifiedThing.Destroy 的 CancelBlueprintsFor 语义）；
+        //   C. 借出时重定向蓝图引用（RedirectBlueprintToActual）：玩家对 vault 副本
+        //      直接下达安装时，pawn 借出的是真物，把蓝图引用从副本改为真物，
+        //      保证 pawn 手里、蓝图引用、安装产物三者实例一致，安装产出真建筑。
+
+        /// <summary>该打包建筑是否正被安装蓝图引用（等待安装）。InnerThing 为 null（非法状态）时不查，避免
+        /// InstallBlueprintUtility.ExistingBlueprintFor 对 reinstallationMap 用 null key 抛异常。</summary>
+        public static bool IsPendingInstall(Thing t)
+        {
+            if (!(t is MinifiedThing minified) || minified.InnerThing == null)
+            {
+                return false;
+            }
+            return InstallBlueprintUtility.ExistingBlueprintFor(t) != null;
+        }
+
+        /// <summary>吸收打包建筑前取消引用它的安装蓝图（方案 B；非打包建筑/内物缺失无副作用）。</summary>
+        public static void CancelBlueprintIfPendingInstall(Thing item)
+        {
+            if (item is MinifiedThing minified && minified.InnerThing != null)
+            {
+                InstallBlueprintUtility.CancelBlueprintsFor(item);
+            }
+        }
+
+        /// <summary>借出打包建筑时，把引用副本的安装蓝图重定向到借出的真物（方案 C）。</summary>
+        public static void RedirectBlueprintToActual(Thing copy, Thing actual)
+        {
+            if (copy == null || actual == null || copy == actual
+                || !(copy is MinifiedThing copyMin) || copyMin.InnerThing == null)
+            {
+                return;
+            }
+            Blueprint_Install bp = InstallBlueprintUtility.ExistingBlueprintFor(copy);
+            if (bp == null || bp.Destroyed)
+            {
+                return;
+            }
+            if (!(actual is MinifiedThing actualMin))
+            {
+                return;
+            }
+            if (SetMiniToInstallMethod != null)
+            {
+                SetMiniToInstallMethod.Invoke(bp, new object[] { actualMin });
+            }
+            else
+            {
+                MiniToInstallField?.SetValue(bp, actualMin);
+            }
+            // listerBuildings 的 reinstall 注册 key 随引用变化：Deregister 在引用不一致时
+            // 内部走遍历兜底移除旧 key，再以新 key（真物的 InnerThing）重新注册。
+            if (bp.Map != null)
+            {
+                bp.Map.listerBuildings.DeregisterInstallBlueprint(bp);
+                bp.Map.listerBuildings.RegisterInstallBlueprint(bp);
+            }
+        }
+
+        /// <summary>原版 internal 设置器（置 miniToInstall 并清空 buildingToReinstall）；反射失败时回退字段写入。</summary>
+        private static readonly MethodInfo SetMiniToInstallMethod =
+            AccessTools.Method(typeof(Blueprint_Install), "SetThingToInstallFromMinified");
+
+        /// <summary>兜底反射字段（SetThingToInstallFromMinified 不可用时直接写 private 字段）。</summary>
+        private static readonly FieldInfo MiniToInstallField =
+            AccessTools.Field(typeof(Blueprint_Install), "miniToInstall");
     }
 }
