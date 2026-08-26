@@ -376,17 +376,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 count = thing.stackCount;
             }
             count = Mathf.Min(count, thing.stackCount);
-            if (count >= thing.stackCount)
-            {
-                // 整堆取出：走视图 Remove（不 Suppress → Notify_ItemRemoved → 全局扣全量；
-                // Remove 内部已摘 lister 并恢复未 Spawned），实例交给光束，FinishTransfer 直接放置
-                view.Remove(thing);
-                __result = thing;
-                return false;
-            }
-            // 部分取出：SplitOff 走视图记账（PreSplitOff/PostSplitOff）
+            // 无论整堆还是部分均走 SplitOff；投影 SplitOff 已统一重定向为从权威库存
+            // 转移真实实例，保证第三方 Comp 状态与物品身份不丢失。
             Thing result = thing.SplitOff(count);
-            if (result.Spawned)
+            if (result != null && result.Spawned)
             {
                 result.DeSpawn(DestroyMode.Vanish);
             }

@@ -27,6 +27,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     internal static class OuterrealmPatchUtil
     {
+        private static readonly TargetIndex[] JobTargetIndices =
+            { TargetIndex.A, TargetIndex.B, TargetIndex.C };
+
         /// <summary>提升地图上所有视图副本的 stackCount 为全局剩余量（#9 数量感知路径）。</summary>
         public static void BoostMapVaults(Map map)
         {
@@ -52,92 +55,116 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
         }
+
+        /// <summary>把 Job 中所有指向投影副本的目标替换为实际借出的权威物品。</summary>
+        public static void ReplaceJobThing(Job job, Thing projection, Thing actual)
+        {
+            if (job == null || projection == null || actual == null || projection == actual)
+            {
+                return;
+            }
+            for (int i = 0; i < JobTargetIndices.Length; i++)
+            {
+                TargetIndex index = JobTargetIndices[i];
+                if (job.GetTarget(index).Thing == projection)
+                {
+                    job.SetTarget(index, (LocalTargetInfo)actual);
+                }
+            }
+            ReplaceInQueue(job.targetQueueA, projection, actual);
+            ReplaceInQueue(job.targetQueueB, projection, actual);
+        }
+
+        private static void ReplaceInQueue(List<LocalTargetInfo> queue, Thing projection, Thing actual)
+        {
+            if (queue == null)
+            {
+                return;
+            }
+            for (int i = 0; i < queue.Count; i++)
+            {
+                if (queue[i].Thing == projection)
+                {
+                    queue[i] = (LocalTargetInfo)actual;
+                }
+            }
+        }
     }
 
-    // ── §5.2 #5：Thing.SplitOff 取出即同步 + 防超卖（只 patch virtual 声明处一处） ──
-    // ThingWithComps.SplitOff / MinifiedThing.SplitOff 均为 base.SplitOff 薄包装，
-    // patch 此处即覆盖全部；三处全 patch 会导致 prefix/postfix 双触发。
-    [HarmonyPatch(typeof(Thing), "SplitOff")]
+    // ── §5.2 #5：Thing.SplitOff 统一转移权威实例 ──
+    // 必须拦截每一个覆写，而非只拦截 Thing 基类：ThingWithComps/MinifiedThing 以及第三方覆写
+    // 可能在 base.SplitOff 返回后继续执行 PostSplitOff 或重建内部物品；若 base 已返回权威实例，
+    // 这些后处理会错误地把“投影”的状态写入真实物品。启动时枚举已加载的 Thing 子类并一次性缓存补丁目标。
+    [HarmonyPatch]
     internal static class Patch_Thing_SplitOff
     {
-        private static void Prefix(Thing __instance)
+        private static IEnumerable<MethodBase> TargetMethods()
         {
-            OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
-            if (view == null)
+            List<Type> types = GenTypes.AllTypes;
+            for (int i = 0; i < types.Count; i++)
             {
-                return;
+                Type type = types[i];
+                if (type == null || !typeof(Thing).IsAssignableFrom(type))
+                {
+                    continue;
+                }
+                MethodInfo method = type.GetMethod(
+                    "SplitOff",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
+                    null,
+                    new[] { typeof(int) },
+                    null);
+                if (method != null && !method.IsAbstract && typeof(Thing).IsAssignableFrom(method.ReturnType))
+                {
+                    yield return method;
+                }
             }
-            view.PreSplitOff(__instance);
         }
 
-        private static void Postfix(Thing __instance, Thing __result)
+        private static bool Prefix(Thing __instance, int count, ref Thing __result)
         {
             OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
             if (view == null)
             {
-                return;
+                return true;
             }
-            view.PostSplitOff(__instance, __result);
+            // 投影不是权威物品，绝不能由 MakeThing 拆出。统一从全局权威堆转移原实例
+            // 或调用其原版 SplitOff；这样未知 Thing 子类/Comp 状态和 thingID 均被保留。
+            __result = view.WithdrawCanonical(__instance, count);
+            return false;
         }
     }
 
-    // ── §5.2 #5 配套：Thing.TryAbsorbStack 回滚补偿（§3.3） ──
-    // SplitOff 调用方失败回滚（TakeToInventory / TryTransferToContainer）时 piece 合并回副本，
-    // 须把吸收量补回全局。ThingWithComps.TryAbsorbStack 内部调 base（Thing）版本，patch 此处即覆盖。
+    // ── §5.2 #5 配套：Thing.TryAbsorbStack 回滚（§3.3） ──
+    // 投影只负责索引/展示，绝不能成为真实物品的合并目标。否则原版会销毁 source，
+    // 未知 Thing 子类和 Comp 的状态只剩一个数字，破坏权威实例模型。
     [HarmonyPatch(typeof(Thing), "TryAbsorbStack")]
     internal static class Patch_Thing_TryAbsorbStack
     {
-        private static void Prefix(Thing __instance, Thing other)
+        private static bool Prefix(Thing __instance, Thing other, ref bool __result)
         {
             OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
             if (view == null || other == null)
             {
-                return;
+                return true;
             }
-            view.LastAbsorbAmount = other.stackCount;
-        }
 
-        private static void Postfix(Thing __instance, Thing other)
-        {
-            OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
-            if (view == null)
+            // SplitOff/转移失败产生的回滚堆通常已无持有者；直接把该真实实例重新存回。
+            if (other.holdingOwner == null)
             {
-                return;
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+                OuterrealmEntry restored = gs != null ? gs.Deposit(other) : null;
+                if (restored != null)
+                {
+                    view.EnsureCopyFor(restored);
+                    __result = true;
+                    return false;
+                }
             }
-            int amountBefore = view.LastAbsorbAmount;
-            view.LastAbsorbAmount = 0;
-            if (amountBefore <= 0)
-            {
-                return;
-            }
-            // 实际吸收量 = 吸收前 other.stackCount − 吸收后 remaining（全量吸收时 other 被 Destroy → remaining=0；
-            // 部分吸收（respectStackLimit=true 时 take 受限）按实际量补偿，避免多计全局）。
-            int remaining = other != null && !other.Destroyed ? other.stackCount : 0;
-            int absorbed = amountBefore - remaining;
-            if (absorbed <= 0)
-            {
-                return;
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            // §B：__instance 是视图副本，用 view.GetEntryOf 反查条目（stackLimit=1 物品的
-            // 动态 FindEntry 不命中合并，须走副本↔条目映射）。
-            OuterrealmEntry e = view.GetEntryOf(__instance);
-            if (e != null)
-            {
-                e.Count += absorbed;
-                gs.NotifyContentChanged(e); // version++ + 变更日志
-            }
-            else
-            {
-                // 条目已被完全取走并移除（回滚重建）：以副本属性物化新代表 Thing 重建条目。
-                Thing newProto = GameComponent_OuterrealmStorage.Materialize(__instance);
-                newProto.stackCount = 1;
-                gs.RestoreEntry(new OuterrealmEntry { Key = OuterrealmEntryKey.From(newProto), Proto = newProto, Count = absorbed });
-            }
+
+            // 两个投影互相合并、或 source 仍属于别的容器时不擅自改变其所有权；安全拒绝。
+            __result = false;
+            return false;
         }
     }
 
@@ -203,10 +230,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false; // 数量不足：阻止预留
                 return false;
             }
-            // §v4：存储格满 → 拒绝预留（等价原版"存储区满"；防物化失败导致 job 目标未 Spawned 循环）。
-            // §v6 虚拟取物：远行队收集不物化、不占存储格，豁免该检查。
-            if (claimant != null && !(claimant.GetLord()?.LordJob is LordJob_FormAndSendCaravan)
-                && view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
+            // 存储格满 → 拒绝预留（权威物品必须先在发起申请的仓库格真 Spawn）。
+            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
             {
                 __result = false;
                 return false;
@@ -270,10 +295,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
-            // §v4：存储格满 → 拒绝预留（防物化失败 → job 目标未 Spawned → 循环）。
-            // §v6 虚拟取物：远行队收集不物化、不占存储格，豁免该检查。
-            if (claimant != null && !(claimant.GetLord()?.LordJob is LordJob_FormAndSendCaravan)
-                && view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
+            // 存储格满 → 拒绝预留（权威物品必须先在发起申请的仓库格真 Spawn）。
+            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
             {
                 __result = false;
                 return false;
@@ -283,18 +306,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
         // __result 可能为 true（本体放行）而原方法未执行——多触发一次失效仅多一次 O(全图) 重建，无害。
-        // §v6 远行队收集"虚拟取物"（重构，替代按需物化）：仅对 PrepareCaravan_GatherItems job
-        // 生效——预留成功但**不物化**，副本保持伪 Spawned 常驻视图。pawn 随后经
-        // Patch_Toils_Haul_StartCarryThing（执行期 Boost）+ Patch_Pawn_CarryTracker_TryStartCarry
-        // 直接对副本 SplitOff 取物（每趟受 availableStackSpace ≤ stackLimit 限制，与普通堆一致），
-        // SplitOff postfix 即时扣全局并补回副本。
-        // 为什么这样能带齐：
-        //   · 副本始终在 transferable.things 且伪 Spawned 可搜索 → FindThingToHaul 每趟可见，
-        //     无需兜底/锚点重建（无借出、无 60 tick 空窗）；
-        //   · AdjustTo 的 MaxCount 截断由 Patch_TransferableOneWay_MaxCount 修正 → CountToTransfer
-        //     保持真实需求，多趟循环直到归零。
-        // 非远行队取物（工作台/搬运等）仍走 §v4 TryLendCopy 物化，不受影响。
-        private static void Postfix(Pawn claimant, Job job, LocalTargetInfo target, int stackCount, bool __result)
+        // 所有建筑视图（含远行队收集）统一借出权威物品；全局 Count 在此原子扣减，
+        // 因而不同地图的 ReservationManager 也不能同时取得同一唯一实例。
+        private static void Postfix(
+            ReservationManager __instance, Pawn claimant, Job job, LocalTargetInfo target,
+            int maxPawns, int stackCount, ReservationLayerDef layer, bool errorOnFailed,
+            bool ignoreOtherReservations, bool canReserversStartJobs, ref bool __result)
         {
             if (!__result)
             {
@@ -308,11 +325,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            if (CalculateCaravanGatherNeed(claimant, job, t) > 0)
+            // 随身视图没有建筑存储格，继续由执行期 SplitOff 统一从权威库存取出。
+            if (!(view.Context is Building_OuterrealmVault))
             {
-                return; // §v6 虚拟取物：远行队不物化（见上方注释）
+                return;
             }
-            view.TryLendCopy(t, ResolveLendNeed(job, t, stackCount));
+
+            // 原版刚把 reservation 记在投影上。先释放投影，再原子地从全局权威库存借出真实物品，
+            // 重写 Job 目标并预留真实物品。全局 Count 在借出时立即扣减，因此跨地图也不会超卖。
+            __instance.Release(target, claimant, job);
+            Thing actual;
+            if (!view.TryLendCopy(t, ResolveLendNeed(job, t, stackCount), out actual))
+            {
+                __result = false;
+                return;
+            }
+            OuterrealmPatchUtil.ReplaceJobThing(job, t, actual);
+            int actualStackCount = stackCount == ReservationManager.StackCount_All
+                ? ReservationManager.StackCount_All
+                : Math.Min(Math.Max(1, stackCount), actual.stackCount);
+            bool reservedActual = __instance.Reserve(
+                claimant, job, (LocalTargetInfo)actual, maxPawns, actualStackCount,
+                layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs);
+            if (!reservedActual)
+            {
+                view.ReturnCopy(actual);
+                __result = false;
+                return;
+            }
+            __result = true;
         }
 
         /// <summary>物化所需数量：优先取 job 对该目标的原料需求（targetQueueB.countQueue，
@@ -320,7 +361,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 使借出堆恰好覆盖 job 全程取用（避免"借出量 < 需求 → 取物取不完全"）。</summary>
         private static int ResolveLendNeed(Job job, Thing t, int stackCount)
         {
-            int need = stackCount == ReservationManager.StackCount_All ? int.MaxValue : stackCount;
+            // 原版 StackCount_All 指“当前目标堆全部”，不是全局 long 库存全部；以投影当前堆量为基准，
+            // 后续再由 job.count/countQueue 按真实工作需求向上修正，避免一个 job 锁住整座全局仓。
+            int need = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
             if (need <= 0)
             {
                 need = 1;
@@ -357,45 +400,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return need;
         }
 
-        /// <summary>远行队收集 job 的需求缺口（§v6）；非收集 job / 匹配失败返回 0 = 保持默认借出。</summary>
-        private static int CalculateCaravanGatherNeed(Pawn claimant, Job job, Thing t)
-        {
-            if (claimant == null || job == null || job.def != JobDefOf.PrepareCaravan_GatherItems
-                || job.lord == null || !(job.lord.LordJob is LordJob_FormAndSendCaravan lordJob))
-            {
-                return 0;
-            }
-            List<TransferableOneWay> transferables = lordJob.transferables;
-            if (transferables == null || transferables.Count == 0)
-            {
-                return 0;
-            }
-            TransferableOneWay transferable;
-            try
-            {
-                transferable = TransferableUtility.TransferableMatchingDesperate(t, transferables, TransferAsOneMode.PodsOrCaravanPacking);
-            }
-            catch
-            {
-                return 0; // 匹配异常（防御）：保持默认借出
-            }
-            if (transferable == null || !transferable.HasAnyThing)
-            {
-                return 0;
-            }
-            int need = GatherItemsForCaravanUtility.CountLeftToTransfer(claimant, transferable, job.lord);
-            if (need <= 0)
-            {
-                return 0;
-            }
-            // 减去自己已携带的同 def 可堆叠量（对齐 DetermineNumToHaul 语义）
-            Thing carried = claimant.carryTracker != null ? claimant.carryTracker.CarriedThing : null;
-            if (carried != null && carried.CanStackWith(t))
-            {
-                need -= carried.stackCount;
-            }
-            return need <= 0 ? 0 : need;
-        }
     }
 
     [HarmonyPatch(typeof(ReservationManager), "CanReserveStack")]
@@ -709,6 +713,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 RollbackVaultTake(item, splitStack, view);
                 return num;
             }
+            OuterrealmPatchUtil.ReplaceJobThing(pawn.CurJob, item, carry.CarriedThing);
             item.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(item.Position, pawn.Map));
             if (reserve)
             {
@@ -732,24 +737,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            if (splitStack == item)
+            // SplitOff 投影已由 Patch_Thing_SplitOff 改为返回权威物品。回滚必须把该真实实例
+            // 重新存入全局层，不能再吸收到投影（投影不拥有真实数量/状态）。
+            if (splitStack.holdingOwner != null || splitStack.Spawned)
             {
-                // 整堆分支：item 已从视图移除（holdingOwner=null），全局已由 Notify_ItemRemoved 扣减。
-                // 回滚 = 把 item 重新吸收回全局层（view.TryAdd 要求 holdingOwner==null，整堆后满足）。
-                if (item.holdingOwner == null && item.stackCount > 0)
-                {
-                    view.TryAdd(item);
-                }
+                return;
             }
-            else
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry restored = gs != null ? gs.Deposit(splitStack) : null;
+            if (restored != null)
             {
-                // split 分支：item 仍在视图中，splitStack 是独立 piece。
-                // 回滚 = item.TryAbsorbStack(splitStack) → Patch_Thing_TryAbsorbStack 补回全局。
-                if (item.holdingOwner is OuterrealmVaultViewThingOwner v)
-                {
-                    item.TryAbsorbStack(splitStack, false);
-                    v.UnboostCopy(item); // 纠正 TryAbsorbStack 后可能超过 stackLimit 的 stackCount
-                }
+                view.EnsureCopyFor(restored);
             }
         }
     }
@@ -1395,10 +1393,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 initAction = () =>
                 {
-                    Thing vault = job.GetTarget(TargetIndex.B).Thing?.ParentHolder as Thing;
-                    if (vault != null)
+                    Thing medicine = job.GetTarget(TargetIndex.B).Thing;
+                    if (medicine != null && medicine.Spawned)
                     {
-                        doctor.pather.StartPath((LocalTargetInfo)vault, PathEndMode.InteractionCell);
+                        // Reserve 成功后投影已替换为权威药品并真 Spawn 到仓库格。
+                        doctor.pather.StartPath((LocalTargetInfo)medicine, PathEndMode.ClosestTouch);
+                    }
+                    else
+                    {
+                        Thing vault = medicine?.ParentHolder as Thing;
+                        if (vault != null)
+                        {
+                            doctor.pather.StartPath((LocalTargetInfo)vault, PathEndMode.InteractionCell);
+                        }
                     }
                 },
                 defaultCompleteMode = ToilCompleteMode.PatherArrival

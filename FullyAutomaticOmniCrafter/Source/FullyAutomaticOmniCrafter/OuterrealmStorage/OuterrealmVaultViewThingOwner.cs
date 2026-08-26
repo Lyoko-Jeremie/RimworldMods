@@ -29,12 +29,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>视图重建/注销期间抑制 Notify_ItemRemoved 的全局同步（§3.3）。</summary>
         public bool SuppressRemovalSync;
 
-        /// <summary>SplitOff prefix 记录的校正前 stackCount（单线程主线程安全；无嵌套 SplitOff 场景）。</summary>
-        private int lastSplitOffStackCount;
-
-        /// <summary>TryAbsorbStack prefix 记录的吸收量（回滚补偿；§3.3）。</summary>
-        public int LastAbsorbAmount;
-
         /// <summary>副本查找索引（§3.3 实时同步方案 E + §B 条目引用化）：entry → 副本，FindCopy 由
         /// 线性扫描降为 O(1)。配套 entryByCopy（副本 → 条目）双向维护。不序列化——读档后索引为空，
         /// 由 SpawnSetup 的 RebuildView 全量重建（映射缺失时先 ClearView 再按条目重新物化，顺带
@@ -120,67 +114,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return take;
         }
 
-        // ── SplitOff 同步（§3.3）：实时校正 + 差额扣减 + 即时补回 ──────────────
+        // ── 权威取出（§3.3） ────────────────────────────────────────────────────
 
-        /// <summary>SplitOff prefix：实时校正副本 = min(G − R + r_this, 上限)，防超卖。
-        /// 上限 = stackLimit（正常形态）；副本处于 #9 提升状态（stackCount &gt; stackLimit）时放宽为不限，
-        /// 使取物量不受 stackLimit 封顶。校正后记录 stackCount——差额扣减必须基于校正后值
-        /// （否则虚高值会被当作取走量静默多扣全局，见 §3.3）。</summary>
-        public void PreSplitOff(Thing copy)
+        /// <summary>
+        /// 投影统一取出入口：从副本映射定位全局条目，并从权威库存转移真实实例。
+        /// 由 Thing.SplitOff patch、直接携带、装备、光束等所有消费路径共用。
+        /// </summary>
+        public Thing WithdrawCanonical(Thing copy, int count)
         {
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            OuterrealmEntry e = gs != null ? GetEntryOf(copy) : null;
-            if (e == null || e.Count <= 0)
+            if (copy == null || count <= 0)
             {
-                lastSplitOffStackCount = copy.stackCount;
-                return;
-            }
-            long rThis;
-            long rAll;
-            ReservedOn(copy, out rThis, out rAll);
-            long available = e.Count - rAll + rThis;
-            // 提升状态（#9）下允许按全局量取物；正常形态维持 stackLimit 上限（视图形态约束）
-            long cap = copy.stackCount > copy.def.stackLimit ? long.MaxValue : copy.def.stackLimit;
-            long capped = available < 0 ? 0 : available;
-            if (capped > cap)
-            {
-                capped = cap;
-            }
-            if (capped > int.MaxValue)
-            {
-                capped = int.MaxValue;
-            }
-            copy.stackCount = (int)capped;
-            lastSplitOffStackCount = copy.stackCount; // 校正后记录（差额扣减的基准）
-        }
-
-        /// <summary>SplitOff postfix：差额扣减全局 + 即时补回副本（把补回从 60 tick 提前到变更点）。</summary>
-        public void PostSplitOff(Thing copy, Thing result)
-        {
-            if (result == copy)
-            {
-                return; // 整堆分支：已走 holdingOwner.Remove → Notify_ItemRemoved 同步，此处跳过防双扣（§3.3）
+                return null;
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            OuterrealmEntry entry = GetEntryOf(copy);
-            int diff = lastSplitOffStackCount - copy.stackCount;
-            if (diff > 0 && entry != null)
-            {
-                gs.Subtract(entry, diff);
-            }
+            OuterrealmEntry entry = gs != null ? GetEntryOf(copy) : null;
             if (entry == null || entry.Count <= 0)
             {
-                // 条目已空：副本无意义，移除（Notify_ItemRemoved 扣 0 无害，lister 清理）。
-                Remove(copy);
+                DisposeOrphanCopy(copy);
+                return null;
             }
-            else
-            {
-                copy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
-            }
+            int take = (int)Math.Min(entry.Count, Math.Min((long)count, int.MaxValue));
+            return gs.Withdraw(entry, take);
         }
 
         /// <summary>
@@ -310,46 +264,32 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return available < 0 ? 0 : available;
         }
 
-        // ── 借出/回收（§v4 预留驱动物化） ──────────────────────────────────────
-        // 借出 = 预留时把锚点副本按"所需数量"（min(需求, 全局剩余)）SplitOff 物化到 vault 存储格
-        // （借出即取出：SplitOff 差额扣全局；剩余由 ReturnCopy 存回 → 账目守恒）。回收 = reservation 全部
-        // 释放后剩余量 Deposit 回全局并重建锚点。
+        // ── 借出/回收（§v4 预留驱动） ──────────────────────────────────────────
+        // 借出 = 预留时从全局条目转移所需数量的权威实例，并 Spawn 到发起申请的 vault 存储格；
+        // 回收 = reservation 释放后仍留在存储格的权威实例 Deposit 回全局。全局 Count 在借出时
+        // 已扣减，所以多个地图、多个仓库共享同一库存且不会超卖。
 
         private readonly HashSet<Thing> borrowedCopies = new HashSet<Thing>();
-        private readonly Dictionary<OuterrealmEntry, Thing> borrowedByEntry = new Dictionary<OuterrealmEntry, Thing>();
 
         public bool IsBorrowed(Thing copy)
         {
             return copy != null && borrowedCopies.Contains(copy);
         }
 
-        /// <summary>该条目是否还有除 except 外的借出副本（多堆借出的回收判定：
-        /// 仅当无其他借出副本时才解除 borrowedByEntry"条目借出中"标记）。</summary>
-        private bool HasOtherBorrowedFor(OuterrealmEntry entry, Thing except)
-        {
-            foreach (Thing b in borrowedCopies)
-            {
-                if (b != except && GetEntryOf(b) == entry)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         /// <summary>
-        /// 预留物化（§v4）：把锚点副本按"所需数量"借出到存储格（真 Spawned → job 目标通过 FailOnDespawned）。
-        /// 物化总量 = min(need, 全局剩余)，严格按需——不按 stackLimit 显示值（取物取不完全）、
-        /// 也不整组物化 Boost 全局量（超限堆 → 存储格容量拒绝 → 落地）。
-        /// 堆形态：stackLimit>1 且需求超一满堆 → 单个"超限堆"（物化量=所需总量，job 目标恒定、
-        /// pawn 分趟拿完 → 取物完全）；stackLimit=1 的唯一实体（石块/装备等）→ 拆多堆
-        /// （每堆 1、每格 ≤ MaxItemsInCell 堆，不超容量）。
-        /// 借出数量经 Thing.SplitOff 记账（差额扣全局 + 补回剩余显示），不再整堆 Subtract；
-        /// 多趟切料不依赖 Boost：整堆切出后经 EnsureCopyFor 按剩余量重建锚点继续。
-        /// 返回 false = 无空位/无效状态（调用方应拒绝预留；Reserve 侧由视图 SplitOff 兜底取料）。
+        /// 预留借出（§v4）：按所需数量从权威库存取出真实物品，Spawn 到当前仓库存储格，
+        /// 并把实际对象返回给预约补丁用于重写 Job 目标。返回 false 表示无空位或库存已变化。
         /// </summary>
         public bool TryLendCopy(Thing copy, int need)
         {
+            Thing ignored;
+            return TryLendCopy(copy, need, out ignored);
+        }
+
+        /// <summary>权威借出版本；actual 返回真 Spawn 到当前仓库存储格的真实物品。</summary>
+        public bool TryLendCopy(Thing copy, int need, out Thing actual)
+        {
+            actual = null;
             if (copy == null || !Contains(copy) || IsBorrowed(copy) || !Context.Spawned)
             {
                 return false;
@@ -372,113 +312,42 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            int perStack = Math.Max(1, copy.def.stackLimit);
-            // 堆形态：
-            //  · stackLimit>1 且需求超一满堆 → 单个"超限堆"（物化量 = 所需总量）：job 目标恒定
-            //    为同一副本引用，pawn 分趟拿完 → 取物完全（拆合规堆会让第二趟目标已空 → job 失败）；
-            //  · stackLimit=1（石块/装备等唯一实体）→ 拆多堆（每堆 1，不超容量——超限堆会被
-            //    存储格容量判定拒绝而落地）。
-            bool overstack = perStack > 1 && lendTotal > perStack;
-            int stacks = overstack ? 1 : (lendTotal + perStack - 1) / perStack;
-            // 存储格堆位预检（每格 ≤ MaxItemsInCell 堆；按堆数而非堆叠容量判定，与
-            // FindStorageCellFor 一致——stackLimit=1 的每个物化堆均为 1，天然不超容量）
-            if (!HasFreeSlots(vault, stacks))
+            // 同一条唯一物品条目 Count 恒为 1；可堆叠条目允许超限单堆，故一次借出只占 1 个堆位。
+            if (!HasFreeSlots(vault, 1))
             {
                 return false;
             }
-            Thing firstLend = null;
+            Thing lend = WithdrawCanonical(copy, lendTotal);
+            if (lend == null || lend.Destroyed || lend.stackCount <= 0)
+            {
+                return false;
+            }
+            IntVec3 cell = vault.FindStorageCellFor(lend);
+            if (!cell.IsValid)
+            {
+                gs.Deposit(lend); // 防御回滚：预检后格位被占用
+                return false;
+            }
+            borrowedCopies.Add(lend);
+            entryByCopy[lend] = entry;
             try
             {
-                int remaining = lendTotal;
-                while (remaining > 0)
-                {
-                    // 确保当前可切副本在视图（整堆切出移出视图后经 EnsureCopyFor 重建锚点）
-                    if (copy == null || copy.Destroyed || copy.holdingOwner != this)
-                    {
-                        EnsureCopyFor(entry);
-                        copy = FindCopy(entry);
-                        if (copy == null)
-                        {
-                            break; // 防御：条目耗尽/不可见，剩余走兜底
-                        }
-                    }
-                    int take;
-                    if (overstack)
-                    {
-                        // 超限单堆：先把副本提升为全局量（使 SplitOff 可切出所需总量，
-                        // 不受 stackLimit 显示封顶），一次切完
-                        BoostCopy(copy);
-                        take = Math.Min(remaining, copy.stackCount);
-                    }
-                    else
-                    {
-                        take = Math.Min(perStack, Math.Min(remaining, copy.stackCount));
-                    }
-                    if (take <= 0)
-                    {
-                        break; // 防御：副本无可切量
-                    }
-                    Thing lend = copy.SplitOff(take); // SplitOff 记账：差额扣全局 + 补回剩余显示
-                    if (lend == null || lend.Destroyed || lend.stackCount <= 0)
-                    {
-                        break; // 防御
-                    }
-                    // 借出登记：IsBorrowed 保护（防后续 Remove/吸收双扣）+ ReturnCopy 反查条目。
-                    // 时序要求：必须在 SplitOff 之后登记——整堆分支（lend==copy）的全局扣账由
-                    // SplitOff 内部 holdingOwner.Remove → SyncRemoveFromGlobal 完成（此时
-                    // IsBorrowed 尚未生效、不短路）；若先登记，Remove 被 IsBorrowed 短路 →
-                    // 全局漏扣 → 物品复制。
-                    borrowedCopies.Add(lend);
-                    entryByCopy[lend] = entry;
-                    if (lend == copy)
-                    {
-                        // 整堆分支：副本已移出视图，先撤销伪 Spawned 再真 Spawn
-                        //（真 Spawn 要求未 Spawned——SpawnSetup 对已 Spawned 物品 Log.Error 并拒绝）
-                        UnregisterFromLister(copy);
-                    }
-                    IntVec3 cell = vault.FindStorageCellFor(lend);
-                    if (!cell.IsValid)
-                    {
-                        // 预检通过后不应发生：防御回收本堆（存回全局），结束
-                        borrowedCopies.Remove(lend);
-                        entryByCopy.Remove(lend);
-                        if (!lend.Destroyed && lend.stackCount > 0)
-                        {
-                            gs.Deposit(lend);
-                        }
-                        else if (!lend.Destroyed)
-                        {
-                            lend.Destroy();
-                        }
-                        break;
-                    }
-                    GenSpawn.Spawn(lend, cell, vault.MapHeld);
-                    // 借出副本温度修复：真 Spawned 后 AmbientTemperature 走地图温度分支，
-                    // 绕过 TryGetFixedTemperature 自适应链——全局登记后由
-                    // Patch_Thing_AmbientTemperature_OuterrealmBorrowed 短路为自适应保存温度。
-                    OuterrealmVaultUtil.MarkOuterrealmBorrowed(lend);
-                    if (firstLend == null)
-                    {
-                        firstLend = lend;
-                    }
-                    remaining -= take;
-                }
-                if (firstLend != null)
-                {
-                    // 条目处于借出态：视图同步/锚点重建跳过（借出量已从视图切出）
-                    borrowedByEntry[entry] = firstLend;
-                }
+                GenSpawn.Spawn(lend, cell, vault.MapHeld);
             }
-            finally
+            catch (Exception ex)
             {
-                // 循环结束时副本仍在视图 → 恢复显示为 min(剩余, stackLimit)
-                //（PostSplitOff 已补回，此处兜底防调用前提升残留）
-                if (copy != null && !copy.Destroyed && copy.holdingOwner == this)
+                borrowedCopies.Remove(lend);
+                entryByCopy.Remove(lend);
+                if (!lend.Destroyed && lend.stackCount > 0)
                 {
-                    UnboostCopy(copy);
+                    gs.Deposit(lend);
                 }
+                Log.Error("[OuterrealmStorage] Failed to spawn canonical item for reservation: " + ex);
+                return false;
             }
-            return firstLend != null;
+            OuterrealmVaultUtil.MarkOuterrealmBorrowed(lend);
+            actual = lend;
+            return true;
         }
 
         /// <summary>存储格堆位预检：可用堆位（每格 MaxItemsInCell − 当前堆数）是否 ≥ 需求堆数。</summary>
@@ -496,7 +365,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
-        /// <summary>回收借出副本：剩余量存回全局，重建锚点（§v4）。</summary>
+        /// <summary>回收借出的权威物品：剩余量存回全局，重建投影（§v4）。</summary>
         public void ReturnCopy(Thing copy)
         {
             if (copy == null || !IsBorrowed(copy))
@@ -507,12 +376,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             borrowedCopies.Remove(copy);
             if (entry != null)
             {
-                // 多堆借出：仅当该条目无其他借出副本时才解除"条目借出中"标记
-                //（否则其余借出堆回收前，EnsureCopyFor/视图同步会误重建锚点导致显示重复）
-                if (!HasOtherBorrowedFor(entry, copy))
-                {
-                    borrowedByEntry.Remove(entry);
-                }
                 // 借出期间 Remove 因 IsBorrowed 跳过 IndexRemove，copyByEntry 残留指向本副本
                 //（真 Spawned，已不在视图）。此处补清，防 ReturnCopy 末尾 EnsureCopyFor → FindCopy
                 // 命中残留而不物化新锚点、并对已回收副本误写 stackCount（§B 借出映射生命周期）。
@@ -813,10 +676,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            if (borrowedByEntry.ContainsKey(entry))
-            {
-                return; // §v4：条目副本已借出（预留物化中），不重建锚点
-            }
             if (entry.Count <= 0 || entry.Proto == null || !Context.CanShow(entry.Proto))
             {
                 return;
@@ -992,10 +851,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (e.Proto is Corpse)
                 {
                     continue; // 尸体不物化视图副本（唯一实体）
-                }
-                if (borrowedByEntry.ContainsKey(e))
-                {
-                    continue; // §v4：条目副本已借出（预留物化中），不重建锚点
                 }
                 Thing copy = FindCopy(e);
                 if (copy != null)

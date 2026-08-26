@@ -102,16 +102,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmEntry existing = FindEntry(item);
             if (existing != null)
             {
-                existing.Count += item.stackCount;
-                if (existing.Proto == null)
-                {
-                    existing.Proto = item;
-                }
-                else
-                {
-                    // 已吸收：实例不再需要（属性已并入条目）。立即销毁防止泄漏。
-                    item.Destroy();
-                }
+                int depositedCount = item.stackCount;
+                // 权威库存必须走原版堆叠协议：TryAbsorbStack 会调用各 Comp 的
+                // PreAbsorbStack；超出 int 容量时保留为附加权威堆。禁止只加 Count 后
+                // Destroy 原物，否则腐烂、原料、充能及第三方 Comp 状态会静默丢失。
+                MergeIntoCanonicalStacks(existing, item);
+                existing.Count += depositedCount;
                 version++;
                 AddToChangeLog(existing);
                 return existing;
@@ -126,6 +122,73 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             version++;
             AddToChangeLog(entry);
             return entry;
+        }
+
+        /// <summary>
+        /// 把真实物品并入条目的权威堆。每个权威 Thing 的 stackCount 不超过 int.MaxValue；
+        /// 合并和必要的部分拆分均调用原版 TryAbsorbStack/SplitOff，让原版及第三方 Comp
+        /// 通过 PreAbsorbStack/PostSplitOff 维护自身状态。
+        /// </summary>
+        private static void MergeIntoCanonicalStacks(OuterrealmEntry entry, Thing item)
+        {
+            if (entry == null || item == null || item.Destroyed || item.stackCount <= 0)
+            {
+                return;
+            }
+            if (entry.Proto == null)
+            {
+                entry.Proto = item;
+                return;
+            }
+            if (TryMergeIntoCanonical(entry.Proto, item))
+            {
+                return;
+            }
+            List<Thing> extras = entry.AdditionalProtos;
+            if (extras != null)
+            {
+                for (int i = 0; i < extras.Count; i++)
+                {
+                    Thing dst = extras[i];
+                    if (dst != null && !dst.Destroyed && TryMergeIntoCanonical(dst, item))
+                    {
+                        return;
+                    }
+                }
+            }
+            if (item.Destroyed || item.stackCount <= 0)
+            {
+                return;
+            }
+            if (entry.AdditionalProtos == null)
+            {
+                entry.AdditionalProtos = new List<Thing>();
+            }
+            entry.AdditionalProtos.Add(item);
+        }
+
+        /// <summary>尽量把 source 并入 destination；返回 source 是否已全部吸收。</summary>
+        private static bool TryMergeIntoCanonical(Thing destination, Thing source)
+        {
+            if (destination == null || source == null || destination.Destroyed || source.Destroyed
+                || source.stackCount <= 0 || !destination.CanStackWith(source))
+            {
+                return false;
+            }
+            int capacity = int.MaxValue - destination.stackCount;
+            if (capacity <= 0)
+            {
+                return false;
+            }
+            if (source.stackCount <= capacity)
+            {
+                destination.TryAbsorbStack(source, false);
+                return source.Destroyed || source.stackCount <= 0;
+            }
+            // source 超过当前权威堆的 int 容量：先按原版协议切出可容纳部分。
+            Thing piece = source.SplitOff(capacity);
+            destination.TryAbsorbStack(piece, false);
+            return source.Destroyed || source.stackCount <= 0;
         }
 
         /// <summary>合并判据（§B）：原版"是否允许合并放置"= CanStackWith（def/stuff/非relic/Item 类别/
@@ -400,13 +463,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 避免"全局已空 + reservation 残留副本"场景刷屏（§3.3 退休副本生命周期）。
                 return;
             }
-            entry.Count -= amount;
-            if (entry.Count < 0)
+            long requested = Math.Min(amount, entry.Count);
+            long removed = 0L;
+            while (removed < requested)
             {
-                // 防御：不应发生（SplitOff 校正与预留记账保证不超卖），clamp 并记录。
-                Log.Warning("[OuterrealmStorage] Entry count went negative: " + entry.Key + " amount=" + amount + ". Clamped to 0.");
-                entry.Count = 0;
+                int part = (int)Math.Min(requested - removed, int.MaxValue);
+                Thing canonical = TakeFromCanonicalStacks(entry, part);
+                if (canonical == null || canonical.Destroyed || canonical.stackCount <= 0)
+                {
+                    break;
+                }
+                removed += canonical.stackCount;
+                canonical.Destroy();
             }
+            if (removed <= 0)
+            {
+                Log.Error("[OuterrealmStorage] Failed to subtract canonical quantity for " + entry.Key
+                    + ": requested=" + requested + ".");
+                return;
+            }
+            entry.Count -= removed;
             if (entry.Count == 0)
             {
                 RemoveEntry(entry);
@@ -421,8 +497,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             AddToChangeLog(entry);
         }
 
-        /// <summary>移除条目（计数归零时）。Proto 随之销毁；尸体整体转移路径传 destroyProto=false
-        ///（Proto 已交给调用方，仅解除引用，byDef 索引仍正常清理）。</summary>
+        /// <summary>移除条目（计数归零时）。默认销毁仍留在条目中的全部权威堆；
+        /// 整体转移路径传 destroyProto=false（权威物已交给调用方，仅解除引用）。</summary>
         private void RemoveEntry(OuterrealmEntry entry, bool destroyProto = true)
         {
             if (entry == null)
@@ -430,10 +506,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             // 先取 def（byDef 索引键）再销毁 Proto——索引清理依赖 Proto.def。
-            ThingDef def = entry.Proto != null ? entry.Proto.def : null;
+            ThingDef def = entry.Proto != null ? entry.Proto.def : entry.Key.Def;
             if (destroyProto && entry.Proto != null)
             {
                 entry.Proto.Destroy();
+            }
+            if (entry.AdditionalProtos != null)
+            {
+                if (destroyProto)
+                {
+                    for (int i = 0; i < entry.AdditionalProtos.Count; i++)
+                    {
+                        Thing extra = entry.AdditionalProtos[i];
+                        if (extra != null && !extra.Destroyed)
+                        {
+                            extra.Destroy();
+                        }
+                    }
+                }
+                entry.AdditionalProtos.Clear();
             }
             entry.Proto = null;
             entries.Remove(entry);
@@ -454,10 +545,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ── 取出（物化，未放置） ────────────────────────────────────────────────
 
         /// <summary>
-        /// 从全局层取出 count 个：物化新 Thing（从 Proto 复制全部属性）并扣减全局。
-        /// 物化实例由调用方负责放置（GenDrop.TryDropSpawn / carryTracker 等）。
-        /// 超过 stackLimit 的数量由调用方分批处理；此处单次最多取 int 上限。
-        /// Corpse（唯一实体，InnerPawn 同一 pawn 只能属于一具尸体）：整体转移 proto 本身（不可复制）。
+        /// 从全局层取出 count 个：转移权威原物，或从权威堆调用原版 SplitOff 后扣减全局。
+        /// 返回实例由调用方负责放置（GenDrop.TryDropSpawn / carryTracker 等）。
+        /// 不再调用 Materialize，因此 Thing 子类字段、所有 Comp 状态、物品身份及外部引用均保留。
         /// 条目被取空后立即通知所有建筑视图移除残留副本（防 OptimizeApparel 等选中空条目副本 →
         /// 预留失败 → "TryMakePreToilReservations returned false" 警告 + pawn 卡住循环）。
         /// </summary>
@@ -472,34 +562,103 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 take = entry.Count;
             }
-            Thing t;
-            if (entry.Proto is Corpse)
+            Thing t = TakeFromCanonicalStacks(entry, (int)take);
+            if (t == null || t.Destroyed || t.stackCount <= 0)
             {
-                // 尸体不可复制：直接转移 proto 本身（条目随 1 具尸体清空）
-                t = entry.Proto;
-                t.stackCount = 1;
-                entry.Count -= 1;
-                if (entry.Count == 0)
-                {
-                    // 已整体转移给调用方：移除条目但不销毁 Proto（byDef 索引照常清理）
-                    RemoveEntry(entry, false);
-                    NotifyEntriesEmptied(entry);
-                }
+                Log.Error("[OuterrealmStorage] Canonical inventory is inconsistent for " + entry.Key
+                    + ": requested=" + take + ", count=" + entry.Count + ".");
+                return null;
             }
-            else
+            entry.Count -= t.stackCount;
+            if (entry.Count < 0)
             {
-                t = Materialize(entry.Proto);
-                t.stackCount = (int)take;
-                entry.Count -= take;
-                if (entry.Count == 0)
-                {
-                    RemoveEntry(entry);
-                    NotifyEntriesEmptied(entry);
-                }
+                entry.Count = 0;
+            }
+            if (entry.Count == 0)
+            {
+                // TakeFromCanonicalStacks 已把交给调用方的权威实例从条目解除；正常情况下
+                // 不再有剩余权威堆。destroyProto=true 仅清理不一致的账外残留，绝不销毁返回物。
+                RemoveEntry(entry);
+                NotifyEntriesEmptied(entry);
             }
             version++;
             AddToChangeLog(entry);
             return t;
+        }
+
+        /// <summary>从条目的权威堆取出最多 count 个，并尽量合并成单个返回堆。</summary>
+        private static Thing TakeFromCanonicalStacks(OuterrealmEntry entry, int count)
+        {
+            Thing result = null;
+            int remaining = count;
+            while (remaining > 0)
+            {
+                Thing source = entry.Proto;
+                if (source == null || source.Destroyed || source.stackCount <= 0)
+                {
+                    PromoteNextCanonical(entry);
+                    source = entry.Proto;
+                    if (source == null || source.Destroyed || source.stackCount <= 0)
+                    {
+                        break;
+                    }
+                }
+                int partCount = Math.Min(remaining, source.stackCount);
+                Thing part;
+                if (partCount >= source.stackCount)
+                {
+                    part = source;
+                    DetachPrimaryCanonical(entry);
+                }
+                else
+                {
+                    // 原版 ThingWithComps.SplitOff 会调用每个 Comp.PostSplitOff。
+                    part = source.SplitOff(partCount);
+                }
+                if (part == null || part.Destroyed || part.stackCount <= 0)
+                {
+                    break;
+                }
+                if (result == null)
+                {
+                    result = part;
+                }
+                else if (!result.TryAbsorbStack(part, false))
+                {
+                    // 同一条目的权威堆理论上必可合并；失败时把本次 part 放回条目，
+                    // 返回已成功取得的部分，避免丢物。
+                    MergeIntoCanonicalStacks(entry, part);
+                    break;
+                }
+                remaining -= partCount;
+            }
+            return result;
+        }
+
+        /// <summary>解除第一权威堆并把附加堆首项提升为 Proto。</summary>
+        private static void DetachPrimaryCanonical(OuterrealmEntry entry)
+        {
+            entry.Proto = null;
+            PromoteNextCanonical(entry);
+        }
+
+        private static void PromoteNextCanonical(OuterrealmEntry entry)
+        {
+            List<Thing> extras = entry.AdditionalProtos;
+            if (extras == null)
+            {
+                return;
+            }
+            while (extras.Count > 0)
+            {
+                Thing next = extras[0];
+                extras.RemoveAt(0);
+                if (next != null && !next.Destroyed && next.stackCount > 0)
+                {
+                    entry.Proto = next;
+                    return;
+                }
+            }
         }
 
         /// <summary>条目被取空后：立即让所有建筑视图移除残留副本（§3.3 同步补到变更点，防空条目副本被自动 job 选中）。</summary>
@@ -601,6 +760,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            EnsureCanonicalQuantity(entry);
             AddEntry(entry);
             version++;
             AddToChangeLog(entry);
@@ -859,6 +1019,67 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
+        /// <summary>
+        /// 旧存档迁移：旧版本只保存一个属性模板 Proto + long Count，Proto.stackCount 不等于真实总量。
+        /// 首次读档把缺口展开为一个或少数 int 容量的权威堆。旧档在历史上已经丢失的逐堆状态
+        /// 无法恢复；迁移至少保证之后的取出不再重新生成实例。
+        /// </summary>
+        private static void EnsureCanonicalQuantity(OuterrealmEntry entry)
+        {
+            if (entry == null || entry.Proto == null || entry.Count <= 0)
+            {
+                return;
+            }
+            long represented = entry.Proto.stackCount;
+            if (entry.AdditionalProtos != null)
+            {
+                for (int i = entry.AdditionalProtos.Count - 1; i >= 0; i--)
+                {
+                    Thing extra = entry.AdditionalProtos[i];
+                    if (extra == null || extra.Destroyed || extra.stackCount <= 0)
+                    {
+                        entry.AdditionalProtos.RemoveAt(i);
+                    }
+                    else
+                    {
+                        represented += extra.stackCount;
+                    }
+                }
+            }
+            if (represented > entry.Count)
+            {
+                // 权威物比旧账目更多时以真实实例为准，避免读档后静默销毁未知 Mod 状态。
+                Log.Warning("[OuterrealmStorage] Canonical quantity exceeds ledger for " + entry.Key
+                    + ": canonical=" + represented + ", ledger=" + entry.Count + ". Using canonical quantity.");
+                entry.Count = represented;
+                return;
+            }
+            long missing = entry.Count - represented;
+            if (missing <= 0)
+            {
+                return;
+            }
+            int primaryCapacity = int.MaxValue - entry.Proto.stackCount;
+            if (primaryCapacity > 0)
+            {
+                int add = (int)Math.Min(missing, primaryCapacity);
+                entry.Proto.stackCount += add;
+                missing -= add;
+            }
+            while (missing > 0)
+            {
+                int amount = (int)Math.Min(missing, int.MaxValue);
+                Thing migrated = Materialize(entry.Proto);
+                migrated.stackCount = amount;
+                if (entry.AdditionalProtos == null)
+                {
+                    entry.AdditionalProtos = new List<Thing>();
+                }
+                entry.AdditionalProtos.Add(migrated);
+                missing -= amount;
+            }
+        }
+
         // ── 存档 ─────────────────────────────────────────────────────────────────
 
         public override void ExposeData()
@@ -917,6 +1138,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         i--;
                         continue;
                     }
+                    EnsureCanonicalQuantity(e);
                     e.Key = OuterrealmEntryKey.From(e.Proto);
                     e.LastSeenVersion = 0;
                     ThingDef def = e.Proto.def;

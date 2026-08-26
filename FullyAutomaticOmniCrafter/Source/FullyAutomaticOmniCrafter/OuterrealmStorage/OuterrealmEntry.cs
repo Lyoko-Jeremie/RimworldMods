@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -181,7 +182,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     }
 
     /// <summary>
-    /// 全局层聚合条目（§3.1）：代表 Thing（未 Spawned，携带完整属性）+ 真实 long 计数。
+    /// 全局层聚合条目（§3.1）：权威 Thing 堆（未 Spawned，携带完整状态）+ 真实 long 计数。
     /// 每个属性同质分组一条；条目数与个体总量无关（组合级）。
     /// </summary>
     public class OuterrealmEntry : IExposable
@@ -190,10 +191,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public OuterrealmEntryKey Key;
 
         /// <summary>
-        /// 代表 Thing：未 Spawned、无持有者（holdingOwner == null），携带该组物品的完整属性
-        /// （def/stuff/品质/耐久/样式/颜色）。只作为属性模板与 UI 代表，不参与视图、不 tick。
+        /// 第一权威堆：未 Spawned、无持有者（holdingOwner == null），保存 Thing 子类字段、
+        /// 全部 Comp 状态及物品身份；同时作为 UI 投影的展示来源，但绝不只是可丢弃模板。
         /// </summary>
         public Thing Proto;
+
+        /// <summary>
+        /// 权威附加堆。Proto 是第一权威堆；当同质物品总量超过单个 Thing 的 int 容量时，
+        /// 其余真实堆保存在这里。所有权威堆均保留完整 Thing/Comp 状态，取出时只允许
+        /// 转移原实例或调用原版 SplitOff，禁止重新 MakeThing。
+        /// </summary>
+        public List<Thing> AdditionalProtos;
 
         /// <summary>真实数量（long，可远超 int.MaxValue）。</summary>
         public long Count;
@@ -204,6 +212,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public void ExposeData()
         {
             Scribe_Deep.Look(ref Proto, "proto");
+            Scribe_Collections.Look(ref AdditionalProtos, "additionalProtos", LookMode.Deep);
             Scribe_Values.Look(ref Count, "count", 0L);
         }
     }
