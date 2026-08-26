@@ -216,6 +216,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = true;
                 return false;
             }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry canonicalEntry;
+            if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
+            {
+                if (!SubspaceAccessUtility.CanAutoTake(claimant) || claimant.Map == null)
+                {
+                    __result = false;
+                    return false;
+                }
+                int canonicalReq = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
+                __result = canonicalReq <= 0 || canonicalReq <= canonicalEntry.Count;
+                return false;
+            }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return true;
@@ -257,6 +270,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // （TargetB），与建筑本体无关，不受影响。
                 __result = true;
                 return false;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry canonicalEntry;
+            if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
+            {
+                if (!SubspaceAccessUtility.CanAutoTake(claimant) || claimant.Map == null)
+                {
+                    __result = false;
+                    return false;
+                }
+                int canonicalReq = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
+                if (canonicalReq > 0 && canonicalReq > canonicalEntry.Count)
+                {
+                    __result = false;
+                    return false;
+                }
+                return true;
             }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
@@ -321,6 +351,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）。
             // 物化量 = min(所需数量, 全局剩余)，严格按需（见 ResolveLendNeed / TryLendCopy）。
             Thing t = target.Thing;
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry canonicalEntry;
+            if (t != null && gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry)
+                && SubspaceAccessUtility.CanAutoTake(claimant))
+            {
+                __result = TryCheckoutCanonical(
+                    __instance, claimant, job, t, canonicalEntry, maxPawns, stackCount,
+                    layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs);
+                return;
+            }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view) || view.IsBorrowed(t))
             {
                 return;
@@ -354,6 +394,65 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             __result = true;
+        }
+
+        /// <summary>
+        /// 随身访问的预约提交：原版已成功写入权威候选 reservation 后，才从全局账本转移真实物品，
+        /// 在申请 Pawn 所在格 Spawn、重写 Job 目标并为真实物品建立原版 reservation。
+        /// 任一步失败都恢复 Job 目标并把物品存回全局。
+        /// </summary>
+        private static bool TryCheckoutCanonical(
+            ReservationManager manager, Pawn claimant, Job job, Thing canonical, OuterrealmEntry entry,
+            int maxPawns, int stackCount, ReservationLayerDef layer, bool errorOnFailed,
+            bool ignoreOtherReservations, bool canReserversStartJobs)
+        {
+            if (claimant?.Map == null || canonical == null || entry == null || entry.Count <= 0)
+            {
+                return false;
+            }
+            // 释放刚写入权威候选的临时 reservation；真正执行期只保留生成物的 reservation。
+            manager.Release((LocalTargetInfo)canonical, claimant, job);
+            int need = ResolveLendNeed(job, canonical, stackCount);
+            need = (int)Math.Min((long)Math.Max(1, need), Math.Min(entry.Count, int.MaxValue));
+            Thing actual = GameComponent_OuterrealmStorage.Instance?.Withdraw(entry, need);
+            if (actual == null || actual.Destroyed || actual.stackCount <= 0)
+            {
+                return false;
+            }
+            bool targetReplaced = false;
+            try
+            {
+                GenSpawn.Spawn(actual, claimant.Position, claimant.Map);
+                OuterrealmPatchUtil.ReplaceJobThing(job, canonical, actual);
+                targetReplaced = true;
+                int actualStackCount = stackCount == ReservationManager.StackCount_All
+                    ? ReservationManager.StackCount_All
+                    : Math.Min(Math.Max(1, stackCount), actual.stackCount);
+                if (!manager.Reserve(
+                    claimant, job, (LocalTargetInfo)actual, maxPawns, actualStackCount,
+                    layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs))
+                {
+                    OuterrealmPatchUtil.ReplaceJobThing(job, actual, canonical);
+                    targetReplaced = false;
+                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual);
+                    return false;
+                }
+                SubspaceAccessUtility.MarkPendingCheckout(actual);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (targetReplaced)
+                {
+                    OuterrealmPatchUtil.ReplaceJobThing(job, actual, canonical);
+                }
+                if (!actual.Destroyed && actual.stackCount > 0)
+                {
+                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual);
+                }
+                Log.Error("[OuterrealmStorage] Failed to spawn canonical item for subspace reservation: " + ex);
+                return false;
+            }
         }
 
         /// <summary>物化所需数量：优先取 job 对该目标的原料需求（targetQueueB.countQueue，
@@ -408,6 +507,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(Pawn claimant, LocalTargetInfo target, ref int __result)
         {
             Thing t = target.Thing;
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry canonicalEntry;
+            if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
+            {
+                __result = SubspaceAccessUtility.CanAutoTake(claimant)
+                    ? (int)Math.Min(canonicalEntry.Count, int.MaxValue)
+                    : 0;
+                return false;
+            }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return true;
@@ -432,6 +540,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 view.TryDisposeCopyIfObsolete(t);
             }
+            SubspaceAccessUtility.TryReturnPendingCheckout(t);
         }
     }
 
@@ -445,6 +554,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 view.TryDisposeCopyIfObsolete(t);
             }
+            SubspaceAccessUtility.TryReturnPendingCheckout(t);
         }
     }
 
@@ -457,6 +567,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static void Postfix()
         {
             GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+            SubspaceAccessUtility.ReturnUnreservedPending();
         }
     }
 
@@ -466,6 +577,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static void Postfix()
         {
             GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+            SubspaceAccessUtility.ReturnUnreservedPending();
         }
     }
 
@@ -673,6 +785,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
+        private static void Postfix(Thing item, int __result)
+        {
+            SubspaceAccessUtility.NotifyCarryResult(item, __result);
+        }
+
         private static int TryStartCarryFromVault(Pawn_CarryTracker carry, Thing item, int count, bool reserve, OuterrealmVaultViewThingOwner view)
         {
             Pawn pawn = carry.pawn;
@@ -823,23 +940,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             Dictionary<ThingDef, int> amounts = __instance.AllCountedAmounts;
-            List<OuterrealmEntry> entries = gs.EntriesForReading;
-            for (int i = 0; i < entries.Count; i++)
+            Dictionary<ThingDef, long> totals = gs.ResourceTotalsForReading;
+            foreach (KeyValuePair<ThingDef, long> pair in totals)
             {
-                OuterrealmEntry e = entries[i];
-                if (e == null || e.Proto == null || e.Count <= 0)
-                {
-                    continue;
-                }
-                Thing inner = e.Proto.GetInnerIfMinified();
-                if (inner == null || inner.def == null || !inner.def.CountAsResource)
-                {
-                    continue;
-                }
                 int cur;
-                if (amounts.TryGetValue(inner.def, out cur))
+                if (amounts.TryGetValue(pair.Key, out cur))
                 {
-                    amounts[inner.def] = (int)Math.Min((long)cur + e.Count, int.MaxValue);
+                    amounts[pair.Key] = (int)Math.Min((long)cur + pair.Value, int.MaxValue);
                 }
             }
         }
@@ -2127,14 +2234,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        // ── §v3 随身取料：在原版 relevantThings.Clear() 之后注入授权 pawn 的随身副本 ──
-        // 仅单点插入一个 helper 调用（ldarg pawn / ldarg billGiver / ldsfld relevantThings / call InjectPawnCopies），
+        // ── §v3 随身取料：在原版 relevantThings.Clear() 之后直接查询全局权威索引 ──
+        // 仅单点插入一个 helper 调用（ldarg thingValidator / pawn / billGiver / relevantThings / call），
         // 不做 IL 重写。匹配目标（ldsfld relevantThings + callvirt List<Thing>::Clear）唯一，失败即 Log.Error。
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             FieldInfo relevantThingsField = AccessTools.Field(typeof(WorkGiver_DoBill), "relevantThings");
             MethodInfo listClear = AccessTools.Method(typeof(List<Thing>), "Clear");
-            MethodInfo inject = AccessTools.Method(typeof(SubspaceAccessUtility), "InjectPawnCopies");
+            MethodInfo inject = AccessTools.Method(typeof(SubspaceAccessUtility), "InjectGlobalEntries");
 
             List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
             bool injected = false;
@@ -2144,6 +2251,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     codes.InsertRange(i + 2, new[]
                     {
+                        new CodeInstruction(OpCodes.Ldarg_0),                    // thingValidator（第 1 参）
                         new CodeInstruction(OpCodes.Ldarg_3),                    // pawn（第 4 参）
                         new CodeInstruction(OpCodes.Ldarg_S, (sbyte)4),          // billGiver（第 5 参）
                         new CodeInstruction(OpCodes.Ldsfld, relevantThingsField),

@@ -28,6 +28,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // 查找经 byDef 粗索引（def 不同必不能堆叠）缩小候选后线性 CanStackWith 判定（O(同 def 条目数)）。
         private Dictionary<ThingDef, List<OuterrealmEntry>> byDef = new Dictionary<ThingDef, List<OuterrealmEntry>>();
 
+        /// <summary>权威 Thing → 条目。供随身访问把全局实例作为只读候选，并在预约成功时 O(1) 结账。</summary>
+        private readonly Dictionary<Thing, OuterrealmEntry> entryByCanonical = new Dictionary<Thing, OuterrealmEntry>();
+
+        /// <summary>资源栏物品的增量总量。只含 CountAsResource 的内层 ThingDef，避免每 204 tick 扫描全部条目。</summary>
+        private readonly Dictionary<ThingDef, long> resourceTotals = new Dictionary<ThingDef, long>();
+
         // ── 按 ThingDef 聚合总量缓存（TotalCountOf 用，§兼容） ──
         // 万能制造机补货判断/UI 每帧按订单查询 vault 存量；entries 遍历 O(n)
         // 摊薄到内容变更后的首次查询（version 不等即重建，其余调用 O(1) 命中）。
@@ -55,6 +61,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         /// <summary>已注册的建筑实例（SpawnSetup 注册 / DeSpawn 注销）。</summary>
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
+        private readonly Dictionary<Map, int> vaultCountByMap = new Dictionary<Map, int>();
 
         // ── 管理器视图筛选（§6.4 UI 层） ──
         // 旧版按分类保存继承式状态，会令多分类物品抵消分类点击，现仅用于旧存档迁移。
@@ -76,10 +83,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public List<OuterrealmEntry> EntriesForReading => entries;
         public List<Building_OuterrealmVault> VaultsForReading => vaults;
         public List<VaultEjectJob> EjectQueueForReading => ejectQueue;
+        public Dictionary<ThingDef, long> ResourceTotalsForReading => resourceTotals;
 
         public GameComponent_OuterrealmStorage(Game game)
         {
             Instance = this;
+            SubspaceAccessUtility.ResetRuntimeState();
         }
 
         // ── 存入 ────────────────────────────────────────────────────────────────
@@ -99,6 +108,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 item.DeSpawn(DestroyMode.Vanish);
             }
+            ThingDef resourceDef = ResourceDefOf(item);
             OuterrealmEntry existing = FindEntry(item);
             if (existing != null)
             {
@@ -108,6 +118,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // Destroy 原物，否则腐烂、原料、充能及第三方 Comp 状态会静默丢失。
                 MergeIntoCanonicalStacks(existing, item);
                 existing.Count += depositedCount;
+                AdjustResourceTotal(resourceDef, depositedCount);
                 version++;
                 AddToChangeLog(existing);
                 return existing;
@@ -119,6 +130,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Count = item.stackCount
             };
             AddEntry(entry);
+            AdjustResourceTotal(resourceDef, entry.Count);
             version++;
             AddToChangeLog(entry);
             return entry;
@@ -129,7 +141,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 合并和必要的部分拆分均调用原版 TryAbsorbStack/SplitOff，让原版及第三方 Comp
         /// 通过 PreAbsorbStack/PostSplitOff 维护自身状态。
         /// </summary>
-        private static void MergeIntoCanonicalStacks(OuterrealmEntry entry, Thing item)
+        private void MergeIntoCanonicalStacks(OuterrealmEntry entry, Thing item)
         {
             if (entry == null || item == null || item.Destroyed || item.stackCount <= 0)
             {
@@ -138,6 +150,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (entry.Proto == null)
             {
                 entry.Proto = item;
+                entryByCanonical[item] = entry;
                 return;
             }
             if (TryMergeIntoCanonical(entry.Proto, item))
@@ -165,6 +178,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 entry.AdditionalProtos = new List<Thing>();
             }
             entry.AdditionalProtos.Add(item);
+            entryByCanonical[item] = entry;
         }
 
         /// <summary>尽量把 source 并入 destination；返回 source 是否已全部吸收。</summary>
@@ -239,6 +253,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 return null;
             }
+            // 原版不可堆叠物品每个实例独立成条目。提前返回避免基因组、武器等
+            // stackLimit=1 物品随库存增长产生同 Def 线性扫描，连续存入退化为 O(n²)。
+            if (item.def.stackLimit <= 1)
+            {
+                return null;
+            }
             List<OuterrealmEntry> cands;
             if (!byDef.TryGetValue(item.def, out cands))
             {
@@ -271,6 +291,74 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 byDef[def] = list;
             }
             list.Add(entry);
+            RegisterCanonicalThings(entry);
+        }
+
+        /// <summary>O(1) 判断 Thing 是否为仍在超维空间内的权威实例。</summary>
+        public bool TryGetCanonicalEntry(Thing thing, out OuterrealmEntry entry)
+        {
+            if (thing != null && entryByCanonical.TryGetValue(thing, out entry)
+                && entry != null && entry.Count > 0 && !thing.Destroyed)
+            {
+                return true;
+            }
+            entry = null;
+            return false;
+        }
+
+        private void RegisterCanonicalThings(OuterrealmEntry entry)
+        {
+            if (entry?.Proto != null && !entry.Proto.Destroyed)
+            {
+                entryByCanonical[entry.Proto] = entry;
+            }
+            List<Thing> extras = entry?.AdditionalProtos;
+            if (extras == null)
+            {
+                return;
+            }
+            for (int i = 0; i < extras.Count; i++)
+            {
+                Thing extra = extras[i];
+                if (extra != null && !extra.Destroyed)
+                {
+                    entryByCanonical[extra] = entry;
+                }
+            }
+        }
+
+        private static ThingDef ResourceDefOf(Thing thing)
+        {
+            Thing inner = thing?.GetInnerIfMinified();
+            ThingDef def = inner?.def;
+            return def != null && def.CountAsResource ? def : null;
+        }
+
+        private void AdjustResourceTotal(ThingDef def, long delta)
+        {
+            if (def == null || delta == 0L)
+            {
+                return;
+            }
+            long current;
+            resourceTotals.TryGetValue(def, out current);
+            long next;
+            if (delta > 0L && current > long.MaxValue - delta)
+            {
+                next = long.MaxValue;
+            }
+            else
+            {
+                next = current + delta;
+            }
+            if (next > 0L)
+            {
+                resourceTotals[def] = next;
+            }
+            else
+            {
+                resourceTotals.Remove(def);
+            }
         }
 
         // ── 查询 ────────────────────────────────────────────────────────────────
@@ -375,15 +463,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            for (int i = 0; i < vaults.Count; i++)
-            {
-                Building_OuterrealmVault v = vaults[i];
-                if (v != null && v.Spawned && v.Map == map)
-                {
-                    return true;
-                }
-            }
-            return false;
+            int count;
+            return vaultCountByMap.TryGetValue(map, out count) && count > 0;
         }
 
         /// <summary>全局层中指定 ThingDef 的总数量（仅统计 Proto 经 GetInnerIfMinified 后 def 匹配的条目，即原始资源类物品）。
@@ -463,6 +544,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 避免"全局已空 + reservation 残留副本"场景刷屏（§3.3 退休副本生命周期）。
                 return;
             }
+            ThingDef resourceDef = ResourceDefOf(entry.Proto);
             long requested = Math.Min(amount, entry.Count);
             long removed = 0L;
             while (removed < requested)
@@ -483,6 +565,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             entry.Count -= removed;
+            AdjustResourceTotal(resourceDef, -removed);
             if (entry.Count == 0)
             {
                 RemoveEntry(entry);
@@ -507,6 +590,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             // 先取 def（byDef 索引键）再销毁 Proto——索引清理依赖 Proto.def。
             ThingDef def = entry.Proto != null ? entry.Proto.def : entry.Key.Def;
+            if (entry.Proto != null)
+            {
+                entryByCanonical.Remove(entry.Proto);
+            }
             if (destroyProto && entry.Proto != null)
             {
                 entry.Proto.Destroy();
@@ -518,6 +605,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     for (int i = 0; i < entry.AdditionalProtos.Count; i++)
                     {
                         Thing extra = entry.AdditionalProtos[i];
+                        if (extra != null)
+                        {
+                            entryByCanonical.Remove(extra);
+                        }
                         if (extra != null && !extra.Destroyed)
                         {
                             extra.Destroy();
@@ -557,6 +648,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return null;
             }
+            ThingDef resourceDef = ResourceDefOf(entry.Proto);
             long take = count;
             if (take > entry.Count)
             {
@@ -570,6 +662,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return null;
             }
             entry.Count -= t.stackCount;
+            AdjustResourceTotal(resourceDef, -t.stackCount);
             if (entry.Count < 0)
             {
                 entry.Count = 0;
@@ -587,7 +680,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>从条目的权威堆取出最多 count 个，并尽量合并成单个返回堆。</summary>
-        private static Thing TakeFromCanonicalStacks(OuterrealmEntry entry, int count)
+        private Thing TakeFromCanonicalStacks(OuterrealmEntry entry, int count)
         {
             Thing result = null;
             int remaining = count;
@@ -636,8 +729,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>解除第一权威堆并把附加堆首项提升为 Proto。</summary>
-        private static void DetachPrimaryCanonical(OuterrealmEntry entry)
+        private void DetachPrimaryCanonical(OuterrealmEntry entry)
         {
+            if (entry.Proto != null)
+            {
+                entryByCanonical.Remove(entry.Proto);
+            }
             entry.Proto = null;
             PromoteNextCanonical(entry);
         }
@@ -762,6 +859,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             EnsureCanonicalQuantity(entry);
             AddEntry(entry);
+            AdjustResourceTotal(ResourceDefOf(entry.Proto), entry.Count);
             version++;
             AddToChangeLog(entry);
         }
@@ -774,10 +872,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (changeLogOverflow)
             {
-                // 溢出窗口后的首个新变化：重置日志，恢复正常记录。
-                changeLogOverflow = false;
-                changeLog.Clear();
-                changeLogSet.Clear();
+                // 溢出状态必须一直保留到所有视图完成一次全量重建；否则溢出后、
+                // 帧末消费前的下一次变化会错误清除标记，永久漏掉早期变更。
+                return;
             }
             if (changeLogSet.Add(entry))
             {
@@ -795,15 +892,38 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public void RegisterVault(Building_OuterrealmVault vault)
         {
-            if (!vaults.Contains(vault))
+            if (vault != null && !vaults.Contains(vault))
             {
                 vaults.Add(vault);
+                Map map = vault.Map;
+                if (vault.Spawned && map != null)
+                {
+                    int count;
+                    vaultCountByMap.TryGetValue(map, out count);
+                    vaultCountByMap[map] = count + 1;
+                }
             }
         }
 
         public void UnregisterVault(Building_OuterrealmVault vault)
         {
-            vaults.Remove(vault);
+            if (vault == null || !vaults.Remove(vault))
+            {
+                return;
+            }
+            Map map = vault.Map;
+            int count;
+            if (map != null && vaultCountByMap.TryGetValue(map, out count))
+            {
+                if (count <= 1)
+                {
+                    vaultCountByMap.Remove(map);
+                }
+                else
+                {
+                    vaultCountByMap[map] = count - 1;
+                }
+            }
         }
 
         // ── 弹出队列（§6.4） ────────────────────────────────────────────────────
@@ -842,6 +962,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public override void GameComponentTick()
         {
             base.GameComponentTick();
+            // 正常取物会在进入 carry 时即时解除跟踪；每 60 tick 只扫描极小的“已物化但尚未取走”集合，
+            // 回收被取消/中断 Job 遗留的真实物品，不与全局库存规模相关。
+            if (Find.TickManager.TicksGame % 60 == 0)
+            {
+                SubspaceAccessUtility.ReturnUnreservedPending();
+            }
             if (ejectQueue.Count > 0)
             {
                 int spawnedThisTick = 0;
@@ -936,7 +1062,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (changeLogOverflow)
             {
-                // 变更窗口溢出：增量会丢变更，全量重建兜底（AddToChangeLog 溢出后首个新变更会复位溢出标记）
+                // 变更窗口溢出：增量会丢变更，全量重建完成后才解除溢出状态。
                 for (int i = 0; i < vaults.Count; i++)
                 {
                     Building_OuterrealmVault v = vaults[i];
@@ -1129,6 +1255,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 重建 byDef 粗索引 + 从 Proto 重建展示签名（Key）；重置版本号/变更日志
                 // （早于建筑 SpawnSetup 的视图重建）。§B：合并不再依赖 Key，仅作展示/统计/放行签名。
                 byDef.Clear();
+                entryByCanonical.Clear();
+                resourceTotals.Clear();
                 for (int i = 0; i < entries.Count; i++)
                 {
                     OuterrealmEntry e = entries[i];
@@ -1149,6 +1277,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         byDef[def] = list;
                     }
                     list.Add(e);
+                    RegisterCanonicalThings(e);
+                    AdjustResourceTotal(ResourceDefOf(e.Proto), e.Count);
                 }
                 version = 0;
                 reservationVersion = 0;
@@ -1159,6 +1289,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 changeLogOverflow = false;
                 // 弹出队列不序列化（目标地图索引在重载后不可靠；条目仍在全局层，玩家可重新弹出）。
                 ejectQueue.Clear();
+                vaultCountByMap.Clear();
+                SubspaceAccessUtility.ResetRuntimeState();
             }
         }
     }

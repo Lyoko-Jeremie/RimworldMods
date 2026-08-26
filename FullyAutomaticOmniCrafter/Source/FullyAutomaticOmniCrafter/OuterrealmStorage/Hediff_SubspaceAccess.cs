@@ -6,19 +6,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
     /// <summary>
     /// 超维存储访问能力（§v3）：普通 Hediff，授权 = 携带此 Hediff。随 pawn hediffSet 存档，
-    /// 天然跨地图 / 随远行队。携带者拥有随身视图（SubspaceAccessPawn 上下文 + OuterrealmVaultViewThingOwner），
-    /// 使制作选料可跨地图从全局库取料（副本不进 lister，仅制作选料注入可见）。
+    /// 天然跨地图 / 随远行队。制作选料直接查询全局权威索引，不再为每个 Pawn 建立完整物品视图；
+    /// 只有 Job 正式预约成功后才从全局库结账并在 Pawn 所在处生成真实物品。
     /// 携带者的按钮菜单（选中 pawn 后底部 Gizmo）提供两个开关：自动取用（制作选料时自动从随身空间取料）
     /// 与自动存入（制作完成后自动把产物存入超维空间）。两个开关只限制"自动"路径，
     /// 右键手动存入 / 手动取出不受影响。
     /// </summary>
     public class Hediff_SubspaceAccess : Hediff
     {
-        /// <summary>随身视图（非序列化：副本是全局库投影，读档后由选料注入惰性重建）。</summary>
-        [Unsaved]
-        public OuterrealmVaultViewThingOwner view;
-
-        /// <summary>自动取用：制作选料时把随身视图副本注入 relevantThings（默认开）。关闭后制作不再自动从身上取料，手动取用不受影响。</summary>
+        /// <summary>自动取用：制作选料时查询全局索引（默认开）。关闭后制作不再自动从身上取料，手动取用不受影响。</summary>
         public bool autoTake = true;
 
         /// <summary>自动存入：制作完成后自动把产物 Deposit 进全局库（默认开）。关闭后产物留在原地 / 由玩家处置，手动存入不受影响。</summary>
@@ -37,38 +33,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Values.Look(ref autoStore, "autoStore", true);
             // 旧档无此节点自动取默认值 false（= 自动全部存入），行为不变。
             Scribe_Values.Look(ref autoStoreFiltered, "autoStoreFiltered", false);
-        }
-
-        public override void PostAdd(DamageInfo? dinfo)
-        {
-            base.PostAdd(dinfo);
-            EnsureView(); // 授权即建空视图；副本由选料注入的 RebuildView 惰性物化
-        }
-
-        public override void PostRemoved()
-        {
-            ClearView();
-            base.PostRemoved();
-        }
-
-        /// <summary>确保随身视图存在（惰性创建空视图；副本物化由 InjectPawnCopies 的 RebuildView 完成）。</summary>
-        public OuterrealmVaultViewThingOwner EnsureView()
-        {
-            if (view == null)
-            {
-                view = new OuterrealmVaultViewThingOwner(new SubspaceAccessPawn(pawn, this));
-            }
-            return view;
-        }
-
-        /// <summary>注销随身视图（取消授权 / 移除 Hediff 时）：销毁全部副本，内容保留在全局层。</summary>
-        public void ClearView()
-        {
-            if (view != null)
-            {
-                view.ClearView();
-                view = null;
-            }
         }
 
         /// <summary>

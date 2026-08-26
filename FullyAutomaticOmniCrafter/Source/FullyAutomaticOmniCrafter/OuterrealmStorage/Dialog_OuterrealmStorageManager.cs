@@ -342,10 +342,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>右侧条目列表（滚动视图）。</summary>
         private void DrawEntryList(GameComponent_OuterrealmStorage gs, Rect outRect)
         {
-            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, visibleEntries.Count * RowHeight);
+            float contentHeight = visibleEntries.Count * RowHeight;
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(contentHeight, outRect.height));
             Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
-            float curY = 0f;
-            for (int i = 0; i < visibleEntries.Count; i++)
+            // 虚拟化：列表仍保留轻量索引，但仅构造/绘制当前视口及上下各一行。
+            int first = Mathf.Max(0, Mathf.FloorToInt(scrollPosition.y / RowHeight) - 1);
+            int last = Mathf.Min(visibleEntries.Count, Mathf.CeilToInt((scrollPosition.y + outRect.height) / RowHeight) + 1);
+            float curY = first * RowHeight;
+            for (int i = first; i < last; i++)
             {
                 DoEntryRow(gs, visibleEntries[i], viewRect.width, ref curY, i % 2 == 0);
             }

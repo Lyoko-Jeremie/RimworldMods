@@ -15,6 +15,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     public class ITab_OuterrealmVaultContents : ITab_ContentsBase
     {
+        private Vector2 virtualScrollPosition;
+        private float virtualLastDrawnHeight;
+        private float virtualVisibleMinY;
+        private float virtualVisibleMaxY;
+
         public override IList<Thing> container
         {
             get
@@ -29,6 +34,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             size = new Vector2(460f, 450f);
             labelKey = "TabOuterrealmVaultContents";
             containedItemsKey = "TabOuterrealmVaultContents";
+        }
+
+        /// <summary>替代基类私有滚动状态，使内容 Tab 也能只绘制视口内行。</summary>
+        protected override void FillTab()
+        {
+            Rect outRect = new Rect(Vector2.zero, size).ContractedBy(10f);
+            outRect.yMin += 20f;
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(virtualLastDrawnHeight, outRect.height));
+            Text.Font = GameFont.Small;
+            Widgets.BeginScrollView(outRect, ref virtualScrollPosition, viewRect);
+            virtualVisibleMinY = virtualScrollPosition.y - 28f;
+            virtualVisibleMaxY = virtualScrollPosition.y + outRect.height + 28f;
+            float curY = 0f;
+            DoItemsLists(viewRect, ref curY);
+            virtualLastDrawnHeight = curY;
+            Widgets.EndScrollView();
         }
 
         protected override void DoItemsLists(Rect inRect, ref float curY)
@@ -49,22 +70,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         continue;
                     }
                     Thing copy = vault.view.FindCopy(entry);
-                    if (copy == null)
+                    if (copy == null && !vault.CanShow(entry.Proto))
                     {
-                        // 副本未物化（尸体唯一实体不物化 / filter 刚允许但帧末微批尚未执行）：
-                        // 直接用条目 proto 渲染——filter 是视图过滤语义，可见性以 CanShow 判定，
-                        // 不依赖副本物化（暂停时帧末微批不执行，UI 仍须正确显示，§filter 视图过滤简化）
-                        if (vault.CanShow(entry.Proto))
-                        {
-                            copy = entry.Proto;
-                        }
-                        else
-                        {
-                            continue; // 本建筑 filter 不可见（§6.2）
-                        }
+                        continue; // 本建筑 filter 不可见（§6.2）
                     }
                     any = true;
-                    DoVaultRow(vault, copy, entry, inRect.width, ref curY);
+                    float rowY = curY;
+                    if (rowY + 28f >= virtualVisibleMinY && rowY <= virtualVisibleMaxY)
+                    {
+                        // 仅屏幕内行才解析显示 Thing、生成标签/Tooltip 和按钮。
+                        // 副本尚未物化时直接使用权威 proto 只读渲染。
+                        DoVaultRow(vault, copy ?? entry.Proto, entry, inRect.width, ref curY);
+                    }
+                    else
+                    {
+                        curY += 28f;
+                    }
                 }
             }
             if (!any)

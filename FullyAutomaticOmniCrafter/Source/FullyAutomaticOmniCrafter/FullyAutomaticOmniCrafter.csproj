@@ -443,7 +443,6 @@
     <Compile Include="OuterrealmStorage\Patch_ManipulatorBeamCompat.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmFloatMenu.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />
-    <Compile Include="OuterrealmStorage\SubspaceAccessPawn.cs" />
     <Compile Include="OuterrealmStorage\SubspaceAccessUtility.cs" />
     <Compile Include="OuterrealmStorage\Hediff_SubspaceAccess.cs" />
     <Compile Include="OmniPowerNetUtility.cs" />
