@@ -17,7 +17,7 @@
 
   <ThingDef ParentName="BuildingBase">
     <defName>FAOC_OuterrealmVault</defName>
-    <label>Outerrealm Vault</label>
+    <label>Outerrealm Vault Access Point</label>
     <description>An outerrealm storage terminal that projects items folded into subspace. Items stored here are shared between all terminals across every map, never deteriorate, and never age. Configure its filter to decide what may be stored.</description>
     <thingClass>FullyAutomaticOmniCrafter.OuterrealmStorage.Building_OuterrealmVault</thingClass>
 
