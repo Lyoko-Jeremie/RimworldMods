@@ -269,10 +269,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return available < 0 ? 0 : available;
         }
 
-        // ── 借出/回收（§v4 预留驱动） ──────────────────────────────────────────
-        // 借出 = 预留时从全局条目转移所需数量的权威实例，并 Spawn 到发起申请的 vault 存储格；
-        // 回收 = reservation 释放后仍留在存储格的权威实例 Deposit 回全局。全局 Count 在借出时
-        // 已扣减，所以多个地图、多个仓库共享同一库存且不会超卖。
+        // ── 显式借出/回收（§v4 兼容租约） ──────────────────────────────────────
+        // 普通 Reserve 已不再调用这里：制作、搬运等常规流程只预留投影，并在 TryStartCarry 时
+        // 直接转移权威实例。这里只服务“执行前必须看见真实 Spawned Thing”的少数接口（穿戴）和
+        // 必须从 thingGrid 扫描实物的第三方兼容（牵引光束种子）。借出立即扣全局，未交付的实物
+        // 由明确的任务结束回调或兼容层定期回收，因此仍保持跨地图库存守恒。
 
         private readonly HashSet<Thing> borrowedCopies = new HashSet<Thing>();
 
@@ -282,8 +283,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 预留借出（§v4）：按所需数量从权威库存取出真实物品，Spawn 到当前仓库存储格，
-        /// 并把实际对象返回给预约补丁用于重写 Job 目标。返回 false 表示无空位或库存已变化。
+        /// 显式借出（§v4）：按所需数量从权威库存取出真实物品，Spawn 到当前仓库存储格，
+        /// 并把实际对象返回给兼容调用方。返回 false 表示无空位或库存已变化。
         /// </summary>
         public bool TryLendCopy(Thing copy, int need)
         {
@@ -695,7 +696,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 copy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(copy.def.stackLimit, int.MaxValue));
                 return;
             }
-            Thing newCopy = GameComponent_OuterrealmStorage.Materialize(entry.Proto);
+            Thing newCopy = GameComponent_OuterrealmStorage.MaterializeProjection(entry.Proto);
             newCopy.stackCount = (int)Mathf.Min(entry.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
             // 标准加入（canMerge=false：视图内同条目恒单副本，避免合并触发 TryAbsorbStack 补回全局的误判）；
             // 触发 Notify_ItemAdded → 建筑 hook → listerHaulables 单物品通知（锁定条目经 #6 短路不加）。
@@ -864,7 +865,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 else
                 {
-                    Thing newCopy = GameComponent_OuterrealmStorage.Materialize(e.Proto);
+                    Thing newCopy = GameComponent_OuterrealmStorage.MaterializeProjection(e.Proto);
                     newCopy.stackCount = (int)Mathf.Min(e.Count, Mathf.Min(newCopy.def.stackLimit, int.MaxValue));
                     if (base.TryAdd(newCopy, false))
                     {

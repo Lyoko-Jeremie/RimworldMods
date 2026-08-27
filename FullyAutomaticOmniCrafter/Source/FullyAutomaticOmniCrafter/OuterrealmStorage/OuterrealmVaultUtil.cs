@@ -22,6 +22,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static readonly ConditionalWeakTable<Thing, object> BorrowedCopies =
             new ConditionalWeakTable<Thing, object>();
 
+        // ── 查询投影标记 ──────────────────────────────────────────────────────
+        // 投影虽然必须使用真实 Thing 类型才能进入原版 lister / reservation / 配方筛选 API，
+        // 但它没有任何库存所有权，stackCount 也只是“可见数量”。使用弱表按实例标记后，
+        // 即使第三方 Mod 绕过 ThingOwner、先 DeSpawn/Remove 再尝试把该对象存入仓库，Deposit
+        // 仍能识别并拒绝它，避免把显示副本第二次变成权威物品。弱键不会延长投影生命周期。
+        private static readonly ConditionalWeakTable<Thing, object> ProjectionCopies =
+            new ConditionalWeakTable<Thing, object>();
+
         /// <summary>登记借出副本（TryLendCopy 成功 Spawn 后调用）。</summary>
         public static void MarkOuterrealmBorrowed(Thing t)
         {
@@ -47,6 +55,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             object _;
             return t != null && BorrowedCopies.TryGetValue(t, out _);
+        }
+
+        /// <summary>登记只读查询投影。重复登记先 Remove，兼容视图自愈重建和实例复用边界。</summary>
+        public static void MarkProjection(Thing t)
+        {
+            if (t == null)
+            {
+                return;
+            }
+            ProjectionCopies.Remove(t);
+            ProjectionCopies.Add(t, null);
+        }
+
+        /// <summary>判断对象是否为无库存所有权的查询投影；该判断不依赖 holdingOwner，防第三方先移除再存入。</summary>
+        public static bool IsProjection(Thing t)
+        {
+            object _;
+            return t != null && ProjectionCopies.TryGetValue(t, out _);
         }
 
         /// <summary>

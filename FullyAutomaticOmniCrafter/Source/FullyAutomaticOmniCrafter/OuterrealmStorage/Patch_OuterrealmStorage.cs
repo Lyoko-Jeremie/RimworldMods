@@ -56,38 +56,94 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>把 Job 中所有指向投影副本的目标替换为实际借出的权威物品。</summary>
-        public static void ReplaceJobThing(Job job, Thing projection, Thing actual)
+        /// <summary>
+        /// 精确迁移 Job 当前正在执行的 Thing 引用。优先替换 A/B/C 当前目标；只有预预约阶段
+        /// 尚未 ExtractNextTargetFromQueue、当前目标里完全没有 source 时，才替换队列中的第一个
+        /// 匹配项。绝不再把队列里所有相同投影一次性替换成同一真实堆——同一投影可代表多个
+        /// 独立数量需求，全量替换会让一次 Checkout 冒充多次取料，拆堆后 reservation 与
+        /// placedThings 便指向不同实例。
+        /// </summary>
+        public static bool ReplaceJobThingReference(Job job, Thing source, Thing replacement)
         {
-            if (job == null || projection == null || actual == null || projection == actual)
+            if (job == null || source == null || replacement == null || source == replacement)
             {
-                return;
+                return false;
             }
+            bool replacedCurrent = false;
             for (int i = 0; i < JobTargetIndices.Length; i++)
             {
                 TargetIndex index = JobTargetIndices[i];
-                if (job.GetTarget(index).Thing == projection)
+                if (job.GetTarget(index).Thing == source)
                 {
-                    job.SetTarget(index, (LocalTargetInfo)actual);
+                    job.SetTarget(index, (LocalTargetInfo)replacement);
+                    replacedCurrent = true;
                 }
             }
-            ReplaceInQueue(job.targetQueueA, projection, actual);
-            ReplaceInQueue(job.targetQueueB, projection, actual);
+            if (replacedCurrent)
+            {
+                return true;
+            }
+            return ReplaceFirstInQueue(job.targetQueueA, source, replacement)
+                || ReplaceFirstInQueue(job.targetQueueB, source, replacement);
         }
 
-        private static void ReplaceInQueue(List<LocalTargetInfo> queue, Thing projection, Thing actual)
+        private static bool ReplaceFirstInQueue(List<LocalTargetInfo> queue, Thing source, Thing replacement)
         {
             if (queue == null)
             {
-                return;
+                return false;
             }
             for (int i = 0; i < queue.Count; i++)
             {
-                if (queue[i].Thing == projection)
+                if (queue[i].Thing == source)
                 {
-                    queue[i] = (LocalTargetInfo)actual;
+                    queue[i] = (LocalTargetInfo)replacement;
+                    return true;
                 }
             }
+            return false;
+        }
+
+        /// <summary>
+        /// 为“执行前必须拿到真实 Spawned 目标”的少数原版接口建立显式租约。目前主要是
+        /// IApparelSource 穿戴路径：其 RemoveApparel 只有 bool 返回值，无法在执行期把投影替换成
+        /// Withdraw 返回的真实 Apparel。普通制作/搬运不得调用本方法，应延迟到 TryStartCarry。
+        ///
+        /// 成功顺序严格为：预留投影 → 扣权威库存并 Spawn 真实物 → 精确改写当前目标 → 预留真实物。
+        /// 任一步失败均恢复投影引用并把真实物退回全局。Job 的全局 finish action 是确定性兜底：
+        /// 若任务在拿起前中断，ReturnCopy 会回收仍在 vault 格的物品；若已经穿戴/携带，
+        /// ReturnCopy 只解除租约标记，不会把已交付物品抢回。
+        /// </summary>
+        public static bool TryLeaseProjectionForJob(
+            JobDriver driver, TargetIndex targetIndex, int count, int maxPawns, bool errorOnFailed)
+        {
+            Pawn pawn = driver?.pawn;
+            Job job = driver?.job;
+            Thing projection = job != null ? job.GetTarget(targetIndex).Thing : null;
+            OuterrealmVaultViewThingOwner view = projection?.holdingOwner as OuterrealmVaultViewThingOwner;
+            if (pawn == null || pawn.Map == null || view == null)
+            {
+                return false;
+            }
+            if (!pawn.Reserve(projection, job, maxPawns, count, errorOnFailed: errorOnFailed))
+            {
+                return false;
+            }
+            pawn.Map.reservationManager.Release((LocalTargetInfo)projection, pawn, job);
+            Thing actual;
+            if (!view.TryLendCopy(projection, count, out actual))
+            {
+                return false;
+            }
+            job.SetTarget(targetIndex, (LocalTargetInfo)actual);
+            if (!pawn.Reserve(actual, job, maxPawns, Math.Min(count, actual.stackCount), errorOnFailed: errorOnFailed))
+            {
+                job.SetTarget(targetIndex, (LocalTargetInfo)projection);
+                view.ReturnCopy(actual);
+                return false;
+            }
+            driver.AddFinishAction(_ => view.ReturnCopy(actual));
+            return true;
         }
     }
 
@@ -168,6 +224,37 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── Common Sense 兼容：查询投影不运行其 ThingMaker 随机配方补全 ─────────────
+    // Common Sense 给 ThingMaker.MakeThing 添加的 Postfix 会尝试从“能产出该物品的配方”中
+    // 随机选一个，并据此补写 CompIngredients。生食等物品虽然可能带 CompIngredients，却不存在
+    // 产出自身的 RecipeDef，RandomElement 因而在空集合上输出黄字。
+    //
+    // 不能全局禁用这个 Postfix：真实物品创建仍应保留 Common Sense 的既有功能。这里只反向补丁
+    // 它的 Postfix 方法本身，并且仅在 MaterializeProjection 的线程局部作用域内跳过。这样既消除
+    // 读档重建 vault 查询投影时的黄字，也不会改变制作产物、地图生成物或其他 Mod 创建物品时
+    // 的行为。采用动态目标查找，未安装 Common Sense 时不会形成硬依赖或补丁错误。
+    [HarmonyPatch]
+    internal static class Patch_CommonSense_ThingMakerPostfix_ForProjection
+    {
+        // 目标只在 Harmony 扫描补丁类时解析一次；Prepare 判空后，未安装 Common Sense 的环境
+        // 会完整跳过该补丁类，不产生“未找到目标方法”日志。
+        private static readonly Type CommonSensePatchType =
+            AccessTools.TypeByName("CommonSense.ThingMaker_MakeThing_CommonSensePatch");
+
+        private static readonly MethodInfo CommonSensePostfix = CommonSensePatchType != null
+            ? AccessTools.Method(CommonSensePatchType, "Postfix")
+            : null;
+
+        private static bool Prepare() => CommonSensePostfix != null;
+
+        private static MethodBase TargetMethod() => CommonSensePostfix;
+
+        private static bool Prefix()
+        {
+            return !GameComponent_OuterrealmStorage.ProjectionMaterializationActive;
+        }
+    }
+
     // ── §3.3 设置变更事件补链：StorageGroup.Notify_SettingsChanged 原版只通知 ISlotGroupParent 成员 ──
     // （Building_Storage / Zone_Stockpile 等有格子的存储）。无限容量容器（本 Mod vault 等非
     // ISlotGroupParent 成员）收不到组设置变更事件——此前靠 60 tick 签名轮询兜底（且组 filter
@@ -241,12 +328,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (req > view.AvailableForReserve(t))
             {
                 __result = false; // 数量不足：阻止预留
-                return false;
-            }
-            // 存储格满 → 拒绝预留（权威物品必须先在发起申请的仓库格真 Spawn）。
-            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
-            {
-                __result = false;
                 return false;
             }
             __result = true; // 数量足够：短路放行（见上，避免原版按副本 stackCount 误拒）
@@ -325,12 +406,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
-            // 存储格满 → 拒绝预留（权威物品必须先在发起申请的仓库格真 Spawn）。
-            if (view.Context is Building_OuterrealmVault vault && vault.Spawned && !vault.FindStorageCellFor(t).IsValid)
-            {
-                __result = false;
-                return false;
-            }
             return true;
         }
 
@@ -348,8 +423,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
-            // §v4：预留成功 → 物化（借出锚点副本到存储格，真 Spawned → job 目标通过 FailOnDespawned）。
-            // 物化量 = min(所需数量, 全局剩余)，严格按需（见 ResolveLendNeed / TryLendCopy）。
+            // 普通 vault 投影在这里只完成 reservation 记账，不再提前物化。投影已经是伪 Spawned，
+            // 足以通过原版/第三方的发现、路径和 FailOnDespawned 检查；真正的权威实例推迟到
+            // TryStartCarry / SplitOff / 装备等不可逆取用边界再原子 Checkout。这样 reservation
+            // 的取消、重复和临时改写不会在地图上留下“已扣账但尚未交付”的真实物品。
+            //
+            // 随身访问仍把未 Spawned 的权威主堆直接注入原版选料列表，它没有建筑投影可供寻路，
+            // 因此保留为显式的提前租约例外；该例外由 PendingCheckouts 在 reservation 释放时回滚。
             Thing t = target.Thing;
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry canonicalEntry;
@@ -361,44 +441,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs);
                 return;
             }
-            if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view) || view.IsBorrowed(t))
-            {
-                return;
-            }
-            // 随身视图没有建筑存储格，继续由执行期 SplitOff 统一从权威库存取出。
-            if (!(view.Context is Building_OuterrealmVault))
-            {
-                return;
-            }
-
-            // 原版刚把 reservation 记在投影上。先释放投影，再原子地从全局权威库存借出真实物品，
-            // 重写 Job 目标并预留真实物品。全局 Count 在借出时立即扣减，因此跨地图也不会超卖。
-            __instance.Release(target, claimant, job);
-            Thing actual;
-            if (!view.TryLendCopy(t, ResolveLendNeed(job, t, stackCount), out actual))
-            {
-                __result = false;
-                return;
-            }
-            OuterrealmPatchUtil.ReplaceJobThing(job, t, actual);
-            // 方案 C：打包建筑借出后，把引用副本的安装蓝图重定向到真物——否则 pawn 手里
-            // 拿的是真物、蓝图引用的是副本，安装时 MakeSolidThing 用副本的复制品 InnerThing
-            // 生成建筑、真物被 DepositHauledThingInContainer 的 ClearAndDestroyContents 销毁
-            // （复制品 + 真物丢失）。重定向后 pawn 手里、蓝图引用、安装产物三者实例一致。
-            OuterrealmVaultUtil.RedirectBlueprintToActual(t, actual);
-            int actualStackCount = stackCount == ReservationManager.StackCount_All
-                ? ReservationManager.StackCount_All
-                : Math.Min(Math.Max(1, stackCount), actual.stackCount);
-            bool reservedActual = __instance.Reserve(
-                claimant, job, (LocalTargetInfo)actual, maxPawns, actualStackCount,
-                layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs);
-            if (!reservedActual)
-            {
-                view.ReturnCopy(actual);
-                __result = false;
-                return;
-            }
-            __result = true;
         }
 
         /// <summary>
@@ -428,7 +470,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             try
             {
                 GenSpawn.Spawn(actual, claimant.Position, claimant.Map);
-                OuterrealmPatchUtil.ReplaceJobThing(job, canonical, actual);
+                OuterrealmPatchUtil.ReplaceJobThingReference(job, canonical, actual);
                 targetReplaced = true;
                 int actualStackCount = stackCount == ReservationManager.StackCount_All
                     ? ReservationManager.StackCount_All
@@ -437,7 +479,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     claimant, job, (LocalTargetInfo)actual, maxPawns, actualStackCount,
                     layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs))
                 {
-                    OuterrealmPatchUtil.ReplaceJobThing(job, actual, canonical);
+                    OuterrealmPatchUtil.ReplaceJobThingReference(job, actual, canonical);
                     targetReplaced = false;
                     GameComponent_OuterrealmStorage.Instance?.Deposit(actual);
                     return false;
@@ -449,7 +491,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 if (targetReplaced)
                 {
-                    OuterrealmPatchUtil.ReplaceJobThing(job, actual, canonical);
+                    OuterrealmPatchUtil.ReplaceJobThingReference(job, actual, canonical);
                 }
                 if (!actual.Destroyed && actual.stackCount > 0)
                 {
@@ -467,14 +509,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             // 原版 StackCount_All 指“当前目标堆全部”，不是全局 long 库存全部；以投影当前堆量为基准，
             // 后续再由 job.count/countQueue 按真实工作需求向上修正，避免一个 job 锁住整座全局仓。
-            int need = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
-            if (need <= 0)
-            {
-                need = 1;
-            }
+            int need = stackCount == ReservationManager.StackCount_All ? 0 : stackCount;
             if (job == null)
             {
-                return need;
+                return need > 0 ? need : Math.Max(1, t.stackCount);
             }
             List<LocalTargetInfo> q = job.targetQueueB;
             if (q != null)
@@ -489,11 +527,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         {
                             c = job.count;
                         }
-                        if (c > need)
-                        {
-                            need = c;
-                        }
-                        break;
+                        // countQueue 是本次配方对该候选的精确需求，优先级高于
+                        // StackCount_All（后者仅表示“预留候选当前整堆”）。
+                        return Math.Max(1, c);
                     }
                 }
             }
@@ -501,7 +537,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 need = job.count;
             }
-            return need;
+            return need > 0 ? need : Math.Max(1, t.stackCount);
         }
 
     }
@@ -586,24 +622,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 穿戴 job 预留修复：衣物来自本系统建筑时预留"副本（1 件，排队）"而非"建筑" ──
-    // ① 原版 JobDriver_Wear/ForceTargetWear 在 TargetIsOnApparelSource 时 Reserve(建筑)。
-    //    本建筑作为无限容量存储目的地常被搬运工 HaulToContainer 预留 → Reserve(建筑) 失败
-    //    → job 无法启动（点击穿戴无动作 / OptimizeApparel 自动穿戴失败后不设冷却而每 tick 重试）。
-    // ② 预留副本用"排队语义"（maxPawns=8, stackCount=1）：多个 pawn 可同时预留同一副本，
-    //    先到者 RemoveApparel 穿走（副本移除），后到者穿戴 delay toil 的 FailOnDespawnedNullOrForbidden(A)
-    //    使 job 在执行中失败一次即恢复——不再出现"检查（建筑）通过但预留（副本）失败"的每 tick 循环。
+    // ── 穿戴 job 的显式提前租约 ────────────────────────────────────────────────
+    // 视图投影为了能被原版服装搜索器发现，会表现为位于 vault 格上的 pseudo-Spawned Thing；因此
+    // JobDriver_Wear.TargetIsOnApparelSource 会返回 false，原版会把投影当作地面实物直接穿戴。
+    // 穿戴流程又没有 TryStartCarry 这一统一的“实际取用”节点，不能等到搬运阶段再兑现。
+    // 所以这里是延迟兑现架构的少数例外：仅当目标仍由视图持有时，在 job 启动前租出 1 件权威
+    // Apparel，并把目标精确替换为该实物。任务结束回调负责回收尚未穿走的租出物；普通制作、
+    // 搬运仍只预留投影，不会因为 Reserve 就让真实原料离开全局库存。
     [HarmonyPatch(typeof(JobDriver_Wear), "TryMakePreToilReservations")]
     internal static class Patch_JobDriver_Wear_TryMakePreToilReservations
     {
         private static bool Prefix(JobDriver_Wear __instance, bool errorOnFailed, ref bool __result)
         {
             Thing apparelThing = __instance.job.GetTarget(TargetIndex.A).Thing;
-            if (!(apparelThing is Apparel ap) || ap.Spawned || !(ap.ParentHolder is Building_OuterrealmVault))
+            if (!(apparelThing is Apparel) ||
+                !(apparelThing.holdingOwner is OuterrealmVaultViewThingOwner))
             {
                 return true; // 非本系统：完全走原版
             }
-            __result = __instance.pawn.Reserve(ap, __instance.job, 8, 1, errorOnFailed: errorOnFailed);
+            __result = OuterrealmPatchUtil.TryLeaseProjectionForJob(
+                __instance, TargetIndex.A, 1, 8, errorOnFailed);
             return false;
         }
     }
@@ -614,11 +652,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(JobDriver_ForceTargetWear __instance, bool errorOnFailed, ref bool __result)
         {
             Thing apparelThing = __instance.job.GetTarget(TargetIndex.B).Thing;
-            if (!(apparelThing is Apparel ap) || ap.Spawned || !(ap.ParentHolder is Building_OuterrealmVault))
+            if (!(apparelThing is Apparel) ||
+                !(apparelThing.holdingOwner is OuterrealmVaultViewThingOwner))
             {
                 return true; // 非本系统：完全走原版
             }
-            // 本系统：复制原版逻辑，仅 ApparelSource 分支改为预留副本 1 件（排队语义，其余保持不变）
+            // 本系统：复制原版对目标 pawn 的预留逻辑，再为衣物建立显式租约。
             Pawn targetPawn = __instance.job.GetTarget(TargetIndex.A).Thing as Pawn;
             __instance.job.count = 1;
             if (__instance.pawn == targetPawn)
@@ -632,23 +671,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
-            __result = __instance.pawn.Reserve(ap, __instance.job, 8, 1, errorOnFailed: errorOnFailed);
+            __result = OuterrealmPatchUtil.TryLeaseProjectionForJob(
+                __instance, TargetIndex.B, 1, 8, errorOnFailed);
             return false;
         }
     }
 
     // ── 装备 job 修复：原版 JobDriver_Equip 的容器武器路径硬编码 Building_OutfitStand ──
-    // （TargetIsOnOutfitStand）。本系统武器副本走普通路径时 GotoThing(副本) +
-    // FailOnDespawnedNullOrForbidden(A) 对未 Spawned 副本（Despawned=true）在起始即失败——
-    // pawn 停住后不走向建筑、不装备，立即转做其他任务（点击后只闪一下目标标记）。
-    // 本系统场景替换为自定义 toils：走到建筑（targetB）→ 副本 SplitOff(1) → AddEquipment。
+    // （TargetIsOnOutfitStand）。vault 投影虽然伪装为 Spawned 以参与候选搜索，却仍由视图持有，
+    // 不能交给原版当作地面实物直接装备。本系统场景替换为自定义 toils：走到建筑（targetB）
+    // → 在最终装备边界从权威库存 SplitOff(1) → AddEquipment。识别条件只看 holdingOwner，
+    // 不依赖投影的 Spawned 外观，避免以后调整查询注册方式时再次漏掉该路径。
     [HarmonyPatch(typeof(JobDriver_Equip), "MakeNewToils")]
     internal static class Patch_JobDriver_Equip_MakeNewToils
     {
         private static bool Prefix(JobDriver_Equip __instance, ref IEnumerable<Toil> __result)
         {
             Thing weapon = __instance.job.GetTarget(TargetIndex.A).Thing;
-            if (!(weapon is ThingWithComps) || weapon.Spawned || !(weapon.ParentHolder is Building_OuterrealmVault))
+            if (!(weapon is ThingWithComps) ||
+                !(weapon.holdingOwner is OuterrealmVaultViewThingOwner))
             {
                 return true; // 非本系统：完全走原版
             }
@@ -660,7 +701,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             driver.FailOnDestroyedOrNull<JobDriver_Equip>(TargetIndex.A);
             Thing weapon = driver.job.GetTarget(TargetIndex.A).Thing;
-            // 行走目标 = 建筑（副本未 Spawned，不能作为 GotoThing 目标；原版 OutfitStand 路径同样以容器为行走目标）
+            // 行走目标 = 建筑。投影虽报告 Spawned，但不在 thingGrid 中，不能作为普通地面物寻路。
             driver.job.targetB = (LocalTargetInfo)(Thing)weapon.ParentHolder;
             yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.InteractionCell)
                 .FailOnDespawnedNullOrForbidden(TargetIndex.B);
@@ -835,7 +876,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 RollbackVaultTake(item, splitStack, view);
                 return num;
             }
-            OuterrealmPatchUtil.ReplaceJobThing(pawn.CurJob, item, carry.CarriedThing);
+            // 此时 ExtractNextTargetFromQueue 已把本次目标放入 A/B/C，队列中的后续同类需求
+            // 必须继续保留投影，轮到它们时再独立 Checkout。
+            OuterrealmPatchUtil.ReplaceJobThingReference(pawn.CurJob, item, carry.CarriedThing);
+            // 打包建筑的安装蓝图最初引用查询投影；延迟 Checkout 后在真正拿起的这一刻
+            // 重定向到权威实例，保证手中物、蓝图引用和最终安装产物是同一个对象链。
+            OuterrealmVaultUtil.RedirectBlueprintToActual(item, carry.CarriedThing);
             item.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(item.Position, pawn.Map));
             if (reserve)
             {
@@ -1424,10 +1470,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 半 Spawned 投影配套：食用执行——从 vault 取食送到嘴边 ──
+    // ── 伪 Spawned 投影配套：食用执行——从 vault 取食送到嘴边 ──
     // 自动食用 / 右键“食用”都会生成 JobDefOf.Ingest（targetA = 食物副本）。原版 PrepareToIngestToils_ToolUser
-    // 用 GotoThing(A).FailOnDespawnedNullOrForbidden 走到食物，副本未 Spawned 会在起始失败。
-    // 此处对 vault 副本重写“取食”阶段：走到 vault 建筑交互格 → PickupIngestible（内部 TryStartCarry 已 patch，
+    // 用 GotoThing(A) 走向普通地面食物；投影不在 thingGrid 中，不能依赖这条路径。
+    // 此处按 holdingOwner 识别 vault 投影并重写“取食”阶段：走到 vault 建筑交互格 → PickupIngestible（内部 TryStartCarry 已 patch，
     // 对副本 Boost+SplitOff+入 carry）→ 后续 CarryIngestibleToChewSpot / FindAdjacentEatSurface 原样复用。
     [HarmonyPatch(typeof(JobDriver_Ingest), "PrepareToIngestToils_ToolUser")]
     internal static class Patch_JobDriver_Ingest_PrepareToIngestToils_ToolUser
@@ -1435,7 +1481,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(JobDriver_Ingest __instance, ref IEnumerable<Toil> __result)
         {
             Thing food = __instance.job.GetTarget(TargetIndex.A).Thing;
-            if (food == null || food.Spawned || !(food.ParentHolder is Building_OuterrealmVault))
+            if (food == null || !(food.holdingOwner is OuterrealmVaultViewThingOwner))
             {
                 return true; // 非 vault 副本：完全走原版
             }
@@ -1445,7 +1491,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static IEnumerable<Toil> VaultPrepareToIngestToils(JobDriver_Ingest driver)
         {
-            // 走到 vault 建筑交互格（副本未 Spawned，不能作为行走目标）
+            // 走到 vault 建筑交互格（投影不在 thingGrid 中，不能作为普通地面物行走目标）
             yield return new Toil
             {
                 initAction = () =>
@@ -1472,14 +1518,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
     // ── 半 Spawned 投影配套：治疗取药——从 vault 取药为病人治疗 ──
     // 自动治疗 / 征召治疗（TendPatient / TendEntity）的 JobOnThing 用 HealthAIUtility.FindBestMedicine
-    // （扫 map.listerThings.ThingsInGroup(Medicine)）选药，vault 视图药品副本（未 Spawned 的半 Spawned
-    // 投影）会被选中为 targetB；WorkGiver_Tend 额外把 targetC = bestMedicine.SpawnedParentOrMe = vault
-    // 建筑（副本未 Spawned，ParentHolder 链解析到建筑）。
+    // （扫 map.listerThings.ThingsInGroup(Medicine)）选药，vault 视图药品投影会被选中为 targetB。
     // 原版 JobDriver_TendPatient.CollectMedicineToils 的取药 toil 序列对 targetB 带
-    // FailOnDespawnedNullOrForbidden：副本未 Spawned → job 启动即 Incompletable 失败 → 每 tick 重试
-    // → "started 10 jobs in one tick" 报错（与 §穿戴 Mia 报错同构，此处为治疗路径）。
-    // 本分支对 vault 副本重写"取药"阶段：走到 vault 建筑交互格 → ReserveMedicine（副本预留，不带
-    // FailOnDespawned——副本未 Spawned）→ PickupMedicine（内部 TryStartCarry 已由
+    // 普通取药路径把目标当作 thingGrid 中的地面实物；投影只有查询注册和位置外观，不是真实地面物。
+    // 本分支按 holdingOwner 识别 vault 投影并重写"取药"阶段：走到 vault 建筑交互格 →
+    // ReserveMedicine（只预留投影）→ PickupMedicine（内部 TryStartCarry 已由
     // Patch_Pawn_CarryTracker_TryStartCarry 接管：Boost + SplitOff + 入 carry）→ 去病人处治疗。
     // 行走目标动态取 job.targetB.Thing.ParentHolder（TendEntity job 无 targetC，不能依赖）。
     // 该 patch 打在 static 方法上，JobDriver_TendEntity 的取药路径（同样调用 CollectMedicineToils）一并覆盖。
@@ -1489,7 +1532,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(Pawn doctor, Pawn patient, Job job, Toil gotoToil, out Toil reserveMedicine, ref List<Toil> __result)
         {
             Thing medicineUsed = job.targetB.Thing;
-            if (medicineUsed == null || medicineUsed.Spawned || !(medicineUsed.ParentHolder is Building_OuterrealmVault))
+            if (medicineUsed == null ||
+                !(medicineUsed.holdingOwner is OuterrealmVaultViewThingOwner))
             {
                 reserveMedicine = null;
                 return true; // 非本系统：完全走原版
@@ -1497,27 +1541,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             List<Toil> toils = new List<Toil>();
             // ① 医生已携带该药（FindMoreMedicineToil 补药后）：直接去病人处治疗
             toils.Add(Toils_Jump.JumpIf(gotoToil, () => medicineUsed != null && doctor.inventory.Contains(medicineUsed)));
-            // ② 预留药品副本（排队语义；不能带 FailOnDespawnedNullOrForbidden——副本未 Spawned 会在起始即失败）
+            // ② 只预留查询投影；Reserve 不兑现实物，避免任务取消或改派时产生可被搬走的原料。
             reserveMedicine = Toils_Tend.ReserveMedicine(TargetIndex.B, patient);
             toils.Add(reserveMedicine);
-            // ③ 走到 vault 建筑交互格（副本未 Spawned 不能作为行走目标；动态从副本 ParentHolder 取建筑）
+            // ③ 走到 vault 建筑交互格；若第三方已把目标替换为真实物，则退回普通地面物路径。
             toils.Add(new Toil
             {
                 initAction = () =>
                 {
                     Thing medicine = job.GetTarget(TargetIndex.B).Thing;
-                    if (medicine != null && medicine.Spawned)
+                    if (medicine != null &&
+                        medicine.holdingOwner is OuterrealmVaultViewThingOwner projectionView)
                     {
-                        // Reserve 成功后投影已替换为权威药品并真 Spawn 到仓库格。
-                        doctor.pather.StartPath((LocalTargetInfo)medicine, PathEndMode.ClosestTouch);
-                    }
-                    else
-                    {
-                        Thing vault = medicine?.ParentHolder as Thing;
+                        Thing vault = projectionView.Context as Thing;
                         if (vault != null)
                         {
                             doctor.pather.StartPath((LocalTargetInfo)vault, PathEndMode.InteractionCell);
                         }
+                    }
+                    else if (medicine != null && medicine.Spawned)
+                    {
+                        doctor.pather.StartPath((LocalTargetInfo)medicine, PathEndMode.ClosestTouch);
                     }
                 },
                 defaultCompleteMode = ToilCompleteMode.PatherArrival

@@ -21,6 +21,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         public static GameComponent_OuterrealmStorage Instance;
 
+        // ── 存档格式版本 ──────────────────────────────────────────────────────
+        // 0/1：旧格式，Proto 是“属性模板”，Count 才是库存真相；Proto.stackCount 可能曾被
+        //      数量感知 Boost 临时改大，绝不能反向抬高 Count。
+        // 2：权威实例格式，Proto + AdditionalProtos 保存真实物品，Count 是运行时数量缓存。
+        // 显式版本是迁移正确性的必要条件：同一个字段在两代格式中语义不同，不能再通过
+        // canonical 与 ledger 谁更大来猜测，否则一次读档即可把显示数量永久变成真实库存。
+        private const int CurrentStorageSchemaVersion = 2;
+        private int storageSchemaVersion = CurrentStorageSchemaVersion;
+
+        // MaterializeProjection 调用 ThingMaker.MakeThing 时，其他 Mod 的全局 Postfix 也会执行。
+        // 线程局部深度仅标识“正在制作查询投影”的极短调用窗口，供可选兼容补丁跳过会给投影
+        // 随机写入业务数据的逻辑。RimWorld 1.6 的加载线程可能不是主线程，故不能使用普通静态 bool。
+        [ThreadStatic]
+        private static int projectionMaterializationDepth;
+
+        public static bool ProjectionMaterializationActive => projectionMaterializationDepth > 0;
+
         private List<OuterrealmEntry> entries = new List<OuterrealmEntry>();
         // §B 设计（CanStackWith 动态分组）：条目不再按 OuterrealmEntryKey 哈希索引——
         // 合并判据 = 原版 Thing.CanStackWith + def.stackLimit > 1（原版容量语义：stackLimit=1
@@ -102,6 +119,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             if (item == null || item.stackCount <= 0)
             {
+                return null;
+            }
+            if (OuterrealmVaultUtil.IsProjection(item))
+            {
+                // 投影的 stackCount 只是查询/显示数量，把它存回权威层等价于复制物品。
+                // 必须在 DeSpawn 前拒绝，因为第三方可能已经把投影从 view 移除，此时仅检查
+                // holdingOwner 已无法区分投影与真实物品。
+                Log.ErrorOnce("[OuterrealmStorage] Rejected an attempt to deposit a query projection as canonical inventory: "
+                    + item.ToStringSafe(), 0x4F535052 ^ item.thingIDNumber);
                 return null;
             }
             if (item.Spawned)
@@ -797,6 +823,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return t;
         }
 
+        /// <summary>
+        /// 创建不拥有库存数量的查询投影。投影必须保持原物 Thing 类型，才能兼容原版和第三方
+        /// 对 def、Comp、食物、装备等属性的筛选；但它永远不能被 Deposit 当作真实物品。
+        /// 创建作用域还允许 Common Sense 等对 ThingMaker 的全局补丁识别并跳过“随机补业务数据”。
+        /// </summary>
+        public static Thing MaterializeProjection(Thing proto)
+        {
+            projectionMaterializationDepth++;
+            try
+            {
+                Thing projection = Materialize(proto);
+                OuterrealmVaultUtil.MarkProjection(projection);
+                return projection;
+            }
+            finally
+            {
+                projectionMaterializationDepth--;
+            }
+        }
+
         /// <summary>复制 P1 基础属性（耐久/品质/样式/颜色）。</summary>
         private static void CopyBaseProperties(Thing from, Thing to)
         {
@@ -857,7 +903,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            EnsureCanonicalQuantity(entry);
+            // 回滚条目的 Count 已由调用方保存，必须恢复到这个精确数量；不能用临时权威堆
+            // 的偶发 stackCount 反向改写账目。复用旧格式规范化函数可同时补足或裁掉差额。
+            MigrateLegacyCanonicalQuantity(entry);
             AddEntry(entry);
             AdjustResourceTotal(ResourceDefOf(entry.Proto), entry.Count);
             version++;
@@ -1146,17 +1194,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 旧存档迁移：旧版本只保存一个属性模板 Proto + long Count，Proto.stackCount 不等于真实总量。
-        /// 首次读档把缺口展开为一个或少数 int 容量的权威堆。旧档在历史上已经丢失的逐堆状态
-        /// 无法恢复；迁移至少保证之后的取出不再重新生成实例。
+        /// 统计条目内仍然存在的权威实例数量，并顺便清理 null、已销毁或空的附加堆。
+        /// 本方法只回答“实例实际代表多少”，不决定该数量是否可信；旧格式由 Count 主导迁移，
+        /// 新格式则由本统计结果反向重建 Count，二者通过显式 schema 分流，禁止互相猜测。
         /// </summary>
-        private static void EnsureCanonicalQuantity(OuterrealmEntry entry)
+        private static long RepresentedCanonicalQuantity(OuterrealmEntry entry)
         {
-            if (entry == null || entry.Proto == null || entry.Count <= 0)
+            if (entry == null || entry.Proto == null)
             {
-                return;
+                return 0L;
             }
-            long represented = entry.Proto.stackCount;
+            long represented = entry.Proto.Destroyed || entry.Proto.stackCount <= 0
+                ? 0L
+                : entry.Proto.stackCount;
             if (entry.AdditionalProtos != null)
             {
                 for (int i = entry.AdditionalProtos.Count - 1; i >= 0; i--)
@@ -1172,13 +1222,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                 }
             }
+            return represented;
+        }
+
+        /// <summary>
+        /// 旧格式迁移：旧 Count 是唯一可信数量，Proto 只是属性模板。若模板曾被 Boost 导致
+        /// stackCount 大于 Count，必须裁掉多余模板数量，绝不能把 Count 抬高；若模板数量不足，
+        /// 再按旧 Count 补齐权威堆。该迁移只在 schema &lt; 2 时执行一次。
+        /// </summary>
+        private static void MigrateLegacyCanonicalQuantity(OuterrealmEntry entry)
+        {
+            if (entry == null || entry.Proto == null || entry.Count <= 0)
+            {
+                return;
+            }
+            long represented = RepresentedCanonicalQuantity(entry);
             if (represented > entry.Count)
             {
-                // 权威物比旧账目更多时以真实实例为准，避免读档后静默销毁未知 Mod 状态。
-                Log.Warning("[OuterrealmStorage] Canonical quantity exceeds ledger for " + entry.Key
-                    + ": canonical=" + represented + ", ledger=" + entry.Count + ". Using canonical quantity.");
-                entry.Count = represented;
-                return;
+                // 这是旧格式中 Boost 可能留下的预期迁移输入，不属于运行时故障；静默裁回账本数量，
+                // 避免玩家每次首次加载旧档仍收到一条“已知且已自动修复”的黄色警告。
+                TrimCanonicalQuantity(entry, represented - entry.Count);
+                represented = RepresentedCanonicalQuantity(entry);
             }
             long missing = entry.Count - represented;
             if (missing <= 0)
@@ -1206,11 +1270,70 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>从附加堆尾部开始裁剪旧模板的账外数量，最后才裁主堆，尽量保留主实例及其 Comp 状态。</summary>
+        private static void TrimCanonicalQuantity(OuterrealmEntry entry, long excess)
+        {
+            List<Thing> extras = entry.AdditionalProtos;
+            if (extras != null)
+            {
+                for (int i = extras.Count - 1; i >= 0 && excess > 0; i--)
+                {
+                    Thing extra = extras[i];
+                    if (extra == null || extra.Destroyed || extra.stackCount <= 0)
+                    {
+                        extras.RemoveAt(i);
+                        continue;
+                    }
+                    int remove = (int)Math.Min(excess, extra.stackCount);
+                    if (remove >= extra.stackCount)
+                    {
+                        excess -= extra.stackCount;
+                        extras.RemoveAt(i);
+                        extra.Destroy();
+                    }
+                    else
+                    {
+                        // 迁移裁剪的是旧“模板数量”，不是一次游戏内拆堆操作；直接规范化数字可避免
+                        // ThingMaker/PostSplitOff 等第三方业务补丁把迁移误认为生成了真实物品。
+                        extra.stackCount -= remove;
+                        excess -= remove;
+                    }
+                }
+            }
+            if (excess <= 0 || entry.Proto == null || entry.Proto.Destroyed)
+            {
+                return;
+            }
+            int primaryRemove = (int)Math.Min(excess, Math.Max(0, entry.Proto.stackCount - 1));
+            if (primaryRemove > 0)
+            {
+                entry.Proto.stackCount -= primaryRemove;
+            }
+        }
+
+        /// <summary>
+        /// 新格式读档：权威实例是唯一真相，Count 只从权威堆重建，不再在两份可写状态之间猜测。
+        /// 正常保存中两者应相等；不相等说明旧运行时曾中途退出或有第三方直接改写权威实例，
+        /// 记录一次诊断后使用实际仍存在的权威物数量。
+        /// </summary>
+        private static void RebuildCountFromCanonical(OuterrealmEntry entry)
+        {
+            long represented = RepresentedCanonicalQuantity(entry);
+            if (represented != entry.Count)
+            {
+                Log.Warning("[OuterrealmStorage] Rebuilt cached count from canonical inventory for "
+                    + (entry.Proto?.def != null ? entry.Proto.def.defName : "null")
+                    + ": canonical=" + represented + ", cached=" + entry.Count + ".");
+                entry.Count = represented;
+            }
+        }
+
         // ── 存档 ─────────────────────────────────────────────────────────────────
 
         public override void ExposeData()
         {
             base.ExposeData();
+            Scribe_Values.Look(ref storageSchemaVersion, "storageSchemaVersion", 0);
             Scribe_Collections.Look(ref entries, "entries", LookMode.Deep);
             // managerCatShow 仅为读取旧版存档保留；新逻辑保存逐 ThingDef 的稀疏状态。
             Scribe_Collections.Look(ref managerCatShow, "managerCatShow", LookMode.Value, LookMode.Value);
@@ -1266,7 +1389,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         i--;
                         continue;
                     }
-                    EnsureCanonicalQuantity(e);
+                    if (storageSchemaVersion < CurrentStorageSchemaVersion)
+                    {
+                        MigrateLegacyCanonicalQuantity(e);
+                    }
+                    else
+                    {
+                        RebuildCountFromCanonical(e);
+                    }
+                    if (e.Count <= 0 || e.Proto.Destroyed)
+                    {
+                        entries.RemoveAt(i);
+                        i--;
+                        continue;
+                    }
                     e.Key = OuterrealmEntryKey.From(e.Proto);
                     e.LastSeenVersion = 0;
                     ThingDef def = e.Proto.def;
@@ -1291,6 +1427,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 ejectQueue.Clear();
                 vaultCountByMap.Clear();
                 SubspaceAccessUtility.ResetRuntimeState();
+                // PostLoadInit 完成后内存状态已经是当前格式；下一次保存会写出显式版本。
+                storageSchemaVersion = CurrentStorageSchemaVersion;
             }
         }
     }
