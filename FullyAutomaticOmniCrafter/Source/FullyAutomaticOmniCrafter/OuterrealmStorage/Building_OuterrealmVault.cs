@@ -402,17 +402,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             lastSeenVersion = GameComponent_OuterrealmStorage.Instance != null ? GameComponent_OuterrealmStorage.Instance.Version : lastSeenVersion;
         }
 
-        /// <summary>new 隐藏基类恒 true：vault 的"允许存入"开关（noDeposit）关闭时停止作为 haul 目标。
-        /// 第三方（含鸦族无人机）经 IHaulDestination 接口访问，接口调度命中本实现。</summary>
-        public new bool HaulDestinationEnabled => Spawned && !noDeposit;
+        /// <summary>new 隐藏基类恒 true 的实现：vault 禁止存入或冻结时停止作为 haul 目标。
+        /// 冻结必须在此门控，因为原版格子型存储搜索只检查 HaulDestinationEnabled 和
+        /// SlotGroup.Settings，不会调用本类带冻结判断的 Accepts。第三方（含鸦族无人机）经
+        /// IHaulDestination 接口访问时，接口调度同样命中本实现。</summary>
+        public new bool HaulDestinationEnabled => Spawned && !noDeposit && !frozen;
 
-        public bool HaulSourceEnabled => Spawned && !noWithdraw;
+        public bool HaulSourceEnabled => Spawned && !noWithdraw && !frozen;
 
         // IApparelSource（§装备优化兼容）：让 JobDriver_Wear/JobGiver_OptimizeApparel 走"从衣柜取"路径
         // ——否则视图里的衣物副本被判为普通候选，穿戴流程对未 Spawned 物品必然失败，
         // 形成"Wear job 立即失败 → 重复生成"循环（Mia started 10 jobs in one tick 报错）。
-        // ApparelSourceEnabled 与"允许取出"联动：禁止取出时 OptimizeApparel 跳过本建筑衣物。
-        public bool ApparelSourceEnabled => !noWithdraw;
+        // ApparelSourceEnabled 与"允许取出"及冻结联动：不可取出时 OptimizeApparel 跳过本建筑衣物。
+        public bool ApparelSourceEnabled => Spawned && !noWithdraw && !frozen;
 
         /// <summary>从视图移除衣物（穿戴即取出：经 Notify_ItemRemoved 扣全局并补回，§3.3）。</summary>
         public bool RemoveApparel(Apparel apparel)

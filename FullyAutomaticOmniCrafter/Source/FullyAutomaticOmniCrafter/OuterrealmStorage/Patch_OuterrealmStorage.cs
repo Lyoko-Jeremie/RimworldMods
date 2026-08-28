@@ -1950,6 +1950,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (vault != null && vault.Spawned)
             {
+                // 存储格候选选出后、任务实际生成前，设置可能已变化。冻结时原版格子搜索不会调用
+                // vault.Accepts，因此在转换成 HaulToContainer 前再次校验，避免任务首个 toil 立即
+                // 失败后被 JobGiver_Work 在同一 tick 反复重新派发。
+                if (!vault.HaulDestinationEnabled || !vault.Accepts(t))
+                {
+                    __result = null;
+                    return false;
+                }
                 // 方案 A：等待安装的打包建筑（被 Blueprint_Install 引用）禁止存入 vault——
                 // 否则蓝图引用的权威实例被藏入全局层后不可达，安装 job 永远"没有路径"卡死。
                 // 自动搬运在此被拦截，物品留在地面，安装工作照常从地面取用；
