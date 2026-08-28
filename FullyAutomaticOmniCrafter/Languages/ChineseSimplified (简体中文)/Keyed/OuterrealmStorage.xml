@@ -91,7 +91,7 @@
   <SubspaceAccess_AutoStore>自动存入</SubspaceAccess_AutoStore>
   <SubspaceAccess_AutoStoreDesc>制作完成后自动将产物存入超维存储。关闭后产物留在原地按原版流程处理，右键手动存入不受影响。</SubspaceAccess_AutoStoreDesc>
   <SubspaceAccess_AutoStoreFiltered>按类别限制存入</SubspaceAccess_AutoStoreFiltered>
-  <SubspaceAccess_AutoStoreFilteredDesc>自动存入时逐个核对当前地图上的所有超维存储仓：仅当产物能被至少一个仓接受（存储清单允许且未冻结、未禁止存入）时才自动存入；若存在比超维存储仓优先级更高的存储区/存储建筑也接受该产物，则按原版优先级语义不存入，交给原版流程放置（可存到其他指定的存储区）。关闭 = 自动全部存入。</SubspaceAccess_AutoStoreFilteredDesc>
+  <SubspaceAccess_AutoStoreFilteredDesc>自动存入时逐个核对当前地图上的所有超维存储仓访问端口：仅当产物能被至少一个仓接受（存储清单允许且未冻结、未禁止存入）时才自动存入；若存在比超维存储仓访问端口优先级更高的存储区/存储建筑也接受该产物，则按原版优先级语义不存入，交给原版流程放置（可存到其他指定的存储区）。关闭 = 自动全部存入。</SubspaceAccess_AutoStoreFilteredDesc>
   <SubspaceAccess_AutoStoreFilteredDisabledReason>需要先开启"自动存入"。</SubspaceAccess_AutoStoreFilteredDisabledReason>
   <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
   <SubspaceAccess_FilterHuman>人类</SubspaceAccess_FilterHuman>
@@ -99,7 +99,7 @@
   <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid>
   <SubspaceAccess_ShowIcons>显示图像</SubspaceAccess_ShowIcons>
   <!-- Vault right-click menu refresh mode -->
-  <VaultMenuRefreshModeLabel>超维存储仓右键菜单刷新模式</VaultMenuRefreshModeLabel>
+  <VaultMenuRefreshModeLabel>超维存储仓访问端口右键菜单刷新模式</VaultMenuRefreshModeLabel>
   <VaultMenuRefreshModeDesc>控制右键菜单打开期间的重新生成频率。存储条目较多时重新生成开销很大，此设置可缓解卡顿。</VaultMenuRefreshModeDesc>
   <VaultMenuRefreshModeLazy>快照模式（推荐）：打开后不重新生成</VaultMenuRefreshModeLazy>
   <VaultMenuRefreshModeLazyDesc>菜单内容在打开期间保持不变，点击选项时按当前游戏状态重新校验。性能最好；适合存储菜单打开期间内容几乎不变的场景。</VaultMenuRefreshModeLazyDesc>
@@ -109,8 +109,8 @@
   <VaultMenuRefreshModeAdaptive>时间模式：每 N 秒重新生成一次</VaultMenuRefreshModeAdaptive>
   <VaultMenuRefreshModeAdaptiveDesc>每隔指定真实秒数全量重新生成菜单（最少间隔 4 帧），与帧率无关。</VaultMenuRefreshModeAdaptiveDesc>
   <VaultMenuRefreshSecondsLabel>刷新间隔（秒）</VaultMenuRefreshSecondsLabel>
-  <!-- 全局开关：超维存储仓物品是否计入殖民地财富 -->
-  <OmniCrafter_VaultExcludeFromWealth>超维存储仓物品不计入殖民地财富</OmniCrafter_VaultExcludeFromWealth>
+  <!-- 全局开关：超维存储仓访问端口中的物品是否计入殖民地财富 -->
+  <OmniCrafter_VaultExcludeFromWealth>超维存储仓访问端口中的物品不计入殖民地财富</OmniCrafter_VaultExcludeFromWealth>
   <OmniCrafter_VaultExcludeFromWealthDesc>开启后，存储仓中的物品不计入殖民地财富（WealthItems），也不会进入袭击点数计算。已取出或正在搬运中的物品仍正常计入。默认开启。</OmniCrafter_VaultExcludeFromWealthDesc>
   <OuterrealmFloatMenu_Count>显示 {0} / {1} 项</OuterrealmFloatMenu_Count>
   <OuterrealmFloatMenu_NoMatch>无匹配项</OuterrealmFloatMenu_NoMatch>

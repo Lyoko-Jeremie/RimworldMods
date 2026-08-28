@@ -3,7 +3,7 @@
 
   <!--
     ══════════════════════════════════════════════════════════════════════
-    超维存储仓 / Outerrealm Vault
+    超维存储仓访问端口 / Outerrealm Vault Access Point
     thingClass : FullyAutomaticOmniCrafter.OuterrealmStorage.Building_OuterrealmVault
     功能 :
       · 无限容量：不受 maxItemsInCell × 格数、stackLimit 约束。
