@@ -86,7 +86,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            OuterrealmEntry entry = gs.Deposit(item); // 吸收（复用为 proto 或销毁），返回合并/新建条目
+            OuterrealmEntry entry = gs.Deposit(item, Context as Building_OuterrealmVault); // 外部存入：该终端成为唯一物品默认仓
             // listerHaulables 通知由下方 EnsureCopyFor 物化新副本时的 Notify_ItemAdded 钩子覆盖（锁定条目经 #6 短路不加）；
             // 此处不再手动通知，避免对已吸收（可能已销毁）实例做无意义 Check（§3.2 单一入口）。
             if (entry != null)
@@ -111,7 +111,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return 0;
             }
             Thing absorbed = item.SplitOff(take); // 拆分出要吸收的部分（item 保留剩余）
-            OuterrealmEntry entry = gs.Deposit(absorbed);
+            OuterrealmEntry entry = gs.Deposit(absorbed, Context as Building_OuterrealmVault);
             if (entry != null)
             {
                 EnsureCopyFor(entry);
@@ -686,9 +686,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            if (entry.Proto is Corpse)
+            if (OuterrealmIdentityRouting.IsUnique(entry))
             {
-                return; // 尸体为唯一实体（InnerPawn 不可复制）：不物化视图副本，UI 直接显示条目 proto
+                return; // 唯一物品由权威原物锚点接入查询，禁止制造丢失身份/外部引用的语义副本
             }
             Thing copy = FindCopy(entry);
             if (copy != null)
@@ -854,9 +854,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                if (e.Proto is Corpse)
+                if (OuterrealmIdentityRouting.IsUnique(e))
                 {
-                    continue; // 尸体不物化视图副本（唯一实体）
+                    continue; // 唯一物品由权威原物锚点管理
                 }
                 Thing copy = FindCopy(e);
                 if (copy != null)

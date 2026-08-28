@@ -48,6 +48,17 @@
 
   <!-- Storage manager: eject everything -->
   <OuterrealmStorageManager_EjectAllEntries>Eject everything</OuterrealmStorageManager_EjectAllEntries>
+  <OuterrealmStorageManager_MoveHome>Move</OuterrealmStorageManager_MoveHome>
+  <OuterrealmStorageManager_CurrentHome>Current: {0}</OuterrealmStorageManager_CurrentHome>
+  <OuterrealmStorageManager_CurrentTemporary>Temporary: {0} (home: {1})</OuterrealmStorageManager_CurrentTemporary>
+  <OuterrealmStorageManager_HomeUnavailable>Home: {0} (currently inaccessible)</OuterrealmStorageManager_HomeUnavailable>
+  <OuterrealmStorageManager_NoHomeVault>No default vault assigned</OuterrealmStorageManager_NoHomeVault>
+  <OuterrealmStorageManager_NotUnique>This entry is not a unique item.</OuterrealmStorageManager_NotUnique>
+  <OuterrealmStorageManager_VaultUnavailable>The target vault is currently unavailable.</OuterrealmStorageManager_VaultUnavailable>
+  <OuterrealmStorageManager_VaultRejectsItem>The target vault's filter does not accept this item</OuterrealmStorageManager_VaultRejectsItem>
+  <OuterrealmStorageManager_ItemReserved>The item is reserved; its default vault cannot be moved yet.</OuterrealmStorageManager_ItemReserved>
+  <OuterrealmStorageManager_MoveHomeSucceeded>Default vault moved to {0}.</OuterrealmStorageManager_MoveHomeSucceeded>
+  <OuterrealmStorageManager_NoMigrationTargets>No migration targets are available</OuterrealmStorageManager_NoMigrationTargets>
 
   <!-- Storage manager: category tree tri-state filter (green ✓ / red × / yellow ~, vanilla AllowanceStateOf semantics) -->
   <OuterrealmStorageManager_CatShowTip>All items in this category and its subcategories are shown (green ✓). Click to hide all</OuterrealmStorageManager_CatShowTip>

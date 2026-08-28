@@ -45,7 +45,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private ThingCategoryDef selectedCategory;
 
         private const float CategoryWidth = 400f;
-        private const float RowHeight = 28f;
+        private const float RowHeight = 46f;
         private const float CategoryLineHeight = 24f;
 
         public Dialog_OuterrealmStorageManager()
@@ -465,11 +465,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             int visibleBuildings = CountVisibleBuildings(gs, entry);
 
-            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 2f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
+            bool unique = OuterrealmIdentityRouting.IsUnique(entry);
+            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
             {
                 gs.EnqueueEject(entry, TargetMap(), entry.Count, TargetAnchor());
             }
-            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 2f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
+            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
             {
                 int max = (int)Mathf.Min(entry.Count, int.MaxValue);
                 if (max > 0)
@@ -482,37 +483,116 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         (int v) => gs.EnqueueEject(entry, TargetMap(), v, TargetAnchor())));
                 }
             }
-            rect.width -= 190f;
+            if (unique && Widgets.ButtonText(
+                new Rect(rect.x + rect.width - 270f, curY + 10f, 86f, 24f),
+                "OuterrealmStorageManager_MoveHome".Translate(), true, false, true))
+            {
+                OpenMoveHomeMenu(gs, entry);
+            }
+            rect.width -= unique ? 280f : 190f;
 
             if (entry.Proto is Corpse protoCorpse && protoCorpse.Bugged)
             {
-                Widgets.InfoCardButton(rect.width - 24f, curY, entry.Proto.def);
+                Widgets.InfoCardButton(rect.width - 24f, curY + 9f, entry.Proto.def);
             }
             else
             {
-                Widgets.InfoCardButton(rect.width - 24f, curY, entry.Proto);
+                Widgets.InfoCardButton(rect.width - 24f, curY + 9f, entry.Proto);
             }
             rect.width -= 24f;
-            OuterrealmVaultUtil.ThingIconSafe(new Rect(4f, curY, 28f, 28f), entry.Proto);
+            OuterrealmVaultUtil.ThingIconSafe(new Rect(4f, curY + 9f, 28f, 28f), entry.Proto);
 
             string text = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto) + " x" + entry.Count.ToString("N0");
             string flagText = visibleBuildings == 0
                 ? "OuterrealmStorageManager_Unseen".Translate()
                 : "OuterrealmStorageManager_VisibleBuildings".Translate(visibleBuildings);
-            // 名称左对齐、可见性标志右对齐：标志与名称分离显示，避免与长名称挤在一起难以查看
+            string locationText = unique ? IdentityLocationText(entry) : flagText;
+            // 第一行显示名称；第二行显示唯一物品默认/当前仓，普通条目沿用可见终端统计。
             Text.Anchor = TextAnchor.MiddleLeft;
-            float flagWidth = Text.CalcSize(flagText).x;
-            float nameWidth = rect.width - 36f - flagWidth - 12f;
+            float nameWidth = rect.width - 36f;
             if (nameWidth < 20f)
             {
                 nameWidth = 20f;
             }
-            Widgets.Label(new Rect(36f, curY, nameWidth, rect.height), text.StripTags().Truncate(nameWidth));
-            Text.Anchor = TextAnchor.MiddleRight;
-            Widgets.Label(new Rect(rect.width - flagWidth, curY, flagWidth, rect.height), flagText);
+            Widgets.Label(new Rect(36f, curY, nameWidth, 23f), text.StripTags().Truncate(nameWidth));
+            GUI.color = unique ? new Color(0.72f, 0.85f, 1f) : Color.gray;
+            Widgets.Label(new Rect(36f, curY + 21f, nameWidth, 22f), locationText.StripTags().Truncate(nameWidth));
+            GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
-            TooltipHandler.TipRegion(rect, text + "  " + flagText);
+            TooltipHandler.TipRegion(rect, text + "\n" + locationText + "\n" + flagText);
             curY += RowHeight;
+        }
+
+        /// <summary>唯一物品位置：当前临时出口优先；未建立锚点时仍显示持久默认仓。</summary>
+        private static string IdentityLocationText(OuterrealmEntry entry)
+        {
+            Building_OuterrealmVault current = OuterrealmIdentityRouting.CurrentVault(entry);
+            Building_OuterrealmVault home = entry.HomeVault;
+            if (current != null && current != home)
+            {
+                return "OuterrealmStorageManager_CurrentTemporary".Translate(
+                    OuterrealmIdentityRouting.VaultDisplayName(current),
+                    OuterrealmIdentityRouting.VaultDisplayName(home));
+            }
+            if (current != null)
+            {
+                return "OuterrealmStorageManager_CurrentHome".Translate(
+                    OuterrealmIdentityRouting.VaultDisplayName(current));
+            }
+            if (home != null)
+            {
+                return "OuterrealmStorageManager_HomeUnavailable".Translate(
+                    OuterrealmIdentityRouting.VaultDisplayName(home));
+            }
+            return "OuterrealmStorageManager_NoHomeVault".Translate();
+        }
+
+        /// <summary>列出全部地图上的终端；选择后迁移持久默认仓并立即把空闲锚点归位。</summary>
+        private void OpenMoveHomeMenu(GameComponent_OuterrealmStorage gs, OuterrealmEntry entry)
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault == null || !vault.Spawned || vault.Destroyed)
+                {
+                    continue;
+                }
+                string label = OuterrealmIdentityRouting.VaultDisplayName(vault);
+                if (vault == entry.HomeVault)
+                {
+                    label = "✓ " + label;
+                }
+                if (!vault.CanShow(entry.Proto))
+                {
+                    options.Add(new FloatMenuOption(
+                        label + " (" + "OuterrealmStorageManager_VaultRejectsItem".Translate() + ")", null));
+                    continue;
+                }
+                Building_OuterrealmVault selected = vault;
+                options.Add(new FloatMenuOption(label, () =>
+                {
+                    string reason;
+                    if (!OuterrealmIdentityRouting.TrySetHomeVault(entry, selected, out reason))
+                    {
+                        Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
+                    }
+                    else
+                    {
+                        Messages.Message(
+                            "OuterrealmStorageManager_MoveHomeSucceeded".Translate(
+                                OuterrealmIdentityRouting.VaultDisplayName(selected)),
+                            MessageTypeDefOf.TaskCompletion, false);
+                        dirty = true;
+                    }
+                }));
+            }
+            if (options.Count == 0)
+            {
+                options.Add(new FloatMenuOption("OuterrealmStorageManager_NoMigrationTargets".Translate(), null));
+            }
+            Find.WindowStack.Add(new FloatMenu(options));
         }
 
         private Map TargetMap()

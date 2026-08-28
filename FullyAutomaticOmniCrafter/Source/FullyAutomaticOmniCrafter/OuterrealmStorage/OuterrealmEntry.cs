@@ -209,11 +209,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>视图刷新用：建筑上次看到的全局版本号。</summary>
         public int LastSeenVersion;
 
+        /// <summary>
+        /// 唯一物品的默认存储仓。它只描述查询锚点的默认归位位置，不代表库存所有权；
+        /// 全局层仍是唯一真相。搜索期临时出口不写入此字段，避免一次就近搜索永久改变归属。
+        /// </summary>
+        public Building_OuterrealmVault HomeVault;
+
+        /// <summary>
+        /// 默认仓所在地图的持久兜底。HomeVault 被摧毁或跨引用无法恢复时，优先在原地图
+        /// 选择新的默认仓。Map.uniqueID 是存档内稳定标识，不依赖 Find.Maps 的列表顺序。
+        /// </summary>
+        public int HomeMapId = -1;
+
         public void ExposeData()
         {
             Scribe_Deep.Look(ref Proto, "proto");
             Scribe_Collections.Look(ref AdditionalProtos, "additionalProtos", LookMode.Deep);
             Scribe_Values.Look(ref Count, "count", 0L);
+            Scribe_References.Look(ref HomeVault, "homeVault");
+            Scribe_Values.Look(ref HomeMapId, "homeMapId", -1);
         }
     }
 }

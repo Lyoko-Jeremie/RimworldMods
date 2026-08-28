@@ -248,7 +248,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 // 方案 B：落格吸收属外部物品存入，吸收前取消引用该打包建筑的安装蓝图。
                 OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(toAbsorb[i]);
-                gs?.Deposit(toAbsorb[i]);
+                gs?.Deposit(toAbsorb[i], this);
             }
         }
 
@@ -309,7 +309,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     // 方案 B：同 AbsorbForeignItems，吸收前取消引用该打包建筑的安装蓝图。
                     OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(toAbsorb[i]);
-                    gs?.Deposit(toAbsorb[i]);
+                    gs?.Deposit(toAbsorb[i], this);
                 }
             }
         }
@@ -399,6 +399,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
             MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
             view?.MarkMaterializeDirty(); // 帧末微批物化新允许条目（O(1) 置脏）
+            GameComponent_OuterrealmStorage.Instance?.NotifyIdentityRoutingChanged(this);
             lastSeenVersion = GameComponent_OuterrealmStorage.Instance != null ? GameComponent_OuterrealmStorage.Instance.Version : lastSeenVersion;
         }
 
@@ -531,11 +532,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
             }
+            GameComponent_OuterrealmStorage.Instance?.NotifyIdentityRoutingChanged(this);
         }
 
         public void SetAllowTakeForUse(bool value)
         {
             allowTakeForUse = value;
+            GameComponent_OuterrealmStorage.Instance?.NotifyIdentityRoutingChanged(this);
         }
 
         /// <summary>冻结开关：隐藏全部物品并暂停建筑工作（filter 保持不变）。冻结时视图清空、副本从 listerThings 移除。
@@ -555,6 +558,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
                 view?.MarkMaterializeDirty(); // 解冻时帧末微批重新物化；冻结时置脏无害（物化按 CanShow 过滤）
             }
+            GameComponent_OuterrealmStorage.Instance?.NotifyIdentityRoutingChanged(this);
         }
 
         // ── IStorageGroupMember（§4.1e，逐行对齐 Building_Storage） ────────────

@@ -83,6 +83,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public static void InjectGlobalEntries(Predicate<Thing> thingValidator, Pawn pawn, Thing billGiver, List<Thing> relevantThings)
         {
+            // 建筑访问的唯一物品不在任何视图 ThingOwner 中；先按当前工作台/制作人位置
+            // 选择最近终端并把权威实例加入候选。该路径不要求随身访问 Hediff。
+            OuterrealmIdentityRouting.InjectBillCandidates(thingValidator, pawn, billGiver, relevantThings);
             Hediff_SubspaceAccess hediff = GetAccessHediff(pawn);
             if (hediff == null || !hediff.autoTake)
             {

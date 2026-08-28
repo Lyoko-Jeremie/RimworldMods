@@ -48,6 +48,17 @@
 
   <!-- 存储管理器：全部取出 -->
   <OuterrealmStorageManager_EjectAllEntries>全部取出所有物品</OuterrealmStorageManager_EjectAllEntries>
+  <OuterrealmStorageManager_MoveHome>迁移</OuterrealmStorageManager_MoveHome>
+  <OuterrealmStorageManager_CurrentHome>当前位置：{0}</OuterrealmStorageManager_CurrentHome>
+  <OuterrealmStorageManager_CurrentTemporary>临时位置：{0}（默认：{1}）</OuterrealmStorageManager_CurrentTemporary>
+  <OuterrealmStorageManager_HomeUnavailable>默认位置：{0}（当前不可访问）</OuterrealmStorageManager_HomeUnavailable>
+  <OuterrealmStorageManager_NoHomeVault>尚未绑定默认存储仓</OuterrealmStorageManager_NoHomeVault>
+  <OuterrealmStorageManager_NotUnique>该条目不是唯一物品。</OuterrealmStorageManager_NotUnique>
+  <OuterrealmStorageManager_VaultUnavailable>目标存储仓当前不可用。</OuterrealmStorageManager_VaultUnavailable>
+  <OuterrealmStorageManager_VaultRejectsItem>目标存储仓的筛选设置不接受该物品</OuterrealmStorageManager_VaultRejectsItem>
+  <OuterrealmStorageManager_ItemReserved>物品已被预留，暂时不能迁移默认存储仓。</OuterrealmStorageManager_ItemReserved>
+  <OuterrealmStorageManager_MoveHomeSucceeded>默认存储仓已迁移至 {0}。</OuterrealmStorageManager_MoveHomeSucceeded>
+  <OuterrealmStorageManager_NoMigrationTargets>没有可用的迁移目标</OuterrealmStorageManager_NoMigrationTargets>
 
   <!-- 存储管理器：分类树三态筛选（绿✓/红×/黄~，原版 AllowanceStateOf 语义） -->
   <OuterrealmStorageManager_CatShowTip>该分类及其子分类的物品全部显示（绿✓）。点击切换为全部隐藏</OuterrealmStorageManager_CatShowTip>

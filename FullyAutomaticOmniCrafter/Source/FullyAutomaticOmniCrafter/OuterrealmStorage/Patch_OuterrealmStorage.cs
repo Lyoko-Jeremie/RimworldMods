@@ -147,6 +147,37 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 唯一物品：搜索期选择最近可用终端 ──────────────────────────────────────
+    // ThingRequest.ForDef 是原版/第三方最常见的精确物品搜索入口。Prefix 只做 Def 粗索引
+    // O(1) 快速判断；没有唯一条目时立即返回。权威原物在搜索开始前迁移查询锚点，原版
+    // GenClosest 随后继续执行自己的可达性、validator 与最近距离判定。
+    [HarmonyPatch(typeof(GenClosest), "ClosestThingReachable")]
+    internal static class Patch_GenClosest_ClosestThingReachable_IdentityRouting
+    {
+        private static void Prefix(IntVec3 root, Map map, ThingRequest thingReq, TraverseParms traverseParams)
+        {
+            if (thingReq.singleDef != null && map != null)
+            {
+                OuterrealmIdentityRouting.PrepareForSearch(
+                    thingReq.singleDef, map, root, traverseParams.pawn);
+            }
+        }
+    }
+
+    // Bill.BoundUft 等路径已经持有权威对象引用，直接走 CanReserveAndReach 而不调用 GenClosest。
+    // 在原版 CanReach 前迁移锚点，保证目标的 Map/Position 与最近可用终端一致。
+    [HarmonyPatch(typeof(ReservationUtility), "CanReserveAndReach")]
+    internal static class Patch_ReservationUtility_CanReserveAndReach_IdentityRouting
+    {
+        private static void Prefix(Pawn p, LocalTargetInfo target)
+        {
+            if (target.HasThing)
+            {
+                OuterrealmIdentityRouting.PrepareForTarget(p, target.Thing);
+            }
+        }
+    }
+
     // ── §5.2 #5：Thing.SplitOff 统一转移权威实例 ──
     // 必须拦截每一个覆写，而非只拦截 Thing 基类：ThingWithComps/MinifiedThing 以及第三方覆写
     // 可能在 base.SplitOff 返回后继续执行 PostSplitOff 或重建内部物品；若 base 已返回权威实例，
@@ -179,6 +210,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static bool Prefix(Thing __instance, int count, ref Thing __result)
         {
+            if (OuterrealmIdentityRouting.IsAnchor(__instance))
+            {
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+                OuterrealmEntry identityEntry;
+                if (gs != null && gs.TryGetCanonicalEntry(__instance, out identityEntry))
+                {
+                    // 第三方若跳过 reservation 直接 SplitOff，也必须先从全局账本 Checkout，
+                    // 防止原实例交付后全局 Count 仍保留造成复制。
+                    __result = gs.Withdraw(identityEntry, count);
+                    return false;
+                }
+            }
             OuterrealmVaultViewThingOwner view = __instance.holdingOwner as OuterrealmVaultViewThingOwner;
             if (view == null)
             {
@@ -307,7 +350,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmEntry canonicalEntry;
             if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
             {
-                if (!SubspaceAccessUtility.CanAutoTake(claimant) || claimant.Map == null)
+                bool routedAnchor = OuterrealmIdentityRouting.CanAccessAnchor(t, claimant);
+                if ((!routedAnchor && !SubspaceAccessUtility.CanAutoTake(claimant)) || claimant.Map == null)
                 {
                     __result = false;
                     return false;
@@ -356,7 +400,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmEntry canonicalEntry;
             if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
             {
-                if (!SubspaceAccessUtility.CanAutoTake(claimant) || claimant.Map == null)
+                bool routedAnchor = OuterrealmIdentityRouting.CanAccessAnchor(t, claimant);
+                if ((!routedAnchor && !SubspaceAccessUtility.CanAutoTake(claimant)) || claimant.Map == null)
                 {
                     __result = false;
                     return false;
@@ -434,7 +479,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry canonicalEntry;
             if (t != null && gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry)
-                && SubspaceAccessUtility.CanAutoTake(claimant))
+                && (OuterrealmIdentityRouting.CanAccessAnchor(t, claimant)
+                    || SubspaceAccessUtility.CanAutoTake(claimant)))
             {
                 __result = TryCheckoutCanonical(
                     __instance, claimant, job, t, canonicalEntry, maxPawns, stackCount,
@@ -457,6 +503,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
+            Building_OuterrealmVault anchorVault;
+            IntVec3 anchorCell;
+            bool fromIdentityAnchor = OuterrealmIdentityRouting.TryGetAnchor(canonical, out anchorVault, out anchorCell);
+            Map checkoutMap = fromIdentityAnchor ? anchorVault.Map : claimant.Map;
+            IntVec3 checkoutCell = fromIdentityAnchor ? anchorCell : claimant.Position;
             // 释放刚写入权威候选的临时 reservation；真正执行期只保留生成物的 reservation。
             manager.Release((LocalTargetInfo)canonical, claimant, job);
             int need = ResolveLendNeed(job, canonical, stackCount);
@@ -469,9 +520,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             bool targetReplaced = false;
             try
             {
-                GenSpawn.Spawn(actual, claimant.Position, claimant.Map);
-                OuterrealmPatchUtil.ReplaceJobThingReference(job, canonical, actual);
-                targetReplaced = true;
+                GenSpawn.Spawn(actual, checkoutCell, checkoutMap);
+                targetReplaced = actual != canonical
+                    && OuterrealmPatchUtil.ReplaceJobThingReference(job, canonical, actual);
                 int actualStackCount = stackCount == ReservationManager.StackCount_All
                     ? ReservationManager.StackCount_All
                     : Math.Min(Math.Max(1, stackCount), actual.stackCount);
@@ -479,8 +530,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     claimant, job, (LocalTargetInfo)actual, maxPawns, actualStackCount,
                     layer, errorOnFailed, ignoreOtherReservations, canReserversStartJobs))
                 {
-                    OuterrealmPatchUtil.ReplaceJobThingReference(job, actual, canonical);
-                    targetReplaced = false;
+                    if (targetReplaced)
+                    {
+                        OuterrealmPatchUtil.ReplaceJobThingReference(job, actual, canonical);
+                        targetReplaced = false;
+                    }
                     GameComponent_OuterrealmStorage.Instance?.Deposit(actual);
                     return false;
                 }
@@ -552,7 +606,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmEntry canonicalEntry;
             if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
             {
-                __result = SubspaceAccessUtility.CanAutoTake(claimant)
+                __result = (OuterrealmIdentityRouting.CanAccessAnchor(t, claimant)
+                    || SubspaceAccessUtility.CanAutoTake(claimant))
                     ? (int)Math.Min(canonicalEntry.Count, int.MaxValue)
                     : 0;
                 return false;
@@ -1303,6 +1358,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static bool Prefix(Thing __instance)
         {
+            if (OuterrealmIdentityRouting.IsAnchor(__instance))
+            {
+                GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+                OuterrealmEntry entry = null;
+                bool tracked = gs != null && gs.TryGetCanonicalEntry(__instance, out entry);
+                OuterrealmIdentityRouting.DetachAnchorForDeposit(__instance);
+                if (tracked)
+                {
+                    // 外部仅调用 DeSpawn 不构成取出；立即回默认仓，保持账本和查询位置一致。
+                    OuterrealmIdentityRouting.CancelCheckout(entry);
+                }
+                return false;
+            }
             if (__instance == null || __instance.Destroyed ||
                 !(__instance.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
@@ -1324,6 +1392,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             __instance.ForceSetStateToUnspawned(); // Remove 的 UnregisterFromLister 已做，此处幂等兜底（vault 已拆除等场景）
             return false; // 跳过原版 DeSpawn 注销流程（伪 Spawned 未注册 thingGrid/渲染，无需注销）
+        }
+    }
+
+    // 第三方可能不经 reservation/SplitOff 直接销毁搜索结果。Destroy 提交前先从全局账本
+    // 取出同一权威实例，随后让原版 Destroy 正常执行，避免留下 Count>0 的已销毁 Proto。
+    [HarmonyPatch(typeof(Thing), "Destroy")]
+    internal static class Patch_Thing_Destroy_IdentityAnchor
+    {
+        private static void Prefix(Thing __instance)
+        {
+            if (!OuterrealmIdentityRouting.IsAnchor(__instance))
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry entry;
+            if (gs != null && gs.TryGetCanonicalEntry(__instance, out entry))
+            {
+                gs.Withdraw(entry, __instance.stackCount);
+            }
         }
     }
 
@@ -2152,7 +2240,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             HashSet<Thing> seen = new HashSet<Thing>();
             foreach (Thing t in original)
             {
-                if (t != null && seen.Add(t))
+                // 权威身份锚点仍属于全局账本，交易成交不走 reservation/checkout，不能把它
+                // 当作地面实物直接交给商人；玩家可先弹出后按原版交易。
+                if (t != null && !OuterrealmIdentityRouting.IsAnchor(t) && seen.Add(t))
                 {
                     yield return t;
                 }
@@ -2500,7 +2590,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static bool Prefix(Thing __instance, ref float __result)
         {
-            if (OuterrealmVaultUtil.IsOuterrealmBorrowed(__instance))
+            if (OuterrealmVaultUtil.IsOuterrealmBorrowed(__instance)
+                || OuterrealmIdentityRouting.IsAnchor(__instance))
             {
                 __result = OuterrealmVaultUtil.IdealStorageTemperature(__instance);
                 return false;
@@ -3006,6 +3097,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                     excluded += copy.MarketValue * copy.stackCount;
                 }
+            }
+            // 唯一物品使用权威原物锚点而非视图副本，同样会被 map 递归枚举计入财富；
+            // 只扣当前确实锚定在本地图、仍属于全局账本的实例。Checkout 后标记被注销，正常计入。
+            List<OuterrealmEntry> entries = gs.EntriesForReading;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                Thing canonical = entries[i]?.Proto;
+                if (canonical == null || !OuterrealmIdentityRouting.IsAnchor(canonical)
+                    || canonical.Map != map || canonical.PositionHeld.Fogged(map))
+                {
+                    continue;
+                }
+                excluded += canonical.MarketValue * canonical.stackCount;
             }
             if (excluded > 0f)
             {
