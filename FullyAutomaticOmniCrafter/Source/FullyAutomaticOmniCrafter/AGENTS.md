@@ -72,3 +72,6 @@ i18n语言目录在 `../../Languages` ，源代码中需要参与显示的硬编
 ## 此项目的专有词汇
 - 超维科技 (OuterrealmTech)
 - 超维存储仓 (OuterrealmVault)
+
+## 文档
+涉及到 超维存储 时，需要阅读此文档: @./OuterrealmStorage/readme_OuterrealmStorage.md 
