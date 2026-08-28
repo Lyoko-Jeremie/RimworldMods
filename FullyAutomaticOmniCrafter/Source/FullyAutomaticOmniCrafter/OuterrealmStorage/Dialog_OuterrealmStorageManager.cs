@@ -22,6 +22,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private Vector2 categoryScroll;
         private readonly QuickSearchWidget searchWidget = new QuickSearchWidget();
         private bool showOnlyUnseen;
+        /// <summary>是否显示条目的终端可见性或唯一物品所在仓；默认关闭以精简列表。</summary>
+        private bool showEntryDetails;
         private bool dirtyUnseenFlag;
         private bool batchBindingMode;
         private bool batchOnlyUnbound = true;
@@ -50,8 +52,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private ThingCategoryDef selectedCategory;
 
         private const float CategoryWidth = 400f;
-        private const float RowHeight = 46f;
+        private const float DetailedRowHeight = 46f;
+        private const float CompactRowHeight = 36f;
         private const float CategoryLineHeight = 24f;
+
+        private float CurrentRowHeight => showEntryDetails ? DetailedRowHeight : CompactRowHeight;
 
         public Dialog_OuterrealmStorageManager()
         {
@@ -180,6 +185,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     dirty = true;
                 }
             }
+            Rect detailToggleRect = new Rect(inRect.x + 800f, y, 300f, 28f);
+            Widgets.CheckboxLabeled(detailToggleRect,
+                "OuterrealmStorageManager_ShowEntryDetails".Translate(), ref showEntryDetails,
+                placeCheckboxNearText: true);
+            TooltipHandler.TipRegion(detailToggleRect,
+                "OuterrealmStorageManager_ShowEntryDetailsDesc".Translate());
             if (Find.Maps.Count > 1)
             {
                 string mapLabel = selectedMapIndex >= 0 && selectedMapIndex < Find.Maps.Count
@@ -392,16 +403,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>右侧条目列表（滚动视图）。</summary>
         private void DrawEntryList(GameComponent_OuterrealmStorage gs, Rect outRect)
         {
-            float contentHeight = visibleEntries.Count * RowHeight;
+            float rowHeight = CurrentRowHeight;
+            float contentHeight = visibleEntries.Count * rowHeight;
             Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(contentHeight, outRect.height));
             Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
             // 虚拟化：列表仍保留轻量索引，但仅构造/绘制当前视口及上下各一行。
-            int first = Mathf.Max(0, Mathf.FloorToInt(scrollPosition.y / RowHeight) - 1);
-            int last = Mathf.Min(visibleEntries.Count, Mathf.CeilToInt((scrollPosition.y + outRect.height) / RowHeight) + 1);
-            float curY = first * RowHeight;
+            int first = Mathf.Max(0, Mathf.FloorToInt(scrollPosition.y / rowHeight) - 1);
+            int last = Mathf.Min(visibleEntries.Count, Mathf.CeilToInt((scrollPosition.y + outRect.height) / rowHeight) + 1);
+            float curY = first * rowHeight;
             for (int i = first; i < last; i++)
             {
-                DoEntryRow(gs, visibleEntries[i], viewRect.width, ref curY, i % 2 == 0);
+                DoEntryRow(gs, visibleEntries[i], viewRect.width, rowHeight, ref curY, i % 2 == 0);
             }
             if (visibleEntries.Count == 0)
             {
@@ -514,9 +526,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>单行渲染：隔行条纹 + 鼠标划过整行高亮 + 图标 + 名称 + long 数量 + 可见建筑数/不可见标记 + 弹出/全部弹出按钮。</summary>
-        private void DoEntryRow(GameComponent_OuterrealmStorage gs, OuterrealmEntry entry, float width, ref float curY, bool evenRow)
+        private void DoEntryRow(GameComponent_OuterrealmStorage gs, OuterrealmEntry entry, float width, float rowHeight, ref float curY, bool evenRow)
         {
-            Rect rect = new Rect(0f, curY, width, RowHeight);
+            Rect rect = new Rect(0f, curY, width, rowHeight);
             // 隔行条纹 + 鼠标划过整行高亮背景（参考万能制造机内容列表风格）
             if (evenRow)
             {
@@ -526,14 +538,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 Widgets.DrawHighlightIfMouseover(rect);
             }
-            int visibleBuildings = CountVisibleBuildings(gs, entry);
+            int visibleBuildings = showEntryDetails ? CountVisibleBuildings(gs, entry) : 0;
+            float buttonY = curY + (rowHeight - 24f) / 2f;
+            float iconY = curY + (rowHeight - 28f) / 2f;
 
             bool unique = OuterrealmIdentityRouting.IsUnique(entry);
             float contentLeft = 4f;
             if (batchBindingMode)
             {
                 bool selected = batchSelected.Contains(entry);
-                Widgets.Checkbox(new Vector2(4f, curY + 11f), ref selected, 24f);
+                Widgets.Checkbox(new Vector2(4f, curY + (rowHeight - 24f) / 2f), ref selected, 24f);
                 if (selected)
                 {
                     batchSelected.Add(entry);
@@ -546,11 +560,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             else
             {
-                if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
+                if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, buttonY, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
                 {
                     gs.EnqueueEject(entry, TargetMap(), entry.Count, TargetAnchor());
                 }
-                if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
+                if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, buttonY, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
                 {
                     int max = (int)Mathf.Min(entry.Count, int.MaxValue);
                     if (max > 0)
@@ -564,7 +578,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                 }
                 if (unique && Widgets.ButtonText(
-                    new Rect(rect.x + rect.width - 270f, curY + 10f, 86f, 24f),
+                    new Rect(rect.x + rect.width - 270f, buttonY, 86f, 24f),
                     "OuterrealmStorageManager_MoveHome".Translate(), true, false, true))
                 {
                     OpenMoveHomeMenu(gs, entry);
@@ -574,21 +588,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
             if (entry.Proto is Corpse protoCorpse && protoCorpse.Bugged)
             {
-                Widgets.InfoCardButton(rect.width - 24f, curY + 9f, entry.Proto.def);
+                Widgets.InfoCardButton(rect.width - 24f, buttonY, entry.Proto.def);
             }
             else
             {
-                Widgets.InfoCardButton(rect.width - 24f, curY + 9f, entry.Proto);
+                Widgets.InfoCardButton(rect.width - 24f, buttonY, entry.Proto);
             }
             rect.width -= 24f;
-            OuterrealmVaultUtil.ThingIconSafe(new Rect(contentLeft, curY + 9f, 28f, 28f), entry.Proto);
+            OuterrealmVaultUtil.ThingIconSafe(new Rect(contentLeft, iconY, 28f, 28f), entry.Proto);
 
             string text = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto) + " x" + entry.Count.ToString("N0");
-            string flagText = visibleBuildings == 0
-                ? "OuterrealmStorageManager_Unseen".Translate()
-                : "OuterrealmStorageManager_VisibleBuildings".Translate(visibleBuildings);
-            string locationText = unique ? IdentityLocationText(entry) : flagText;
-            // 第一行显示名称；第二行显示唯一物品默认/当前仓，普通条目沿用可见终端统计。
             Text.Anchor = TextAnchor.MiddleLeft;
             float textLeft = contentLeft + 32f;
             float nameWidth = rect.width - textLeft;
@@ -596,13 +605,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 nameWidth = 20f;
             }
-            Widgets.Label(new Rect(textLeft, curY, nameWidth, 23f), text.StripTags().Truncate(nameWidth));
-            GUI.color = unique ? new Color(0.72f, 0.85f, 1f) : Color.gray;
-            Widgets.Label(new Rect(textLeft, curY + 21f, nameWidth, 22f), locationText.StripTags().Truncate(nameWidth));
-            GUI.color = Color.white;
+            if (showEntryDetails)
+            {
+                string flagText = visibleBuildings == 0
+                    ? "OuterrealmStorageManager_Unseen".Translate()
+                    : "OuterrealmStorageManager_VisibleBuildings".Translate(visibleBuildings);
+                string locationText = unique ? IdentityLocationText(entry) : flagText;
+                // 开启详情后，第二行显示唯一物品默认/当前仓，普通条目显示可见终端统计。
+                Widgets.Label(new Rect(textLeft, curY, nameWidth, 23f), text.StripTags().Truncate(nameWidth));
+                GUI.color = unique ? new Color(0.72f, 0.85f, 1f) : Color.gray;
+                Widgets.Label(new Rect(textLeft, curY + 21f, nameWidth, 22f), locationText.StripTags().Truncate(nameWidth));
+                GUI.color = Color.white;
+                TooltipHandler.TipRegion(rect, text + "\n" + locationText + "\n" + flagText);
+            }
+            else
+            {
+                Widgets.Label(new Rect(textLeft, curY, nameWidth, rowHeight), text.StripTags().Truncate(nameWidth));
+                TooltipHandler.TipRegion(rect, text);
+            }
             Text.Anchor = TextAnchor.UpperLeft;
-            TooltipHandler.TipRegion(rect, text + "\n" + locationText + "\n" + flagText);
-            curY += RowHeight;
+            curY += rowHeight;
         }
 
         /// <summary>唯一物品位置：当前临时出口优先；未建立锚点时仍显示持久默认仓。</summary>

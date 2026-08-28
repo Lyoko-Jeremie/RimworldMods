@@ -32,6 +32,8 @@
   <OuterrealmStorageManager_Total>{0} entry types, {1} total</OuterrealmStorageManager_Total>
   <OuterrealmStorageManager_EjectProgress>Ejecting: {0} remaining</OuterrealmStorageManager_EjectProgress>
   <OuterrealmStorageManager_ShowOnlyUnseen>Show only unseen entries</OuterrealmStorageManager_ShowOnlyUnseen>
+  <OuterrealmStorageManager_ShowEntryDetails>Show visibility and location</OuterrealmStorageManager_ShowEntryDetails>
+  <OuterrealmStorageManager_ShowEntryDetailsDesc>Show each ordinary item's terminal visibility and each unique item's current or default vault. Disabled by default for a cleaner list.</OuterrealmStorageManager_ShowEntryDetailsDesc>
   <OuterrealmStorageManager_SelectMap>Target map</OuterrealmStorageManager_SelectMap>
   <OuterrealmStorageManager_Eject>Eject</OuterrealmStorageManager_Eject>
   <OuterrealmStorageManager_EjectAll>Eject all</OuterrealmStorageManager_EjectAll>
