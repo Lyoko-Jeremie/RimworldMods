@@ -20,10 +20,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>自动存入：制作完成后自动把产物 Deposit 进全局库（默认开）。关闭后产物留在原地 / 由玩家处置，手动存入不受影响。</summary>
         public bool autoStore = true;
 
-        /// <summary>自动存入的类别限制（默认关，保持"自动全部存入"既有行为）：开启后逐个核对当前地图上的所有超维存储仓，
+        /// <summary>自动存入的类别限制（默认开）：开启后逐个核对当前地图上的所有超维存储仓，
         /// 仅当产物能被至少一个仓接受（filter 允许且未冻结、未禁止存入）时才自动存入；其余产物按原版流程放置
         /// （可落到指定存储区）。仅 autoStore 开启时有意义。</summary>
-        public bool autoStoreFiltered = false;
+        public bool autoStoreFiltered = true;
 
         public override void ExposeData()
         {
@@ -31,8 +31,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // 随 pawn hediffSet 存档；旧档无节点自动取默认值 true，保持既有行为。
             Scribe_Values.Look(ref autoTake, "autoTake", true);
             Scribe_Values.Look(ref autoStore, "autoStore", true);
-            // 旧档无此节点自动取默认值 false（= 自动全部存入），行为不变。
-            Scribe_Values.Look(ref autoStoreFiltered, "autoStoreFiltered", false);
+            // 旧档无此节点自动取默认值 true（= 按类别限制存入）；已显式改过该开关的旧档保留玩家设置。
+            Scribe_Values.Look(ref autoStoreFiltered, "autoStoreFiltered", true);
         }
 
         /// <summary>
