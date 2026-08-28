@@ -2002,6 +2002,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            // 右键点中超维存储仓时，ClickedThings 还包含仓内查询投影/唯一物品锚点；
+            // 它们不是需要再次存入的地面实物。仅在这个建筑菜单上下文整体隐藏手动存入项，
+            // 右键普通地面物品时仍沿用下方原逻辑。
+            for (int i = 0; i < clicked.Count; i++)
+            {
+                if (clicked[i] is Building_OuterrealmVault)
+                {
+                    return;
+                }
+            }
             for (int i = 0; i < clicked.Count; i++)
             {
                 Thing t = clicked[i];
