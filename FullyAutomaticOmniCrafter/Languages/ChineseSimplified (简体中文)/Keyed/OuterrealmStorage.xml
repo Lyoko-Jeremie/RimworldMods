@@ -59,6 +59,12 @@
   <OuterrealmStorageManager_ItemReserved>物品已被预留，暂时不能迁移默认存储仓。</OuterrealmStorageManager_ItemReserved>
   <OuterrealmStorageManager_MoveHomeSucceeded>默认存储仓已迁移至 {0}。</OuterrealmStorageManager_MoveHomeSucceeded>
   <OuterrealmStorageManager_NoMigrationTargets>没有可用的迁移目标</OuterrealmStorageManager_NoMigrationTargets>
+  <OuterrealmStorageManager_BatchBindingMode>批量绑定模式</OuterrealmStorageManager_BatchBindingMode>
+  <OuterrealmStorageManager_BatchBindingModeDesc>仅显示唯一物品，可按当前搜索和分类筛选结果批量设置默认存储仓。进入模式后默认选中所有显示项。</OuterrealmStorageManager_BatchBindingModeDesc>
+  <OuterrealmStorageManager_BatchOnlyUnbound>仅显示未绑定物品</OuterrealmStorageManager_BatchOnlyUnbound>
+  <OuterrealmStorageManager_BatchBindSelected>批量绑定选中项（{0}）</OuterrealmStorageManager_BatchBindSelected>
+  <OuterrealmStorageManager_BatchBindNoSelection>当前没有选中任何唯一物品。</OuterrealmStorageManager_BatchBindNoSelection>
+  <OuterrealmStorageManager_BatchBindResult>已将 {0} 项绑定到 {1}；{2} 项因存储筛选或预留状态未绑定。</OuterrealmStorageManager_BatchBindResult>
 
   <!-- 存储管理器：分类树三态筛选（绿✓/红×/黄~，原版 AllowanceStateOf 语义） -->
   <OuterrealmStorageManager_CatShowTip>该分类及其子分类的物品全部显示（绿✓）。点击切换为全部隐藏</OuterrealmStorageManager_CatShowTip>

@@ -23,11 +23,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private readonly QuickSearchWidget searchWidget = new QuickSearchWidget();
         private bool showOnlyUnseen;
         private bool dirtyUnseenFlag;
+        private bool batchBindingMode;
+        private bool batchOnlyUnbound = true;
         private bool dirty = true;
         private int selectedMapIndex;
         /// <summary>随身弹出目标（§v3）：null = 按地图默认锚点弹出。</summary>
         private readonly Pawn ejectTarget;
         private readonly List<OuterrealmEntry> visibleEntries = new List<OuterrealmEntry>();
+        /// <summary>批量模式的显式选择与已见集合；新进入当前筛选结果的条目默认选中。</summary>
+        private readonly HashSet<OuterrealmEntry> batchSelected = new HashSet<OuterrealmEntry>();
+        private readonly HashSet<OuterrealmEntry> batchSeen = new HashSet<OuterrealmEntry>();
 
         /// <summary>分类树缓存：有效分类集合 + 各分类（含子分类）条目总数。仅内容版本变化时重建（复用字段避免每帧分配）。</summary>
         private readonly HashSet<ThingCategoryDef> validCategories = new HashSet<ThingCategoryDef>();
@@ -107,8 +112,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 stat += "   " + "OuterrealmStorageManager_EjectProgress".Translate(ejecting.ToString("N0"));
             }
             Widgets.Label(new Rect(inRect.x, y, inRect.width - 250f, 24f), stat);
-            // 全部取出所有物品（追加到弹出队列，逐 tick 限速执行）
-            if (Widgets.ButtonText(new Rect(inRect.x + inRect.width - 250f, y, 250f, 26f), "OuterrealmStorageManager_EjectAllEntries".Translate(), true, false, true))
+            Rect primaryActionRect = new Rect(inRect.x + inRect.width - 250f, y, 250f, 26f);
+            if (batchBindingMode)
+            {
+                int selectedVisibleCount = CountSelectedVisible();
+                if (Widgets.ButtonText(primaryActionRect,
+                    "OuterrealmStorageManager_BatchBindSelected".Translate(selectedVisibleCount), true, false, true))
+                {
+                    if (selectedVisibleCount <= 0)
+                    {
+                        Messages.Message("OuterrealmStorageManager_BatchBindNoSelection".Translate(),
+                            MessageTypeDefOf.RejectInput, false);
+                    }
+                    else
+                    {
+                        OpenBatchBindMenu(gs);
+                    }
+                }
+            }
+            // 普通模式下保留原有“全部取出”逃生口。
+            else if (Widgets.ButtonText(primaryActionRect, "OuterrealmStorageManager_EjectAllEntries".Translate(), true, false, true))
             {
                 List<OuterrealmEntry> all = gs.EntriesForReading;
                 for (int i = 0; i < all.Count; i++)
@@ -122,13 +145,40 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             y += 30f;
 
-            // 搜索 + 不可见筛选 + 地图选择
+            // 搜索 + 批量绑定模式/二级筛选 + 地图选择
             searchWidget.OnGUI(new Rect(inRect.x, y, 260f, 28f), () => dirty = true, () => dirty = true);
-            Widgets.CheckboxLabeled(new Rect(inRect.x + 270f, y, 240f, 28f), "OuterrealmStorageManager_ShowOnlyUnseen".Translate(), ref showOnlyUnseen);
-            if (showOnlyUnseen != dirtyUnseenFlag)
+            Rect batchModeRect = new Rect(inRect.x + 270f, y, 210f, 28f);
+            bool previousBatchMode = batchBindingMode;
+            Widgets.CheckboxLabeled(batchModeRect, "OuterrealmStorageManager_BatchBindingMode".Translate(), ref batchBindingMode);
+            TooltipHandler.TipRegion(batchModeRect, "OuterrealmStorageManager_BatchBindingModeDesc".Translate());
+            if (batchBindingMode != previousBatchMode)
             {
-                dirtyUnseenFlag = showOnlyUnseen;
+                batchSelected.Clear();
+                batchSeen.Clear();
                 dirty = true;
+            }
+            Rect secondaryFilterRect = new Rect(inRect.x + 490f, y, 300f, 28f);
+            if (batchBindingMode)
+            {
+                bool previousOnlyUnbound = batchOnlyUnbound;
+                Widgets.CheckboxLabeled(secondaryFilterRect,
+                    "OuterrealmStorageManager_BatchOnlyUnbound".Translate(), ref batchOnlyUnbound);
+                if (batchOnlyUnbound != previousOnlyUnbound)
+                {
+                    batchSelected.Clear();
+                    batchSeen.Clear();
+                    dirty = true;
+                }
+            }
+            else
+            {
+                Widgets.CheckboxLabeled(secondaryFilterRect,
+                    "OuterrealmStorageManager_ShowOnlyUnseen".Translate(), ref showOnlyUnseen);
+                if (showOnlyUnseen != dirtyUnseenFlag)
+                {
+                    dirtyUnseenFlag = showOnlyUnseen;
+                    dirty = true;
+                }
             }
             if (Find.Maps.Count > 1)
             {
@@ -372,7 +422,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                if (showOnlyUnseen && CountVisibleBuildings(gs, e) > 0)
+                if (batchBindingMode)
+                {
+                    // 批量绑定只处理不能安全合并的唯一对象；普通堆叠条目没有逐对象默认仓语义。
+                    if (!OuterrealmIdentityRouting.IsUnique(e)
+                        || (batchOnlyUnbound && !OuterrealmIdentityRouting.NeedsHomeBinding(e)))
+                    {
+                        continue;
+                    }
+                }
+                else if (showOnlyUnseen && CountVisibleBuildings(gs, e) > 0)
                 {
                     continue;
                 }
@@ -391,6 +450,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (matches)
                 {
                     visibleEntries.Add(e);
+                    if (batchBindingMode && batchSeen.Add(e))
+                    {
+                        batchSelected.Add(e);
+                    }
                 }
             }
         }
@@ -466,30 +529,48 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             int visibleBuildings = CountVisibleBuildings(gs, entry);
 
             bool unique = OuterrealmIdentityRouting.IsUnique(entry);
-            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
+            float contentLeft = 4f;
+            if (batchBindingMode)
             {
-                gs.EnqueueEject(entry, TargetMap(), entry.Count, TargetAnchor());
-            }
-            if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
-            {
-                int max = (int)Mathf.Min(entry.Count, int.MaxValue);
-                if (max > 0)
+                bool selected = batchSelected.Contains(entry);
+                Widgets.Checkbox(new Vector2(4f, curY + 11f), ref selected, 24f);
+                if (selected)
                 {
-                    string label = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto);
-                    Find.WindowStack.Add(new Dialog_Slider(
-                        (int v) => label + " x" + v.ToString("N0"),
-                        1,
-                        max,
-                        (int v) => gs.EnqueueEject(entry, TargetMap(), v, TargetAnchor())));
+                    batchSelected.Add(entry);
                 }
+                else
+                {
+                    batchSelected.Remove(entry);
+                }
+                contentLeft = 34f;
             }
-            if (unique && Widgets.ButtonText(
-                new Rect(rect.x + rect.width - 270f, curY + 10f, 86f, 24f),
-                "OuterrealmStorageManager_MoveHome".Translate(), true, false, true))
+            else
             {
-                OpenMoveHomeMenu(gs, entry);
+                if (Widgets.ButtonText(new Rect(rect.x + rect.width - 90f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_EjectAll".Translate(), true, false, true))
+                {
+                    gs.EnqueueEject(entry, TargetMap(), entry.Count, TargetAnchor());
+                }
+                if (Widgets.ButtonText(new Rect(rect.x + rect.width - 180f, curY + 10f, 86f, 24f), "OuterrealmStorageManager_Eject".Translate(), true, false, true))
+                {
+                    int max = (int)Mathf.Min(entry.Count, int.MaxValue);
+                    if (max > 0)
+                    {
+                        string label = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto);
+                        Find.WindowStack.Add(new Dialog_Slider(
+                            (int v) => label + " x" + v.ToString("N0"),
+                            1,
+                            max,
+                            (int v) => gs.EnqueueEject(entry, TargetMap(), v, TargetAnchor())));
+                    }
+                }
+                if (unique && Widgets.ButtonText(
+                    new Rect(rect.x + rect.width - 270f, curY + 10f, 86f, 24f),
+                    "OuterrealmStorageManager_MoveHome".Translate(), true, false, true))
+                {
+                    OpenMoveHomeMenu(gs, entry);
+                }
+                rect.width -= unique ? 280f : 190f;
             }
-            rect.width -= unique ? 280f : 190f;
 
             if (entry.Proto is Corpse protoCorpse && protoCorpse.Bugged)
             {
@@ -500,7 +581,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Widgets.InfoCardButton(rect.width - 24f, curY + 9f, entry.Proto);
             }
             rect.width -= 24f;
-            OuterrealmVaultUtil.ThingIconSafe(new Rect(4f, curY + 9f, 28f, 28f), entry.Proto);
+            OuterrealmVaultUtil.ThingIconSafe(new Rect(contentLeft, curY + 9f, 28f, 28f), entry.Proto);
 
             string text = OuterrealmVaultUtil.SafeLabelCapNoCount(entry.Proto) + " x" + entry.Count.ToString("N0");
             string flagText = visibleBuildings == 0
@@ -509,14 +590,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             string locationText = unique ? IdentityLocationText(entry) : flagText;
             // 第一行显示名称；第二行显示唯一物品默认/当前仓，普通条目沿用可见终端统计。
             Text.Anchor = TextAnchor.MiddleLeft;
-            float nameWidth = rect.width - 36f;
+            float textLeft = contentLeft + 32f;
+            float nameWidth = rect.width - textLeft;
             if (nameWidth < 20f)
             {
                 nameWidth = 20f;
             }
-            Widgets.Label(new Rect(36f, curY, nameWidth, 23f), text.StripTags().Truncate(nameWidth));
+            Widgets.Label(new Rect(textLeft, curY, nameWidth, 23f), text.StripTags().Truncate(nameWidth));
             GUI.color = unique ? new Color(0.72f, 0.85f, 1f) : Color.gray;
-            Widgets.Label(new Rect(36f, curY + 21f, nameWidth, 22f), locationText.StripTags().Truncate(nameWidth));
+            Widgets.Label(new Rect(textLeft, curY + 21f, nameWidth, 22f), locationText.StripTags().Truncate(nameWidth));
             GUI.color = Color.white;
             Text.Anchor = TextAnchor.UpperLeft;
             TooltipHandler.TipRegion(rect, text + "\n" + locationText + "\n" + flagText);
@@ -593,6 +675,73 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 options.Add(new FloatMenuOption("OuterrealmStorageManager_NoMigrationTargets".Translate(), null));
             }
             Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        /// <summary>当前筛选结果中被勾选的唯一条目数；批量操作严格只作用于用户眼前的结果。</summary>
+        private int CountSelectedVisible()
+        {
+            int count = 0;
+            for (int i = 0; i < visibleEntries.Count; i++)
+            {
+                if (batchSelected.Contains(visibleEntries[i]))
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        /// <summary>跨地图列出全部可用存储仓。具体物品筛选在执行时逐项校验，允许部分成功。</summary>
+        private void OpenBatchBindMenu(GameComponent_OuterrealmStorage gs)
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault == null || !vault.Spawned || vault.Destroyed)
+                {
+                    continue;
+                }
+                Building_OuterrealmVault selected = vault;
+                options.Add(new FloatMenuOption(
+                    OuterrealmIdentityRouting.VaultDisplayName(vault),
+                    () => BatchBindVisibleToVault(selected)));
+            }
+            if (options.Count == 0)
+            {
+                options.Add(new FloatMenuOption("OuterrealmStorageManager_NoMigrationTargets".Translate(), null));
+            }
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void BatchBindVisibleToVault(Building_OuterrealmVault vault)
+        {
+            int succeeded = 0;
+            int failed = 0;
+            for (int i = 0; i < visibleEntries.Count; i++)
+            {
+                OuterrealmEntry entry = visibleEntries[i];
+                if (!batchSelected.Contains(entry))
+                {
+                    continue;
+                }
+                string reason;
+                if (OuterrealmIdentityRouting.TrySetHomeVault(entry, vault, out reason))
+                {
+                    succeeded++;
+                }
+                else
+                {
+                    failed++;
+                }
+            }
+            Messages.Message(
+                "OuterrealmStorageManager_BatchBindResult".Translate(
+                    succeeded, OuterrealmIdentityRouting.VaultDisplayName(vault), failed),
+                succeeded > 0 ? MessageTypeDefOf.TaskCompletion : MessageTypeDefOf.RejectInput,
+                false);
+            dirty = true;
         }
 
         private Map TargetMap()

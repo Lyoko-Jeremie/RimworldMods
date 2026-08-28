@@ -59,6 +59,12 @@
   <OuterrealmStorageManager_ItemReserved>The item is reserved; its default vault cannot be moved yet.</OuterrealmStorageManager_ItemReserved>
   <OuterrealmStorageManager_MoveHomeSucceeded>Default vault moved to {0}.</OuterrealmStorageManager_MoveHomeSucceeded>
   <OuterrealmStorageManager_NoMigrationTargets>No migration targets are available</OuterrealmStorageManager_NoMigrationTargets>
+  <OuterrealmStorageManager_BatchBindingMode>Batch binding mode</OuterrealmStorageManager_BatchBindingMode>
+  <OuterrealmStorageManager_BatchBindingModeDesc>Show unique items only and batch-assign their default vault using the current search and category filters. Every displayed item is selected by default when entering this mode.</OuterrealmStorageManager_BatchBindingModeDesc>
+  <OuterrealmStorageManager_BatchOnlyUnbound>Show only unbound items</OuterrealmStorageManager_BatchOnlyUnbound>
+  <OuterrealmStorageManager_BatchBindSelected>Bind selected ({0})</OuterrealmStorageManager_BatchBindSelected>
+  <OuterrealmStorageManager_BatchBindNoSelection>No unique items are currently selected.</OuterrealmStorageManager_BatchBindNoSelection>
+  <OuterrealmStorageManager_BatchBindResult>Bound {0} item(s) to {1}; {2} item(s) were not bound because of storage filters or reservations.</OuterrealmStorageManager_BatchBindResult>
 
   <!-- Storage manager: category tree tri-state filter (green ✓ / red × / yellow ~, vanilla AllowanceStateOf semantics) -->
   <OuterrealmStorageManager_CatShowTip>All items in this category and its subcategories are shown (green ✓). Click to hide all</OuterrealmStorageManager_CatShowTip>

@@ -415,6 +415,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return current != null && entry != null && current != entry.HomeVault;
         }
 
+        /// <summary>是否仍需要用户指定一个有效的持久默认存储仓。</summary>
+        public static bool NeedsHomeBinding(OuterrealmEntry entry)
+        {
+            return IsUnique(entry)
+                && (entry.HomeVault == null || entry.HomeVault.Destroyed);
+        }
+
         public static bool TrySetHomeVault(OuterrealmEntry entry, Building_OuterrealmVault vault, out string reason)
         {
             reason = null;
