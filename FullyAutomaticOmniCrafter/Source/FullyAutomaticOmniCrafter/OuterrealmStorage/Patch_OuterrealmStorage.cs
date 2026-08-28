@@ -3045,6 +3045,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    /// <summary>
+    /// 原版未分组存储建筑点击重命名按钮时，先打开创建存储组对话框；仅为超维存储仓
+    /// 预填坐标名称，是否确认创建仍完全交给玩家。反射字段只在打开对话框时写入一次并已缓存。
+    /// </summary>
+    [HarmonyPatch]
+    internal static class Patch_DialogRenameBuildingStorageCreateNew_OuterrealmVaultDefaultName
+    {
+        private static readonly FieldInfo CurNameField =
+            AccessTools.Field(typeof(Dialog_Rename<IRenameable>), "curName");
+
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Constructor(
+                typeof(Dialog_RenameBuildingStorage_CreateNew),
+                new[] { typeof(IStorageGroupMember) });
+        }
+
+        private static void Postfix(
+            Dialog_RenameBuildingStorage_CreateNew __instance,
+            IStorageGroupMember building)
+        {
+            if (CurNameField == null || !(building is Building_OuterrealmVault vault)
+                || vault.Group != null)
+            {
+                return;
+            }
+            CurNameField.SetValue(
+                __instance,
+                "OuterrealmVault_DefaultStorageGroupName".Translate(
+                    vault.Position.x, vault.Position.z).ToString());
+        }
+    }
+
     // ── 财富统计排除（全局开关 OmniCrafterSettings.vaultExcludeFromWealth，默认开启） ──
     // vault 视图副本为"伪 Spawned"（mapIndexOrState 被提升 + 注册进 listerThings/listerHaulables），
     // 会被 WealthWatcher.CalculateWealthItems 计入 wealthItems（进而经 Map.PlayerWealthForStoryteller

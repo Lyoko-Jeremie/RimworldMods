@@ -6,6 +6,7 @@
   <!-- InspectString -->
   <OuterrealmVault_InspectSummary>超维存储：{0} 类物品，共 {1} 件</OuterrealmVault_InspectSummary>
   <OuterrealmVault_InspectEmpty>超维存储：空</OuterrealmVault_InspectEmpty>
+  <OuterrealmVault_DefaultStorageGroupName>[{0},{1}]</OuterrealmVault_DefaultStorageGroupName>
 
 
 

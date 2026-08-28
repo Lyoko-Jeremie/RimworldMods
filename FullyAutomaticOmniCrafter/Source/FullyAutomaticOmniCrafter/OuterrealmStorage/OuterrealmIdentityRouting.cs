@@ -461,7 +461,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return "OuterrealmStorageManager_NoHomeVault".Translate();
             }
             string mapLabel = vault.Map?.info?.parent?.Label ?? "-";
-            return vault.LabelCap + " · " + mapLabel;
+            string storageGroupName = vault.Group?.RenamableLabel;
+            if (storageGroupName.NullOrEmpty())
+            {
+                storageGroupName = "OuterrealmVault_DefaultStorageGroupName".Translate(
+                    vault.Position.x, vault.Position.z);
+            }
+            return storageGroupName + " · " + mapLabel;
         }
 
         private static AnchorState GetState(OuterrealmEntry entry)

@@ -6,6 +6,7 @@
   <!-- InspectString -->
   <OuterrealmVault_InspectSummary>Outerrealm storage: {0} item types, {1} total</OuterrealmVault_InspectSummary>
   <OuterrealmVault_InspectEmpty>Outerrealm storage: empty</OuterrealmVault_InspectEmpty>
+  <OuterrealmVault_DefaultStorageGroupName>[{0},{1}]</OuterrealmVault_DefaultStorageGroupName>
 
 
 
