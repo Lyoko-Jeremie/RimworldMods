@@ -403,6 +403,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return true;
         }
 
+        /// <summary>
+        /// 把当前路由到指定终端的唯一物品权威锚点加入右键菜单命中列表。
+        /// 锚点不进入 thingGrid/ThingOwner，原版鼠标命中无法自行发现它们。
+        /// </summary>
+        public static void AppendMenuAnchors(Building_OuterrealmVault vault, List<Thing> clickedThings)
+        {
+            if (vault == null || clickedThings == null)
+            {
+                return;
+            }
+            foreach (KeyValuePair<OuterrealmEntry, AnchorState> pair in States)
+            {
+                AnchorState state = pair.Value;
+                Thing thing = pair.Key?.Proto;
+                if (state.CurrentVault == vault && IsAnchor(thing))
+                {
+                    clickedThings.Add(thing);
+                }
+            }
+        }
+
         public static Building_OuterrealmVault CurrentVault(OuterrealmEntry entry)
         {
             AnchorState state;

@@ -1663,6 +1663,31 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 唯一物品右键菜单：补入不属于 ThingOwner/thingGrid 的权威锚点 ──
+    // 原版 FloatMenuContext 只从 thingGrid 命中建筑，再枚举建筑直接持有的 ThingOwner 内容。
+    // 唯一物品锚点仅注册在 lister/region，既不在 thingGrid，也不属于视图 ThingOwner，因此需在
+    // provider 枚举前按被点击的 vault 补入。只修改右键菜单上下文，不会让隐形锚点进入左键选择。
+    [HarmonyPatch(typeof(FloatMenuMakerMap), "GetProviderOptions")]
+    internal static class Patch_FloatMenuMakerMap_GetProviderOptions_IdentityAnchors
+    {
+        private static void Prefix(FloatMenuContext context)
+        {
+            List<Thing> clicked = context?.ClickedThings;
+            if (clicked == null)
+            {
+                return;
+            }
+            int originalCount = clicked.Count;
+            for (int i = 0; i < originalCount; i++)
+            {
+                if (clicked[i] is Building_OuterrealmVault vault)
+                {
+                    OuterrealmIdentityRouting.AppendMenuAnchors(vault, clicked);
+                }
+            }
+        }
+    }
+
     // ── 通用右键 FloatMenu：让 vault 副本通过 provider 的 Spawned 检查 ──
     // containedItemsSelectable=true 让副本进入 ClickedThings，但 FloatMenuOptionProvider.TargetThingValid
     // 默认返回 (CanTargetDespawned || thing.Spawned)，副本未 Spawned 会被过滤 → 所有 provider 选项都不出现。
@@ -1703,6 +1728,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return; // 置灰选项（CannotEquip 等）：与原版提前返回语义一致，不设置 revalidateClickTarget
             }
             Thing t = target.Thing;
+            if (OuterrealmIdentityRouting.IsAnchor(t)
+                && OuterrealmIdentityRouting.TryGetAnchor(t, out Building_OuterrealmVault anchorVault, out IntVec3 _)
+                && anchorVault.Spawned)
+            {
+                option.revalidateClickTarget = anchorVault;
+                return;
+            }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return; // 非 vault 副本目标（原版 OutfitStand/床/商队等）：完全不受影响
@@ -1789,6 +1821,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         state.IsVault = true;
                         state.Vault = view.Context as Building_OuterrealmVault; // 视图副本的 Context 恒为该建筑；兜底可 null
+                        break;
+                    }
+                    if (OuterrealmIdentityRouting.IsAnchor(opt.iconThing)
+                        && OuterrealmIdentityRouting.TryGetAnchor(
+                            opt.iconThing, out Building_OuterrealmVault anchorVault, out IntVec3 _))
+                    {
+                        state.IsVault = true;
+                        state.Vault = anchorVault;
                         break;
                     }
                 }
@@ -2312,16 +2352,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 半 Spawned 投影配套：屏蔽 vault 副本的堆叠数字 overlay ──
+    // ── 半 Spawned 投影/唯一锚点配套：屏蔽物品 overlay ──
     // 副本进入 HasGUIOverlay group 后，ThingOverlays 会遍历到它并调用 DrawGUIOverlay，
     // 在副本 Position（InteractionCell）处绘制 x 数字，多个副本堆叠同一格形成数字堆叠。
-    // 对 vault 视图副本短路 DrawGUIOverlay（覆盖 Thing 与 ThingWithComps 两类副本），避免绘制。
+    // 对 vault 视图副本及唯一物品权威锚点短路 DrawGUIOverlay（覆盖 Thing 与
+    // ThingWithComps 两类），避免在建筑位置绘制堆叠数字、物品标签等文字。
     [HarmonyPatch(typeof(Thing), "DrawGUIOverlay")]
     internal static class Patch_Thing_DrawGUIOverlay
     {
         private static bool Prefix(Thing __instance)
         {
-            return !(__instance.holdingOwner is OuterrealmVaultViewThingOwner);
+            return !(__instance.holdingOwner is OuterrealmVaultViewThingOwner)
+                && !OuterrealmIdentityRouting.IsAnchor(__instance);
         }
     }
 
@@ -2330,7 +2372,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static bool Prefix(ThingWithComps __instance)
         {
-            return !(__instance.holdingOwner is OuterrealmVaultViewThingOwner);
+            return !(__instance.holdingOwner is OuterrealmVaultViewThingOwner)
+                && !OuterrealmIdentityRouting.IsAnchor(__instance);
         }
     }
 

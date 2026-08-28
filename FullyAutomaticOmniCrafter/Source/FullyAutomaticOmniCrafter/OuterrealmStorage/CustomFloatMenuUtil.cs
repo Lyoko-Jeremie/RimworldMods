@@ -447,8 +447,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 识别由当前建筑视图副本生成的目标选项。非 vault 目标（建筑自身、地面对象、通用 provider 项）
-        /// 不参与分类筛选并始终保留，避免分类导航误删同一格上的其他合法命令。
+        /// 识别由当前建筑视图副本或唯一物品权威锚点生成的目标选项。非 vault 目标
+        /// （建筑自身、地面对象、通用 provider 项）不参与分类筛选并始终保留，
+        /// 避免分类导航误删同一格上的其他合法命令。
         /// </summary>
         private static bool TryGetVaultTarget(FloatMenuOption option, CustomMenuState state, out Thing target, out ThingDef def)
         {
@@ -459,7 +460,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return false;
             }
             OuterrealmVaultViewThingOwner view = target.holdingOwner as OuterrealmVaultViewThingOwner;
-            if (view == null || !ReferenceEquals(view.Context, state.Vault))
+            if (view != null && ReferenceEquals(view.Context, state.Vault))
+            {
+                def = target.def;
+                return def != null;
+            }
+            if (!OuterrealmIdentityRouting.IsAnchor(target)
+                || !OuterrealmIdentityRouting.TryGetAnchor(
+                    target, out Building_OuterrealmVault anchorVault, out IntVec3 _)
+                || !ReferenceEquals(anchorVault, state.Vault))
             {
                 return false;
             }
