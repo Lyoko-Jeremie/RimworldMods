@@ -218,6 +218,7 @@ Pawn 到达 vault
 - schema 0/1：`Count` 是旧格式唯一可信数量，Proto 曾是模板且 `stackCount` 可能被 Boost 放大。迁移时以 Count 为准，裁掉账外模板数量或补足权威堆，绝不能用较大的 Proto 数量抬高 Count。
 - schema 2：`Proto + AdditionalProtos` 是唯一真相。读档时从实际权威堆重建 Count；不再比较两者后取较大值。
 - 建筑视图、投影、借出集合、reservation 缓存、变更日志、弹出队列和随身 PendingCheckout 均为运行时状态，不序列化。
+- 唯一物品权威锚点虽然临时注册在地图 `listerThings`，保存地图前也必须与普通投影一起摘除；它只能作为 `OuterrealmEntry.Proto` 随全局库存深保存一次。旧版重复保存产生的地图副本在 `LoadedObjectDirectory.RegisterLoaded` 与 `Map.FinalizeLoading` 两个边界按权威 ThingID 精确清理；若副本曾被重新吸收并保存，则在全局库存 `PostLoadInit` 中保留首个相同 ID 的权威条目。读档后重新保存即可永久净化旧存档。
 - 建筑只保存 filter/存储组及 `noDeposit`、`noWithdraw`、`allowTakeForUse`、`frozen`、右键菜单模式。
 
 修改存档字段语义时必须提升 schema，并写单向、幂等迁移。禁止通过“哪个数字更大”猜测权威来源。

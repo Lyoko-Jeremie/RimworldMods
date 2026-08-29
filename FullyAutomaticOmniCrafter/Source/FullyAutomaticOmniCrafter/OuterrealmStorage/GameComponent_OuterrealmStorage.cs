@@ -337,6 +337,41 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return false;
         }
 
+        /// <summary>
+        /// 按持久 ThingID 查找权威实例。仅用于读档兼容：旧版曾把唯一物品权威锚点同时
+        /// 深保存到全局条目与 Map.things，加载时需要在注册交叉引用及 Spawn 地图物品前
+        /// 精确识别后者。该路径只在读档阶段调用，避免为正常运行额外维护一份 ID 索引。
+        /// </summary>
+        public bool TryGetCanonicalThingById(int thingIdNumber, out Thing canonical)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry entry = entries[i];
+                Thing proto = entry?.Proto;
+                if (proto != null && proto.thingIDNumber == thingIdNumber)
+                {
+                    canonical = proto;
+                    return true;
+                }
+                List<Thing> extras = entry?.AdditionalProtos;
+                if (extras == null)
+                {
+                    continue;
+                }
+                for (int j = 0; j < extras.Count; j++)
+                {
+                    Thing extra = extras[j];
+                    if (extra != null && extra.thingIDNumber == thingIdNumber)
+                    {
+                        canonical = extra;
+                        return true;
+                    }
+                }
+            }
+            canonical = null;
+            return false;
+        }
+
         /// <summary>按 Def 返回条目粗索引，只读借用；搜索期唯一锚点解析避免扫描全部库存。</summary>
         public List<OuterrealmEntry> EntriesOfDefForReading(ThingDef def)
         {
@@ -1354,6 +1389,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>
+        /// 清理旧版锚点重复保存后又被 vault 吸收并再次保存的状态。此时两个唯一条目持有
+        /// 不同对象引用但相同 ThingID；交叉引用目录已经统一保留首次出现的权威实例，故此处
+        /// 同样保留首条并移除后续条目。正常游戏中 ThingID 全局唯一，精确重复不可能代表两件合法物品。
+        /// </summary>
+        private int RemoveDuplicateUniqueCanonicalIdsAfterLoad()
+        {
+            HashSet<int> seen = new HashSet<int>();
+            int removed = 0;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry entry = entries[i];
+                Thing proto = entry?.Proto;
+                if (proto?.def == null || proto.def.category != ThingCategory.Item
+                    || proto.def.stackLimit > 1 || proto is Corpse)
+                {
+                    continue;
+                }
+                if (seen.Add(proto.thingIDNumber))
+                {
+                    continue;
+                }
+                entries.RemoveAt(i);
+                i--;
+                removed++;
+            }
+            return removed;
+        }
+
         // ── 存档 ─────────────────────────────────────────────────────────────────
 
         public override void ExposeData()
@@ -1400,6 +1464,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (entries == null)
                 {
                     entries = new List<OuterrealmEntry>();
+                }
+                int removedDuplicateCanonicals = RemoveDuplicateUniqueCanonicalIdsAfterLoad();
+                if (removedDuplicateCanonicals > 0)
+                {
+                    Log.Warning("[OuterrealmStorage] Recovered " + removedDuplicateCanonicals
+                        + " duplicated unique canonical item(s) from an old save. Save the game again "
+                        + "to permanently clean the file.");
                 }
                 // 重建 byDef 粗索引 + 从 Proto 重建展示签名（Key）；重置版本号/变更日志
                 // （早于建筑 SpawnSetup 的视图重建）。§B：合并不再依赖 Key，仅作展示/统计/放行签名。

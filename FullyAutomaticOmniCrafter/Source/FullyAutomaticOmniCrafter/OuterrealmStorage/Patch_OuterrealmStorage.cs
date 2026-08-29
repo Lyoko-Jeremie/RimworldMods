@@ -2300,13 +2300,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 半 Spawned 投影配套：存档时临时摘除 vault 副本，存档后加回 ──
+    // ── 半 Spawned 投影/唯一物品锚点配套：存档时临时摘除，存档后加回 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
     // 并被 Spawn 到 positionInt（InteractionCell）→ 物品出现在地上。
-    // 因此：Saving 时 Prefix 把本地图所有 vault 副本从 listerThings 移除，Postfix 加回（Harmony 的 Postfix
-    // 在 finally 语义下执行，原方法异常时也会恢复）。副本恢复后重新进入 listsByDef + 所有 group，
-    // 从而保留“按 group 查询（食物/药/毒品/书等）”的可见性。
+    // 唯一物品查询不使用副本，而是把全局条目中的权威 Proto 本身注册为 lister 锚点；若漏摘该锚点，
+    // 同一实例会先随 GameComponent 深保存，再随 Map.things 深保存，读档便产生相同 ThingID 的第二实例。
+    // 因此 Saving 时 Prefix 同时摘除两类对象，Finalizer 无论成功或异常都恢复 lister 注册。
     [HarmonyPatch(typeof(Map), "ExposeData")]
     internal static class Patch_Map_ExposeData
     {
@@ -2339,25 +2339,104 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    __state.Add(copy);
-                    __instance.listerThings.Remove(copy);
+                    if (__instance.listerThings.Contains(copy))
+                    {
+                        __state.Add(copy);
+                        __instance.listerThings.Remove(copy);
+                    }
                 }
+            }
+
+            // 唯一物品的权威原物不属于任何 view，必须从全局条目单独枚举。
+            List<OuterrealmEntry> entries = gs.EntriesForReading;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                Thing canonical = entries[i]?.Proto;
+                if (canonical == null || !OuterrealmIdentityRouting.IsAnchor(canonical)
+                    || canonical.MapHeld != __instance || !__instance.listerThings.Contains(canonical))
+                {
+                    continue;
+                }
+                __state.Add(canonical);
+                __instance.listerThings.Remove(canonical);
             }
         }
 
-        private static void Postfix(Map __instance, List<Thing> __state)
+        private static Exception Finalizer(Map __instance, List<Thing> __state, Exception __exception)
         {
-            if (Scribe.mode != LoadSaveMode.Saving || __state == null)
+            if (__state != null)
+            {
+                for (int i = 0; i < __state.Count; i++)
+                {
+                    Thing hidden = __state[i];
+                    if (hidden != null && !hidden.Destroyed && hidden.MapHeld == __instance
+                        && !__instance.listerThings.Contains(hidden))
+                    {
+                        __instance.listerThings.Add(hidden);
+                    }
+                }
+            }
+            return __exception;
+        }
+    }
+
+    // ── 旧坏档兼容：全局权威原物与 Map.things 曾被重复深保存 ──
+    // ResolveAllCrossReferences 注册全局条目早于地图物品。若后来的地图实例与权威实例 ThingID
+    // 相同但引用不同，跳过其目录注册，使所有引用继续解析到先注册的权威原物。只处理本系统
+    // 实际持有的 ID，不吞掉其他 Mod/原版自身的重复 ID 诊断。
+    [HarmonyPatch(typeof(LoadedObjectDirectory), "RegisterLoaded")]
+    internal static class Patch_LoadedObjectDirectory_RegisterLoaded_OuterrealmDuplicate
+    {
+        private static bool Prefix(ILoadReferenceable reffable)
+        {
+            Thing loadedThing = reffable as Thing;
+            if (loadedThing == null || loadedThing.def == null
+                || loadedThing.def.category != ThingCategory.Item || loadedThing.def.stackLimit > 1)
+            {
+                return true;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            Thing canonical;
+            return gs == null
+                || !gs.TryGetCanonicalThingById(loadedThing.thingIDNumber, out canonical)
+                || ReferenceEquals(loadedThing, canonical);
+        }
+    }
+
+    // Map.FinalizeLoading 在 Scribe PostLoadInit 之后执行。此时从待 Spawn 列表剔除旧存档中的
+    // 地图副本，防止它出现在 vault 格并被再次 Deposit。注册补丁负责交叉引用，本补丁负责实体守恒。
+    [HarmonyPatch(typeof(Map), "FinalizeLoading")]
+    internal static class Patch_Map_FinalizeLoading_OuterrealmDuplicate
+    {
+        private static void Prefix(Map __instance, List<Thing> ___loadedFullThings)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || ___loadedFullThings == null || ___loadedFullThings.Count == 0)
             {
                 return;
             }
-            for (int i = 0; i < __state.Count; i++)
+            int removed = 0;
+            for (int i = ___loadedFullThings.Count - 1; i >= 0; i--)
             {
-                Thing copy = __state[i];
-                if (copy != null && !copy.Destroyed && copy.MapHeld == __instance)
+                Thing loadedThing = ___loadedFullThings[i];
+                if (loadedThing == null || loadedThing.def == null
+                    || loadedThing.def.category != ThingCategory.Item || loadedThing.def.stackLimit > 1)
                 {
-                    __instance.listerThings.Add(copy);
+                    continue;
                 }
+                Thing canonical;
+                if (gs.TryGetCanonicalThingById(loadedThing.thingIDNumber, out canonical)
+                    && !ReferenceEquals(loadedThing, canonical))
+                {
+                    ___loadedFullThings.RemoveAt(i);
+                    removed++;
+                }
+            }
+            if (removed > 0)
+            {
+                Log.Warning("[OuterrealmStorage] Recovered " + removed
+                    + " duplicated unique item(s) from an old save before spawning map "
+                    + __instance.uniqueID + ". Save the game again to permanently clean the file.");
             }
         }
     }
