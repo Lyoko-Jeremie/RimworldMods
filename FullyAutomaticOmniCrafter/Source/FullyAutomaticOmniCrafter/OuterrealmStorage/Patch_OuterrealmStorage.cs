@@ -30,6 +30,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static readonly TargetIndex[] JobTargetIndices =
             { TargetIndex.A, TargetIndex.B, TargetIndex.C };
 
+        /// <summary>是否为仍属于超维存储全局账本的地图查询对象。
+        /// 普通条目使用建筑视图投影（ParentHolder=vault）；唯一物品使用无 holder 的权威锚点。</summary>
+        public static bool IsVaultStoredThing(Thing thing)
+        {
+            return thing != null
+                && (thing.ParentHolder is Building_OuterrealmVault
+                    || OuterrealmIdentityRouting.IsAnchor(thing));
+        }
+
         /// <summary>提升地图上所有视图副本的 stackCount 为全局剩余量（#9 数量感知路径）。</summary>
         public static void BoostMapVaults(Map map)
         {
@@ -822,8 +831,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
     // ── 防搬运循环：vault 条目的搬运目标排除本系统 Vault ──
     // 若目标选中另一座超维存储仓，条目会被其 TryAdd 吸收回全局层（数量不减）→ 无限搬运循环。
-    // postfix 发现"来源是 vault + 目标是本系统 Vault"时置失败（搬运工放弃该 job；
-    // vault→普通存储区不受影响，目标不是 vault）。
+    // 本补丁覆盖非格子型目标分支；当前 vault 是 ISlotGroupParent，格子型分支由下方
+    // TryFindBestBetterStoreCellForWorker 补丁在候选扫描阶段排除。vault→普通存储不受影响。
     [HarmonyPatch(typeof(StoreUtility), "TryFindBestBetterNonSlotGroupStorageFor")]
     internal static class Patch_StoreUtility_TryFindBestBetterNonSlotGroupStorageFor
     {
@@ -834,13 +843,28 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             if (haulDestination is Building_OuterrealmVault
-                && t.ParentHolder is Building_OuterrealmVault)
+                && OuterrealmPatchUtil.IsVaultStoredThing(t))
             {
                 // 阻止 vault→vault 搬运（无论放行/锁定）：目标是 vault 时失败，
                 // 避免无限搬运循环；vault→普通存储区不受影响（目标不是 vault）。
                 haulDestination = null;
                 __result = false;
             }
+        }
+    }
+
+    // 当前 vault 继承 Building_Storage 并实现 ISlotGroupParent，原版不会在上方的
+    // TryFindBestBetterNonSlotGroupStorageFor 中检查它，而是经此私有 worker 扫描 SlotGroup。
+    // 在候选扫描入口直接跳过 vault 目标，原版仍可继续比较其他普通存储格和非格子型容器；
+    // 不能等 TryFindBestBetterStorageFor 返回后再把结果置失败，否则被 vault 候选压过的普通目标会丢失。
+    [HarmonyPatch(typeof(StoreUtility), "TryFindBestBetterStoreCellForWorker")]
+    internal static class Patch_StoreUtility_TryFindBestBetterStoreCellForWorker
+    {
+        private static bool Prefix(Thing t, ISlotGroup slotGroup)
+        {
+            return !(slotGroup is SlotGroup concreteGroup
+                    && concreteGroup.parent is Building_OuterrealmVault)
+                || !OuterrealmPatchUtil.IsVaultStoredThing(t);
         }
     }
 
