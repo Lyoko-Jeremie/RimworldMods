@@ -201,6 +201,12 @@
 
 [hr][/hr]
 
+兼容性：
+
+当前， 本mod的[超维存储] 与 [LWM's Deep Storage] 存在兼容性问题，LWM's Deep Storage 会不管三七二十一修改所有的Building_Storage，推荐在 LWM's Deep Storage 的mod设置里面把 “将所有存储建筑改为 Deep Storage” 关掉再重启游戏。
+
+[hr][/hr]
+
 [h3]建议配合使用的mod[/h3]
 
 [list]
