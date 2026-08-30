@@ -50,7 +50,7 @@ namespace OuterrealmArchotechTeleportStation
 
             Map map = GetOrGenerateMapUtility.GetOrGenerateMap(
                 station.Tile,
-                station.def.overrideMapSize ?? Find.World.info.initialMapSize,
+                RimExodusCompat.GetStationMapSize(station),
                 station.def);
             if (map == null)
             {

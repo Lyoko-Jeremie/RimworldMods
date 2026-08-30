@@ -14,13 +14,27 @@ namespace OuterrealmArchotechTeleportStation
     /// </summary>
     internal static class RimExodusCompat
     {
-        internal const string PackageId = "RimExodus.SeamlessWorld.Dev";
         private const string GovernanceTypeName = "RimExodus.SeamlessMapGovernance";
 
-        private static readonly bool ActiveInt =
-            ModsConfig.IsActive(PackageId) && AccessTools.TypeByName(GovernanceTypeName) != null;
+        // 以实际已加载类型为准。RimExodus 的开发版/发布版可能使用不同 packageId，
+        // 继续绑定固定 packageId 会让兼容层在 Mod 明明存在时整体误判为未启用。
+        private static readonly bool ActiveInt = AccessTools.TypeByName(GovernanceTypeName) != null;
 
         internal static bool Active => ActiveInt;
+
+        /// <summary>
+        /// 传送站地图应使用的尺寸。RimExodus 存在时必须与正常世界地图尺寸一致；
+        /// 未安装时继续采用 WorldObjectDef 的 35×35 覆写值。
+        /// </summary>
+        internal static IntVec3 GetStationMapSize(OuterrealmArchotechTeleportStationWorldObject station)
+        {
+            if (Active)
+            {
+                return Find.World.info.initialMapSize;
+            }
+
+            return station?.def?.overrideMapSize ?? Find.World.info.initialMapSize;
+        }
 
         internal static bool LifecycleIntegrated { get; private set; }
 
