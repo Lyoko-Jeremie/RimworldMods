@@ -61,12 +61,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compat\RimExodusCompat.cs" />
     <Compile Include="Buildings\Building_OuterrealmArchotechTeleportPortal.cs" />
     <Compile Include="Buildings\OuterrealmTeleportStationTex.cs" />
     <Compile Include="Defs\OuterrealmDefOf.cs" />
     <Compile Include="Defs\OuterrealmTeleportStationPrefabDef.cs" />
     <Compile Include="Map\GenStep_OuterrealmTeleportStationLayout.cs" />
     <Compile Include="Map\MapComponent_OuterrealmTeleportPortalTracker.cs" />
+    <Compile Include="Map\RimExodusStationRoadUtility.cs" />
     <Compile Include="Map\Teleport\OuterrealmMapTeleportUtility.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UI\Dialog_OuterrealmTeleportContents.cs" />

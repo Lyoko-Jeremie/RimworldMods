@@ -16,6 +16,16 @@ namespace OuterrealmArchotechTeleportStation
         {
         }
 
+        /// <summary>
+        /// RimExodus 的接缝传送点在全部 GenStep 完成后才稳定存在。
+        /// 在 MapGenerated 阶段开凿最终硬质道路，避免后续 Mutator 再把道路覆盖成山体、水面或特殊地形。
+        /// </summary>
+        public override void MapGenerated()
+        {
+            base.MapGenerated();
+            RimExodusStationRoadUtility.BuildGuaranteedRoads(map);
+        }
+
         public void Register(Building_OuterrealmArchotechTeleportPortal portal)
         {
             if (portal == null || portals.Contains(portal))

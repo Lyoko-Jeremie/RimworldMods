@@ -159,8 +159,15 @@ namespace OuterrealmArchotechTeleportStation
 
             if (portal != null)
             {
-                // prefab 只负责建筑群，通向地图边缘的十字道路固定按地图中心补齐。
-                EnsureRoadToEdge(map, center);
+                // RimExodus 模式的最终道路必须等其接缝传送点生成后再铺；这里仅保留核心区短引道。
+                if (RimExodusCompat.Active)
+                {
+                    EnsureLocalRoads(map, center);
+                }
+                else
+                {
+                    EnsureRoadToEdge(map, center);
+                }
             }
 
             SpawnedThings.Clear();
@@ -179,8 +186,40 @@ namespace OuterrealmArchotechTeleportStation
                 map.terrainGrid.SetTerrain(cell, TerrainDefOf.MetalTile ?? TerrainDefOf.Concrete);
             }
 
-            EnsureRoadToEdge(map, center);
+            if (RimExodusCompat.Active)
+            {
+                EnsureLocalRoads(map, center);
+            }
+            else
+            {
+                EnsureRoadToEdge(map, center);
+            }
             return (Building)GenSpawn.Spawn(OuterrealmDefOf.OuterrealmArchotechTeleportPortal, center, map, Rot4.South);
+        }
+
+        /// <summary>
+        /// RimExodus 模式只铺传送站核心区的短引道；通向多边形接缝的最终道路在 MapGenerated 时生成。
+        /// </summary>
+        private static void EnsureLocalRoads(Map map, IntVec3 center)
+        {
+            const int radius = 10;
+            for (int offset = -radius; offset <= radius; offset++)
+            {
+                for (int width = -1; width <= 1; width++)
+                {
+                    IntVec3 vertical = new IntVec3(center.x + width, 0, center.z + offset);
+                    if (vertical.InBounds(map))
+                    {
+                        map.terrainGrid.SetTerrain(vertical, TerrainDefOf.PavedTile);
+                    }
+
+                    IntVec3 horizontal = new IntVec3(center.x + offset, 0, center.z + width);
+                    if (horizontal.InBounds(map))
+                    {
+                        map.terrainGrid.SetTerrain(horizontal, TerrainDefOf.PavedTile);
+                    }
+                }
+            }
         }
 
         /// <summary>
