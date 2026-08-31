@@ -19,4 +19,11 @@
   <OmniInterceptor_HeightInput>Height Input</OmniInterceptor_HeightInput>
   <OmniInterceptor_SetSize>Set Size</OmniInterceptor_SetSize>
   <OmniInterceptor_SetSizeDesc>Adjust the width and height of the rectangular shield.</OmniInterceptor_SetSizeDesc>
+  <OmniMechRepairField_RepairWithinShield>Omni Mech Repair Field</OmniMechRepairField_RepairWithinShield>
+  <OmniMechRepairField_RepairWithinShieldDesc>Automatically and immediately repairs all damaged friendly mechs within the shield, including injuries, missing parts, and missing built-in weapons.</OmniMechRepairField_RepairWithinShieldDesc>
+  <OmniMechRepairField_RepairWholeMap>Omni Mech Repair Field: Whole Map</OmniMechRepairField_RepairWholeMap>
+  <OmniMechRepairField_RepairWholeMapDesc>Automatically and immediately repairs all damaged friendly mechs on the current map, regardless of shield range.</OmniMechRepairField_RepairWholeMapDesc>
+  <OmniMechRepairField_InspectWithinShield>Omni mech repair field: Shield range</OmniMechRepairField_InspectWithinShield>
+  <OmniMechRepairField_InspectWholeMap>Omni mech repair field: Whole map</OmniMechRepairField_InspectWholeMap>
+  <OmniMechRepairField_InspectDisabled>Omni mech repair field: Disabled</OmniMechRepairField_InspectDisabled>
 </LanguageData>

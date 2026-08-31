@@ -19,4 +19,11 @@
   <OmniInterceptor_HeightInput>高度输入</OmniInterceptor_HeightInput>
   <OmniInterceptor_SetSize>设置尺寸</OmniInterceptor_SetSize>
   <OmniInterceptor_SetSizeDesc>调整矩形护盾的宽度和高度。</OmniInterceptor_SetSizeDesc>
+  <OmniMechRepairField_RepairWithinShield>Omni机械体修复立场</OmniMechRepairField_RepairWithinShield>
+  <OmniMechRepairField_RepairWithinShieldDesc>开启后，自动立即修复护盾范围内所有受损的我方机械体，包括伤势、缺失部件和丢失的原生武器。</OmniMechRepairField_RepairWithinShieldDesc>
+  <OmniMechRepairField_RepairWholeMap>Omni机械体修复立场：全图</OmniMechRepairField_RepairWholeMap>
+  <OmniMechRepairField_RepairWholeMapDesc>开启后，自动立即修复当前地图上所有受损的我方机械体，不受护盾范围限制。</OmniMechRepairField_RepairWholeMapDesc>
+  <OmniMechRepairField_InspectWithinShield>Omni机械体修复立场：护盾范围</OmniMechRepairField_InspectWithinShield>
+  <OmniMechRepairField_InspectWholeMap>Omni机械体修复立场：全图</OmniMechRepairField_InspectWholeMap>
+  <OmniMechRepairField_InspectDisabled>Omni机械体修复立场：已关闭</OmniMechRepairField_InspectDisabled>
 </LanguageData>

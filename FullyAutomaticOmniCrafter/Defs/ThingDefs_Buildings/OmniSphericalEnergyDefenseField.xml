@@ -76,6 +76,11 @@
                 <activeSound>MortarShield_Ambience</activeSound>
                 <isStatic>true</isStatic>
             </li>
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_OmniMechRepairField">
+                <repairWithinShieldByDefault>true</repairWithinShieldByDefault>
+                <repairWholeMapByDefault>false</repairWholeMapByDefault>
+                <checkIntervalTicks>250</checkIntervalTicks>
+            </li>
         </comps>
 
     </ThingDef>
