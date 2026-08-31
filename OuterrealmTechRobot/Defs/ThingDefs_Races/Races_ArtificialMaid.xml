@@ -177,6 +177,7 @@
             </li>
         </tools>
         <race>
+            <hasMeat>false</hasMeat>
             <thinkTreeMain>Humanlike</thinkTreeMain>
             <thinkTreeConstant>HumanlikeConstant</thinkTreeConstant>
             <intelligence>Humanlike</intelligence>
