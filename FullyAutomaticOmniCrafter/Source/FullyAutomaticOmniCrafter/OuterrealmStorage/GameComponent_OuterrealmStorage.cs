@@ -88,6 +88,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ThingFilter.SetAllow(ThingCategoryDef) 相同，遍历 DescendantThingDefs 统一写入。
         private Dictionary<string, bool> managerThingShow;
 
+        /// <summary>
+        /// 是否让轨道商人无需信标、地图或终端权限即可直接枚举全部全局库存。
+        /// 这是殖民地级规则，随当前存档保存；默认关闭以保持旧存档行为。
+        /// </summary>
+        private bool exposeAllToOrbitalTrade;
+
         /// <summary>帧末微批同步用缓存列表（§3.3 实时同步方案 B：复用避免每帧分配）。</summary>
         private readonly List<OuterrealmEntry> tmpSyncKeys = new List<OuterrealmEntry>();
 
@@ -101,6 +107,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public List<Building_OuterrealmVault> VaultsForReading => vaults;
         public List<VaultEjectJob> EjectQueueForReading => ejectQueue;
         public Dictionary<ThingDef, long> ResourceTotalsForReading => resourceTotals;
+        public bool ExposeAllToOrbitalTrade
+        {
+            get => exposeAllToOrbitalTrade;
+            set => exposeAllToOrbitalTrade = value;
+        }
 
         public GameComponent_OuterrealmStorage(Game game)
         {
@@ -1428,6 +1439,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // managerCatShow 仅为读取旧版存档保留；新逻辑保存逐 ThingDef 的稀疏状态。
             Scribe_Collections.Look(ref managerCatShow, "managerCatShow", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref managerThingShow, "managerThingShow", LookMode.Value, LookMode.Value);
+            Scribe_Values.Look(ref exposeAllToOrbitalTrade, "exposeAllToOrbitalTrade", false);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (managerCatShow == null)

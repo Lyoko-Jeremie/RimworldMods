@@ -34,6 +34,8 @@
   <OuterrealmStorageManager_ShowOnlyUnseen>Show only unseen entries</OuterrealmStorageManager_ShowOnlyUnseen>
   <OuterrealmStorageManager_ShowEntryDetails>Show visibility and location</OuterrealmStorageManager_ShowEntryDetails>
   <OuterrealmStorageManager_ShowEntryDetailsDesc>Show each ordinary item's terminal visibility and each unique item's current or default vault. Disabled by default for a cleaner list.</OuterrealmStorageManager_ShowEntryDetailsDesc>
+  <OuterrealmStorageManager_ExposeAllToTrade>Expose all inventory to orbital trade without beacons</OuterrealmStorageManager_ExposeAllToTrade>
+  <OuterrealmStorageManager_ExposeAllToTradeDesc>Allow orbital traders to access every sellable item in outerrealm storage without checking beacons, maps, vault filters, frozen state, or withdrawal restrictions. Ordinary map items still require a beacon.</OuterrealmStorageManager_ExposeAllToTradeDesc>
   <OuterrealmStorageManager_SelectMap>Target map</OuterrealmStorageManager_SelectMap>
   <OuterrealmStorageManager_Eject>Eject</OuterrealmStorageManager_Eject>
   <OuterrealmStorageManager_EjectAll>Eject all</OuterrealmStorageManager_EjectAll>

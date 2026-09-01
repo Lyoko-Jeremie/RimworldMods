@@ -242,6 +242,7 @@ Pawn 到达 vault
 - Manipulator Beam：反射目标全部缓存，未安装时 `Prepare` 跳过；batch 扫描只借一个真实种子，Lift 时统一从权威库存转移；禁止存入时不能把 vault 当光束目的地。
 - 打包建筑：存入前取消仍引用它的安装蓝图；延迟 Checkout 后把蓝图引用从投影重定向到真实实例。
 - 交易/远行队：投影可能同时经 lister 与 haul source 被枚举，必须按实例去重；最终收集仍走 TryStartCarry Checkout。
+- 轨道贸易：默认只暴露通电信标覆盖终端中的普通投影与唯一物品当前锚点。管理器的“无需信标向轨道贸易暴露全部库存”是随存档保存的全局规则；开启后直接遍历全局条目，普通物品使用无地图临时交易投影，唯一物品使用权威实例。两者都必须在成交 `SplitOff` 边界按临时来源映射调用 `Withdraw`，禁止把普通权威 `Proto` 直接交给交易系统。
 - 财富：是否排除全局库存由 `OmniCrafterSettings.vaultExcludeFromWealth` 控制，不能通过伪造 Count 解决财富问题。
 
 ## 12. 文件职责索引
@@ -258,6 +259,7 @@ Pawn 到达 vault
 | `SubspaceAccessUtility.cs` | 随身授权选料注入、PendingCheckout 与回收 |
 | `Hediff_SubspaceAccess.cs` | Pawn 授权状态和自动取用/存入设置 |
 | `OuterrealmMarkUtility.cs` | 新旧授权标记统一判断 |
+| `OuterrealmTradeSourceRegistry.cs` | 无信标轨道贸易的临时来源到权威条目弱映射 |
 | `JobDriver_VaultDepositFromGround.cs` | 授权 Pawn 手动存入 |
 | `JobDriver_VaultDeliverResources.cs` | 从 vault 向蓝图/Frame 配送材料 |
 | `Dialog_OuterrealmStorageManager.cs` | 全局库存管理与批量弹出 |

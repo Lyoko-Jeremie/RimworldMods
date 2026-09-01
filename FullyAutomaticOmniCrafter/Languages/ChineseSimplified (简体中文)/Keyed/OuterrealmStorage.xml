@@ -34,6 +34,8 @@
   <OuterrealmStorageManager_ShowOnlyUnseen>仅显示不可见条目</OuterrealmStorageManager_ShowOnlyUnseen>
   <OuterrealmStorageManager_ShowEntryDetails>显示可见性与位置</OuterrealmStorageManager_ShowEntryDetails>
   <OuterrealmStorageManager_ShowEntryDetailsDesc>显示普通物品的终端可见性，以及唯一物品的当前或默认存储仓。默认关闭，使列表更简洁。</OuterrealmStorageManager_ShowEntryDetailsDesc>
+  <OuterrealmStorageManager_ExposeAllToTrade>无需信标向轨道贸易暴露全部库存</OuterrealmStorageManager_ExposeAllToTrade>
+  <OuterrealmStorageManager_ExposeAllToTradeDesc>开启后，轨道商人可直接访问超维存储中的全部可售物品，不再检查信标、地图、终端筛选、冻结或禁止取出设置。普通地面物品仍需信标。</OuterrealmStorageManager_ExposeAllToTradeDesc>
   <OuterrealmStorageManager_SelectMap>目标地图</OuterrealmStorageManager_SelectMap>
   <OuterrealmStorageManager_Eject>弹出</OuterrealmStorageManager_Eject>
   <OuterrealmStorageManager_EjectAll>全部弹出</OuterrealmStorageManager_EjectAll>

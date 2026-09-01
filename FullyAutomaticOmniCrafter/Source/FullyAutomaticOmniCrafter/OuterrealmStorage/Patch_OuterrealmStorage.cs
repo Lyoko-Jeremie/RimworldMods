@@ -219,6 +219,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static bool Prefix(Thing __instance, int count, ref Thing __result)
         {
+            OuterrealmEntry tradeEntry;
+            if (OuterrealmTradeSourceRegistry.TryGetEntry(__instance, out tradeEntry))
+            {
+                // 无信标直连交易使用无地图临时来源；成交边界必须回到全局权威条目扣库。
+                GameComponent_OuterrealmStorage tradeStorage = GameComponent_OuterrealmStorage.Instance;
+                __result = tradeStorage?.Withdraw(tradeEntry, count);
+                return false;
+            }
             if (OuterrealmIdentityRouting.IsAnchor(__instance))
             {
                 GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
@@ -2176,11 +2184,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 轨道交易信标：把 vault 副本汇报为可售物品 ──
+    // ── 轨道贸易：信标覆盖仓库 + 可选全局直连 ──
     // 原版 TradeUtility.AllLaunchableThingsForTrade 只枚举信标覆盖格 thingGrid，并对 Bookcase/OutfitStand/GeneBank
-    // 硬编码特判其持有物；vault 不在特判里，副本又不在 thingGrid，故信标看不到。此处用 Postfix 包装迭代器，
-    // 追加“信标覆盖范围内 vault 的视图副本”。成交时 TradeShip.GiveSoldThingToTrader 对副本 SplitOff，
-    // 已由 Patch_Thing_SplitOff 物化并扣全局，无需额外处理。
+    // 硬编码特判其持有物；vault 投影与唯一锚点均不在 thingGrid，原版无法发现。默认模式追加信标覆盖仓库
+    // 的视图投影及当前唯一锚点；全局直连开关开启时改为遍历全局条目，无视地图、终端筛选与权限。
+    // 临时来源仅在成交 SplitOff 时 Withdraw，打开或取消交易不移动库存。
     [HarmonyPatch(typeof(TradeUtility), "AllLaunchableThingsForTrade")]
     internal static class Patch_TradeUtility_AllLaunchableThingsForTrade
     {
@@ -2206,6 +2214,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 yield break;
             }
 
+            if (gs.ExposeAllToOrbitalTrade)
+            {
+                foreach (Thing source in AppendGlobalVaultItems(gs, trader))
+                {
+                    if (source != null && seen.Add(source))
+                    {
+                        yield return source;
+                    }
+                }
+                yield break;
+            }
+
             HashSet<IntVec3> beaconCells = new HashSet<IntVec3>();
             foreach (Building_OrbitalTradeBeacon beacon in Building_OrbitalTradeBeacon.AllPowered(map))
             {
@@ -2216,6 +2236,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
 
             List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            HashSet<Building_OuterrealmVault> coveredVaults = new HashSet<Building_OuterrealmVault>();
             for (int i = 0; i < vaults.Count; i++)
             {
                 Building_OuterrealmVault v = vaults[i];
@@ -2227,6 +2248,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
+                coveredVaults.Add(v);
                 List<Thing> copies = v.view.InnerListForReading;
                 for (int j = 0; j < copies.Count; j++)
                 {
@@ -2240,6 +2262,66 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         yield return copy;
                     }
                 }
+            }
+
+            // 唯一物品不生成 view 投影，只把权威实例作为当前终端的查询锚点注册在 lister/region。
+            // 它同样不在 thingGrid，必须按当前路由终端补入信标贸易候选。
+            List<OuterrealmEntry> entries = gs.EntriesForReading;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry entry = entries[i];
+                Thing canonical = entry?.Proto;
+                Building_OuterrealmVault currentVault = OuterrealmIdentityRouting.CurrentVault(entry);
+                if (canonical == null || !OuterrealmIdentityRouting.IsAnchor(canonical)
+                    || currentVault == null || currentVault.Map != map || !coveredVaults.Contains(currentVault)
+                    || !TradeUtility.PlayerSellableNow(canonical, trader))
+                {
+                    continue;
+                }
+                if (seen.Add(canonical))
+                {
+                    yield return canonical;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 全局直连模式的临时贸易来源。普通可堆叠条目使用查询投影；唯一物品必须暴露权威实例，
+        /// 保留 ThingID、Comp 与外部引用。原版交易数量为 int，超出部分留待下一次交易。
+        /// </summary>
+        private static IEnumerable<Thing> AppendGlobalVaultItems(
+            GameComponent_OuterrealmStorage gs, ITrader trader)
+        {
+            List<OuterrealmEntry> entries = gs.EntriesForReading;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry entry = entries[i];
+                if (entry == null || entry.Proto == null || entry.Count <= 0)
+                {
+                    continue;
+                }
+
+                Thing source;
+                if (OuterrealmIdentityRouting.IsUnique(entry))
+                {
+                    source = entry.Proto;
+                }
+                else
+                {
+                    source = GameComponent_OuterrealmStorage.MaterializeProjection(entry.Proto);
+                    if (source == null)
+                    {
+                        continue;
+                    }
+                    source.stackCount = (int)Math.Min(entry.Count, int.MaxValue);
+                }
+
+                if (!TradeUtility.PlayerSellableNow(source, trader))
+                {
+                    continue;
+                }
+                OuterrealmTradeSourceRegistry.Register(source, entry);
+                yield return source;
             }
         }
 
@@ -2269,6 +2351,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static bool Prefix(Thing t, ref string reason, ref bool __result)
         {
+            OuterrealmEntry tradeEntry;
+            if (OuterrealmTradeSourceRegistry.TryGetEntry(t, out tradeEntry))
+            {
+                reason = null;
+                __result = true;
+                return false; // 全局直连来源没有物理位置，显式跳过原版信标位置检查
+            }
             if (t != null && t.ParentHolder is Building_OuterrealmVault)
             {
                 reason = null;

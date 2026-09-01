@@ -211,6 +211,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             y += 34f;
 
+            // 当前存档的全局贸易规则：开启后超维库存无需信标或任何终端即可被轨道商人枚举。
+            bool exposeAllToTrade = gs.ExposeAllToOrbitalTrade;
+            Rect tradeToggleRect = new Rect(inRect.x, y, inRect.width, 28f);
+            Widgets.CheckboxLabeled(
+                tradeToggleRect,
+                "OuterrealmStorageManager_ExposeAllToTrade".Translate(),
+                ref exposeAllToTrade,
+                placeCheckboxNearText: true);
+            TooltipHandler.TipRegion(
+                tradeToggleRect,
+                "OuterrealmStorageManager_ExposeAllToTradeDesc".Translate());
+            if (exposeAllToTrade != gs.ExposeAllToOrbitalTrade)
+            {
+                gs.ExposeAllToOrbitalTrade = exposeAllToTrade;
+            }
+            y += 30f;
+
             // 主体：左侧原版树状分类 + 右侧条目列表（参考万能制造机界面布局）
             float bodyH = inRect.height - y - 40f;
             if (bodyH <= 0f)

@@ -440,6 +440,7 @@
     <Compile Include="OuterrealmStorage\OuterrealmEntry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmIdentityRouting.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmTradeSourceRegistry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
     <Compile Include="OuterrealmStorage\Patch_ManipulatorBeamCompat.cs" />
