@@ -1709,6 +1709,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            Thing targetOnly = VaultTargetOnlyFloatMenuScope.CurrentTarget;
+            if (targetOnly != null)
+            {
+                // 两级菜单第二层：只让原版/第三方 provider 看见用户刚选择的一个目标。
+                // ContainingSelectionUtility 的配套 patch 已阻止构造 Context 时展开整个 vault。
+                clicked.Clear();
+                clicked.Add(targetOnly);
+                return;
+            }
             int originalCount = clicked.Count;
             for (int i = 0; i < originalCount; i++)
             {
@@ -2017,6 +2026,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             if (__result == null || context == null)
             {
+                return;
+            }
+            if (VaultTargetOnlyFloatMenuScope.Active)
+            {
+                // 这是两级菜单为仓内投影生成操作，不是玩家右键地面实物；禁止追加“再次存入”。
                 return;
             }
             Pawn pawn = context.FirstSelectedPawn;

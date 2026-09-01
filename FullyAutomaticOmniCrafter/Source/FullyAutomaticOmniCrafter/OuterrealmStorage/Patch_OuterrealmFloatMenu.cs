@@ -1,9 +1,119 @@
+using System;
+using System.Collections.Generic;
 using HarmonyLib;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
+    /// <summary>
+    /// 两级菜单生成第二层操作时的线程局部目标限定作用域。
+    /// 原版 FloatMenuContext 仍正常创建，但禁止枚举容器全部内容，并在 provider 入口把
+    /// ClickedThings 精确替换为当前所选目标，使第三方 provider 仍走原版调用链。
+    /// </summary>
+    internal static class VaultTargetOnlyFloatMenuScope
+    {
+        [ThreadStatic]
+        private static Thing currentTarget;
+        [ThreadStatic]
+        private static int depth;
+
+        internal static bool Active => depth > 0 && currentTarget != null;
+        internal static Thing CurrentTarget => Active ? currentTarget : null;
+
+        internal static IDisposable Enter(Thing target)
+        {
+            Thing previousTarget = currentTarget;
+            int previousDepth = depth;
+            currentTarget = target;
+            depth = previousDepth + 1;
+            return new Scope(previousTarget, previousDepth);
+        }
+
+        private sealed class Scope : IDisposable
+        {
+            private readonly Thing previousTarget;
+            private readonly int previousDepth;
+            private bool disposed;
+
+            public Scope(Thing previousTarget, int previousDepth)
+            {
+                this.previousTarget = previousTarget;
+                this.previousDepth = previousDepth;
+            }
+
+            public void Dispose()
+            {
+                if (disposed)
+                {
+                    return;
+                }
+                disposed = true;
+                currentTarget = previousTarget;
+                depth = previousDepth;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 两级自定义菜单必须在 Selector 调用 FloatMenuMakerMap.GetOptions 之前接管；否则全仓
+    /// Provider/WorkGiver 扫描已经发生，无法改善第一次打开的卡顿。
+    /// </summary>
+    [HarmonyPatch(typeof(Selector), "HandleMapClicks")]
+    internal static class Patch_Selector_HandleMapClicks_VaultItemThenOption
+    {
+        private static bool Prefix(Selector __instance)
+        {
+            Event current = Event.current;
+            if (current == null || current.type != EventType.MouseDown || current.button != 1)
+            {
+                return true;
+            }
+            List<Pawn> selectedPawns = __instance.SelectedPawns;
+            if (selectedPawns == null || selectedPawns.Count == 0)
+            {
+                return true;
+            }
+            Map map = Find.CurrentMap;
+            Vector3 clickPos = UI.MouseMapPosition();
+            IntVec3 cell = IntVec3.FromVector3(clickPos);
+            if (map == null || !cell.InBounds(map))
+            {
+                return true;
+            }
+            Building_OuterrealmVault vault = cell.GetEdifice(map) as Building_OuterrealmVault;
+            if (vault == null
+                || vault.RightClickMenuMode != RightClickMenuMode.CustomList
+                || vault.CustomMenuMode != VaultCustomMenuMode.ItemThenOption)
+            {
+                return true;
+            }
+
+            Find.WindowStack.Add(new Dialog_OuterrealmVaultItemFloatMenu(
+                vault, new List<Pawn>(selectedPawns), clickPos));
+            current.Use();
+            return false;
+        }
+    }
+
+    /// <summary>目标限定期间阻止 GenUI.ThingsUnderMouse 展开 vault 的全部直接持有物。</summary>
+    [HarmonyPatch(typeof(ContainingSelectionUtility), nameof(ContainingSelectionUtility.SelectableContainedThings))]
+    internal static class Patch_ContainingSelectionUtility_SelectableContainedThings_TargetOnly
+    {
+        private static readonly IEnumerable<Thing> Empty = Array.Empty<Thing>();
+
+        private static bool Prefix(ref IEnumerable<Thing> __result)
+        {
+            if (!VaultTargetOnlyFloatMenuScope.Active)
+            {
+                return true;
+            }
+            __result = Empty;
+            return false;
+        }
+    }
+
     // ── 自制右键菜单（vault 大列表）patch 组：改窗口形态 / 接管绘制 / 恢复暂停 ──
     // 原版创建链（Selector.HandleMapClicks）不干预：FloatMenuMap 照常构造、照常 Add，
     // 仅自定义模式下改变其窗口表现。全部判定先查模式开关 ∧ 含 vault 选项（白名单），

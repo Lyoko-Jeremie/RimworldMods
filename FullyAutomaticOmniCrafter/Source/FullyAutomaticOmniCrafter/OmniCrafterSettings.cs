@@ -31,6 +31,17 @@ namespace FullyAutomaticOmniCrafter
         CustomList,
     }
 
+    /// <summary>
+    /// 超维存储仓启用自定义右键菜单后的内部样式（每建筑独立）。
+    /// </summary>
+    public enum VaultCustomMenuMode
+    {
+        /// <summary>兼容旧实现：一次生成全部目标的全部操作，再显示可搜索大列表。</summary>
+        FullOptionList,
+        /// <summary>性能模式：先显示轻量物品列表，选择物品后只生成该目标的操作。</summary>
+        ItemThenOption,
+    }
+
     // ─── Global Settings (cross-save favorites) ───────────────────────────────
     public class OmniCrafterSettings : ModSettings
     {

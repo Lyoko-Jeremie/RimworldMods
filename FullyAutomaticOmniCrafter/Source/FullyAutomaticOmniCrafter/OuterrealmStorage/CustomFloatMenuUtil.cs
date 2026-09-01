@@ -202,7 +202,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// Disabled 项铺原版同款深灰背景（ColorBGDisabled）并以淡灰文字/图标显示，
         /// 点击仅播 ClickReject（与原版 Chosen 行为一致）。
         /// </summary>
-        private static bool DrawRow(Rect row, FloatMenuOption opt, float iconSize)
+        internal static bool DrawRow(Rect row, FloatMenuOption opt, float iconSize)
         {
             bool disabled = opt.Disabled;
             bool hover = !disabled && Mouse.IsOver(row);
@@ -505,7 +505,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         ///   3. 拼音全拼子串（如 "cunchu" 命中 "存储"）。
         /// 拼音转换经 ToolGood.Words，结果按 Label 缓存。
         /// </summary>
-        private static bool Matches(string label, string keyword)
+        internal static bool Matches(string label, string keyword)
         {
             if (string.IsNullOrEmpty(label) || keyword.Length == 0)
             {
@@ -540,6 +540,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             return (pair.Initials.Length > 0 && pair.Initials.Contains(keyword))
                 || (pair.Full.Length > 0 && pair.Full.Contains(keyword));
+        }
+
+        /// <summary>新菜单实例打开时清理标签拼音缓存，避免跨大量菜单会话持续增长。</summary>
+        internal static void ResetSearchCache()
+        {
+            PinyinCache.Clear();
         }
     }
 }

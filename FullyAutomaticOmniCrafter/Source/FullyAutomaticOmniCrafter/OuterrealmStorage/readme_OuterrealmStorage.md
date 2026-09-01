@@ -268,7 +268,8 @@ Pawn 到达 vault
 | `JobDriver_VaultDeliverResources.cs` | 从 vault 向蓝图/Frame 配送材料 |
 | `Dialog_OuterrealmStorageManager.cs` | 全局库存管理与批量弹出 |
 | `ITab_OuterrealmVaultContents.cs` | 单建筑可见内容与弹出 |
-| `CustomFloatMenuUtil.cs` / `Patch_OuterrealmFloatMenu.cs` | 大列表右键菜单、搜索、分类和刷新策略 |
+| `CustomFloatMenuUtil.cs` / `Patch_OuterrealmFloatMenu.cs` | 旧版完整操作大列表、搜索、分类、刷新策略及两级菜单早期拦截 |
+| `Dialog_OuterrealmVaultItemFloatMenu.cs` | 两级右键菜单：先显示轻量物品列表，再只为所选目标生成原版/第三方操作 |
 | `Dialog_SubspaceAccessManager.cs` | Pawn 授权管理 UI |
 
 ## 13. 开发时的决策顺序
