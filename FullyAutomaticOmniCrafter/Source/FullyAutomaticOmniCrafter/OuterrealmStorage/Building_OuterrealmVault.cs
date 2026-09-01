@@ -246,8 +246,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             for (int i = 0; i < toAbsorb.Count; i++)
             {
-                // 方案 B：落格吸收属外部物品存入，吸收前取消引用该打包建筑的安装蓝图。
-                OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(toAbsorb[i]);
                 gs?.Deposit(toAbsorb[i], this);
             }
         }
@@ -307,8 +305,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
                 for (int i = 0; i < toAbsorb.Count; i++)
                 {
-                    // 方案 B：同 AbsorbForeignItems，吸收前取消引用该打包建筑的安装蓝图。
-                    OuterrealmVaultUtil.CancelBlueprintIfPendingInstall(toAbsorb[i]);
                     gs?.Deposit(toAbsorb[i], this);
                 }
             }
@@ -440,7 +436,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 与"允许存入"开关语义一致），否则取决于 CanShow（冻结/filter）。</summary>
         private bool CanAbsorb(Thing t)
         {
-            return !noDeposit && CanShow(t);
+            return !noDeposit && CanShow(t)
+                && !OuterrealmVaultUtil.IsProtectedFromAutomaticDeposit(t);
         }
 
         // IHaulEnroute：无限容量（§1.2）。注意该值不做 filter 检查——filter 门控在存储选择阶段 Accepts。

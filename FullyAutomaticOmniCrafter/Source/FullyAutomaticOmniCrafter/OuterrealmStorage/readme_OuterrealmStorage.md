@@ -106,7 +106,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 
 ```text
 真实 Thing
-  → 取消仍引用该物的安装蓝图（如适用）
+  → 自动存入先检查工作 claim；玩家手动存入则提示并确认后取消仍引用该物的安装蓝图
   → GameComponent.Deposit
   → DeSpawn / 与兼容权威堆合并 / 新建条目
   → 更新 Count、统计、版本和视图
@@ -240,7 +240,11 @@ Pawn 到达 vault
 
 - Common Sense：仅在 `MaterializeProjection` 的线程局部作用域内跳过其 ThingMaker Postfix，避免生食等没有产出配方的物品触发空集合 RandomElement；正常 ThingMaker 行为不变。
 - Manipulator Beam：反射目标全部缓存，未安装时 `Prepare` 跳过；batch 扫描只借一个真实种子，Lift 时统一从权威库存转移；禁止存入时不能把 vault 当光束目的地。
-- 打包建筑：存入前取消仍引用它的安装蓝图；延迟 Checkout 后把蓝图引用从投影重定向到真实实例。
+- 打包建筑：玩家确认手动存入后才取消仍引用它的安装蓝图；延迟 Checkout 后把蓝图引用从投影重定向到真实实例。
+- 自动存入保护：安装/再种植蓝图是优先于普通存储的工作 claim。自动搬运候选、运行中任务和最终
+  TryAdd/落格吸收均不得取消蓝图；蓝图建立晚于搬运任务时，应终止旧搬运并由原版 Job 清理安全
+  落物。蓝图晚于未提示的手动存入命令建立时也终止旧命令；只有玩家在蓝图已经存在时明确选择
+  手动存入并确认提示后，才取消蓝图并继续 Deposit。
 - 交易/远行队：投影可能同时经 lister 与 haul source 被枚举，必须按实例去重；最终收集仍走 TryStartCarry Checkout。
 - 轨道贸易：默认只暴露通电信标覆盖终端中的普通投影与唯一物品当前锚点。管理器的“无需信标向轨道贸易暴露全部库存”是随存档保存的全局规则；开启后直接遍历全局条目，普通物品使用无地图临时交易投影，唯一物品使用权威实例。两者都必须在成交 `SplitOff` 边界按临时来源映射调用 `Withdraw`，禁止把普通权威 `Proto` 直接交给交易系统。
 - 财富：是否排除全局库存由 `OmniCrafterSettings.vaultExcludeFromWealth` 控制，不能通过伪造 Count 解决财富问题。

@@ -2054,8 +2054,30 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Thing target = t;
                 __result.Add(new FloatMenuOption(
                     "SubspaceAccess_PutIntoStorage".Translate(target.LabelCapNoCount),
-                    () => StartDepositJob(pawn, target)));
+                    () => RequestDeposit(pawn, target)));
             }
+        }
+
+        /// <summary>等待安装/再种植的物品允许手动存入，但必须先明确告知会取消现有蓝图。</summary>
+        private static void RequestDeposit(Pawn pawn, Thing t)
+        {
+            if (pawn == null || t == null || t.Destroyed)
+            {
+                return;
+            }
+            if (!OuterrealmVaultUtil.IsPendingInstall(t))
+            {
+                StartDepositJob(pawn, t);
+                return;
+            }
+            TaggedString warning = "SubspaceAccess_ConfirmDepositPendingInstall".Translate(
+                OuterrealmVaultUtil.SafeLabelCapNoCount(t));
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                warning,
+                () => StartDepositJob(pawn, t),
+                destructive: true,
+                title: "SubspaceAccess_PutIntoStorage".Translate(
+                    OuterrealmVaultUtil.SafeLabelCapNoCount(t))));
         }
 
         private static bool CanDeposit(Thing t)
@@ -2102,6 +2124,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // （TryFindBestBetterStorageFor → IsGoodStoreCell → CanReserveNew）失败 → 原版"NoEmptyPlace"
     // （未配置空余的、可到达的储存点）；A 完成释放预留后恢复。两者互补消除该窗口，使 vault 格 100%
     // 走 v3 容器路径（HaulToContainer 对 IHaulEnroute 容器跳过 Reserve(容器本体)，不预留 vault 格）。
+    /// <summary>
+    /// 所有通过原版容器 API 生成的 vault 自动搬运任务统一检查工作 claim。
+    /// 既覆盖本 Mod 从存储格转换的路径，也覆盖直接调用 HaulToContainerJob 的第三方 Mod。
+    /// </summary>
+    [HarmonyPatch(typeof(HaulAIUtility), "HaulToContainerJob")]
+    internal static class Patch_HaulAIUtility_HaulToContainerJob_AutoDepositProtection
+    {
+        private static bool Prefix(Thing t, Thing container, ref Job __result)
+        {
+            if (container is Building_OuterrealmVault
+                && OuterrealmVaultUtil.IsProtectedFromAutomaticDeposit(t))
+            {
+                __result = null;
+                return false;
+            }
+            return true;
+        }
+    }
+
     [HarmonyPatch(typeof(HaulAIUtility), "HaulToCellStorageJob")]
     internal static class Patch_HaulAIUtility_HaulToCellStorageJob
     {
@@ -2128,12 +2169,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     __result = null;
                     return false;
                 }
-                // 方案 A：等待安装的打包建筑（被 Blueprint_Install 引用）禁止存入 vault——
-                // 否则蓝图引用的权威实例被藏入全局层后不可达，安装 job 永远"没有路径"卡死。
-                // 自动搬运在此被拦截，物品留在地面，安装工作照常从地面取用；
-                // 玩家强制存入（右键）绕过本检查走 Deposit 吸收，由
-                // OuterrealmVaultUtil.CancelBlueprintIfPendingInstall 兜底取消蓝图（方案 B）。
-                if (OuterrealmVaultUtil.IsPendingInstall(t))
+                // 存储格转换前的早期短路；HaulToContainerJob 自身还有统一保护，最终 TryAdd
+                // 与落格吸收也会重验，覆盖任务创建后的竞态和第三方直接建 Job。
+                if (OuterrealmVaultUtil.IsProtectedFromAutomaticDeposit(t))
                 {
                     __result = null;
                     return false;
@@ -2143,6 +2181,22 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return false;
             }
             return true;
+        }
+    }
+
+    /// <summary>
+    /// 蓝图创建发生在自动搬运 Job 领取物品之后时，主动终止旧的 vault 搬运。
+    /// MinifiedTree 同样通过 PlaceBlueprintForInstall 建立再种植蓝图，因此无需树木类型特判。
+    /// </summary>
+    [HarmonyPatch(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForInstall))]
+    internal static class Patch_GenConstruct_PlaceBlueprintForInstall_AutoDepositProtection
+    {
+        private static void Postfix(MinifiedThing itemToInstall, Blueprint_Install __result)
+        {
+            if (__result != null && !__result.Destroyed)
+            {
+                OuterrealmVaultUtil.InterruptVaultDepositForNewWorkClaim(itemToInstall);
+            }
         }
     }
 

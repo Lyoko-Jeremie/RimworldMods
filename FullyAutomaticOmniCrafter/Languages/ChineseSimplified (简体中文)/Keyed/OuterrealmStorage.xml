@@ -99,6 +99,7 @@
   <SubspaceAccess_AutoStoreFilteredDesc>自动存入时逐个核对当前地图上的所有超维存储仓访问端口：仅当产物能被至少一个仓接受（存储清单允许且未冻结、未禁止存入）时才自动存入；若存在比超维存储仓访问端口优先级更高的存储区/存储建筑也接受该产物，则按原版优先级语义不存入，交给原版流程放置（可存到其他指定的存储区）。关闭 = 自动全部存入。</SubspaceAccess_AutoStoreFilteredDesc>
   <SubspaceAccess_AutoStoreFilteredDisabledReason>需要先开启"自动存入"。</SubspaceAccess_AutoStoreFilteredDisabledReason>
   <SubspaceAccess_PutIntoStorage>把 {0} 放入超维存储</SubspaceAccess_PutIntoStorage>
+  <SubspaceAccess_ConfirmDepositPendingInstall>{0} 已被安装或再种植蓝图预留。继续放入超维存储将取消该蓝图。是否继续？</SubspaceAccess_ConfirmDepositPendingInstall>
   <SubspaceAccess_FilterHuman>人类</SubspaceAccess_FilterHuman>
   <SubspaceAccess_FilterAnimal>动物</SubspaceAccess_FilterAnimal>
   <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid>

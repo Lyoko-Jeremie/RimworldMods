@@ -4,6 +4,7 @@ using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
@@ -177,16 +178,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return Mathf.Clamp(target, minSafe, maxSafe);
         }
 
-        // ── 打包建筑安装蓝图兼容（§安装蓝图修复） ───────────────────────────────
+        // ── 自动存入保护 / 打包建筑安装蓝图兼容 ────────────────────────────────
         // 超维存储是"权威实例 + 投影副本"双实例架构：打包建筑（MinifiedThing）被吸收后，
         // Blueprint_Install 引用的权威实例被藏入全局层（未 Spawned、无 Spawned parent），
         // 原版安装工作 InstallJob 的 CanReach 检查失败 → 蓝图永远"没有路径"卡死。
-        // 三个配套措施（A/B/C）：
-        //   A. 存入前拦截（Patch_HaulAIUtility_HaulToCellStorageJob）：自动搬运不把
-        //      等待安装的打包建筑搬进 vault，物品留地面，安装照常从地面取用；
-        //   B. 吸收时取消蓝图（CancelBlueprintIfPendingInstall）：兜底强制搬运/竞态
-        //      绕过 A 后，蓝图随权威实例藏入全局层而取消（对齐原版
-        //      MinifiedThing.Destroy 的 CancelBlueprintsFor 语义）；
+        // 三个配套措施：
+        //   A. 自动搬运候选、运行中搬运与最终吸收均调用统一保护判定；
+        //   B. 玩家手动存入时明确提示，确认后才取消蓝图并继续存入；
         //   C. 借出时重定向蓝图引用（RedirectBlueprintToActual）：玩家对 vault 副本
         //      直接下达安装时，pawn 借出的是真物，把蓝图引用从副本改为真物，
         //      保证 pawn 手里、蓝图引用、安装产物三者实例一致，安装产出真建筑。
@@ -202,7 +200,105 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return InstallBlueprintUtility.ExistingBlueprintFor(t) != null;
         }
 
-        /// <summary>吸收打包建筑前取消引用它的安装蓝图（方案 B；非打包建筑/内物缺失无副作用）。</summary>
+        /// <summary>
+        /// 物品是否已被优先于普通存储的工作意图声明为输入。
+        /// 当前首个 claim provider 是安装/再种植蓝图；以后遇到其他没有使用原版 reservation
+        /// 表达的延迟工作链，应在这里增加无分配、无副作用的 provider，而不是在各存入入口加类型特判。
+        /// 原版已经启动的 Job reservation 仍由 PawnCanAutomaticallyHaulFast/CanReserve 负责。
+        /// </summary>
+        public static bool IsProtectedFromAutomaticDeposit(Thing item)
+        {
+            return IsPendingInstall(item);
+        }
+
+        /// <summary>该 Job 是否正在把指定物品自动搬入超维存储。</summary>
+        public static bool IsAutomaticVaultDepositJob(Pawn pawn, Job job, Thing item)
+        {
+            if (pawn == null || job == null || item == null
+                || (job.def != JobDefOf.HaulToContainer && job.def != JobDefOf.HaulToCell))
+            {
+                return false;
+            }
+            bool containsItem = job.GetTarget(TargetIndex.A).Thing == item;
+            if (!containsItem && job.targetQueueA != null)
+            {
+                for (int i = 0; i < job.targetQueueA.Count; i++)
+                {
+                    if (job.targetQueueA[i].Thing == item)
+                    {
+                        containsItem = true;
+                        break;
+                    }
+                }
+            }
+            if (!containsItem && pawn.carryTracker?.CarriedThing != item)
+            {
+                return false;
+            }
+            LocalTargetInfo destination = job.GetTarget(TargetIndex.B);
+            if (destination.Thing is Building_OuterrealmVault)
+            {
+                return true;
+            }
+            Map map = pawn.MapHeld;
+            if (!destination.Cell.IsValid || map == null || !destination.Cell.InBounds(map))
+            {
+                return false;
+            }
+            return destination.Cell.GetEdifice(map) is Building_OuterrealmVault
+                || destination.Cell.GetSlotGroup(map)?.parent is Building_OuterrealmVault;
+        }
+
+        /// <summary>该 Job 是否为玩家命令的地面物品手动存入。</summary>
+        private static bool IsManualVaultDepositJob(Job job, Thing item)
+        {
+            return job != null && item != null
+                && job.def == SubspaceAccessUtility.DepositFromGroundJobDef
+                && job.GetTarget(TargetIndex.A).Thing == item;
+        }
+
+        /// <summary>
+        /// 安装/再种植蓝图刚建立时终止已经领取该物品的 vault 存入任务。
+        /// EndCurrentJob 会释放 reservation；若 Pawn 已拿起物品，原版 CleanupCurrentJob 会将其安全落在附近。
+        /// 手动存入也在此中止：该命令下达时新蓝图尚不存在，玩家没有确认取消这份新 claim；
+        /// 若仍要存入，重新下达命令即可看到确认提示。
+        /// 本方法只在蓝图创建事件执行，不引入逐 tick 或搬运候选扫描开销。
+        /// </summary>
+        public static void InterruptVaultDepositForNewWorkClaim(Thing item)
+        {
+            if (item == null || item.Destroyed)
+            {
+                return;
+            }
+            Map map = item.MapHeld;
+            Pawn_CarryTracker carrier = item.ParentHolder as Pawn_CarryTracker;
+            Pawn carryingPawn = carrier?.pawn;
+            if (carryingPawn != null
+                && (IsAutomaticVaultDepositJob(carryingPawn, carryingPawn.CurJob, item)
+                    || IsManualVaultDepositJob(carryingPawn.CurJob, item)))
+            {
+                carryingPawn.jobs.EndCurrentJob(JobCondition.Incompletable);
+                return;
+            }
+            if (map == null)
+            {
+                return;
+            }
+            System.Collections.Generic.IReadOnlyList<Pawn> pawns = map.mapPawns.AllPawnsSpawned;
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn != null
+                    && (IsAutomaticVaultDepositJob(pawn, pawn.CurJob, item)
+                        || IsManualVaultDepositJob(pawn.CurJob, item)))
+                {
+                    pawn.jobs.EndCurrentJob(JobCondition.Incompletable);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>玩家确认手动存入后取消引用它的安装蓝图；自动存入路径禁止调用。</summary>
         public static void CancelBlueprintIfPendingInstall(Thing item)
         {
             if (item is MinifiedThing minified && minified.InnerThing != null)
