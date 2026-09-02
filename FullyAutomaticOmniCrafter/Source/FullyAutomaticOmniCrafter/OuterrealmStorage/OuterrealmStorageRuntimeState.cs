@@ -29,6 +29,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public Building_OuterrealmVault CurrentVault;
         public Pawn SoftClaimant;
         public int SoftUntilTick;
+        public int LastPreparedTick = int.MinValue;
     }
 
     internal sealed class OuterrealmRememberedHome
@@ -41,6 +42,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         public OuterrealmEntry Entry;
         public int DueTick;
+    }
+
+    internal sealed class OuterrealmDemandCursorState
+    {
+        public int Cursor;
+        public int LastProcessedTick = int.MinValue;
     }
 
     internal sealed class OuterrealmIdentityRuntimeState
@@ -102,8 +109,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             new Dictionary<Building_OuterrealmVault, Map>();
         private readonly List<OuterrealmRuntimeRegistration> saveSnapshot =
             new List<OuterrealmRuntimeRegistration>();
-        private readonly Dictionary<Building_OuterrealmVault, Dictionary<ThingDef, int>> demandCursors =
-            new Dictionary<Building_OuterrealmVault, Dictionary<ThingDef, int>>();
+        private readonly Dictionary<Map, Dictionary<ThingDef, OuterrealmDemandCursorState>> demandCursors =
+            new Dictionary<Map, Dictionary<ThingDef, OuterrealmDemandCursorState>>();
         private int saveIsolationDepth;
 
         public readonly OuterrealmIdentityRuntimeState Identity = new OuterrealmIdentityRuntimeState();
@@ -129,31 +136,48 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (vault != null)
             {
                 vaultMaps.Remove(vault);
-                demandCursors.Remove(vault);
             }
         }
 
-        public int GetDemandCursor(Building_OuterrealmVault vault, ThingDef def)
+        /// <summary>同一地图、同一 Def 每个游戏 Tick 最多执行一次需求物化，
+        /// 防止 UI 的按帧重生成把投影恢复速度错误地绑定到 FPS。</summary>
+        public bool TryBeginDemandMaterialization(Map map, ThingDef def, int currentTick, out int cursor)
         {
-            Dictionary<ThingDef, int> cursors;
-            int cursor;
-            return vault != null && def != null && demandCursors.TryGetValue(vault, out cursors)
-                && cursors.TryGetValue(def, out cursor) ? cursor : 0;
+            cursor = 0;
+            if (map == null || def == null)
+            {
+                return false;
+            }
+            Dictionary<ThingDef, OuterrealmDemandCursorState> cursors;
+            if (!demandCursors.TryGetValue(map, out cursors))
+            {
+                cursors = new Dictionary<ThingDef, OuterrealmDemandCursorState>();
+                demandCursors.Add(map, cursors);
+            }
+            OuterrealmDemandCursorState state;
+            if (!cursors.TryGetValue(def, out state))
+            {
+                state = new OuterrealmDemandCursorState();
+                cursors.Add(def, state);
+            }
+            if (state.LastProcessedTick == currentTick)
+            {
+                return false;
+            }
+            state.LastProcessedTick = currentTick;
+            cursor = state.Cursor;
+            return true;
         }
 
-        public void SetDemandCursor(Building_OuterrealmVault vault, ThingDef def, int cursor)
+        public void CompleteDemandMaterialization(Map map, ThingDef def, int cursor)
         {
-            if (vault == null || def == null)
+            Dictionary<ThingDef, OuterrealmDemandCursorState> cursors;
+            OuterrealmDemandCursorState state;
+            if (map != null && def != null && demandCursors.TryGetValue(map, out cursors)
+                && cursors.TryGetValue(def, out state))
             {
-                return;
+                state.Cursor = cursor;
             }
-            Dictionary<ThingDef, int> cursors;
-            if (!demandCursors.TryGetValue(vault, out cursors))
-            {
-                cursors = new Dictionary<ThingDef, int>();
-                demandCursors.Add(vault, cursors);
-            }
-            cursors[def] = cursor;
         }
 
         public Map RegisteredMapOf(Building_OuterrealmVault vault)
@@ -282,8 +306,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < removedVaults.Count; i++)
             {
                 vaultMaps.Remove(removedVaults[i]);
-                demandCursors.Remove(removedVaults[i]);
             }
+            demandCursors.Remove(map);
         }
 
         public void BeginSaveIsolation()

@@ -785,7 +785,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>
         /// 显式全量重建视图（仅供维护/兼容调用；正常 SpawnSetup 与 filter 均走自适应预算队列）。
         /// = RemoveDisallowedCopies（同步移除）+ MaterializeMissingCopies（物化缺失）+ 索引/注册收尾。
-        /// filter 变更路径不走本方法：改为同步移除 + 帧末微批物化（见 Building_OuterrealmVault.Notify_SettingsChanged），
+        /// filter 变更路径不走本方法：改为同步移除 + 后续 Tick 微批物化（见 Building_OuterrealmVault.Notify_SettingsChanged），
         /// 避免每次 filter 点击触发全量重建（§filter 视图过滤简化）。
         /// §B：读档后序列化恢复的副本无 entryByCopy 映射（且旧档副本可能携带错误内容，如基因组
         /// 随机基因），检测到"视图非空但映射为空"时先 ClearView 全量销毁，再按条目重新物化——
@@ -854,10 +854,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 物化缺失的允许条目（filter 变更的异步部分，帧末微批执行；O(全局条目数)）。
+        /// 物化缺失的允许条目（filter 变更的异步部分，后续 Tick 微批执行；O(全局条目数)）。
         /// 保留副本仅更新数字；尸体不物化（唯一实体）。filter 允许但副本缺失时物化——
         /// filter 是视图过滤语义，"允许"的生效无紧迫性（物品始终在全局层，不丢失不移动），
-        /// 延迟到帧末微批执行，避免阻塞 UI 点击（§filter 视图过滤简化）。
+        /// 延迟到后续 Tick 微批执行，避免阻塞 UI 点击（§filter 视图过滤简化）。
         /// 新物化副本经 base.TryAdd → Notify_ItemAdded 钩子自动进入 listerHaulables。
         /// </summary>
         public void MaterializeMissingCopies()
@@ -940,7 +940,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // ── §filter 视图过滤简化：物化脏标记 ─────────────────────────────────
         // filter 变更（Notify_SettingsChanged / SetFrozen）只同步移除不再允许的副本（O(副本数)），
-        // 新允许条目的物化延迟到帧末微批（GameComponent_OuterrealmStorage.MaterializeDirtyViews），
+        // 新允许条目的物化延迟到后续 Tick 微批（GameComponent_OuterrealmStorage.MaterializeDirtyViews），
         // 把 O(全局条目数) 物化从 UI 点击同步路径移出。主线程单线程访问，无需同步。
 
         private bool materializeDirty;
@@ -1023,7 +1023,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             MarkMaterializeDirty();
         }
 
-        /// <summary>置脏（filter 变更后，O(1)）：请求帧末微批物化缺失的允许条目。</summary>
+        /// <summary>置脏（filter 变更后，O(1)）：请求后续 Tick 微批物化缺失的允许条目。</summary>
         public void MarkMaterializeDirty()
         {
             materializeDirty = true;

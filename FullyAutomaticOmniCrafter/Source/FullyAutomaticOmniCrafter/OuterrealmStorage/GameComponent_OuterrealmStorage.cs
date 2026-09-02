@@ -435,7 +435,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public void MaterializeDefForSearch(
             ThingDef def, Map map, IntVec3 root, PathEndMode pathEndMode, TraverseParms traverseParms)
         {
-            if (def == null || map == null || Runtime.SaveIsolationActive || !UnityData.IsInMainThread)
+            if (def == null || map == null || Runtime.SaveIsolationActive || !UnityData.IsInMainThread
+                || Find.TickManager == null || Find.TickManager.Paused)
             {
                 return;
             }
@@ -471,7 +472,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            int cursor = Runtime.GetDemandCursor(best, def);
+            int currentTick = Find.TickManager.TicksGame;
+            int cursor;
+            if (!Runtime.TryBeginDemandMaterialization(map, def, currentTick, out cursor))
+            {
+                return;
+            }
             if (cursor < 0 || cursor >= list.Count)
             {
                 cursor = 0;
@@ -516,7 +522,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     target?.view.EnsureCopyFor(entry);
                 }
             }
-            Runtime.SetDemandCursor(best, def, cursor);
+            Runtime.CompleteDemandMaterialization(map, def, cursor);
         }
 
         private void RegisterCanonicalThings(OuterrealmEntry entry)
@@ -1318,7 +1324,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private const int ProjectionSyncMaximumPairsPerTick = 2048;
 
         /// <summary>
-        /// 帧末消费去重工作队列。预算按“条目 × 仓”计，少量普通变化仍在一个 tick 内完成；
+        /// Tick 末消费去重工作队列。预算按“条目 × 仓”计，少量普通变化仍在一个 tick 内完成；
         /// 大批量变化可续处理且不丢记录，也不会退化成全部 entries 的全量扫描。
         /// 条目取空仍由 Withdraw 的同步快路径立即清理，不受此预算影响。
         /// </summary>
@@ -1387,7 +1393,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private int materializeVaultCursor;
 
         /// <summary>消费各 vault 视图的物化脏标记（§filter 视图过滤简化）：filter 变更后由建筑
-        /// 置脏（O(1)），帧末按全局固定预算检查条目。总成本上限与 vault 数和条目总量无关，
+        /// 置脏（O(1)），Tick 末按全局预算检查条目。总成本上限与 vault 数和条目总量无关，
         /// 多个仓以轮转游标公平分享预算，避免大型存档出现单 tick 全量扫描尖峰。
         /// 注：暂停时本方法不执行（GameComponentTick 仅运行 tick 调用），新允许条目的可见性
         /// 由 UI 以 CanShow 直接判定（副本未物化时用 proto 渲染），取用路径在运行时才需要副本。</summary>

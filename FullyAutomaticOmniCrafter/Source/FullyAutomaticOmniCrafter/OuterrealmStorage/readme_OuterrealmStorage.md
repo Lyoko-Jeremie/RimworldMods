@@ -69,8 +69,8 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 
 - 保存全局 `entries`、按 def 粗索引、权威 Thing 反向索引和资源总量缓存。
 - 提供 `Deposit`、`Withdraw`、`Subtract`、查询、弹出队列和建筑注册。
-- 维护内容版本 `Version`、预留版本 `ReservationVersion` 与增量变更日志。
-- 在帧末集中同步所有建筑视图，避免每次数量变化立即遍历全部仓库。
+- 维护内容版本 `Version`、预留版本 `ReservationVersion` 与可续投影同步队列。
+- 在 `GameComponentTick` 末集中同步建筑视图，避免每次数量变化立即遍历全部仓库。
 - 负责存档格式迁移与运行时缓存重建。
 
 数量变化的标准后处理为：更新权威堆 → 更新 `Count` → `AdjustResourceTotal` → 增加 `version` → `EnqueueProjectionSync`。条目取空时还必须 `RemoveEntry` 并立即 `NotifyEntriesEmptied`，防止孤儿投影继续被 Job 选中。
@@ -203,7 +203,7 @@ Pawn 到达 vault
 
 ## 9. 视图同步与性能
 
-- 内容变化写入 GameComponent 的去重变更日志；帧末统一把受影响条目同步到所有已注册 vault。
+- 内容变化写入 GameComponent 的去重可续队列；在后续 Tick 内按预算同步到已注册 vault。
 - 内容变化进入去重、可续、带代次的“条目 × 仓”工作队列；不设 4096 固定窗口，也不再因溢出退化为全量扫描。每 tick 保底处理 256 对，并在 1ms/2048 对上限内自适应突发。
 - filter 禁止和冻结立即移除投影；新允许 Def 的前 256 个条目进入高优先队列，品质/耐久等特殊过滤条件由后台完整扫描兜底。
 - 加载、重连和 filter 全量兜底使用轮转自适应预算：每 tick 保底 512、最多 4096 条目并以约 1ms CPU 时间截止。暂停时 Tick 不推进，投影恢复也不推进。
@@ -214,6 +214,17 @@ Pawn 到达 vault
 - `TotalCountOf`、InspectString、预留总量和 UI 可见列表均有版本缓存。
 - 高频路径避免 LINQ、重复反射和临时集合；必要反射必须静态缓存。
 - 静态可变状态须考虑 RimWorld 1.6 多线程。投影创建作用域使用 `[ThreadStatic]` 深度，不得改成普通静态 bool。
+
+### 9.1 Tick 与渲染帧的强制边界
+
+- RimWorld 游戏逻辑以 Tick 推进；正常速度目标为每秒 60 Tick。Tick 与 FPS 无关，暂停时不会产生新的游戏 Tick。
+- 投影后台恢复、增量同步、软租约、pending 回收和任何以“若干 Tick 后”为语义的工作，只能由 `GameComponentTick`、Thing Tick 或明确的游戏事件推进。禁止使用 `GameComponentUpdate`、`Time.frameCount`、`Time.deltaTime` 或 `Time.realtimeSinceStartup` 推进这些状态。
+- 暂停期间不得自主消耗恢复队列。玩家在暂停时主动修改 filter 等命令仍可同步提交其直接结果（例如立即撤销禁止项），但不得因为 UI 重绘或菜单刷新继续执行后台批次。
+- `Stopwatch` 只允许作为单个 Tick 内的 CPU 占用保护，例如“完成保底数量后若已用 1ms 则让出”；它不能计算租约到期、队列年龄或 700 Tick 截止时间。
+- 截止时间统一使用 `Find.TickManager.TicksGame`：`remainingTicks = queuedAtTick + deadlineTicks - TicksGame`。默认速度下 700 Tick 约为 11.67 秒；暂停时剩余 Tick 不减少。
+- `Time.frameCount` 与真实时间只允许用于纯 UI 行为，例如右键菜单多久重绘一次。UI 重绘可能触发搜索，因此普通需求物化限制为“同一地图、同一 Def、每 Tick 最多一批”，唯一锚点搜索限制为“同一条目每 Tick 最多一次”；两者在暂停时均不执行，防止高 FPS 改变投影或路由状态。
+
+审查新增代码时，凡注释出现“每帧”“帧末”“真实秒后”都必须先判断它是纯 UI 还是游戏状态；游戏状态应改写成 Tick 或同步事件语义。
 
 ## 10. 存档格式与迁移
 

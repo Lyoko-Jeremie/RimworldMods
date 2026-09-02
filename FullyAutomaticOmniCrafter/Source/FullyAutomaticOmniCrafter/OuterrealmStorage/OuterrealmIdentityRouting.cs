@@ -442,12 +442,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static void PrepareEntry(OuterrealmEntry entry, Map map, IntVec3 root, Pawn claimant)
         {
+            if (!UnityData.IsInMainThread || Find.TickManager == null || Find.TickManager.Paused)
+            {
+                return;
+            }
             OuterrealmAnchorState state = GetState(entry);
             if (state == null)
             {
                 return;
             }
-            int now = Find.TickManager?.TicksGame ?? 0;
+            int now = Find.TickManager.TicksGame;
+            if (state.LastPreparedTick == now)
+            {
+                return;
+            }
+            state.LastPreparedTick = now;
             if (IsReserved(entry, state))
             {
                 return;
