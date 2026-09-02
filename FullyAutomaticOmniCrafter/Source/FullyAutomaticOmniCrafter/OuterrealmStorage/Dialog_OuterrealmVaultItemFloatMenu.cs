@@ -30,6 +30,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private const float Gap = 6f;
         private const float TargetIconSize = 34f;
         private const float OptionIconSize = 28f;
+        private const float CategoryWidth = 340f;
+        private const float CategoryLineHeight = 24f;
 
         private readonly Building_OuterrealmVault vault;
         private readonly List<Pawn> selectedPawns;
@@ -38,11 +40,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private readonly List<MenuTarget> filteredTargets = new List<MenuTarget>();
         private readonly List<Thing> anchorBuffer = new List<Thing>();
         private readonly HashSet<Thing> seenTargets = new HashSet<Thing>();
+        private readonly HashSet<ThingCategoryDef> validCategories = new HashSet<ThingCategoryDef>();
+        private readonly Dictionary<ThingCategoryDef, long> categoryCounts =
+            new Dictionary<ThingCategoryDef, long>();
 
         private Vector2 targetScroll;
+        private Vector2 categoryScroll;
         private Vector2 optionScroll;
         private string searchBuffer = string.Empty;
         private string searchText = string.Empty;
+        private ThingCategoryDef selectedCategory;
         private MenuTarget selectedTarget;
         private List<FloatMenuOption> selectedOptions;
 
@@ -86,7 +93,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        /// <summary>第一层：仓库操作入口 + 搜索框 + 物品虚拟列表。</summary>
+        /// <summary>第一层：仓库操作入口 + 临时分类树 + 搜索框 + 物品虚拟列表。</summary>
         private void DrawTargetStage(Rect rect)
         {
             float y = rect.y;
@@ -106,23 +113,40 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             y += HeaderHeight + Gap;
 
-            string edited = Widgets.TextField(new Rect(rect.x, y, rect.width, SearchHeight), searchBuffer);
+            float bodyHeight = Mathf.Max(1f, rect.yMax - y);
+            float categoryWidth = Mathf.Min(CategoryWidth, Mathf.Max(180f, rect.width * 0.34f));
+            Rect categoryRect = new Rect(rect.x, y, categoryWidth, bodyHeight);
+            Rect rightRect = new Rect(
+                categoryRect.xMax + Gap,
+                y,
+                Mathf.Max(1f, rect.width - categoryWidth - Gap),
+                bodyHeight);
+            DrawCategoryPanel(categoryRect);
+
+            float rightY = rightRect.y;
+            string edited = Widgets.TextField(new Rect(rightRect.x, rightY, rightRect.width, SearchHeight), searchBuffer);
             if (edited != searchBuffer)
             {
                 searchBuffer = edited;
                 searchText = edited.Trim().ToLowerInvariant();
                 RebuildFilteredTargets();
             }
-            y += SearchHeight + Gap;
+            rightY += SearchHeight + Gap;
 
-            List<MenuTarget> visible = searchText.Length == 0 ? targets : filteredTargets;
+            List<MenuTarget> visible = searchText.Length == 0 && selectedCategory == null
+                ? targets
+                : filteredTargets;
             GUI.color = Color.gray;
-            Widgets.Label(new Rect(rect.x, y, rect.width, CountHeight),
+            Widgets.Label(new Rect(rightRect.x, rightY, rightRect.width, CountHeight),
                 "OuterrealmItemMenu_Count".Translate(visible.Count, targets.Count));
             GUI.color = Color.white;
-            y += CountHeight + Gap;
+            rightY += CountHeight + Gap;
 
-            Rect outRect = new Rect(rect.x, y, rect.width, Mathf.Max(1f, rect.yMax - y));
+            Rect outRect = new Rect(
+                rightRect.x,
+                rightY,
+                rightRect.width,
+                Mathf.Max(1f, rightRect.yMax - rightY));
             if (visible.Count == 0)
             {
                 Widgets.Label(outRect, "OuterrealmItemMenu_NoItems".Translate());
@@ -139,6 +163,96 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 DrawTargetRow(new Rect(0f, i * TargetRowHeight, viewRect.width, TargetRowHeight), visible[i], i);
             }
             Widgets.EndScrollView();
+        }
+
+        /// <summary>
+        /// 绘制只影响本次菜单的分类树。分类集合来自当前仓实际可浏览目标，
+        /// 不读写建筑 StorageSettings，也不改变超维库存可见性。
+        /// </summary>
+        private void DrawCategoryPanel(Rect rect)
+        {
+            Widgets.DrawBoxSolid(rect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
+            Rect outRect = rect.ContractedBy(3f);
+            float treeHeight = ComputeTreeHeight(
+                ThingCategoryDefOf.Root.treeNode, validCategories, CategoryLineHeight);
+            float totalHeight = CategoryLineHeight + 2f + Gap + treeHeight;
+            Rect viewRect = new Rect(
+                0f,
+                0f,
+                Mathf.Max(1f, outRect.width - 16f),
+                Mathf.Max(1f, totalHeight));
+
+            Widgets.BeginScrollView(outRect, ref categoryScroll, viewRect);
+            float y = 0f;
+            Rect allRect = new Rect(0f, y, viewRect.width, CategoryLineHeight);
+            DrawCategoryNavItem(
+                allRect,
+                "OuterrealmStorageManager_AllCategories".Translate(),
+                selectedCategory == null,
+                () =>
+                {
+                    selectedCategory = null;
+                    RebuildFilteredTargets();
+                });
+            y += CategoryLineHeight + 2f + Gap;
+
+            Rect treeRect = new Rect(0f, y, viewRect.width, Mathf.Max(1f, treeHeight));
+            Rect visibleRect = new Rect(0f, categoryScroll.y - y, viewRect.width, outRect.height);
+            Listing_TreeCategorySelect listing = new Listing_TreeCategorySelect(
+                validCategories,
+                selectedCategory,
+                category =>
+                {
+                    selectedCategory = category;
+                    RebuildFilteredTargets();
+                },
+                categoryCounts);
+            listing.SetVisibleRect(visibleRect);
+            listing.Begin(treeRect);
+            foreach (TreeNode_ThingCategory child in ThingCategoryDefOf.Root.treeNode.ChildCategoryNodes)
+            {
+                listing.DoCategoryNode(child, 0, 1);
+            }
+            listing.End();
+            Widgets.EndScrollView();
+        }
+
+        private static void DrawCategoryNavItem(Rect rect, string label, bool selected, Action onClick)
+        {
+            if (selected)
+            {
+                Widgets.DrawHighlight(rect);
+            }
+            else if (Mouse.IsOver(rect))
+            {
+                Widgets.DrawHighlightIfMouseover(rect);
+            }
+            Widgets.Label(rect.ContractedBy(2f, 0f), label);
+            if (Widgets.ButtonInvisible(rect))
+            {
+                onClick();
+            }
+        }
+
+        private static float ComputeTreeHeight(
+            TreeNode_ThingCategory node,
+            HashSet<ThingCategoryDef> categories,
+            float lineHeight)
+        {
+            float height = 0f;
+            foreach (TreeNode_ThingCategory child in node.ChildCategoryNodes)
+            {
+                if (!categories.Contains(child.catDef))
+                {
+                    continue;
+                }
+                height += lineHeight + 2f;
+                if (child.IsOpen(1))
+                {
+                    height += ComputeTreeHeight(child, categories, lineHeight);
+                }
+            }
+            return height;
         }
 
         private void DrawTargetRow(Rect row, MenuTarget target, int index)
@@ -262,6 +376,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             filteredTargets.Clear();
             anchorBuffer.Clear();
             seenTargets.Clear();
+            validCategories.Clear();
+            categoryCounts.Clear();
             if (vault == null || vault.view == null)
             {
                 return;
@@ -285,11 +401,43 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     AddTarget(thing, entry);
                 }
             }
-            if (searchText.Length != 0)
+            RebuildCategoryCache();
+            if (searchText.Length != 0 || selectedCategory != null)
             {
                 RebuildFilteredTargets();
             }
             targetScroll = Vector2.zero;
+        }
+
+        /// <summary>收集目标所属分类及全部祖先，并缓存各分类（含子分类）的目标数量。</summary>
+        private void RebuildCategoryCache()
+        {
+            validCategories.Clear();
+            categoryCounts.Clear();
+            for (int i = 0; i < targets.Count; i++)
+            {
+                ThingDef def = targets[i].Thing.def;
+                if (def == null || def.thingCategories == null)
+                {
+                    continue;
+                }
+                for (int categoryIndex = 0; categoryIndex < def.thingCategories.Count; categoryIndex++)
+                {
+                    ThingCategoryDef category = def.thingCategories[categoryIndex];
+                    while (category != null)
+                    {
+                        validCategories.Add(category);
+                        long count;
+                        categoryCounts.TryGetValue(category, out count);
+                        categoryCounts[category] = count + 1L;
+                        category = category.parent;
+                    }
+                }
+            }
+            if (selectedCategory != null && !validCategories.Contains(selectedCategory))
+            {
+                selectedCategory = null;
+            }
         }
 
         private void AddTarget(Thing thing, OuterrealmEntry entry)
@@ -309,7 +457,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private void RebuildFilteredTargets()
         {
             filteredTargets.Clear();
-            if (searchText.Length == 0)
+            if (searchText.Length == 0 && selectedCategory == null)
             {
                 targetScroll = Vector2.zero;
                 return;
@@ -317,13 +465,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < targets.Count; i++)
             {
                 MenuTarget target = targets[i];
-                if (CustomFloatMenuUtil.Matches(target.Label, searchText)
+                if (selectedCategory != null && !IsInCategory(target.Thing.def, selectedCategory))
+                {
+                    continue;
+                }
+                if (searchText.Length == 0
+                    || CustomFloatMenuUtil.Matches(target.Label, searchText)
                     || target.Thing.def.defName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     filteredTargets.Add(target);
                 }
             }
             targetScroll = Vector2.zero;
+        }
+
+        private static bool IsInCategory(ThingDef def, ThingCategoryDef category)
+        {
+            if (def == null || def.thingCategories == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < def.thingCategories.Count; i++)
+            {
+                ThingCategoryDef current = def.thingCategories[i];
+                while (current != null)
+                {
+                    if (current == category)
+                    {
+                        return true;
+                    }
+                    current = current.parent;
+                }
+            }
+            return false;
         }
 
         private bool TargetStillValid(MenuTarget target)
