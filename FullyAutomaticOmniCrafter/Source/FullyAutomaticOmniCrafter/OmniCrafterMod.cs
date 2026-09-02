@@ -410,13 +410,13 @@ namespace FullyAutomaticOmniCrafter
                 ref Settings.mecXIncludeHitPoints, "OmniCrafter_MecXIncludeHitPointsDesc".Translate());
             listing.Gap(4f);
 
-            CoeffRow("OmniCrafter_MecEnergyA", ref Settings.powerCostA, -1000000f, 1000000f);
-            CoeffRow("OmniCrafter_MecEnergyB", ref Settings.powerCostB, -100f,     100f);
-            CoeffRow("OmniCrafter_MecEnergyC", ref Settings.powerCostC, -100f,     100f);
-            CoeffRow("OmniCrafter_MecEnergyD", ref Settings.powerCostD, -100f,     100f);
-            CoeffRow("OmniCrafter_MecEnergyE", ref Settings.powerCostE, -100f,     100f);
-            CoeffRow("OmniCrafter_MecEnergyG", ref Settings.powerCostG, -1000f,    1000f);
-            CoeffRow("OmniCrafter_MecEnergyN", ref Settings.powerCostN, -1000f,    1000f);
+            CoeffRow("OmniCrafter_MecEnergyA", ref Settings.mecEnergyA, -1000000f, 1000000f);
+            CoeffRow("OmniCrafter_MecEnergyB", ref Settings.mecEnergyB, -100f,     100f);
+            CoeffRow("OmniCrafter_MecEnergyC", ref Settings.mecEnergyC, -100f,     100f);
+            CoeffRow("OmniCrafter_MecEnergyD", ref Settings.mecEnergyD, -100f,     100f);
+            CoeffRow("OmniCrafter_MecEnergyE", ref Settings.mecEnergyE, -100f,     100f);
+            CoeffRow("OmniCrafter_MecEnergyG", ref Settings.mecEnergyG, -1000f,    1000f);
+            CoeffRow("OmniCrafter_MecEnergyN", ref Settings.mecEnergyN, -1000f,    1000f);
 
             // ── MEC formula graph (1:1 square) ────────────────────────────
             listing.Gap(4f);
