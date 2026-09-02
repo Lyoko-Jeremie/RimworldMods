@@ -102,6 +102,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             new Dictionary<Building_OuterrealmVault, Map>();
         private readonly List<OuterrealmRuntimeRegistration> saveSnapshot =
             new List<OuterrealmRuntimeRegistration>();
+        private readonly Dictionary<Building_OuterrealmVault, Dictionary<ThingDef, int>> demandCursors =
+            new Dictionary<Building_OuterrealmVault, Dictionary<ThingDef, int>>();
         private int saveIsolationDepth;
 
         public readonly OuterrealmIdentityRuntimeState Identity = new OuterrealmIdentityRuntimeState();
@@ -127,7 +129,31 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (vault != null)
             {
                 vaultMaps.Remove(vault);
+                demandCursors.Remove(vault);
             }
+        }
+
+        public int GetDemandCursor(Building_OuterrealmVault vault, ThingDef def)
+        {
+            Dictionary<ThingDef, int> cursors;
+            int cursor;
+            return vault != null && def != null && demandCursors.TryGetValue(vault, out cursors)
+                && cursors.TryGetValue(def, out cursor) ? cursor : 0;
+        }
+
+        public void SetDemandCursor(Building_OuterrealmVault vault, ThingDef def, int cursor)
+        {
+            if (vault == null || def == null)
+            {
+                return;
+            }
+            Dictionary<ThingDef, int> cursors;
+            if (!demandCursors.TryGetValue(vault, out cursors))
+            {
+                cursors = new Dictionary<ThingDef, int>();
+                demandCursors.Add(vault, cursors);
+            }
+            cursors[def] = cursor;
         }
 
         public Map RegisteredMapOf(Building_OuterrealmVault vault)
@@ -256,6 +282,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < removedVaults.Count; i++)
             {
                 vaultMaps.Remove(removedVaults[i]);
+                demandCursors.Remove(removedVaults[i]);
             }
         }
 

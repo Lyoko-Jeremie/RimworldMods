@@ -783,7 +783,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 显式全量重建视图（仅供维护/兼容调用；正常 SpawnSetup、filter 与日志溢出均走固定预算队列）。
+        /// 显式全量重建视图（仅供维护/兼容调用；正常 SpawnSetup 与 filter 均走自适应预算队列）。
         /// = RemoveDisallowedCopies（同步移除）+ MaterializeMissingCopies（物化缺失）+ 索引/注册收尾。
         /// filter 变更路径不走本方法：改为同步移除 + 帧末微批物化（见 Building_OuterrealmVault.Notify_SettingsChanged），
         /// 避免每次 filter 点击触发全量重建（§filter 视图过滤简化）。
@@ -946,6 +946,82 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool materializeDirty;
         private int materializeCursor;
         private int materializeStartVersion;
+        private readonly Queue<OuterrealmEntry> priorityMaterializeQueue =
+            new Queue<OuterrealmEntry>();
+        private readonly HashSet<OuterrealmEntry> priorityMaterializeSet =
+            new HashSet<OuterrealmEntry>();
+        private HashSet<ThingDef> allowedDefSnapshot = new HashSet<ThingDef>();
+        private HashSet<ThingDef> allowedDefScratch = new HashSet<ThingDef>();
+
+        /// <summary>仓注销/重新连接时释放尚未执行的运行时工作引用。</summary>
+        public void ResetMaterializationWork()
+        {
+            materializeDirty = false;
+            materializeCursor = 0;
+            priorityMaterializeQueue.Clear();
+            priorityMaterializeSet.Clear();
+            allowedDefSnapshot.Clear();
+            allowedDefScratch.Clear();
+        }
+
+        /// <summary>建立 filter Def 快照，不物化条目；SpawnSetup 后的完整恢复仍由预算队列完成。</summary>
+        public void InitializeFilterSnapshot()
+        {
+            allowedDefSnapshot.Clear();
+            Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
+            if (vault == null)
+            {
+                return;
+            }
+            foreach (ThingDef def in vault.GetStoreSettings().filter.AllowedThingDefs)
+            {
+                allowedDefSnapshot.Add(def);
+            }
+        }
+
+        /// <summary>
+        /// filter 变化时把新允许 Def 的少量条目放入高优先队列，快速恢复常用内容；
+        /// 同时保留完整预算扫描，以覆盖品质/耐久等不改变 AllowedThingDefs 的特殊过滤条件。
+        /// </summary>
+        public void RefreshFilterDeltaAndQueue()
+        {
+            Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (vault == null || gs == null)
+            {
+                MarkMaterializeDirty();
+                return;
+            }
+            allowedDefScratch.Clear();
+            int queued = 0;
+            const int PriorityQueueLimitPerChange = 256;
+            foreach (ThingDef def in vault.GetStoreSettings().filter.AllowedThingDefs)
+            {
+                allowedDefScratch.Add(def);
+                if (queued >= PriorityQueueLimitPerChange || allowedDefSnapshot.Contains(def))
+                {
+                    continue;
+                }
+                List<OuterrealmEntry> entries = gs.EntriesOfDefForReading(def);
+                if (entries == null)
+                {
+                    continue;
+                }
+                for (int i = 0; i < entries.Count && queued < PriorityQueueLimitPerChange; i++)
+                {
+                    OuterrealmEntry entry = entries[i];
+                    if (entry != null && priorityMaterializeSet.Add(entry))
+                    {
+                        priorityMaterializeQueue.Enqueue(entry);
+                        queued++;
+                    }
+                }
+            }
+            HashSet<ThingDef> swap = allowedDefSnapshot;
+            allowedDefSnapshot = allowedDefScratch;
+            allowedDefScratch = swap;
+            MarkMaterializeDirty();
+        }
 
         /// <summary>置脏（filter 变更后，O(1)）：请求帧末微批物化缺失的允许条目。</summary>
         public void MarkMaterializeDirty()
@@ -957,7 +1033,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>是否仍有待检查的全局条目。</summary>
-        public bool HasMaterializeWork => materializeDirty;
+        public bool HasMaterializeWork => materializeDirty || priorityMaterializeQueue.Count > 0;
 
         /// <summary>
         /// 按固定条目预算物化缺失投影。预算按“检查的条目数”计，而非新建 Thing 数，
@@ -966,7 +1042,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public int MaterializeMissingCopiesBudgeted(int budget)
         {
-            if (!materializeDirty || budget <= 0)
+            if (!HasMaterializeWork || budget <= 0)
             {
                 return 0;
             }
@@ -976,9 +1052,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return 0;
             }
             List<OuterrealmEntry> list = gs.EntriesForReading;
+            int consumed = 0;
+            while (consumed < budget && priorityMaterializeQueue.Count > 0)
+            {
+                OuterrealmEntry entry = priorityMaterializeQueue.Dequeue();
+                priorityMaterializeSet.Remove(entry);
+                if (entry != null && entry.Count > 0 && entry.Proto != null
+                    && Context.CanShow(entry.Proto) && !OuterrealmIdentityRouting.IsUnique(entry))
+                {
+                    SyncEntry(entry);
+                }
+                consumed++;
+            }
+            if (consumed >= budget || !materializeDirty)
+            {
+                return consumed;
+            }
             // 扫描期间条目可能因取空而从 List 移除；游标先夹紧，避免列表缩短后产生负预算。
             int start = Math.Min(materializeCursor, list.Count);
-            int end = Math.Min(list.Count, start + budget);
+            int end = Math.Min(list.Count, start + budget - consumed);
             for (int i = start; i < end; i++)
             {
                 OuterrealmEntry entry = list[i];
@@ -995,17 +1087,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (materializeStartVersion == gs.Version)
                 {
                     materializeDirty = false;
-                    RebuildIndex();
+                    // 分批路径的增删均已即时维护双向索引；此处禁止再做 O(P) 全量重建，
+                    // 否则会在长任务完成的最后一个 tick 重新制造单帧尖峰。
                     reservedCacheVersion = -1;
                 }
                 else
                 {
                     // List 的删除会移动下标，扫描期间发生内容变化时再走一轮，防止跳过
-                    // 被前移的未处理条目。增量日志仍会同步活跃变化；稳定后此轮必然收敛。
+                    // 被前移的未处理条目。增量同步队列仍会处理活跃变化；稳定后此轮必然收敛。
                     materializeStartVersion = gs.Version;
                 }
             }
-            return end - start;
+            return consumed + end - start;
         }
 
         /// <summary>确保视图内全部锚点副本处于伪 Spawned 注册状态（RebuildView 末尾调用）。

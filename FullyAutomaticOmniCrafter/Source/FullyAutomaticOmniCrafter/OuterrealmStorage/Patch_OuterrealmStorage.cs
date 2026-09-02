@@ -163,10 +163,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(GenClosest), "ClosestThingReachable")]
     internal static class Patch_GenClosest_ClosestThingReachable_IdentityRouting
     {
-        private static void Prefix(IntVec3 root, Map map, ThingRequest thingReq, TraverseParms traverseParams)
+        private static void Prefix(
+            IntVec3 root, Map map, ThingRequest thingReq,
+            PathEndMode peMode, TraverseParms traverseParams)
         {
             if (thingReq.singleDef != null && map != null)
             {
+                GameComponent_OuterrealmStorage.Instance?.MaterializeDefForSearch(
+                    thingReq.singleDef, map, root, peMode, traverseParams);
                 OuterrealmIdentityRouting.PrepareForSearch(
                     thingReq.singleDef, map, root, traverseParams.pawn);
             }
@@ -653,6 +657,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 view.TryDisposeCopyIfObsolete(t);
             }
+            OuterrealmIdentityRouting.NotifyReservationReleased(t);
             SubspaceAccessUtility.TryReturnPendingCheckout(t);
         }
     }
@@ -667,6 +672,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 view.TryDisposeCopyIfObsolete(t);
             }
+            OuterrealmIdentityRouting.NotifyReservationReleased(t);
             SubspaceAccessUtility.TryReturnPendingCheckout(t);
         }
     }
@@ -677,19 +683,81 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(ReservationManager), "ReleaseClaimedBy")]
     internal static class Patch_ReservationManager_ReleaseClaimedBy
     {
-        private static void Postfix()
+        private static void Prefix(
+            ReservationManager __instance,
+            Pawn claimant,
+            Job job,
+            ref List<Thing> __state)
+        {
+            __state = CollectIdentityTargets(__instance, claimant, job, true);
+        }
+
+        private static void Postfix(List<Thing> __state)
         {
             GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+            NotifyIdentityTargets(__state);
             SubspaceAccessUtility.ReturnUnreservedPending();
+        }
+
+        internal static List<Thing> CollectIdentityTargets(
+            ReservationManager manager, Pawn claimant, Job job, bool matchJob)
+        {
+            List<Thing> result = null;
+            List<ReservationManager.Reservation> reservations = manager?.ReservationsReadOnly;
+            if (reservations == null)
+            {
+                return null;
+            }
+            for (int i = 0; i < reservations.Count; i++)
+            {
+                ReservationManager.Reservation reservation = reservations[i];
+                Thing thing = reservation.Target.Thing;
+                if (reservation.Claimant != claimant || (matchJob && reservation.Job != job)
+                    || !OuterrealmIdentityRouting.IsAnchor(thing))
+                {
+                    continue;
+                }
+                if (result == null)
+                {
+                    result = new List<Thing>();
+                }
+                if (!result.Contains(thing))
+                {
+                    result.Add(thing);
+                }
+            }
+            return result;
+        }
+
+        internal static void NotifyIdentityTargets(List<Thing> things)
+        {
+            if (things == null)
+            {
+                return;
+            }
+            for (int i = 0; i < things.Count; i++)
+            {
+                OuterrealmIdentityRouting.NotifyReservationReleased(things[i]);
+            }
         }
     }
 
     [HarmonyPatch(typeof(ReservationManager), "ReleaseAllClaimedBy")]
     internal static class Patch_ReservationManager_ReleaseAllClaimedBy
     {
-        private static void Postfix()
+        private static void Prefix(
+            ReservationManager __instance,
+            Pawn claimant,
+            ref List<Thing> __state)
+        {
+            __state = Patch_ReservationManager_ReleaseClaimedBy.CollectIdentityTargets(
+                __instance, claimant, null, false);
+        }
+
+        private static void Postfix(List<Thing> __state)
         {
             GameComponent_OuterrealmStorage.Instance?.NotifyReservationChanged();
+            Patch_ReservationManager_ReleaseClaimedBy.NotifyIdentityTargets(__state);
             SubspaceAccessUtility.ReturnUnreservedPending();
         }
     }

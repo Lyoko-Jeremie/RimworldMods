@@ -137,6 +137,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>reservation 已实际移除后的事件入口。正常释放在同一调用内恢复默认锚点；
+        /// 时间轮只保留为第三方绕过释放补丁时的异常兜底。</summary>
+        public static void NotifyReservationReleased(Thing thing)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry entry;
+            if (gs != null && thing != null && gs.TryGetCanonicalEntry(thing, out entry)
+                && IsUnique(entry))
+            {
+                OuterrealmAnchorState state;
+                Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+                if (states != null && states.TryGetValue(entry, out state) && IsReserved(entry, state))
+                {
+                    return;
+                }
+                Reconcile(entry);
+            }
+        }
+
         /// <summary>Deposit 在检查 Spawned 前调用，避免对伪锚点执行原版完整 DeSpawn。</summary>
         public static void DetachAnchorForDeposit(Thing thing)
         {

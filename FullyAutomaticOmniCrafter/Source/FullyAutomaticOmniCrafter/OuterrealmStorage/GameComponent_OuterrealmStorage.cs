@@ -4,12 +4,13 @@ using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
     /// <summary>
     /// 超维存储的全局层（超维空间本身）：唯一"真相"。
-    /// 聚合条目列表（每类物品一条，含 long 计数）+ 版本号 + 增量变更日志（§3.3 方案 A）。
+    /// 聚合条目列表（每类物品一条，含 long 计数）+ 版本号 + 可续投影同步队列。
     /// 由 Game.FillComponents 自动实例化并随存档深保存，与建筑生命周期完全解耦。
     ///
     /// 运行时状态严格归属当前 Game；构造函数只做纯内存初始化，不访问 Current.Game 或旧地图。
@@ -97,12 +98,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 读档时重置为 0，且 RebuildView 会把视图缓存版本置 -1 强制失效（§P0 预订记账优化）。</summary>
         private int reservationVersion;
 
-        // ── 增量变更日志（§3.3 方案 A）：环形去重窗口 ──
-        // §B：日志改存条目引用（key 不再标识条目——stackLimit=1 物品多条目可同 key）。
-        private List<OuterrealmEntry> changeLog = new List<OuterrealmEntry>();
-        private HashSet<OuterrealmEntry> changeLogSet = new HashSet<OuterrealmEntry>();
-        private bool changeLogOverflow;
-        private const int ChangeLogCapacity = 4096;
+        // ── 增量投影同步队列 ──────────────────────────────────────────────────
+        // 条目自身保存排队标记和下一座仓游标。队列不再因固定容量溢出后退化为
+        // E×V 全量扫描；同一条目处理期间再次变化时以 Generation 触发一轮重放。
+        private readonly Queue<OuterrealmEntry> projectionSyncQueue =
+            new Queue<OuterrealmEntry>();
+        private int vaultTopologyVersion;
 
         /// <summary>已注册的建筑实例（SpawnSetup 注册 / DeSpawn 注销）。</summary>
         private List<Building_OuterrealmVault> vaults = new List<Building_OuterrealmVault>();
@@ -122,15 +123,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         private bool exposeAllToOrbitalTrade;
 
-        /// <summary>帧末微批同步用缓存列表（§3.3 实时同步方案 B：复用避免每帧分配）。</summary>
-        private readonly List<OuterrealmEntry> tmpSyncKeys = new List<OuterrealmEntry>();
-
         // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
         private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
 
         public int Version => version;
         public int ReservationVersion => reservationVersion;
-        public bool NeedFullRebuild => changeLogOverflow;
         public List<OuterrealmEntry> EntriesForReading => entries;
         public List<Building_OuterrealmVault> VaultsForReading => vaults;
         public List<VaultEjectJob> EjectQueueForReading => ejectQueue;
@@ -157,6 +154,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             base.StartedNewGame();
             OuterrealmIdentityRouting.ReconcileAll();
+        }
+
+        /// <summary>暂停时 Tick 不推进；每帧仅用极小预算恢复非持久化投影，
+        /// 不修改权威库存、reservation、Job 或软租约时间。</summary>
+        public override void GameComponentUpdate()
+        {
+            base.GameComponentUpdate();
+            if (Find.TickManager != null && Find.TickManager.Paused && !Runtime.SaveIsolationActive)
+            {
+                MaterializeDirtyViews(64, 512, 0.5d);
+            }
         }
 
         // ── 存入 ────────────────────────────────────────────────────────────────
@@ -200,7 +208,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 existing.Count += depositedCount;
                 AdjustResourceTotal(resourceDef, depositedCount);
                 version++;
-                AddToChangeLog(existing);
+                EnqueueProjectionSync(existing);
                 return existing;
             }
             OuterrealmEntry entry = new OuterrealmEntry
@@ -213,7 +221,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmIdentityRouting.OnEntryAdded(entry, item, preferredHome);
             AdjustResourceTotal(resourceDef, entry.Count);
             version++;
-            AddToChangeLog(entry);
+            EnqueueProjectionSync(entry);
             return entry;
         }
 
@@ -427,6 +435,99 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             List<OuterrealmEntry> list;
             return def != null && byDef.TryGetValue(def, out list) ? list : null;
+        }
+
+        private const int DemandMaterializeEntryBudget = 32;
+
+        /// <summary>
+        /// 精确 Def 搜索开始前的读修复：仅在当前地图选择最近的可服务终端，并从 byDef 粗索引
+        /// 检查少量条目。该方法在原版开始枚举 lister/region 前调用，避免枚举期间修改集合。
+        /// </summary>
+        public void MaterializeDefForSearch(
+            ThingDef def, Map map, IntVec3 root, PathEndMode pathEndMode, TraverseParms traverseParms)
+        {
+            if (def == null || map == null || Runtime.SaveIsolationActive || !UnityData.IsInMainThread)
+            {
+                return;
+            }
+            List<OuterrealmEntry> list = EntriesOfDefForReading(def);
+            if (list == null || list.Count == 0)
+            {
+                return;
+            }
+            Building_OuterrealmVault best = null;
+            int bestDistance = int.MaxValue;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault == null || !vault.Spawned || vault.Map != map || vault.view == null
+                    || (!vault.HaulSourceEnabled && !(vault.AllowTakeForUse && !vault.Frozen))
+                    || !map.reachability.CanReach(
+                        root, vault.Position, pathEndMode, traverseParms))
+                {
+                    continue;
+                }
+                if (vault.Frozen || !vault.GetStoreSettings().filter.Allows(def))
+                {
+                    continue;
+                }
+                int distance = (root - vault.Position).LengthHorizontalSquared;
+                if (distance < bestDistance)
+                {
+                    best = vault;
+                    bestDistance = distance;
+                }
+            }
+            if (best == null)
+            {
+                return;
+            }
+            int cursor = Runtime.GetDemandCursor(best, def);
+            if (cursor < 0 || cursor >= list.Count)
+            {
+                cursor = 0;
+            }
+            int checks = Math.Min(DemandMaterializeEntryBudget, list.Count);
+            for (int i = 0; i < checks; i++)
+            {
+                OuterrealmEntry entry = list[cursor];
+                cursor++;
+                if (cursor >= list.Count)
+                {
+                    cursor = 0;
+                }
+                if (entry != null && entry.Count > 0 && !OuterrealmIdentityRouting.IsUnique(entry))
+                {
+                    Building_OuterrealmVault target = best;
+                    if (entry.Proto == null || !target.CanShow(entry.Proto))
+                    {
+                        target = null;
+                        int targetDistance = int.MaxValue;
+                        for (int j = 0; j < vaults.Count; j++)
+                        {
+                            Building_OuterrealmVault candidate = vaults[j];
+                            if (candidate == null || !candidate.Spawned || candidate.Map != map
+                                || candidate.view == null || entry.Proto == null
+                                || (!candidate.HaulSourceEnabled
+                                    && !(candidate.AllowTakeForUse && !candidate.Frozen))
+                                || !candidate.CanShow(entry.Proto)
+                                || !map.reachability.CanReach(
+                                    root, candidate.Position, pathEndMode, traverseParms))
+                            {
+                                continue;
+                            }
+                            int distance = (root - candidate.Position).LengthHorizontalSquared;
+                            if (distance < targetDistance)
+                            {
+                                target = candidate;
+                                targetDistance = distance;
+                            }
+                        }
+                    }
+                    target?.view.EnsureCopyFor(entry);
+                }
+            }
+            Runtime.SetDemandCursor(best, def, cursor);
         }
 
         private void RegisterCanonicalThings(OuterrealmEntry entry)
@@ -706,7 +807,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 NotifyEntriesEmptied(entry);
             }
             version++;
-            AddToChangeLog(entry);
+            EnqueueProjectionSync(entry);
         }
 
         /// <summary>移除条目（计数归零时）。默认销毁仍留在条目中的全部权威堆；
@@ -809,7 +910,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 NotifyEntriesEmptied(entry);
             }
             version++;
-            AddToChangeLog(entry);
+            EnqueueProjectionSync(entry);
             return t;
         }
 
@@ -985,13 +1086,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        // ── 变更日志（§3.3 方案 A） ─────────────────────────────────────────────
+        // ── 可续投影同步队列 ────────────────────────────────────────────────────
 
-        /// <summary>内容变更统一入口：版本号 +1 并写入变更日志（所有数量变动点调用）。§B：条目引用。</summary>
+        /// <summary>内容变更统一入口：版本号 +1 并加入去重同步队列。</summary>
         public void NotifyContentChanged(OuterrealmEntry entry)
         {
             version++;
-            AddToChangeLog(entry);
+            EnqueueProjectionSync(entry);
         }
 
         /// <summary>原版 ReservationManager 预留变更通知：版本号 +1（§P0 预订记账优化）。
@@ -1017,31 +1118,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             AddEntry(entry);
             AdjustResourceTotal(ResourceDefOf(entry.Proto), entry.Count);
             version++;
-            AddToChangeLog(entry);
+            EnqueueProjectionSync(entry);
         }
 
-        private void AddToChangeLog(OuterrealmEntry entry)
+        private void EnqueueProjectionSync(OuterrealmEntry entry)
         {
-            if (entry == null)
+            if (entry == null || vaults.Count == 0)
             {
                 return;
             }
-            if (changeLogOverflow)
+            if (entry.ProjectionSyncQueued)
             {
-                // 溢出状态必须一直保留到所有视图完成一次全量重建；否则溢出后、
-                // 帧末消费前的下一次变化会错误清除标记，永久漏掉早期变更。
+                entry.ProjectionSyncGeneration++;
                 return;
             }
-            if (changeLogSet.Add(entry))
-            {
-                changeLog.Add(entry);
-                if (changeLog.Count >= ChangeLogCapacity)
-                {
-                    changeLogOverflow = true;
-                    changeLog.Clear();
-                    changeLogSet.Clear();
-                }
-            }
+            entry.ProjectionSyncQueued = true;
+            entry.ProjectionSyncNextVaultIndex = 0;
+            entry.ProjectionSyncGeneration = 1;
+            entry.ProjectionSyncProcessingGeneration = 1;
+            entry.ProjectionSyncVaultTopologyVersion = vaultTopologyVersion;
+            projectionSyncQueue.Enqueue(entry);
         }
 
         // ── 建筑注册 ────────────────────────────────────────────────────────────
@@ -1051,6 +1147,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (vault != null && !vaults.Contains(vault))
             {
                 vaults.Add(vault);
+                vaultTopologyVersion++;
                 Map map = vault.Spawned ? vault.Map : null;
                 if (vault.Spawned && map != null)
                 {
@@ -1069,6 +1166,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            vaultTopologyVersion++;
             Map map = Runtime.RegisteredMapOf(vault);
             int count;
             if (map != null && vaultCountByMap.TryGetValue(map, out count))
@@ -1096,6 +1194,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < removedVaults.Count; i++)
             {
                 vaults.Remove(removedVaults[i]);
+            }
+            if (removedVaults.Count > 0)
+            {
+                vaultTopologyVersion++;
             }
             vaultCountByMap.Remove(map);
             OuterrealmIdentityRouting.OnMapRemoved(map, removedVaults);
@@ -1219,67 +1321,80 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     spawnedThisTick++;
                 }
             } // 弹出队列处理块（§6.4）
-            SyncViewsToChangeLog(); // 帧末微批（§3.3 实时同步方案 B）
-            MaterializeDirtyViews(); // §filter 视图过滤简化：消费各视图物化脏标记（filter 变更的异步物化）
+            ProcessProjectionSyncQueue();
+            MaterializeDirtyViews(512, 4096, 1d); // 保底预算 + 1ms 余量突发
         }
 
+        private const int ProjectionSyncMinimumPairsPerTick = 256;
+        private const int ProjectionSyncMaximumPairsPerTick = 2048;
+
         /// <summary>
-        /// 帧末微批（§3.3 实时同步方案 B）：每帧统一消费变更日志并同步所有 vault 视图，
-        /// 替代各建筑 60 tick 懒同步（Building_OuterrealmVault.Tick 已相应精简）。
-        /// 视图滞后 ≤1 tick，消除"条目已空但副本残留 60 tick"窗口（OptimizeApparel 等
-        /// 选中空条目副本 → 预留失败刷屏的根因）。
-        /// 空帧 O(1) 短路（changeLog.Count == 0）；有变更帧 O(变更条目 × vault 数 × SyncEntry)，
-        /// SyncEntry 经副本索引（方案 E）为 O(1)。统一消费后清空日志——所有 vault 同帧消费，
-        /// 日志不再需要多消费者保留（原 60 tick 各建筑独立消费的机制随之移除）。
+        /// 帧末消费去重工作队列。预算按“条目 × 仓”计，少量普通变化仍在一个 tick 内完成；
+        /// 大批量变化可续处理且不丢记录，也不会退化成全部 entries 的全量扫描。
+        /// 条目取空仍由 Withdraw 的同步快路径立即清理，不受此预算影响。
         /// </summary>
-        private void SyncViewsToChangeLog()
+        private void ProcessProjectionSyncQueue()
         {
             if (vaults.Count == 0)
             {
-                return;
-            }
-            if (changeLogOverflow)
-            {
-                // 变更窗口溢出：先同步移除无效副本，再把完整条目扫描交给固定预算队列。
-                // 不能在这里同步 RebuildView，否则百万条目会形成单 tick 尖峰。
-                for (int i = 0; i < vaults.Count; i++)
+                while (projectionSyncQueue.Count > 0)
                 {
-                    Building_OuterrealmVault v = vaults[i];
-                    if (v != null && v.view != null)
+                    OuterrealmEntry stale = projectionSyncQueue.Dequeue();
+                    if (stale != null)
                     {
-                        v.view.RemoveDisallowedCopies();
-                        v.view.MarkMaterializeDirty();
+                        stale.ProjectionSyncQueued = false;
                     }
                 }
-                changeLogOverflow = false;
-                changeLog.Clear();
-                changeLogSet.Clear();
                 return;
             }
-            if (changeLog.Count == 0)
+            if (projectionSyncQueue.Count == 0)
             {
                 return;
             }
-            tmpSyncKeys.Clear();
-            tmpSyncKeys.AddRange(changeLog);
-            for (int i = 0; i < vaults.Count; i++)
+            int remaining = ProjectionSyncMaximumPairsPerTick;
+            int processed = 0;
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            long allowedTicks = System.Diagnostics.Stopwatch.Frequency / 1000L;
+            while (remaining > 0 && projectionSyncQueue.Count > 0)
             {
-                Building_OuterrealmVault v = vaults[i];
-                if (v == null || v.view == null)
+                OuterrealmEntry work = projectionSyncQueue.Peek();
+                if (work == null)
                 {
+                    projectionSyncQueue.Dequeue();
                     continue;
                 }
-                for (int j = 0; j < tmpSyncKeys.Count; j++)
+                if (work.ProjectionSyncVaultTopologyVersion != vaultTopologyVersion)
                 {
-                    v.view.SyncEntry(tmpSyncKeys[j]);
+                    work.ProjectionSyncNextVaultIndex = 0;
+                    work.ProjectionSyncVaultTopologyVersion = vaultTopologyVersion;
                 }
+                if (work.ProjectionSyncNextVaultIndex < vaults.Count)
+                {
+                    Building_OuterrealmVault vault = vaults[work.ProjectionSyncNextVaultIndex++];
+                    if (vault != null && vault.view != null)
+                    {
+                        vault.view.SyncEntry(work);
+                    }
+                    remaining--;
+                    processed++;
+                    if (processed >= ProjectionSyncMinimumPairsPerTick && (processed & 63) == 0
+                        && System.Diagnostics.Stopwatch.GetTimestamp() - started >= allowedTicks)
+                    {
+                        break;
+                    }
+                    continue;
+                }
+                if (work.ProjectionSyncProcessingGeneration != work.ProjectionSyncGeneration)
+                {
+                    work.ProjectionSyncProcessingGeneration = work.ProjectionSyncGeneration;
+                    work.ProjectionSyncNextVaultIndex = 0;
+                    continue;
+                }
+                projectionSyncQueue.Dequeue();
+                work.ProjectionSyncQueued = false;
             }
-            // 统一消费：清空（所有 vault 已同步完毕）
-            changeLog.Clear();
-            changeLogSet.Clear();
         }
 
-        private const int MaterializeEntryBudgetPerTick = 512;
         private int materializeVaultCursor;
 
         /// <summary>消费各 vault 视图的物化脏标记（§filter 视图过滤简化）：filter 变更后由建筑
@@ -1287,17 +1402,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 多个仓以轮转游标公平分享预算，避免大型存档出现单 tick 全量扫描尖峰。
         /// 注：暂停时本方法不执行（GameComponentTick 仅运行 tick 调用），新允许条目的可见性
         /// 由 UI 以 CanShow 直接判定（副本未物化时用 proto 渲染），取用路径在运行时才需要副本。</summary>
-        private void MaterializeDirtyViews()
+        private void MaterializeDirtyViews(int minimumBudget, int maximumBudget, double maxMilliseconds)
         {
             int count = vaults.Count;
-            if (count == 0)
+            if (count == 0 || maximumBudget <= 0 || Runtime.SaveIsolationActive)
             {
                 materializeVaultCursor = 0;
                 return;
             }
-            int remaining = MaterializeEntryBudgetPerTick;
-            int visited = 0;
-            while (remaining > 0 && visited < count)
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            long allowedTicks = (long)(System.Diagnostics.Stopwatch.Frequency
+                * (maxMilliseconds / 1000d));
+            int processed = 0;
+            int idleVisits = 0;
+            const int BatchSize = 64;
+            while (processed < maximumBudget && idleVisits < count)
             {
                 if (materializeVaultCursor >= count)
                 {
@@ -1305,10 +1424,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 Building_OuterrealmVault v = vaults[materializeVaultCursor];
                 materializeVaultCursor++;
-                visited++;
                 if (v != null && v.view != null && v.view.HasMaterializeWork)
                 {
-                    remaining -= v.view.MaterializeMissingCopiesBudgeted(remaining);
+                    int used = v.view.MaterializeMissingCopiesBudgeted(
+                        Math.Min(BatchSize, maximumBudget - processed));
+                    processed += used;
+                    idleVisits = used > 0 ? 0 : idleVisits + 1;
+                }
+                else
+                {
+                    idleVisits++;
+                }
+                if (processed >= minimumBudget && allowedTicks > 0
+                    && System.Diagnostics.Stopwatch.GetTimestamp() - started >= allowedTicks)
+                {
+                    break;
                 }
             }
         }
@@ -1561,7 +1691,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         + " duplicated unique canonical item(s) from an old save. Save the game again "
                         + "to permanently clean the file.");
                 }
-                // 重建 byDef 粗索引 + 从 Proto 重建展示签名（Key）；重置版本号/变更日志
+                // 重建 byDef 粗索引 + 从 Proto 重建展示签名（Key）；重置版本号/运行时同步队列
                 // （早于建筑 SpawnSetup 的视图重建）。§B：合并不再依赖 Key，仅作展示/统计/放行签名。
                 byDef.Clear();
                 entryByCanonical.Clear();
@@ -1591,6 +1721,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                     e.Key = OuterrealmEntryKey.From(e.Proto);
                     e.LastSeenVersion = 0;
+                    e.ProjectionSyncQueued = false;
+                    e.ProjectionSyncNextVaultIndex = 0;
+                    e.ProjectionSyncGeneration = 0;
+                    e.ProjectionSyncProcessingGeneration = 0;
+                    e.ProjectionSyncVaultTopologyVersion = 0;
                     ThingDef def = e.Proto.def;
                     List<OuterrealmEntry> list;
                     if (!byDef.TryGetValue(def, out list))
@@ -1606,9 +1741,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 reservationVersion = 0;
                 totalByDef = null; // 总量缓存失效（version 重置为 0，显式置空避免误命中旧会话缓存）
                 totalByDefVersion = -1;
-                changeLog.Clear();
-                changeLogSet.Clear();
-                changeLogOverflow = false;
+                projectionSyncQueue.Clear();
+                vaultTopologyVersion = 0;
                 // 弹出队列不序列化（目标地图索引在重载后不可靠；条目仍在全局层，玩家可重新弹出）。
                 ejectQueue.Clear();
                 vaultCountByMap.Clear();

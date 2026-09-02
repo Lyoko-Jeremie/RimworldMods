@@ -144,6 +144,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 投影不参与存档；读档/重连后按 GameComponent 的全局固定预算逐步重建，
                 // 避免在 SpawnSetup 中同步扫描全部条目。
                 view.ClearView();
+                view.ResetMaterializationWork();
+                view.InitializeFilterSnapshot();
                 view.MarkMaterializeDirty();
                 lastSeenVersion = gs.Version;
             }
@@ -160,6 +162,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 view.ReturnAllBorrowed(); // §v4：回收格上借出副本（剩余量回全局；锚点重建仅 Spawned 时执行）
                 view.ClearView(); // 内容保留在全局层（§4.1b 断开访问，不落地）
+                view.ResetMaterializationWork();
             }
             if (storageGroup != null)
             {
@@ -397,7 +400,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             view?.RemoveDisallowedCopies(); // 同步移除（先摘除被禁副本，再重排 haul 源/目标）
             MapHeld.listerHaulables.Notify_HaulSourceChanged(this);
             MapHeld.haulDestinationManager.Notify_HaulDestinationChangedPriority();
-            view?.MarkMaterializeDirty(); // 帧末微批物化新允许条目（O(1) 置脏）
+            view?.RefreshFilterDeltaAndQueue(); // 新允许 Def 优先，特殊过滤条件由完整预算扫描兜底
             GameComponent_OuterrealmStorage.Instance?.NotifyIdentityRoutingChanged(this);
             lastSeenVersion = GameComponent_OuterrealmStorage.Instance != null ? GameComponent_OuterrealmStorage.Instance.Version : lastSeenVersion;
         }

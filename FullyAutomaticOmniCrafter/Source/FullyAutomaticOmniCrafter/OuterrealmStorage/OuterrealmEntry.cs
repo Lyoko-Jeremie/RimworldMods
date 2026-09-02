@@ -209,6 +209,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>视图刷新用：建筑上次看到的全局版本号。</summary>
         public int LastSeenVersion;
 
+        // 投影同步队列的非持久运行时游标。直接挂在条目上可避免每次内容变化分配工作对象；
+        // ExposeData 不写入这些字段，读档重建索引时会显式归零。
+        internal bool ProjectionSyncQueued;
+        internal int ProjectionSyncNextVaultIndex;
+        internal int ProjectionSyncGeneration;
+        internal int ProjectionSyncProcessingGeneration;
+        internal int ProjectionSyncVaultTopologyVersion;
+
         /// <summary>
         /// 唯一物品的默认存储仓。它只描述查询锚点的默认归位位置，不代表库存所有权；
         /// 全局层仍是唯一真相。搜索期临时出口不写入此字段，避免一次就近搜索永久改变归属。

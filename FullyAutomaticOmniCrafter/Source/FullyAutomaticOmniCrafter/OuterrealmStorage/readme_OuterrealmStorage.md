@@ -73,7 +73,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 - 在帧末集中同步所有建筑视图，避免每次数量变化立即遍历全部仓库。
 - 负责存档格式迁移与运行时缓存重建。
 
-数量变化的标准后处理为：更新权威堆 → 更新 `Count` → `AdjustResourceTotal` → 增加 `version` → `AddToChangeLog`。条目取空时还必须 `RemoveEntry` 并立即 `NotifyEntriesEmptied`，防止孤儿投影继续被 Job 选中。
+数量变化的标准后处理为：更新权威堆 → 更新 `Count` → `AdjustResourceTotal` → 增加 `version` → `EnqueueProjectionSync`。条目取空时还必须 `RemoveEntry` 并立即 `NotifyEntriesEmptied`，防止孤儿投影继续被 Job 选中。
 
 ### `OuterrealmVaultViewThingOwner`
 
@@ -204,9 +204,11 @@ Pawn 到达 vault
 ## 9. 视图同步与性能
 
 - 内容变化写入 GameComponent 的去重变更日志；帧末统一把受影响条目同步到所有已注册 vault。
-- 变更日志溢出时立即同步移除无效副本，缺失/数量变化的投影交给固定预算重扫；禁止在单 tick 同步全量重建。
-- filter 禁止和冻结要求立即移除投影；新允许的条目只标记 materialize dirty。所有仓每 tick 共享 512 个条目检查预算并轮转，加载和重连也走同一队列。
-- 软租约使用 64 槽时间轮，每 tick 只处理当前到期槽；无活跃租约时不扫描唯一条目集合。
+- 内容变化进入去重、可续、带代次的“条目 × 仓”工作队列；不设 4096 固定窗口，也不再因溢出退化为全量扫描。每 tick 保底处理 256 对，并在 1ms/2048 对上限内自适应突发。
+- filter 禁止和冻结立即移除投影；新允许 Def 的前 256 个条目进入高优先队列，品质/耐久等特殊过滤条件由后台完整扫描兜底。
+- 加载、重连和 filter 全量兜底使用轮转自适应预算：每 tick 保底 512、最多 4096 条目并以约 1ms 截止；暂停时每帧仅恢复 64～512 个非持久化投影。
+- 精确 Def 搜索在原版枚举 lister/region 前，利用 `byDef` 为最近可服务终端按需补齐最多 32 个条目。
+- 软租约使用 64 槽时间轮；reservation 释放事件会立即协调对应唯一锚点，时间轮仅承担到期与异常兜底。
 - 投影规模按可见条目数而非库存 Count 增长：百万个可堆叠资源仍只有一个权威条目及每仓一个投影。
 - region 重建补丁只置 dirty；建筑每 60 tick 最多批量补注册一次。
 - `TotalCountOf`、InspectString、预留总量和 UI 可见列表均有版本缓存。
