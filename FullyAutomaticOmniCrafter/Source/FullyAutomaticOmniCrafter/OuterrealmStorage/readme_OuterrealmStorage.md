@@ -204,8 +204,10 @@ Pawn 到达 vault
 ## 9. 视图同步与性能
 
 - 内容变化写入 GameComponent 的去重变更日志；帧末统一把受影响条目同步到所有已注册 vault。
-- 变更日志溢出时设置 `NeedFullRebuild`，所有视图完成一次全量重建后再恢复增量模式。
-- filter 禁止和冻结要求立即移除投影；新允许的条目只标记 materialize dirty，在帧末批量创建。
+- 变更日志溢出时立即同步移除无效副本，缺失/数量变化的投影交给固定预算重扫；禁止在单 tick 同步全量重建。
+- filter 禁止和冻结要求立即移除投影；新允许的条目只标记 materialize dirty。所有仓每 tick 共享 512 个条目检查预算并轮转，加载和重连也走同一队列。
+- 软租约使用 64 槽时间轮，每 tick 只处理当前到期槽；无活跃租约时不扫描唯一条目集合。
+- 投影规模按可见条目数而非库存 Count 增长：百万个可堆叠资源仍只有一个权威条目及每仓一个投影。
 - region 重建补丁只置 dirty；建筑每 60 tick 最多批量补注册一次。
 - `TotalCountOf`、InspectString、预留总量和 UI 可见列表均有版本缓存。
 - 高频路径避免 LINQ、重复反射和临时集合；必要反射必须静态缓存。
@@ -218,6 +220,8 @@ Pawn 到达 vault
 - schema 0/1：`Count` 是旧格式唯一可信数量，Proto 曾是模板且 `stackCount` 可能被 Boost 放大。迁移时以 Count 为准，裁掉账外模板数量或补足权威堆，绝不能用较大的 Proto 数量抬高 Count。
 - schema 2：`Proto + AdditionalProtos` 是唯一真相。读档时从实际权威堆重建 Count；不再比较两者后取较大值。
 - 建筑视图、投影、借出集合、reservation 缓存、变更日志、弹出队列和随身 PendingCheckout 均为运行时状态，不序列化。
+- 所有引用 `Thing`、`Map`、`Pawn`、仓库或条目的运行时路由状态归属当前 `GameComponent`；组件构造函数不得清理上一局静态状态。
+- `Game.ExposeData` Saving 期间建立全局隔离屏障：按运行时注册索引暂停投影和唯一锚点，组件保存权威对象后由 Finalizer 恢复。`Map.ExposeData` 仅作为第三方直接保存地图时的按图兜底。
 - 唯一物品权威锚点虽然临时注册在地图 `listerThings`，保存地图前也必须与普通投影一起摘除；它只能作为 `OuterrealmEntry.Proto` 随全局库存深保存一次。旧版重复保存产生的地图副本在 `LoadedObjectDirectory.RegisterLoaded` 与 `Map.FinalizeLoading` 两个边界按权威 ThingID 精确清理；若副本曾被重新吸收并保存，则在全局库存 `PostLoadInit` 中保留首个相同 ID 的权威条目。读档后重新保存即可永久净化旧存档。
 - 建筑只保存 filter/存储组及 `noDeposit`、`noWithdraw`、`allowTakeForUse`、`frozen`、右键菜单模式。
 
@@ -254,6 +258,7 @@ Pawn 到达 vault
 | 文件 | 主要职责 |
 |---|---|
 | `GameComponent_OuterrealmStorage.cs` | 全局库存、权威堆、数量、索引、变更日志、弹出、存档迁移 |
+| `OuterrealmStorageRuntimeState.cs` | 每局运行时所有权、按地图注册索引、保存隔离快照、软租约时间轮 |
 | `OuterrealmEntry.cs` | 条目与展示签名数据结构 |
 | `OuterrealmVaultViewThingOwner.cs` | 投影视图、预留数量缓存、Checkout、显式借出、lister/region 生命周期 |
 | `Building_OuterrealmVault.cs` | 地图终端、原版存储接口、权限、filter、吸收、Gizmo、生命周期 |
@@ -316,6 +321,10 @@ Pawn 到达 vault
 - 商队、运输舱、轨道交易、资源计数与财富开关。
 - 安装/不安装 Common Sense 和 Manipulator Beam 两种环境。
 - 从 schema 0/1 旧档加载被 Boost 放大的 Proto：Count 不增加、无原黄字；再次保存读取后 schema 2 数量稳定。
+- 游戏内直接连续读取地图数量不同的存档，并覆盖安装 Faction Editor 的环境：组件构造和反序列化不得出现旧地图索引异常。
+- `保存 → 读取 → 保存 → 读取` 后比对条目 Count 与唯一 ThingID；地图 `<things>` 中不得出现投影或全局唯一锚点副本。
+- 删除/放弃含 vault 的地图后读取其他存档；注销只能使用 runtime 记录的地图，不得反查已失效的 `Thing.Map`。
+- 万级条目加载与 filter 放开时确认投影分 tick 建立；百万可堆叠数量不应生成百万个投影。
 
 完成修改后执行：
 

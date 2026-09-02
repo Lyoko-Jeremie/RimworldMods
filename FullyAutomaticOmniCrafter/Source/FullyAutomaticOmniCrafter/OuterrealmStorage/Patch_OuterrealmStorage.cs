@@ -2481,7 +2481,37 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 半 Spawned 投影/唯一物品锚点配套：存档时临时摘除，存档后加回 ──
+    // ── 全局保存屏障：组件和地图保存期间暂停全部运行时注册 ──
+    [HarmonyPatch(typeof(Game), "ExposeData")]
+    internal static class Patch_Game_ExposeData_OuterrealmSaveIsolation
+    {
+        private static void Prefix(Game __instance, ref OuterrealmStorageRuntimeState __state)
+        {
+            __state = null;
+            if (Scribe.mode != LoadSaveMode.Saving)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs =
+                GameComponent_OuterrealmStorage.ForGame(__instance);
+            if (gs == null)
+            {
+                return;
+            }
+            __state = gs.Runtime;
+            __state.BeginSaveIsolation();
+        }
+
+        private static Exception Finalizer(
+            OuterrealmStorageRuntimeState __state,
+            Exception __exception)
+        {
+            __state?.EndSaveIsolation();
+            return __exception;
+        }
+    }
+
+    // ── 半 Spawned 投影/唯一物品锚点配套：Map 保存防御性屏障 ──
     // 原版 Map.ExposeData 的 Saving 分支遍历 listerThings.AllThings 并 Scribe_Deep.Look 保存每个不可压缩 Thing。
     // 副本已进入 listsByGroup（含 AllThings），若不摘除会被保存进存档，读档后 view 未序列化副本成为孤儿，
     // 并被 Spawn 到 positionInt（InteractionCell）→ 物品出现在地上。
@@ -2491,7 +2521,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(Map), "ExposeData")]
     internal static class Patch_Map_ExposeData
     {
-        private static void Prefix(Map __instance, ref List<Thing> __state)
+        private static void Prefix(
+            Map __instance,
+            ref List<OuterrealmRuntimeRegistration> __state)
         {
             __state = null;
             if (Scribe.mode != LoadSaveMode.Saving)
@@ -2503,61 +2535,30 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            __state = new List<Thing>();
-            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
-            for (int i = 0; i < vaults.Count; i++)
+            // 正常路径已由 Game.ExposeData 屏障暂停；只有第三方直接保存 Map 时才按本图兜底。
+            if (!gs.Runtime.SaveIsolationActive)
             {
-                Building_OuterrealmVault v = vaults[i];
-                if (v == null || v.MapHeld != __instance || v.view == null)
-                {
-                    continue;
-                }
-                List<Thing> copies = v.view.InnerListForReading;
-                for (int j = 0; j < copies.Count; j++)
-                {
-                    Thing copy = copies[j];
-                    if (copy == null)
-                    {
-                        continue;
-                    }
-                    if (__instance.listerThings.Contains(copy))
-                    {
-                        __state.Add(copy);
-                        __instance.listerThings.Remove(copy);
-                    }
-                }
-            }
-
-            // 唯一物品的权威原物不属于任何 view，必须从全局条目单独枚举。
-            List<OuterrealmEntry> entries = gs.EntriesForReading;
-            for (int i = 0; i < entries.Count; i++)
-            {
-                Thing canonical = entries[i]?.Proto;
-                if (canonical == null || !OuterrealmIdentityRouting.IsAnchor(canonical)
-                    || canonical.MapHeld != __instance || !__instance.listerThings.Contains(canonical))
-                {
-                    continue;
-                }
-                __state.Add(canonical);
-                __instance.listerThings.Remove(canonical);
+                __state = gs.Runtime.SuspendMapForSave(__instance);
             }
         }
 
-        private static Exception Finalizer(Map __instance, List<Thing> __state, Exception __exception)
+        private static Exception Finalizer(
+            Map __instance,
+            List<OuterrealmRuntimeRegistration> __state,
+            Exception __exception)
         {
-            if (__state != null)
-            {
-                for (int i = 0; i < __state.Count; i++)
-                {
-                    Thing hidden = __state[i];
-                    if (hidden != null && !hidden.Destroyed && hidden.MapHeld == __instance
-                        && !__instance.listerThings.Contains(hidden))
-                    {
-                        __instance.listerThings.Add(hidden);
-                    }
-                }
-            }
+            GameComponent_OuterrealmStorage.Instance?.Runtime.ResumeMapAfterSave(__state);
             return __exception;
+        }
+    }
+
+    // 地图移除发生在 Game.maps 删除之后；只使用传入 Map 和 runtime 记录，禁止反查 Thing.Map。
+    [HarmonyPatch(typeof(MapComponentUtility), "MapRemoved")]
+    internal static class Patch_MapComponentUtility_MapRemoved_OuterrealmRuntime
+    {
+        private static void Prefix(Map map)
+        {
+            GameComponent_OuterrealmStorage.Instance?.NotifyMapRemoved(map);
         }
     }
 

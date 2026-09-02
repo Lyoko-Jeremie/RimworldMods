@@ -16,8 +16,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static HediffDef cachedAccessDef;
         private static JobDef cachedDepositJobDef;
-        private static readonly HashSet<Thing> PendingCheckouts = new HashSet<Thing>();
-        private static readonly List<Thing> PendingReturnBuffer = new List<Thing>();
+
+        private static OuterrealmSubspaceRuntimeState CurrentRuntime =>
+            GameComponent_OuterrealmStorage.Instance?.Runtime.Subspace;
 
         /// <summary>右键"放入超维存储"的取货 job（§v3）。</summary>
         public static JobDef DepositFromGroundJobDef
@@ -120,18 +121,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>新游戏/读档时清理仅运行期存在的预约物化跟踪。</summary>
         public static void ResetRuntimeState()
         {
-            foreach (Thing thing in PendingCheckouts)
+            OuterrealmSubspaceRuntimeState runtime = CurrentRuntime;
+            if (runtime == null)
+            {
+                return;
+            }
+            foreach (Thing thing in runtime.PendingCheckouts)
             {
                 OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(thing);
             }
-            PendingCheckouts.Clear();
-            PendingReturnBuffer.Clear();
+            runtime.PendingCheckouts.Clear();
+            runtime.PendingReturnBuffer.Clear();
         }
 
         /// <summary>登记随身访问在正式预约后生成、尚未被 Pawn 取得的真实物品。</summary>
         public static void MarkPendingCheckout(Thing thing)
         {
-            if (thing != null && !thing.Destroyed && PendingCheckouts.Add(thing))
+            OuterrealmSubspaceRuntimeState runtime = CurrentRuntime;
+            if (runtime != null && thing != null && !thing.Destroyed
+                && runtime.PendingCheckouts.Add(thing))
             {
                 OuterrealmVaultUtil.MarkOuterrealmBorrowed(thing);
             }
@@ -140,13 +148,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>取物成功后解除整堆跟踪；部分取走时原堆仍在地图上，留待 reservation 释放后回收余量。</summary>
         public static void NotifyCarryResult(Thing source, int carriedCount)
         {
-            if (carriedCount <= 0 || source == null || !PendingCheckouts.Contains(source))
+            OuterrealmSubspaceRuntimeState runtime = CurrentRuntime;
+            if (runtime == null || carriedCount <= 0 || source == null
+                || !runtime.PendingCheckouts.Contains(source))
             {
                 return;
             }
             if (source.Destroyed || source.holdingOwner != null || !source.Spawned)
             {
-                PendingCheckouts.Remove(source);
+                runtime.PendingCheckouts.Remove(source);
                 OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(source);
             }
         }
@@ -154,13 +164,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>若目标已无 reservation，则把尚未被取走的真实物品退回全局库存。</summary>
         public static void TryReturnPendingCheckout(Thing thing)
         {
-            if (thing == null || !PendingCheckouts.Contains(thing))
+            OuterrealmSubspaceRuntimeState runtime = CurrentRuntime;
+            if (runtime == null || thing == null || !runtime.PendingCheckouts.Contains(thing))
             {
                 return;
             }
             if (thing.Destroyed || thing.holdingOwner != null)
             {
-                PendingCheckouts.Remove(thing);
+                runtime.PendingCheckouts.Remove(thing);
                 OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(thing);
                 return;
             }
@@ -169,7 +180,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            PendingCheckouts.Remove(thing);
+            runtime.PendingCheckouts.Remove(thing);
             OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(thing);
             if (!thing.Destroyed && thing.stackCount > 0)
             {
@@ -180,24 +191,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>批量回收已取消/中断 Job 的物化余量；只扫描 pending 集合，与库存条目数无关。</summary>
         public static void ReturnUnreservedPending()
         {
-            if (PendingCheckouts.Count == 0)
+            OuterrealmSubspaceRuntimeState runtime = CurrentRuntime;
+            if (runtime == null || runtime.PendingCheckouts.Count == 0)
             {
                 return;
             }
-            PendingReturnBuffer.Clear();
-            foreach (Thing thing in PendingCheckouts)
+            runtime.PendingReturnBuffer.Clear();
+            foreach (Thing thing in runtime.PendingCheckouts)
             {
                 if (thing == null || thing.Destroyed || thing.holdingOwner != null
                     || !thing.Spawned || thing.Map == null || !thing.Map.reservationManager.IsReserved(thing))
                 {
-                    PendingReturnBuffer.Add(thing);
+                    runtime.PendingReturnBuffer.Add(thing);
                 }
             }
-            for (int i = 0; i < PendingReturnBuffer.Count; i++)
+            for (int i = 0; i < runtime.PendingReturnBuffer.Count; i++)
             {
-                TryReturnPendingCheckout(PendingReturnBuffer[i]);
+                TryReturnPendingCheckout(runtime.PendingReturnBuffer[i]);
             }
-            PendingReturnBuffer.Clear();
+            runtime.PendingReturnBuffer.Clear();
         }
     }
 }

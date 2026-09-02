@@ -31,8 +31,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         /// <summary>副本查找索引（§3.3 实时同步方案 E + §B 条目引用化）：entry → 副本，FindCopy 由
         /// 线性扫描降为 O(1)。配套 entryByCopy（副本 → 条目）双向维护。不序列化——读档后索引为空，
-        /// 由 SpawnSetup 的 RebuildView 全量重建（映射缺失时先 ClearView 再按条目重新物化，顺带
-        /// 修复旧档"物化实例基因随机化"的残留副本）；FindCopy 索引 miss 时回退线性扫描并补索引（自愈）。
+        /// 由 SpawnSetup 清空后按固定预算重新物化；FindCopy 索引 miss 时回退线性扫描并补索引（自愈）。
         /// 维护约定：增 = EnsureCopyFor/MaterializeMissingCopies 物化处登记（IndexAdd）；
         /// 删 = override Remove(Thing) 统一处理（借出副本延迟到 ReturnCopy 清理，见 §v4）。</summary>
         private readonly Dictionary<OuterrealmEntry, Thing> copyByEntry = new Dictionary<OuterrealmEntry, Thing>();
@@ -584,6 +583,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 map.listerThings.Add(copy);
             }
             RegionListersUpdater.RegisterInRegions(copy, map); // region 级索引（幂等：Contains 判重）
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            gs?.Runtime.TrackRegistration(
+                copy,
+                map,
+                Context as Building_OuterrealmVault,
+                GetEntryOf(copy),
+                OuterrealmRuntimeRegistrationKind.Projection);
         }
 
         /// <summary>伪 Spawned 副本的投影格：vault 上下文须用建筑锚点格（占格，SlotGroup 内），
@@ -603,8 +609,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 借出副本由正常 DeSpawn 流程处理，未注册副本无需处理。</summary>
         private void UnregisterFromLister(Thing copy)
         {
-            if (copy == null || !Context.Spawned || Context.MapHeld == null)
+            if (copy == null)
             {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs != null && gs.Runtime.DetachRegistration(copy))
+            {
+                return;
+            }
+            if (!Context.Spawned || Context.MapHeld == null)
+            {
+                copy.ForceSetStateToUnspawned();
                 return;
             }
             if (!IsPseudoSpawned(copy))
@@ -767,7 +783,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         /// <summary>
-        /// 全量重建视图（SpawnSetup / 溢出时；一次性成本 O(副本数 + 全局条目数)）。
+        /// 显式全量重建视图（仅供维护/兼容调用；正常 SpawnSetup、filter 与日志溢出均走固定预算队列）。
         /// = RemoveDisallowedCopies（同步移除）+ MaterializeMissingCopies（物化缺失）+ 索引/注册收尾。
         /// filter 变更路径不走本方法：改为同步移除 + 帧末微批物化（见 Building_OuterrealmVault.Notify_SettingsChanged），
         /// 避免每次 filter 点击触发全量重建（§filter 视图过滤简化）。
@@ -928,19 +944,68 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // 把 O(全局条目数) 物化从 UI 点击同步路径移出。主线程单线程访问，无需同步。
 
         private bool materializeDirty;
+        private int materializeCursor;
+        private int materializeStartVersion;
 
         /// <summary>置脏（filter 变更后，O(1)）：请求帧末微批物化缺失的允许条目。</summary>
         public void MarkMaterializeDirty()
         {
             materializeDirty = true;
+            materializeCursor = 0;
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            materializeStartVersion = gs != null ? gs.Version : 0;
         }
 
-        /// <summary>读取并清除脏标记（帧末微批调用）；返回是否需要物化。</summary>
-        public bool ConsumeMaterializeDirty()
+        /// <summary>是否仍有待检查的全局条目。</summary>
+        public bool HasMaterializeWork => materializeDirty;
+
+        /// <summary>
+        /// 按固定条目预算物化缺失投影。预算按“检查的条目数”计，而非新建 Thing 数，
+        /// 因而即使过滤器拒绝全部条目也不会在单 tick 扫描完整个全局集合。
+        /// 返回实际消耗的检查预算；完成后自动清除脏标记。
+        /// </summary>
+        public int MaterializeMissingCopiesBudgeted(int budget)
         {
-            bool wasDirty = materializeDirty;
-            materializeDirty = false;
-            return wasDirty;
+            if (!materializeDirty || budget <= 0)
+            {
+                return 0;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null)
+            {
+                return 0;
+            }
+            List<OuterrealmEntry> list = gs.EntriesForReading;
+            // 扫描期间条目可能因取空而从 List 移除；游标先夹紧，避免列表缩短后产生负预算。
+            int start = Math.Min(materializeCursor, list.Count);
+            int end = Math.Min(list.Count, start + budget);
+            for (int i = start; i < end; i++)
+            {
+                OuterrealmEntry entry = list[i];
+                if (entry != null && entry.Count > 0 && entry.Proto != null
+                    && Context.CanShow(entry.Proto) && !OuterrealmIdentityRouting.IsUnique(entry))
+                {
+                    SyncEntry(entry);
+                }
+            }
+            materializeCursor = end;
+            if (materializeCursor >= list.Count)
+            {
+                materializeCursor = 0;
+                if (materializeStartVersion == gs.Version)
+                {
+                    materializeDirty = false;
+                    RebuildIndex();
+                    reservedCacheVersion = -1;
+                }
+                else
+                {
+                    // List 的删除会移动下标，扫描期间发生内容变化时再走一轮，防止跳过
+                    // 被前移的未处理条目。增量日志仍会同步活跃变化；稳定后此轮必然收敛。
+                    materializeStartVersion = gs.Version;
+                }
+            }
+            return end - start;
         }
 
         /// <summary>确保视图内全部锚点副本处于伪 Spawned 注册状态（RebuildView 末尾调用）。

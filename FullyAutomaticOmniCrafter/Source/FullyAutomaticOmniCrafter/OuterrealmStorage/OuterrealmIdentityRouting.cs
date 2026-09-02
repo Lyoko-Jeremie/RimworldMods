@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -16,29 +15,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     internal static class OuterrealmIdentityRouting
     {
-        private sealed class AnchorState
-        {
-            public Building_OuterrealmVault CurrentVault;
-            public Pawn SoftClaimant;
-            public int SoftUntilTick;
-        }
-
-        private sealed class RememberedHome
-        {
-            public Building_OuterrealmVault Vault;
-            public int MapId;
-        }
-
-        private static readonly Dictionary<OuterrealmEntry, AnchorState> States =
-            new Dictionary<OuterrealmEntry, AnchorState>();
-        private static ConditionalWeakTable<Thing, object> anchors =
-            new ConditionalWeakTable<Thing, object>();
-        private static ConditionalWeakTable<Thing, RememberedHome> rememberedHomes =
-            new ConditionalWeakTable<Thing, RememberedHome>();
         private static readonly FieldInfo MapIndexOrStateField =
             AccessTools.Field(typeof(Thing), "mapIndexOrState");
 
         private const int SearchLeaseTicks = 30;
+
+        private static OuterrealmIdentityRuntimeState CurrentRuntime =>
+            GameComponent_OuterrealmStorage.Instance?.Runtime.Identity;
+
+        private static Dictionary<OuterrealmEntry, OuterrealmAnchorState> States =>
+            CurrentRuntime?.States;
 
         /// <summary>
         /// 当前通用安全边界：实际堆上限为 1 的 Item 视为不可替代实例。
@@ -59,19 +45,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public static bool IsAnchor(Thing thing)
         {
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
             object marker;
-            return thing != null && anchors.TryGetValue(thing, out marker);
-        }
-
-        public static void ResetRuntimeState()
-        {
-            foreach (KeyValuePair<OuterrealmEntry, AnchorState> pair in States)
-            {
-                UnregisterAnchor(pair.Key, pair.Value);
-            }
-            States.Clear();
-            anchors = new ConditionalWeakTable<Thing, object>();
-            rememberedHomes = new ConditionalWeakTable<Thing, RememberedHome>();
+            return thing != null && runtime != null
+                && runtime.Anchors.TryGetValue(thing, out marker);
         }
 
         /// <summary>新条目建立默认仓；回滚重存优先恢复取出前的 HomeVault。</summary>
@@ -81,21 +58,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            RememberedHome remembered;
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
+            if (runtime == null)
+            {
+                return;
+            }
+            OuterrealmRememberedHome remembered;
             if (preferredHome != null)
             {
                 entry.HomeVault = preferredHome;
                 entry.HomeMapId = preferredHome.Map?.uniqueID ?? -1;
                 if (depositedThing != null)
                 {
-                    rememberedHomes.Remove(depositedThing);
+                    runtime.RememberedHomes.Remove(depositedThing);
                 }
             }
-            else if (depositedThing != null && rememberedHomes.TryGetValue(depositedThing, out remembered))
+            else if (depositedThing != null
+                && runtime.RememberedHomes.TryGetValue(depositedThing, out remembered))
             {
                 entry.HomeVault = remembered.Vault;
                 entry.HomeMapId = remembered.MapId;
-                rememberedHomes.Remove(depositedThing);
+                runtime.RememberedHomes.Remove(depositedThing);
             }
             EnsureHome(entry, null);
             Reconcile(entry);
@@ -108,8 +91,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            rememberedHomes.Remove(actual);
-            rememberedHomes.Add(actual, new RememberedHome
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
+            if (runtime == null)
+            {
+                return;
+            }
+            runtime.RememberedHomes.Remove(actual);
+            runtime.RememberedHomes.Add(actual, new OuterrealmRememberedHome
             {
                 Vault = entry.HomeVault,
                 MapId = entry.HomeMapId
@@ -118,19 +106,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public static void OnEntryRemoving(OuterrealmEntry entry)
         {
-            AnchorState state;
-            if (entry != null && States.TryGetValue(entry, out state))
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            OuterrealmAnchorState state;
+            if (entry != null && states != null && states.TryGetValue(entry, out state))
             {
                 UnregisterAnchor(entry, state);
-                States.Remove(entry);
+                states.Remove(entry);
             }
         }
 
         /// <summary>正式 Withdraw 前撤销查询锚点；条目仍保留到 Withdraw 成功提交。</summary>
         public static void PrepareCheckout(OuterrealmEntry entry)
         {
-            AnchorState state;
-            if (entry != null && States.TryGetValue(entry, out state))
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            OuterrealmAnchorState state;
+            if (entry != null && states != null && states.TryGetValue(entry, out state))
             {
                 UnregisterAnchor(entry, state);
                 state.SoftClaimant = null;
@@ -156,14 +146,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry entry;
-            AnchorState state;
-            if (gs != null && gs.TryGetCanonicalEntry(thing, out entry) && States.TryGetValue(entry, out state))
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            OuterrealmAnchorState state;
+            if (gs != null && states != null && gs.TryGetCanonicalEntry(thing, out entry)
+                && states.TryGetValue(entry, out state))
             {
                 UnregisterAnchor(entry, state);
             }
             else
             {
-                anchors.Remove(thing);
+                CurrentRuntime?.Anchors.Remove(thing);
+                gs?.Runtime.DetachRegistration(thing);
                 thing.ForceSetStateToUnspawned();
             }
         }
@@ -194,7 +187,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            foreach (KeyValuePair<OuterrealmEntry, AnchorState> pair in States)
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            if (states == null)
+            {
+                return;
+            }
+            foreach (KeyValuePair<OuterrealmEntry, OuterrealmAnchorState> pair in states)
             {
                 if (pair.Value.CurrentVault == vault)
                 {
@@ -225,6 +223,55 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
+        /// <summary>地图移除时使用已记录的注册 Map 清理，不访问已失效 Thing.Map/Vault.Map。</summary>
+        public static void OnMapRemoved(Map map, List<Building_OuterrealmVault> removedVaults)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
+            if (gs == null || runtime == null || map == null)
+            {
+                return;
+            }
+            List<OuterrealmRuntimeRegistration> registrations =
+                gs.Runtime.RegistrationsOnMapSnapshot(map);
+            for (int i = 0; i < registrations.Count; i++)
+            {
+                OuterrealmRuntimeRegistration registration = registrations[i];
+                if (registration == null
+                    || registration.Kind != OuterrealmRuntimeRegistrationKind.IdentityAnchor)
+                {
+                    continue;
+                }
+                Thing thing = registration.Thing;
+                if (thing != null)
+                {
+                    runtime.Anchors.Remove(thing);
+                }
+                OuterrealmAnchorState state;
+                if (registration.Entry != null
+                    && runtime.States.TryGetValue(registration.Entry, out state))
+                {
+                    state.CurrentVault = null;
+                    state.SoftClaimant = null;
+                    state.SoftUntilTick = 0;
+                }
+            }
+            if (removedVaults != null && removedVaults.Count > 0)
+            {
+                List<OuterrealmEntry> entries = gs.EntriesForReading;
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    OuterrealmEntry entry = entries[i];
+                    if (entry != null && entry.HomeVault != null
+                        && removedVaults.Contains(entry.HomeVault))
+                    {
+                        entry.HomeVault = null;
+                        entry.HomeMapId = -1;
+                    }
+                }
+            }
+        }
+
         public static void OnVaultSettingsChanged(Building_OuterrealmVault vault)
         {
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
@@ -236,7 +283,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < entries.Count; i++)
             {
                 OuterrealmEntry entry = entries[i];
-                AnchorState state;
+                OuterrealmAnchorState state;
                 if (IsUnique(entry) && (entry.HomeVault == vault
                     || (States.TryGetValue(entry, out state) && state.CurrentVault == vault)))
                 {
@@ -266,17 +313,43 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>软租约到期且没有预留时，权威锚点回到默认仓。</summary>
         public static void Tick()
         {
-            int now = Find.TickManager?.TicksGame ?? 0;
-            foreach (KeyValuePair<OuterrealmEntry, AnchorState> pair in States)
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
+            if (runtime == null)
             {
-                AnchorState state = pair.Value;
-                if (state.SoftClaimant == null || now < state.SoftUntilTick || IsReserved(pair.Key, state))
+                return;
+            }
+            int now = Find.TickManager?.TicksGame ?? 0;
+            List<OuterrealmLeaseToken> bucket =
+                runtime.LeaseWheel[now & (OuterrealmIdentityRuntimeState.LeaseWheelSize - 1)];
+            if (bucket.Count == 0)
+            {
+                return;
+            }
+            // 倒序移除已到期令牌；尚未到期的令牌必须留在桶中。后者通常只会在
+            // tick 回拨或未来调整租约跨度时出现，但保留它可避免时间轮静默丢任务。
+            for (int i = bucket.Count - 1; i >= 0; i--)
+            {
+                OuterrealmLeaseToken token = bucket[i];
+                if (token != null && token.DueTick > now)
                 {
+                    continue;
+                }
+                bucket.RemoveAt(i);
+                OuterrealmAnchorState state;
+                if (token == null || token.Entry == null
+                    || !runtime.States.TryGetValue(token.Entry, out state)
+                    || state.SoftClaimant == null || state.SoftUntilTick > now)
+                {
+                    continue;
+                }
+                if (IsReserved(token.Entry, state))
+                {
+                    runtime.ScheduleLease(token.Entry, now + SearchLeaseTicks);
                     continue;
                 }
                 state.SoftClaimant = null;
                 state.SoftUntilTick = 0;
-                MoveToHome(pair.Key, state);
+                MoveToHome(token.Entry, state);
             }
         }
 
@@ -310,10 +383,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             IntVec3 root = billGiver != null && billGiver.Map == pawn.Map ? billGiver.Position : pawn.Position;
-            List<OuterrealmEntry> entries = gs.EntriesForReading;
-            for (int i = 0; i < entries.Count; i++)
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
+            if (runtime == null || runtime.States.Count == 0)
             {
-                OuterrealmEntry entry = entries[i];
+                return;
+            }
+            foreach (KeyValuePair<OuterrealmEntry, OuterrealmAnchorState> pair in runtime.States)
+            {
+                OuterrealmEntry entry = pair.Key;
                 if (!CanAnchor(entry))
                 {
                     continue;
@@ -346,7 +423,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static void PrepareEntry(OuterrealmEntry entry, Map map, IntVec3 root, Pawn claimant)
         {
-            AnchorState state = GetState(entry);
+            OuterrealmAnchorState state = GetState(entry);
+            if (state == null)
+            {
+                return;
+            }
             int now = Find.TickManager?.TicksGame ?? 0;
             if (IsReserved(entry, state))
             {
@@ -364,6 +445,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             MoveAnchor(entry, state, best);
             state.SoftClaimant = claimant;
             state.SoftUntilTick = now + SearchLeaseTicks;
+            CurrentRuntime?.ScheduleLease(entry, state.SoftUntilTick);
         }
 
         public static bool CanAccessAnchor(Thing thing, Pawn claimant)
@@ -374,9 +456,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry entry;
-            AnchorState state;
+            OuterrealmAnchorState state;
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
             return gs != null && gs.TryGetCanonicalEntry(thing, out entry)
-                && States.TryGetValue(entry, out state)
+                && states != null && states.TryGetValue(entry, out state)
                 && state.CurrentVault != null
                 && state.CurrentVault.Map == claimant.Map
                 && CanServe(state.CurrentVault, entry);
@@ -392,9 +475,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry entry;
-            AnchorState state;
+            OuterrealmAnchorState state;
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
             if (gs == null || !gs.TryGetCanonicalEntry(thing, out entry)
-                || !States.TryGetValue(entry, out state) || state.CurrentVault == null)
+                || states == null || !states.TryGetValue(entry, out state)
+                || state.CurrentVault == null)
             {
                 return false;
             }
@@ -413,9 +498,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            foreach (KeyValuePair<OuterrealmEntry, AnchorState> pair in States)
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            if (states == null)
             {
-                AnchorState state = pair.Value;
+                return;
+            }
+            foreach (KeyValuePair<OuterrealmEntry, OuterrealmAnchorState> pair in states)
+            {
+                OuterrealmAnchorState state = pair.Value;
                 Thing thing = pair.Key?.Proto;
                 if (state.CurrentVault == vault && IsAnchor(thing))
                 {
@@ -426,8 +516,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public static Building_OuterrealmVault CurrentVault(OuterrealmEntry entry)
         {
-            AnchorState state;
-            return entry != null && States.TryGetValue(entry, out state) ? state.CurrentVault : null;
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            OuterrealmAnchorState state;
+            return entry != null && states != null && states.TryGetValue(entry, out state)
+                ? state.CurrentVault
+                : null;
         }
 
         public static bool IsTemporarilyRouted(OuterrealmEntry entry)
@@ -461,7 +554,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 reason = "OuterrealmStorageManager_VaultRejectsItem".Translate();
                 return false;
             }
-            AnchorState state = GetState(entry);
+            OuterrealmAnchorState state = GetState(entry);
+            if (state == null)
+            {
+                reason = "OuterrealmStorageManager_VaultUnavailable".Translate();
+                return false;
+            }
             if (IsReserved(entry, state))
             {
                 reason = "OuterrealmStorageManager_ItemReserved".Translate();
@@ -491,13 +589,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return storageGroupName + " · " + mapLabel;
         }
 
-        private static AnchorState GetState(OuterrealmEntry entry)
+        private static OuterrealmAnchorState GetState(OuterrealmEntry entry)
         {
-            AnchorState state;
-            if (!States.TryGetValue(entry, out state))
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
+            if (states == null)
             {
-                state = new AnchorState();
-                States.Add(entry, state);
+                return null;
+            }
+            OuterrealmAnchorState state;
+            if (!states.TryGetValue(entry, out state))
+            {
+                state = new OuterrealmAnchorState();
+                states.Add(entry, state);
             }
             return state;
         }
@@ -554,7 +657,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            AnchorState state = GetState(entry);
+            OuterrealmAnchorState state = GetState(entry);
+            if (state == null)
+            {
+                return;
+            }
             int now = Find.TickManager?.TicksGame ?? 0;
             if (state.SoftClaimant != null && now < state.SoftUntilTick && CanServe(state.CurrentVault, entry))
             {
@@ -565,7 +672,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             MoveToHome(entry, state);
         }
 
-        private static void MoveToHome(OuterrealmEntry entry, AnchorState state)
+        private static void MoveToHome(OuterrealmEntry entry, OuterrealmAnchorState state)
         {
             Building_OuterrealmVault home = CanServe(entry.HomeVault, entry) ? entry.HomeVault : null;
             MoveAnchor(entry, state, home);
@@ -622,14 +729,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 && (vault.HaulSourceEnabled || (vault.AllowTakeForUse && !vault.Frozen));
         }
 
-        private static bool IsReserved(OuterrealmEntry entry, AnchorState state)
+        private static bool IsReserved(OuterrealmEntry entry, OuterrealmAnchorState state)
         {
             Thing thing = entry?.Proto;
-            Map map = state?.CurrentVault?.Map;
-            return thing != null && map != null && thing.Spawned && map.reservationManager.IsReserved(thing);
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmRuntimeRegistration registration;
+            Map map = gs != null && thing != null
+                && gs.Runtime.TryGetRegistration(thing, out registration)
+                ? registration.RegisteredMap
+                : null;
+            return thing != null && map != null && thing.Spawned
+                && map.reservationManager.IsReserved(thing);
         }
 
-        private static void MoveAnchor(OuterrealmEntry entry, AnchorState state, Building_OuterrealmVault vault)
+        private static void MoveAnchor(OuterrealmEntry entry, OuterrealmAnchorState state, Building_OuterrealmVault vault)
         {
             if (state.CurrentVault == vault && (vault == null || IsAnchor(entry.Proto)))
             {
@@ -662,28 +775,29 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 map.listerThings.Add(thing);
             }
             RegionListersUpdater.RegisterInRegions(thing, map);
-            anchors.Remove(thing);
-            anchors.Add(thing, null);
+            OuterrealmIdentityRuntimeState runtime = CurrentRuntime;
+            if (runtime == null)
+            {
+                thing.ForceSetStateToUnspawned();
+                return;
+            }
+            runtime.Anchors.Remove(thing);
+            runtime.Anchors.Add(thing, null);
+            GameComponent_OuterrealmStorage.Instance?.Runtime.TrackRegistration(
+                thing, map, vault, entry, OuterrealmRuntimeRegistrationKind.IdentityAnchor);
             state.CurrentVault = vault;
         }
 
-        private static void UnregisterAnchor(OuterrealmEntry entry, AnchorState state)
+        private static void UnregisterAnchor(OuterrealmEntry entry, OuterrealmAnchorState state)
         {
             Thing thing = entry?.Proto;
-            Building_OuterrealmVault vault = state?.CurrentVault;
-            Map map = vault?.Map;
             if (thing != null && IsAnchor(thing))
             {
-                if (map != null)
+                CurrentRuntime?.Anchors.Remove(thing);
+                if (!(GameComponent_OuterrealmStorage.Instance?.Runtime.DetachRegistration(thing) ?? false))
                 {
-                    RegionListersUpdater.DeregisterInRegions(thing, map);
-                    if (map.listerThings.Contains(thing))
-                    {
-                        map.listerThings.Remove(thing);
-                    }
+                    thing.ForceSetStateToUnspawned();
                 }
-                anchors.Remove(thing);
-                thing.ForceSetStateToUnspawned();
             }
             if (state != null)
             {

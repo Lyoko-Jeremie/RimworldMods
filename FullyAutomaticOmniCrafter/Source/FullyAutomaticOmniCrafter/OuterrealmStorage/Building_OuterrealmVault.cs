@@ -141,7 +141,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (gs != null)
             {
                 gs.RegisterVault(this);
-                view.RebuildView(); // 初始化/重连：全量重建（§3.3）
+                // 投影不参与存档；读档/重连后按 GameComponent 的全局固定预算逐步重建，
+                // 避免在 SpawnSetup 中同步扫描全部条目。
+                view.ClearView();
+                view.MarkMaterializeDirty();
                 lastSeenVersion = gs.Version;
             }
         }
@@ -209,12 +212,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 view.RefreshRegionRegistrations();
             }
-            // §3.3 事件驱动方案：视图内容同步由 GameComponent_OuterrealmStorage 的帧末微批统一驱动，
-            if (gs.NeedFullRebuild)
-            {
-                view.RebuildView();
-                lastSeenVersion = gs.Version;
-            }
+            // §3.3 事件驱动方案：视图内容同步及溢出恢复均由 GameComponent 的固定预算队列驱动。
         }
 
         /// <summary>吸收存储格上的外来未预留物品（§v4 兜底）：只处理未登记倒计时的异常残留

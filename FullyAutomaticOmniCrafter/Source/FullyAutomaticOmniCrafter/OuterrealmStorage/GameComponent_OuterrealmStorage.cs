@@ -12,14 +12,42 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// 聚合条目列表（每类物品一条，含 long 计数）+ 版本号 + 增量变更日志（§3.3 方案 A）。
     /// 由 Game.FillComponents 自动实例化并随存档深保存，与建筑生命周期完全解耦。
     ///
-    /// 读档时序注意（§1.5/§3.3）：Instance 必须在构造函数中赋值——
-    /// 建筑的 SpawnSetup 早于 GameComponent.FinalizeInit，不能照搬 GameComponent_OmniResurrector
-    /// 的 FinalizeInit 赋值模式；版本号与 lastSeenVersion 的重置必须发生在
-    /// ExposeData(PostLoadInit)（早于任何建筑 SpawnSetup 的全量视图重建）。
+    /// 运行时状态严格归属当前 Game；构造函数只做纯内存初始化，不访问 Current.Game 或旧地图。
+    /// 建筑 SpawnSetup 通过经 Game 归属验证的 Instance 获取当前组件。
     /// </summary>
     public class GameComponent_OuterrealmStorage : GameComponent
     {
-        public static GameComponent_OuterrealmStorage Instance;
+        private static WeakReference instanceCache;
+        private readonly Game ownerGame;
+        internal readonly OuterrealmStorageRuntimeState Runtime;
+
+        public static GameComponent_OuterrealmStorage Instance
+        {
+            get
+            {
+                Game game = Current.Game;
+                if (game == null)
+                {
+                    return null;
+                }
+                GameComponent_OuterrealmStorage cached =
+                    instanceCache?.Target as GameComponent_OuterrealmStorage;
+                if (cached != null && ReferenceEquals(cached.ownerGame, game)
+                    && game.components.Contains(cached))
+                {
+                    return cached;
+                }
+                GameComponent_OuterrealmStorage current =
+                    game.GetComponent<GameComponent_OuterrealmStorage>();
+                instanceCache = current != null ? new WeakReference(current) : null;
+                return current;
+            }
+        }
+
+        internal static GameComponent_OuterrealmStorage ForGame(Game game)
+        {
+            return game?.GetComponent<GameComponent_OuterrealmStorage>();
+        }
 
         // ── 存档格式版本 ──────────────────────────────────────────────────────
         // 0/1：旧格式，Proto 是“属性模板”，Count 才是库存真相；Proto.stackCount 可能曾被
@@ -115,9 +143,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public GameComponent_OuterrealmStorage(Game game)
         {
-            Instance = this;
-            SubspaceAccessUtility.ResetRuntimeState();
-            OuterrealmIdentityRouting.ResetRuntimeState();
+            ownerGame = game;
+            Runtime = new OuterrealmStorageRuntimeState(game);
+        }
+
+        public override void LoadedGame()
+        {
+            base.LoadedGame();
+            OuterrealmIdentityRouting.ReconcileAll();
+        }
+
+        public override void StartedNewGame()
+        {
+            base.StartedNewGame();
+            OuterrealmIdentityRouting.ReconcileAll();
         }
 
         // ── 存入 ────────────────────────────────────────────────────────────────
@@ -1012,12 +1051,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (vault != null && !vaults.Contains(vault))
             {
                 vaults.Add(vault);
-                Map map = vault.Map;
+                Map map = vault.Spawned ? vault.Map : null;
                 if (vault.Spawned && map != null)
                 {
                     int count;
                     vaultCountByMap.TryGetValue(map, out count);
                     vaultCountByMap[map] = count + 1;
+                    Runtime.TrackVault(vault, map);
                 }
                 OuterrealmIdentityRouting.OnVaultRegistered(vault);
             }
@@ -1029,7 +1069,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            Map map = vault.Map;
+            Map map = Runtime.RegisteredMapOf(vault);
             int count;
             if (map != null && vaultCountByMap.TryGetValue(map, out count))
             {
@@ -1043,6 +1083,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             OuterrealmIdentityRouting.OnVaultUnregistered(vault);
+            Runtime.UntrackVault(vault);
+        }
+
+        internal void NotifyMapRemoved(Map map)
+        {
+            if (map == null)
+            {
+                return;
+            }
+            List<Building_OuterrealmVault> removedVaults = Runtime.VaultsOnMapSnapshot(map);
+            for (int i = 0; i < removedVaults.Count; i++)
+            {
+                vaults.Remove(removedVaults[i]);
+            }
+            vaultCountByMap.Remove(map);
+            OuterrealmIdentityRouting.OnMapRemoved(map, removedVaults);
+            Runtime.ForgetMap(map);
+            OuterrealmIdentityRouting.ReconcileAll();
         }
 
         // ── 弹出队列（§6.4） ────────────────────────────────────────────────────
@@ -1182,13 +1240,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (changeLogOverflow)
             {
-                // 变更窗口溢出：增量会丢变更，全量重建完成后才解除溢出状态。
+                // 变更窗口溢出：先同步移除无效副本，再把完整条目扫描交给固定预算队列。
+                // 不能在这里同步 RebuildView，否则百万条目会形成单 tick 尖峰。
                 for (int i = 0; i < vaults.Count; i++)
                 {
                     Building_OuterrealmVault v = vaults[i];
                     if (v != null && v.view != null)
                     {
-                        v.view.RebuildView();
+                        v.view.RemoveDisallowedCopies();
+                        v.view.MarkMaterializeDirty();
                     }
                 }
                 changeLogOverflow = false;
@@ -1219,19 +1279,36 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             changeLogSet.Clear();
         }
 
+        private const int MaterializeEntryBudgetPerTick = 512;
+        private int materializeVaultCursor;
+
         /// <summary>消费各 vault 视图的物化脏标记（§filter 视图过滤简化）：filter 变更后由建筑
-        /// 置脏（O(1)），帧末统一物化缺失的允许条目（O(视图数 × 全局条目数)）——把物化从
-        /// UI 点击同步路径移到帧末微批，避免 filter 点击卡顿。空标记帧 O(1) 短路。
+        /// 置脏（O(1)），帧末按全局固定预算检查条目。总成本上限与 vault 数和条目总量无关，
+        /// 多个仓以轮转游标公平分享预算，避免大型存档出现单 tick 全量扫描尖峰。
         /// 注：暂停时本方法不执行（GameComponentTick 仅运行 tick 调用），新允许条目的可见性
         /// 由 UI 以 CanShow 直接判定（副本未物化时用 proto 渲染），取用路径在运行时才需要副本。</summary>
         private void MaterializeDirtyViews()
         {
-            for (int i = 0; i < vaults.Count; i++)
+            int count = vaults.Count;
+            if (count == 0)
             {
-                Building_OuterrealmVault v = vaults[i];
-                if (v != null && v.view != null && v.view.ConsumeMaterializeDirty())
+                materializeVaultCursor = 0;
+                return;
+            }
+            int remaining = MaterializeEntryBudgetPerTick;
+            int visited = 0;
+            while (remaining > 0 && visited < count)
+            {
+                if (materializeVaultCursor >= count)
                 {
-                    v.view.MaterializeMissingCopies();
+                    materializeVaultCursor = 0;
+                }
+                Building_OuterrealmVault v = vaults[materializeVaultCursor];
+                materializeVaultCursor++;
+                visited++;
+                if (v != null && v.view != null && v.view.HasMaterializeWork)
+                {
+                    remaining -= v.view.MaterializeMissingCopiesBudgeted(remaining);
                 }
             }
         }
@@ -1535,8 +1612,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 // 弹出队列不序列化（目标地图索引在重载后不可靠；条目仍在全局层，玩家可重新弹出）。
                 ejectQueue.Clear();
                 vaultCountByMap.Clear();
-                SubspaceAccessUtility.ResetRuntimeState();
-                OuterrealmIdentityRouting.ResetRuntimeState();
                 // PostLoadInit 完成后内存状态已经是当前格式；下一次保存会写出显式版本。
                 storageSchemaVersion = CurrentStorageSchemaVersion;
             }
