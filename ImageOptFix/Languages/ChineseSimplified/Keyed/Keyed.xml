@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <ImageOpt>图片加载优化</ImageOpt>
+
+    <ImageOpt.LoadInfo>图片加载信息</ImageOpt.LoadInfo>
+    <ImageOpt.OtherImageLoaded>已加载的png/jpg图片: <![CDATA[<color=cyan>{0}</color>]]></ImageOpt.OtherImageLoaded>
+    <ImageOpt.DdsImageLoaded>已加载的dds图片: <![CDATA[<color=cyan>{0}</color>]]></ImageOpt.DdsImageLoaded>
+    <ImageOpt.FallbackLoaded>回退到原版加载的图片: <![CDATA[<color=red>{0}</color>]]></ImageOpt.FallbackLoaded>
+    <ImageOpt.NeedUpdate>过期需要更新的图片: <![CDATA[<color=red>{0}</color>]]></ImageOpt.NeedUpdate>
+    <ImageOpt.LoadTimeS>加载图片耗时: <![CDATA[<color=yellow>{0}</color> 秒]]></ImageOpt.LoadTimeS>
+    <ImageOpt.PeakImage>图像加载峰值: <![CDATA[<color=green>{0}</color>]]></ImageOpt.PeakImage>
+    <ImageOpt.PeakMemory>内存使用峰值: <![CDATA[<color=green>{0}</color>]]></ImageOpt.PeakMemory>
+    <ImageOpt.EstimatedVideoMem>预估显存占用(仅供参考): <![CDATA[<color=green>{0}</color>]]></ImageOpt.EstimatedVideoMem>
+    <ImageOpt.ImageLoadingLimit>最大同时图像加载</ImageOpt.ImageLoadingLimit>
+    <ImageOpt.ImageLoadingLimit.desc>内存中存在的最大已加载到内存但是未提交到GPU的图片数量。影响`图像加载峰值`。减少该值可以限制内存使用峰值，但是可能会减慢速度。增加反之。如果已满，ImageOpt会等待已加载的纹理提交到GPU内存再继续加载未加载的。</ImageOpt.ImageLoadingLimit.desc>
+    <ImageOpt.EnableDds>使用dds纹理</ImageOpt.EnableDds>
+    <ImageOpt.EnableDds.desc>关闭后将不加载dds纹理，只加载png/jpeg图片</ImageOpt.EnableDds.desc>
+    <ImageOpt.AutoCompress>自动压缩过期图片</ImageOpt.AutoCompress>
+    <ImageOpt.AutoCompress.desc>当mod更新png图片后，自动重新转换dds。如果自动更新失败，可能需要手动再次转换</ImageOpt.AutoCompress.desc>
+    <ImageOpt.AnisoLevel>各向异性过滤</ImageOpt.AnisoLevel>
+    <ImageOpt.MipmapBias>Mipmap偏移</ImageOpt.MipmapBias>
+    <ImageOpt.MipmapBias.desc>
+        负值将导致选择更高分辨率的纹理，并且通常会提高质量，正值将追逐较低的分辨率并提高性能。使用较高的负值时，可能还会看到一些纹理闪烁
+    </ImageOpt.MipmapBias.desc>
+    <ImageOpt.CleanActivatedDds>清理已激活mod的dds和dds.zstd文件</ImageOpt.CleanActivatedDds>
+    <ImageOpt.CleanNotActivatedDds>清理未激活mod的dds和dds.zstd文件</ImageOpt.CleanNotActivatedDds>
+    <ImageOpt.CleanDdsAlert>
+        警告：此操作将删除选中mod中所有的.dds图片文件。\n这不会损坏你的游戏或存档，但想要使用压缩纹理需要重新生成
+    </ImageOpt.CleanDdsAlert>
+    <ImageOpt.ConfirmContinue>确认继续</ImageOpt.ConfirmContinue>
+    <ImageOpt.CleanDone>dds文件已清除</ImageOpt.CleanDone>
+    <ImageOpt.Cancel>取消</ImageOpt.Cancel>
+    <ImageOpt.OpenGPUCompressImageTools>打开GPU压缩纹理工具</ImageOpt.OpenGPUCompressImageTools>
+    <ImageOpt.GPUCompressImageTools>GPU压缩纹理工具</ImageOpt.GPUCompressImageTools>
+    <ImageOpt.GenMipmaps>生成Mipmaps</ImageOpt.GenMipmaps>
+    <ImageOpt.GenMipmaps.desc>
+        Mipmap是纹理的预计算缩小版本，在较远距离时显示低分辨率纹理而在近距离时显示高分辨，可以减少锯齿和提升性能。但会提升文件大小，建议此选项打开并与zstd一起打开。
+    </ImageOpt.GenMipmaps.desc>
+    <ImageOpt.zstd>zstd压缩</ImageOpt.zstd>
+    <ImageOpt.zstd.desc>
+        使用zstd压缩算法对gpu纹理进行二次压缩，这会大大减少纹理在硬盘上的大小。建议打开。(这将生成.dds.zstd文件而不是.dds)
+    </ImageOpt.zstd.desc>
+    <ImageOpt.Overwrite>覆盖已有纹理图片</ImageOpt.Overwrite>
+    <ImageOpt.Overwrite.desc>如果关闭，则跳过已有的文件。否则将覆盖已有文件</ImageOpt.Overwrite.desc>
+    <ImageOpt.AutoScaling>自动缩放</ImageOpt.AutoScaling>
+    <ImageOpt.AutoScaling.desc>
+        由于unity只能加载大小为4的倍数的gpu压缩纹理，此选项将自动将图片缩放到4的倍数(通常只会使图片变小一点)。否则的话，大小不是4的倍数的图片将回退到使用普通的图片格式
+    </ImageOpt.AutoScaling.desc>
+    <ImageOpt.Performance>性能</ImageOpt.Performance>
+    <ImageOpt.Quality>质量</ImageOpt.Quality>
+    <ImageOpt.Quality.desc>影响压缩纹理的质量。建议高，毕竟也不缺这点压缩时间，对吧？</ImageOpt.Quality.desc>
+    <ImageOpt.HighQuality>高质量</ImageOpt.HighQuality>
+    <ImageOpt.NormalQuality>普通质量</ImageOpt.NormalQuality>
+    <ImageOpt.LowQuality>低质量</ImageOpt.LowQuality>
+    <ImageOpt.Generate>生成</ImageOpt.Generate>
+    <ImageOpt.AllImagesProcessed>图片处理完成。耗时: {0} 秒</ImageOpt.AllImagesProcessed>
+</LanguageData>

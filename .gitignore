@@ -81,9 +81,6 @@ fabric.properties
 */**/*
 *
 
-*/**/*.zstd
-*.zstd
-
 !SNS_AOPC_TPOC_Patch/
 !SNS_AOPC_TPOC_Patch/**/*
 !JeremieModPatch/
@@ -116,11 +113,16 @@ fabric.properties
 !OuterrealmTechRoadProject/**/*
 !OuterrealmTechDailyThings/
 !OuterrealmTechDailyThings/**/*
+!ImageOptFix/
+!ImageOptFix/**/*
 !.gitignore
 
 !readme.md
+!.bambooignore
 
 */**/*.zstd
+*/**/*.dds
 *.zstd
+*.dds
 
 */**/.reasonix/**/*

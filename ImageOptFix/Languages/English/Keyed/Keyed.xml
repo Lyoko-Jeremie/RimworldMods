@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <ImageOpt>Image Load Optimization</ImageOpt>
+
+    <ImageOpt.LoadInfo>Image Load Information</ImageOpt.LoadInfo>
+    <ImageOpt.OtherImageLoaded>Loaded png/jpg images: <![CDATA[<color=cyan>{0}</color>]]></ImageOpt.OtherImageLoaded>
+    <ImageOpt.DdsImageLoaded>Loaded dds images: <![CDATA[<color=cyan>{0}</color>]]></ImageOpt.DdsImageLoaded>
+    <ImageOpt.FallbackLoaded>Fallback to vanilla loaded: <![CDATA[<color=red>{0}</color>]]></ImageOpt.FallbackLoaded>
+    <ImageOpt.NeedUpdate>Need updating (Expired): <![CDATA[<color=red>{0}</color>]]></ImageOpt.NeedUpdate>
+    <ImageOpt.LoadTimeS>Loading time: <![CDATA[<color=yellow>{0}</color> seconds]]></ImageOpt.LoadTimeS>
+    <ImageOpt.PeakImage>Peak image processing: <![CDATA[<color=green>{0}</color>]]></ImageOpt.PeakImage>
+    <ImageOpt.PeakMemory>Peak memory usage: <![CDATA[<color=green>{0}</color>]]></ImageOpt.PeakMemory>
+    <ImageOpt.EstimatedVideoMem>Estimated video memory usage(For reference only): <![CDATA[<color=green>{0}</color>]]></ImageOpt.EstimatedVideoMem>
+    <ImageOpt.ImageLoadingLimit>Maximum loading image</ImageOpt.ImageLoadingLimit>
+    <ImageOpt.ImageLoadingLimit.desc>The maximum number of images in memory that have been loaded into memory but not yet submitted to the GPU. This affects peak image load times. Reducing this value can limit peak memory usage, but may slow things down. Increasing it will reduce this. If this value is full, ImageOpt will wait for loaded textures to be submitted to GPU memory before continuing to load unloaded ones.</ImageOpt.ImageLoadingLimit.desc>
+    <ImageOpt.EnableDds>Use dds textures</ImageOpt.EnableDds>
+    <ImageOpt.EnableDds.desc>When disabled, dds textures will not be loaded, only png/jpeg images
+    </ImageOpt.EnableDds.desc>
+    <ImageOpt.AutoCompress>Automatically compress expired images</ImageOpt.AutoCompress>
+    <ImageOpt.AutoCompress.desc>When the mod updates the png image, it will automatically reconvert the dds image. If the automatic update fails, you may need to convert it manually again.</ImageOpt.AutoCompress.desc>
+    <ImageOpt.AnisoLevel>Anisotropic Filtering</ImageOpt.AnisoLevel>
+    <ImageOpt.MipmapBias>Mipmap Bias</ImageOpt.MipmapBias>
+    <ImageOpt.MipmapBias.desc>
+        Negative values will cause higher resolution textures to be selected, generally improving quality.
+        Positive values will favor lower resolutions to improve performance. Using large negative values may result in texture flickering.
+    </ImageOpt.MipmapBias.desc>
+    <ImageOpt.CleanActivatedDds>Cleans dds and dds.zstd files of activated mods</ImageOpt.CleanActivatedDds>
+    <ImageOpt.CleanNotActivatedDds>Clean up dds and dds.zstd files for inactive mods</ImageOpt.CleanNotActivatedDds>
+    <ImageOpt.CleanDdsAlert>
+        Warning: This operation will delete all .dds image files from mods.\n
+        This won't damage your game or saves, but you'll need to regenerate compressed textures to use them again.
+    </ImageOpt.CleanDdsAlert>
+    <ImageOpt.ConfirmContinue>Confirm Continue</ImageOpt.ConfirmContinue>
+    <ImageOpt.CleanDone>DDS files cleared</ImageOpt.CleanDone>
+    <ImageOpt.Cancel>Cancel</ImageOpt.Cancel>
+    <ImageOpt.OpenGPUCompressImageTools>Open GPU Compress Image Tools</ImageOpt.OpenGPUCompressImageTools>
+    <ImageOpt.GPUCompressImageTools>GPU Compressed Texture Tools</ImageOpt.GPUCompressImageTools>
+    <ImageOpt.GenMipmaps>Generate Mipmaps</ImageOpt.GenMipmaps>
+    <ImageOpt.GenMipmaps.desc>
+        Mipmaps are pre-calculated reduced-size versions of textures that show lower resolution textures at far distances
+        and higher resolution at close range, reducing aliasing and improving performance. This increases file size,
+        so it's recommended to enable this option along with zstd compression.
+    </ImageOpt.GenMipmaps.desc>
+    <ImageOpt.zstd>zstd Compression</ImageOpt.zstd>
+    <ImageOpt.zstd.desc>
+        Use zstd compression algorithm for secondary compression of GPU textures, which significantly reduces
+        texture storage size on disk. Recommended to enable. (This will generate .dds.zstd files instead of .dds)
+    </ImageOpt.zstd.desc>
+    <ImageOpt.Overwrite>Overwrite existing textures</ImageOpt.Overwrite>
+    <ImageOpt.Overwrite.desc>
+        If disabled, skip existing files. If enabled, overwrite existing files
+    </ImageOpt.Overwrite.desc>
+    <ImageOpt.AutoScaling>Auto Scaling</ImageOpt.AutoScaling>
+    <ImageOpt.AutoScaling.desc>
+        Since Unity can only load GPU compressed textures with dimensions multiples of 4, this option will
+        automatically scale images to multiples of 4 (usually making them slightly smaller). Otherwise, images
+        not meeting this requirement will fallback to normal image formats
+    </ImageOpt.AutoScaling.desc>
+    <ImageOpt.Performance>Performance</ImageOpt.Performance>
+    <ImageOpt.Quality>Quality</ImageOpt.Quality>
+    <ImageOpt.Quality.desc>Controls compressed texture quality. High recommended since we don't really care about compression time, right?
+    </ImageOpt.Quality.desc>
+    <ImageOpt.HighQuality>High Quality</ImageOpt.HighQuality>
+    <ImageOpt.NormalQuality>Normal Quality</ImageOpt.NormalQuality>
+    <ImageOpt.LowQuality>Low Quality</ImageOpt.LowQuality>
+    <ImageOpt.Generate>Generate</ImageOpt.Generate>
+    <ImageOpt.AllImagesProcessed>All images processed. Time cost: {0} seconds</ImageOpt.AllImagesProcessed>
+</LanguageData>
