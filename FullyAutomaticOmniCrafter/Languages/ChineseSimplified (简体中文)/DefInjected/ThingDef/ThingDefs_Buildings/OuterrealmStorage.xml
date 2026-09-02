@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
-  <FAOC_OuterrealmVault.label>超维存储仓访问端口</FAOC_OuterrealmVault.label>
+  <FAOC_OuterrealmVault.label>超维存储访问端口</FAOC_OuterrealmVault.label>
   <FAOC_OuterrealmVault.description>一种超维科技存储终端，可将物品折叠入超维空间。存入此处的物品在所有地图、所有终端之间共享，永不腐败、永不老化。配置其存储清单以决定可存入的内容。</FAOC_OuterrealmVault.description>
 
 </LanguageData>
