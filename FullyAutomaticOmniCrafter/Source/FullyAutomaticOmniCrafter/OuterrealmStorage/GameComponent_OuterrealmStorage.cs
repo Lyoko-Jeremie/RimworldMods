@@ -156,17 +156,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmIdentityRouting.ReconcileAll();
         }
 
-        /// <summary>暂停时 Tick 不推进；每帧仅用极小预算恢复非持久化投影，
-        /// 不修改权威库存、reservation、Job 或软租约时间。</summary>
-        public override void GameComponentUpdate()
-        {
-            base.GameComponentUpdate();
-            if (Find.TickManager != null && Find.TickManager.Paused && !Runtime.SaveIsolationActive)
-            {
-                MaterializeDirtyViews(64, 512, 0.5d);
-            }
-        }
-
         // ── 存入 ────────────────────────────────────────────────────────────────
 
         /// <summary>吸收存入（§3.2 吸收路径的全局侧）：把 item 的全部 stackCount 并入对应条目。
