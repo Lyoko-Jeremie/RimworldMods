@@ -471,19 +471,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 __result = false;
                 return false;
             }
-            if (maxPawns > 1 && stackCount == 1)
-            {
-                // 穿戴排队预留（§穿戴 patch：maxPawns=8, stackCount=1）：允许多个 pawn 排队同一副本，
-                // 先到者穿走（副本移除），后到者由穿戴 toil 的 FailOnDespawnedNullOrForbidden 在执行中失败
-                // 一次即恢复——不做数量检查（防排队被 G−R 阻塞而每 tick 循环），实际取物由 SplitOff 校正防超卖。
-                return true;
-            }
-            if (req > view.AvailableForReserve(t))
-            {
-                // 数量不足：静默拒绝（§3.3 静默语义，短路避免原版 LogCouldNotReserveError 刷屏）
-                __result = false;
-                return false;
-            }
+            // 新预留的数量检查统一交给原版 Reserve -> 已补丁的 CanReserve。
+            // 这样原版可先命中“同一 Pawn + 同一 Job 已有足量 reservation”的幂等快速路径；
+            // 若在 Prefix 提前按 G-R 拒绝，会把重复 Reserve 错判成失败。
             return true;
         }
 

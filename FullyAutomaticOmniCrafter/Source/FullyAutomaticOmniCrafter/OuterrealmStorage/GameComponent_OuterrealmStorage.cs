@@ -93,10 +93,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private int version;
 
         /// <summary>原版 ReservationManager 预留变更版本号（每次 Reserve/Release* +1）。
-        /// 供各 vault 视图的预留缓存（reservedByEntry/reservedByCopy）做 O(1) 失效判定：
-        /// 视图缓存记录上次重建时的 ReservationVersion，不等即重建。不序列化——
-        /// 读档时重置为 0，且 RebuildView 会把视图缓存版本置 -1 强制失效（§P0 预订记账优化）。</summary>
+        /// 供全局条目预留缓存做 O(1) 失效判定。不序列化，读档时重置。</summary>
         private int reservationVersion;
+
+        /// <summary>全地图、全终端的投影预留总量。投影只是同一全局条目的不同查询入口，
+        /// 因此预留必须按 OuterrealmEntry 汇总，不能按某个投影或某座仓分别记账。</summary>
+        private readonly Dictionary<OuterrealmEntry, long> reservedTotals =
+            new Dictionary<OuterrealmEntry, long>();
+        private int reservedTotalsVersion = -1;
 
         // ── 增量投影同步队列 ──────────────────────────────────────────────────
         // 条目自身保存排队标记和下一座仓游标。队列不再因固定容量溢出后退化为
@@ -1092,12 +1096,71 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         /// <summary>原版 ReservationManager 预留变更通知：版本号 +1（§P0 预订记账优化）。
         /// 由 ReservationManager 的 Reserve/Release/ReleaseAllForTarget/ReleaseClaimedBy/
-        /// ReleaseAllClaimedBy 各 patch 在预留增删后调用，使各 vault 视图的预留缓存失效，
-        /// 把 AvailableForReserve/PreSplitOff 从"每次全图扫描 reservations"降为 O(1) 查表。
-        /// 仅版本号 +1（O(1)），不定位具体副本——失效与重建在视图查询侧惰性完成。</summary>
+        /// ReleaseAllClaimedBy 各 patch 在预留增删后调用，使全局预留汇总缓存失效，
+        /// 把 AvailableForReserve 从"每次全图扫描 reservations"降为 O(1) 查表。
+        /// 仅版本号 +1（O(1)），失效后的全局汇总在首次查询时惰性重建。</summary>
         public void NotifyReservationChanged()
         {
             reservationVersion++;
+        }
+
+        /// <summary>返回该全局条目已被所有地图、所有终端预留的数量。</summary>
+        public long ReservedCountOf(OuterrealmEntry entry)
+        {
+            if (entry == null)
+            {
+                return 0L;
+            }
+            EnsureReservedTotals();
+            long reserved;
+            return reservedTotals.TryGetValue(entry, out reserved) ? reserved : 0L;
+        }
+
+        /// <summary>预留版本变化后仅重建一次全局缓存，避免每座仓分别扫描同一批 reservation。</summary>
+        private void EnsureReservedTotals()
+        {
+            if (reservedTotalsVersion == reservationVersion)
+            {
+                return;
+            }
+            reservedTotals.Clear();
+            List<Map> maps = Find.Maps;
+            if (maps != null)
+            {
+                for (int mapIndex = 0; mapIndex < maps.Count; mapIndex++)
+                {
+                    List<ReservationManager.Reservation> reservations =
+                        maps[mapIndex].reservationManager.ReservationsReadOnly;
+                    for (int i = 0; i < reservations.Count; i++)
+                    {
+                        ReservationManager.Reservation reservation = reservations[i];
+                        Thing thing = reservation.Target.Thing;
+                        OuterrealmVaultViewThingOwner view =
+                            thing?.holdingOwner as OuterrealmVaultViewThingOwner;
+                        if (view == null)
+                        {
+                            continue;
+                        }
+                        OuterrealmEntry reservedEntry = view.GetEntryOf(thing);
+                        if (reservedEntry == null)
+                        {
+                            continue;
+                        }
+                        int count = reservation.StackCount == ReservationManager.StackCount_All
+                            ? thing.stackCount
+                            : reservation.StackCount;
+                        if (count <= 0)
+                        {
+                            continue;
+                        }
+                        long existing;
+                        reservedTotals[reservedEntry] = reservedTotals.TryGetValue(reservedEntry, out existing)
+                            ? existing + count
+                            : count;
+                    }
+                }
+            }
+            reservedTotalsVersion = reservationVersion;
         }
 
         /// <summary>回滚重建条目（TryAbsorbStack 回滚时条目已被取空移除；§3.3 回滚补偿）。</summary>
@@ -1734,6 +1797,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 version = 0;
                 reservationVersion = 0;
+                reservedTotals.Clear();
+                reservedTotalsVersion = -1;
                 totalByDef = null; // 总量缓存失效（version 重置为 0，显式置空避免误命中旧会话缓存）
                 totalByDefVersion = -1;
                 projectionSyncQueue.Clear();

@@ -43,18 +43,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static readonly System.Reflection.FieldInfo MapIndexOrStateField =
             AccessTools.Field(typeof(Thing), "mapIndexOrState");
 
-        // ── 预留记账缓存（§P0 预订记账优化，借鉴 Digital-Storage 的 reservedTotals） ──
-        // 原 ReservedOn 每次全图扫描 map.reservationManager.ReservationsReadOnly 求 rThis/rAll
-        // （CanReserve/Reserve/CanReserveStack/PreSplitOff 高频调用，O(全图 reservation)）。
-        // 现改为惰性重建缓存：reservedByEntry[entry]=本视图内该条目预留总量（rAll），
-        // reservedByCopy[copy]=该副本自身预留量（rThis）；查询 O(1)。重建由 ReservationVersion
-        // 版本号驱动（Reserve/Release* 各 patch 调 GameComponent.NotifyReservationChanged 使版本 +1），
-        // 仅在版本变化后的首次查询做一次 O(全图 reservation) 重建，摊薄到低频预留变更点。
-        // 不序列化——读档后由 RebuildView 置 reservedCacheVersion=-1 强制失效，首次查询懒重建。
-        private readonly Dictionary<OuterrealmEntry, long> reservedByEntry = new Dictionary<OuterrealmEntry, long>();
-        private readonly Dictionary<Thing, long> reservedByCopy = new Dictionary<Thing, long>();
-        private int reservedCacheVersion = -1;
-
         public OuterrealmVaultViewThingOwner(IOuterrealmVaultContext context)
             : base(context, false, LookMode.Deep, false)
         {
@@ -177,83 +165,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        // ── 预留记账（§3.3 → §P0 预订记账优化）：O(1) 查表 + 版本号惰性重建 ──
+        // ── 预留记账（§3.3 → §P0 预订记账优化）：全局 O(1) 查表 ──
 
-        /// <summary>确保预留缓存新鲜：与全局 ReservationVersion 不等时全量重建一次
-        /// （O(全图 reservation)，仅在版本变化后的首次查询触发）。</summary>
-        private void EnsureReservationCache(GameComponent_OuterrealmStorage gs)
-        {
-            if (reservedCacheVersion == gs.ReservationVersion)
-            {
-                return;
-            }
-            RebuildReservationCache(gs);
-        }
-
-        /// <summary>全量重建预留缓存：一次扫描本视图内所有预留，填充 reservedByEntry / reservedByCopy。
-        /// 语义与原 ReservedOn 逐条扫描完全一致（只统计 holdingOwner == this 的副本），
-        /// 只是把 O(n) 从每次查询摊薄到低频的预留变更点。</summary>
-        private void RebuildReservationCache(GameComponent_OuterrealmStorage gs)
-        {
-            reservedByEntry.Clear();
-            reservedByCopy.Clear();
-            Map map = Context != null ? Context.MapHeld : null;
-            if (map != null)
-            {
-                List<ReservationManager.Reservation> reservations = map.reservationManager.ReservationsReadOnly;
-                if (reservations != null)
-                {
-                    for (int i = 0; i < reservations.Count; i++)
-                    {
-                        ReservationManager.Reservation r = reservations[i];
-                        Thing t = r.Target.Thing;
-                        if (t == null || t.holdingOwner != this)
-                        {
-                            continue;
-                        }
-                        int c = r.StackCount == ReservationManager.StackCount_All ? t.stackCount : r.StackCount;
-                        if (c <= 0)
-                        {
-                            continue;
-                        }
-                        OuterrealmEntry entry = GetEntryOf(t);
-                        if (entry == null)
-                        {
-                            continue;
-                        }
-                        long existing;
-                        reservedByEntry[entry] = reservedByEntry.TryGetValue(entry, out existing) ? existing + c : c;
-                        reservedByCopy[t] = reservedByCopy.TryGetValue(t, out existing) ? existing + c : c;
-                    }
-                }
-            }
-            reservedCacheVersion = gs.ReservationVersion;
-        }
-
-        /// <summary>O(1) 推导该副本自身的预留 r_this 与条目总预留 r_all（缓存命中；版本过期时惰性重建）。</summary>
-        private void ReservedOn(Thing copy, out long rThis, out long rAll)
-        {
-            rThis = 0;
-            rAll = 0;
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            EnsureReservationCache(gs);
-            OuterrealmEntry entry = GetEntryOf(copy);
-            long v;
-            if (entry != null && reservedByEntry.TryGetValue(entry, out v))
-            {
-                rAll = v;
-            }
-            if (reservedByCopy.TryGetValue(copy, out v))
-            {
-                rThis = v;
-            }
-        }
-
-        /// <summary>副本当前可用量 = G − R + r_this（#8 预留检查与 SplitOff 校正共用）。</summary>
+        /// <summary>副本当前可用量 = G − R。R 汇总所有地图、所有终端对同一全局条目的预留。
+        /// 不能把“当前投影上的全部预留”加回：同一投影可被不同 Pawn 发现，加回会让后续 Pawn
+        /// 无视先前预留，最终同时操作甚至重复销毁同一个投影实例。</summary>
         public long AvailableForReserve(Thing copy)
         {
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
@@ -266,10 +182,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return 0;
             }
-            long rThis;
-            long rAll;
-            ReservedOn(copy, out rThis, out rAll);
-            long available = e.Count - rAll + rThis;
+            long available = e.Count - gs.ReservedCountOf(e);
             return available < 0 ? 0 : available;
         }
 
@@ -806,7 +719,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             RemoveDisallowedCopies();
             MaterializeMissingCopies();
             RebuildIndex(); // 全量重建后统一重建索引（覆盖保留副本与新增副本，读档后索引为空必须重建）
-            reservedCacheVersion = -1; // 预留缓存强制失效（§P0）：读档/重建时 reservations 可能尚未加载，下次查询懒重建
             EnsureAllRegistered(); // §v5：读档后副本 mapIndexOrState 被原版重置为 -1，重新注册为伪 Spawned（幂等）
             if (Context.Spawned && Context is IHaulSource haulSource)
             {
@@ -1089,7 +1001,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     materializeDirty = false;
                     // 分批路径的增删均已即时维护双向索引；此处禁止再做 O(P) 全量重建，
                     // 否则会在长任务完成的最后一个 tick 重新制造单帧尖峰。
-                    reservedCacheVersion = -1;
                 }
                 else
                 {

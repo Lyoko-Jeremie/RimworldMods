@@ -83,7 +83,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 - 维护 `entry -> copy`、`copy -> entry` 双向索引。
 - 将真实外来物品的 `TryAdd` 转发到全局 `Deposit`。
 - 通过 `WithdrawCanonical` 把投影请求转换为权威实例转移。
-- 缓存每条目和每投影的 reservation 数量，计算 `AvailableForReserve = Count - rAll + rThis`。
+- 全局缓存所有地图、所有终端按条目汇总的 reservation 数量，计算 `AvailableForReserve = Count - reservedTotal`。
 - 管理少量显式借出实物及其回收。
 - 管理 pseudo-Spawned 的 lister/region 注册、数量 Boost、孤儿投影清理和视图全量重建。
 
