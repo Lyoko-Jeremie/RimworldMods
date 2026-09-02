@@ -372,7 +372,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
             {
                 bool routedAnchor = OuterrealmIdentityRouting.CanAccessAnchor(t, claimant);
-                if ((!routedAnchor && !SubspaceAccessUtility.CanAutoTake(claimant)) || claimant.Map == null)
+                if (claimant?.Map == null)
+                {
+                    __result = false;
+                    return false;
+                }
+                if (routedAnchor)
+                {
+                    // 唯一物品锚点的实际堆叠上限为 1，不需要覆盖原版数量检查。
+                    // 必须让原版继续检查 maxPawns、已有 reserver、reservation layer 与
+                    // physical interaction reservation；否则多个 Pawn 会同时取得同一物品的任务。
+                    return true;
+                }
+                if (!SubspaceAccessUtility.CanAutoTake(claimant))
                 {
                     __result = false;
                     return false;
@@ -627,8 +639,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmEntry canonicalEntry;
             if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
             {
-                __result = (OuterrealmIdentityRouting.CanAccessAnchor(t, claimant)
-                    || SubspaceAccessUtility.CanAutoTake(claimant))
+                if (claimant?.Map == null)
+                {
+                    __result = 0;
+                    return false;
+                }
+                if (OuterrealmIdentityRouting.CanAccessAnchor(t, claimant))
+                {
+                    // 与 CanReserve 一致：唯一物品锚点必须由原版扣除其他 Pawn 的预留量。
+                    return true;
+                }
+                __result = SubspaceAccessUtility.CanAutoTake(claimant)
                     ? (int)Math.Min(canonicalEntry.Count, int.MaxValue)
                     : 0;
                 return false;
