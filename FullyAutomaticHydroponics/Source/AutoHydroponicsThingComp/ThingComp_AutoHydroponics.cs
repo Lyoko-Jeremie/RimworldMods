@@ -218,24 +218,30 @@ namespace FullyAutoHydroponicsThingComp
                     yield return new ThingDefCountClass(mainProduct, yieldCount);
             }
 
-            if (!plant.HarvestableNow || plant.AllComps == null)
+            if (!plant.HarvestableNow)
                 yield break;
 
-            foreach (ThingComp comp in plant.AllComps)
+            if (plant.AllComps != null)
             {
-                if (comp == null)
-                    continue;
-
-                IEnumerable<ThingDefCountClass> additionalYield = comp.GetAdditionalHarvestYield();
-                if (additionalYield == null)
-                    continue;
-
-                foreach (ThingDefCountClass product in additionalYield)
+                foreach (ThingComp comp in plant.AllComps)
                 {
-                    if (product?.thingDef != null && product.count > 0)
-                        yield return product;
+                    if (comp == null)
+                        continue;
+
+                    IEnumerable<ThingDefCountClass> additionalYield = comp.GetAdditionalHarvestYield();
+                    if (additionalYield == null)
+                        continue;
+
+                    foreach (ThingDefCountClass product in additionalYield)
+                    {
+                        if (product?.thingDef != null && product.count > 0)
+                            yield return product;
+                    }
                 }
             }
+
+            foreach (ThingDefCountClass product in VefDualCropCompatibility.GetAdditionalHarvestYield(plant))
+                yield return product;
         }
 
         private bool TryGetAutoHarvestProducts(Plant plant, out List<ThingDefCountClass> products)
