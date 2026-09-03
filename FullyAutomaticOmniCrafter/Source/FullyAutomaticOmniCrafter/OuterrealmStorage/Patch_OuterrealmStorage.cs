@@ -797,8 +797,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(Pawn_ApparelTracker), nameof(Pawn_ApparelTracker.Wear))]
     internal static class Patch_Pawn_ApparelTracker_Wear_IdentityCheckout
     {
-        private static bool Prefix(Pawn ___pawn, ref Apparel newApparel)
+        private sealed class CheckoutState
         {
+            public Thing Actual;
+            public Building_OuterrealmVault SourceVault;
+            public bool Settled;
+        }
+
+        private static bool Prefix(Pawn ___pawn, ref Apparel newApparel, out CheckoutState __state)
+        {
+            __state = null;
             OuterrealmSource source;
             if (!OuterrealmSourceResolver.TryResolve(newApparel, out source)
                 || source.Kind != OuterrealmSourceKind.IdentityAnchor)
@@ -809,6 +817,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Thing actual = OuterrealmSourceResolver.Checkout(source, 1);
             if (actual is Apparel apparel)
             {
+                __state = new CheckoutState
+                {
+                    Actual = apparel,
+                    SourceVault = source.Vault
+                };
                 OuterrealmSourceResolver.ReplaceJobTarget(___pawn?.CurJob, source, apparel);
                 newApparel = apparel;
                 return true;
@@ -820,6 +833,28 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             ___pawn?.jobs?.EndCurrentJob(JobCondition.Incompletable);
             return false;
+        }
+
+        private static Exception Finalizer(Pawn ___pawn, CheckoutState __state, Exception __exception)
+        {
+            if (__state == null || __state.Settled)
+            {
+                return __exception;
+            }
+            __state.Settled = true;
+            Thing actual = __state.Actual;
+            if (actual is Apparel apparel && apparel.Wearer == ___pawn)
+            {
+                return __exception;
+            }
+            // 原版校验失败、旧服装无法脱下、第三方 Prefix 跳过原方法或原方法抛异常时，
+            // 只回收仍无实际所有者的权威物品；已被其他合法容器接管时不得抢回。
+            if (actual != null && !actual.Destroyed
+                && actual.holdingOwner == null && !actual.Spawned && actual.stackCount > 0)
+            {
+                GameComponent_OuterrealmStorage.Instance?.Deposit(actual, __state.SourceVault);
+            }
+            return __exception;
         }
     }
 
@@ -848,6 +883,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static IEnumerable<Toil> VaultEquipToils(JobDriver_Equip driver)
         {
             driver.FailOnDestroyedOrNull<JobDriver_Equip>(TargetIndex.A);
+            driver.FailOnBurningImmobile<JobDriver_Equip>(TargetIndex.A);
             Thing weapon = driver.job.GetTarget(TargetIndex.A).Thing;
             OuterrealmSource initialSource;
             if (!OuterrealmSourceResolver.TryResolve(weapon, out initialSource)
@@ -858,8 +894,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             // 行走目标统一解析为实际终端；普通投影和唯一锚点不再分别猜测 ParentHolder。
             driver.job.targetB = (LocalTargetInfo)(Thing)initialSource.Vault;
-            yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.InteractionCell)
-                .FailOnDespawnedNullOrForbidden(TargetIndex.B);
+            Toil gotoVault = Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.InteractionCell);
+            yield return driver.job.ignoreForbidden
+                ? gotoVault.FailOnDespawnedOrNull(TargetIndex.B)
+                : gotoVault.FailOnDespawnedNullOrForbidden(TargetIndex.B);
             yield return new Toil
             {
                 initAction = () =>
@@ -877,10 +915,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     if (piece is ThingWithComps twc && driver.pawn.equipment != null)
                     {
                         OuterrealmSourceResolver.ReplaceJobTarget(driver.job, source, piece);
-                        // 先腾出主武器槽（旧武器入背包或落地，对齐原版 JobDriver_Equip 流程）；
-                        // 否则 AddEquipment 在 pawn 已有主武器时会 Log.Error（"got primaryInt equipment ... while already having ..."）
-                        driver.pawn.equipment.MakeRoomFor(twc);
-                        driver.pawn.equipment.AddEquipment(twc);
+                        bool equipped = false;
+                        try
+                        {
+                            // 先腾出主武器槽（旧武器入背包或落地，对齐原版 JobDriver_Equip 流程）。
+                            driver.pawn.equipment.MakeRoomFor(twc);
+                            // MakeRoomFor 失败时只记录错误且保留旧主武器；先检查可接收性，避免
+                            // AddEquipment 再次报错。AddEquipment 为 void，调用后必须验证真实所有权。
+                            if (twc.def.equipmentType != EquipmentType.Primary
+                                || driver.pawn.equipment.Primary == null)
+                            {
+                                driver.pawn.equipment.AddEquipment(twc);
+                            }
+                            equipped = driver.pawn.equipment.Contains(twc);
+                        }
+                        finally
+                        {
+                            // 包含第三方 Notify_EquipmentAdded 抛异常的路径：只要尚未实际进入
+                            // 装备容器，就必须把已 Checkout 的权威实例退回原仓。
+                            if (!driver.pawn.equipment.Contains(twc)
+                                && !twc.Destroyed && twc.holdingOwner == null
+                                && !twc.Spawned && twc.stackCount > 0)
+                            {
+                                GameComponent_OuterrealmStorage.Instance?.Deposit(twc, source.Vault);
+                            }
+                        }
+                        if (!equipped)
+                        {
+                            driver.EndJobWith(JobCondition.Incompletable);
+                        }
                     }
                     else
                     {

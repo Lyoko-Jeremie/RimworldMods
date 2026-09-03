@@ -117,7 +117,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                if (vault.view.TryLendCopy(copy, copy.stackCount))
+                if (vault.view.TryLendCopy(copy, copy.stackCount, cell, out Thing _))
                 {
                     return; // 借出整堆（beam 搬整个堆）：按需物化 + Checkout 记账
                 }
@@ -153,7 +153,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (identitySeed != null)
             {
                 // Checkout 会移除路由状态，必须退出字典枚举后再执行。
-                vault.view.TryLendIdentityAnchor(identitySeed, out Thing _);
+                vault.view.TryLendIdentityAnchor(identitySeed, cell, out Thing _);
             }
         }
 

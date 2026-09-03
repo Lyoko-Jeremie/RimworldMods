@@ -212,6 +212,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>权威借出版本；actual 返回真 Spawn 到当前仓库存储格的真实物品。</summary>
         public bool TryLendCopy(Thing copy, int need, out Thing actual)
         {
+            return TryLendCopy(copy, need, IntVec3.Invalid, out actual);
+        }
+
+        /// <summary>可指定生成格的权威借出版本；requestedCell 无效时由 vault 自行选择空格。</summary>
+        public bool TryLendCopy(Thing copy, int need, IntVec3 requestedCell, out Thing actual)
+        {
             actual = null;
             if (copy == null || !Contains(copy) || IsBorrowed(copy) || !Context.Spawned)
             {
@@ -236,7 +242,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return false;
             }
             // 同一条唯一物品条目 Count 恒为 1；可堆叠条目允许超限单堆，故一次借出只占 1 个堆位。
-            if (!HasFreeSlots(vault, 1))
+            if (requestedCell.IsValid
+                ? !IsAvailableStorageCell(vault, requestedCell)
+                : !HasFreeSlots(vault, 1))
             {
                 return false;
             }
@@ -245,7 +253,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            IntVec3 cell = vault.FindStorageCellFor(lend);
+            IntVec3 cell = requestedCell.IsValid ? requestedCell : vault.FindStorageCellFor(lend);
             if (!cell.IsValid)
             {
                 gs.Deposit(lend); // 防御回滚：预检后格位被占用
@@ -279,6 +287,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public bool TryLendIdentityAnchor(Thing anchor, out Thing actual)
         {
+            return TryLendIdentityAnchor(anchor, IntVec3.Invalid, out actual);
+        }
+
+        /// <summary>可指定生成格的唯一锚点借出版本；供按格扫描的第三方接口使用。</summary>
+        public bool TryLendIdentityAnchor(Thing anchor, IntVec3 requestedCell, out Thing actual)
+        {
             actual = null;
             Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
             OuterrealmSource source;
@@ -286,7 +300,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 || !OuterrealmSourceResolver.TryResolve(anchor, out source)
                 || source.Kind != OuterrealmSourceKind.IdentityAnchor
                 || source.Vault != vault || source.Entry.Count <= 0
-                || !HasFreeSlots(vault, 1))
+                || (requestedCell.IsValid
+                    ? !IsAvailableStorageCell(vault, requestedCell)
+                    : !HasFreeSlots(vault, 1)))
             {
                 return false;
             }
@@ -296,7 +312,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            IntVec3 cell = vault.FindStorageCellFor(lend);
+            IntVec3 cell = requestedCell.IsValid ? requestedCell : vault.FindStorageCellFor(lend);
             if (!cell.IsValid)
             {
                 GameComponent_OuterrealmStorage.Instance?.Deposit(lend, vault);
@@ -325,6 +341,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             actual = lend;
             return true;
+        }
+
+        /// <summary>指定格必须属于当前 vault 且仍有物理堆位。</summary>
+        private static bool IsAvailableStorageCell(Building_OuterrealmVault vault, IntVec3 cell)
+        {
+            return vault != null && vault.Spawned && cell.IsValid
+                && cell.GetSlotGroup(vault.MapHeld)?.parent == vault
+                && cell.GetItemCount(vault.MapHeld) < vault.MaxItemsInCell;
         }
 
         /// <summary>存储格堆位预检：可用堆位（每格 MaxItemsInCell − 当前堆数）是否 ≥ 需求堆数。</summary>
