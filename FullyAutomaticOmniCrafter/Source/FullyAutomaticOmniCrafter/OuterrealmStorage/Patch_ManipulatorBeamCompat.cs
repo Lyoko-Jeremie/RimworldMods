@@ -26,8 +26,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     ///  · 施工配送/运输舱加载（TryFindConstructionTransfer 等）：源扫描用 listerThings
     ///    （伪 Spawned 副本已注册其中），会直接把锚点副本放进 BeamTransfer。整堆取出若走原版
     ///    Thing.DeSpawn 会命中 Patch_Thing_DeSpawn_PseudoSpawned 的 Suppress 分支（不扣全局）
-    ///    导致复制 —— LiftThingForTransfer prefix 兜底：锚点副本改走 view.Remove
-    ///    （不 Suppress → Notify_ItemRemoved → 全局扣全量）或 SplitOff（视图记账）。
+    ///    导致复制 —— LiftThingForTransfer prefix 兜底：普通投影与唯一锚点都经统一来源解析器
+    ///    Checkout 权威实例。
     ///    注入的副本 transfer 与施工配送路径同经 LiftThingForTransfer，共用此记账。
     ///  · 目的地门控（vault 作为目的地时的 noDeposit 语义）：牵引光束 TryFindBestStorageCellCore
     ///    只查 filter 与阵营、不查 IHaulDestination.HaulDestinationEnabled（原版 StoreUtility 有查），
@@ -117,13 +117,48 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                vault.view.TryLendCopy(copy, copy.stackCount); // 借出整堆（beam 搬整个堆）：按需物化 + SplitOff 记账
+                if (vault.view.TryLendCopy(copy, copy.stackCount))
+                {
+                    return; // 借出整堆（beam 搬整个堆）：按需物化 + Checkout 记账
+                }
+            }
+
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states =
+                OuterrealmIdentityRouting.StatesForReading;
+            if (states == null)
+            {
                 return;
+            }
+            Thing identitySeed = null;
+            foreach (KeyValuePair<OuterrealmEntry, OuterrealmAnchorState> pair in states)
+            {
+                OuterrealmEntry entry = pair.Key;
+                Thing anchor = entry?.Proto;
+                if (entry == null || entry.Count <= 0 || anchor == null || anchor.Destroyed
+                    || !OuterrealmIdentityRouting.IsAnchor(anchor)
+                    || pair.Value.CurrentVault != vault || anchor.Position != cell)
+                {
+                    continue;
+                }
+                IntVec3 ignored;
+                bool transferable = pawn != null
+                    ? TryFindStorageCellFor(pawn, anchor, excludedDestinations, ownerKey, out ignored)
+                    : TryFindStorageCellForAuto(autoBuilding, anchor, excludedDestinations, ownerKey, out ignored);
+                if (transferable)
+                {
+                    identitySeed = anchor;
+                    break;
+                }
+            }
+            if (identitySeed != null)
+            {
+                // Checkout 会移除路由状态，必须退出字典枚举后再执行。
+                vault.view.TryLendIdentityAnchor(identitySeed, out Thing _);
             }
         }
 
-        /// <summary>把该 vault 格上其余"需要搬运"的锚点副本反射注入 batch.transfers（不借出、不真 Spawn）：
-        /// 副本保持伪 Spawned 留在视图，仅在取货时（LiftThingForTransfer → view.Remove）才离开 vault——
+        /// <summary>把该 vault 格上其余"需要搬运"的查询对象反射注入 batch.transfers（不借出、不真 Spawn）：
+        /// 对象保持伪 Spawned 查询状态，仅在取货时（LiftThingForTransfer → Checkout）才离开 vault——
         /// 即"先确定要搬（transfer 生成）→ 后取出"，物品在确定之前完全不显示、不离开全局账目。
         /// 注入上限 maxInject = beam 单轮通道数 4（含原方法已生成的 transfer 数）。</summary>
         public static void InjectTransferableCopies(
@@ -162,6 +197,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 // 反射构造 BeamTransfer(copy, cell, dest)（count = copy.stackCount，整堆）
                 transfers.Add(BeamTransferCtor.Invoke(new object[] { copy, cell, dest }));
+            }
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states =
+                OuterrealmIdentityRouting.StatesForReading;
+            if (states == null)
+            {
+                return;
+            }
+            foreach (KeyValuePair<OuterrealmEntry, OuterrealmAnchorState> pair in states)
+            {
+                if (transfers.Count >= maxInject)
+                {
+                    break;
+                }
+                OuterrealmEntry entry = pair.Key;
+                Thing anchor = entry?.Proto;
+                if (entry == null || entry.Count <= 0 || anchor == null || anchor.Destroyed
+                    || !OuterrealmIdentityRouting.IsAnchor(anchor)
+                    || pair.Value.CurrentVault != vault || anchor.Position != cell)
+                {
+                    continue;
+                }
+                IntVec3 dest;
+                bool transferable = pawn != null
+                    ? TryFindStorageCellFor(pawn, anchor, excludedDestinations, ownerKey, out dest)
+                    : TryFindStorageCellForAuto(autoBuilding, anchor, excludedDestinations, ownerKey, out dest);
+                if (transferable)
+                {
+                    transfers.Add(BeamTransferCtor.Invoke(new object[] { anchor, cell, dest }));
+                }
             }
         }
 
@@ -341,11 +405,34 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     return;
                 }
             }
+
+            Dictionary<OuterrealmEntry, OuterrealmAnchorState> states =
+                OuterrealmIdentityRouting.StatesForReading;
+            if (states == null)
+            {
+                return;
+            }
+            foreach (KeyValuePair<OuterrealmEntry, OuterrealmAnchorState> pair in states)
+            {
+                OuterrealmEntry entry = pair.Key;
+                Thing anchor = entry?.Proto;
+                if (entry == null || entry.Count <= 0 || anchor == null || anchor.Destroyed
+                    || !OuterrealmIdentityRouting.IsAnchor(anchor)
+                    || pair.Value.CurrentVault != vault || anchor.Position != cell)
+                {
+                    continue;
+                }
+                if (BeamManipulatorCompat.TryFindStorageCellFor(pawn, anchor, null, ownerKey, out IntVec3 _))
+                {
+                    __result = true;
+                    return;
+                }
+            }
         }
     }
 
-    /// <summary>取出记账兜底（防复制）：transfer.thing 为 vault 锚点副本时改走视图记账。
-    /// 借出副本（holdingOwner=null）与普通物品不受影响，直接走原逻辑。</summary>
+    /// <summary>取出记账兜底（防复制）：transfer.thing 为普通投影或唯一锚点时改走统一 Checkout。
+    /// 已实体化的租约对象与普通地图物品不受影响，直接走原逻辑。</summary>
     [HarmonyPatch]
     internal static class Patch_Beam_LiftThingForTransfer
     {
@@ -365,9 +452,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return true; // 原逻辑（返回 null）
             }
-            if (!(thing.holdingOwner is OuterrealmVaultViewThingOwner view))
+            OuterrealmSource source;
+            if (!OuterrealmSourceResolver.TryResolve(thing, out source)
+                || !source.IsVaultQuery)
             {
-                return true; // 非 vault 锚点：走原逻辑（含借出副本与普通物品）
+                return true; // 非 vault 查询对象：走原逻辑（含借出实体与普通物品）
             }
             int count = BeamManipulatorCompat.BeamTransferCountField != null
                 ? (int)BeamManipulatorCompat.BeamTransferCountField.GetValue(transfer) : 0;
@@ -375,10 +464,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 count = thing.stackCount;
             }
-            count = Mathf.Min(count, thing.stackCount);
-            // 无论整堆还是部分均走 SplitOff；投影 SplitOff 已统一重定向为从权威库存
-            // 转移真实实例，保证第三方 Comp 状态与物品身份不丢失。
-            Thing result = thing.SplitOff(count);
+            count = (int)Math.Min(count, Math.Min(source.Entry.Count, int.MaxValue));
+            // transfer 已确定后才经统一网关取出；投影与唯一锚点均转移权威实例。
+            Thing result = OuterrealmSourceResolver.Checkout(source, count);
             if (result != null && result.Spawned)
             {
                 result.DeSpawn(DestroyMode.Vanish);

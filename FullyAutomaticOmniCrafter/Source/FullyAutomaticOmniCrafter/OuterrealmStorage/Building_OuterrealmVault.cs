@@ -234,7 +234,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    if (absorbTimers.ContainsKey(t) || view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanAbsorb(t))
+                    if (absorbTimers.ContainsKey(t) || view.IsBorrowed(t)
+                        || OuterrealmVaultUtil.IsOuterrealmBorrowed(t)
+                        || MapHeld.reservationManager.IsReserved(t) || !CanAbsorb(t))
                     {
                         continue;
                     }
@@ -278,7 +280,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue; // 未到期
                 }
-                if (view.IsBorrowed(t) || MapHeld.reservationManager.IsReserved(t) || !CanAbsorb(t))
+                if (view.IsBorrowed(t) || OuterrealmVaultUtil.IsOuterrealmBorrowed(t)
+                    || MapHeld.reservationManager.IsReserved(t) || !CanAbsorb(t))
                 {
                     // 到期但被预留使用 / filter 已禁止 / 禁止存入 → 不再吸收（物品归游戏/玩家），清理登记
                     if (toClear == null)
@@ -366,7 +369,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            if (view.IsBorrowed(newItem))
+            if (view.IsBorrowed(newItem) || OuterrealmVaultUtil.IsOuterrealmBorrowed(newItem))
             {
                 return; // 借出副本（预留物化）不登记
             }

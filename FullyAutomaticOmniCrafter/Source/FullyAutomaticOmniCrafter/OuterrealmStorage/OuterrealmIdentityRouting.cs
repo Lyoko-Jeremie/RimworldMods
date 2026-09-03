@@ -26,6 +26,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static Dictionary<OuterrealmEntry, OuterrealmAnchorState> States =>
             CurrentRuntime?.States;
 
+        /// <summary>兼容查询只读枚举；调用方不得修改字典或状态。</summary>
+        internal static Dictionary<OuterrealmEntry, OuterrealmAnchorState> StatesForReading => States;
+
         /// <summary>
         /// 当前通用安全边界：实际堆上限为 1 的 Item 视为不可替代实例。
         /// Corpse 含 Pawn 地图生命周期，暂不建立伪 Spawn 锚点，但仍保留默认仓路由元数据。

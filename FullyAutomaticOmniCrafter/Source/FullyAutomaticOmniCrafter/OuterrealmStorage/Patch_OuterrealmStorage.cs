@@ -479,8 +479,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
         // __result 可能为 true（本体放行）而原方法未执行——多触发一次失效仅多一次 O(全图) 重建，无害。
-        // 所有建筑视图（含远行队收集）统一借出权威物品；全局 Count 在此原子扣减，
-        // 因而不同地图的 ReservationManager 也不能同时取得同一唯一实例。
+        // Reserve 本身只使预留缓存失效；建筑投影和唯一锚点都不得在这里 Checkout。
+        // 唯一的提交型例外是没有地图查询位置的随身候选，见下方 PendingCheckout 分支。
         private static void Postfix(
             ReservationManager __instance, Pawn claimant, Job job, LocalTargetInfo target,
             int maxPawns, int stackCount, ReservationLayerDef layer, bool errorOnFailed,
@@ -502,8 +502,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             OuterrealmEntry canonicalEntry;
             if (t != null && gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry)
-                && (OuterrealmIdentityRouting.CanAccessAnchor(t, claimant)
-                    || SubspaceAccessUtility.CanAutoTake(claimant)))
+                && !OuterrealmIdentityRouting.IsAnchor(t)
+                && SubspaceAccessUtility.CanAutoTake(claimant))
             {
                 __result = TryCheckoutCanonical(
                     __instance, claimant, job, t, canonicalEntry, maxPawns, stackCount,
@@ -526,11 +526,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            Building_OuterrealmVault anchorVault;
-            IntVec3 anchorCell;
-            bool fromIdentityAnchor = OuterrealmIdentityRouting.TryGetAnchor(canonical, out anchorVault, out anchorCell);
-            Map checkoutMap = fromIdentityAnchor ? anchorVault.Map : claimant.Map;
-            IntVec3 checkoutCell = fromIdentityAnchor ? anchorCell : claimant.Position;
             // 释放刚写入权威候选的临时 reservation；真正执行期只保留生成物的 reservation。
             manager.Release((LocalTargetInfo)canonical, claimant, job);
             int need = ResolveLendNeed(job, canonical, stackCount);
@@ -543,7 +538,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             bool targetReplaced = false;
             try
             {
-                GenSpawn.Spawn(actual, checkoutCell, checkoutMap);
+                GenSpawn.Spawn(actual, claimant.Position, claimant.Map);
                 targetReplaced = actual != canonical
                     && OuterrealmPatchUtil.ReplaceJobThingReference(job, canonical, actual);
                 int actualStackCount = stackCount == ReservationManager.StackCount_All
@@ -797,33 +792,33 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    [HarmonyPatch(typeof(JobDriver_ForceTargetWear), "TryMakePreToilReservations")]
-    internal static class Patch_JobDriver_ForceTargetWear_TryMakePreToilReservations
+    // 唯一服装没有视图 holder，JobDriver_Wear 会在最后直接调用 Pawn_ApparelTracker.Wear。
+    // 在这个不可逆所有权边界解除全局账本；此前的寻路、等待和 reservation 全程只使用权威锚点。
+    [HarmonyPatch(typeof(Pawn_ApparelTracker), nameof(Pawn_ApparelTracker.Wear))]
+    internal static class Patch_Pawn_ApparelTracker_Wear_IdentityCheckout
     {
-        private static bool Prefix(JobDriver_ForceTargetWear __instance, bool errorOnFailed, ref bool __result)
+        private static bool Prefix(Pawn ___pawn, ref Apparel newApparel)
         {
-            Thing apparelThing = __instance.job.GetTarget(TargetIndex.B).Thing;
-            if (!(apparelThing is Apparel) ||
-                !(apparelThing.holdingOwner is OuterrealmVaultViewThingOwner))
+            OuterrealmSource source;
+            if (!OuterrealmSourceResolver.TryResolve(newApparel, out source)
+                || source.Kind != OuterrealmSourceKind.IdentityAnchor)
             {
-                return true; // 非本系统：完全走原版
+                return true;
             }
-            // 本系统：复制原版对目标 pawn 的预留逻辑，再为衣物建立显式租约。
-            Pawn targetPawn = __instance.job.GetTarget(TargetIndex.A).Thing as Pawn;
-            __instance.job.count = 1;
-            if (__instance.pawn == targetPawn)
+
+            Thing actual = OuterrealmSourceResolver.Checkout(source, 1);
+            if (actual is Apparel apparel)
             {
-                Log.Error($"Pawn {__instance.pawn} tried to do ForceTargetWear with self as target; this should not happen.");
-                __result = false;
-                return false;
+                OuterrealmSourceResolver.ReplaceJobTarget(___pawn?.CurJob, source, apparel);
+                newApparel = apparel;
+                return true;
             }
-            if (!__instance.pawn.Reserve(targetPawn, __instance.job, errorOnFailed: errorOnFailed))
+
+            if (actual != null && !actual.Destroyed && actual.stackCount > 0)
             {
-                __result = false;
-                return false;
+                GameComponent_OuterrealmStorage.Instance?.Deposit(actual, source.Vault);
             }
-            __result = OuterrealmPatchUtil.TryLeaseProjectionForJob(
-                __instance, TargetIndex.B, 1, 8, errorOnFailed);
+            ___pawn?.jobs?.EndCurrentJob(JobCondition.Incompletable);
             return false;
         }
     }
@@ -831,16 +826,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // ── 装备 job 修复：原版 JobDriver_Equip 的容器武器路径硬编码 Building_OutfitStand ──
     // （TargetIsOnOutfitStand）。vault 投影虽然伪装为 Spawned 以参与候选搜索，却仍由视图持有，
     // 不能交给原版当作地面实物直接装备。本系统场景替换为自定义 toils：走到建筑（targetB）
-    // → 在最终装备边界从权威库存 SplitOff(1) → AddEquipment。识别条件只看 holdingOwner，
-    // 不依赖投影的 Spawned 外观，避免以后调整查询注册方式时再次漏掉该路径。
+    // → 在最终装备边界从统一来源解析结果 Checkout(1) → AddEquipment。普通投影和唯一锚点
+    // 使用同一分支，不依赖 holdingOwner 或 Spawned 外观猜测库存身份。
     [HarmonyPatch(typeof(JobDriver_Equip), "MakeNewToils")]
     internal static class Patch_JobDriver_Equip_MakeNewToils
     {
         private static bool Prefix(JobDriver_Equip __instance, ref IEnumerable<Toil> __result)
         {
             Thing weapon = __instance.job.GetTarget(TargetIndex.A).Thing;
-            if (!(weapon is ThingWithComps) ||
-                !(weapon.holdingOwner is OuterrealmVaultViewThingOwner))
+            OuterrealmSource source;
+            if (!(weapon is ThingWithComps)
+                || !OuterrealmSourceResolver.TryResolve(weapon, out source)
+                || !source.IsVaultQuery)
             {
                 return true; // 非本系统：完全走原版
             }
@@ -852,27 +849,46 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             driver.FailOnDestroyedOrNull<JobDriver_Equip>(TargetIndex.A);
             Thing weapon = driver.job.GetTarget(TargetIndex.A).Thing;
-            // 行走目标 = 建筑。投影虽报告 Spawned，但不在 thingGrid 中，不能作为普通地面物寻路。
-            driver.job.targetB = (LocalTargetInfo)(Thing)weapon.ParentHolder;
+            OuterrealmSource initialSource;
+            if (!OuterrealmSourceResolver.TryResolve(weapon, out initialSource)
+                || initialSource.Vault == null)
+            {
+                driver.EndJobWith(JobCondition.Incompletable);
+                yield break;
+            }
+            // 行走目标统一解析为实际终端；普通投影和唯一锚点不再分别猜测 ParentHolder。
+            driver.job.targetB = (LocalTargetInfo)(Thing)initialSource.Vault;
             yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.InteractionCell)
                 .FailOnDespawnedNullOrForbidden(TargetIndex.B);
             yield return new Toil
             {
                 initAction = () =>
                 {
-                    Thing copy = driver.job.GetTarget(TargetIndex.A).Thing;
-                    if (copy == null || copy.stackCount <= 0)
+                    Thing query = driver.job.GetTarget(TargetIndex.A).Thing;
+                    OuterrealmSource source;
+                    if (query == null
+                        || !OuterrealmSourceResolver.TryResolve(query, out source)
+                        || !source.IsVaultQuery)
                     {
+                        driver.EndJobWith(JobCondition.Incompletable);
                         return;
                     }
-                    // 从视图副本取 1 件（SplitOff 经 §3.3 同步全局：整堆分支走 Notify_ItemRemoved 扣减）
-                    Thing piece = copy.SplitOff(1);
+                    Thing piece = OuterrealmSourceResolver.Checkout(source, 1);
                     if (piece is ThingWithComps twc && driver.pawn.equipment != null)
                     {
+                        OuterrealmSourceResolver.ReplaceJobTarget(driver.job, source, piece);
                         // 先腾出主武器槽（旧武器入背包或落地，对齐原版 JobDriver_Equip 流程）；
                         // 否则 AddEquipment 在 pawn 已有主武器时会 Log.Error（"got primaryInt equipment ... while already having ..."）
                         driver.pawn.equipment.MakeRoomFor(twc);
                         driver.pawn.equipment.AddEquipment(twc);
+                    }
+                    else
+                    {
+                        if (piece != null && !piece.Destroyed && piece.stackCount > 0)
+                        {
+                            GameComponent_OuterrealmStorage.Instance?.Deposit(piece);
+                        }
+                        driver.EndJobWith(JobCondition.Incompletable);
                     }
                 }
             };
@@ -989,11 +1005,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private static bool Prefix(Pawn_CarryTracker __instance, Thing item, int count, bool reserve, ref int __result)
         {
-            if (!(item.holdingOwner is OuterrealmVaultViewThingOwner view))
+            OuterrealmSource source;
+            if (!OuterrealmSourceResolver.TryResolve(item, out source) || !source.IsVaultQuery)
             {
-                return true; // 非视图副本：完全走原版
+                return true; // 非超维查询对象：完全走原版
             }
-            __result = TryStartCarryFromVault(__instance, item, count, reserve, view);
+            __result = source.Kind == OuterrealmSourceKind.Projection
+                ? TryStartCarryFromVault(__instance, item, count, reserve, source.View)
+                : TryStartCarryFromIdentityAnchor(__instance, source, count, reserve);
             return false;
         }
 
@@ -1063,6 +1082,64 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             pawn.MapHeld.resourceCounter.UpdateResourceCounts();
             return num;
+        }
+
+        /// <summary>
+        /// 唯一权威锚点的最终携带边界。锚点在 Reserve 阶段只保留查询身份；Pawn 真正拿取时
+        /// 才解除全局账本并直接加入 carry，不在仓库格生成中间实物。
+        /// </summary>
+        private static int TryStartCarryFromIdentityAnchor(
+            Pawn_CarryTracker carry, OuterrealmSource source, int count, bool reserve)
+        {
+            Pawn pawn = carry.pawn;
+            Thing query = source.QueryThing;
+            if (pawn.Dead || pawn.Downed || query == null || source.Entry == null)
+            {
+                return 0;
+            }
+            if (carry.CarriedThing != null && !carry.CarriedThing.CanStackWith(query))
+            {
+                return 0;
+            }
+
+            count = Mathf.Min(count, carry.AvailableStackSpace(query.def));
+            count = (int)Math.Min((long)count, source.Entry.Count);
+            if (count <= 0)
+            {
+                return 0;
+            }
+
+            IntVec3 pickupPosition = query.Position;
+            Map pickupMap = pawn.Map;
+            bool selected = Find.Selector.IsSelected(query);
+            Thing actual = OuterrealmSourceResolver.Checkout(source, count);
+            if (actual == null || actual.Destroyed || actual.stackCount <= 0)
+            {
+                return 0;
+            }
+
+            int added = carry.innerContainer.TryAdd(actual, actual.stackCount, true);
+            if (added <= 0)
+            {
+                if (!actual.Destroyed && actual.stackCount > 0)
+                {
+                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual, source.Vault);
+                }
+                return 0;
+            }
+
+            OuterrealmSourceResolver.ReplaceJobTarget(pawn.CurJob, source, carry.CarriedThing);
+            query.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(pickupPosition, pickupMap));
+            if (reserve)
+            {
+                pawn.Reserve((LocalTargetInfo)carry.CarriedThing, pawn.CurJob);
+            }
+            if (selected)
+            {
+                Find.Selector.Select(carry.CarriedThing);
+            }
+            pawn.MapHeld.resourceCounter.UpdateResourceCounts();
+            return added;
         }
 
         private static void RollbackVaultTake(Thing item, Thing splitStack, OuterrealmVaultViewThingOwner view)
@@ -2179,9 +2256,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
-            if (t.holdingOwner is OuterrealmVaultViewThingOwner)
+            OuterrealmSource source;
+            if (OuterrealmSourceResolver.TryResolve(t, out source) && source.IsVaultQuery)
             {
-                return false;
+                return false; // 已在超维存储中的投影/唯一锚点不能再次生成“放入”任务
             }
             return t.def.EverStorable(false);
         }

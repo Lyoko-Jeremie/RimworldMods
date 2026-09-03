@@ -273,6 +273,60 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return true;
         }
 
+        /// <summary>
+        /// 为必须从 thingGrid 扫描实物的兼容层显式借出唯一物品锚点。
+        /// 锚点本身就是权威实例；仅在已确定存在去处后取出并建立与投影借出相同的租约。
+        /// </summary>
+        public bool TryLendIdentityAnchor(Thing anchor, out Thing actual)
+        {
+            actual = null;
+            Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
+            OuterrealmSource source;
+            if (anchor == null || vault == null || !vault.Spawned
+                || !OuterrealmSourceResolver.TryResolve(anchor, out source)
+                || source.Kind != OuterrealmSourceKind.IdentityAnchor
+                || source.Vault != vault || source.Entry.Count <= 0
+                || !HasFreeSlots(vault, 1))
+            {
+                return false;
+            }
+
+            Thing lend = OuterrealmSourceResolver.Checkout(source, 1);
+            if (lend == null || lend.Destroyed || lend.stackCount <= 0)
+            {
+                return false;
+            }
+            IntVec3 cell = vault.FindStorageCellFor(lend);
+            if (!cell.IsValid)
+            {
+                GameComponent_OuterrealmStorage.Instance?.Deposit(lend, vault);
+                return false;
+            }
+
+            // 必须在 Spawn 前登记：Notify_ReceivedThing 可能在 Spawn 调用链内同步触发自动吸收。
+            borrowedCopies.Add(lend);
+            entryByCopy[lend] = source.Entry;
+            OuterrealmVaultUtil.MarkOuterrealmBorrowed(lend);
+            try
+            {
+                GenSpawn.Spawn(lend, cell, vault.MapHeld);
+            }
+            catch (Exception ex)
+            {
+                borrowedCopies.Remove(lend);
+                entryByCopy.Remove(lend);
+                OuterrealmVaultUtil.UnmarkOuterrealmBorrowed(lend);
+                if (!lend.Destroyed && lend.stackCount > 0)
+                {
+                    GameComponent_OuterrealmStorage.Instance?.Deposit(lend, vault);
+                }
+                Log.Error("[OuterrealmStorage] Failed to lend identity anchor: " + ex);
+                return false;
+            }
+            actual = lend;
+            return true;
+        }
+
         /// <summary>存储格堆位预检：可用堆位（每格 MaxItemsInCell − 当前堆数）是否 ≥ 需求堆数。</summary>
         private static bool HasFreeSlots(Building_OuterrealmVault vault, int stacks)
         {

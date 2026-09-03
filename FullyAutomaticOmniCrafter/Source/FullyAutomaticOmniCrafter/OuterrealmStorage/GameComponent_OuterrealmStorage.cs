@@ -457,7 +457,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (vault == null || !vault.Spawned || vault.Map != map || vault.view == null
                     || (!vault.HaulSourceEnabled && !(vault.AllowTakeForUse && !vault.Frozen))
                     || !map.reachability.CanReach(
-                        root, vault.Position, pathEndMode, traverseParms))
+                        root, (LocalTargetInfo)vault, pathEndMode, traverseParms))
                 {
                     continue;
                 }
@@ -511,7 +511,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                                     && !(candidate.AllowTakeForUse && !candidate.Frozen))
                                 || !candidate.CanShow(entry.Proto)
                                 || !map.reachability.CanReach(
-                                    root, candidate.Position, pathEndMode, traverseParms))
+                                    root, (LocalTargetInfo)candidate, pathEndMode, traverseParms))
                             {
                                 continue;
                             }

@@ -120,7 +120,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 
 ```text
 原版/第三方搜索 lister 或 IHaulSource
-  → 找到投影
+  → 找到普通投影或唯一物品权威锚点
   → CanReserve 按全局 Count - 全部预留量检查
   → Reserve 只写原版 reservation
   → 全局库存和地图实物均不变化
@@ -133,10 +133,9 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 ```text
 Pawn 到达 vault
   → Toils_Haul.StartCarryThing
-  → Pawn_CarryTracker.TryStartCarry 补丁识别 holdingOwner=view
-  → view.BoostCopy（仅数量计算窗口）
-  → projection.SplitOff(count)
-  → SplitOff 补丁调用 view.WithdrawCanonical
+  → Pawn_CarryTracker.TryStartCarry 通过 OuterrealmSourceResolver 识别来源
+  → 普通投影临时 BoostCopy（仅数量计算窗口）并调用 WithdrawCanonical
+  → 唯一锚点直接调用 Withdraw
   → 转移权威原实例/原版拆堆，并扣减 Count
   → 实物进入 Pawn carry
   → 只替换 Job 当前 A/B/C 引用
@@ -148,14 +147,16 @@ Pawn 到达 vault
 
 ### 5.4 显式提前租约
 
-只有无法在 `TryStartCarry` 等最终边界兑现，或第三方必须从 `thingGrid` 看见实物时才允许使用 `TryLendCopy`。
+只有无法在 `TryStartCarry` 等最终边界兑现，或第三方必须从 `thingGrid` 看见实物时才允许建立实体租约。
 
 标准租约顺序：预留投影 → 释放投影 reservation → `TryLendCopy` 扣库存并真 Spawn 实物 → 精确改写目标 → 预留实物 → Job 结束时 `ReturnCopy`。
 
 当前合法例外：
 
-- 穿戴：原版 Wear 没有通用携带边界，启动前租出真实 Apparel。
-- 牵引光束：其扫描只看 `thingGrid`，先借出一个真实种子，使原方法建立 batch；其余 transfer 延迟到 Lift 时从权威库存取出。
+- 自主穿戴：原版 `JobDriver_Wear` 没有通用携带边界。普通投影因原方法末端仍持有旧局部引用，启动前租出真实 Apparel；唯一服装则在 `Pawn_ApparelTracker.Wear` 的最终容器转移边界 Checkout。
+- 强制为目标穿戴：原版 `JobDriver_ForceTargetWear` 自带 `StartCarryThing(B)`，必须使用标准延迟 Checkout，禁止在 Reserve 时把服装吐到存储格。
+- 装备：原版没有 carry 边界，由自定义 toil 在 `AddEquipment` 前通过统一来源解析结果 Checkout；普通投影和唯一武器共用此路径。
+- 牵引光束：其扫描只看 `thingGrid`，先对普通投影或唯一锚点建立一个真实种子租约，使原方法建立 batch；其余 transfer 延迟到 Lift 时从权威库存取出。
 - 随身自动取料：候选是未 Spawn 的权威主堆而非建筑投影，Reserve 成功后在 Pawn 处 Checkout，并由 `PendingCheckouts` 回收未取得的余量。
 
 新增例外前必须证明无法在实际消费边界完成 Checkout，并提供确定性的失败回收路径。
@@ -197,7 +198,7 @@ Pawn 到达 vault
 - `autoStoreFiltered`：只有当前地图至少一个可接收该产物的 vault 时才自动存入。
 - 手动右键存入和管理器取出不受自动开关限制。
 
-随身候选没有建筑投影可供寻路，因此是“Reserve 后提前 Checkout”的明确例外。`PendingCheckouts` 只跟踪尚未被 Pawn 取得的实物；reservation 释放或 Job 中断后退回全局。
+随身候选没有建筑投影可供寻路，因此是“Reserve 后提前 Checkout”的明确例外。`PendingCheckouts` **只能**跟踪随身候选中尚未被 Pawn 取得的实物；建筑普通投影和唯一锚点不得进入该集合。reservation 释放或 Job 中断后退回全局。
 
 `OuterrealmMarkUtility.IsMarked` 同时兼容新的访问 Hediff 与旧 `FAOC_QuantumLinkImplant`。
 
@@ -256,7 +257,7 @@ Pawn 到达 vault
 关键兼容约定：
 
 - Common Sense：仅在 `MaterializeProjection` 的线程局部作用域内跳过其 ThingMaker Postfix，避免生食等没有产出配方的物品触发空集合 RandomElement；正常 ThingMaker 行为不变。
-- Manipulator Beam：反射目标全部缓存，未安装时 `Prepare` 跳过；batch 扫描只借一个真实种子，Lift 时统一从权威库存转移；禁止存入时不能把 vault 当光束目的地。
+- Manipulator Beam：反射目标全部缓存，未安装时 `Prepare` 跳过；batch 扫描对普通投影和唯一锚点都只借一个真实种子，Lift 时经统一来源解析器转移权威实例；禁止存入时不能把 vault 当光束目的地。
 - 打包建筑：玩家确认手动存入后才取消仍引用它的安装蓝图；延迟 Checkout 后把蓝图引用从投影重定向到真实实例。
 - 自动存入保护：安装/再种植蓝图是优先于普通存储的工作 claim。自动搬运候选、运行中任务和最终
   TryAdd/落格吸收均不得取消蓝图；蓝图建立晚于搬运任务时，应终止旧搬运并由原版 Job 清理安全
@@ -282,6 +283,7 @@ Pawn 到达 vault
 | `SubspaceAccessUtility.cs` | 随身授权选料注入、PendingCheckout 与回收 |
 | `Hediff_SubspaceAccess.cs` | Pawn 授权状态和自动取用/存入设置 |
 | `OuterrealmMarkUtility.cs` | 新旧授权标记统一判断 |
+| `OuterrealmSourceResolver.cs` | 普通投影、唯一锚点、随身权威候选的统一只读解析与 Checkout 网关 |
 | `OuterrealmTradeSourceRegistry.cs` | 无信标轨道贸易的临时来源到权威条目弱映射 |
 | `OuterrealmLaunchableResourceUtility.cs` | 可发射资源来源去重、余额投影与事务性费用支付 |
 | `JobDriver_VaultDepositFromGround.cs` | 授权 Pawn 手动存入 |
@@ -329,12 +331,13 @@ Pawn 到达 vault
 - 多 Pawn/多地图同时预留同一唯一物品和同一种堆叠物。
 - Job 在预留后、拿取前、携带后、放置后分别中断。
 - 穿戴、强制穿戴、装备、自动进食、治疗取药。
+- 强制穿戴在走到仓库前取消：存储格不得出现实物，库存数量不变；到达并开始携带后取消：物品遵循原版携带/掉落清理。
 - 蓝图/Frame 配送与打包建筑安装。
 - 普通搬入、禁止存入、禁止取出、允许拿取使用、冻结与 filter 变更。
 - 随身自动取用、自动存入、关闭开关及 Job 中断回收。
 - 管理器弹出、放置失败回滚、拆除最后一个 vault 后库存仍存在。
 - 商队、运输舱、轨道交易、资源计数与财富开关。
-- 安装/不安装 Common Sense 和 Manipulator Beam 两种环境。
+- 安装/不安装 Common Sense 和 Manipulator Beam 两种环境；Manipulator Beam 分别测试普通堆叠物和唯一物品。
 - 从 schema 0/1 旧档加载被 Boost 放大的 Proto：Count 不增加、无原黄字；再次保存读取后 schema 2 数量稳定。
 - 游戏内直接连续读取地图数量不同的存档，并覆盖安装 Faction Editor 的环境：组件构造和反序列化不得出现旧地图索引异常。
 - `保存 → 读取 → 保存 → 读取` 后比对条目 Count 与唯一 ThingID；地图 `<things>` 中不得出现投影或全局唯一锚点副本。
