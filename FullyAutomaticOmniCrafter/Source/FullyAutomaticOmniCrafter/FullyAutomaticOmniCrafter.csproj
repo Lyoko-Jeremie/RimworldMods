@@ -442,6 +442,7 @@
     <Compile Include="OuterrealmStorage\OuterrealmIdentityRouting.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmStorageRuntimeState.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmLaunchableResourceUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmTradeSourceRegistry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />

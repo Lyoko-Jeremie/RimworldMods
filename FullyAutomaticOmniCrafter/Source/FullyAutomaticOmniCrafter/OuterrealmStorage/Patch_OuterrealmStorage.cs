@@ -2361,6 +2361,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 yield break;
             }
 
+            // 无 trader 的调用用于余额统计和费用支付。每个全局条目只建立一个完整数量的临时来源，
+            // 随后的 LaunchThingsOfType 补丁使用同一条目集合精确扣款。
+            if (trader == null)
+            {
+                List<OuterrealmEntry> paymentEntries = new List<OuterrealmEntry>();
+                OuterrealmLaunchableResourceUtility.CollectAccessibleEntries(map, null, null, paymentEntries);
+                for (int i = 0; i < paymentEntries.Count; i++)
+                {
+                    Thing source = OuterrealmLaunchableResourceUtility.CreateCountingSource(paymentEntries[i]);
+                    if (source != null && seen.Add(source))
+                    {
+                        yield return source;
+                    }
+                }
+                yield break;
+            }
+
             if (gs.ExposeAllToOrbitalTrade)
             {
                 foreach (Thing source in AppendGlobalVaultItems(gs, trader))
@@ -2384,6 +2401,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
             List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
             HashSet<Building_OuterrealmVault> coveredVaults = new HashSet<Building_OuterrealmVault>();
+            HashSet<OuterrealmEntry> seenVaultEntries = new HashSet<OuterrealmEntry>();
             for (int i = 0; i < vaults.Count; i++)
             {
                 Building_OuterrealmVault v = vaults[i];
@@ -2404,7 +2422,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         continue;
                     }
-                    if (seen.Add(copy))
+                    OuterrealmEntry entry = v.view.GetEntryOf(copy);
+                    if (entry != null && seenVaultEntries.Add(entry) && seen.Add(copy))
                     {
                         yield return copy;
                     }
@@ -2486,6 +2505,32 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             return false;
+        }
+    }
+
+    // ── 可发射资源支付：让余额检查与实际扣款使用相同的超维来源 ──
+    // 原版 LaunchThingsOfType 只扫描信标覆盖格的 thingGrid，看不见超维查询投影。
+    // 仅接管 trader==null 的费用支付；真实 TradeShip 仍走原版 GiveSoldThingToTrader 流程。
+    [HarmonyPatch(typeof(TradeUtility), "LaunchThingsOfType")]
+    internal static class Patch_TradeUtility_LaunchThingsOfType
+    {
+        private static bool Prefix(ThingDef resDef, int debt, Map map, TradeShip trader)
+        {
+            if (trader != null || resDef == null || debt <= 0 || map == null)
+            {
+                return true;
+            }
+
+            List<OuterrealmEntry> entries = new List<OuterrealmEntry>();
+            OuterrealmLaunchableResourceUtility.CollectAccessibleEntries(map, null, resDef, entries);
+            bool handled;
+            OuterrealmLaunchableResourceUtility.TryConsumeWithVault(
+                resDef,
+                debt,
+                map,
+                entries,
+                out handled);
+            return !handled;
         }
     }
 
