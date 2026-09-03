@@ -450,7 +450,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             categoryCounts.Clear();
             for (int i = 0; i < targets.Count; i++)
             {
-                ThingDef def = targets[i].Thing.def;
+                ThingDef def = CategoryDefOf(targets[i]);
                 if (def == null || def.thingCategories == null)
                 {
                     continue;
@@ -499,17 +499,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < targets.Count; i++)
             {
                 MenuTarget target = targets[i];
-                if (hiddenThingDefs.Contains(target.Thing.def))
+                ThingDef categoryDef = CategoryDefOf(target);
+                if (hiddenThingDefs.Contains(categoryDef))
                 {
                     continue;
                 }
-                if (selectedCategory != null && !IsInCategory(target.Thing.def, selectedCategory))
+                if (selectedCategory != null && !IsInCategory(categoryDef, selectedCategory))
                 {
                     continue;
                 }
                 if (searchText.Length == 0
                     || CustomFloatMenuUtil.Matches(target.Label, searchText)
-                    || target.Thing.def.defName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                    || categoryDef != null && categoryDef.defName.IndexOf(
+                        searchText, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     filteredTargets.Add(target);
                 }
@@ -549,7 +551,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             categoryTotalCounts.Clear();
             for (int i = 0; i < targets.Count; i++)
             {
-                ThingDef def = targets[i].Thing.def;
+                ThingDef def = CategoryDefOf(targets[i]);
                 if (def == null || def.thingCategories == null)
                 {
                     continue;
@@ -602,6 +604,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             return false;
+        }
+
+        /// <summary>返回用于分类和搜索的真实 Def。打包建筑的外层是通用 MinifiedThing，
+        /// 建筑分类位于 InnerThing.def；条目键在存入时已经完成该内层化。</summary>
+        private static ThingDef CategoryDefOf(MenuTarget target)
+        {
+            if (target?.Entry?.Key.Def != null)
+            {
+                return target.Entry.Key.Def;
+            }
+            Thing inner = target?.Thing?.GetInnerIfMinified();
+            return inner?.def ?? target?.Thing?.def;
         }
 
         private bool TargetStillValid(MenuTarget target)
