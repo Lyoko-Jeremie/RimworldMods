@@ -121,6 +121,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>正式 Withdraw 前撤销查询锚点；条目仍保留到 Withdraw 成功提交。</summary>
         public static void PrepareCheckout(OuterrealmEntry entry)
         {
+            // 全局直连贸易对唯一物品直接暴露权威实例。交易窗口取消后弱映射可能仍存活，
+            // 正式 Checkout 必须先撤销，避免后续容器内部 SplitOff 被误判为再次成交。
+            OuterrealmTradeSourceRegistry.Unregister(entry?.Proto);
             Dictionary<OuterrealmEntry, OuterrealmAnchorState> states = States;
             OuterrealmAnchorState state;
             if (entry != null && states != null && states.TryGetValue(entry, out state))

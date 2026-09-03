@@ -265,6 +265,7 @@ Pawn 到达 vault
   手动存入并确认提示后，才取消蓝图并继续 Deposit。
 - 交易/远行队：投影可能同时经 lister 与 haul source 被枚举，必须按实例去重；最终收集仍走 TryStartCarry Checkout。
 - 轨道贸易：默认只暴露通电信标覆盖终端中的普通投影与唯一物品当前锚点。管理器的“无需信标向轨道贸易暴露全部库存”是随存档保存的全局规则；开启后直接遍历全局条目，普通物品使用无地图临时交易投影，唯一物品使用权威实例。两者都必须在成交 `SplitOff` 边界按临时来源映射调用 `Withdraw`，禁止把普通权威 `Proto` 直接交给交易系统。
+- 交易临时来源身份只能由一次成交 `SplitOff` 消费；唯一物品的权威实例在任意正式 `Checkout` 前必须显式注销残留映射。不能仅依赖弱表 GC，因为唯一物品仍被全局条目强引用，取消交易后陈旧映射可能泄漏到普通携带、穿戴或装备路径。
 - 可发射资源支付：`ColonyHasEnoughSilver`、派系费用等 `trader == null` 的查询按 `OuterrealmEntry` 去重并暴露完整全局数量；`LaunchThingsOfType` 使用完全相同的可见条目集合补足地图实体资源。支付先完整预检，再分堆 Checkout 超维部分；任一 Checkout 失败先回存暂存实物，成功后才销毁地图与超维资源。真实 `TradeShip` 不走该支付补丁。
 - 财富：是否排除全局库存由 `OmniCrafterSettings.vaultExcludeFromWealth` 控制，不能通过伪造 Count 解决财富问题。
 

@@ -224,9 +224,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool Prefix(Thing __instance, int count, ref Thing __result)
         {
             OuterrealmEntry tradeEntry;
-            if (OuterrealmTradeSourceRegistry.TryGetEntry(__instance, out tradeEntry))
+            if (OuterrealmTradeSourceRegistry.TryTakeEntry(__instance, out tradeEntry))
             {
                 // 无信标直连交易使用无地图临时来源；成交边界必须回到全局权威条目扣库。
+                // 来源身份在本次 SplitOff 前即被消费，禁止重复结算或泄漏到普通携带路径。
                 GameComponent_OuterrealmStorage tradeStorage = GameComponent_OuterrealmStorage.Instance;
                 __result = tradeStorage?.Withdraw(tradeEntry, count);
                 return false;
@@ -1181,8 +1182,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return 0;
             }
 
-            int added = carry.innerContainer.TryAdd(actual, actual.stackCount, true);
-            if (added <= 0)
+            // Checkout 已返回精确数量，不应再调用带 count 的 TryAdd；该重载内部还会 SplitOff，
+            // 会让其他 SplitOff 补丁获得一次错误的二次结算机会。
+            int added = actual.stackCount;
+            bool accepted;
+            try
+            {
+                accepted = carry.innerContainer.TryAdd(actual, true);
+            }
+            catch
+            {
+                // 第三方容器通知或其他补丁抛异常时，只回收尚未真正进入任何容器的实物。
+                // 已进入 carry 或已合并销毁表示所有权转移已经发生，不能重复 Deposit。
+                if (!actual.Destroyed && actual.holdingOwner == null
+                    && !actual.Spawned && actual.stackCount > 0)
+                {
+                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual, source.Vault);
+                }
+                throw;
+            }
+            if (!accepted)
             {
                 if (!actual.Destroyed && actual.stackCount > 0)
                 {
