@@ -60,6 +60,7 @@
     <Compile Include="AutoFarmHarmonyInit.cs" />
     <Compile Include="FullyAutomaticGrowingZoneManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VefDualCropCompatibility.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

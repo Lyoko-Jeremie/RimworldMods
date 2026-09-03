@@ -341,6 +341,12 @@ namespace FullyAutomaticGrowingZone
             IntVec3 position = plant.Position;
             bool shouldStore = IsAutoStore(position);
 
+            // 必须在植物销毁或生长度回退前读取；VEF 只对 CanYieldNow 的植物生成副产物。
+            bool hasVefSecondaryOutput = VefDualCropCompatibility.TryGetHarvestYield(
+                plant,
+                out ThingDef vefSecondaryOutput,
+                out int vefSecondaryAmount);
+
             bool harvestDestroys = plant.def.plant.HarvestDestroys;
 
             if (harvestDestroys)
@@ -352,37 +358,49 @@ namespace FullyAutomaticGrowingZone
                 plant.Growth = plant.def.plant.harvestAfterGrowth;
             }
 
-            if (harvestedThingDef != null && yieldAmount > 0)
+            ProcessHarvestProduct(harvestedThingDef, yieldAmount, position, shouldStore);
+
+            if (hasVefSecondaryOutput)
+                ProcessHarvestProduct(vefSecondaryOutput, vefSecondaryAmount, position, shouldStore);
+        }
+
+        private void ProcessHarvestProduct(
+            ThingDef productDef,
+            int amount,
+            IntVec3 position,
+            bool shouldStore)
+        {
+            if (productDef == null || amount <= 0)
+                return;
+
+            if (shouldStore)
             {
-                if (shouldStore)
+                if (!virtualYieldBuffer.ContainsKey(productDef))
+                    virtualYieldBuffer[productDef] = 0;
+
+                virtualYieldBuffer[productDef] += amount;
+
+                int stackLimit = productDef.stackLimit;
+                int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(1000, stackLimit / 10));
+                while (virtualYieldBuffer[productDef] >= flushThreshold)
                 {
-                    if (!virtualYieldBuffer.ContainsKey(harvestedThingDef))
-                        virtualYieldBuffer[harvestedThingDef] = 0;
-
-                    virtualYieldBuffer[harvestedThingDef] += yieldAmount;
-
-                    int stackLimit = harvestedThingDef.stackLimit;
-                    int flushThreshold = Mathf.Min(stackLimit, Mathf.Max(1000, stackLimit / 10));
-                    while (virtualYieldBuffer[harvestedThingDef] >= flushThreshold)
-                    {
-                        int spawnCount = Mathf.Min(virtualYieldBuffer[harvestedThingDef], stackLimit);
-                        Thing fullStack = ThingMaker.MakeThing(harvestedThingDef);
-                        fullStack.stackCount = spawnCount;
-                        TryPlaceInStockpile(fullStack, position);
-                        virtualYieldBuffer[harvestedThingDef] -= spawnCount;
-                    }
+                    int spawnCount = Mathf.Min(virtualYieldBuffer[productDef], stackLimit);
+                    Thing fullStack = ThingMaker.MakeThing(productDef);
+                    fullStack.stackCount = spawnCount;
+                    TryPlaceInStockpile(fullStack, position);
+                    virtualYieldBuffer[productDef] -= spawnCount;
                 }
-                else
+            }
+            else
+            {
+                int stackLimit = productDef.stackLimit;
+                while (amount > 0)
                 {
-                    int stackLimit = harvestedThingDef.stackLimit;
-                    while (yieldAmount > 0)
-                    {
-                        int count = Mathf.Min(yieldAmount, stackLimit);
-                        Thing stack = ThingMaker.MakeThing(harvestedThingDef);
-                        stack.stackCount = count;
-                        GenPlace.TryPlaceThing(stack, position, map, ThingPlaceMode.Near);
-                        yieldAmount -= count;
-                    }
+                    int count = Mathf.Min(amount, stackLimit);
+                    Thing stack = ThingMaker.MakeThing(productDef);
+                    stack.stackCount = count;
+                    GenPlace.TryPlaceThing(stack, position, map, ThingPlaceMode.Near);
+                    amount -= count;
                 }
             }
         }
