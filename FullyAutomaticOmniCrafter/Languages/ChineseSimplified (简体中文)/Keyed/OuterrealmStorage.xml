@@ -123,14 +123,14 @@
   <!-- Vault gizmo: toggle right-click menu mode (per-building, saved in save file) -->
   <VaultRightClickMenuModeLabel>右键菜单：{0}</VaultRightClickMenuModeLabel>
   <VaultRightClickMenuModeVanilla>原版</VaultRightClickMenuModeVanilla>
-  <VaultRightClickMenuModeCustom>大列表</VaultRightClickMenuModeCustom>
+  <VaultRightClickMenuModeCustom>自定义</VaultRightClickMenuModeCustom>
   <VaultRightClickMenuModeDesc>切换本存储仓的右键菜单形态（每个存储仓独立设置，随存档保存，可让不同存储仓分别使用原版或大列表）。原版：RimWorld 原版右键菜单；大列表：大型可搜索列表（支持拼音），打开期间暂停游戏。</VaultRightClickMenuModeDesc>
   <!-- Vault gizmo：自定义右键菜单内部样式（仅启用自定义菜单时生效） -->
-  <VaultCustomMenuModeLabel>自定义菜单样式：{0}</VaultCustomMenuModeLabel>
-  <VaultCustomMenuModeFullOptionList>完整操作列表</VaultCustomMenuModeFullOptionList>
-  <VaultCustomMenuModeItemThenOption>先选物品，再选操作</VaultCustomMenuModeItemThenOption>
-  <VaultCustomMenuModeDesc>选择本存储仓启用“大列表”右键菜单时采用的样式。完整操作列表保留之前的一次性生成全部操作方式；先选物品、再选操作会立即打开轻量物品列表，仅在选择物品后生成该物品的操作，可显著降低大量库存时的首次打开延迟。</VaultCustomMenuModeDesc>
-  <VaultCustomMenuModeDisabledReason>请先启用自定义“大列表”右键菜单。</VaultCustomMenuModeDisabledReason>
+  <VaultCustomMenuModeLabel>自定义模式：{0}</VaultCustomMenuModeLabel>
+  <VaultCustomMenuModeFullOptionList>大列表式</VaultCustomMenuModeFullOptionList>
+  <VaultCustomMenuModeItemThenOption>两步式</VaultCustomMenuModeItemThenOption>
+  <VaultCustomMenuModeDesc>选择本存储仓启用自定义右键菜单时采用的样式。大列表式一次性生成全部操作方式；两步式先选物品、再选操作。</VaultCustomMenuModeDesc>
+  <VaultCustomMenuModeDisabledReason>请先启用自定义右键菜单。</VaultCustomMenuModeDisabledReason>
   <!-- 超维存储两级右键菜单 -->
   <OuterrealmItemMenu_Title>{0}：选择物品</OuterrealmItemMenu_Title>
   <OuterrealmItemMenu_VaultActions>存储仓操作</OuterrealmItemMenu_VaultActions>

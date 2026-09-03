@@ -121,14 +121,14 @@
   <!-- Vault gizmo: toggle right-click menu mode (per-building, saved in save file) -->
   <VaultRightClickMenuModeLabel>Right-click menu: {0}</VaultRightClickMenuModeLabel>
   <VaultRightClickMenuModeVanilla>Vanilla</VaultRightClickMenuModeVanilla>
-  <VaultRightClickMenuModeCustom>Large list</VaultRightClickMenuModeCustom>
-  <VaultRightClickMenuModeDesc>Switches how the right-click menu looks when clicking THIS vault. Each vault is set independently and saved with the save file, so you can use the vanilla menu on some vaults and the large list on others. Vanilla: RimWorld's original menu. Large list: a big searchable list (supports pinyin) that pauses the game while open.</VaultRightClickMenuModeDesc>
+  <VaultRightClickMenuModeCustom>Custom</VaultRightClickMenuModeCustom>
+  <VaultRightClickMenuModeDesc>Switches how the right-click menu looks when clicking THIS vault. Each vault is set independently and saved with the save file, so you can use the vanilla menu on some vaults and the custom menu on others. Vanilla: RimWorld's original menu. Custom: a big searchable list (supports pinyin) that pauses the game while open.</VaultRightClickMenuModeDesc>
   <!-- Vault gizmo: custom right-click menu style (only active while custom menu is enabled) -->
-  <VaultCustomMenuModeLabel>Custom menu style: {0}</VaultCustomMenuModeLabel>
-  <VaultCustomMenuModeFullOptionList>Full action list</VaultCustomMenuModeFullOptionList>
-  <VaultCustomMenuModeItemThenOption>Item, then action</VaultCustomMenuModeItemThenOption>
-  <VaultCustomMenuModeDesc>Chooses the style used by this vault while its right-click menu is set to Large list. Full action list preserves the previous behavior and generates every action at once. Item, then action opens the item list immediately and generates actions only after an item is selected, greatly reducing delays with large inventories.</VaultCustomMenuModeDesc>
-  <VaultCustomMenuModeDisabledReason>Enable the custom Large list right-click menu first.</VaultCustomMenuModeDisabledReason>
+  <VaultCustomMenuModeLabel>Custom menu Mod: {0}</VaultCustomMenuModeLabel>
+  <VaultCustomMenuModeFullOptionList>Full list Mode</VaultCustomMenuModeFullOptionList>
+  <VaultCustomMenuModeItemThenOption>Two Step Mode</VaultCustomMenuModeItemThenOption>
+  <VaultCustomMenuModeDesc>Chooses the style used by this vault while its right-click menu is set to Custom Mode. Full list Mode preserves the previous behavior and generates every action at once. Two Step Mode opens the item list immediately and generates actions only after an item is selected, greatly reducing delays with large inventories.</VaultCustomMenuModeDesc>
+  <VaultCustomMenuModeDisabledReason>Enable the custom list right-click menu first.</VaultCustomMenuModeDisabledReason>
   <!-- Two-stage vault right-click menu -->
   <OuterrealmItemMenu_Title>{0}: choose an item</OuterrealmItemMenu_Title>
   <OuterrealmItemMenu_VaultActions>Vault actions</OuterrealmItemMenu_VaultActions>
