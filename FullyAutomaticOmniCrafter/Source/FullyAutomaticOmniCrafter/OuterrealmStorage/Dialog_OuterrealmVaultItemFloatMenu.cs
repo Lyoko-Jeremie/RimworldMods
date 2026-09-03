@@ -30,7 +30,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private const float Gap = 6f;
         private const float TargetIconSize = 34f;
         private const float OptionIconSize = 28f;
-        private const float CategoryWidth = 340f;
+        private const float CategoryWidth = 400f;
         private const float CategoryLineHeight = 24f;
 
         private readonly Building_OuterrealmVault vault;
@@ -38,11 +38,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private readonly Vector3 clickPos;
         private readonly List<MenuTarget> targets = new List<MenuTarget>();
         private readonly List<MenuTarget> filteredTargets = new List<MenuTarget>();
-        private readonly List<Thing> anchorBuffer = new List<Thing>();
-        private readonly HashSet<Thing> seenTargets = new HashSet<Thing>();
+        private readonly HashSet<OuterrealmEntry> seenEntries = new HashSet<OuterrealmEntry>();
         private readonly HashSet<ThingCategoryDef> validCategories = new HashSet<ThingCategoryDef>();
         private readonly Dictionary<ThingCategoryDef, long> categoryCounts =
             new Dictionary<ThingCategoryDef, long>();
+        private readonly HashSet<ThingDef> hiddenThingDefs = new HashSet<ThingDef>();
+        private readonly Dictionary<ThingCategoryDef, MultiCheckboxState> categoryStates =
+            new Dictionary<ThingCategoryDef, MultiCheckboxState>();
+        private readonly Dictionary<ThingCategoryDef, int> categoryShownCounts =
+            new Dictionary<ThingCategoryDef, int>();
+        private readonly Dictionary<ThingCategoryDef, int> categoryTotalCounts =
+            new Dictionary<ThingCategoryDef, int>();
 
         private Vector2 targetScroll;
         private Vector2 categoryScroll;
@@ -54,8 +60,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private List<FloatMenuOption> selectedOptions;
 
         public override Vector2 InitialSize => new Vector2(
-            Mathf.Min(1100f, UI.screenWidth * 0.72f),
-            Mathf.Min(760f, UI.screenHeight * 0.78f));
+            Mathf.Min(1500f, Mathf.Max(760f, UI.screenWidth - 80f)),
+            Mathf.Min(800f, Mathf.Max(560f, UI.screenHeight - 80f)));
 
         public Dialog_OuterrealmVaultItemFloatMenu(
             Building_OuterrealmVault vault, List<Pawn> selectedPawns, Vector3 clickPos)
@@ -134,6 +140,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             rightY += SearchHeight + Gap;
 
             List<MenuTarget> visible = searchText.Length == 0 && selectedCategory == null
+                && hiddenThingDefs.Count == 0
                 ? targets
                 : filteredTargets;
             GUI.color = Color.gray;
@@ -206,7 +213,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     selectedCategory = category;
                     RebuildFilteredTargets();
                 },
-                categoryCounts);
+                categoryCounts,
+                category =>
+                {
+                    MultiCheckboxState state;
+                    return categoryStates.TryGetValue(category, out state)
+                        ? state
+                        : MultiCheckboxState.On;
+                },
+                SetCategoryShow);
             listing.SetVisibleRect(visibleRect);
             listing.Begin(treeRect);
             foreach (TreeNode_ThingCategory child in ThingCategoryDefOf.Root.treeNode.ChildCategoryNodes)
@@ -281,7 +296,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
             if (Widgets.ButtonInvisible(row))
             {
-                if (!TargetStillValid(target))
+                if (!ResolveTargetThing(target))
                 {
                     SoundDefOf.ClickReject.PlayOneShotOnCamera();
                     RebuildTargets();
@@ -374,35 +389,54 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             targets.Clear();
             filteredTargets.Clear();
-            anchorBuffer.Clear();
-            seenTargets.Clear();
+            seenEntries.Clear();
             validCategories.Clear();
             categoryCounts.Clear();
+            categoryStates.Clear();
+            categoryShownCounts.Clear();
+            categoryTotalCounts.Clear();
             if (vault == null || vault.view == null)
             {
                 return;
             }
 
-            List<Thing> copies = vault.view.InnerListForReading;
-            for (int i = 0; i < copies.Count; i++)
+            // 分类与目标必须来自该终端实际允许的全部权威条目，不能依赖分批恢复中的投影列表；
+            // 否则尚未物化的普通条目会连同整条分类分支一起从菜单消失。普通投影延迟到
+            // 用户真正选择目标时才补建，保持两级菜单首开轻量。
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            List<OuterrealmEntry> entries = gs?.EntriesForReading;
+            if (entries == null)
             {
-                Thing thing = copies[i];
-                OuterrealmEntry entry = vault.view.GetEntryOf(thing);
+                return;
+            }
+            for (int i = 0; i < entries.Count; i++)
+            {
+                OuterrealmEntry entry = entries[i];
+                if (entry == null || entry.Count <= 0 || entry.Proto == null
+                    || !vault.CanShow(entry.Proto))
+                {
+                    continue;
+                }
+                Thing thing;
+                if (OuterrealmIdentityRouting.IsUnique(entry))
+                {
+                    if (OuterrealmIdentityRouting.CurrentVault(entry) != vault
+                        || !OuterrealmIdentityRouting.IsAnchor(entry.Proto))
+                    {
+                        continue;
+                    }
+                    thing = entry.Proto;
+                }
+                else
+                {
+                    // 没有现成投影时暂用权威原型承担图标与标签展示，绝不把它交给操作生成器。
+                    thing = vault.view.FindCopy(entry) ?? entry.Proto;
+                }
                 AddTarget(thing, entry);
             }
-            OuterrealmIdentityRouting.AppendMenuAnchors(vault, anchorBuffer);
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            for (int i = 0; i < anchorBuffer.Count; i++)
-            {
-                Thing thing = anchorBuffer[i];
-                OuterrealmEntry entry;
-                if (gs != null && gs.TryGetCanonicalEntry(thing, out entry))
-                {
-                    AddTarget(thing, entry);
-                }
-            }
             RebuildCategoryCache();
-            if (searchText.Length != 0 || selectedCategory != null)
+            RebuildCategoryStates();
+            if (searchText.Length != 0 || selectedCategory != null || hiddenThingDefs.Count != 0)
             {
                 RebuildFilteredTargets();
             }
@@ -429,7 +463,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         validCategories.Add(category);
                         long count;
                         categoryCounts.TryGetValue(category, out count);
-                        categoryCounts[category] = count + 1L;
+                        categoryCounts[category] = count + targets[i].Entry.Count;
                         category = category.parent;
                     }
                 }
@@ -442,7 +476,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private void AddTarget(Thing thing, OuterrealmEntry entry)
         {
-            if (thing == null || entry == null || entry.Count <= 0 || !seenTargets.Add(thing))
+            if (thing == null || entry == null || entry.Count <= 0 || !seenEntries.Add(entry))
             {
                 return;
             }
@@ -457,7 +491,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private void RebuildFilteredTargets()
         {
             filteredTargets.Clear();
-            if (searchText.Length == 0 && selectedCategory == null)
+            if (searchText.Length == 0 && selectedCategory == null && hiddenThingDefs.Count == 0)
             {
                 targetScroll = Vector2.zero;
                 return;
@@ -465,6 +499,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < targets.Count; i++)
             {
                 MenuTarget target = targets[i];
+                if (hiddenThingDefs.Contains(target.Thing.def))
+                {
+                    continue;
+                }
                 if (selectedCategory != null && !IsInCategory(target.Thing.def, selectedCategory))
                 {
                     continue;
@@ -477,6 +515,72 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             targetScroll = Vector2.zero;
+        }
+
+        /// <summary>按原版 ThingFilter.SetAllow(category) 语义切换该分类的全部后代 Def；
+        /// 状态仅属于本次菜单，不写入建筑存储筛选。</summary>
+        private void SetCategoryShow(ThingCategoryDef category, bool show)
+        {
+            if (category == null)
+            {
+                return;
+            }
+            foreach (ThingDef def in category.DescendantThingDefs)
+            {
+                if (show)
+                {
+                    hiddenThingDefs.Remove(def);
+                }
+                else
+                {
+                    hiddenThingDefs.Add(def);
+                }
+            }
+            RebuildCategoryStates();
+            RebuildFilteredTargets();
+        }
+
+        /// <summary>以当前目标的 ThingDef 直接显示状态聚合分类子树，复刻管理界面与
+        /// 原版 Listing_TreeThingFilter.AllowanceStateOf 的红/绿/黄三态。</summary>
+        private void RebuildCategoryStates()
+        {
+            categoryStates.Clear();
+            categoryShownCounts.Clear();
+            categoryTotalCounts.Clear();
+            for (int i = 0; i < targets.Count; i++)
+            {
+                ThingDef def = targets[i].Thing.def;
+                if (def == null || def.thingCategories == null)
+                {
+                    continue;
+                }
+                bool shown = !hiddenThingDefs.Contains(def);
+                for (int categoryIndex = 0; categoryIndex < def.thingCategories.Count; categoryIndex++)
+                {
+                    ThingCategoryDef category = def.thingCategories[categoryIndex];
+                    while (category != null)
+                    {
+                        int total;
+                        categoryTotalCounts.TryGetValue(category, out total);
+                        categoryTotalCounts[category] = total + 1;
+                        if (shown)
+                        {
+                            int shownCount;
+                            categoryShownCounts.TryGetValue(category, out shownCount);
+                            categoryShownCounts[category] = shownCount + 1;
+                        }
+                        category = category.parent;
+                    }
+                }
+            }
+            foreach (KeyValuePair<ThingCategoryDef, int> pair in categoryTotalCounts)
+            {
+                int shown;
+                categoryShownCounts.TryGetValue(pair.Key, out shown);
+                categoryStates[pair.Key] = shown <= 0
+                    ? MultiCheckboxState.Off
+                    : (shown >= pair.Value ? MultiCheckboxState.On : MultiCheckboxState.Partial);
+            }
         }
 
         private static bool IsInCategory(ThingDef def, ThingCategoryDef category)
@@ -511,10 +615,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return ReferenceEquals(view.Context, vault) && ReferenceEquals(view.GetEntryOf(target.Thing), target.Entry);
             }
+            if (!OuterrealmIdentityRouting.IsUnique(target.Entry))
+            {
+                return true;
+            }
             return OuterrealmIdentityRouting.IsAnchor(target.Thing)
                 && OuterrealmIdentityRouting.TryGetAnchor(
                     target.Thing, out Building_OuterrealmVault anchorVault, out IntVec3 _)
                 && ReferenceEquals(anchorVault, vault);
+        }
+
+        /// <summary>把列表展示用的权威原型按需解析为该终端的查询投影。</summary>
+        private bool ResolveTargetThing(MenuTarget target)
+        {
+            if (!TargetStillValid(target))
+            {
+                return false;
+            }
+            if (OuterrealmIdentityRouting.IsUnique(target.Entry))
+            {
+                return true;
+            }
+            vault.view.EnsureCopyFor(target.Entry);
+            Thing copy = vault.view.FindCopy(target.Entry);
+            if (copy == null)
+            {
+                return false;
+            }
+            target.Thing = copy;
+            return true;
         }
     }
 }
