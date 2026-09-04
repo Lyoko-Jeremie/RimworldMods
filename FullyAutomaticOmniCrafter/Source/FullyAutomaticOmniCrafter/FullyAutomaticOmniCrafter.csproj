@@ -448,6 +448,10 @@
     <Compile Include="OuterrealmStorage\OuterrealmBillIngredientSelector.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmBillJobUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmCarryTransaction.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmTotalJobUtility.cs" />
+    <Compile Include="OuterrealmStorage\Patch_OuterrealmTotalJobs.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmProductCounter.cs" />
+    <Compile Include="OuterrealmStorage\Patch_OuterrealmEquipmentCheckout.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmTransferQuantities.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmTransfers.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmLaunchableResourceUtility.cs" />

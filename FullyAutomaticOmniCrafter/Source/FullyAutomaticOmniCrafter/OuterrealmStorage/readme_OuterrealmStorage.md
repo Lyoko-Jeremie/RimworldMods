@@ -49,7 +49,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 
 - 由 `GameComponent_OuterrealmStorage.MaterializeProjection` 创建，并通过弱表 `MarkProjection` 标记。
 - 类型、def、stuff、品质、耐久、样式、颜色和必要 Comp 信息来自权威物，用于兼容原版及第三方筛选器。
-- 正常数量为 `min(entry.Count, def.stackLimit)`；制作、生物塑形舱和运输数量读取不依赖 Boost；尚未迁移的统计/普通 toil 仍有短时 Boost，必须配对恢复。
+- 正常数量为 `min(entry.Count, def.stackLimit)`；制作、生物塑形舱和运输数量读取不依赖 Boost；尚未迁移的普通 toil 仍有短时 Boost，必须配对恢复。
 - 投影注册到必要的 lister、haul source 和 region 查询结构，但故意不进入 `thingGrid`、渲染、光照和普通点击选择。
 - pseudo-Spawned 是查询兼容手段，不代表它是地图实物。判断投影必须看 `holdingOwner` 或投影标记，不能写 `thing.Spawned` 作为排除条件。
 - `Deposit` 会拒绝任何被标记的投影，即使第三方 Mod 已先将其从视图移除。
@@ -170,7 +170,7 @@ Pawn 到达 vault
   不阻止其他账单、不修改原版 10 jobs 阈值。开发模式下每账单每 tick 最多一条原因日志。
 
 第二阶段首批将逐槽协议扩展到原版 `EnterBiosculpterPod` 的 B 原料队列，只预留 pod，不额外预留制作座位。
-账单重试保护仍只针对带 bill 的制作任务。`Reload`、`RefuelAtomic` 使用全任务递减的 count，尚未接入精确预算。
+制作重试保护按账单区分；`Reload`、`RefuelAtomic` 已由独立总量协议接入精确预算，详见 5.3.3。
 
 ### 5.3.2 共用搬运和运输数量
 
@@ -184,9 +184,30 @@ Pawn 到达 vault
   TransferNoSplit(false,false) 的重量、容量和腐败预估使用同一只读数量快照，不改 stackCount。
 - 即时重组远行队/开发者即时装载使用 TransferableUtility.Transfer 适配，按快照 Checkout 实物，
   异常或拒收时回存未交付余量；实际交付型 TransferNoSplit（交易、尸体）保留原有专用路径。
-- 普通 StartCarryThing 的短时 Boost、RecipeWorkerCounter.CountProducts 的全图 Boost、
-  `Notify_ItemRemoved → Subtract` 尚未清理；普通任务预留尚未全部迁移为精确预算。
-  详细交付与后续边界见 `../Analysis/DoBillLoop/Stage2-Progress.zh-CN.md`，不得宣称第二阶段全部完成。
+- 普通未知任务的 StartCarryThing 仍保留短时 Boost 兼容；已迁移的制作、生物塑形舱、装填及原子补燃料不经过它。
+
+### 5.3.3 总量任务、移除语义和产品统计
+
+- `OuterrealmTotalJobUtility` 仅接管原版 `Reload` / `RefuelAtomic`。其 `job.count` 始终是全任务余量，
+  不构造 `countQueue`；`TargetRemaining` 记录各路线剩余数量，同 Entry 别名合并为一条路线。
+  正式预留同时验证全部条目预算；Reload 不抢占穿戴物预留，RefuelAtomic 预留目标建筑。
+- `Patch_OuterrealmFuelSelection` 沿用原版区域遍历、过滤和可达性判定，按 Entry 可用量累计；
+  `MakeReloadJob` 不再把展示 stackCount 求和当作全任务数量。未知/第三方 JobDef 不自动套用此协议。
+- 每趟按计划、任务余量及 carry 容量取料，按实际取得量同时减少库存、claim 和 job.count；
+  未取得的来源回到队首，普通地图原料和提前取得的随身实物也保留多趟需求。
+  普通投影/唯一锚点保留延迟 Checkout，随身 canonical 维持 PendingCheckout 回收例外。
+- 读档恢复区分出队前和携带前：出队前不能把上一趟 B 的已交付实物再计入预算，携带前须包含当前 B。
+  失败时按 Pawn + 目标物抑制同 tick 重试，下一 tick 恢复；不阻塞其他建筑或其他装备。
+- `Notify_ItemRemoved` 现在只处理查询索引，不调用 Subtract。`SyncRemoveFromGlobal` 保留公共空方法签名，
+  `SuppressRemovalSync` 保留兼容字段；删除投影不再代表消费。`RemoveApparel` 不移出投影当作实物。
+- `Pawn_ApparelTracker.Wear` 与 `Pawn_EquipmentTracker.AddEquipment` 的最终边界支持显式 Checkout，
+  普通已取得实物直接放行；失效投影拒绝交付。容器拒收、第三方跳过原方法或异常时只回存无持有者余量。
+  原版穿戴的提前租出路径保留，避免驱动后续旧局部变量仍指向查询物。
+- `OuterrealmProductCounter` 替代产品统计的全图 Boost；慢分支保留 CountValidThing 过滤和 slot/装备范围，
+  同 Entry 跨 lister 与多个 haul source 只计一次。快速 ResourceCounter 分支继续原版，避免库存加两次。
+  原版 List 普通目标按实例 +1 的既有行为保留，不顺带修改地面物计数语义。
+- 当前项目内没有 BoostMapVaults/UnboostMapVaults 调用，只有兼容方法定义；也没有投影 Remove 的 Subtract 调用。
+  支付、直接 SplitOff 等已有显式消费入口仍按各自协议工作，不能把这次修改解释为所有第三方取用路径均已验证。
 
 ### 5.4 显式提前租约
 

@@ -422,10 +422,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         // ApparelSourceEnabled 与"允许取出"及冻结联动：不可取出时 OptimizeApparel 跳过本建筑衣物。
         public bool ApparelSourceEnabled => Spawned && !noWithdraw && !frozen;
 
-        /// <summary>从视图移除衣物（穿戴即取出：经 Notify_ItemRemoved 扣全局并补回，§3.3）。</summary>
+        /// <summary>投影不能通过 bool RemoveApparel 交付；由租出或 Wear 的 Checkout 取得真实衣物。</summary>
         public bool RemoveApparel(Apparel apparel)
         {
-            return view != null && view.Contains(apparel) && view.Remove(apparel);
+            return !OuterrealmVaultUtil.IsProjection(apparel) && view != null && view.Contains(apparel) && view.Remove(apparel);
         }
 
         /// <summary>new 隐藏基类 Accepts（仅 filter 判定）：vault 增加 frozen 门控——冻结时拒绝一切存入。</summary>
@@ -505,7 +505,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            view.SyncRemoveFromGlobal(item); // 扣减全局 + 即时补回（含 SuppressRemovalSync / IsBorrowed 短路，§3.3）
+            // 查询视图的移除事件只维护地图索引，不代表消费权威库存。
             if (!item.Spawned)
             {
                 MapHeld.listerHaulables.Notify_DeSpawned(item);

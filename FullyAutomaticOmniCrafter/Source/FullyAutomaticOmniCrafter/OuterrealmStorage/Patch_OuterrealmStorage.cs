@@ -827,6 +827,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             public Thing Actual;
             public Building_OuterrealmVault SourceVault;
+            public OuterrealmEntry Entry;
             public bool Settled;
         }
 
@@ -834,29 +835,23 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             __state = null;
             OuterrealmSource source;
-            if (!OuterrealmSourceResolver.TryResolve(newApparel, out source)
-                || source.Kind != OuterrealmSourceKind.IdentityAnchor)
+            if (!OuterrealmSourceResolver.TryResolve(newApparel, out source))
             {
-                return true;
+                return !OuterrealmVaultUtil.IsProjection(newApparel);
             }
-
+            // 第三方直接 Wear 也必须先兑现；退休投影不能作为实物穿上。
+            if (!OuterrealmBillJobUtility.CanUse(source, ___pawn)
+                || OuterrealmBillJobUtility.Ledger?.TryBeginTransfer(source.Entry) != true) return false;
+            __state = new CheckoutState { SourceVault = source.Vault, Entry = source.Entry };
             Thing actual = OuterrealmSourceResolver.Checkout(source, 1);
+            __state.Actual = actual;
             if (actual is Apparel apparel)
             {
-                __state = new CheckoutState
-                {
-                    Actual = apparel,
-                    SourceVault = source.Vault
-                };
                 OuterrealmSourceResolver.ReplaceJobTarget(___pawn?.CurJob, source, apparel);
                 newApparel = apparel;
                 return true;
             }
 
-            if (actual != null && !actual.Destroyed && actual.stackCount > 0)
-            {
-                GameComponent_OuterrealmStorage.Instance?.Deposit(actual, source.Vault);
-            }
             ___pawn?.jobs?.EndCurrentJob(JobCondition.Incompletable);
             return false;
         }
@@ -869,17 +864,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             __state.Settled = true;
             Thing actual = __state.Actual;
-            if (actual is Apparel apparel && apparel.Wearer == ___pawn)
+            try
             {
-                return __exception;
+                if (actual is Apparel apparel && apparel.Wearer == ___pawn) return __exception;
+                // 被原版拒绝、前后缀跳过或抛异常时，只回存尚未交付的真实物。
+                if (actual != null && !actual.Destroyed
+                    && actual.holdingOwner == null && !actual.Spawned && actual.stackCount > 0)
+                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual, __state.SourceVault);
             }
-            // 原版校验失败、旧服装无法脱下、第三方 Prefix 跳过原方法或原方法抛异常时，
-            // 只回收仍无实际所有者的权威物品；已被其他合法容器接管时不得抢回。
-            if (actual != null && !actual.Destroyed
-                && actual.holdingOwner == null && !actual.Spawned && actual.stackCount > 0)
-            {
-                GameComponent_OuterrealmStorage.Instance?.Deposit(actual, __state.SourceVault);
-            }
+            finally { OuterrealmBillJobUtility.Ledger?.EndTransfer(__state.Entry); }
             return __exception;
         }
     }
@@ -1104,7 +1097,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 return true; // 非超维查询对象：完全走原版
             }
-            if (source.Kind == OuterrealmSourceKind.Projection && OuterrealmBillJobUtility.UsesIngredientQueue(__instance.pawn.CurJob)
+            if ((source.Kind == OuterrealmSourceKind.Projection || OuterrealmTotalJobUtility.Supports(__instance.pawn.CurJob))
+                && (OuterrealmBillJobUtility.UsesIngredientQueue(__instance.pawn.CurJob) || OuterrealmTotalJobUtility.Supports(__instance.pawn.CurJob))
                 && __instance.pawn.CurJob.targetB.Thing == item)
             {
                 __result = OuterrealmBillJobUtility.CarryFromProjection(__instance, source, count, reserve);
@@ -2842,23 +2836,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(RecipeWorkerCounter), "CountProducts")]
     internal static class Patch_RecipeWorkerCounter_CountProducts
     {
-        private static void Prefix(Bill_Production bill)
+        private static bool Prefix(RecipeWorkerCounter __instance, Bill_Production bill, ref int __result)
         {
-            if (bill != null && bill.Map != null)
-            {
-                OuterrealmPatchUtil.BoostMapVaults(bill.Map);
-            }
-        }
-
-        private static void Postfix(Bill_Production bill)
-        {
-            if (bill != null && bill.Map != null)
-            {
-                OuterrealmPatchUtil.UnboostMapVaults(bill.Map);
-            }
+            int count;
+            if (!OuterrealmProductCounter.TryCount(__instance, bill, out count)) return true;
+            __result = count;
+            return false;
         }
     }
-
     // 制作选料只传递线程局部 Pawn 上下文；条目预算在 IngredientSet 适配器计算，
     // 不再通过全图 Boost 改写投影，也不会把权威 Proto 的数量当成可分配库存。
     [HarmonyPatch(typeof(WorkGiver_DoBill), "TryFindBestIngredientsHelper")]

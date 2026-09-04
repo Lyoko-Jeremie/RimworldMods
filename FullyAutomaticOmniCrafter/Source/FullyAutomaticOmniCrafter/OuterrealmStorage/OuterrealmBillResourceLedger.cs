@@ -13,6 +13,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public Job Job;
         public Map Map;
         public bool Recovering;
+        // 总量任务保留原版 job.count，不向 countQueue 写入逐槽数量。
+        public Dictionary<Thing, int> TargetRemaining;
+        public List<LocalTargetInfo> TotalQueue;
         public readonly OuterrealmQuantityBudget<OuterrealmEntry> Remaining = new OuterrealmQuantityBudget<OuterrealmEntry>();
         public readonly Dictionary<Thing, OuterrealmSource> Sources = new Dictionary<Thing, OuterrealmSource>();
     }
@@ -29,6 +32,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             public int Tick = -1;
             public readonly HashSet<Bill> Bills = new HashSet<Bill>();
+            public readonly HashSet<Thing> TotalTargets = new HashSet<Thing>();
         }
 
         public bool TryGet(Job job, out OuterrealmBillResourcePlan plan)
@@ -158,6 +162,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (remove != null) for (int i = 0; i < remove.Count; i++) Release(remove[i]);
         }
 
+        public bool IsTotalBlocked(Pawn pawn, Thing target)
+        {
+            FailureState state;
+            return pawn != null && target != null && failures.TryGetValue(pawn, out state)
+                && state.Tick == Find.TickManager.TicksGame && state.TotalTargets.Contains(target);
+        }
+
         public bool IsBlocked(Pawn pawn, Bill bill)
         {
             FailureState state;
@@ -167,10 +178,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public void Block(Pawn pawn, Job job, string reason)
         {
-            if (pawn == null || job?.bill == null) return;
+            if (pawn == null || job == null || (job.bill == null && !OuterrealmTotalJobUtility.Supports(job))) return;
             FailureState state = failures.GetOrCreateValue(pawn);
             int tick = Find.TickManager.TicksGame;
-            if (state.Tick != tick) { state.Tick = tick; state.Bills.Clear(); }
+            if (state.Tick != tick) { state.Tick = tick; state.Bills.Clear(); state.TotalTargets.Clear(); }
+            if (job.bill == null)
+            {
+                if (job.targetA.Thing != null && state.TotalTargets.Add(job.targetA.Thing) && Prefs.DevMode)
+                    Log.Warning("[OuterrealmStorage] Total resource plan rejected: pawn=" + pawn.ThingID + ", reason=" + reason + ", tick=" + tick);
+                return;
+            }
             if (state.Bills.Add(job.bill) && Prefs.DevMode)
                 Log.Warning("[OuterrealmStorage] DoBill resource plan rejected: pawn=" + pawn.ThingID + ", recipe="
                     + job.bill.recipe.defName + ", reason=" + reason + ", tick=" + tick);

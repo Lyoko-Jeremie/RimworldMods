@@ -26,7 +26,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>上下文（§v3）：建筑 vault 或授权 pawn 随身视图。随身上下文 Spawned=false，副本不进 lister。</summary>
         public readonly IOuterrealmVaultContext Context;
 
-        /// <summary>视图重建/注销期间抑制 Notify_ItemRemoved 的全局同步（§3.3）。</summary>
+        /// <summary>保留旧兼容字段；视图移除已经不再同步扣减全局库存。</summary>
         public bool SuppressRemovalSync;
 
         /// <summary>副本查找索引（§3.3 实时同步方案 E + §B 条目引用化）：entry → 副本，FindCopy 由
@@ -134,37 +134,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return gs.Withdraw(entry, take);
         }
 
-        /// <summary>
-        /// 视图整堆移除（Remove 语义）的全局同步：按副本当前量扣减全局，剩余时即时补回新副本（§3.3）。
-        /// 建筑视图经 Building_OuterrealmVault.Notify_ItemRemoved 调用；随身视图经
-        /// SubspaceAccessPawn.Notify_ItemRemoved 调用（§v3 随身同步）。两处必须共用本逻辑——
-        /// 随身 owner 若缺失 IThingHolderEvents 同步，整堆 SplitOff（Thing.SplitOff 整堆分支走
-        /// holdingOwner.Remove → NotifyRemoved，PostSplitOff 对整堆直接跳过防双扣）将不扣全局，
-        /// "bill 需求 ≥ 全局剩余量"时物品被取走却不清零 → 复制。
-        /// </summary>
+        /// <summary>保留旧公共签名供外部二进制调用；移除查询投影不再扣减全局库存。</summary>
         public void SyncRemoveFromGlobal(Thing item)
         {
-            if (SuppressRemovalSync)
-            {
-                return; // 视图重建/注销期间（§3.3）
-            }
-            if (IsBorrowed(item))
-            {
-                return; // §v4：借出副本由 TryLendCopy 的 SplitOff 借出时已扣账，此处不再扣减防双扣
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            OuterrealmEntry entry = GetEntryOf(item);
-            gs.Subtract(entry, item.stackCount);
-            if (entry != null && entry.Count > 0)
-            {
-                EnsureCopyFor(entry); // 即时补回新副本（§3.3）
-            }
+            // 消费必须显式 Checkout。展示 stackCount 不能作为扣库依据。
         }
-
         // ── 预留记账（§3.3 → §P0 预订记账优化）：全局 O(1) 查表 ──
 
         /// <summary>副本当前可用量 = G − R。R 汇总所有地图、所有终端对同一全局条目的预留。
@@ -672,12 +646,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 但 ReturnCopy 仍需 entryByCopy 反查条目，故借出期间跳过 IndexRemove。</summary>
         public override bool Remove(Thing item)
         {
-            // 先移除索引：整堆 SplitOff 走 holdingOwner.Remove(this) → base.Remove → NotifyRemoved →
-            // Notify_ItemRemoved → Subtract(扣到 0) → NotifyEntriesEmptied → SyncEntry 这条同步回调链。
-            // 若索引滞后（IndexRemove 放在 base.Remove 之后），SyncEntry 的 FindCopy 会经 copyByEntry 命中
-            // 这个"正在被移除"的副本并 copy.Destroy()，导致 splitStack 在 TryAdd 进 carry 之前被销毁
-            // （全局已扣 + 物品已销毁 → 拿取即消失）。索引提前失效后 FindCopy 对 innerList 线性扫描
-            // 也已移除该副本，返回 null，SyncEntry 不会误 Destroy。IndexRemove 幂等，Remove 失败亦无害。
+            // 先移除查询索引，随后通知持有者；整个过程不扣权威库存。
             if (!IsBorrowed(item))
             {
                 IndexRemove(item);

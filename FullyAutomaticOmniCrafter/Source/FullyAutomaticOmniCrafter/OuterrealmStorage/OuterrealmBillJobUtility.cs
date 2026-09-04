@@ -121,13 +121,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return true;
         }
 
-        private static bool ReserveTarget(Pawn pawn, Job job, OuterrealmBillResourcePlan plan, Thing thing, int count, int queueIndex, bool errorOnFailed)
+        internal static bool ReserveTarget(Pawn pawn, Job job, OuterrealmBillResourcePlan plan, Thing thing, int count, int queueIndex, bool errorOnFailed)
         {
             if (thing == null) return true;
             OuterrealmSource source;
             if (!plan.Sources.TryGetValue(thing, out source))
                 return pawn.Reserve(thing, job, stackCount: count, errorOnFailed: errorOnFailed);
-            if (source.Kind == OuterrealmSourceKind.Projection)
+            if (source.IsVaultQuery)
                 return pawn.Reserve(thing, job, stackCount: (int)plan.Remaining.Get(source.Entry), errorOnFailed: errorOnFailed);
 
             // 随身候选无可寻路的查询位置，保留提前取出的例外。使用原始来源快照处理重复目标。
@@ -166,6 +166,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         internal static bool EnsurePlan(Pawn pawn, Job job)
         {
+            if (OuterrealmTotalJobUtility.Supports(job)) return OuterrealmTotalJobUtility.Ensure(pawn, job, true);
             OuterrealmBillResourcePlan plan;
             if (Ledger.TryGet(job, out plan)) return true;
             // 读档恢复的活跃任务不重新调用 TryMakePreToilReservations；在第一个执行边界重建。
@@ -189,6 +190,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         internal static bool Extract(Toil toil, TargetIndex index, bool failIfTooBig)
         {
+            if (OuterrealmTotalJobUtility.Extract(toil, index)) return true;
             Pawn pawn = toil.actor;
             Job job = pawn?.CurJob;
             if (!UsesIngredientQueue(job) || index != TargetIndex.B || job.targetQueueB.NullOrEmpty()) return false;
@@ -218,6 +220,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         internal static bool StartCarry(Toil toil, TargetIndex index, bool putRemainderInQueue,
             bool subtractNumTakenFromJobCount, bool failIfStackCountLessThanJobCount, bool reserve)
         {
+            if (OuterrealmTotalJobUtility.StartCarry(toil, index, reserve)) return true;
             Pawn pawn = toil.actor;
             Job job = pawn?.CurJob;
             if (!UsesIngredientQueue(job) || index != TargetIndex.B) return false;
@@ -255,7 +258,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             Pawn pawn = carry.pawn;
             Job job = pawn.CurJob;
-            if (pawn.Dead || pawn.Downed || !Validate(pawn, job, source, job.count)
+            if (pawn.Dead || pawn.Downed || !Validate(pawn, job, source, OuterrealmTotalJobUtility.Supports(job) ? count : job.count)
                 || (carry.CarriedThing != null && !carry.CarriedThing.CanStackWith(source.QueryThing))) return 0;
             count = Math.Min(count, carry.AvailableStackSpace(source.QueryThing.def));
             OuterrealmBillResourcePlan plan;
