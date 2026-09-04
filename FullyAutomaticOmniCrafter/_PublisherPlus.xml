@@ -7,6 +7,7 @@
     <exclude>Source\FullyAutomaticOmniCrafter\obj</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\packages</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\Docs</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\Analysis</exclude>
     <exclude>docs</exclude>
     <exclude>Tools</exclude>
   </Excluded>
