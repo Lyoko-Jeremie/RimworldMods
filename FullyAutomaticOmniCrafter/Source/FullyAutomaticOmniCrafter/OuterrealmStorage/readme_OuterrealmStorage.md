@@ -431,3 +431,12 @@ dotnet run --project .\Tests\DoBillResources\DoBillResources.csproj -c Release
 
 测试直接编译上述四份生产源码，游戏对象、容器及地图使用测试替身；它验证预算与执行逻辑，
 不能代替真实 Harmony 补丁顺序、寻路、Comp 回调和实际存档的游戏内回归。
+
+## 启动保护与可选兼容（选择回归修复）
+
+核心 Harmony 补丁先安装，可选 Patch_Beam_* 类单独安装并隔离异常。
+可选协议必须验证完整参数名/类型/ref/out/返回值；同名方法存在不代表兼容。
+当前 IBeamOperator 版光束不匹配旧源端协议，跳过旧源端联动，保留匹配的目的地门控。
+选择过滤必须同时使用 IsVaultStoredThing（含无 holder 的唯一锚点）与 IsProjection。
+编译和资源替身测试不能证明 Harmony 启动绑定成功；游戏日志须确认 Core Harmony patches installed。
+发现 already deepsaved 时不得仅隐藏地图物品或按仓库格批量删除；已写坏存档须单独核对所有权。

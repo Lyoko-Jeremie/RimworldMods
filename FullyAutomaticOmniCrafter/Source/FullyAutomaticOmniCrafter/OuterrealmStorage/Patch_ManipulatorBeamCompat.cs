@@ -37,45 +37,45 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// </summary>
     internal static class BeamManipulatorCompat
     {
-        // ── 反射缓存（只读、惰性；方法缺失时 null，调用方短路）——避免高频反射 ──
-        private static readonly Type BeamManipulatorUtilityType =
-            AccessTools.TypeByName("ManipulatorBeam.BeamManipulatorUtility");
-        private static readonly MethodInfo TryFindBestStorageCellMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "TryFindBestStorageCellIgnoringReachability");
-        private static readonly MethodInfo TryFindBestStorageCellAutoMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "TryFindBestStorageCellIgnoringReachabilityAuto");
-        // ── 各 patch 的目标方法（缓存 + 供 Prepare() 判空；未安装/签名变化时为 null）──
-        internal static readonly MethodInfo TryBuildBatchFromCellMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "TryBuildBatchFromCell");
-        internal static readonly MethodInfo TryBuildBatchFromCellAutoMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "TryBuildBatchFromCellAuto");
-        internal static readonly MethodInfo HasAnyStorageTransferFromCellMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "HasAnyStorageTransferFromCell");
-        internal static readonly MethodInfo LiftThingForTransferMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "LiftThingForTransfer");
-        internal static readonly MethodInfo IsBeamStorageGroupAllowedMethod =
-            BeamManipulatorUtilityType == null ? null :
-            AccessTools.Method(BeamManipulatorUtilityType, "IsBeamStorageGroupAllowed");
-        private static readonly Type BeamTransferType =
-            AccessTools.TypeByName("ManipulatorBeam.BeamTransfer");
-        internal static readonly FieldInfo BeamTransferThingField =
-            BeamTransferType == null ? null : AccessTools.Field(BeamTransferType, "thing");
-        internal static readonly FieldInfo BeamTransferCountField =
-            BeamTransferType == null ? null : AccessTools.Field(BeamTransferType, "count");
-        private static readonly Type BeamHaulBatchType =
-            AccessTools.TypeByName("ManipulatorBeam.BeamHaulBatch");
-        private static readonly FieldInfo BeamHaulBatchTransfersField =
-            BeamHaulBatchType == null ? null : AccessTools.Field(BeamHaulBatchType, "transfers");
-        private static readonly ConstructorInfo BeamTransferCtor =
-            BeamTransferType == null ? null :
+        private static readonly Type BeamManipulatorUtilityType = AccessTools.TypeByName("ManipulatorBeam.BeamManipulatorUtility");
+        private static readonly Type BeamTransferType = AccessTools.TypeByName("ManipulatorBeam.BeamTransfer");
+        private static readonly Type BeamHaulBatchType = AccessTools.TypeByName("ManipulatorBeam.BeamHaulBatch");
+        private static readonly Type AutoBuildingType = AccessTools.TypeByName("ManipulatorBeam.Building_BeamManipulatorAuto");
+        private static MethodInfo Find(string name, Type result, string[] names, params Type[] types)
+            => OuterrealmOptionalSignature.Find(BeamManipulatorUtilityType, name, result, names, types);
+        private static readonly MethodInfo TryFindBestStorageCellMethod = Find("TryFindBestStorageCellIgnoringReachability", typeof(bool),
+            new[] { "pawn", "thing", "excludedDestinations", "ownerKey", "destination" },
+            typeof(Pawn), typeof(Thing), typeof(HashSet<IntVec3>), typeof(int), typeof(IntVec3).MakeByRefType());
+        private static readonly MethodInfo TryFindBestStorageCellAutoMethod = Find("TryFindBestStorageCellIgnoringReachabilityAuto", typeof(bool),
+            new[] { "building", "thing", "excludedDestinations", "ownerKey", "destination" },
+            AutoBuildingType, typeof(Thing), typeof(HashSet<IntVec3>), typeof(int), typeof(IntVec3).MakeByRefType());
+        internal static readonly MethodInfo TryBuildBatchFromCellMethod = Find("TryBuildBatchFromCell", typeof(bool),
+            new[] { "pawn", "cell", "excludedDestinations", "ownerKey", "batch" },
+            typeof(Pawn), typeof(IntVec3), typeof(HashSet<IntVec3>), typeof(int), BeamHaulBatchType?.MakeByRefType());
+        internal static readonly MethodInfo TryBuildBatchFromCellAutoMethod = Find("TryBuildBatchFromCellAuto", typeof(bool),
+            new[] { "building", "cell", "excludedDestinations", "ownerKey", "batch" },
+            AutoBuildingType, typeof(IntVec3), typeof(HashSet<IntVec3>), typeof(int), BeamHaulBatchType?.MakeByRefType());
+        internal static readonly MethodInfo HasAnyStorageTransferFromCellMethod = Find("HasAnyStorageTransferFromCell", typeof(bool),
+            new[] { "pawn", "cell", "ownerKey" }, typeof(Pawn), typeof(IntVec3), typeof(int));
+        internal static readonly MethodInfo LiftThingForTransferMethod = Find("LiftThingForTransfer", typeof(Thing),
+            new[] { "transfer" }, BeamTransferType);
+        internal static readonly MethodInfo IsBeamStorageGroupAllowedMethod = Find("IsBeamStorageGroupAllowed", typeof(bool),
+            new[] { "group" }, typeof(SlotGroup));
+        internal static readonly FieldInfo BeamTransferThingField = BeamTransferType == null ? null : AccessTools.Field(BeamTransferType, "thing");
+        internal static readonly FieldInfo BeamTransferCountField = BeamTransferType == null ? null : AccessTools.Field(BeamTransferType, "count");
+        private static readonly FieldInfo BeamHaulBatchTransfersField = BeamHaulBatchType == null ? null : AccessTools.Field(BeamHaulBatchType, "transfers");
+        private static readonly ConstructorInfo BeamTransferCtor = BeamTransferType == null ? null :
             AccessTools.Constructor(BeamTransferType, new[] { typeof(Thing), typeof(IntVec3), typeof(IntVec3) });
-
+        // 种子、注入、最终 Checkout 是一个协议，缺任何一环都不能先借出实物。
+        internal static readonly bool LegacySourceProtocolSupported = TryBuildBatchFromCellMethod != null
+            && TryFindBestStorageCellMethod != null && HasAnyStorageTransferFromCellMethod != null
+            && LiftThingForTransferMethod != null && BeamTransferThingField?.FieldType == typeof(Thing)
+            && BeamTransferCountField?.FieldType == typeof(int) && BeamHaulBatchTransfersField != null && BeamTransferCtor != null;
+        static BeamManipulatorCompat()
+        {
+            if (BeamManipulatorUtilityType != null && !LegacySourceProtocolSupported)
+                Log.Warning("[OuterrealmStorage] ManipulatorBeam source protocol changed; legacy vault-source integration skipped. Core storage protection remains enabled.");
+        }
         /// <summary>该格是否为某 vault 的存储格；是则返回 vault，否则 null（O(1) slotGroup 查询）。</summary>
         public static Building_OuterrealmVault VaultAtCell(IntVec3 cell, Map map)
         {
@@ -285,7 +285,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     internal static class Patch_Beam_TryBuildBatchFromCell
     {
         // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
-        static bool Prepare() => BeamManipulatorCompat.TryBuildBatchFromCellMethod != null;
+        static bool Prepare() => BeamManipulatorCompat.LegacySourceProtocolSupported && BeamManipulatorCompat.TryBuildBatchFromCellMethod != null;
 
         static MethodBase TargetMethod() => BeamManipulatorCompat.TryBuildBatchFromCellMethod;
 
@@ -329,7 +329,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     internal static class Patch_Beam_TryBuildBatchFromCellAuto
     {
         // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
-        static bool Prepare() => BeamManipulatorCompat.TryBuildBatchFromCellAutoMethod != null;
+        static bool Prepare() => BeamManipulatorCompat.LegacySourceProtocolSupported && BeamManipulatorCompat.TryBuildBatchFromCellAutoMethod != null;
 
         static MethodBase TargetMethod() => BeamManipulatorCompat.TryBuildBatchFromCellAutoMethod;
 
@@ -375,7 +375,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     internal static class Patch_Beam_HasAnyStorageTransferFromCell
     {
         // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
-        static bool Prepare() => BeamManipulatorCompat.HasAnyStorageTransferFromCellMethod != null;
+        static bool Prepare() => BeamManipulatorCompat.LegacySourceProtocolSupported && BeamManipulatorCompat.HasAnyStorageTransferFromCellMethod != null;
 
         static MethodBase TargetMethod() => BeamManipulatorCompat.HasAnyStorageTransferFromCellMethod;
 
@@ -437,7 +437,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     internal static class Patch_Beam_LiftThingForTransfer
     {
         // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
-        static bool Prepare() => BeamManipulatorCompat.LiftThingForTransferMethod != null;
+        static bool Prepare() => BeamManipulatorCompat.LegacySourceProtocolSupported && BeamManipulatorCompat.LiftThingForTransferMethod != null;
 
         static MethodBase TargetMethod() => BeamManipulatorCompat.LiftThingForTransferMethod;
 

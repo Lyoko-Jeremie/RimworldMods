@@ -459,6 +459,7 @@
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
     <Compile Include="OuterrealmStorage\Patch_ManipulatorBeamCompat.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmOptionalSignature.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmFloatMenu.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />
     <Compile Include="OuterrealmStorage\SubspaceAccessUtility.cs" />

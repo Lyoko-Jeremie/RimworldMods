@@ -3171,7 +3171,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             foreach (object o in src)
             {
-                if (o is Thing t && t.ParentHolder is Building_OuterrealmVault)
+                if (o is Thing t && (OuterrealmPatchUtil.IsVaultStoredThing(t) || OuterrealmVaultUtil.IsProjection(t)))
                 {
                     continue; // 隐形锚点副本：不可被左键点选 / 切换选中
                 }
@@ -3190,7 +3190,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static bool Prefix(Thing t, ref bool __result)
         {
-            if (t != null && t.ParentHolder is Building_OuterrealmVault)
+            if (OuterrealmPatchUtil.IsVaultStoredThing(t) || OuterrealmVaultUtil.IsProjection(t))
             {
                 __result = false; // 隐形锚点副本：不可地图点击选中
                 return false;
