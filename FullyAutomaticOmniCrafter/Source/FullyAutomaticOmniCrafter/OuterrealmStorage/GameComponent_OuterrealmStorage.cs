@@ -1111,6 +1111,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return 0L;
             }
+            // Checkout 的 Comp/容器回调可能重入选料；提交过程中不暴露暂时释放的数量。
+            if (Runtime.Bills.IsTransferring(entry)) return entry.Count;
             EnsureReservedTotals();
             long reserved;
             return reservedTotals.TryGetValue(entry, out reserved) ? reserved : 0L;
@@ -1135,6 +1137,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     {
                         ReservationManager.Reservation reservation = reservations[i];
                         Thing thing = reservation.Target.Thing;
+                        // DoBill 的地图预留仅维护投影生命周期，其确定数量由每局账本汇总一次。
+                        if (Runtime.Bills.IsBridge(reservation.Job, thing)) continue;
                         OuterrealmVaultViewThingOwner view =
                             thing?.holdingOwner as OuterrealmVaultViewThingOwner;
                         if (view == null)
@@ -1147,7 +1151,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                             continue;
                         }
                         int count = reservation.StackCount == ReservationManager.StackCount_All
-                            ? thing.stackCount
+                            ? (int)Math.Min(reservedEntry.Count, thing.def.stackLimit)
                             : reservation.StackCount;
                         if (count <= 0)
                         {
@@ -1160,6 +1164,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     }
                 }
             }
+            Runtime.Bills.AddTotalsTo(reservedTotals);
             reservedTotalsVersion = reservationVersion;
         }
 
@@ -1248,6 +1253,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            Runtime.Bills.ReleaseMap(map);
             List<Building_OuterrealmVault> removedVaults = Runtime.VaultsOnMapSnapshot(map);
             for (int i = 0; i < removedVaults.Count; i++)
             {

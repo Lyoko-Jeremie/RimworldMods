@@ -390,20 +390,35 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     __result = false;
                     return false;
                 }
-                int canonicalReq = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
-                __result = canonicalReq <= 0 || canonicalReq <= canonicalEntry.Count;
+                if (OuterrealmBillJobUtility.Ledger?.IsTransferring(canonicalEntry) == true)
+                {
+                    __result = false;
+                    return false;
+                }
+                int canonicalReq = stackCount == ReservationManager.StackCount_All ? 1 : stackCount;
+                long availableCanonical = OuterrealmQuantityBudget<OuterrealmEntry>.Available(canonicalEntry.Count,
+                    gs.ReservedCountOf(canonicalEntry), OuterrealmBillJobUtility.Ledger?.Own(claimant.CurJob, canonicalEntry) ?? 0);
+                __result = canonicalReq > 0 && canonicalReq <= availableCanonical;
                 return false;
             }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
             {
                 return true;
             }
-            int req = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
+            int req = stackCount == ReservationManager.StackCount_All ? 1 : stackCount;
             if (req <= 0)
             {
                 return true;
             }
-            if (req > view.AvailableForReserve(t))
+            long available = view.AvailableForReserve(t);
+            OuterrealmBillResourcePlan billPlan;
+            if (OuterrealmBillJobUtility.Ledger?.TryGet(claimant?.CurJob, out billPlan) == true)
+            {
+                OuterrealmSource source;
+                if (OuterrealmSourceResolver.TryResolve(t, out source))
+                    available = OuterrealmBillJobUtility.Available(source, claimant, claimant.CurJob);
+            }
+            if (req > available)
             {
                 __result = false; // 数量不足：阻止预留
                 return false;
@@ -416,9 +431,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(ReservationManager), "Reserve")]
     internal static class Patch_ReservationManager_Reserve
     {
-        private static bool Prefix(Pawn claimant, LocalTargetInfo target, int maxPawns, int stackCount, ref bool __result)
+        private static bool Prefix(Pawn claimant, Job job, LocalTargetInfo target, int maxPawns, ref int stackCount, ref bool __result)
         {
             Thing t = target.Thing;
+            if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner reservationView
+                && stackCount == ReservationManager.StackCount_All)
+            {
+                // 把整堆请求固化，禁止日后按临时 Boost 数量重新解释 reservation。
+                long own = OuterrealmBillJobUtility.Ledger?.Own(job, reservationView.GetEntryOf(t)) ?? 0;
+                stackCount = own > 0 ? (int)Math.Min(own, int.MaxValue)
+                    : Math.Max(1, (int)Math.Min(reservationView.GetEntryOf(t)?.Count ?? 0, t.def.stackLimit));
+            }
             if (t is Building_OuterrealmVault)
             {
                 // vault 建筑本体（§1.2 无限容量）：直接放行，不做预留记账。
@@ -696,6 +719,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Job job,
             ref List<Thing> __state)
         {
+            OuterrealmBillJobUtility.Ledger?.Release(job);
             __state = CollectIdentityTargets(__instance, claimant, job, true);
         }
 
@@ -757,6 +781,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Pawn claimant,
             ref List<Thing> __state)
         {
+            OuterrealmBillJobUtility.Ledger?.ReleasePawn(claimant);
             __state = Patch_ReservationManager_ReleaseClaimedBy.CollectIdentityTargets(
                 __instance, claimant, null, false);
         }
@@ -1072,7 +1097,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmSource source;
             if (!OuterrealmSourceResolver.TryResolve(item, out source) || !source.IsVaultQuery)
             {
+                if (OuterrealmVaultUtil.IsProjection(item))
+                {
+                    __result = 0;
+                    return false;
+                }
                 return true; // 非超维查询对象：完全走原版
+            }
+            if (source.Kind == OuterrealmSourceKind.Projection && OuterrealmBillJobUtility.IsBill(__instance.pawn.CurJob)
+                && __instance.pawn.CurJob.targetB.Thing == item)
+            {
+                __result = OuterrealmBillJobUtility.CarryFromProjection(__instance, source, count, reserve);
+                return false;
             }
             __result = source.Kind == OuterrealmSourceKind.Projection
                 ? TryStartCarryFromVault(__instance, item, count, reserve, source.View)
@@ -1253,7 +1289,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     [HarmonyPatch(typeof(Toils_Haul), "StartCarryThing")]
     internal static class Patch_Toils_Haul_StartCarryThing
     {
-        private static void Postfix(ref Toil __result, TargetIndex haulableInd)
+        private static void Postfix(ref Toil __result, TargetIndex haulableInd, bool putRemainderInQueue,
+            bool subtractNumTakenFromJobCount, bool failIfStackCountLessThanJobCount, bool reserve)
         {
             if (__result == null || __result.initAction == null)
             {
@@ -1264,6 +1301,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             toil.initAction = () =>
             {
                 Pawn actor = toil.actor;
+                if (OuterrealmBillJobUtility.StartCarry(toil, haulableInd, putRemainderInQueue,
+                    subtractNumTakenFromJobCount, failIfStackCountLessThanJobCount, reserve)) return;
                 Thing thing = actor != null && actor.jobs != null && actor.jobs.curJob != null
                     ? actor.jobs.curJob.GetTarget(haulableInd).Thing
                     : null;
@@ -2968,25 +3007,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // 选料：WorkGiver_DoBill.TryFindBestIngredientsHelper（HaulSource 分支候选的 stackCount 用全局量，
-    // 使"单份需求 > stackLimit"的账单可生成，连续制作无 8-10 秒空转）。
+    // 制作选料只传递线程局部 Pawn 上下文；条目预算在 IngredientSet 适配器计算，
+    // 不再通过全图 Boost 改写投影，也不会把权威 Proto 的数量当成可分配库存。
     [HarmonyPatch(typeof(WorkGiver_DoBill), "TryFindBestIngredientsHelper")]
     internal static class Patch_WorkGiver_DoBill_TryFindBestIngredientsHelper
     {
-        private static void Prefix(Pawn pawn)
+        private static void Prefix(Pawn pawn, out Pawn __state)
         {
-            if (pawn != null && pawn.Map != null)
-            {
-                OuterrealmPatchUtil.BoostMapVaults(pawn.Map);
-            }
+            __state = OuterrealmBillIngredientSelector.CurrentPawn;
+            OuterrealmBillIngredientSelector.CurrentPawn = pawn;
         }
 
-        private static void Postfix(Pawn pawn)
+        private static Exception Finalizer(Pawn __state, Exception __exception)
         {
-            if (pawn != null && pawn.Map != null)
-            {
-                OuterrealmPatchUtil.UnboostMapVaults(pawn.Map);
-            }
+            OuterrealmBillIngredientSelector.CurrentPawn = __state;
+            return __exception;
         }
 
         // ── §v3 随身取料：在原版 relevantThings.Clear() 之后直接查询全局权威索引 ──

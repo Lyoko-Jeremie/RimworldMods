@@ -122,7 +122,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 原版/第三方搜索 lister 或 IHaulSource
   → 找到普通投影或唯一物品权威锚点
   → CanReserve 按全局 Count - 全部预留量检查
-  → Reserve 只写原版 reservation
+  → 普通任务 Reserve 写原版 reservation；DoBill 另以条目预算记录确定的剩余预留，原版记录只作桥接
   → 全局库存和地图实物均不变化
 ```
 
@@ -144,6 +144,33 @@ Pawn 到达 vault
 `ReplaceJobThingReference` 只替换当前目标；若尚处预预约阶段，最多替换队列中的第一个匹配项。严禁把队列里所有相同投影替换成同一真实堆，否则 reservation、`countQueue`、`placedThings` 与实际物品会失配。
 
 原版 `JobDriver_DoBill` 在实物放到工作台后建立 physical reservation，并把真实对象记入 `placedThings`。因此制作过程中原料保持原版语义，不再由 vault 租约系统管理。
+
+### 5.3.1 DoBill 条目预算与执行边界
+
+- 制作选料不再调用全图 Boost/Unboost。`TryFindBestBillIngredientsInSet` 仅在含超维候选时使用
+  `OuterrealmBillIngredientSelector`，按 Entry 共享数量预算，普通地面物按 Thing 独立计数。
+  多终端和随身候选是同一库存的不同路线，不能重复增加数量。保留混料价值排序、固定原料、
+  账单筛选与非混料的单 Def 需求；所有原料槽共享剩余预算，禁止重复选择已分配数量。
+- `Runtime.Bills` 保存 `Job → Entry → 尚未取出数量`。正式预留前验证整个需求计划；同一 Job
+  重复预留幂等。全局预留汇总只加一次条目预算，不再叠加该任务对应投影的原版桥接记录。
+  原版 -1 投影预留在提交时固化，旧 -1 记录只按普通单堆上限解释，不能按 Boost 状态重算。
+- `ExtractNextTargetFromQueue(B)` 在执行期验证 DoBill 的条目预算，不用投影展示量判定配方
+  是否满足。普通目标和其他任务继续使用原版；失效投影明确失败，不得回落为普通实物。
+- `StartCarryThing(B)` 对 DoBill 超维目标使用实际 carry 容量限制每趟数量，保留未取得的
+  原目标和需求。也覆盖 `JumpToCollectNextIntoHandsForBill` 跳过普通出队、直接追加收集的路径。
+  只改写当前 B，后续相同查询对象的队列项继续独立取出。
+- 普通投影在实际携带边界 Checkout。预留减少、库存扣减、容器交付及失败回存形成事务；
+  同条目处于提交中时不向重入选料暴露暂时空出的数量。按真实交付量结算，部分拒收只回存
+  未交付余量，交付后异常不得再次 Deposit。DoBill 不再依赖 StartCarry 的临时 stackCount Boost。
+- 随身权威候选仍在正式预留阶段提前 Checkout，按具体队列索引替换成不同的真实物，
+  继续由 PendingCheckouts 回收未交付数量；不得因权威原堆与返回实物同一引用而二次取出。
+- Job Cleanup、ReleaseClaimedBy、ReleaseAllClaimedBy 和地图删除释放预算；运行时预算不存档。
+  读档后首次出队/携带时按当前 B 和剩余队列重建、重新校验。不能解析的旧投影应终止并重新选料。
+- 对失败 Pawn 的同一账单只抑制当前 tick 的重复尝试，下一 tick 重新评估；失败记录使用每局弱键表，
+  不阻止其他账单、不修改原版 10 jobs 阈值。开发模式下每账单每 tick 最多一条原因日志。
+
+这套执行期适配目前限定为原版 DoBill 的 B 原料路径；Reload、RefuelAtomic、远行队计数及旧
+`Notify_ItemRemoved → Subtract` 入口仍属于后续兼容阶段，不得宣称已经完成全局取料架构迁移。
 
 ### 5.4 显式提前租约
 
@@ -285,6 +312,10 @@ Pawn 到达 vault
 | `Hediff_SubspaceAccess.cs` | Pawn 授权状态和自动取用/存入设置 |
 | `OuterrealmMarkUtility.cs` | 新旧授权标记统一判断 |
 | `OuterrealmSourceResolver.cs` | 普通投影、唯一锚点、随身权威候选的统一只读解析与 Checkout 网关 |
+| `OuterrealmQuantityBudget.cs` | 不依赖显示堆数的条目级数量预算 |
+| `OuterrealmBillResourceLedger.cs` | DoBill 精确剩余预留、提交重入保护、释放及同 tick 失败去重 |
+| `OuterrealmBillIngredientSelector.cs` | 含超维候选的制作选料，按条目预算防止跨终端和跨原料槽重复分配 |
+| `OuterrealmBillJobUtility.cs` | DoBill 预留、出队、搬运、随身提前取出、回滚与读档执行边界 |
 | `OuterrealmTradeSourceRegistry.cs` | 无信标轨道贸易的临时来源到权威条目弱映射 |
 | `OuterrealmLaunchableResourceUtility.cs` | 可发射资源来源去重、余额投影与事务性费用支付 |
 | `JobDriver_VaultDepositFromGround.cs` | 授权 Pawn 手动存入 |
@@ -354,3 +385,12 @@ dotnet build -c Debug
 ```
 
 必须达到 0 个编译错误；涉及运行时补丁或存档迁移的改动不能只依赖编译结果，应按上述场景进游戏验证。
+
+DoBill 资源控制流的独立测试可运行：
+
+```powershell
+dotnet run --project .\Tests\DoBillResources\DoBillResources.csproj -c Release
+```
+
+测试直接编译上述四份生产源码，游戏对象、容器及地图使用测试替身；它验证预算与执行逻辑，
+不能代替真实 Harmony 补丁顺序、寻路、Comp 回调和实际存档的游戏内回归。

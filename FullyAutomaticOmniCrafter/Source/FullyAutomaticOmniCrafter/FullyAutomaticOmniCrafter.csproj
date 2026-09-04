@@ -443,6 +443,10 @@
     <Compile Include="OuterrealmStorage\OuterrealmStorageRuntimeState.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmMarkUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmSourceResolver.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmQuantityBudget.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmBillResourceLedger.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmBillIngredientSelector.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmBillJobUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmLaunchableResourceUtility.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmTradeSourceRegistry.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVaultUtil.cs" />

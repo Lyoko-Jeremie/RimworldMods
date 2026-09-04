@@ -115,6 +115,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public readonly OuterrealmIdentityRuntimeState Identity = new OuterrealmIdentityRuntimeState();
         public readonly OuterrealmSubspaceRuntimeState Subspace = new OuterrealmSubspaceRuntimeState();
+        public readonly OuterrealmBillResourceLedger Bills = new OuterrealmBillResourceLedger();
 
         public bool SaveIsolationActive => saveIsolationDepth > 0;
 
