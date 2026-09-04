@@ -38,6 +38,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         public bool IsTransferring(OuterrealmEntry entry) => entry != null && transfers.Contains(entry);
+        public bool TryBeginTransfer(OuterrealmEntry entry) => entry != null && transfers.Add(entry);
         public void EndTransfer(OuterrealmEntry entry) => transfers.Remove(entry);
 
         public long Own(Job job, OuterrealmEntry entry)

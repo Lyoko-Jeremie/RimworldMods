@@ -14,6 +14,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         internal static OuterrealmBillResourceLedger Ledger => GameComponent_OuterrealmStorage.Instance?.Runtime.Bills;
         internal static bool IsBill(Job job) => job?.def == JobDefOf.DoBill;
+        // 只有逐槽 countQueue 的驱动共用此协议；总量递减的 Reload/RefuelAtomic 不适用。
+        internal static bool UsesIngredientQueue(Job job) => IsBill(job) || job?.def == JobDefOf.EnterBiosculpterPod;
         internal static bool Managed(in OuterrealmSource source) => source.Kind == OuterrealmSourceKind.Projection || source.Kind == OuterrealmSourceKind.SubspaceCanonical;
 
         internal static bool CanUse(in OuterrealmSource source, Pawn pawn)
@@ -57,11 +59,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
 
         // 返回是否接管；接管时 result 表示整个预留事务是否成功。
-        internal static bool Prepare(JobDriver_DoBill driver, bool errorOnFailed, out bool result)
+        internal static bool Prepare(JobDriver driver, bool errorOnFailed, out bool result)
         {
             result = false;
             Job job = driver.job;
-            if (!IsBill(job) || Ledger == null) return false;
+            if (!UsesIngredientQueue(job) || Ledger == null) return false;
             bool affected = false;
             if (job.targetQueueB != null)
                 for (int i = 0; i < job.targetQueueB.Count; i++)
@@ -83,7 +85,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Pawn pawn = driver.pawn;
                 Thing giver = job.targetA.Thing;
                 if (!pawn.Reserve(job.targetA, job, errorOnFailed: errorOnFailed)
-                    || (giver != null && giver.def.hasInteractionCell && !pawn.ReserveSittableOrSpot(giver.InteractionCell, job, errorOnFailed))) return true;
+                    || (IsBill(job) && giver != null && giver.def.hasInteractionCell && !pawn.ReserveSittableOrSpot(giver.InteractionCell, job, errorOnFailed))) return true;
                 result = ReserveTargets(pawn, job, plan, false, errorOnFailed);
                 return true;
             }
@@ -189,7 +191,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             Pawn pawn = toil.actor;
             Job job = pawn?.CurJob;
-            if (!IsBill(job) || index != TargetIndex.B || job.targetQueueB.NullOrEmpty()) return false;
+            if (!UsesIngredientQueue(job) || index != TargetIndex.B || job.targetQueueB.NullOrEmpty()) return false;
             Thing thing = job.targetQueueB[0].Thing;
             OuterrealmSource source;
             if (!OuterrealmSourceResolver.TryResolve(thing, out source))
@@ -218,7 +220,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             Pawn pawn = toil.actor;
             Job job = pawn?.CurJob;
-            if (!IsBill(job) || index != TargetIndex.B) return false;
+            if (!UsesIngredientQueue(job) || index != TargetIndex.B) return false;
             Thing query = job.GetTarget(index).Thing;
             OuterrealmSource source;
             if (!OuterrealmSourceResolver.TryResolve(query, out source))
@@ -300,6 +302,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         [HarmonyPriority(Priority.Last)]
         private static bool Prefix(JobDriver_DoBill __instance, bool errorOnFailed, ref bool __result)
+        {
+            bool result;
+            if (!OuterrealmBillJobUtility.Prepare(__instance, errorOnFailed, out result)) return true;
+            __result = result;
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(JobDriver_EnterBiosculpterPod), "TryMakePreToilReservations")]
+    internal static class Patch_OuterrealmBiosculpterReservations
+    {
+        [HarmonyPriority(Priority.Last)]
+        private static bool Prefix(JobDriver_EnterBiosculpterPod __instance, bool errorOnFailed, ref bool __result)
         {
             bool result;
             if (!OuterrealmBillJobUtility.Prepare(__instance, errorOnFailed, out result)) return true;

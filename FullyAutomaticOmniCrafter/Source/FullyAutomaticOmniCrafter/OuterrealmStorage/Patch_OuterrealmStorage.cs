@@ -1104,15 +1104,27 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 return true; // 非超维查询对象：完全走原版
             }
-            if (source.Kind == OuterrealmSourceKind.Projection && OuterrealmBillJobUtility.IsBill(__instance.pawn.CurJob)
+            if (source.Kind == OuterrealmSourceKind.Projection && OuterrealmBillJobUtility.UsesIngredientQueue(__instance.pawn.CurJob)
                 && __instance.pawn.CurJob.targetB.Thing == item)
             {
                 __result = OuterrealmBillJobUtility.CarryFromProjection(__instance, source, count, reserve);
                 return false;
             }
-            __result = source.Kind == OuterrealmSourceKind.Projection
-                ? TryStartCarryFromVault(__instance, item, count, reserve, source.View)
-                : TryStartCarryFromIdentityAnchor(__instance, source, count, reserve);
+            Pawn pawn = __instance.pawn;
+            Job job = pawn.CurJob;
+            IntVec3 pickupPosition = item.Position;
+            bool selected = Find.Selector.IsSelected(item);
+            __result = OuterrealmCarryTransaction.Transfer(__instance, source, count);
+            if (__result <= 0 || pawn.CurJob != job) return false;
+            Thing actual = __instance.CarriedThing;
+            if (actual == null) return false;
+            TryUpdateTransferablesInvoker?.Invoke(__instance, actual);
+            OuterrealmSourceResolver.ReplaceJobTarget(job, source, actual);
+            OuterrealmVaultUtil.RedirectBlueprintToActual(item, actual);
+            item.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(pickupPosition, pawn.Map));
+            if (reserve) pawn.Reserve(actual, job);
+            if (selected) Find.Selector.Select(actual);
+            pawn.MapHeld.resourceCounter.UpdateResourceCounts();
             return false;
         }
 
@@ -1120,167 +1132,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             SubspaceAccessUtility.NotifyCarryResult(item, __result);
         }
-
-        private static int TryStartCarryFromVault(Pawn_CarryTracker carry, Thing item, int count, bool reserve, OuterrealmVaultViewThingOwner view)
-        {
-            Pawn pawn = carry.pawn;
-            if (pawn.Dead || pawn.Downed)
-            {
-                Log.Error($"Dead/downed/deathresting pawn {pawn?.ToString()} tried to start carry {item.ToStringSafe<Thing>()}");
-                return 0;
-            }
-
-            // 修复 2：预检——carry 已满且不能与 item 堆叠时直接拒绝（避免 SplitOff 扣全局后 TryAdd 失败丢物品）。
-            if (carry.CarriedThing != null && !carry.CarriedThing.CanStackWith(item))
-            {
-                return 0;
-            }
-
-            // Boost：使 count 与 failIfStackCountLessThanJobCount 感知全局剩余量（配合 Patch_Toils_Haul_StartCarryThing）。
-            view.BoostCopy(item);
-
-            count = Mathf.Min(count, carry.AvailableStackSpace(item.def));
-            count = Mathf.Min(count, item.stackCount);
-            if (count <= 0)
-            {
-                // 防御：避免 count 为 0 时 SplitOff 抛异常（原版调用方通常已保证 >0，此处兜底）。
-                // 恢复 Boost 前的 stackCount，避免 Boost 状态残留（非 StartCarryThing 路径无外层 finally 恢复）。
-                view.UnboostCopy(item);
-                return 0;
-            }
-            bool selected = Find.Selector.IsSelected(item);
-            Thing splitStack = item.SplitOff(count);
-            int num = carry.innerContainer.TryAdd(splitStack, count, true);
-            if (num > 0 && splitStack != item && TryUpdateTransferablesInvoker != null)
-            {
-                TryUpdateTransferablesInvoker(carry, splitStack);
-            }
-            if (num <= 0)
-            {
-                // 修复 1：回滚兜底——TryAdd 失败（预检未能拦截的边界），把已扣全局的 splitStack 退回。
-                RollbackVaultTake(item, splitStack, view);
-                return num;
-            }
-            // 此时 ExtractNextTargetFromQueue 已把本次目标放入 A/B/C，队列中的后续同类需求
-            // 必须继续保留投影，轮到它们时再独立 Checkout。
-            OuterrealmPatchUtil.ReplaceJobThingReference(pawn.CurJob, item, carry.CarriedThing);
-            // 打包建筑的安装蓝图最初引用查询投影；延迟 Checkout 后在真正拿起的这一刻
-            // 重定向到权威实例，保证手中物、蓝图引用和最终安装产物是同一个对象链。
-            OuterrealmVaultUtil.RedirectBlueprintToActual(item, carry.CarriedThing);
-            item.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(item.Position, pawn.Map));
-            if (reserve)
-            {
-                pawn.Reserve((LocalTargetInfo)carry.CarriedThing, pawn.CurJob);
-            }
-            if (selected)
-            {
-                if (!splitStack.Destroyed)
-                {
-                    Find.Selector.Select(splitStack);
-                }
-                Find.Selector.Select(carry.CarriedThing);
-            }
-            pawn.MapHeld.resourceCounter.UpdateResourceCounts();
-            return num;
-        }
-
-        /// <summary>
-        /// 唯一权威锚点的最终携带边界。锚点在 Reserve 阶段只保留查询身份；Pawn 真正拿取时
-        /// 才解除全局账本并直接加入 carry，不在仓库格生成中间实物。
-        /// </summary>
-        private static int TryStartCarryFromIdentityAnchor(
-            Pawn_CarryTracker carry, OuterrealmSource source, int count, bool reserve)
-        {
-            Pawn pawn = carry.pawn;
-            Thing query = source.QueryThing;
-            if (pawn.Dead || pawn.Downed || query == null || source.Entry == null)
-            {
-                return 0;
-            }
-            if (carry.CarriedThing != null && !carry.CarriedThing.CanStackWith(query))
-            {
-                return 0;
-            }
-
-            count = Mathf.Min(count, carry.AvailableStackSpace(query.def));
-            count = (int)Math.Min((long)count, source.Entry.Count);
-            if (count <= 0)
-            {
-                return 0;
-            }
-
-            IntVec3 pickupPosition = query.Position;
-            Map pickupMap = pawn.Map;
-            bool selected = Find.Selector.IsSelected(query);
-            Thing actual = OuterrealmSourceResolver.Checkout(source, count);
-            if (actual == null || actual.Destroyed || actual.stackCount <= 0)
-            {
-                return 0;
-            }
-
-            // Checkout 已返回精确数量，不应再调用带 count 的 TryAdd；该重载内部还会 SplitOff，
-            // 会让其他 SplitOff 补丁获得一次错误的二次结算机会。
-            int added = actual.stackCount;
-            bool accepted;
-            try
-            {
-                accepted = carry.innerContainer.TryAdd(actual, true);
-            }
-            catch
-            {
-                // 第三方容器通知或其他补丁抛异常时，只回收尚未真正进入任何容器的实物。
-                // 已进入 carry 或已合并销毁表示所有权转移已经发生，不能重复 Deposit。
-                if (!actual.Destroyed && actual.holdingOwner == null
-                    && !actual.Spawned && actual.stackCount > 0)
-                {
-                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual, source.Vault);
-                }
-                throw;
-            }
-            if (!accepted)
-            {
-                if (!actual.Destroyed && actual.stackCount > 0)
-                {
-                    GameComponent_OuterrealmStorage.Instance?.Deposit(actual, source.Vault);
-                }
-                return 0;
-            }
-
-            OuterrealmSourceResolver.ReplaceJobTarget(pawn.CurJob, source, carry.CarriedThing);
-            query.def.soundPickup.PlayOneShot((SoundInfo)new TargetInfo(pickupPosition, pickupMap));
-            if (reserve)
-            {
-                pawn.Reserve((LocalTargetInfo)carry.CarriedThing, pawn.CurJob);
-            }
-            if (selected)
-            {
-                Find.Selector.Select(carry.CarriedThing);
-            }
-            pawn.MapHeld.resourceCounter.UpdateResourceCounts();
-            return added;
-        }
-
-        private static void RollbackVaultTake(Thing item, Thing splitStack, OuterrealmVaultViewThingOwner view)
-        {
-            if (splitStack == null || splitStack.Destroyed)
-            {
-                return;
-            }
-            // SplitOff 投影已由 Patch_Thing_SplitOff 改为返回权威物品。回滚必须把该真实实例
-            // 重新存入全局层，不能再吸收到投影（投影不拥有真实数量/状态）。
-            if (splitStack.holdingOwner != null || splitStack.Spawned)
-            {
-                return;
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            OuterrealmEntry restored = gs != null ? gs.Deposit(splitStack) : null;
-            if (restored != null)
-            {
-                view.EnsureCopyFor(restored);
-            }
-        }
     }
-
     // ── §5.2 #9 配套（修复 3）：Toils_Haul.StartCarryThing 执行期 Boost ──
     // StartCarryThing 的 initAction 在取料前读取 thing.stackCount（=min(全局剩余, stackLimit)）计算
     // count 并做 failIfStackCountLessThanJobCount 检查——执行期未 Boost 会导致"单份需求 > stackLimit"
@@ -3414,108 +3266,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── vault 物品可装载远行队：Dialog_FormCaravan 打开期间提升副本数量 ──
-    // 远行队物品行的可选上限（TransferableOneWay.GetMaximumToTransfer）是对 things 中
-    // 全部实例 stackCount 的动态求和。vault 副本常态 stackCount = min(全局剩余, stackLimit)，
-    // 不提升则玩家最多只能选择 stackLimit（如 75）个——与"无限容量"语义不符，且与
-    // 普通储物建筑（真 Spawn 物品可多堆叠）行为不一致。
-    // 方案：PostOpen 时 BoostMapVaults（副本 stackCount = 全局真实量），使列表构建
-    // （CalculateAndRecacheTransferables → AddItemsToTransferables）与玩家调量期间
-    // MaxCount 等于全局量；PostClose 时 UnboostMapVaults 恢复常态。
-    // 收集阶段不依赖此 Boost（Toils_Haul.StartCarryThing 执行期自行 BoostCopy），
-    // 故 PostClose 立即恢复无碍。Boost 幂等（纯 stackCount 赋值），与其他 Boost 场景
-    // （CountProducts / 选料）嵌套安全。
-    [HarmonyPatch(typeof(Dialog_FormCaravan), "PostOpen")]
-    internal static class Patch_Dialog_FormCaravan_PostOpen
-    {
-        private static readonly FieldInfo MapField = AccessTools.Field(typeof(Dialog_FormCaravan), "map");
-
-        private static void Prefix(Dialog_FormCaravan __instance)
-        {
-            Map map = MapField != null ? MapField.GetValue(__instance) as Map : null;
-            if (map != null)
-            {
-                OuterrealmPatchUtil.BoostMapVaults(map);
-            }
-        }
-    }
-
-    [HarmonyPatch(typeof(Dialog_FormCaravan), "PostClose")]
-    internal static class Patch_Dialog_FormCaravan_PostClose
-    {
-        private static readonly FieldInfo MapField = AccessTools.Field(typeof(Dialog_FormCaravan), "map");
-
-        private static void Postfix(Dialog_FormCaravan __instance)
-        {
-            Map map = MapField != null ? MapField.GetValue(__instance) as Map : null;
-            if (map != null)
-            {
-                OuterrealmPatchUtil.UnboostMapVaults(map);
-            }
-        }
-    }
-
-    // ── vault 远行队收集数量截断修复：TransferableOneWay.MaxCount 感知全局量 ──
-    // 收集阶段 vault 视图副本常态 stackCount = min(全局剩余, stackLimit)（如钢铁 75）。
-    // TransferableOneWay.MaxCount 是对 things 中实例 stackCount 的直接求和；当同一
-    // transferable 同时包含普通地面物品与 vault 副本（或 vault 副本尚未物化）时，
-    // MaxCount 被低估（如地面 75 + vault 副本 75 = 150）。
-    // JobDriver_PrepareCaravan_GatherItems 每放入 inventory 后调用
-    // Transferable.AdjustTo(CountToTransfer - taken)，而 AdjustTo → ClampAmount 按
-    // MaxCount 截断——于是 CountToTransfer 从剩余需求（如 525）被截断为 MaxCount（如 150），
-    // 远行队把"还需搬多少"改小了，收集提前完成，只带走几组。
-    // 修复：MaxCount getter 对 vault 视图副本（holdingOwner = view，伪 Spawned 锚点）用
-    // 全局条目 Count 参与求和，使 MaxCount 反映真实可用量；借出副本（真 Spawned，已从
-    // 视图移出且全局已扣）保持 stackCount 参与，避免重复计算。对话框打开期间视图副本已
-    // Boost（stackCount = 全局量），本 patch 与原行为一致；收集阶段则修正被 stackLimit
-    // 低估的部分。
+    // 同一条目的不同终端保留为取料路线，但可选数量只累计一次；普通地图物独立计入。
+    // 不再在 Dialog_FormCaravan 生命周期内修改投影 stackCount。
     [HarmonyPatch(typeof(TransferableOneWay), "MaxCount", MethodType.Getter)]
     internal static class Patch_TransferableOneWay_MaxCount
     {
-        private static void Postfix(TransferableOneWay __instance, ref int __result)
+        private static bool Prefix(TransferableOneWay __instance, ref int __result)
         {
-            List<Thing> things = __instance.things;
-            if (things == null || things.Count == 0)
-            {
-                return;
-            }
-            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (gs == null)
-            {
-                return;
-            }
-            bool hasVaultCopy = false;
-            long total = 0L;
-            for (int i = 0; i < things.Count; i++)
-            {
-                Thing t = things[i];
-                if (t == null)
-                {
-                    continue;
-                }
-                OuterrealmVaultViewThingOwner view = t.holdingOwner as OuterrealmVaultViewThingOwner;
-                if (view != null)
-                {
-                    hasVaultCopy = true;
-                    OuterrealmEntry e = view.GetEntryOf(t);
-                    if (e != null && e.Count > 0)
-                    {
-                        total += e.Count;
-                    }
-                }
-                else
-                {
-                    total += t.stackCount;
-                }
-            }
-            if (!hasVaultCopy)
-            {
-                return;
-            }
-            __result = total > int.MaxValue ? int.MaxValue : (int)total;
+            if (!OuterrealmTransferQuantities.HasStorage(__instance.things)) return true;
+            __result = OuterrealmTransferQuantities.Maximum(__instance.things);
+            return false;
         }
     }
-
     // ── vault 远行队收集兜底：候选补充（修复"只取一组"后不再拿取） ──
     // 原版 GatherItemsForCaravanUtility.FindThingToHaul 只从 transferable.things（对话框打开时的
     // 静态实例列表）构建 neededItems 再搜索。vault 的借出机制（§v4：Reserve → TryLendCopy）会把

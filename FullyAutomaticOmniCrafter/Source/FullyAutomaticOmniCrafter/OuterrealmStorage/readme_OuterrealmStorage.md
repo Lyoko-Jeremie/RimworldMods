@@ -49,7 +49,7 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 
 - 由 `GameComponent_OuterrealmStorage.MaterializeProjection` 创建，并通过弱表 `MarkProjection` 标记。
 - 类型、def、stuff、品质、耐久、样式、颜色和必要 Comp 信息来自权威物，用于兼容原版及第三方筛选器。
-- 正常数量为 `min(entry.Count, def.stackLimit)`；在选料、远行队等数量感知窗口可临时 Boost，随后必须 Unboost。
+- 正常数量为 `min(entry.Count, def.stackLimit)`；制作、生物塑形舱和运输数量读取不依赖 Boost；尚未迁移的统计/普通 toil 仍有短时 Boost，必须配对恢复。
 - 投影注册到必要的 lister、haul source 和 region 查询结构，但故意不进入 `thingGrid`、渲染、光照和普通点击选择。
 - pseudo-Spawned 是查询兼容手段，不代表它是地图实物。判断投影必须看 `holdingOwner` 或投影标记，不能写 `thing.Spawned` 作为排除条件。
 - `Deposit` 会拒绝任何被标记的投影，即使第三方 Mod 已先将其从视图移除。
@@ -134,8 +134,8 @@ Pawn + Hediff_SubspaceAccess（随身访问）
 Pawn 到达 vault
   → Toils_Haul.StartCarryThing
   → Pawn_CarryTracker.TryStartCarry 通过 OuterrealmSourceResolver 识别来源
-  → 普通投影临时 BoostCopy（仅数量计算窗口）并调用 WithdrawCanonical
-  → 唯一锚点直接调用 Withdraw
+  → 普通投影通过 OuterrealmCarryTransaction 直接 Checkout（不在 carry 内 Boost）
+  → 唯一锚点共用同一搬运事务，通过 Checkout 调用 Withdraw
   → 转移权威原实例/原版拆堆，并扣减 Count
   → 实物进入 Pawn carry
   → 只替换 Job 当前 A/B/C 引用
@@ -169,8 +169,24 @@ Pawn 到达 vault
 - 对失败 Pawn 的同一账单只抑制当前 tick 的重复尝试，下一 tick 重新评估；失败记录使用每局弱键表，
   不阻止其他账单、不修改原版 10 jobs 阈值。开发模式下每账单每 tick 最多一条原因日志。
 
-这套执行期适配目前限定为原版 DoBill 的 B 原料路径；Reload、RefuelAtomic、远行队计数及旧
-`Notify_ItemRemoved → Subtract` 入口仍属于后续兼容阶段，不得宣称已经完成全局取料架构迁移。
+第二阶段首批将逐槽协议扩展到原版 `EnterBiosculpterPod` 的 B 原料队列，只预留 pod，不额外预留制作座位。
+账单重试保护仍只针对带 bill 的制作任务。`Reload`、`RefuelAtomic` 使用全任务递减的 count，尚未接入精确预算。
+
+### 5.3.2 共用搬运和运输数量
+
+- `OuterrealmCarryTransaction` 统一普通投影和唯一锚点的携带事务。直接 Checkout 后调用 bool TryAdd，
+  按 carry 的真实增量返回数量，finally 仅回存无持有者且未 Spawn 的余量；直接 carry 不再 Boost。
+  取用时复核来源权限并扣除其他任务预留，自身原版桥接预留可加回；提交中阻止同条目重入。
+- `OuterrealmTransferQuantities` 对 Entry 计数一次，普通物品按 Thing 计数一次，退休投影计零，
+  支持交易注册表的独立展示投影。总量在加法前饱和至 int.MaxValue，去重集合按线程复用并清空。
+  多终端投影保留为候选路线，不能随终端数量增加可选库存。
+- 删除 Dialog_FormCaravan PostOpen/PostClose 全图 Boost；TransferableOneWay.MaxCount 读取逻辑数量。
+  TransferNoSplit(false,false) 的重量、容量和腐败预估使用同一只读数量快照，不改 stackCount。
+- 即时重组远行队/开发者即时装载使用 TransferableUtility.Transfer 适配，按快照 Checkout 实物，
+  异常或拒收时回存未交付余量；实际交付型 TransferNoSplit（交易、尸体）保留原有专用路径。
+- 普通 StartCarryThing 的短时 Boost、RecipeWorkerCounter.CountProducts 的全图 Boost、
+  `Notify_ItemRemoved → Subtract` 尚未清理；普通任务预留尚未全部迁移为精确预算。
+  详细交付与后续边界见 `../Analysis/DoBillLoop/Stage2-Progress.zh-CN.md`，不得宣称第二阶段全部完成。
 
 ### 5.4 显式提前租约
 
