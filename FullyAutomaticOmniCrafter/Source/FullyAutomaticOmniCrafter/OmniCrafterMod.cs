@@ -43,7 +43,8 @@ namespace FullyAutomaticOmniCrafter
             System.Type[] patchTypes = typeof(OmniCrafterMod).Assembly.GetTypes();
             foreach (System.Type type in patchTypes)
                 if (System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)
-                    && !type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal))
+                    && !type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
+                    && !type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal))
                     HarmonyInstance.CreateClassProcessor(type).Patch();
             Log.Message("[OuterrealmStorage] Core Harmony patches installed.");
             foreach (System.Type type in patchTypes)
@@ -54,6 +55,16 @@ namespace FullyAutomaticOmniCrafter
                 catch (System.Exception error)
                 {
                     Log.Error("[OuterrealmStorage] Optional beam compatibility failed: " + type.FullName + "\n" + error);
+                }
+            }
+            foreach (System.Type type in patchTypes)
+            {
+                if (!type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal)
+                    || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
+                try { HarmonyInstance.CreateClassProcessor(type).Patch(); }
+                catch (System.Exception error)
+                {
+                    Log.Error("[OuterrealmStorage] Optional VEF compatibility failed: " + type.FullName + "\n" + error);
                 }
             }
         }

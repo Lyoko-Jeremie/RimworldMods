@@ -208,7 +208,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         public static bool IsProtectedFromAutomaticDeposit(Thing item)
         {
-            return IsPendingInstall(item);
+            return IsPendingInstall(item) || OuterrealmVEFCompat.IsPendingDestruction(item);
         }
 
         /// <summary>该 Job 是否正在把指定物品自动搬入超维存储。</summary>
