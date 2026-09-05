@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <PersonalTemperature_Enable>Map personal temperature</PersonalTemperature_Enable>
+  <PersonalTemperature_Description>All terminals on this map share targets and enabled states. At least one powered terminal is required.</PersonalTemperature_Description>
+  <PersonalTemperature_Settings>Personal temperature settings</PersonalTemperature_Settings>
+  <PersonalTemperature_Help>All terminals on this map share settings. Apply a target, then enable the pawn. Input is Celsius. One powered terminal is sufficient. Removing terminals preserves map settings.</PersonalTemperature_Help>
+  <PersonalTemperature_Search>Search</PersonalTemperature_Search>
+  <PersonalTemperature_Refresh>Refresh pawns</PersonalTemperature_Refresh>
+  <PersonalTemperature_Status>Showing {0} / {1} pawns · Map control: {2}</PersonalTemperature_Status>
+  <PersonalTemperature_Online>Online</PersonalTemperature_Online>
+  <PersonalTemperature_Offline>Off or unpowered</PersonalTemperature_Offline>
+  <PersonalTemperature_Pawn>Pawn / comfort range</PersonalTemperature_Pawn>
+  <PersonalTemperature_Current>Perceived</PersonalTemperature_Current>
+  <PersonalTemperature_On>Enabled</PersonalTemperature_On>
+  <PersonalTemperature_Input>Target (°C)</PersonalTemperature_Input>
+  <PersonalTemperature_Apply>Apply</PersonalTemperature_Apply>
+  <PersonalTemperature_Comfort>Comfort midpoint</PersonalTemperature_Comfort>
+  <PersonalTemperature_Reset>Clear setting</PersonalTemperature_Reset>
+  <PersonalTemperature_Invalid>Enter a finite value from -273.15 to 10000.</PersonalTemperature_Invalid>
+  <PersonalTemperature_Target>Saved target: {0}</PersonalTemperature_Target>
+  <PersonalTemperature_Away>Off this map</PersonalTemperature_Away>
+  <PersonalTemperature_Empty>No pawns match these filters.</PersonalTemperature_Empty>
+  <PersonalTemperature_Filter_All>All categories</PersonalTemperature_Filter_All>
+  <PersonalTemperature_Filter_Colonists>Colonists</PersonalTemperature_Filter_Colonists>
+  <PersonalTemperature_Filter_Prisoners>Prisoners</PersonalTemperature_Filter_Prisoners>
+  <PersonalTemperature_Filter_Slaves>Slaves</PersonalTemperature_Filter_Slaves>
+  <PersonalTemperature_Filter_Animals>Animals</PersonalTemperature_Filter_Animals>
+  <PersonalTemperature_Filter_Mechanoids>Mechanoids</PersonalTemperature_Filter_Mechanoids>
+  <PersonalTemperature_Filter_Other>Other pawns</PersonalTemperature_Filter_Other>
+  <PersonalTemperature_State_All>All states</PersonalTemperature_State_All>
+  <PersonalTemperature_State_Enabled>Enabled</PersonalTemperature_State_Enabled>
+  <PersonalTemperature_State_Disabled>Disabled</PersonalTemperature_State_Disabled>
+</LanguageData>

@@ -372,6 +372,9 @@
     <Compile Include="CompAutoRoofer.cs" />
     <Compile Include="CompAutoSmoother.cs" />
     <Compile Include="CompBiosphere.cs" />
+    <Compile Include="CompPersonalTemperature.cs" />
+    <Compile Include="Dialog_PersonalTemperature.cs" />
+    <Compile Include="Patch_PersonalTemperature.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="CompJoyToleranceCleanWave.cs" />

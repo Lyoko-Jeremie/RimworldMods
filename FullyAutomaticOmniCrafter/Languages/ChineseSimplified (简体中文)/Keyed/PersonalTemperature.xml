@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <PersonalTemperature_Enable>地图个人温控</PersonalTemperature_Enable>
+  <PersonalTemperature_Description>本地图所有终端共用目标温度和启用状态。至少一台终端供电即可生效。</PersonalTemperature_Description>
+  <PersonalTemperature_Settings>个人温度管理</PersonalTemperature_Settings>
+  <PersonalTemperature_Help>本地图所有终端共用设置。先应用温度，再勾选启用；取消勾选保留目标。输入单位为摄氏度。至少一台终端供电即可生效，拆除终端不会删除地图设置。</PersonalTemperature_Help>
+  <PersonalTemperature_Search>搜索</PersonalTemperature_Search>
+  <PersonalTemperature_Refresh>刷新角色列表</PersonalTemperature_Refresh>
+  <PersonalTemperature_Status>显示 {0} / {1} 个角色 · 地图温控：{2}</PersonalTemperature_Status>
+  <PersonalTemperature_Online>运行中</PersonalTemperature_Online>
+  <PersonalTemperature_Offline>已关闭或未供电</PersonalTemperature_Offline>
+  <PersonalTemperature_Pawn>角色 / 舒适温区</PersonalTemperature_Pawn>
+  <PersonalTemperature_Current>当前体感</PersonalTemperature_Current>
+  <PersonalTemperature_On>启用</PersonalTemperature_On>
+  <PersonalTemperature_Input>目标温度（°C）</PersonalTemperature_Input>
+  <PersonalTemperature_Apply>应用</PersonalTemperature_Apply>
+  <PersonalTemperature_Comfort>舒适中值</PersonalTemperature_Comfort>
+  <PersonalTemperature_Reset>清除设置</PersonalTemperature_Reset>
+  <PersonalTemperature_Invalid>请输入 -273.15 至 10000 的有效数值。</PersonalTemperature_Invalid>
+  <PersonalTemperature_Target>已保存目标：{0}</PersonalTemperature_Target>
+  <PersonalTemperature_Away>不在本地图</PersonalTemperature_Away>
+  <PersonalTemperature_Empty>没有符合筛选条件的角色。</PersonalTemperature_Empty>
+  <PersonalTemperature_Filter_All>所有身份</PersonalTemperature_Filter_All>
+  <PersonalTemperature_Filter_Colonists>殖民者</PersonalTemperature_Filter_Colonists>
+  <PersonalTemperature_Filter_Prisoners>囚犯</PersonalTemperature_Filter_Prisoners>
+  <PersonalTemperature_Filter_Slaves>奴隶</PersonalTemperature_Filter_Slaves>
+  <PersonalTemperature_Filter_Animals>动物</PersonalTemperature_Filter_Animals>
+  <PersonalTemperature_Filter_Mechanoids>机械族</PersonalTemperature_Filter_Mechanoids>
+  <PersonalTemperature_Filter_Other>其他角色</PersonalTemperature_Filter_Other>
+  <PersonalTemperature_State_All>所有启用状态</PersonalTemperature_State_All>
+  <PersonalTemperature_State_Enabled>已启用</PersonalTemperature_State_Enabled>
+  <PersonalTemperature_State_Disabled>未启用</PersonalTemperature_State_Disabled>
+</LanguageData>

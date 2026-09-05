@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="BuildingBase">
+    <defName>OmniPersonalTemperatureController</defName>
+    <label>personal temperature controller</label>
+    <description>Sets individual perceived temperatures for selected pawns across this map. Requires power. Configure and enable each pawn separately.</description>
+    <thingClass>Building</thingClass>
+    <category>Building</category>
+    <tickerType>Normal</tickerType>
+    <designationCategory>OmniCrafter_Category</designationCategory>
+    <graphicData>
+      <texPath>Things/Building/Production/OmniPersonalTemperatureController</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <shaderType>CutoutComplex</shaderType>
+      <color>(0.55,0.85,1)</color>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <size>(1,1)</size>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>1</pathCost>
+    <fillPercent>0.5</fillPercent>
+    <rotatable>false</rotatable>
+    <selectable>true</selectable>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <thingCategories><li>BuildingsProduction</li></thingCategories>
+    <costList><Steel>1</Steel></costList>
+    <statBases>
+      <Mass>10</Mass>
+      <MaxHitPoints>999999999</MaxHitPoints>
+      <WorkToBuild>1</WorkToBuild>
+      <Flammability>0</Flammability>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>100</basePowerConsumption>
+      </li>
+      <li Class="FullyAutomaticOmniCrafter.CompProperties_PersonalTemperature" />
+    </comps>
+  </ThingDef>
+</Defs>
+
