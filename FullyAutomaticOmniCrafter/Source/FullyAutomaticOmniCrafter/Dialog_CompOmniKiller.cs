@@ -214,8 +214,15 @@ namespace FullyAutomaticOmniCrafter
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x, rect.y, rect.width, 30f), "OmniKiller_Candidates".Translate());
             Text.Font = GameFont.Small;
-            
-            Rect listRect = new Rect(rect.x, rect.y + 35f, rect.width, rect.height - 35f);
+
+            Rect addAllRect = new Rect(rect.x, rect.y + 35f, rect.width, 30f);
+            if (Widgets.ButtonText(addAllRect, "OmniKiller_AddAllCandidates".Translate(), active: candidates.Count > 0))
+            {
+                executionList.AddRange(candidates);
+                UpdateCandidates();
+            }
+
+            Rect listRect = new Rect(rect.x, rect.y + 70f, rect.width, rect.height - 70f);
             Widgets.DrawMenuSection(listRect);
             
             Rect viewRect = new Rect(0, 0, listRect.width - 16f, candidates.Count * 30f);

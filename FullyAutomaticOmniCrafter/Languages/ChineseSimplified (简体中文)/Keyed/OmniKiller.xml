@@ -15,6 +15,7 @@
   <OmniKiller_Refresh>刷新</OmniKiller_Refresh>
 
   <OmniKiller_Candidates>候选列表 (双击添加)</OmniKiller_Candidates>
+  <OmniKiller_AddAllCandidates>全部加入</OmniKiller_AddAllCandidates>
   <OmniKiller_ExecutionList>待执行列表 (双击移除)</OmniKiller_ExecutionList>
   <OmniKiller_Actions>批量操作</OmniKiller_Actions>
 
