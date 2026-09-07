@@ -379,6 +379,7 @@
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="CompJoyToleranceCleanWave.cs" />
     <Compile Include="CompManualEventTrigger.cs" />
+    <Compile Include="CompWorldConditionController.cs" />
     <Compile Include="CompOmniKiller.cs" />
     <Compile Include="OmniMechRepairField.cs" />
     <Compile Include="CompOmniPowerBattery.cs" />
