@@ -15,17 +15,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private const string PatchId = "Jeremie.Fully.Automatic.OmniCrafter.BeamOperator";
         private const int CandidateWindow = 64;
         private delegate bool FindDestination(object op, Thing thing, HashSet<IntVec3> excluded, int owner, out IntVec3 destination);
+        private delegate bool CanTransfer(object op, Thing thing, int owner);
         private static FindDestination findDestination;
+        private static CanTransfer canTransfer;
         private static Func<object, Map> mapOf;
         private static Func<object, Pawn> pawnOf;
         private static Func<object, int> ownerOf;
         private static Func<object, Thing> thingOf, containerOf;
+        private static Func<object, IntVec3> destinationOf;
         private static Func<object, int> countOf;
         private static Func<object, bool> stripOf;
         private static Action<object, int> setCount;
         private static Func<object, IList> transfersOf;
         private static Func<IntVec3, object> newBatch;
         private static Func<Thing, IntVec3, IntVec3, object> newTransfer;
+        private static Func<Thing, IntVec3, Thing, int, object> newContainerTransfer;
         private static Action<object, int> releaseClaim;
         private static volatile bool enabled;
         internal static bool IsInstalled => enabled;
@@ -111,9 +115,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 containerOf = Getter<Thing>(transfer, "destinationContainer", true);
                 countOf = Getter<int>(transfer, "count", true);
                 stripOf = Getter<bool>(transfer, "isStripJob", true);
+                destinationOf = Getter<IntVec3>(transfer, "destination", true);
                 setCount = Setter<int>(transfer, "count");
                 transfersOf = Getter<IList>(batch, "transfers", true);
                 findDestination = Bind<FindDestination>(destination);
+                canTransfer = Bind<CanTransfer>(candidate);
                 releaseClaim = Bind<Action<object, int>>(release);
                 ParameterExpression cell = Expression.Parameter(typeof(IntVec3), "cell");
                 newBatch = Expression.Lambda<Func<IntVec3, object>>(Expression.Convert(
@@ -122,6 +128,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 ParameterExpression dest = Expression.Parameter(typeof(IntVec3), "destination");
                 newTransfer = Expression.Lambda<Func<Thing, IntVec3, IntVec3, object>>(Expression.Convert(
                     Expression.New(transfer.GetConstructor(new[] { typeof(Thing), typeof(IntVec3), typeof(IntVec3) }), item, cell, dest), typeof(object)), item, cell, dest).Compile();
+                ParameterExpression container = Expression.Parameter(typeof(Thing), "container");
+                ParameterExpression count = Expression.Parameter(typeof(int), "count");
+                ConstructorInfo containerConstructor = transfer.GetConstructor(new[] { typeof(Thing), typeof(IntVec3), typeof(Thing), typeof(int) })
+                    ?? throw new MissingMethodException(transfer.FullName, ".ctor(Thing, IntVec3, Thing, int)");
+                newContainerTransfer = Expression.Lambda<Func<Thing, IntVec3, Thing, int, object>>(Expression.Convert(
+                    Expression.New(containerConstructor, item, cell, container, count), typeof(object)), item, cell, container, count).Compile();
 
                 Patch(harmony, candidate, "CandidatePrefix", null, "CandidateFinalizer");
                 Patch(harmony, destination, "DestinationPrefix", null, "DestinationFinalizer");
@@ -259,18 +271,55 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Map map = mapOf(op);
             if (map == null || Storage?.HasVaultOnMap(map) != true) return;
             foreach (Thing thing in map.listerHaulables.ThingsPotentiallyNeedingHauling())
-                if (IsStored(thing) && findDestination(op, thing, null, ownerOf(op), out IntVec3 ignored))
+            {
+                if (IsStored(thing))
+                {
+                    if (findDestination(op, thing, null, ownerOf(op), out IntVec3 ignored))
+                    { __result = true; return; }
+                }
+                else if (canTransfer(op, thing, ownerOf(op)) && TryFindVaultDestination(map, thing, out Building_OuterrealmVault ignored))
                 { __result = true; return; }
+            }
         }
 
         private static void BatchPostfix(object op, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey, object[] __args, ref bool __result)
         {
             if (!enabled || op == null) return;
             Map map = mapOf(op);
-            Building_OuterrealmVault vault = BeamManipulatorCompat.VaultAtCell(cell, map);
-            if (vault?.view == null || !vault.HaulSourceEnabled) return;
             object batch = __args[4];
             IList transfers = batch == null ? null : transfersOf(batch);
+
+            // 原光束已将 vault 当普通存储格选中：把格子目的地改写为容器目的地，
+            // 使 FinishTransfer 走 vault.view.TryAdd → Deposit，而不是先落地再等待吸收。
+            if (transfers != null)
+            {
+                for (int i = 0; i < transfers.Count; i++)
+                {
+                    object transfer = transfers[i];
+                    Building_OuterrealmVault destinationVault = BeamManipulatorCompat.VaultAtCell(destinationOf(transfer), map);
+                    Thing thing = thingOf(transfer);
+                    if (destinationVault != null && CanDepositInto(destinationVault, map, thing))
+                        transfers[i] = newContainerTransfer(thing, cell, destinationVault, countOf(transfer));
+                }
+            }
+
+            Building_OuterrealmVault vault = BeamManipulatorCompat.VaultAtCell(cell, map);
+            if (vault?.view == null || !vault.HaulSourceEnabled)
+            {
+                // 原格子搜索未识别 hybrid storage 时，直接为地面物品补建容器传输。
+                List<Thing> things = cell.GetThingList(map);
+                for (int i = 0; i < things.Count; i++)
+                {
+                    Thing thing = things[i];
+                    if (IsStored(thing) || ContainsThing(transfers, thing) || !canTransfer(op, thing, ownerKey)
+                        || !TryFindVaultDestination(map, thing, out Building_OuterrealmVault destinationVault))
+                        continue;
+                    if (batch == null) { batch = newBatch(cell); transfers = transfersOf(batch); }
+                    transfers.Add(newContainerTransfer(thing, cell, destinationVault, thing.stackCount));
+                }
+                if (transfers != null && transfers.Count > 0) { __args[4] = batch; __result = true; }
+                return;
+            }
             int originalCount = transfers?.Count ?? 0;
             OuterrealmBeamCursor cursor = Storage.Runtime.BeamCursor(vault, cell);
             List<Thing> copies = vault.view.InnerListForReading;
@@ -295,6 +344,44 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 cursor.Identity = (identityStart + identityBudget) % registrations.Count;
             }
             if (transfers != null && transfers.Count > 0) { __args[4] = batch; __result = true; }
+        }
+
+        private static bool ContainsThing(IList transfers, Thing thing)
+        {
+            if (transfers == null) return false;
+            for (int i = 0; i < transfers.Count; i++)
+                if (thingOf(transfers[i]) == thing) return true;
+            return false;
+        }
+
+        private static bool CanDepositInto(Building_OuterrealmVault vault, Map map, Thing thing)
+            => vault != null && vault.Map == map && vault.view != null && vault.HaulDestinationEnabled
+                && thing != null && !OuterrealmVaultUtil.IsProtectedFromAutomaticDeposit(thing) && vault.Accepts(thing);
+
+        private static bool TryFindVaultDestination(Map map, Thing thing, out Building_OuterrealmVault destination)
+        {
+            destination = null;
+            GameComponent_OuterrealmStorage storage = Storage;
+            if (map == null || thing == null || storage == null) return false;
+            StoragePriority current = StoreUtility.CurrentStoragePriorityOf(thing);
+            StoragePriority bestPriority = StoragePriority.Unstored;
+            int bestDistance = int.MaxValue;
+            List<Building_OuterrealmVault> vaults = storage.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (!CanDepositInto(vault, map, thing)) continue;
+                StoragePriority priority = vault.GetStoreSettings().Priority;
+                if (current != StoragePriority.Unstored && priority <= current) continue;
+                int distance = (vault.Position - thing.Position).LengthHorizontalSquared;
+                if (destination == null || priority > bestPriority || priority == bestPriority && distance < bestDistance)
+                {
+                    destination = vault;
+                    bestPriority = priority;
+                    bestDistance = distance;
+                }
+            }
+            return destination != null;
         }
 
         private static void AddCandidate(Thing thing, object op, IntVec3 cell, HashSet<IntVec3> excluded, int owner, int originalCount,
