@@ -2634,7 +2634,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
     // ── 商队交易去重：副本既在 listerThings.AllThings（半 Spawned 投影）又在 IHaulSource 循环里 ──
     // Pawn_TraderTracker.ColonyThingsWillingToBuy 会因此把同一副本 yield 两次 → 交易数量翻倍。
-    // Postfix 包装迭代器按实例去重（与 TradeUtility.AllLaunchableThingsForTrade 原版 HashSet 去重一致）。
+    // Postfix 对普通物按实例去重，对多个终端的投影按全局条目去重。
     [HarmonyPatch(typeof(Pawn_TraderTracker), "ColonyThingsWillingToBuy")]
     internal static class Patch_Pawn_TraderTracker_ColonyThingsWillingToBuy
     {
@@ -2647,12 +2647,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static IEnumerable<Thing> Deduplicate(IEnumerable<Thing> original)
         {
             HashSet<Thing> seen = new HashSet<Thing>();
+            HashSet<OuterrealmEntry> seenEntries = new HashSet<OuterrealmEntry>();
             foreach (Thing t in original)
             {
                 // 权威身份锚点仍属于全局账本，交易成交不走 reservation/checkout，不能把它
                 // 当作地面实物直接交给商人；玩家可先弹出后按原版交易。
                 if (t != null && !OuterrealmIdentityRouting.IsAnchor(t) && seen.Add(t))
                 {
+                    OuterrealmSource source;
+                    if (OuterrealmSourceResolver.TryResolve(t, out source))
+                    {
+                        if (source.Vault != null && (source.Vault.NoWithdraw || !source.Vault.CanShow(t))) continue;
+                        if (!seenEntries.Add(source.Entry)) continue;
+                    }
                     yield return t;
                 }
             }

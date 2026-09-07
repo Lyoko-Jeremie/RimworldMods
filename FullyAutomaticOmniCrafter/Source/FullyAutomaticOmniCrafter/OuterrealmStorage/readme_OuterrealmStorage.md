@@ -330,6 +330,12 @@ Pawn 到达 vault
 - 交易/远行队：投影可能同时经 lister 与 haul source 被枚举，必须按实例去重；最终收集仍走 TryStartCarry Checkout。
 - 轨道贸易：默认只暴露通电信标覆盖终端中的普通投影与唯一物品当前锚点。管理器的“无需信标向轨道贸易暴露全部库存”是随存档保存的全局规则；开启后直接遍历全局条目，普通物品使用无地图临时交易投影，唯一物品使用权威实例。两者都必须在成交 `SplitOff` 边界按临时来源映射调用 `Withdraw`，禁止把普通权威 `Proto` 直接交给交易系统。
 - 交易临时来源身份只能由一次成交 `SplitOff` 消费；唯一物品的权威实例在任意正式 `Checkout` 前必须显式注销残留映射。不能仅依赖弱表 GC，因为唯一物品仍被全局条目强引用，取消交易后陈旧映射可能泄漏到普通携带、穿戴或装备路径。
+- 商队候选按全局条目去重；`Tradeable.CountHeldBy(Colony)` 使用只读逻辑数量，商人侧保持原版。
+  `TradeDeal.TryExecute` 确认时同步白银需求，按全交易条目预算预检，并先备齐出售的超维实物。
+  实物及普通地面物排在剩余查询投影前，再执行原版结算和赠送，禁止放大建筑投影或直接交付投影。
+  部分 Withdraw 可继续备货，备不齐则在任何结算前取消。Finalizer 仅回存未 Spawn、无 holder 的未交付余量，
+  并立即恢复回存条目的视图、重建交易清单；取消/失败会清空本次选择。第三方在已经交付后抛异常时，
+  不强行逆转已交付物品或原版货币结算，但绝不把已交付库存再次回存。
 - 可发射资源支付：`ColonyHasEnoughSilver`、派系费用等 `trader == null` 的查询按 `OuterrealmEntry` 去重并暴露完整全局数量；`LaunchThingsOfType` 使用完全相同的可见条目集合补足地图实体资源。支付先完整预检，再分堆 Checkout 超维部分；任一 Checkout 失败先回存暂存实物，成功后才销毁地图与超维资源。真实 `TradeShip` 不走该支付补丁。
 - 财富：是否排除全局库存由 `OmniCrafterSettings.vaultExcludeFromWealth` 控制，不能通过伪造 Count 解决财富问题。
 
@@ -355,6 +361,7 @@ Pawn 到达 vault
 | `OuterrealmBillIngredientSelector.cs` | 含超维候选的制作选料，按条目预算防止跨终端和跨原料槽重复分配 |
 | `OuterrealmBillJobUtility.cs` | DoBill 预留、出队、搬运、随身提前取出、回滚与读档执行边界 |
 | `OuterrealmTradeSourceRegistry.cs` | 无信标轨道贸易的临时来源到权威条目弱映射 |
+| `Patch_OuterrealmTrade.cs` | 交易总量、成交前实物备货及未交付余量回存 |
 | `OuterrealmLaunchableResourceUtility.cs` | 可发射资源来源去重、余额投影与事务性费用支付 |
 | `JobDriver_VaultDepositFromGround.cs` | 授权 Pawn 手动存入 |
 | `JobDriver_VaultDeliverResources.cs` | 从 vault 向蓝图/Frame 配送材料 |

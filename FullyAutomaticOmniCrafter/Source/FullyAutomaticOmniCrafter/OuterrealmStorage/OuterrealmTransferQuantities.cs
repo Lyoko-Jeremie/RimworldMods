@@ -28,7 +28,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             for (int i = 0; i < things.Count; i++)
             {
                 OuterrealmSource source;
-                if (OuterrealmVaultUtil.IsProjection(things[i]) || OuterrealmSourceResolver.TryResolve(things[i], out source)) return true;
+                OuterrealmEntry tradeEntry;
+                if (OuterrealmVaultUtil.IsProjection(things[i])
+                    || OuterrealmTradeSourceRegistry.TryGetEntry(things[i], out tradeEntry)
+                    || OuterrealmSourceResolver.TryResolve(things[i], out source)) return true;
             }
             return false;
         }
