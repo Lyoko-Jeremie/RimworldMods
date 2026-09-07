@@ -47,6 +47,7 @@ namespace FullyAutomaticOmniCrafter
                     && !type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal))
                     HarmonyInstance.CreateClassProcessor(type).Patch();
             Log.Message("[OuterrealmStorage] Core Harmony patches installed.");
+            OuterrealmStorage.OuterrealmBeamAdapter.Install();
             foreach (System.Type type in patchTypes)
             {
                 if (!type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)

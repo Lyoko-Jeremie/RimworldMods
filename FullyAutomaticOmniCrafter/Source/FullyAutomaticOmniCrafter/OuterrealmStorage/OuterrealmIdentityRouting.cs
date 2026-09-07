@@ -696,6 +696,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
+            // 光束尚未抓取时维持当前锚点，避免其他查询或归仓把目标迁到另一地图。
+            if (CanServe(state.CurrentVault, entry)
+                && GameComponent_OuterrealmStorage.Instance?.Runtime.Beams.Reserved(entry) > 0) return;
             int now = Find.TickManager?.TicksGame ?? 0;
             if (state.SoftClaimant != null && now < state.SoftUntilTick && CanServe(state.CurrentVault, entry))
             {
@@ -767,6 +770,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             Thing thing = entry?.Proto;
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (entry != null && gs?.Runtime.Beams.Reserved(entry) > 0) return true;
             OuterrealmRuntimeRegistration registration;
             Map map = gs != null && thing != null
                 && gs.Runtime.TryGetRegistration(thing, out registration)

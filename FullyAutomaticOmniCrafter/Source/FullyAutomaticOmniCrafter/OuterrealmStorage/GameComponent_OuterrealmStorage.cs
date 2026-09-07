@@ -145,7 +145,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public GameComponent_OuterrealmStorage(Game game)
         {
             ownerGame = game;
-            Runtime = new OuterrealmStorageRuntimeState(game);
+            Runtime = new OuterrealmStorageRuntimeState(game, NotifyReservationChanged);
         }
 
         public override void LoadedGame()
@@ -1112,10 +1112,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return 0L;
             }
             // Checkout 的 Comp/容器回调可能重入选料；提交过程中不暴露暂时释放的数量。
-            if (Runtime.Bills.IsTransferring(entry)) return entry.Count;
+            if (Runtime.Bills.IsTransferring(entry) || Runtime.Beams.IsExtracting(entry)) return entry.Count;
             EnsureReservedTotals();
             long reserved;
-            return reservedTotals.TryGetValue(entry, out reserved) ? reserved : 0L;
+            return (reservedTotals.TryGetValue(entry, out reserved) ? reserved : 0L)
+                + Runtime.Beams.Reserved(entry);
         }
 
         /// <summary>预留版本变化后仅重建一次全局缓存，避免每座仓分别扫描同一批 reservation。</summary>
@@ -1141,11 +1142,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         if (Runtime.Bills.IsBridge(reservation.Job, thing)) continue;
                         OuterrealmVaultViewThingOwner view =
                             thing?.holdingOwner as OuterrealmVaultViewThingOwner;
-                        if (view == null)
-                        {
-                            continue;
-                        }
-                        OuterrealmEntry reservedEntry = view.GetEntryOf(thing);
+                        OuterrealmEntry reservedEntry = view?.GetEntryOf(thing);
+                        // 唯一锚点没有 view holder，但它的普通 Pawn 预留也必须保护全局库存。
+                        if (reservedEntry == null && OuterrealmIdentityRouting.IsAnchor(thing))
+                            TryGetCanonicalEntry(thing, out reservedEntry);
                         if (reservedEntry == null)
                         {
                             continue;

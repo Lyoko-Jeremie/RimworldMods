@@ -67,13 +67,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static readonly ConstructorInfo BeamTransferCtor = BeamTransferType == null ? null :
             AccessTools.Constructor(BeamTransferType, new[] { typeof(Thing), typeof(IntVec3), typeof(IntVec3) });
         // 种子、注入、最终 Checkout 是一个协议，缺任何一环都不能先借出实物。
-        internal static readonly bool LegacySourceProtocolSupported = TryBuildBatchFromCellMethod != null
+        internal static readonly bool LegacySourceProtocolSupported = AccessTools.TypeByName("ManipulatorBeam.IBeamOperator") == null
+            && TryBuildBatchFromCellMethod != null
             && TryFindBestStorageCellMethod != null && HasAnyStorageTransferFromCellMethod != null
             && LiftThingForTransferMethod != null && BeamTransferThingField?.FieldType == typeof(Thing)
             && BeamTransferCountField?.FieldType == typeof(int) && BeamHaulBatchTransfersField != null && BeamTransferCtor != null;
         static BeamManipulatorCompat()
         {
-            if (BeamManipulatorUtilityType != null && !LegacySourceProtocolSupported)
+            if (BeamManipulatorUtilityType != null && !LegacySourceProtocolSupported
+                && AccessTools.TypeByName("ManipulatorBeam.IBeamOperator") == null)
                 Log.Warning("[OuterrealmStorage] ManipulatorBeam source protocol changed; legacy vault-source integration skipped. Core storage protection remains enabled.");
         }
         /// <summary>该格是否为某 vault 的存储格；是则返回 vault，否则 null（O(1) slotGroup 查询）。</summary>
@@ -489,7 +491,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     internal static class Patch_Beam_IsBeamStorageGroupAllowed
     {
         // 未安装牵引光束或方法签名变化时为 null → Prepare 返回 false，整组 patch 跳过
-        static bool Prepare() => BeamManipulatorCompat.IsBeamStorageGroupAllowedMethod != null;
+        static bool Prepare() => !OuterrealmBeamAdapter.IsInstalled && BeamManipulatorCompat.IsBeamStorageGroupAllowedMethod != null;
 
         static MethodBase TargetMethod() => BeamManipulatorCompat.IsBeamStorageGroupAllowedMethod;
 
@@ -500,7 +502,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return;
             }
             // vault 关闭"允许存入"（noDeposit）：该存储组对牵引光束不再可作目的地
-            if (group.parent is Building_OuterrealmVault vault && vault.NoDeposit)
+            if (group.parent is Building_OuterrealmVault vault && !vault.HaulDestinationEnabled)
             {
                 __result = false;
             }

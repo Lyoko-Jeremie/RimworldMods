@@ -380,6 +380,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 if (routedAnchor)
                 {
+                    if (OuterrealmBeamAdapter.HasForeignReservation(claimant, t, canonicalEntry))
+                    {
+                        __result = false;
+                        return false;
+                    }
                     // 唯一物品锚点的实际堆叠上限为 1，不需要覆盖原版数量检查。
                     // 必须让原版继续检查 maxPawns、已有 reserver、reservation layer 与
                     // physical interaction reservation；否则多个 Pawn 会同时取得同一物品的任务。
@@ -411,6 +416,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return true;
             }
             long available = view.AvailableForReserve(t);
+            available = OuterrealmBeamAdapter.ReservationAvailable(claimant, t, available);
+            // 光束候选只需确认存在可取数量，入队时再按目的地需求固化数量。
+            req = OuterrealmBeamAdapter.ReservationRequest(claimant, t, req, available);
+            if (req <= 0) { __result = false; return false; }
             OuterrealmBillResourcePlan billPlan;
             if (OuterrealmBillJobUtility.Ledger?.TryGet(claimant?.CurJob, out billPlan) == true)
             {

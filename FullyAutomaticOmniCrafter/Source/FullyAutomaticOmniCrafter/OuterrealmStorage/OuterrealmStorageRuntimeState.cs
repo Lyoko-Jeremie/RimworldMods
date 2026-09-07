@@ -50,6 +50,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public int LastProcessedTick = int.MinValue;
     }
 
+    internal sealed class OuterrealmBeamCursor
+    {
+        public int Projection;
+        public int Identity;
+    }
+
     internal sealed class OuterrealmIdentityRuntimeState
     {
         internal const int LeaseWheelSize = 64;
@@ -105,6 +111,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             new Dictionary<Thing, OuterrealmRuntimeRegistration>();
         private readonly Dictionary<Map, HashSet<OuterrealmRuntimeRegistration>> registrationsByMap =
             new Dictionary<Map, HashSet<OuterrealmRuntimeRegistration>>();
+        private readonly Dictionary<Building_OuterrealmVault, HashSet<OuterrealmRuntimeRegistration>> registrationsByVault =
+            new Dictionary<Building_OuterrealmVault, HashSet<OuterrealmRuntimeRegistration>>();
+        private readonly Dictionary<Building_OuterrealmVault, Dictionary<IntVec3, OuterrealmBeamCursor>> beamCursors =
+            new Dictionary<Building_OuterrealmVault, Dictionary<IntVec3, OuterrealmBeamCursor>>();
         private readonly Dictionary<Building_OuterrealmVault, Map> vaultMaps =
             new Dictionary<Building_OuterrealmVault, Map>();
         private readonly List<OuterrealmRuntimeRegistration> saveSnapshot =
@@ -116,12 +126,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public readonly OuterrealmIdentityRuntimeState Identity = new OuterrealmIdentityRuntimeState();
         public readonly OuterrealmSubspaceRuntimeState Subspace = new OuterrealmSubspaceRuntimeState();
         public readonly OuterrealmBillResourceLedger Bills = new OuterrealmBillResourceLedger();
+        public readonly OuterrealmBeamLedger Beams;
 
         public bool SaveIsolationActive => saveIsolationDepth > 0;
 
-        public OuterrealmStorageRuntimeState(Game ownerGame)
+        public OuterrealmStorageRuntimeState(Game ownerGame, Action reservationChanged = null)
         {
             this.ownerGame = ownerGame;
+            Beams = new OuterrealmBeamLedger(reservationChanged, OuterrealmIdentityRouting.NotifyReservationReleased);
         }
 
         public void TrackVault(Building_OuterrealmVault vault, Map map)
@@ -136,6 +148,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             if (vault != null)
             {
+                Beams.ForgetVault(vault);
+                beamCursors.Remove(vault);
                 vaultMaps.Remove(vault);
             }
         }
@@ -204,7 +218,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 registration = new OuterrealmRuntimeRegistration { Thing = thing };
                 registrationsByThing.Add(thing, registration);
             }
-            else if (registration.RegisteredMap != null && registration.RegisteredMap != map)
+            else if (registration.RegisteredMap != map || registration.Vault != vault || registration.Kind != kind)
             {
                 RemoveFromMapIndex(registration);
             }
@@ -222,6 +236,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 registrationsByMap.Add(map, set);
             }
             set.Add(registration);
+            if (vault != null && kind == OuterrealmRuntimeRegistrationKind.IdentityAnchor)
+            {
+                if (!registrationsByVault.TryGetValue(vault, out HashSet<OuterrealmRuntimeRegistration> vaultSet))
+                    registrationsByVault.Add(vault, vaultSet = new HashSet<OuterrealmRuntimeRegistration>());
+                vaultSet.Add(registration);
+            }
+        }
+
+        // 光束按仓查询唯一锚点，不在每次扫描时分配快照或遍历全局条目。
+        public HashSet<OuterrealmRuntimeRegistration> BeamRegistrations(Building_OuterrealmVault vault)
+            => registrationsByVault.TryGetValue(vault, out HashSet<OuterrealmRuntimeRegistration> set) ? set : null;
+
+        public OuterrealmBeamCursor BeamCursor(Building_OuterrealmVault vault, IntVec3 cell)
+        {
+            if (!beamCursors.TryGetValue(vault, out Dictionary<IntVec3, OuterrealmBeamCursor> cells))
+                beamCursors.Add(vault, cells = new Dictionary<IntVec3, OuterrealmBeamCursor>());
+            if (!cells.TryGetValue(cell, out OuterrealmBeamCursor cursor))
+                cells.Add(cell, cursor = new OuterrealmBeamCursor());
+            return cursor;
         }
 
         public bool TryGetRegistration(Thing thing, out OuterrealmRuntimeRegistration registration)
@@ -281,6 +314,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         public void ForgetMap(Map map)
         {
+            Beams.ForgetMap(map);
             HashSet<OuterrealmRuntimeRegistration> set;
             if (map != null && registrationsByMap.TryGetValue(map, out set))
             {
@@ -306,6 +340,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             List<Building_OuterrealmVault> removedVaults = VaultsOnMapSnapshot(map);
             for (int i = 0; i < removedVaults.Count; i++)
             {
+                registrationsByVault.Remove(removedVaults[i]);
+                beamCursors.Remove(removedVaults[i]);
                 vaultMaps.Remove(removedVaults[i]);
             }
             demandCursors.Remove(map);
@@ -443,6 +479,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private void RemoveFromMapIndex(OuterrealmRuntimeRegistration registration)
         {
+            if (registration?.Vault != null && registrationsByVault.TryGetValue(registration.Vault, out HashSet<OuterrealmRuntimeRegistration> vaultSet))
+            {
+                vaultSet.Remove(registration);
+                if (vaultSet.Count == 0) registrationsByVault.Remove(registration.Vault);
+            }
             Map map = registration?.RegisteredMap;
             HashSet<OuterrealmRuntimeRegistration> set;
             if (map != null && registrationsByMap.TryGetValue(map, out set))

@@ -220,7 +220,7 @@ Pawn 到达 vault
 - 自主穿戴：原版 `JobDriver_Wear` 没有通用携带边界。普通投影因原方法末端仍持有旧局部引用，启动前租出真实 Apparel；唯一服装则在 `Pawn_ApparelTracker.Wear` 的最终容器转移边界 Checkout。
 - 强制为目标穿戴：原版 `JobDriver_ForceTargetWear` 自带 `StartCarryThing(B)`，必须使用标准延迟 Checkout，禁止在 Reserve 时把服装吐到存储格。
 - 装备：原版没有 carry 边界，由自定义 toil 在 `AddEquipment` 前通过统一来源解析结果 Checkout；普通投影和唯一武器共用此路径。
-- 牵引光束：其扫描只看 `thingGrid`，先对普通投影或唯一锚点建立一个真实种子租约，使原方法建立 batch；其余 transfer 延迟到 Lift 时从权威库存取出。
+- 旧版牵引光束：其扫描只看 `thingGrid`，先借一个真实种子使原方法建立 batch；新版 IBeamOperator 协议直接补充查询批次，不借种子，统一在实际抓取时 Checkout。
 - 随身自动取料：候选是未 Spawn 的权威主堆而非建筑投影，Reserve 成功后在 Pawn 处 Checkout，并由 `PendingCheckouts` 回收未取得的余量。
 
 新增例外前必须证明无法在实际消费边界完成 Checkout，并提供确定性的失败回收路径。
@@ -321,7 +321,7 @@ Pawn 到达 vault
 关键兼容约定：
 
 - Common Sense：仅在 `MaterializeProjection` 的线程局部作用域内跳过其 ThingMaker Postfix，避免生食等没有产出配方的物品触发空集合 RandomElement；正常 ThingMaker 行为不变。
-- Manipulator Beam：反射目标全部缓存，未安装时 `Prepare` 跳过；batch 扫描对普通投影和唯一锚点都只借一个真实种子，Lift 时经统一来源解析器转移权威实例；禁止存入时不能把 vault 当光束目的地。
+- Manipulator Beam：旧版通过 Prepare 校验后使用种子协议；新版使用独立适配器与全局数量预留，批次只含查询对象，实际抓取时 Checkout；禁止存入或冻结时不能把 vault 当光束目的地。
 - 打包建筑：玩家确认手动存入后才取消仍引用它的安装蓝图；延迟 Checkout 后把蓝图引用从投影重定向到真实实例。
 - 自动存入保护：安装/再种植蓝图是优先于普通存储的工作 claim。自动搬运候选、运行中任务和最终
   TryAdd/落格吸收均不得取消蓝图；蓝图建立晚于搬运任务时，应终止旧搬运并由原版 Job 清理安全
@@ -345,6 +345,7 @@ Pawn 到达 vault
 | `OuterrealmVaultUtil.cs` | 投影/借出弱标记、安全 UI、温度、打包建筑蓝图兼容 |
 | `Patch_OuterrealmStorage.cs` | 原版流程接入及主要兼容补丁 |
 | `Patch_ManipulatorBeamCompat.cs` | Manipulator Beam 可选兼容 |
+| `OuterrealmBeamAdapter.cs` / `OuterrealmBeamLedger.cs` | IBeamOperator 新版光束边界适配与每局全局数量预留 |
 | `SubspaceAccessUtility.cs` | 随身授权选料注入、PendingCheckout 与回收 |
 | `Hediff_SubspaceAccess.cs` | Pawn 授权状态和自动取用/存入设置 |
 | `OuterrealmMarkUtility.cs` | 新旧授权标记统一判断 |
@@ -408,7 +409,7 @@ Pawn 到达 vault
 - 管理器弹出、放置失败回滚、拆除最后一个 vault 后库存仍存在。
 - 商队、运输舱、轨道交易、资源计数与财富开关。
 - 安装/不安装 Common Sense 和 Manipulator Beam 两种环境；Manipulator Beam 分别测试普通堆叠物和唯一物品。
-- Manipulator Beam 对 2×1 vault 的两个占格分别发起扫描；种子必须生成在本次扫描格，不能落到另一占格后形成空 batch。
+- Manipulator Beam 对 2×1 vault 的两个占格分别发起扫描；新版批次只加入当前格的候选，旧版种子必须生成在本次扫描格。
 - 从 schema 0/1 旧档加载被 Boost 放大的 Proto：Count 不增加、无原黄字；再次保存读取后 schema 2 数量稳定。
 - 游戏内直接连续读取地图数量不同的存档，并覆盖安装 Faction Editor 的环境：组件构造和反序列化不得出现旧地图索引异常。
 - `保存 → 读取 → 保存 → 读取` 后比对条目 Count 与唯一 ThingID；地图 `<things>` 中不得出现投影或全局唯一锚点副本。
@@ -436,7 +437,54 @@ dotnet run --project .\Tests\DoBillResources\DoBillResources.csproj -c Release
 
 核心 Harmony 补丁先安装，可选 Patch_Beam_* 类单独安装并隔离异常。
 可选协议必须验证完整参数名/类型/ref/out/返回值；同名方法存在不代表兼容。
-当前 IBeamOperator 版光束不匹配旧源端协议，跳过旧源端联动，保留匹配的目的地门控。
+IBeamOperator 版光束由 `OuterrealmBeamAdapter` 独立适配，旧源端协议互斥启用；新版安装失败时整组回滚，保留可独立匹配的目的地门控。
 选择过滤必须同时使用 IsVaultStoredThing（含无 holder 的唯一锚点）与 IsProjection。
 编译和资源替身测试不能证明 Harmony 启动绑定成功；游戏日志须确认 Core Harmony patches installed。
 发现 already deepsaved 时不得仅隐藏地图物品或按仓库格批量删除；已写坏存档须单独核对所有权。
+
+## 新版 Manipulator Beam 适配
+
+`OuterrealmBeamAdapter.cs` 集中缓存并验证第三方方法、属性、字段与构造器；运行时调用使用编译委托，
+不重复反射。新版使用独立 Harmony owner 安装以下 10 个边界，安装全部成功后才启用：
+
+| 边界 | 职责 |
+|---|---|
+| `TryBuildBatchFromCell` | 原方法失败也可创建批次，补充当前格的投影和唯一锚点 |
+| `ScanForAnyHaulWork` | 纯投影仓库也能让手动设备发现工作 |
+| `CanBeamTransferThing` | 来源有效性、剩余数量及自身预留上下文；继续原有禁用、冷却、claim 检查 |
+| `TryFindStorageDestinationFor` | 普通搬出权限；搜索时排除其他超维仓，避免共享库存循环搬运 |
+| `TryClaimAndEnqueue` | 申请条目级数量预留，目的地缩量同步调整；失败清理队列和双方 claim |
+| `TryLiftForTransfer` | 最终权限与设备身份复查，孤立实物同步回存 |
+| `ExtractThingForTransfer` | 普通投影、唯一锚点统一 Checkout，覆盖整堆不经过 SplitOff 的分支 |
+| `ReleaseClaim` | 取消或完成时幂等释放数量预留 |
+| `ReleaseAllClaimsForOwner` | 设备整机取消时释放本设备未兑现预留 |
+| `IsBeamStorageGroupAllowed` | 遵守 HaulDestinationEnabled（禁止存入、冻结） |
+
+新版不再借出种子，不把查询对象放进运输容器。普通候选按仓、按格轮转，每次最多校验 64 个普通投影
+和 64 个唯一锚点，避免一次为万级库存构造全部 transfer；光束原本的 AppendTransfers 继续负责队列容量、
+排除集合和目的地 claim。唯一锚点使用每局的按仓注册索引，不扫描整个全局库存。工作检测只读，不 Checkout。
+
+`OuterrealmBeamLedger` 属于当前 Game 的 Runtime，按全局条目汇总数量、按 transfer 保存明细；
+普通 Pawn/账单的 ReservedCountOf 同时看到光束预留，光束也扣除普通预留。只有当前线程、当前物品及
+当前操作者的 CanReserve 复查可以加回自身额度，不修改全局预留读数。唯一锚点的普通 Pawn 预留也纳入汇总。
+目的地缩减数量后同步缩减本账本；不得直接替换 transfer.thing 或在取货时更改 transfer.count，
+它们仍是光束释放源 claim 和目的地数量预留的原始键。真实运输对象由光束自己的 carriedThingInTransit 持有。
+
+Checkout 期间保留提交隔离，即使回调取消设备也不能提前释放；外层结束后再消费预留。
+Checkout 后已 Spawn 或已被容器接管的实物不回存；仍无 holder 且未 Spawn 的实物同步 Deposit。
+设备取消、仓库注销和地图移除会清理预留；切换存档由每局 Runtime 的生命周期隔离，不序列化临时 transfer。
+唯一锚点在未兑现光束预留期间保持当前位置，拒绝其他查询迁移和手动改归属仓；源仓失效时仍可正常撤销锚点。
+
+普通存储搬运和运输舱装载遵守允许取出；其他使用容器补给允许 AllowTakeForUse；冻结拒绝两者。
+不允许对仍在全局库存中的尸体查询对象直接执行光束剥衣，须先取出实物。原地图实物及光束设备卸货继续原流程。
+
+自动测试：
+
+```powershell
+dotnet run --project .\Tests\BeamCompat\BeamCompat.csproj -c Release -- 'F:\294100\294100\3683998684\Assemblies\ManipulatorBeam.dll'
+dotnet run --project .\Tests\DoBillResources\DoBillResources.csproj -c Release
+dotnet build -c Debug
+```
+
+第一个测试直接审核目标 DLL 的 10 个方法元数据签名，并使用真实 Harmony 和游戏替身验证适配器。
+它不等同于实际游戏内测试；仍须核对手动/自动、施工/各类容器补给、运输舱、唯一物品、飞行中取消及保存读取。
