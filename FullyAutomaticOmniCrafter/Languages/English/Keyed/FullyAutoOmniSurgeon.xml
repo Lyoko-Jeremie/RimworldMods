@@ -130,4 +130,11 @@
   <FullyAutoOmniSurgeon_HediffDelete>Remove Hediff</FullyAutoOmniSurgeon_HediffDelete>
   <FullyAutoOmniSurgeon_HediffDeleteConfirm>Are you sure you want to remove this health state: {0}?</FullyAutoOmniSurgeon_HediffDeleteConfirm>
   <FullyAutoOmniSurgeon_HediffDeleted>Removed Hediff: {0}.</FullyAutoOmniSurgeon_HediffDeleted>
+  <FullyAutoOmniSurgeon_RewriteIdeo>Rewrite Ideoligion</FullyAutoOmniSurgeon_RewriteIdeo>
+  <FullyAutoOmniSurgeon_RewriteIdeoDesc>Directly rewrite the occupant's ideoligion to the player faction's current primary ideoligion.</FullyAutoOmniSurgeon_RewriteIdeoDesc>
+  <FullyAutoOmniSurgeon_IdeologyRequired>Requires the Ideology DLC.</FullyAutoOmniSurgeon_IdeologyRequired>
+  <FullyAutoOmniSurgeon_InvalidIdeoTarget>Only a non-baby humanlike occupant can undergo ideoligion rewriting.</FullyAutoOmniSurgeon_InvalidIdeoTarget>
+  <FullyAutoOmniSurgeon_NoPrimaryIdeo>The player faction currently has no primary ideoligion.</FullyAutoOmniSurgeon_NoPrimaryIdeo>
+  <FullyAutoOmniSurgeon_AlreadyPrimaryIdeo>The occupant already follows the player's primary ideoligion.</FullyAutoOmniSurgeon_AlreadyPrimaryIdeo>
+  <FullyAutoOmniSurgeon_IdeoRewritten>{0}'s ideoligion was rewritten to “{1}”.</FullyAutoOmniSurgeon_IdeoRewritten>
 </LanguageData>

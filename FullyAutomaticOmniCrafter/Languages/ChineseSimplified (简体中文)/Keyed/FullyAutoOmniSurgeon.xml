@@ -130,4 +130,11 @@
   <FullyAutoOmniSurgeon_HediffDelete>删除状态</FullyAutoOmniSurgeon_HediffDelete>
   <FullyAutoOmniSurgeon_HediffDeleteConfirm>确认删除该健康状态：{0}？</FullyAutoOmniSurgeon_HediffDeleteConfirm>
   <FullyAutoOmniSurgeon_HediffDeleted>已删除健康状态：{0}。</FullyAutoOmniSurgeon_HediffDeleted>
+  <FullyAutoOmniSurgeon_RewriteIdeo>意识形态重塑</FullyAutoOmniSurgeon_RewriteIdeo>
+  <FullyAutoOmniSurgeon_RewriteIdeoDesc>将舱内对象的意识形态直接重塑为玩家派系当前的主意识形态。</FullyAutoOmniSurgeon_RewriteIdeoDesc>
+  <FullyAutoOmniSurgeon_IdeologyRequired>需要启用《Ideology》DLC。</FullyAutoOmniSurgeon_IdeologyRequired>
+  <FullyAutoOmniSurgeon_InvalidIdeoTarget>只有非婴儿的人类对象才能进行意识形态重塑。</FullyAutoOmniSurgeon_InvalidIdeoTarget>
+  <FullyAutoOmniSurgeon_NoPrimaryIdeo>玩家派系当前没有可用的主意识形态。</FullyAutoOmniSurgeon_NoPrimaryIdeo>
+  <FullyAutoOmniSurgeon_AlreadyPrimaryIdeo>舱内对象已经信奉玩家的主意识形态。</FullyAutoOmniSurgeon_AlreadyPrimaryIdeo>
+  <FullyAutoOmniSurgeon_IdeoRewritten>{0} 的意识形态已重塑为“{1}”。</FullyAutoOmniSurgeon_IdeoRewritten>
 </LanguageData>

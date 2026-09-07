@@ -390,6 +390,22 @@ namespace FullyAutomaticOmniCrafter
                     icon = FullyAutoOmniSurgeonTex.IconHediff,
                     action = () => { Find.WindowStack.Add(new Dialog_OmniAutoSurgeon_HediffEditor(this.Occupant)); }
                 };
+
+                Command_Action rewriteIdeoCommand = new Command_Action
+                {
+                    defaultLabel = "FullyAutoOmniSurgeon_RewriteIdeo".Translate(),
+                    defaultDesc = "FullyAutoOmniSurgeon_RewriteIdeoDesc".Translate(),
+                    icon = FullyAutoOmniSurgeonTex.IconThought,
+                    action = RewriteOccupantIdeo
+                };
+
+                string disabledReason = GetRewriteIdeoDisabledReason(this.Occupant);
+                if (!disabledReason.NullOrEmpty())
+                {
+                    rewriteIdeoCommand.Disable(disabledReason);
+                }
+
+                yield return rewriteIdeoCommand;
             }
             else if (this.selectedPawn != null)
             {
@@ -513,6 +529,65 @@ namespace FullyAutomaticOmniCrafter
 
                 this.TryAcceptPawn(pawn);
             }));
+        }
+
+        /// <summary>
+        /// 返回将舱内对象重塑为玩家主意识形态时的禁用原因。
+        /// 建筑没有独立意识形态，因此以玩家派系当前的主意识形态作为目标。
+        /// </summary>
+        private static string GetRewriteIdeoDisabledReason(Pawn pawn)
+        {
+            if (!ModsConfig.IdeologyActive)
+            {
+                return "FullyAutoOmniSurgeon_IdeologyRequired".Translate();
+            }
+
+            if (pawn == null || pawn.Dead)
+            {
+                return "FullyAutoOmniSurgeon_InvalidIdeoTarget".Translate();
+            }
+
+            if (!pawn.RaceProps.Humanlike || pawn.DevelopmentalStage.Baby() || pawn.ideo == null)
+            {
+                return "FullyAutoOmniSurgeon_InvalidIdeoTarget".Translate();
+            }
+
+            Ideo targetIdeo = Faction.OfPlayerSilentFail?.ideos?.PrimaryIdeo;
+            if (targetIdeo == null)
+            {
+                return "FullyAutoOmniSurgeon_NoPrimaryIdeo".Translate();
+            }
+
+            if (pawn.Ideo == targetIdeo)
+            {
+                return "FullyAutoOmniSurgeon_AlreadyPrimaryIdeo".Translate();
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 直接调用原版意识形态切换接口，使舱内对象加入玩家主意识形态。
+        /// SetIdeo 会负责成员缓存、历史事件、确定度及相关关系通知，不应直接写内部字段。
+        /// </summary>
+        private void RewriteOccupantIdeo()
+        {
+            Pawn pawn = this.Occupant;
+            string disabledReason = GetRewriteIdeoDisabledReason(pawn);
+            if (!disabledReason.NullOrEmpty())
+            {
+                Messages.Message(disabledReason, this, MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            Ideo targetIdeo = Faction.OfPlayerSilentFail.ideos.PrimaryIdeo;
+            pawn.ideo.SetIdeo(targetIdeo);
+
+            Messages.Message(
+                "FullyAutoOmniSurgeon_IdeoRewritten".Translate(pawn.LabelShortCap, targetIdeo.name),
+                this,
+                MessageTypeDefOf.PositiveEvent,
+                false);
         }
 
         public void InstallBionic(Pawn pawn, BodyPartRecord part, HediffDef bionicDef)
