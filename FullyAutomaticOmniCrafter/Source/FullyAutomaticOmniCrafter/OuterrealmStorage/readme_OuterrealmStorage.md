@@ -179,6 +179,9 @@ Pawn 到达 vault
   取用时复核来源权限并扣除其他任务预留，自身原版桥接预留可加回；提交中阻止同条目重入。
 - `OuterrealmTransferQuantities` 对 Entry 计数一次，普通物品按 Thing 计数一次，退休投影计零，
   支持交易注册表的独立展示投影。总量在加法前饱和至 int.MaxValue，去重集合按线程复用并清空。
+- 逻辑运输/交易计划和制作选料的 `ThingCount` 必须显式传入 `ignoreStackLimit: true`。
+  原版构造函数默认将数量截断到 `Thing.stackCount`；原版 `ThingCountUtility.AddToList` 的
+  新增及合并路径也会触发截断。逻辑数量先经过条目预算，再构造计数，不能依赖单堆投影显示量。
   多终端投影保留为候选路线，不能随终端数量增加可选库存。
 - 删除 Dialog_FormCaravan PostOpen/PostClose 全图 Boost；TransferableOneWay.MaxCount 读取逻辑数量。
   TransferNoSplit(false,false) 的重量、容量和腐败预估使用同一只读数量快照，不改 stackCount。

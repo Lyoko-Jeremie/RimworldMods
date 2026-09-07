@@ -80,7 +80,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     int take = (int)Math.Min(count, Quantity(things[i], seen));
                     if (take <= 0) continue;
-                    result.Add(new ThingCount(things[i], take));
+                    // take 已按真实库存及条目去重预算计算；原版构造函数默认会将它
+                    // 截断到投影的一堆显示量，必须显式保留这里的逻辑转移数量。
+                    result.Add(new ThingCount(things[i], take, ignoreStackLimit: true));
                     count -= take;
                 }
                 return result;

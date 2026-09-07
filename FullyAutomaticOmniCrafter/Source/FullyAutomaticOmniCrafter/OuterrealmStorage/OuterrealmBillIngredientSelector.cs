@@ -79,7 +79,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                         if (value <= 0 || float.IsNaN(value)) continue;
                         int take = (int)Math.Min(budget.Get(candidate.Key), Mathf.CeilToInt(needed / value));
                         if (take <= 0 || !budget.TrySpend(candidate.Key, take)) continue;
-                        ThingCountUtility.AddToList(chosen, candidate.Thing, take);
+                        AddBudgetedCount(chosen, candidate.Thing, take);
                         needed -= take * value;
                     }
                     satisfied = needed <= 0.0001f;
@@ -106,7 +106,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                             if (candidate.Thing.def != def || !Allows(ingredient, bill, candidate.Thing)) continue;
                             int take = (int)Math.Min(budget.Get(candidate.Key), recipe.ignoreIngredientCountTakeEntireStacks ? int.MaxValue : needed);
                             if (take <= 0 || !budget.TrySpend(candidate.Key, take)) continue;
-                            ThingCountUtility.AddToList(chosen, candidate.Thing, take);
+                            AddBudgetedCount(chosen, candidate.Thing, take);
                             if (recipe.ignoreIngredientCountTakeEntireStacks) return true;
                             needed -= take;
                             if (needed == 0) { satisfied = true; break; }
@@ -121,6 +121,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             return missing == null || missing.Count == 0;
+        }
+
+        private static void AddBudgetedCount(List<ThingCount> chosen, Thing thing, int count)
+        {
+            // 已通过共享库存预算，不能让原版 AddToList/WithCount 再按投影显示堆截断。
+            for (int i = 0; i < chosen.Count; i++)
+            {
+                if (chosen[i].Thing != thing) continue;
+                chosen[i] = new ThingCount(thing, checked(chosen[i].Count + count), ignoreStackLimit: true);
+                return;
+            }
+            chosen.Add(new ThingCount(thing, count, ignoreStackLimit: true));
         }
 
         private static bool Allows(IngredientCount ingredient, Bill bill, Thing thing)
