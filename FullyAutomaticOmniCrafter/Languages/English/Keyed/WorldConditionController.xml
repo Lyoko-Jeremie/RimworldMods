@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <WorldConditionController_OpenMenu>Control world conditions</WorldConditionController_OpenMenu>
+    <WorldConditionController_OpenMenuDesc>Select and immediately terminate a map or world condition currently displayed in the lower-right corner.</WorldConditionController_OpenMenuDesc>
+    <WorldConditionController_NoConditions>There are no displayed conditions that can be terminated.</WorldConditionController_NoConditions>
+    <WorldConditionController_MapScope>map</WorldConditionController_MapScope>
+    <WorldConditionController_WorldScope>world</WorldConditionController_WorldScope>
+    <WorldConditionController_SourceWarning> — warning: its source may apply it again</WorldConditionController_SourceWarning>
+    <WorldConditionController_QuestWarning> — warning: this condition is associated with a quest</WorldConditionController_QuestWarning>
+    <WorldConditionController_ConditionOption>{0} [{1}] ({2}){3}</WorldConditionController_ConditionOption>
+    <WorldConditionController_MethodEnd>End() — terminate immediately</WorldConditionController_MethodEnd>
+    <WorldConditionController_MethodDuration>Duration = 0 — mark as expired</WorldConditionController_MethodDuration>
+    <WorldConditionController_AlreadyEnded>This condition has already ended.</WorldConditionController_AlreadyEnded>
+    <WorldConditionController_EndImmediateSuccess>Immediately terminated condition: {0}</WorldConditionController_EndImmediateSuccess>
+    <WorldConditionController_DurationSuccess>Set the duration of {0} to zero. It will end through the normal condition tick.</WorldConditionController_DurationSuccess>
+</LanguageData>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <WorldConditionController_OpenMenu>控制世界条件</WorldConditionController_OpenMenu>
+    <WorldConditionController_OpenMenuDesc>选择并立即终止当前显示在右下角的地图条件或世界条件。</WorldConditionController_OpenMenuDesc>
+    <WorldConditionController_NoConditions>当前没有可终止的已显示条件。</WorldConditionController_NoConditions>
+    <WorldConditionController_MapScope>地图</WorldConditionController_MapScope>
+    <WorldConditionController_WorldScope>世界</WorldConditionController_WorldScope>
+    <WorldConditionController_SourceWarning> — 警告：来源可能会重新施加该条件</WorldConditionController_SourceWarning>
+    <WorldConditionController_QuestWarning> — 警告：该条件与任务关联</WorldConditionController_QuestWarning>
+    <WorldConditionController_ConditionOption>{0} [{1}]（{2}）{3}</WorldConditionController_ConditionOption>
+    <WorldConditionController_MethodEnd>End() — 立即终止</WorldConditionController_MethodEnd>
+    <WorldConditionController_MethodDuration>Duration = 0 — 标记为到期</WorldConditionController_MethodDuration>
+    <WorldConditionController_AlreadyEnded>该条件已经结束。</WorldConditionController_AlreadyEnded>
+    <WorldConditionController_EndImmediateSuccess>已立即终止条件：{0}</WorldConditionController_EndImmediateSuccess>
+    <WorldConditionController_DurationSuccess>已将“{0}”的持续时间设为零，它将在条件管理器的正常 Tick 中结束。</WorldConditionController_DurationSuccess>
+</LanguageData>
