@@ -890,8 +890,8 @@ namespace FullyAutomaticOmniCrafter
                     return;
                 }
 
-                // 确保装载列表刷新。通常 ThingOwner 会通知 parent，这里额外保险一次。
-                transporter.Notify_ThingAdded(carriedThing);
+                // TryTransferToContainer → ThingOwner.NotifyAdded 已自动调用
+                // CompTransporter.Notify_ThingAdded；禁止再次通知，否则 leftToLoad 会重复扣减。
 
                 if (mec is IHaulEnroute enroute && mec.Map != null)
                     mec.Map.enrouteManager.ReleaseFor(enroute, actor);

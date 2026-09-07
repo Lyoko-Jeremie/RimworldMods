@@ -21,6 +21,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static Func<object, Map> mapOf;
         private static Func<object, Pawn> pawnOf;
         private static Func<object, int> ownerOf;
+        private static Func<object, object> manipulatorOf;
         private static Func<object, Thing> thingOf, containerOf;
         private static Func<object, IntVec3> destinationOf;
         private static Func<object, int> countOf;
@@ -31,6 +32,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static Func<Thing, IntVec3, IntVec3, object> newTransfer;
         private static Func<Thing, IntVec3, Thing, int, object> newContainerTransfer;
         private static Action<object, int> releaseClaim;
+        private static Action<object, Thing> releaseInTransit;
         private static volatile bool enabled;
         internal static bool IsInstalled => enabled;
 
@@ -106,11 +108,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 MethodInfo extract = Require(building, "ExtractThingForTransfer", true, typeof(Thing), new[] { "transfer" }, transfer);
                 MethodInfo release = Require(claims, "ReleaseClaim", true, typeof(void), new[] { "transfer", "ownerKey" }, transfer, typeof(int));
                 MethodInfo clear = Require(claims, "ReleaseAllClaimsForOwner", true, typeof(void), new[] { "map", "ownerKey" }, typeof(Map), typeof(int));
+                MethodInfo claimContainer = Require(claims, "TryClaimDestinationContainer", true, typeof(bool),
+                    new[] { "transfer", "ownerKey" }, transfer, typeof(int));
+                MethodInfo finish = Require(utility, "FinishTransfer", true, typeof(bool),
+                    new[] { "op", "carriedThing", "transfer", "fallbackCell" },
+                    op, typeof(Thing), transfer, typeof(IntVec3));
+                MethodInfo releaseTransit = Require(building, "ReleaseInTransitThing", false, typeof(void),
+                    new[] { "thing" }, typeof(Thing));
                 // 目的地保护也是新版协议的一部分，不能只安装源端。
                 MethodInfo group = Require(utility, "IsBeamStorageGroupAllowed", true, typeof(bool), new[] { "group" }, typeof(SlotGroup));
                 mapOf = Getter<Map>(op, "Map", false);
                 pawnOf = Getter<Pawn>(op, "Pawn", false);
                 ownerOf = Getter<int>(op, "OwnerKey", false);
+                manipulatorOf = Getter<object>(op, "Manipulator", false);
                 thingOf = Getter<Thing>(transfer, "thing", true);
                 containerOf = Getter<Thing>(transfer, "destinationContainer", true);
                 countOf = Getter<int>(transfer, "count", true);
@@ -134,6 +144,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     ?? throw new MissingMethodException(transfer.FullName, ".ctor(Thing, IntVec3, Thing, int)");
                 newContainerTransfer = Expression.Lambda<Func<Thing, IntVec3, Thing, int, object>>(Expression.Convert(
                     Expression.New(containerConstructor, item, cell, container, count), typeof(object)), item, cell, container, count).Compile();
+                ParameterExpression machine = Expression.Parameter(typeof(object), "machine");
+                ParameterExpression carried = Expression.Parameter(typeof(Thing), "carried");
+                releaseInTransit = Expression.Lambda<Action<object, Thing>>(Expression.Call(
+                    Expression.Convert(machine, building), releaseTransit, carried), machine, carried).Compile();
 
                 Patch(harmony, candidate, "CandidatePrefix", null, "CandidateFinalizer");
                 Patch(harmony, destination, "DestinationPrefix", null, "DestinationFinalizer");
@@ -144,9 +158,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 Patch(harmony, extract, "ExtractPrefix");
                 Patch(harmony, release, null, null, "ReleaseFinalizer");
                 Patch(harmony, clear, null, null, "ClearFinalizer");
+                Patch(harmony, claimContainer, "ContainerClaimPrefix");
+                Patch(harmony, finish, "FinishPrefix");
                 Patch(harmony, group, null, "GroupPostfix");
                 enabled = true;
-                Log.Message("[OuterrealmStorage] IBeamOperator compatibility installed (10 boundaries).");
+                Log.Message("[OuterrealmStorage] IBeamOperator compatibility installed (12 boundaries).");
             }
             catch (Exception error)
             {
@@ -357,6 +373,54 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static bool CanDepositInto(Building_OuterrealmVault vault, Map map, Thing thing)
             => vault != null && vault.Map == map && vault.view != null && vault.HaulDestinationEnabled
                 && thing != null && !OuterrealmVaultUtil.IsProtectedFromAutomaticDeposit(thing) && vault.Accepts(thing);
+
+        private static bool ContainerClaimPrefix(object transfer, ref bool __result)
+        {
+            if (!enabled || transfer == null || !(containerOf(transfer) is Building_OuterrealmVault vault))
+                return true;
+            // Vault 是无限容量的吸收端，不需要第三方对普通容器设置的全局独占锁。
+            // 来源 Thing 的 claim 仍由 TryClaimAndEnqueue 保留，故不会重复搬运同一物品。
+            __result = CanDepositInto(vault, vault.Map, thingOf(transfer));
+            return false;
+        }
+
+        private static bool FinishPrefix(object op, Thing carriedThing, object transfer, ref bool __result)
+        {
+            if (!enabled || op == null || carriedThing == null || transfer == null)
+                return true;
+            Thing destinationContainer = containerOf(transfer);
+            object manipulator = manipulatorOf(op);
+            if (manipulator == null) return true;
+
+            if (destinationContainer is Building_MatterEnergyConverter converter)
+            {
+                CompTransporter transporter = converter.GetComp<CompTransporter>();
+                ThingOwner innerContainer = transporter?.innerContainer;
+                if (innerContainer == null) return true;
+
+                // MEC 同时继承 Building_Storage。光束通用容器路径会先调用其存储区
+                // IHaulDestination.Accepts，错误地用地面存储筛选器拒绝装载模式中的物品。
+                // 直接写入 CompTransporter.innerContainer；ThingOwner.NotifyAdded 会自动调用
+                // CompTransporter.Notify_ThingAdded，扣减 leftToLoad 并刷新质量缓存。
+                releaseInTransit(manipulator, carriedThing);
+                if (!innerContainer.TryAdd(carriedThing, true)) return true;
+                __result = true;
+                return false;
+            }
+
+            if (!(destinationContainer is Building_OuterrealmVault vault)
+                || !CanDepositInto(vault, mapOf(op), carriedThing))
+                return true;
+
+            // BeamContainerUtility 以 Destroyed/stackCount/holdingOwner 判断交付成功；但 vault
+            // 的不可堆叠权威实例（尸体等）按设计保持未生成且无 holder，会被误判失败并重新落地。
+            // 在此直接以 vault 的 Deposit 结果为提交结果，并从光束在途容器解除，禁止 finally
+            // ReturnInTransitThing + EnsureCarriedThingLanded 把已入库的权威实例再次放回地图。
+            releaseInTransit(manipulator, carriedThing);
+            if (!vault.view.TryAdd(carriedThing, false)) return true;
+            __result = true;
+            return false;
+        }
 
         private static bool TryFindVaultDestination(Map map, Thing thing, out Building_OuterrealmVault destination)
         {

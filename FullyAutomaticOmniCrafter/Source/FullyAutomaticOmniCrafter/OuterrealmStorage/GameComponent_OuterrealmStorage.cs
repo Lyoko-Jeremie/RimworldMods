@@ -182,6 +182,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     + item.ToStringSafe(), 0x4F535052 ^ item.thingIDNumber);
                 return null;
             }
+            if (TryGetCanonicalEntry(item, out OuterrealmEntry canonicalEntry)
+                && !OuterrealmIdentityRouting.IsAnchor(item))
+            {
+                // 已入库权威实例绝不能再次记账。第三方若把未持有的权威实例误判为容器交付失败
+                // 并重新生成到地图，此门卫会将其收回，同时修复此前重复引用造成的虚高 Count。
+                if (item.Spawned)
+                {
+                    item.DeSpawn(DestroyMode.Vanish);
+                }
+                RepairCanonicalCount(canonicalEntry);
+                return canonicalEntry;
+            }
             // 权威身份锚点是伪 Spawned 查询对象，不在 thingGrid。先走专用注销，禁止把它
             // 交给原版 DeSpawn 的完整地图注销链。
             OuterrealmIdentityRouting.DetachAnchorForDeposit(item);
@@ -1550,12 +1562,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             long represented = entry.Proto.Destroyed || entry.Proto.stackCount <= 0
                 ? 0L
                 : entry.Proto.stackCount;
+            HashSet<Thing> seen = new HashSet<Thing>();
+            HashSet<int> seenIds = new HashSet<int>();
+            seen.Add(entry.Proto);
+            seenIds.Add(entry.Proto.thingIDNumber);
             if (entry.AdditionalProtos != null)
             {
                 for (int i = entry.AdditionalProtos.Count - 1; i >= 0; i--)
                 {
                     Thing extra = entry.AdditionalProtos[i];
-                    if (extra == null || extra.Destroyed || extra.stackCount <= 0)
+                    if (extra == null || extra.Destroyed || extra.stackCount <= 0
+                        || !seen.Add(extra) || !seenIds.Add(extra.thingIDNumber))
                     {
                         entry.AdditionalProtos.RemoveAt(i);
                     }
@@ -1566,6 +1583,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
             }
             return represented;
+        }
+
+        private void RepairCanonicalCount(OuterrealmEntry entry)
+        {
+            if (entry == null || entry.Proto == null) return;
+            long represented = RepresentedCanonicalQuantity(entry);
+            if (represented == entry.Count) return;
+            long delta = represented - entry.Count;
+            entry.Count = represented;
+            AdjustResourceTotal(ResourceDefOf(entry.Proto), delta);
+            version++;
+            EnqueueProjectionSync(entry);
+            Log.Warning("[OuterrealmStorage] Repaired duplicated canonical inventory references for "
+                + entry.Proto.def.defName + ": delta=" + delta + ".");
         }
 
         /// <summary>

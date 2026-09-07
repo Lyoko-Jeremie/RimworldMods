@@ -65,6 +65,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return false;
             }
+            Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
+            if (vault != null && (!vault.HaulDestinationEnabled || !vault.Accepts(item)))
+            {
+                return false;
+            }
             // 最终提交防线：自动搬运 Job 可能早于安装/再种植蓝图建立，不能以取消玩家蓝图
             // 的方式完成低优先级存储。返回 false 后原版 Job 清理会把仍在 carry 的物品落在附近。
             if (OuterrealmVaultUtil.IsProtectedFromAutomaticDeposit(item))
@@ -83,12 +88,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 EnsureCopyFor(entry);
             }
-            return true;
+            return entry != null;
         }
 
         public override int TryAdd(Thing item, int count, bool canMergeWithExistingStacks = true)
         {
             if (item == null || count <= 0 || item.stackCount <= 0 || item.holdingOwner != null)
+            {
+                return 0;
+            }
+            Building_OuterrealmVault vault = Context as Building_OuterrealmVault;
+            if (vault != null && (!vault.HaulDestinationEnabled || !vault.Accepts(item)))
             {
                 return 0;
             }
@@ -108,7 +118,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 EnsureCopyFor(entry);
             }
-            return take;
+            return entry != null ? take : 0;
         }
 
         // ── 权威取出（§3.3） ────────────────────────────────────────────────────
