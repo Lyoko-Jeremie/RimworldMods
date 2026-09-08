@@ -265,6 +265,7 @@ namespace FullyAutomaticOmniCrafter
     {
         private static readonly Dictionary<Pawn, Building_OmniWorkstation> Assignments =
             new Dictionary<Pawn, Building_OmniWorkstation>();
+        private static readonly HashSet<Pawn> ActiveProxies = new HashSet<Pawn>();
 
         public static bool IsProxy(Pawn pawn)
         {
@@ -278,7 +279,23 @@ namespace FullyAutomaticOmniCrafter
 
         public static void Unassign(Pawn pawn)
         {
-            if (pawn != null) Assignments.Remove(pawn);
+            if (pawn == null) return;
+            Assignments.Remove(pawn);
+            ActiveProxies.Remove(pawn);
+        }
+
+        public static void SetActive(Pawn pawn, bool active)
+        {
+            if (pawn == null) return;
+            if (active)
+                ActiveProxies.Add(pawn);
+            else
+                ActiveProxies.Remove(pawn);
+        }
+
+        public static bool IsActive(Pawn pawn)
+        {
+            return pawn != null && ActiveProxies.Contains(pawn);
         }
 
         public static bool TryGetStation(Pawn pawn, out Building_OmniWorkstation station)
@@ -289,6 +306,60 @@ namespace FullyAutomaticOmniCrafter
 
             station = null;
             return false;
+        }
+
+        /// <summary>
+        /// 清除代理的生活状态和第三方附加状态。此方法只在创建、读档和低频维护时执行。
+        /// </summary>
+        public static void Sanitize(Pawn pawn)
+        {
+            if (pawn == null || !IsProxy(pawn)) return;
+
+            if (pawn.needs?.mood?.thoughts?.memories != null)
+            {
+                MemoryThoughtHandler memoryHandler = pawn.needs.mood.thoughts.memories;
+                List<Thought_Memory> memories = memoryHandler.Memories;
+                for (int i = memories.Count - 1; i >= 0; i--)
+                {
+                    Thought_Memory memory = memories[i];
+                    if (memory != null && memory.MoodOffset() < 0f)
+                        memoryHandler.RemoveMemory(memory);
+                }
+            }
+
+            if (pawn.needs != null && pawn.needs.AllNeeds.Count > 0)
+            {
+                // 不调用 Mod Need 的回调，避免其在清理阶段重新注入状态。
+                pawn.needs.AllNeeds.Clear();
+                pawn.needs.MiscNeeds.Clear();
+                pawn.needs.BindDirectNeedFields();
+            }
+
+            HediffDef boost = OmniWorkstationDefOf.FAOC_OmniWorkProxyBoost;
+            if (pawn.health != null)
+            {
+                List<Hediff> hediffs = pawn.health.hediffSet.hediffs;
+                for (int i = hediffs.Count - 1; i >= 0; i--)
+                {
+                    if (i >= hediffs.Count) continue;
+                    Hediff hediff = hediffs[i];
+                    if (hediff != null && hediff.def != boost)
+                        pawn.health.RemoveHediff(hediff);
+                }
+                if (boost != null && !pawn.health.hediffSet.HasHediff(boost))
+                    pawn.health.AddHediff(boost);
+            }
+
+            if (pawn.skills == null) return;
+            List<SkillRecord> skills = pawn.skills.skills;
+            for (int i = 0; i < skills.Count; i++)
+            {
+                SkillRecord skill = skills[i];
+                skill.levelInt = 999;
+                skill.xpSinceLastLevel = 0f;
+                skill.xpSinceMidnight = 0f;
+                skill.passion = Passion.Major;
+            }
         }
     }
 
@@ -304,6 +375,7 @@ namespace FullyAutomaticOmniCrafter
         private const int MaxProxyCreatesPerAssignment = 8;
         private const int MaxProxyRemovalsPerAssignment = 16;
         private const int AssignmentInterval = 30;
+        private const int IsolationMaintenanceInterval = 250;
         private const int EmptySearchBackoff = 250;
         private const int MaxStationsCheckedPerAssignment = 16;
 
@@ -315,6 +387,7 @@ namespace FullyAutomaticOmniCrafter
         private int stationCursor;
         private bool proxiesRecovered;
         private int configuredProxyCount = DefaultProxyCount;
+        private int nextWorkerSequence = 1;
 
         public int ConfiguredProxyCount => configuredProxyCount;
 
@@ -334,8 +407,10 @@ namespace FullyAutomaticOmniCrafter
         {
             base.ExposeData();
             Scribe_Values.Look(ref configuredProxyCount, "omniWorkstationProxyCount", DefaultProxyCount);
+            Scribe_Values.Look(ref nextWorkerSequence, "omniWorkstationNextWorkerSequence", 1);
             configuredProxyCount = Mathf.Clamp(configuredProxyCount,
                 MinConfigurableProxyCount, MaxConfigurableProxyCount);
+            if (nextWorkerSequence < 1) nextWorkerSequence = 1;
         }
 
         public void SetConfiguredProxyCount(int value)
@@ -400,6 +475,11 @@ namespace FullyAutomaticOmniCrafter
             if (!proxiesRecovered) RecoverExistingThings();
 
             int tick = Find.TickManager.TicksGame;
+            if (tick % IsolationMaintenanceInterval == map.uniqueID % IsolationMaintenanceInterval)
+            {
+                for (int i = 0; i < proxies.Count; i++)
+                    OmniWorkProxyUtility.Sanitize(proxies[i].pawn);
+            }
             if (tick % AssignmentInterval != map.uniqueID % AssignmentInterval) return;
 
             RemoveInvalidStations();
@@ -426,6 +506,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < pawns.Count; i++)
             {
                 if (!(pawns[i] is Pawn pawn) || !OmniWorkProxyUtility.IsProxy(pawn)) continue;
+                EnsureWorkerName(pawn);
                 PrepareProxy(pawn);
                 proxies.Add(new ProxyRecord { pawn = pawn, nextSearchTick = Find.TickManager.TicksGame });
             }
@@ -491,6 +572,7 @@ namespace FullyAutomaticOmniCrafter
             try
             {
                 Pawn pawn = PawnGenerator.GeneratePawn(OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer);
+                EnsureWorkerName(pawn);
                 IntVec3 spawnCell = CellFinder.StandableCellNear(station.Position, map, 5f);
                 GenSpawn.Spawn(pawn, spawnCell, map);
                 PrepareProxy(pawn);
@@ -507,11 +589,8 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null) return;
             pawn.mindState.Active = false;
-
-            // startingHediffs 只覆盖新建代理；这里同时升级旧存档中的既有代理。
-            HediffDef boost = OmniWorkstationDefOf.FAOC_OmniWorkProxyBoost;
-            if (boost != null && pawn.health != null && !pawn.health.hediffSet.HasHediff(boost))
-                pawn.health.AddHediff(boost);
+            OmniWorkProxyUtility.SetActive(pawn, false);
+            OmniWorkProxyUtility.Sanitize(pawn);
 
             pawn.workSettings?.EnableAndInitializeIfNotAlreadyInitialized();
             if (pawn.workSettings != null)
@@ -524,18 +603,21 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            if (pawn.skills != null)
-            {
-                List<SkillRecord> skills = pawn.skills.skills;
-                for (int i = 0; i < skills.Count; i++)
-                {
-                    skills[i].Level = 20;
-                    skills[i].passion = Passion.Major;
-                }
-            }
-
             // 代理仍是合法 Spawned Pawn，但不进入殖民者、警报和普通 AI 使用的 MapPawns 列表。
             map.mapPawns.DeRegisterPawn(pawn);
+        }
+
+        private void EnsureWorkerName(Pawn pawn)
+        {
+            if (pawn.Name is NameSingle existing && existing.Name.StartsWith("Worker", StringComparison.Ordinal) &&
+                int.TryParse(existing.Name.Substring(6), out int sequence) && sequence > 0)
+            {
+                if (sequence >= nextWorkerSequence) nextWorkerSequence = sequence + 1;
+                return;
+            }
+
+            pawn.Name = new NameSingle("Worker" + nextWorkerSequence, true);
+            nextWorkerSequence++;
         }
 
         private Building_OmniWorkstation FirstOperationalStation()
@@ -600,6 +682,10 @@ namespace FullyAutomaticOmniCrafter
                     record.issuedJob = null;
                     record.station = null;
                     OmniWorkProxyUtility.Unassign(pawn);
+                }
+                else
+                {
+                    OmniWorkProxyUtility.SetActive(pawn, true);
                 }
                 return;
             }
@@ -710,9 +796,47 @@ namespace FullyAutomaticOmniCrafter
 
         private static void StopIssuedJob(ProxyRecord record)
         {
+            OmniWorkProxyUtility.SetActive(record.pawn, false);
             if (record.pawn != null && record.pawn.CurJob != null)
                 record.pawn.jobs.EndCurrentJob(JobCondition.InterruptForced, false);
             record.issuedJob = null;
+        }
+    }
+
+    /// <summary>原版技能读取会把 levelInt 截断到 20；代理需要向工作及 Mod 门槛报告真实的 999。</summary>
+    [HarmonyPatch(typeof(SkillRecord), nameof(SkillRecord.GetLevel))]
+    public static class Patch_OmniWorkProxy_SkillLevel
+    {
+        [HarmonyPostfix]
+        public static void Postfix(SkillRecord __instance, ref int __result)
+        {
+            if (OmniWorkProxyUtility.IsProxy(__instance.Pawn))
+                __result = 999;
+        }
+    }
+
+    /// <summary>空闲代理完全跳过 Pawn Tick；被调度到工作后才恢复 JobDriver 等必要更新。</summary>
+    [HarmonyPatch(typeof(Pawn), "Tick")]
+    [HarmonyPriority(Priority.First)]
+    public static class Patch_OmniWorkProxy_FreezeWhenInactive
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn __instance)
+        {
+            return !OmniWorkProxyUtility.IsProxy(__instance) || OmniWorkProxyUtility.IsActive(__instance);
+        }
+    }
+
+    /// <summary>原任务结束的同一刻立即冻结，阻止普通思考树接管空闲代理。</summary>
+    [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob))]
+    [HarmonyPriority(Priority.First)]
+    public static class Patch_OmniWorkProxy_DeactivateOnJobEnd
+    {
+        [HarmonyPrefix]
+        public static void Prefix(Pawn ___pawn)
+        {
+            if (OmniWorkProxyUtility.IsProxy(___pawn))
+                OmniWorkProxyUtility.SetActive(___pawn, false);
         }
     }
 
