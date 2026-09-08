@@ -9,6 +9,21 @@
     <OmniWorkstation_ProxyLimit>全图工作代理：{0}</OmniWorkstation_ProxyLimit>
     <OmniWorkstation_ProxyLimitDesc>设置当前地图由所有万能工作站共享的工作代理总数。同一工作站可以同时使用多个代理。</OmniWorkstation_ProxyLimitDesc>
     <OmniWorkstation_ProxyLimitCurrent>当前地图工作代理总数：{0}</OmniWorkstation_ProxyLimitCurrent>
+    <OmniWorkstation_OpenStatus>代理状态：{0} 活跃</OmniWorkstation_OpenStatus>
+    <OmniWorkstation_OpenStatusDesc>查看当前活跃的工作代理、正在执行的工作以及工作搜索状态。</OmniWorkstation_OpenStatusDesc>
+    <OmniWorkstation_StatusTitle>万能工作站代理状态</OmniWorkstation_StatusTitle>
+    <OmniWorkstation_StatusCounts>活跃：{0}　已生成：{1}　配置上限：{2}</OmniWorkstation_StatusCounts>
+    <OmniWorkstation_SearchState>搜索状态：{0}</OmniWorkstation_SearchState>
+    <OmniWorkstation_NextSearch>距离下次常规搜索：{0} Tick</OmniWorkstation_NextSearch>
+    <OmniWorkstation_LastSearch>最近搜索：{0}｜{1}｜Tick {2}</OmniWorkstation_LastSearch>
+    <OmniWorkstation_ProxyColumn>工作代理</OmniWorkstation_ProxyColumn>
+    <OmniWorkstation_WorkColumn>当前工作</OmniWorkstation_WorkColumn>
+    <OmniWorkstation_Search_Waiting>等待常规搜索</OmniWorkstation_Search_Waiting>
+    <OmniWorkstation_Search_Queued>已唤醒，等待搜索</OmniWorkstation_Search_Queued>
+    <OmniWorkstation_Search_Searching>正在搜索工作</OmniWorkstation_Search_Searching>
+    <OmniWorkstation_Search_Continuing>找到工作，下一 Tick 继续搜索</OmniWorkstation_Search_Continuing>
+    <OmniWorkstation_Search_Backoff>未找到工作，正在退避</OmniWorkstation_Search_Backoff>
+    <OmniWorkstation_Search_NoIdleProxy>没有可用于搜索的空闲代理</OmniWorkstation_Search_NoIdleProxy>
     <OmniWorkstation_StatusEnabled>状态：运行中（半径 {0}）</OmniWorkstation_StatusEnabled>
     <OmniWorkstation_StatusDisabled>状态：已停用</OmniWorkstation_StatusDisabled>
 </LanguageData>

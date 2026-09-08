@@ -112,6 +112,14 @@ namespace FullyAutomaticOmniCrafter
                     icon = TexCommand.ForbidOff,
                     action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationProxyLimit(manager))
                 };
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "OmniWorkstation_OpenStatus".Translate(manager.ActiveProxyCount),
+                    defaultDesc = "OmniWorkstation_OpenStatusDesc".Translate(),
+                    icon = TexCommand.Draft,
+                    action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationStatus(manager))
+                };
             }
         }
 
@@ -245,6 +253,94 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    public enum OmniWorkSearchState
+    {
+        Waiting,
+        Queued,
+        Searching,
+        Continuing,
+        Backoff,
+        NoIdleProxy
+    }
+
+    public struct OmniWorkProxyStatus
+    {
+        public string name;
+        public string work;
+
+        public OmniWorkProxyStatus(string name, string work)
+        {
+            this.name = name;
+            this.work = work;
+        }
+    }
+
+    /// <summary>只在窗口打开时低频生成工作报告字符串，不增加常驻调度开销。</summary>
+    public sealed class Dialog_OmniWorkstationStatus : Window
+    {
+        private readonly MapComponent_OmniWorkstation manager;
+        private readonly List<OmniWorkProxyStatus> activeRows = new List<OmniWorkProxyStatus>();
+        private Vector2 scrollPosition;
+        private int lastRefreshFrame = -1000;
+
+        public override Vector2 InitialSize => new Vector2(760f, 620f);
+
+        public Dialog_OmniWorkstationStatus(MapComponent_OmniWorkstation manager)
+        {
+            this.manager = manager;
+            doCloseButton = true;
+            doCloseX = true;
+            absorbInputAroundWindow = false;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            if (Time.frameCount - lastRefreshFrame >= 30)
+            {
+                manager.FillActiveProxyStatuses(activeRows);
+                lastRefreshFrame = Time.frameCount;
+            }
+
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "OmniWorkstation_StatusTitle".Translate());
+            Text.Font = GameFont.Small;
+
+            Widgets.Label(new Rect(0f, 38f, inRect.width, 24f),
+                "OmniWorkstation_StatusCounts".Translate(manager.ActiveProxyCount, manager.TotalProxyCount,
+                    manager.ConfiguredProxyCount));
+            Widgets.Label(new Rect(0f, 64f, inRect.width, 24f),
+                "OmniWorkstation_SearchState".Translate(SearchStateText(manager.SearchState)));
+            Widgets.Label(new Rect(0f, 90f, inRect.width, 24f),
+                "OmniWorkstation_NextSearch".Translate(manager.TicksUntilNextSearch));
+            Widgets.Label(new Rect(0f, 116f, inRect.width, 24f),
+                "OmniWorkstation_LastSearch".Translate(manager.LastSearchWorker, manager.LastSearchWork,
+                    manager.LastSearchTick < 0 ? "-" : manager.LastSearchTick.ToString()));
+
+            float listTop = 150f;
+            Widgets.DrawLineHorizontal(0f, listTop - 6f, inRect.width);
+            Widgets.Label(new Rect(4f, listTop, 150f, 26f), "OmniWorkstation_ProxyColumn".Translate());
+            Widgets.Label(new Rect(160f, listTop, inRect.width - 164f, 26f), "OmniWorkstation_WorkColumn".Translate());
+
+            Rect outRect = new Rect(0f, listTop + 28f, inRect.width, inRect.height - listTop - 72f);
+            float viewHeight = Mathf.Max(outRect.height, activeRows.Count * 30f);
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, viewHeight);
+            Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
+            for (int i = 0; i < activeRows.Count; i++)
+            {
+                Rect row = new Rect(0f, i * 30f, viewRect.width, 30f);
+                if ((i & 1) == 1) Widgets.DrawLightHighlight(row);
+                Widgets.Label(new Rect(4f, row.y + 3f, 150f, 24f), activeRows[i].name);
+                Widgets.Label(new Rect(160f, row.y + 3f, viewRect.width - 164f, 24f), activeRows[i].work);
+            }
+            Widgets.EndScrollView();
+        }
+
+        private static string SearchStateText(OmniWorkSearchState state)
+        {
+            return ("OmniWorkstation_Search_" + state).Translate();
+        }
+    }
+
     [DefOf]
     public static class OmniWorkstationDefOf
     {
@@ -374,9 +470,9 @@ namespace FullyAutomaticOmniCrafter
         private const int DefaultProxyCount = 8;
         private const int MaxProxyCreatesPerAssignment = 8;
         private const int MaxProxyRemovalsPerAssignment = 16;
-        private const int AssignmentInterval = 30;
+        private const int AssignmentInterval = 60;
         private const int IsolationMaintenanceInterval = 250;
-        private const int EmptySearchBackoff = 250;
+        private const int EmptySearchBackoff = 60;
         private const int MaxStationsCheckedPerAssignment = 16;
 
         private readonly List<Building_OmniWorkstation> stations =
@@ -388,11 +484,32 @@ namespace FullyAutomaticOmniCrafter
         private int proxySearchCursor;
         private int nextGlobalSearchTick;
         private bool searchContinuationPending;
+        private OmniWorkSearchState searchState = OmniWorkSearchState.Waiting;
+        private int lastSearchTick = -1;
+        private string lastSearchWorker = "-";
+        private string lastSearchWork = "-";
         private bool proxiesRecovered;
         private int configuredProxyCount = DefaultProxyCount;
         private int nextWorkerSequence = 1;
 
         public int ConfiguredProxyCount => configuredProxyCount;
+        public int TotalProxyCount => proxies.Count;
+        public OmniWorkSearchState SearchState => searchState;
+        public int LastSearchTick => lastSearchTick;
+        public string LastSearchWorker => lastSearchWorker;
+        public string LastSearchWork => lastSearchWork;
+        public int TicksUntilNextSearch => Mathf.Max(0, nextGlobalSearchTick - Find.TickManager.TicksGame);
+
+        public int ActiveProxyCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < proxies.Count; i++)
+                    if (OmniWorkProxyUtility.IsActive(proxies[i].pawn)) count++;
+                return count;
+            }
+        }
 
         private sealed class ProxyRecord
         {
@@ -463,6 +580,7 @@ namespace FullyAutomaticOmniCrafter
         {
             nextGlobalSearchTick = Find.TickManager?.TicksGame ?? 0;
             searchContinuationPending = true;
+            searchState = OmniWorkSearchState.Queued;
         }
 
         public void NotifyProxyBecameIdle()
@@ -511,19 +629,54 @@ namespace FullyAutomaticOmniCrafter
             {
                 searchContinuationPending = false;
                 nextGlobalSearchTick = tick + AssignmentInterval;
+                searchState = OmniWorkSearchState.NoIdleProxy;
                 return;
             }
 
             // 每 Tick 至多执行一次昂贵搜索。成功则下一 Tick 立即交给下一个代理；失败则整体退避。
+            searchState = OmniWorkSearchState.Searching;
+            lastSearchTick = tick;
+            lastSearchWorker = record.pawn?.Name?.ToStringShort ?? "-";
+            lastSearchWork = "-";
             if (TryAssignWork(record))
             {
                 nextGlobalSearchTick = tick;
+                lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
+                searchState = OmniWorkSearchState.Continuing;
             }
             else
             {
                 searchContinuationPending = false;
                 nextGlobalSearchTick = tick + EmptySearchBackoff;
+                searchState = OmniWorkSearchState.Backoff;
             }
+        }
+
+        public void FillActiveProxyStatuses(List<OmniWorkProxyStatus> output)
+        {
+            output.Clear();
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                ProxyRecord record = proxies[i];
+                if (!OmniWorkProxyUtility.IsActive(record.pawn) || record.issuedJob == null) continue;
+                string name = record.pawn.Name?.ToStringShort ?? "Worker";
+                output.Add(new OmniWorkProxyStatus(name, SafeJobReport(record.pawn, record.issuedJob)));
+            }
+        }
+
+        private static string SafeJobReport(Pawn pawn, Job job)
+        {
+            if (job == null) return "-";
+            try
+            {
+                string report = job.GetReport(pawn);
+                if (!report.NullOrEmpty()) return report;
+            }
+            catch (Exception)
+            {
+                // 第三方 JobDriver 的报告生成失败时只降级显示 Def，不影响调度窗口。
+            }
+            return job.def?.label ?? job.def?.defName ?? "-";
         }
 
         private void RecoverExistingThings()

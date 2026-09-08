@@ -9,6 +9,21 @@
     <OmniWorkstation_ProxyLimit>Map work proxies: {0}</OmniWorkstation_ProxyLimit>
     <OmniWorkstation_ProxyLimitDesc>Sets the total number of work proxies shared by all universal workstations on this map. Multiple proxies may use one workstation concurrently.</OmniWorkstation_ProxyLimitDesc>
     <OmniWorkstation_ProxyLimitCurrent>Current map work proxy count: {0}</OmniWorkstation_ProxyLimitCurrent>
+    <OmniWorkstation_OpenStatus>Proxy status: {0} active</OmniWorkstation_OpenStatus>
+    <OmniWorkstation_OpenStatusDesc>Shows active work proxies, their current jobs, and the work-search state.</OmniWorkstation_OpenStatusDesc>
+    <OmniWorkstation_StatusTitle>Universal workstation proxy status</OmniWorkstation_StatusTitle>
+    <OmniWorkstation_StatusCounts>Active: {0}　Created: {1}　Configured limit: {2}</OmniWorkstation_StatusCounts>
+    <OmniWorkstation_SearchState>Search state: {0}</OmniWorkstation_SearchState>
+    <OmniWorkstation_NextSearch>Next regular search in: {0} ticks</OmniWorkstation_NextSearch>
+    <OmniWorkstation_LastSearch>Last search: {0} | {1} | tick {2}</OmniWorkstation_LastSearch>
+    <OmniWorkstation_ProxyColumn>Work proxy</OmniWorkstation_ProxyColumn>
+    <OmniWorkstation_WorkColumn>Current work</OmniWorkstation_WorkColumn>
+    <OmniWorkstation_Search_Waiting>Waiting for regular search</OmniWorkstation_Search_Waiting>
+    <OmniWorkstation_Search_Queued>Awake and queued to search</OmniWorkstation_Search_Queued>
+    <OmniWorkstation_Search_Searching>Searching for work</OmniWorkstation_Search_Searching>
+    <OmniWorkstation_Search_Continuing>Work found; continuing next tick</OmniWorkstation_Search_Continuing>
+    <OmniWorkstation_Search_Backoff>No work found; backing off</OmniWorkstation_Search_Backoff>
+    <OmniWorkstation_Search_NoIdleProxy>No idle proxy available to search</OmniWorkstation_Search_NoIdleProxy>
     <OmniWorkstation_StatusEnabled>Status: active (radius {0})</OmniWorkstation_StatusEnabled>
     <OmniWorkstation_StatusDisabled>Status: disabled</OmniWorkstation_StatusDisabled>
 </LanguageData>
