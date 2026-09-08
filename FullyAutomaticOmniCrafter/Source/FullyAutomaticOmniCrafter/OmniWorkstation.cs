@@ -1144,6 +1144,21 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    /// <summary>
+    /// 代理只允许由全局工作泵显式派工。原版会在 Job 结束或当前 Job 为空时同步调用
+    /// TryFindAndStartJob；若不拦截，代理可在同一 Tick 内通过普通思考树连续启动大量 Job。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_JobTracker), "TryFindAndStartJob")]
+    [HarmonyPriority(Priority.First)]
+    public static class Patch_OmniWorkProxy_BlockAutonomousJobSearch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn ___pawn)
+        {
+            return !OmniWorkProxyUtility.IsProxy(___pawn);
+        }
+    }
+
     /// <summary>代理仅作为 JobDriver 载体，始终跳过身体、装备、阴影等地图绘制。</summary>
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.DynamicDrawPhaseAt))]
     public static class Patch_OmniWorkProxy_HideMapDraw
