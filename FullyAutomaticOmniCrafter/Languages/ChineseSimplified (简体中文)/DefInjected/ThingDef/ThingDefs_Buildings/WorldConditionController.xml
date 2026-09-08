@@ -2,4 +2,8 @@
 <LanguageData>
     <WorldConditionController.label>世界条件控制器</WorldConditionController.label>
     <WorldConditionController.description>一台超维科技环境控制装置，可以手动终止显示在右下角的地图条件与世界条件。由任务或持续来源产生的条件可能影响任务流程，或被其来源重新施加。</WorldConditionController.description>
+    
+    <WorldConditionController_mini.label>世界条件控制器 便携型</WorldConditionController_mini.label>
+    <WorldConditionController_mini.description>一台超维科技环境控制装置，可以手动终止显示在右下角的地图条件与世界条件。由任务或持续来源产生的条件可能影响任务流程，或被其来源重新施加。</WorldConditionController_mini.description>
+    
 </LanguageData>

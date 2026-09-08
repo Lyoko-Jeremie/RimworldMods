@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <ThingDef Name="WorldConditionController" ParentName="BuildingBase">
+        <defName>WorldConditionController</defName>
+        <label>world condition controller</label>
+        <description>An OuterrealmTech device that can manually terminate map and world conditions displayed in the lower-right corner.</description>
+
+        <tickerType>Never</tickerType>
+        <designationCategory>OmniCrafter_Category</designationCategory>
+
+        <graphicData>
+            <texPath>Things/Building/Production/ManualEventTrigger</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <shaderType>CutoutComplex</shaderType>
+            <drawSize>(3,3)</drawSize>
+            <drawOffset>(0,0,0.5)</drawOffset>
+        </graphicData>
+        <uiIconPath>Things/Building/Production/ManualEventTrigger</uiIconPath>
+
+        <size>(3,2)</size>
+        <passability>Standable</passability>
+        <pathCost>1</pathCost>
+        <fillPercent>0.5</fillPercent>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0</staticSunShadowHeight>
+        <canOverlapZones>false</canOverlapZones>
+        <rotatable>false</rotatable>
+
+        <statBases>
+            <MaxHitPoints>999999999</MaxHitPoints>
+            <WorkToBuild>1</WorkToBuild>
+            <Flammability>0</Flammability>
+            <Beauty>100</Beauty>
+            <Mass>50</Mass>
+        </statBases>
+
+        <costList>
+            <Steel>200</Steel>
+        </costList>
+
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+
+        <building>
+            <paintable>true</paintable>
+            <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+        </building>
+
+        <comps>
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_WorldConditionController" />
+        </comps>
+
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+    </ThingDef>
+
+    <ThingDef ParentName="WorldConditionController">
+        <defName>WorldConditionController_mini</defName>
+        <label>World Condition Controller mini</label>
+        <description>description</description>
+        <size>(1,1)</size>
+        <graphicData>
+            <drawSize>(1,1)</drawSize>
+            <drawOffset>(0, 0, 0)</drawOffset>
+        </graphicData>
+    </ThingDef>
+    
+</Defs>
