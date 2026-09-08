@@ -3,7 +3,12 @@
     <OmniWorkstation_Toggle>Automatic work</OmniWorkstation_Toggle>
     <OmniWorkstation_ToggleDesc>Enables or disables automatic work scheduling for this workstation.</OmniWorkstation_ToggleDesc>
     <OmniWorkstation_Radius>Work radius: {0}</OmniWorkstation_Radius>
-    <OmniWorkstation_RadiusDesc>Cycles the range in which the workstation may search, haul, and perform work.</OmniWorkstation_RadiusDesc>
+    <OmniWorkstation_RadiusDesc>Uses a slider or input field to set the range in which this workstation may search, haul, and perform work.</OmniWorkstation_RadiusDesc>
+    <OmniWorkstation_RadiusCurrent>Current work radius: {0}</OmniWorkstation_RadiusCurrent>
+    <OmniWorkstation_ValueInput>Enter value</OmniWorkstation_ValueInput>
+    <OmniWorkstation_ProxyLimit>Map work proxies: {0}</OmniWorkstation_ProxyLimit>
+    <OmniWorkstation_ProxyLimitDesc>Sets the total number of work proxies shared by all universal workstations on this map. Multiple proxies may use one workstation concurrently.</OmniWorkstation_ProxyLimitDesc>
+    <OmniWorkstation_ProxyLimitCurrent>Current map work proxy count: {0}</OmniWorkstation_ProxyLimitCurrent>
     <OmniWorkstation_StatusEnabled>Status: active (radius {0})</OmniWorkstation_StatusEnabled>
     <OmniWorkstation_StatusDisabled>Status: disabled</OmniWorkstation_StatusDisabled>
 </LanguageData>

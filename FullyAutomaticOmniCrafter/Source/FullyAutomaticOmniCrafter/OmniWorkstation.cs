@@ -13,13 +13,15 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public sealed class Building_OmniWorkstation : Building
     {
-        private static readonly int[] WorkRadii = { 15, 30, 60, 100 };
+        public const int MinWorkRadius = 1;
+        public const int MaxWorkRadius = 256;
 
         private bool automationEnabled = true;
-        private int workRadiusIndex = 1;
+        private int workRadius = 30;
+        private int legacyWorkRadiusIndex = 1;
 
         public bool AutomationEnabled => automationEnabled;
-        public int WorkRadius => WorkRadii[Mathf.Clamp(workRadiusIndex, 0, WorkRadii.Length - 1)];
+        public int WorkRadius => workRadius;
 
         public bool Operational
         {
@@ -56,8 +58,22 @@ namespace FullyAutomaticOmniCrafter
         {
             base.ExposeData();
             Scribe_Values.Look(ref automationEnabled, "automationEnabled", true);
-            Scribe_Values.Look(ref workRadiusIndex, "workRadiusIndex", 1);
-            workRadiusIndex = Mathf.Clamp(workRadiusIndex, 0, WorkRadii.Length - 1);
+            Scribe_Values.Look(ref workRadius, "workRadius", -1);
+            Scribe_Values.Look(ref legacyWorkRadiusIndex, "workRadiusIndex", 1);
+            if (workRadius < MinWorkRadius)
+            {
+                int[] legacyRadii = { 15, 30, 60, 100 };
+                workRadius = legacyRadii[Mathf.Clamp(legacyWorkRadiusIndex, 0, legacyRadii.Length - 1)];
+            }
+            workRadius = Mathf.Clamp(workRadius, MinWorkRadius, MaxWorkRadius);
+        }
+
+        public void SetWorkRadius(int value)
+        {
+            int clamped = Mathf.Clamp(value, MinWorkRadius, MaxWorkRadius);
+            if (workRadius == clamped) return;
+            workRadius = clamped;
+            Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
         }
 
         public override IEnumerable<Gizmo> GetGizmos()
@@ -83,12 +99,20 @@ namespace FullyAutomaticOmniCrafter
                 defaultLabel = "OmniWorkstation_Radius".Translate(WorkRadius),
                 defaultDesc = "OmniWorkstation_RadiusDesc".Translate(),
                 icon = TexCommand.Install,
-                action = () =>
-                {
-                    workRadiusIndex = (workRadiusIndex + 1) % WorkRadii.Length;
-                    Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
-                }
+                action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationRadius(this))
             };
+
+            MapComponent_OmniWorkstation manager = Map?.GetComponent<MapComponent_OmniWorkstation>();
+            if (manager != null)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "OmniWorkstation_ProxyLimit".Translate(manager.ConfiguredProxyCount),
+                    defaultDesc = "OmniWorkstation_ProxyLimitDesc".Translate(),
+                    icon = TexCommand.ForbidOff,
+                    action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationProxyLimit(manager))
+                };
+            }
         }
 
         public override void DrawExtraSelectionOverlays()
@@ -105,6 +129,119 @@ namespace FullyAutomaticOmniCrafter
                 ? "OmniWorkstation_StatusEnabled".Translate(WorkRadius)
                 : "OmniWorkstation_StatusDisabled".Translate();
             return original.NullOrEmpty() ? status : original + "\n" + status;
+        }
+    }
+
+    /// <summary>工作范围设置窗口：滑块负责快速调整，输入框负责精确数值。</summary>
+    public sealed class Dialog_OmniWorkstationRadius : Window
+    {
+        private readonly Building_OmniWorkstation station;
+        private int radius;
+        private string radiusBuffer;
+
+        public override Vector2 InitialSize => new Vector2(420f, 210f);
+
+        public Dialog_OmniWorkstationRadius(Building_OmniWorkstation station)
+        {
+            this.station = station;
+            radius = station.WorkRadius;
+            radiusBuffer = radius.ToString();
+            doCloseButton = true;
+            doCloseX = true;
+            forcePause = true;
+            absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            if (station == null || station.Destroyed)
+            {
+                Close();
+                return;
+            }
+
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(inRect);
+            listing.Label("OmniWorkstation_RadiusCurrent".Translate(radius));
+
+            int sliderValue = Mathf.RoundToInt(listing.Slider(radius,
+                Building_OmniWorkstation.MinWorkRadius, Building_OmniWorkstation.MaxWorkRadius));
+            if (sliderValue != radius)
+            {
+                radius = sliderValue;
+                radiusBuffer = radius.ToString();
+                station.SetWorkRadius(radius);
+            }
+
+            Rect inputRect = listing.GetRect(30f);
+            Widgets.Label(inputRect.LeftPart(0.4f), "OmniWorkstation_ValueInput".Translate());
+            string edited = Widgets.TextField(inputRect.RightPart(0.6f), radiusBuffer);
+            if (edited != radiusBuffer)
+            {
+                radiusBuffer = edited;
+                if (int.TryParse(radiusBuffer, out int parsed) &&
+                    parsed >= Building_OmniWorkstation.MinWorkRadius &&
+                    parsed <= Building_OmniWorkstation.MaxWorkRadius)
+                {
+                    radius = parsed;
+                    station.SetWorkRadius(radius);
+                }
+            }
+            listing.End();
+        }
+    }
+
+    /// <summary>每张地图共享一个代理上限，任意万能工作站均可打开此窗口修改。</summary>
+    public sealed class Dialog_OmniWorkstationProxyLimit : Window
+    {
+        private readonly MapComponent_OmniWorkstation manager;
+        private int proxyCount;
+        private string proxyCountBuffer;
+
+        public override Vector2 InitialSize => new Vector2(420f, 210f);
+
+        public Dialog_OmniWorkstationProxyLimit(MapComponent_OmniWorkstation manager)
+        {
+            this.manager = manager;
+            proxyCount = manager.ConfiguredProxyCount;
+            proxyCountBuffer = proxyCount.ToString();
+            doCloseButton = true;
+            doCloseX = true;
+            forcePause = true;
+            absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(inRect);
+            listing.Label("OmniWorkstation_ProxyLimitCurrent".Translate(proxyCount));
+
+            int sliderValue = Mathf.RoundToInt(listing.Slider(proxyCount,
+                MapComponent_OmniWorkstation.MinConfigurableProxyCount,
+                MapComponent_OmniWorkstation.MaxConfigurableProxyCount));
+            if (sliderValue != proxyCount)
+            {
+                proxyCount = sliderValue;
+                proxyCountBuffer = proxyCount.ToString();
+                manager.SetConfiguredProxyCount(proxyCount);
+            }
+
+            Rect inputRect = listing.GetRect(30f);
+            Widgets.Label(inputRect.LeftPart(0.4f), "OmniWorkstation_ValueInput".Translate());
+            string edited = Widgets.TextField(inputRect.RightPart(0.6f), proxyCountBuffer);
+            if (edited != proxyCountBuffer)
+            {
+                proxyCountBuffer = edited;
+                if (int.TryParse(proxyCountBuffer, out int parsed) &&
+                    parsed >= MapComponent_OmniWorkstation.MinConfigurableProxyCount &&
+                    parsed <= MapComponent_OmniWorkstation.MaxConfigurableProxyCount)
+                {
+                    proxyCount = parsed;
+                    manager.SetConfiguredProxyCount(proxyCount);
+                }
+            }
+            listing.End();
         }
     }
 
@@ -161,7 +298,11 @@ namespace FullyAutomaticOmniCrafter
     /// </summary>
     public sealed class MapComponent_OmniWorkstation : MapComponent
     {
-        private const int MaxProxyCount = 8;
+        public const int MinConfigurableProxyCount = 1;
+        public const int MaxConfigurableProxyCount = 1024;
+        private const int DefaultProxyCount = 8;
+        private const int MaxProxyCreatesPerAssignment = 8;
+        private const int MaxProxyRemovalsPerAssignment = 16;
         private const int AssignmentInterval = 30;
         private const int EmptySearchBackoff = 250;
         private const int MaxStationsCheckedPerAssignment = 16;
@@ -173,6 +314,9 @@ namespace FullyAutomaticOmniCrafter
 
         private int stationCursor;
         private bool proxiesRecovered;
+        private int configuredProxyCount = DefaultProxyCount;
+
+        public int ConfiguredProxyCount => configuredProxyCount;
 
         private sealed class ProxyRecord
         {
@@ -184,6 +328,23 @@ namespace FullyAutomaticOmniCrafter
 
         public MapComponent_OmniWorkstation(Map map) : base(map)
         {
+        }
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref configuredProxyCount, "omniWorkstationProxyCount", DefaultProxyCount);
+            configuredProxyCount = Mathf.Clamp(configuredProxyCount,
+                MinConfigurableProxyCount, MaxConfigurableProxyCount);
+        }
+
+        public void SetConfiguredProxyCount(int value)
+        {
+            configuredProxyCount = Mathf.Clamp(value,
+                MinConfigurableProxyCount, MaxConfigurableProxyCount);
+            int tick = Find.TickManager.TicksGame;
+            for (int i = 0; i < proxies.Count; i++)
+                proxies[i].nextSearchTick = tick;
         }
 
         public void Register(Building_OmniWorkstation station)
@@ -295,16 +456,22 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < stations.Count; i++)
                 if (stations[i].Operational) operationalCount++;
 
-            int wanted = Mathf.Min(MaxProxyCount, operationalCount);
-            while (proxies.Count < wanted)
+            // 代理上限属于整张地图；只要存在一个可用工作站，所有代理都可由其并行调度。
+            int wanted = operationalCount > 0 ? configuredProxyCount : 0;
+            int created = 0;
+            while (proxies.Count < wanted && created < MaxProxyCreatesPerAssignment)
             {
                 Pawn pawn = CreateProxy();
                 if (pawn == null) break;
                 proxies.Add(new ProxyRecord { pawn = pawn, nextSearchTick = Find.TickManager.TicksGame });
+                created++;
             }
 
             // 只回收空闲代理；正在收尾的 Job 会在下一个调度周期回收，避免吞掉携带物。
-            for (int i = proxies.Count - 1; i >= 0 && proxies.Count > wanted; i--)
+            int removed = 0;
+            for (int i = proxies.Count - 1;
+                 i >= 0 && proxies.Count > wanted && removed < MaxProxyRemovalsPerAssignment;
+                 i--)
             {
                 ProxyRecord record = proxies[i];
                 if (record.issuedJob != null) continue;
@@ -312,6 +479,7 @@ namespace FullyAutomaticOmniCrafter
                 if (record.pawn != null && !record.pawn.Destroyed)
                     record.pawn.Destroy(DestroyMode.Vanish);
                 proxies.RemoveAt(i);
+                removed++;
             }
         }
 
@@ -410,7 +578,7 @@ namespace FullyAutomaticOmniCrafter
                 if (stationCursor >= stations.Count) stationCursor = 0;
                 Building_OmniWorkstation station = stations[stationCursor++];
                 checkedStations++;
-                if (!station.Operational || StationAlreadyServiced(station)) continue;
+                if (!station.Operational) continue;
 
                 MoveProxyToStation(pawn, station);
                 record.station = station;
@@ -437,13 +605,6 @@ namespace FullyAutomaticOmniCrafter
             }
 
             record.nextSearchTick = tick + EmptySearchBackoff;
-        }
-
-        private bool StationAlreadyServiced(Building_OmniWorkstation station)
-        {
-            for (int i = 0; i < proxies.Count; i++)
-                if (proxies[i].issuedJob != null && proxies[i].station == station) return true;
-            return false;
         }
 
         private void MoveProxyToStation(Pawn pawn, Building_OmniWorkstation station)
