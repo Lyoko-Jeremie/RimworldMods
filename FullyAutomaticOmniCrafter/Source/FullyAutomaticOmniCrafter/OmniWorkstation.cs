@@ -473,17 +473,17 @@ namespace FullyAutomaticOmniCrafter
         private const int AssignmentInterval = 60;
         private const int IsolationMaintenanceInterval = 250;
         private const int EmptySearchBackoff = 60;
-        private const int MaxStationsCheckedPerAssignment = 16;
 
         private readonly List<Building_OmniWorkstation> stations =
             new List<Building_OmniWorkstation>();
+        private readonly Dictionary<Building_OmniWorkstation, StationRuntime> stationStates =
+            new Dictionary<Building_OmniWorkstation, StationRuntime>();
         private readonly List<ProxyRecord> proxies = new List<ProxyRecord>();
         private readonly JobGiver_Work workGiver = new JobGiver_Work();
 
         private int stationCursor;
         private int proxySearchCursor;
-        private int nextGlobalSearchTick;
-        private bool searchContinuationPending;
+        private int nextPumpTick;
         private OmniWorkSearchState searchState = OmniWorkSearchState.Waiting;
         private int lastSearchTick = -1;
         private string lastSearchWorker = "-";
@@ -498,7 +498,9 @@ namespace FullyAutomaticOmniCrafter
         public int LastSearchTick => lastSearchTick;
         public string LastSearchWorker => lastSearchWorker;
         public string LastSearchWork => lastSearchWork;
-        public int TicksUntilNextSearch => Mathf.Max(0, nextGlobalSearchTick - Find.TickManager.TicksGame);
+        public int TicksUntilNextSearch => nextPumpTick == int.MaxValue
+            ? 0
+            : Mathf.Max(0, nextPumpTick - Find.TickManager.TicksGame);
 
         public int ActiveProxyCount
         {
@@ -516,6 +518,14 @@ namespace FullyAutomaticOmniCrafter
             public Pawn pawn;
             public Building_OmniWorkstation station;
             public Job issuedJob;
+        }
+
+        private sealed class StationRuntime
+        {
+            public Building_OmniWorkstation station;
+            public int nextSearchTick;
+            public int consecutiveFailures;
+            public bool hot;
         }
 
         public MapComponent_OmniWorkstation(Map map) : base(map)
@@ -536,7 +546,7 @@ namespace FullyAutomaticOmniCrafter
         {
             configuredProxyCount = Mathf.Clamp(value,
                 MinConfigurableProxyCount, MaxConfigurableProxyCount);
-            WakeSearchPump();
+            WakeAllStations();
         }
 
         public void Register(Building_OmniWorkstation station)
@@ -544,13 +554,15 @@ namespace FullyAutomaticOmniCrafter
             if (station != null && !stations.Contains(station))
             {
                 stations.Add(station);
-                WakeSearchPump();
+                GetOrCreateStationRuntime(station).nextSearchTick = CurrentTick;
+                WakePumpNow();
             }
         }
 
         public void Deregister(Building_OmniWorkstation station)
         {
             stations.Remove(station);
+            stationStates.Remove(station);
             for (int i = 0; i < proxies.Count; i++)
             {
                 ProxyRecord record = proxies[i];
@@ -559,7 +571,7 @@ namespace FullyAutomaticOmniCrafter
                 record.station = null;
                 OmniWorkProxyUtility.Unassign(record.pawn);
             }
-            WakeSearchPump();
+            WakePumpNow();
         }
 
         public void NotifyConfigurationChanged(Building_OmniWorkstation station)
@@ -572,20 +584,53 @@ namespace FullyAutomaticOmniCrafter
                 record.station = null;
                 OmniWorkProxyUtility.Unassign(record.pawn);
             }
-            // 范围扩大后，立即退出全局“无工作”退避并启动单通道搜索。
-            WakeSearchPump();
+            // 范围或开关变化只唤醒当前工作站，不影响其他工作站的独立退避状态。
+            StationRuntime runtime = GetOrCreateStationRuntime(station);
+            runtime.nextSearchTick = CurrentTick;
+            runtime.consecutiveFailures = 0;
+            runtime.hot = true;
+            WakePumpNow();
         }
 
-        private void WakeSearchPump()
+        private int CurrentTick => Find.TickManager?.TicksGame ?? 0;
+
+        private void WakePumpNow()
         {
-            nextGlobalSearchTick = Find.TickManager?.TicksGame ?? 0;
-            searchContinuationPending = true;
+            nextPumpTick = CurrentTick;
             searchState = OmniWorkSearchState.Queued;
+        }
+
+        private void WakeAllStations()
+        {
+            int tick = CurrentTick;
+            for (int i = 0; i < stations.Count; i++)
+            {
+                StationRuntime runtime = GetOrCreateStationRuntime(stations[i]);
+                runtime.nextSearchTick = tick;
+                runtime.consecutiveFailures = 0;
+                runtime.hot = true;
+            }
+            WakePumpNow();
         }
 
         public void NotifyProxyBecameIdle()
         {
-            WakeSearchPump();
+            WakePumpNow();
+        }
+
+        private StationRuntime GetOrCreateStationRuntime(Building_OmniWorkstation station)
+        {
+            if (!stationStates.TryGetValue(station, out StationRuntime runtime))
+            {
+                runtime = new StationRuntime
+                {
+                    station = station,
+                    nextSearchTick = CurrentTick,
+                    hot = true
+                };
+                stationStates.Add(station, runtime);
+            }
+            return runtime;
         }
 
         public override void FinalizeInit()
@@ -600,6 +645,7 @@ namespace FullyAutomaticOmniCrafter
                 OmniWorkProxyUtility.Unassign(proxies[i].pawn);
             proxies.Clear();
             stations.Clear();
+            stationStates.Clear();
             base.MapRemoved();
         }
 
@@ -620,36 +666,47 @@ namespace FullyAutomaticOmniCrafter
                 EnsureProxyCount();
                 for (int i = 0; i < proxies.Count; i++)
                     RefreshProxyState(proxies[i]);
-                if (tick >= nextGlobalSearchTick)
-                    searchContinuationPending = true;
+                int scheduledTick = ComputeNextPumpTick(tick);
+                if (scheduledTick < nextPumpTick) nextPumpTick = scheduledTick;
             }
 
-            if (!searchContinuationPending) return;
+            if (tick < nextPumpTick) return;
             if (!TryGetNextIdleProxy(out ProxyRecord record))
             {
-                searchContinuationPending = false;
-                nextGlobalSearchTick = tick + AssignmentInterval;
+                nextPumpTick = int.MaxValue;
                 searchState = OmniWorkSearchState.NoIdleProxy;
                 return;
             }
 
-            // 每 Tick 至多执行一次昂贵搜索。成功则下一 Tick 立即交给下一个代理；失败则整体退避。
+            if (!TryGetNextDueStation(tick, out StationRuntime stationRuntime, out int earliestTick))
+            {
+                nextPumpTick = earliestTick;
+                searchState = OmniWorkSearchState.Waiting;
+                return;
+            }
+
+            // 每 Tick 至多搜索一个工作站；成功和失败都轮转到下一站。
             searchState = OmniWorkSearchState.Searching;
             lastSearchTick = tick;
             lastSearchWorker = record.pawn?.Name?.ToStringShort ?? "-";
             lastSearchWork = "-";
-            if (TryAssignWork(record))
+            if (TryAssignWork(record, stationRuntime.station))
             {
-                nextGlobalSearchTick = tick;
+                stationRuntime.nextSearchTick = tick + 1;
+                stationRuntime.consecutiveFailures = 0;
+                stationRuntime.hot = true;
                 lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
                 searchState = OmniWorkSearchState.Continuing;
             }
             else
             {
-                searchContinuationPending = false;
-                nextGlobalSearchTick = tick + EmptySearchBackoff;
-                searchState = OmniWorkSearchState.Backoff;
+                stationRuntime.nextSearchTick = tick + EmptySearchBackoff;
+                stationRuntime.consecutiveFailures++;
+                stationRuntime.hot = false;
+                searchState = OmniWorkSearchState.Queued;
             }
+            // 下一 Tick 再选择工作站；若届时没有到期站点，选择器会一次性算出最早唤醒时间。
+            nextPumpTick = tick + 1;
         }
 
         public void FillActiveProxyStatuses(List<OmniWorkProxyStatus> output)
@@ -683,13 +740,17 @@ namespace FullyAutomaticOmniCrafter
         {
             proxiesRecovered = true;
             stations.Clear();
+            stationStates.Clear();
             proxies.Clear();
 
             List<Building> buildings = map.listerBuildings.allBuildingsColonist;
             for (int i = 0; i < buildings.Count; i++)
             {
                 if (buildings[i] is Building_OmniWorkstation station)
+                {
                     stations.Add(station);
+                    GetOrCreateStationRuntime(station).nextSearchTick = CurrentTick;
+                }
             }
 
             List<Thing> pawns = map.listerThings.ThingsInGroup(ThingRequestGroup.Pawn);
@@ -700,7 +761,7 @@ namespace FullyAutomaticOmniCrafter
                 PrepareProxy(pawn);
                 proxies.Add(new ProxyRecord { pawn = pawn });
             }
-            WakeSearchPump();
+            WakePumpNow();
         }
 
         private void RemoveInvalidStations()
@@ -709,7 +770,10 @@ namespace FullyAutomaticOmniCrafter
             {
                 Building_OmniWorkstation station = stations[i];
                 if (station == null || station.Destroyed || !station.Spawned || station.Map != map)
+                {
+                    if (station != null) stationStates.Remove(station);
                     stations.RemoveAt(i);
+                }
             }
             if (stationCursor >= stations.Count) stationCursor = 0;
         }
@@ -738,6 +802,7 @@ namespace FullyAutomaticOmniCrafter
                 proxies.Add(new ProxyRecord { pawn = pawn });
                 created++;
             }
+            if (created > 0) WakePumpNow();
 
             // 只回收空闲代理；正在收尾的 Job 会在下一个调度周期回收，避免吞掉携带物。
             int removed = 0;
@@ -861,47 +926,72 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
 
-        private bool TryAssignWork(ProxyRecord record)
+        private bool TryGetNextDueStation(int tick, out StationRuntime result, out int earliestTick)
         {
-            Pawn pawn = record.pawn;
-            int checkedStations = 0;
-            while (checkedStations < MaxStationsCheckedPerAssignment && stations.Count > 0)
+            result = null;
+            earliestTick = int.MaxValue;
+            int count = stations.Count;
+            for (int checkedCount = 0; checkedCount < count; checkedCount++)
             {
-                if (stationCursor >= stations.Count) stationCursor = 0;
+                if (stationCursor >= count) stationCursor = 0;
                 Building_OmniWorkstation station = stations[stationCursor++];
-                checkedStations++;
-                if (!station.Operational) continue;
+                if (station == null || !station.Operational) continue;
 
-                MoveProxyToStation(pawn, station);
-                record.station = station;
-                OmniWorkProxyUtility.Assign(pawn, station);
+                StationRuntime runtime = GetOrCreateStationRuntime(station);
+                if (runtime.nextSearchTick < earliestTick)
+                    earliestTick = runtime.nextSearchTick;
+                if (runtime.nextSearchTick > tick) continue;
 
-                Job job = TryFindBuildingJob(pawn, station);
-                if (job == null)
-                {
-                    record.station = null;
-                    OmniWorkProxyUtility.Unassign(pawn);
-                    continue;
-                }
-
-                record.issuedJob = job;
-                pawn.jobs.StartJob(job, JobCondition.InterruptForced, jobGiver: workGiver,
-                    tag: job.workGiverDef?.tagToGive, preToilReservationsCanFail: true);
-                if (pawn.CurJob != job)
-                {
-                    record.issuedJob = null;
-                    record.station = null;
-                    OmniWorkProxyUtility.Unassign(pawn);
-                    return false;
-                }
-                else
-                {
-                    OmniWorkProxyUtility.SetActive(pawn, true);
-                }
+                result = runtime;
                 return true;
             }
-
             return false;
+        }
+
+        private int ComputeNextPumpTick(int minimumTick)
+        {
+            int earliest = int.MaxValue;
+            for (int i = 0; i < stations.Count; i++)
+            {
+                Building_OmniWorkstation station = stations[i];
+                if (station == null || !station.Operational) continue;
+                int stationTick = GetOrCreateStationRuntime(station).nextSearchTick;
+                if (stationTick < earliest) earliest = stationTick;
+            }
+            if (earliest == int.MaxValue) return int.MaxValue;
+            return Mathf.Max(minimumTick, earliest);
+        }
+
+        private bool TryAssignWork(ProxyRecord record, Building_OmniWorkstation station)
+        {
+            Pawn pawn = record.pawn;
+            if (station == null || !station.Operational) return false;
+
+            MoveProxyToStation(pawn, station);
+            record.station = station;
+            OmniWorkProxyUtility.Assign(pawn, station);
+
+            Job job = TryFindBuildingJob(pawn, station);
+            if (job == null)
+            {
+                record.station = null;
+                OmniWorkProxyUtility.Unassign(pawn);
+                return false;
+            }
+
+            record.issuedJob = job;
+            pawn.jobs.StartJob(job, JobCondition.InterruptForced, jobGiver: workGiver,
+                tag: job.workGiverDef?.tagToGive, preToilReservationsCanFail: true);
+            if (pawn.CurJob != job)
+            {
+                record.issuedJob = null;
+                record.station = null;
+                OmniWorkProxyUtility.Unassign(pawn);
+                return false;
+            }
+
+            OmniWorkProxyUtility.SetActive(pawn, true);
+            return true;
         }
 
         private void MoveProxyToStation(Pawn pawn, Building_OmniWorkstation station)
