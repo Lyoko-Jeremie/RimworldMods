@@ -750,7 +750,7 @@ namespace FullyAutomaticOmniCrafter
     /// 每张地图唯一的万能工作站调度器。工作站数量不会增加逐 Tick 搜索次数；
     /// 真正运行中的原版 Job 数由固定代理池上限约束。
     /// </summary>
-    public sealed class MapComponent_OmniWorkstation : MapComponent, IThingHolder
+    public sealed class MapComponent_OmniWorkstation : MapComponent
     {
         public const int MinConfigurableProxyCount = 1;
         public const int MaxConfigurableProxyCount = 1024;
@@ -766,6 +766,7 @@ namespace FullyAutomaticOmniCrafter
         private readonly Dictionary<Building_OmniWorkstation, StationRuntime> stationStates =
             new Dictionary<Building_OmniWorkstation, StationRuntime>();
         private readonly List<ProxyRecord> proxies = new List<ProxyRecord>();
+        private ProxySleepHolder sleepHolder;
         private ThingOwner<Pawn> sleepingProxies;
         private readonly JobGiver_Work workGiver = new JobGiver_Work();
         private readonly Predicate<Thing> thingSearchValidator;
@@ -834,6 +835,28 @@ namespace FullyAutomaticOmniCrafter
             public Job issuedJob;
         }
 
+        /// <summary>
+        /// 不接入 Map.GetChildHolders 的私有休眠舱。代理仍由 MapComponent 深保存，
+        /// 但不会被 MapPawns.AllPawnsUnspawned 当成殖民者加入头像栏和工作列表。
+        /// </summary>
+        private sealed class ProxySleepHolder : IThingHolder
+        {
+            public ThingOwner<Pawn> contents;
+
+            public IThingHolder ParentHolder => null;
+
+            public ThingOwner GetDirectlyHeldThings()
+            {
+                return contents;
+            }
+
+            public void GetChildHolders(List<IThingHolder> outChildren)
+            {
+                if (contents != null)
+                    ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, contents);
+            }
+        }
+
         private sealed class StationRuntime
         {
             public Building_OmniWorkstation station;
@@ -854,30 +877,22 @@ namespace FullyAutomaticOmniCrafter
 
         public MapComponent_OmniWorkstation(Map map) : base(map)
         {
-            sleepingProxies = new ThingOwner<Pawn>(this, false, LookMode.Deep);
+            sleepHolder = new ProxySleepHolder();
+            sleepingProxies = new ThingOwner<Pawn>(sleepHolder, false, LookMode.Deep);
+            sleepHolder.contents = sleepingProxies;
             sleepingProxies.dontTickContents = true;
             thingSearchValidator = ValidateThingCandidate;
             thingPriorityGetter = GetThingPriority;
         }
 
-        public IThingHolder ParentHolder => map;
-
-        public ThingOwner GetDirectlyHeldThings()
-        {
-            return sleepingProxies;
-        }
-
-        public void GetChildHolders(List<IThingHolder> outChildren)
-        {
-            ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, sleepingProxies);
-        }
-
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Deep.Look(ref sleepingProxies, "omniWorkstationSleepingProxies", this);
+            if (sleepHolder == null) sleepHolder = new ProxySleepHolder();
+            Scribe_Deep.Look(ref sleepingProxies, "omniWorkstationSleepingProxies", sleepHolder);
             if (sleepingProxies == null)
-                sleepingProxies = new ThingOwner<Pawn>(this, false, LookMode.Deep);
+                sleepingProxies = new ThingOwner<Pawn>(sleepHolder, false, LookMode.Deep);
+            sleepHolder.contents = sleepingProxies;
             sleepingProxies.dontTickContents = true;
             Scribe_Values.Look(ref configuredProxyCount, "omniWorkstationProxyCount", DefaultProxyCount);
             Scribe_Values.Look(ref nextWorkerSequence, "omniWorkstationNextWorkerSequence", 1);
@@ -1640,8 +1655,16 @@ namespace FullyAutomaticOmniCrafter
             searchStation = station;
             searchScanner = scanner;
             IEnumerable<Thing> customSet = scanner.PotentialWorkThingsGlobal(pawn);
-            IEnumerable<Thing> searchSet = customSet ??
-                (IEnumerable<Thing>)map.listerThings.ThingsMatching(scanner.PotentialWorkThingRequest);
+            ThingRequest request = default(ThingRequest);
+            // 部分 Mod Scanner 只实现格子搜索，却保留基类的 Undefined ThingRequest。
+            // Undefined 不能传入 ListerThings；跳过 Thing 分支后仍会正常执行 scanCells。
+            IEnumerable<Thing> searchSet = customSet;
+            if (searchSet == null)
+            {
+                request = scanner.PotentialWorkThingRequest;
+                if (request.IsUndefined) return null;
+                searchSet = map.listerThings.ThingsMatching(request);
+            }
             Func<Thing, float> priority = scanner.Prioritized ? thingPriorityGetter : null;
             float searchDistance = station.WorkRadius + 5f;
 
@@ -1654,7 +1677,7 @@ namespace FullyAutomaticOmniCrafter
                     scanner.PathEndMode, TraverseParms.For(pawn, scanner.MaxPathDanger(pawn)),
                     searchDistance, thingSearchValidator, priority);
 
-            return GenClosest.ClosestThingReachable(pawn.Position, map, scanner.PotentialWorkThingRequest,
+            return GenClosest.ClosestThingReachable(pawn.Position, map, request,
                 scanner.PathEndMode, TraverseParms.For(pawn, scanner.MaxPathDanger(pawn)),
                 searchDistance, thingSearchValidator, searchRegionsMax: scanner.MaxRegionsToScanBeforeGlobalSearch);
         }
