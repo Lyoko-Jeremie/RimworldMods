@@ -42,4 +42,12 @@
     <OmniWorkstation_Search_NoIdleProxy>没有可用于搜索的空闲代理</OmniWorkstation_Search_NoIdleProxy>
     <OmniWorkstation_StatusEnabled>状态：运行中（半径 {0}）</OmniWorkstation_StatusEnabled>
     <OmniWorkstation_StatusDisabled>状态：已停用</OmniWorkstation_StatusDisabled>
+    <OmniWorkstation_StatsReset>重置统计</OmniWorkstation_StatsReset>
+    <OmniWorkstation_StatsLog>输出日志</OmniWorkstation_StatsLog>
+    <OmniWorkstation_StatsSpanDispatch>采样 {0} tick · 派发 {1} · 空转 {2} · 派发率 {3}/s</OmniWorkstation_StatsSpanDispatch>
+    <OmniWorkstation_StatsPump>泵步 {0} 次 · 平均 {1} ms · 峰值 {2} ms</OmniWorkstation_StatsPump>
+    <OmniWorkstation_StatsMaintain>维护 {0} 次 · 平均 {1} ms · 峰值 {2} ms</OmniWorkstation_StatsMaintain>
+    <OmniWorkstation_StatsProxyFlow>出舱 {0} · 入舱 {1} · 空闲轮询 {2}</OmniWorkstation_StatsProxyFlow>
+    <OmniWorkstation_RadiusCoverageTip>覆盖约 {0} 格</OmniWorkstation_RadiusCoverageTip>
+    <OmniWorkstation_ProxyLimitTip>上限越高，可同时执行的 Job 越多，CPU 负载越高；空闲代理会休眠，不产生持续开销</OmniWorkstation_ProxyLimitTip>
 </LanguageData>

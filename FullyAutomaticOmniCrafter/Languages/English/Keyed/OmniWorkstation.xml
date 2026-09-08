@@ -42,4 +42,12 @@
     <OmniWorkstation_Search_NoIdleProxy>No idle proxy available to search</OmniWorkstation_Search_NoIdleProxy>
     <OmniWorkstation_StatusEnabled>Status: active (radius {0})</OmniWorkstation_StatusEnabled>
     <OmniWorkstation_StatusDisabled>Status: disabled</OmniWorkstation_StatusDisabled>
+    <OmniWorkstation_StatsReset>Reset stats</OmniWorkstation_StatsReset>
+    <OmniWorkstation_StatsLog>Log to output</OmniWorkstation_StatsLog>
+    <OmniWorkstation_StatsSpanDispatch>Sampled {0} ticks · Dispatched {1} · Exhausted {2} · {3}/s</OmniWorkstation_StatsSpanDispatch>
+    <OmniWorkstation_StatsPump>Pump {0} steps · avg {1} ms · max {2} ms</OmniWorkstation_StatsPump>
+    <OmniWorkstation_StatsMaintain>Maintenance {0} runs · avg {1} ms · max {2} ms</OmniWorkstation_StatsMaintain>
+    <OmniWorkstation_StatsProxyFlow>Wake {0} · Sleep {1} · Idle scans {2}</OmniWorkstation_StatsProxyFlow>
+    <OmniWorkstation_RadiusCoverageTip>Covers approximately {0} cells</OmniWorkstation_RadiusCoverageTip>
+    <OmniWorkstation_ProxyLimitTip>A higher limit means more jobs may run at once and higher CPU load; idle proxies sleep and cost nothing</OmniWorkstation_ProxyLimitTip>
 </LanguageData>
