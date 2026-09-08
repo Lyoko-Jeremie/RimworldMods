@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <OmniWorkstation.label>universal workstation</OmniWorkstation.label>
+    <OmniWorkstation.description>Automatically performs pawn-operated building work in its configured range through the standard work and job pipeline.</OmniWorkstation.description>
+</LanguageData>

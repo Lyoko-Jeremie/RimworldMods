@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <OmniWorkstation_Toggle>自动工作</OmniWorkstation_Toggle>
+    <OmniWorkstation_ToggleDesc>启用或停用该工作站的自动工作调度。</OmniWorkstation_ToggleDesc>
+    <OmniWorkstation_Radius>工作半径：{0}</OmniWorkstation_Radius>
+    <OmniWorkstation_RadiusDesc>切换工作站允许搜索、搬运和执行工作的范围。</OmniWorkstation_RadiusDesc>
+    <OmniWorkstation_StatusEnabled>状态：运行中（半径 {0}）</OmniWorkstation_StatusEnabled>
+    <OmniWorkstation_StatusDisabled>状态：已停用</OmniWorkstation_StatusDisabled>
+</LanguageData>

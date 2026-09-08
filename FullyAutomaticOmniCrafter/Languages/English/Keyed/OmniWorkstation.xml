@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <OmniWorkstation_Toggle>Automatic work</OmniWorkstation_Toggle>
+    <OmniWorkstation_ToggleDesc>Enables or disables automatic work scheduling for this workstation.</OmniWorkstation_ToggleDesc>
+    <OmniWorkstation_Radius>Work radius: {0}</OmniWorkstation_Radius>
+    <OmniWorkstation_RadiusDesc>Cycles the range in which the workstation may search, haul, and perform work.</OmniWorkstation_RadiusDesc>
+    <OmniWorkstation_StatusEnabled>Status: active (radius {0})</OmniWorkstation_StatusEnabled>
+    <OmniWorkstation_StatusDisabled>Status: disabled</OmniWorkstation_StatusDisabled>
+</LanguageData>

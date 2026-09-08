@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <!-- 仅作为原版工作管线的隐藏执行载体，不拥有独立 AI 后端。 -->
+    <PawnKindDef ParentName="BasePlayerPawnKind">
+        <defName>FAOC_OmniWorkProxy</defName>
+        <label>omni work proxy</label>
+        <race>Human</race>
+        <combatPower>0</combatPower>
+    </PawnKindDef>
+
+    <ThingDef ParentName="BuildingBase">
+        <defName>OmniWorkstation</defName>
+        <label>universal workstation</label>
+        <description>Automatically performs pawn-operated building work in its configured range through the standard work and job pipeline.</description>
+        <thingClass>FullyAutomaticOmniCrafter.Building_OmniWorkstation</thingClass>
+
+        <designatorDropdown>OmniCrafter_DropdownGroup</designatorDropdown>
+        <designationCategory>OmniCrafter_Category</designationCategory>
+
+        <graphicData>
+            <texPath>Things/Building/Production/OmniCrafter2_l</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(1,1)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <uiIconPath>Things/Building/Production/OmniCrafter2_l</uiIconPath>
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>PassThroughOnly</passability>
+        <pathCost>1</pathCost>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0</staticSunShadowHeight>
+        <fillPercent>0.5</fillPercent>
+        <size>(1,1)</size>
+
+        <costList>
+            <Steel>200</Steel>
+        </costList>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+        <statBases>
+            <Mass>50</Mass>
+            <MaxHitPoints>500</MaxHitPoints>
+            <Flammability>0.5</Flammability>
+        </statBases>
+
+        <!-- 调度由 MapComponent 集中驱动，建筑本身不需要 Tick。 -->
+        <tickerType>Never</tickerType>
+        <building>
+            <paintable>true</paintable>
+        </building>
+        <comps>
+            <li Class="CompProperties_Flickable" />
+            <li Class="CompProperties_Breakdownable" />
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>2000</basePowerConsumption>
+                <shortCircuitInRain>false</shortCircuitInRain>
+                <transmitsPower>true</transmitsPower>
+            </li>
+        </comps>
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+        <rotatable>false</rotatable>
+    </ThingDef>
+
+</Defs>
