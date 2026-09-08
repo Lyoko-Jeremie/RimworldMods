@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
     <OmniWorkstation.label>万能工作站</OmniWorkstation.label>
-    <OmniWorkstation.description>在设定范围内，通过游戏标准的工作与任务管线，全自动执行需要角色操作建筑才能完成的工作。</OmniWorkstation.description>
+    <OmniWorkstation.description>在设定范围内，通过游戏标准的工作与任务管线，全自动执行玩家允许的原版和 Mod 工作。</OmniWorkstation.description>
 </LanguageData>

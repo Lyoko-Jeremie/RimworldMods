@@ -55,7 +55,7 @@
     <ThingDef ParentName="BuildingBase">
         <defName>OmniWorkstation</defName>
         <label>universal workstation</label>
-        <description>Automatically performs pawn-operated building work in its configured range through the standard work and job pipeline.</description>
+        <description>Automatically performs enabled vanilla and mod work in its configured range through the standard work and job pipeline.</description>
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniWorkstation</thingClass>
 
 <!--        <designatorDropdown>OmniWorkstation_DropdownGroup</designatorDropdown>-->

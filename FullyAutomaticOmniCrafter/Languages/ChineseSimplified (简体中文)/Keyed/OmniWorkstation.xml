@@ -5,6 +5,18 @@
     <OmniWorkstation_Radius>工作半径：{0}</OmniWorkstation_Radius>
     <OmniWorkstation_RadiusDesc>使用滑块或输入框调整该工作站允许搜索、搬运和执行工作的范围。</OmniWorkstation_RadiusDesc>
     <OmniWorkstation_RadiusCurrent>当前工作半径：{0}</OmniWorkstation_RadiusCurrent>
+    <OmniWorkstation_WorkFilter>工作类型</OmniWorkstation_WorkFilter>
+    <OmniWorkstation_WorkFilterDesc>设置此工作站可以派发的原版和 Mod 工作类型。</OmniWorkstation_WorkFilterDesc>
+    <OmniWorkstation_WorkFilterTitle>万能工作站工作类型</OmniWorkstation_WorkFilterTitle>
+    <OmniWorkstation_WorkFilterHelp>配置只作用于当前工作站。重叠范围内，只要任意一个工作站允许该类型，任务就可以执行。</OmniWorkstation_WorkFilterHelp>
+    <OmniWorkstation_FilterSearch>搜索</OmniWorkstation_FilterSearch>
+    <OmniWorkstation_EnableAll>全部启用</OmniWorkstation_EnableAll>
+    <OmniWorkstation_DisableAll>全部禁用</OmniWorkstation_DisableAll>
+    <OmniWorkstation_ResetFilter>恢复默认</OmniWorkstation_ResetFilter>
+    <OmniWorkstation_ApplyAllStations>应用到全部</OmniWorkstation_ApplyAllStations>
+    <OmniWorkstation_UnclassifiedWork>未分类 Mod 工作</OmniWorkstation_UnclassifiedWork>
+    <OmniWorkstation_UnclassifiedWorkDesc>控制没有声明 WorkTypeDef 的标准 WorkGiver。默认启用。</OmniWorkstation_UnclassifiedWorkDesc>
+    <OmniWorkstation_FilterApplied>已将工作过滤配置应用到当前地图的 {0} 个万能工作站。</OmniWorkstation_FilterApplied>
     <OmniWorkstation_ValueInput>输入数值</OmniWorkstation_ValueInput>
     <OmniWorkstation_ProxyLimit>全图工作代理：{0}</OmniWorkstation_ProxyLimit>
     <OmniWorkstation_ProxyLimitDesc>设置当前地图由所有万能工作站共享的工作代理总数。同一工作站可以同时使用多个代理。</OmniWorkstation_ProxyLimitDesc>
@@ -16,6 +28,10 @@
     <OmniWorkstation_SearchState>搜索状态：{0}</OmniWorkstation_SearchState>
     <OmniWorkstation_NextSearch>距离下次常规搜索：{0} Tick</OmniWorkstation_NextSearch>
     <OmniWorkstation_LastSearch>最近搜索：{0}｜{1}｜Tick {2}</OmniWorkstation_LastSearch>
+    <OmniWorkstation_LastSearchSource>搜索来源：{0}</OmniWorkstation_LastSearchSource>
+    <OmniWorkstation_SearchStationFormat>{0}（{1}, {2}）</OmniWorkstation_SearchStationFormat>
+    <OmniWorkstation_SearchGroupFormat>{0}｜{1}｜优先级 {2}</OmniWorkstation_SearchGroupFormat>
+    <OmniWorkstation_SearchGiverFormat>{0}｜{1}</OmniWorkstation_SearchGiverFormat>
     <OmniWorkstation_ProxyColumn>工作代理</OmniWorkstation_ProxyColumn>
     <OmniWorkstation_WorkColumn>当前工作</OmniWorkstation_WorkColumn>
     <OmniWorkstation_Search_Waiting>等待常规搜索</OmniWorkstation_Search_Waiting>

@@ -5,6 +5,18 @@
     <OmniWorkstation_Radius>Work radius: {0}</OmniWorkstation_Radius>
     <OmniWorkstation_RadiusDesc>Uses a slider or input field to set the range in which this workstation may search, haul, and perform work.</OmniWorkstation_RadiusDesc>
     <OmniWorkstation_RadiusCurrent>Current work radius: {0}</OmniWorkstation_RadiusCurrent>
+    <OmniWorkstation_WorkFilter>Work types</OmniWorkstation_WorkFilter>
+    <OmniWorkstation_WorkFilterDesc>Choose which vanilla and mod work types this workstation may schedule.</OmniWorkstation_WorkFilterDesc>
+    <OmniWorkstation_WorkFilterTitle>Universal workstation work types</OmniWorkstation_WorkFilterTitle>
+    <OmniWorkstation_WorkFilterHelp>This configuration belongs to this workstation. In overlapping areas, work is allowed when any covering workstation enables its type.</OmniWorkstation_WorkFilterHelp>
+    <OmniWorkstation_FilterSearch>Search</OmniWorkstation_FilterSearch>
+    <OmniWorkstation_EnableAll>Enable all</OmniWorkstation_EnableAll>
+    <OmniWorkstation_DisableAll>Disable all</OmniWorkstation_DisableAll>
+    <OmniWorkstation_ResetFilter>Reset defaults</OmniWorkstation_ResetFilter>
+    <OmniWorkstation_ApplyAllStations>Apply to all</OmniWorkstation_ApplyAllStations>
+    <OmniWorkstation_UnclassifiedWork>Unclassified mod work</OmniWorkstation_UnclassifiedWork>
+    <OmniWorkstation_UnclassifiedWorkDesc>Controls standard WorkGivers that do not declare a WorkTypeDef. Enabled by default.</OmniWorkstation_UnclassifiedWorkDesc>
+    <OmniWorkstation_FilterApplied>Applied the work filter to {0} universal workstations on this map.</OmniWorkstation_FilterApplied>
     <OmniWorkstation_ValueInput>Enter value</OmniWorkstation_ValueInput>
     <OmniWorkstation_ProxyLimit>Map work proxies: {0}</OmniWorkstation_ProxyLimit>
     <OmniWorkstation_ProxyLimitDesc>Sets the total number of work proxies shared by all universal workstations on this map. Multiple proxies may use one workstation concurrently.</OmniWorkstation_ProxyLimitDesc>
@@ -16,6 +28,10 @@
     <OmniWorkstation_SearchState>Search state: {0}</OmniWorkstation_SearchState>
     <OmniWorkstation_NextSearch>Next regular search in: {0} ticks</OmniWorkstation_NextSearch>
     <OmniWorkstation_LastSearch>Last search: {0} | {1} | tick {2}</OmniWorkstation_LastSearch>
+    <OmniWorkstation_LastSearchSource>Search source: {0}</OmniWorkstation_LastSearchSource>
+    <OmniWorkstation_SearchStationFormat>{0} ({1}, {2})</OmniWorkstation_SearchStationFormat>
+    <OmniWorkstation_SearchGroupFormat>{0} | {1} | priority {2}</OmniWorkstation_SearchGroupFormat>
+    <OmniWorkstation_SearchGiverFormat>{0} | {1}</OmniWorkstation_SearchGiverFormat>
     <OmniWorkstation_ProxyColumn>Work proxy</OmniWorkstation_ProxyColumn>
     <OmniWorkstation_WorkColumn>Current work</OmniWorkstation_WorkColumn>
     <OmniWorkstation_Search_Waiting>Waiting for regular search</OmniWorkstation_Search_Waiting>

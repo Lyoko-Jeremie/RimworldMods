@@ -19,9 +19,13 @@ namespace FullyAutomaticOmniCrafter
         private bool automationEnabled = true;
         private int workRadius = 30;
         private int legacyWorkRadiusIndex = 1;
+        private List<string> disabledWorkTypeDefNames = new List<string>();
+        private bool allowUnclassifiedWork = true;
+        [Unsaved] private HashSet<string> disabledWorkTypeSet;
 
         public bool AutomationEnabled => automationEnabled;
         public int WorkRadius => workRadius;
+        public bool AllowUnclassifiedWork => allowUnclassifiedWork;
 
         public bool Operational
         {
@@ -60,12 +64,88 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref automationEnabled, "automationEnabled", true);
             Scribe_Values.Look(ref workRadius, "workRadius", -1);
             Scribe_Values.Look(ref legacyWorkRadiusIndex, "workRadiusIndex", 1);
+            Scribe_Collections.Look(ref disabledWorkTypeDefNames, "disabledWorkTypeDefNames", LookMode.Value);
+            Scribe_Values.Look(ref allowUnclassifiedWork, "allowUnclassifiedWork", true);
+            if (disabledWorkTypeDefNames == null) disabledWorkTypeDefNames = new List<string>();
+            disabledWorkTypeSet = null;
             if (workRadius < MinWorkRadius)
             {
                 int[] legacyRadii = { 15, 30, 60, 100 };
                 workRadius = legacyRadii[Mathf.Clamp(legacyWorkRadiusIndex, 0, legacyRadii.Length - 1)];
             }
             workRadius = Mathf.Clamp(workRadius, MinWorkRadius, MaxWorkRadius);
+        }
+
+        public bool AllowsWorkType(WorkTypeDef workType)
+        {
+            if (workType == null) return allowUnclassifiedWork;
+            EnsureWorkTypeSet();
+            return !disabledWorkTypeSet.Contains(workType.defName);
+        }
+
+        public void SetWorkTypeEnabled(WorkTypeDef workType, bool enabled)
+        {
+            if (workType == null)
+            {
+                if (allowUnclassifiedWork == enabled) return;
+                allowUnclassifiedWork = enabled;
+            }
+            else
+            {
+                EnsureWorkTypeSet();
+                bool changed = enabled
+                    ? disabledWorkTypeSet.Remove(workType.defName)
+                    : disabledWorkTypeSet.Add(workType.defName);
+                if (!changed) return;
+                SyncDisabledWorkTypeList();
+            }
+
+            Map?.GetComponent<MapComponent_OmniWorkstation>()
+                .NotifyWorkFilterChanged(this, workType, enabled);
+        }
+
+        public void SetAllWorkTypesEnabled(bool enabled)
+        {
+            EnsureWorkTypeSet();
+            disabledWorkTypeSet.Clear();
+            if (!enabled)
+            {
+                List<WorkTypeDef> workTypes = OmniWorkCatalog.WorkTypes;
+                for (int i = 0; i < workTypes.Count; i++)
+                    disabledWorkTypeSet.Add(workTypes[i].defName);
+            }
+            allowUnclassifiedWork = enabled;
+            SyncDisabledWorkTypeList();
+            Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
+        }
+
+        public void CopyWorkFilterFrom(Building_OmniWorkstation source)
+        {
+            if (source == null || source == this) return;
+            source.EnsureWorkTypeSet();
+            disabledWorkTypeDefNames = new List<string>(source.disabledWorkTypeSet);
+            disabledWorkTypeSet = new HashSet<string>(source.disabledWorkTypeSet, StringComparer.Ordinal);
+            allowUnclassifiedWork = source.allowUnclassifiedWork;
+        }
+
+        private void EnsureWorkTypeSet()
+        {
+            if (disabledWorkTypeSet != null) return;
+            disabledWorkTypeSet = new HashSet<string>(StringComparer.Ordinal);
+            if (disabledWorkTypeDefNames == null) return;
+            for (int i = 0; i < disabledWorkTypeDefNames.Count; i++)
+            {
+                string defName = disabledWorkTypeDefNames[i];
+                if (!defName.NullOrEmpty()) disabledWorkTypeSet.Add(defName);
+            }
+        }
+
+        private void SyncDisabledWorkTypeList()
+        {
+            disabledWorkTypeDefNames.Clear();
+            foreach (string defName in disabledWorkTypeSet)
+                disabledWorkTypeDefNames.Add(defName);
+            disabledWorkTypeDefNames.Sort(StringComparer.Ordinal);
         }
 
         public void SetWorkRadius(int value)
@@ -100,6 +180,14 @@ namespace FullyAutomaticOmniCrafter
                 defaultDesc = "OmniWorkstation_RadiusDesc".Translate(),
                 icon = TexCommand.Install,
                 action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationRadius(this))
+            };
+
+            yield return new Command_Action
+            {
+                defaultLabel = "OmniWorkstation_WorkFilter".Translate(),
+                defaultDesc = "OmniWorkstation_WorkFilterDesc".Translate(),
+                icon = TexCommand.ForbidOff,
+                action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationWorkFilter(this))
             };
 
             MapComponent_OmniWorkstation manager = Map?.GetComponent<MapComponent_OmniWorkstation>();
@@ -253,6 +341,193 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    public sealed class OmniWorkGiverGroup
+    {
+        public WorkTypeDef workType;
+        public int priorityInType;
+        public readonly List<WorkGiverDef> giverDefs = new List<WorkGiverDef>();
+    }
+
+    /// <summary>所有工作目录只在 Def 加载后构建一次；新增 Mod WorkGiver 会自动进入目录。</summary>
+    [StaticConstructorOnStartup]
+    public static class OmniWorkCatalog
+    {
+        public static readonly List<WorkTypeDef> WorkTypes = new List<WorkTypeDef>();
+        public static readonly List<OmniWorkGiverGroup> Groups = new List<OmniWorkGiverGroup>();
+
+        static OmniWorkCatalog()
+        {
+            List<WorkTypeDef> allTypes = DefDatabase<WorkTypeDef>.AllDefsListForReading;
+            for (int i = 0; i < allTypes.Count; i++)
+            {
+                WorkTypeDef workType = allTypes[i];
+                if (workType.workGiversByPriority.Count > 0) WorkTypes.Add(workType);
+            }
+            WorkTypes.Sort(CompareWorkTypes);
+
+            for (int i = 0; i < WorkTypes.Count; i++)
+                AddGroupsForType(WorkTypes[i], WorkTypes[i].workGiversByPriority);
+
+            List<WorkGiverDef> allGivers = DefDatabase<WorkGiverDef>.AllDefsListForReading;
+            List<WorkGiverDef> unclassified = new List<WorkGiverDef>();
+            for (int i = 0; i < allGivers.Count; i++)
+                if (allGivers[i].workType == null) unclassified.Add(allGivers[i]);
+            unclassified.Sort((a, b) => b.priorityInType.CompareTo(a.priorityInType));
+            AddGroupsForType(null, unclassified);
+        }
+
+        private static int CompareWorkTypes(WorkTypeDef a, WorkTypeDef b)
+        {
+            int priority = b.naturalPriority.CompareTo(a.naturalPriority);
+            return priority != 0
+                ? priority
+                : string.Compare(a.defName, b.defName, StringComparison.Ordinal);
+        }
+
+        private static void AddGroupsForType(WorkTypeDef workType, List<WorkGiverDef> defs)
+        {
+            OmniWorkGiverGroup group = null;
+            int lastPriority = int.MinValue;
+            for (int i = 0; i < defs.Count; i++)
+            {
+                WorkGiverDef def = defs[i];
+                if (group == null || def.priorityInType != lastPriority)
+                {
+                    group = new OmniWorkGiverGroup
+                    {
+                        workType = workType,
+                        priorityInType = def.priorityInType
+                    };
+                    Groups.Add(group);
+                    lastPriority = def.priorityInType;
+                }
+                // Worker 保持原版懒加载；单个 Mod 构造器异常不会让整个静态目录初始化失败。
+                group.giverDefs.Add(def);
+            }
+        }
+
+        public static string WorkTypeLabel(WorkTypeDef workType)
+        {
+            if (workType == null) return "OmniWorkstation_UnclassifiedWork".Translate();
+            if (!workType.labelShort.NullOrEmpty()) return workType.labelShort.CapitalizeFirst();
+            return workType.LabelCap;
+        }
+    }
+
+    /// <summary>每个工作站独立保存过滤器；重叠范围采用“任一覆盖站允许即可”的并集语义。</summary>
+    public sealed class Dialog_OmniWorkstationWorkFilter : Window
+    {
+        private readonly Building_OmniWorkstation station;
+        private Vector2 scrollPosition;
+        private string searchText = string.Empty;
+
+        public override Vector2 InitialSize => new Vector2(680f, 720f);
+
+        public Dialog_OmniWorkstationWorkFilter(Building_OmniWorkstation station)
+        {
+            this.station = station;
+            doCloseButton = true;
+            doCloseX = true;
+            forcePause = true;
+            absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            if (station == null || station.Destroyed)
+            {
+                Close();
+                return;
+            }
+
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 32f), "OmniWorkstation_WorkFilterTitle".Translate());
+            Text.Font = GameFont.Small;
+            Widgets.Label(new Rect(0f, 38f, inRect.width, 44f), "OmniWorkstation_WorkFilterHelp".Translate());
+
+            Widgets.Label(new Rect(0f, 88f, 90f, 28f), "OmniWorkstation_FilterSearch".Translate());
+            searchText = Widgets.TextField(new Rect(94f, 86f, inRect.width - 94f, 30f), searchText);
+
+            float buttonY = 124f;
+            float gap = 6f;
+            float buttonWidth = (inRect.width - gap * 3f) / 4f;
+            if (Widgets.ButtonText(new Rect(0f, buttonY, buttonWidth, 30f), "OmniWorkstation_EnableAll".Translate()))
+                station.SetAllWorkTypesEnabled(true);
+            if (Widgets.ButtonText(new Rect(buttonWidth + gap, buttonY, buttonWidth, 30f), "OmniWorkstation_DisableAll".Translate()))
+                station.SetAllWorkTypesEnabled(false);
+            if (Widgets.ButtonText(new Rect((buttonWidth + gap) * 2f, buttonY, buttonWidth, 30f), "OmniWorkstation_ResetFilter".Translate()))
+                station.SetAllWorkTypesEnabled(true);
+            if (Widgets.ButtonText(new Rect((buttonWidth + gap) * 3f, buttonY, buttonWidth, 30f), "OmniWorkstation_ApplyAllStations".Translate()))
+                station.Map?.GetComponent<MapComponent_OmniWorkstation>().ApplyWorkFilterToAll(station);
+
+            Rect outRect = new Rect(0f, 164f, inRect.width, inRect.height - 208f);
+            int visibleCount = CountVisibleRows();
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, visibleCount * 34f));
+            Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
+
+            float y = 0f;
+            DrawUnclassifiedRow(viewRect.width, ref y);
+            List<WorkTypeDef> workTypes = OmniWorkCatalog.WorkTypes;
+            for (int i = 0; i < workTypes.Count; i++)
+            {
+                WorkTypeDef workType = workTypes[i];
+                if (!MatchesSearch(workType)) continue;
+                Rect row = new Rect(0f, y, viewRect.width, 32f);
+                if ((Mathf.RoundToInt(y / 34f) & 1) == 1) Widgets.DrawLightHighlight(row);
+                bool enabled = station.AllowsWorkType(workType);
+                string label = OmniWorkCatalog.WorkTypeLabel(workType);
+                Widgets.CheckboxLabeled(row, label, ref enabled);
+                TooltipHandler.TipRegion(row, workType.defName + GetModSuffix(workType));
+                if (enabled != station.AllowsWorkType(workType))
+                    station.SetWorkTypeEnabled(workType, enabled);
+                y += 34f;
+            }
+            Widgets.EndScrollView();
+        }
+
+        private void DrawUnclassifiedRow(float width, ref float y)
+        {
+            if (!searchText.NullOrEmpty() &&
+                !"OmniWorkstation_UnclassifiedWork".Translate().ToString()
+                    .ToLowerInvariant().Contains(searchText.ToLowerInvariant())) return;
+
+            Rect row = new Rect(0f, y, width, 32f);
+            bool enabled = station.AllowUnclassifiedWork;
+            Widgets.CheckboxLabeled(row, "OmniWorkstation_UnclassifiedWork".Translate(), ref enabled);
+            TooltipHandler.TipRegion(row, "OmniWorkstation_UnclassifiedWorkDesc".Translate());
+            if (enabled != station.AllowUnclassifiedWork)
+                station.SetWorkTypeEnabled(null, enabled);
+            y += 34f;
+        }
+
+        private int CountVisibleRows()
+        {
+            int count = searchText.NullOrEmpty() ||
+                        "OmniWorkstation_UnclassifiedWork".Translate().ToString()
+                            .ToLowerInvariant().Contains(searchText.ToLowerInvariant()) ? 1 : 0;
+            List<WorkTypeDef> workTypes = OmniWorkCatalog.WorkTypes;
+            for (int i = 0; i < workTypes.Count; i++)
+                if (MatchesSearch(workTypes[i])) count++;
+            return count;
+        }
+
+        private bool MatchesSearch(WorkTypeDef workType)
+        {
+            if (searchText.NullOrEmpty()) return true;
+            string needle = searchText.ToLowerInvariant();
+            if (OmniWorkCatalog.WorkTypeLabel(workType).ToLowerInvariant().Contains(needle) ||
+                workType.defName.ToLowerInvariant().Contains(needle)) return true;
+            string modName = workType.modContentPack?.Name;
+            return !modName.NullOrEmpty() && modName.ToLowerInvariant().Contains(needle);
+        }
+
+        private static string GetModSuffix(WorkTypeDef workType)
+        {
+            string modName = workType.modContentPack?.Name;
+            return modName.NullOrEmpty() ? string.Empty : "\n" + modName;
+        }
+    }
+
     public enum OmniWorkSearchState
     {
         Waiting,
@@ -315,8 +590,10 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(0f, 116f, inRect.width, 24f),
                 "OmniWorkstation_LastSearch".Translate(manager.LastSearchWorker, manager.LastSearchWork,
                     manager.LastSearchTick < 0 ? "-" : manager.LastSearchTick.ToString()));
+            Widgets.Label(new Rect(0f, 142f, inRect.width, 24f),
+                "OmniWorkstation_LastSearchSource".Translate(manager.LastSearchSource));
 
-            float listTop = 150f;
+            float listTop = 176f;
             Widgets.DrawLineHorizontal(0f, listTop - 6f, inRect.width);
             Widgets.Label(new Rect(4f, listTop, 150f, 26f), "OmniWorkstation_ProxyColumn".Translate());
             Widgets.Label(new Rect(160f, listTop, inRect.width - 164f, 26f), "OmniWorkstation_WorkColumn".Translate());
@@ -480,6 +757,12 @@ namespace FullyAutomaticOmniCrafter
             new Dictionary<Building_OmniWorkstation, StationRuntime>();
         private readonly List<ProxyRecord> proxies = new List<ProxyRecord>();
         private readonly JobGiver_Work workGiver = new JobGiver_Work();
+        private readonly Predicate<Thing> thingSearchValidator;
+        private readonly Func<Thing, float> thingPriorityGetter;
+
+        private Pawn searchPawn;
+        private Building_OmniWorkstation searchStation;
+        private WorkGiver_Scanner searchScanner;
 
         private int stationCursor;
         private int proxySearchCursor;
@@ -488,6 +771,11 @@ namespace FullyAutomaticOmniCrafter
         private int lastSearchTick = -1;
         private string lastSearchWorker = "-";
         private string lastSearchWork = "-";
+        private Building_OmniWorkstation lastSearchStation;
+        private WorkTypeDef lastSearchWorkType;
+        private WorkGiverDef lastSearchGiver;
+        private int lastSearchPriority;
+        private bool lastSearchGroupValid;
         private bool proxiesRecovered;
         private int configuredProxyCount = DefaultProxyCount;
         private int nextWorkerSequence = 1;
@@ -498,6 +786,21 @@ namespace FullyAutomaticOmniCrafter
         public int LastSearchTick => lastSearchTick;
         public string LastSearchWorker => lastSearchWorker;
         public string LastSearchWork => lastSearchWork;
+        public string LastSearchSource
+        {
+            get
+            {
+                if (lastSearchStation == null) return "-";
+                string source = "OmniWorkstation_SearchStationFormat".Translate(lastSearchStation.LabelCap,
+                    lastSearchStation.Position.x, lastSearchStation.Position.z);
+                if (lastSearchGroupValid)
+                    source = "OmniWorkstation_SearchGroupFormat".Translate(source,
+                        OmniWorkCatalog.WorkTypeLabel(lastSearchWorkType), lastSearchPriority);
+                if (lastSearchGiver != null)
+                    source = "OmniWorkstation_SearchGiverFormat".Translate(source, lastSearchGiver.defName);
+                return source;
+            }
+        }
         public int TicksUntilNextSearch => nextPumpTick == int.MaxValue
             ? 0
             : Mathf.Max(0, nextPumpTick - Find.TickManager.TicksGame);
@@ -526,10 +829,20 @@ namespace FullyAutomaticOmniCrafter
             public int nextSearchTick;
             public int consecutiveFailures;
             public bool hot;
+            public int groupCursor;
+        }
+
+        private enum WorkSearchStepResult
+        {
+            Found,
+            Continue,
+            Exhausted
         }
 
         public MapComponent_OmniWorkstation(Map map) : base(map)
         {
+            thingSearchValidator = ValidateThingCandidate;
+            thingPriorityGetter = GetThingPriority;
         }
 
         public override void ExposeData()
@@ -589,7 +902,42 @@ namespace FullyAutomaticOmniCrafter
             runtime.nextSearchTick = CurrentTick;
             runtime.consecutiveFailures = 0;
             runtime.hot = true;
+            runtime.groupCursor = 0;
             WakePumpNow();
+        }
+
+        public void NotifyWorkFilterChanged(Building_OmniWorkstation station, WorkTypeDef workType, bool enabled)
+        {
+            if (!enabled)
+            {
+                for (int i = 0; i < proxies.Count; i++)
+                {
+                    ProxyRecord record = proxies[i];
+                    if (record.station != station || record.issuedJob?.workGiverDef?.workType != workType) continue;
+                    StopIssuedJob(record);
+                    record.station = null;
+                    OmniWorkProxyUtility.Unassign(record.pawn);
+                }
+            }
+
+            StationRuntime runtime = GetOrCreateStationRuntime(station);
+            runtime.nextSearchTick = CurrentTick;
+            runtime.consecutiveFailures = 0;
+            runtime.hot = true;
+            runtime.groupCursor = 0;
+            WakePumpNow();
+        }
+
+        public void ApplyWorkFilterToAll(Building_OmniWorkstation source)
+        {
+            for (int i = 0; i < stations.Count; i++)
+            {
+                Building_OmniWorkstation station = stations[i];
+                if (station == source) continue;
+                station.CopyWorkFilterFrom(source);
+                NotifyConfigurationChanged(station);
+            }
+            Messages.Message("OmniWorkstation_FilterApplied".Translate(stations.Count), MessageTypeDefOf.TaskCompletion, false);
         }
 
         private int CurrentTick => Find.TickManager?.TicksGame ?? 0;
@@ -609,6 +957,7 @@ namespace FullyAutomaticOmniCrafter
                 runtime.nextSearchTick = tick;
                 runtime.consecutiveFailures = 0;
                 runtime.hot = true;
+                runtime.groupCursor = 0;
             }
             WakePumpNow();
         }
@@ -690,7 +1039,12 @@ namespace FullyAutomaticOmniCrafter
             lastSearchTick = tick;
             lastSearchWorker = record.pawn?.Name?.ToStringShort ?? "-";
             lastSearchWork = "-";
-            if (TryAssignWork(record, stationRuntime.station))
+            lastSearchStation = stationRuntime.station;
+            lastSearchWorkType = null;
+            lastSearchGiver = null;
+            lastSearchGroupValid = false;
+            WorkSearchStepResult stepResult = TryAssignWork(record, stationRuntime);
+            if (stepResult == WorkSearchStepResult.Found)
             {
                 stationRuntime.nextSearchTick = tick + 1;
                 stationRuntime.consecutiveFailures = 0;
@@ -698,11 +1052,16 @@ namespace FullyAutomaticOmniCrafter
                 lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
                 searchState = OmniWorkSearchState.Continuing;
             }
-            else
+            else if (stepResult == WorkSearchStepResult.Exhausted)
             {
                 stationRuntime.nextSearchTick = tick + EmptySearchBackoff;
                 stationRuntime.consecutiveFailures++;
                 stationRuntime.hot = false;
+                searchState = OmniWorkSearchState.Backoff;
+            }
+            else
+            {
+                stationRuntime.nextSearchTick = tick + 1;
                 searchState = OmniWorkSearchState.Queued;
             }
             // 下一 Tick 再选择工作站；若届时没有到期站点，选择器会一次性算出最早唤醒时间。
@@ -897,6 +1256,15 @@ namespace FullyAutomaticOmniCrafter
 
             if (record.issuedJob != null && pawn.CurJob != record.issuedJob)
             {
+                // 原版可能插入机会任务或 finalizer；自主思考入口已被禁止，因此当前 Job
+                // 非空时可以安全视为同一工作链并继续跟踪。
+                if (pawn.CurJob != null)
+                {
+                    record.issuedJob = pawn.CurJob;
+                    OmniWorkProxyUtility.SetActive(pawn, true);
+                    return false;
+                }
+
                 record.issuedJob = null;
                 record.station = null;
                 OmniWorkProxyUtility.Unassign(pawn);
@@ -962,96 +1330,220 @@ namespace FullyAutomaticOmniCrafter
             return Mathf.Max(minimumTick, earliest);
         }
 
-        private bool TryAssignWork(ProxyRecord record, Building_OmniWorkstation station)
+        private WorkSearchStepResult TryAssignWork(ProxyRecord record, StationRuntime runtime)
         {
             Pawn pawn = record.pawn;
-            if (station == null || !station.Operational) return false;
+            Building_OmniWorkstation station = runtime.station;
+            List<OmniWorkGiverGroup> groups = OmniWorkCatalog.Groups;
+            if (station == null || !station.Operational || groups.Count == 0)
+                return WorkSearchStepResult.Exhausted;
+
+            // 被过滤的组只做 O(1) 跳过；每 Tick 最多实际执行一个允许组的昂贵搜索。
+            while (runtime.groupCursor < groups.Count &&
+                   !station.AllowsWorkType(groups[runtime.groupCursor].workType))
+                runtime.groupCursor++;
+
+            if (runtime.groupCursor >= groups.Count)
+            {
+                runtime.groupCursor = 0;
+                return WorkSearchStepResult.Exhausted;
+            }
+
+            OmniWorkGiverGroup group = groups[runtime.groupCursor++];
+            lastSearchWorkType = group.workType;
+            lastSearchPriority = group.priorityInType;
+            lastSearchGroupValid = true;
 
             MoveProxyToStation(pawn, station);
             record.station = station;
             OmniWorkProxyUtility.Assign(pawn, station);
 
-            Job job = TryFindBuildingJob(pawn, station);
+            Job job = TryFindJobInGroup(pawn, station, group);
             if (job == null)
             {
                 record.station = null;
                 OmniWorkProxyUtility.Unassign(pawn);
-                return false;
+                if (runtime.groupCursor >= groups.Count)
+                {
+                    runtime.groupCursor = 0;
+                    return WorkSearchStepResult.Exhausted;
+                }
+                return WorkSearchStepResult.Continue;
             }
 
+            runtime.groupCursor = 0;
             record.issuedJob = job;
             pawn.jobs.StartJob(job, JobCondition.InterruptForced, jobGiver: workGiver,
                 tag: job.workGiverDef?.tagToGive, preToilReservationsCanFail: true);
-            if (pawn.CurJob != job)
+            if (pawn.CurJob == null)
             {
                 record.issuedJob = null;
                 record.station = null;
                 OmniWorkProxyUtility.Unassign(pawn);
-                return false;
+                return WorkSearchStepResult.Continue;
             }
 
+            // StartJob 可能先插入机会任务并把原任务入队，跟踪实际运行中的 Job。
+            record.issuedJob = pawn.CurJob;
             OmniWorkProxyUtility.SetActive(pawn, true);
-            return true;
+            return WorkSearchStepResult.Found;
         }
 
         private void MoveProxyToStation(Pawn pawn, Building_OmniWorkstation station)
         {
-            if (station.Covers(pawn.Position)) return;
-            IntVec3 cell = CellFinder.StandableCellNear(station.Position, map, 5f);
+            IntVec3 cell = station.Position.Standable(map)
+                ? station.Position
+                : CellFinder.StandableCellNear(station.Position, map, 5f);
+            if (pawn.Position == cell) return;
             pawn.Position = cell;
             pawn.Notify_Teleported(endCurrentJob: false, resetTweenedPos: false);
         }
 
-        /// <summary>
-        /// 通用发现：不识别任何具体 JobDef 或建筑类型，只把范围内建筑交给所有已加载 WorkGiver。
-        /// 因而原版或 Mod 新增 WorkGiver 后无需更新本 Mod。
-        /// </summary>
-        private Job TryFindBuildingJob(Pawn pawn, Building_OmniWorkstation station)
+        /// <summary>通过原版三种 WorkGiver 入口搜索，不识别具体 Job 或 Mod。</summary>
+        private Job TryFindJobInGroup(Pawn pawn, Building_OmniWorkstation station, OmniWorkGiverGroup group)
         {
-            if (pawn.workSettings == null) return null;
-            List<WorkGiver> givers = pawn.workSettings.WorkGiversInOrderNormal;
-            List<Building> buildings = map.listerBuildings.allBuildingsColonist;
-
-            for (int giverIndex = 0; giverIndex < givers.Count; giverIndex++)
+            for (int giverIndex = 0; giverIndex < group.giverDefs.Count; giverIndex++)
             {
-                WorkGiver giver = givers[giverIndex];
-                if (!CanUseWorkGiver(pawn, giver)) continue;
+                WorkGiverDef giverDef = group.giverDefs[giverIndex];
+                lastSearchGiver = giverDef;
+                if (IsBlacklistedTag(giverDef.tagToGive)) continue;
 
                 try
                 {
+                    WorkGiver giver = giverDef.Worker;
+                    if (!CanUseWorkGiver(pawn, giver)) continue;
                     Job nonScanJob = giver.NonScanJob(pawn);
                     if (nonScanJob != null)
                     {
                         nonScanJob.workGiverDef = giver.def;
-                        if (JobHasBuildingInRange(nonScanJob, station)) return nonScanJob;
+                        if (IsSafeJob(nonScanJob, pawn) && JobHasAnchorInRange(nonScanJob, station))
+                            return nonScanJob;
                         JobMaker.ReturnToPool(nonScanJob);
                     }
 
-                    if (!(giver is WorkGiver_Scanner scanner) || !giver.def.scanThings) continue;
-                    ThingRequest request = scanner.PotentialWorkThingRequest;
-                    for (int buildingIndex = 0; buildingIndex < buildings.Count; buildingIndex++)
+                    if (!(giver is WorkGiver_Scanner scanner)) continue;
+                    if (giver.def.scanThings)
                     {
-                        Building target = buildings[buildingIndex];
-                        if (target == null || target == station || !station.Covers(target.Position) ||
-                            !request.Accepts(target) || target.IsForbidden(pawn)) continue;
-                        if (!scanner.HasJobOnThing(pawn, target)) continue;
+                        Thing target = FindThingForScanner(pawn, station, scanner);
+                        if (target != null)
+                        {
+                            Job job = scanner.JobOnThing(pawn, target);
+                            if (PrepareScannedJob(job, giver.def, pawn)) return job;
+                        }
+                    }
 
-                        Job job = scanner.JobOnThing(pawn, target);
-                        if (job == null) continue;
-                        job.workGiverDef = giver.def;
-                        if (JobHasBuildingInRange(job, station)) return job;
-                        JobMaker.ReturnToPool(job);
+                    if (giver.def.scanCells)
+                    {
+                        IntVec3 cell = FindCellForScanner(pawn, station, scanner);
+                        if (cell.IsValid)
+                        {
+                            Job job = scanner.JobOnCell(pawn, cell);
+                            if (PrepareScannedJob(job, giver.def, pawn)) return job;
+                        }
                     }
                 }
                 catch (Exception error)
                 {
-                    int key = Gen.HashCombineInt(giver.def.shortHash, station.thingIDNumber);
-                    Log.ErrorOnce("[OmniWorkstation] WorkGiver '" + giver.def.defName +
+                    int key = Gen.HashCombineInt(giverDef.shortHash, station.thingIDNumber);
+                    Log.ErrorOnce("[OmniWorkstation] WorkGiver '" + giverDef.defName +
                                   "' failed while scanning: " + error, key);
                 }
             }
-
             return null;
+        }
+
+        private static bool PrepareScannedJob(Job job, WorkGiverDef giverDef, Pawn pawn)
+        {
+            if (job == null) return false;
+            job.workGiverDef = giverDef;
+            if (IsSafeJob(job, pawn)) return true;
+            JobMaker.ReturnToPool(job);
+            return false;
+        }
+
+        private Thing FindThingForScanner(Pawn pawn, Building_OmniWorkstation station,
+            WorkGiver_Scanner scanner)
+        {
+            searchPawn = pawn;
+            searchStation = station;
+            searchScanner = scanner;
+            IEnumerable<Thing> customSet = scanner.PotentialWorkThingsGlobal(pawn);
+            IEnumerable<Thing> searchSet = customSet ??
+                (IEnumerable<Thing>)map.listerThings.ThingsMatching(scanner.PotentialWorkThingRequest);
+            Func<Thing, float> priority = scanner.Prioritized ? thingPriorityGetter : null;
+            float searchDistance = station.WorkRadius + 5f;
+
+            if (scanner.AllowUnreachable)
+                return GenClosest.ClosestThing_Global(pawn.Position, searchSet, searchDistance,
+                    thingSearchValidator, priority);
+
+            if (scanner.Prioritized || customSet != null)
+                return GenClosest.ClosestThing_Global_Reachable(pawn.Position, map, searchSet,
+                    scanner.PathEndMode, TraverseParms.For(pawn, scanner.MaxPathDanger(pawn)),
+                    searchDistance, thingSearchValidator, priority);
+
+            return GenClosest.ClosestThingReachable(pawn.Position, map, scanner.PotentialWorkThingRequest,
+                scanner.PathEndMode, TraverseParms.For(pawn, scanner.MaxPathDanger(pawn)),
+                searchDistance, thingSearchValidator, searchRegionsMax: scanner.MaxRegionsToScanBeforeGlobalSearch);
+        }
+
+        private bool ValidateThingCandidate(Thing thing)
+        {
+            return thing != null && thing != searchPawn && thing.Spawned && thing.Map == map &&
+                   searchStation.Covers(thing.Position) && !thing.IsForbidden(searchPawn) &&
+                   searchScanner.HasJobOnThing(searchPawn, thing);
+        }
+
+        private float GetThingPriority(Thing thing)
+        {
+            return searchScanner.GetPriority(searchPawn, thing);
+        }
+
+        private IntVec3 FindCellForScanner(Pawn pawn, Building_OmniWorkstation station,
+            WorkGiver_Scanner scanner)
+        {
+            IEnumerable<IntVec3> cells = scanner.PotentialWorkCellsGlobal(pawn);
+            if (cells == null) return IntVec3.Invalid;
+
+            IntVec3 bestCell = IntVec3.Invalid;
+            float bestDistance = float.MaxValue;
+            float bestPriority = float.MinValue;
+            Danger maxDanger = scanner.MaxPathDanger(pawn);
+            IList<IntVec3> list = cells as IList<IntVec3>;
+            if (list != null)
+            {
+                for (int i = 0; i < list.Count; i++)
+                    ConsiderCellCandidate(pawn, station, scanner, maxDanger, list[i], ref bestCell,
+                        ref bestDistance, ref bestPriority);
+            }
+            else
+            {
+                foreach (IntVec3 cell in cells)
+                    ConsiderCellCandidate(pawn, station, scanner, maxDanger, cell, ref bestCell,
+                        ref bestDistance, ref bestPriority);
+            }
+            return bestCell;
+        }
+
+        private static void ConsiderCellCandidate(Pawn pawn, Building_OmniWorkstation station,
+            WorkGiver_Scanner scanner, Danger maxDanger, IntVec3 cell, ref IntVec3 bestCell,
+            ref float bestDistance, ref float bestPriority)
+        {
+            if (!cell.IsValid || !station.Covers(cell) || cell.IsForbidden(pawn)) return;
+            float distance = (cell - pawn.Position).LengthHorizontalSquared;
+            if (!scanner.Prioritized && distance >= bestDistance) return;
+            if (!scanner.HasJobOnCell(pawn, cell)) return;
+            if (!scanner.AllowUnreachable &&
+                !pawn.CanReach(cell, scanner.PathEndMode, maxDanger)) return;
+
+            float priority = scanner.Prioritized ? scanner.GetPriority(pawn, cell) : 0f;
+            if (scanner.Prioritized &&
+                (priority < bestPriority || Mathf.Approximately(priority, bestPriority) && distance >= bestDistance))
+                return;
+
+            bestCell = cell;
+            bestDistance = distance;
+            bestPriority = priority;
         }
 
         private static bool CanUseWorkGiver(Pawn pawn, WorkGiver giver)
@@ -1059,40 +1551,79 @@ namespace FullyAutomaticOmniCrafter
             WorkGiverDef def = giver.def;
             if (!(def.nonColonistsCanDo || pawn.IsColonist || pawn.IsColonyMech || pawn.IsColonySubhuman))
                 return false;
-            if (pawn.WorkTagIsDisabled(def.workTags) ||
-                def.workType != null && pawn.WorkTypeIsDisabled(def.workType) ||
-                giver.ShouldSkip(pawn) || giver.MissingRequiredCapacity(pawn) != null)
+            if (giver.ShouldSkip(pawn) || giver.MissingRequiredCapacity(pawn) != null)
                 return false;
             return !pawn.RaceProps.IsMechanoid || def.canBeDoneByMechs;
         }
 
-        private static bool JobHasBuildingInRange(Job job, Building_OmniWorkstation station)
+        private static readonly HashSet<string> BlacklistedJobDefs = new HashSet<string>(StringComparer.Ordinal)
         {
-            if (job == null) return false;
-            if (TargetIsBuildingInRange(job.GetTarget(TargetIndex.A), station) ||
-                TargetIsBuildingInRange(job.GetTarget(TargetIndex.B), station) ||
-                TargetIsBuildingInRange(job.GetTarget(TargetIndex.C), station))
-                return true;
+            "Wait", "Wait_MaintainPosture", "Goto", "LayDown", "Ingest", "SocialRelax",
+            "Lovin", "Meditate", "Flee", "ExitMapBest", "JoinCaravan"
+        };
+
+        private static bool IsBlacklistedTag(JobTag tag)
+        {
+            return tag == JobTag.Idle || tag == JobTag.InMentalState || tag == JobTag.SatisfyingNeeds ||
+                   tag == JobTag.DraftedOrder || tag == JobTag.TuckedIntoBed ||
+                   tag == JobTag.RestingForMedicalReasons || tag == JobTag.ChangingApparel ||
+                   tag == JobTag.Escaping || tag == JobTag.JoiningCaravan;
+        }
+
+        private static bool IsSafeJob(Job job, Pawn pawn)
+        {
+            if (job?.def == null || BlacklistedJobDefs.Contains(job.def.defName)) return false;
+            if (TargetIsPawn(job.GetTarget(TargetIndex.A), pawn) ||
+                TargetIsPawn(job.GetTarget(TargetIndex.B), pawn) ||
+                TargetIsPawn(job.GetTarget(TargetIndex.C), pawn)) return false;
+
+            List<LocalTargetInfo> queue = job.GetTargetQueue(TargetIndex.A);
+            if (QueueTargetsPawn(queue, pawn)) return false;
+            queue = job.GetTargetQueue(TargetIndex.B);
+            return !QueueTargetsPawn(queue, pawn);
+        }
+
+        private static bool QueueTargetsPawn(List<LocalTargetInfo> queue, Pawn pawn)
+        {
+            if (queue == null) return false;
+            for (int i = 0; i < queue.Count; i++)
+                if (TargetIsPawn(queue[i], pawn)) return true;
+            return false;
+        }
+
+        private static bool TargetIsPawn(LocalTargetInfo target, Pawn pawn)
+        {
+            return target.IsValid && target.HasThing && target.Thing == pawn;
+        }
+
+        private static bool JobHasAnchorInRange(Job job, Building_OmniWorkstation station)
+        {
+            if (TargetIsInRange(job.GetTarget(TargetIndex.A), station) ||
+                TargetIsInRange(job.GetTarget(TargetIndex.B), station) ||
+                TargetIsInRange(job.GetTarget(TargetIndex.C), station)) return true;
 
             List<LocalTargetInfo> queue = job.GetTargetQueue(TargetIndex.A);
             if (queue != null)
                 for (int i = 0; i < queue.Count; i++)
-                    if (TargetIsBuildingInRange(queue[i], station)) return true;
+                    if (TargetIsInRange(queue[i], station)) return true;
 
             queue = job.GetTargetQueue(TargetIndex.B);
             if (queue != null)
                 for (int i = 0; i < queue.Count; i++)
-                    if (TargetIsBuildingInRange(queue[i], station)) return true;
+                    if (TargetIsInRange(queue[i], station)) return true;
 
             return false;
         }
 
-        private static bool TargetIsBuildingInRange(LocalTargetInfo target, Building_OmniWorkstation station)
+        private static bool TargetIsInRange(LocalTargetInfo target, Building_OmniWorkstation station)
         {
             if (!target.IsValid) return false;
             if (target.HasThing)
-                return target.Thing.GetInnerIfMinified() is Building && station.Covers(target.Cell);
-            return station.Covers(target.Cell) && target.Cell.GetEdifice(station.Map) != null;
+            {
+                Thing thing = target.Thing;
+                return thing != null && thing.Spawned && thing.Map == station.Map && station.Covers(thing.Position);
+            }
+            return target.Cell.IsValid && station.Covers(target.Cell);
         }
 
         private static void StopIssuedJob(ProxyRecord record)
@@ -1128,16 +1659,22 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>原任务结束的同一刻立即冻结，阻止普通思考树接管空闲代理。</summary>
+    /// <summary>任务链真正结束时冻结；若原版启动 finalizer，则继续保持代理活跃。</summary>
     [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob))]
     [HarmonyPriority(Priority.First)]
     public static class Patch_OmniWorkProxy_DeactivateOnJobEnd
     {
-        [HarmonyPrefix]
-        public static void Prefix(Pawn ___pawn)
+        [HarmonyPostfix]
+        public static void Postfix(Pawn ___pawn)
         {
             if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
             bool wasActive = OmniWorkProxyUtility.IsActive(___pawn);
+            if (___pawn.CurJob != null)
+            {
+                OmniWorkProxyUtility.SetActive(___pawn, true);
+                return;
+            }
+
             OmniWorkProxyUtility.SetActive(___pawn, false);
             if (wasActive && ___pawn.Spawned)
                 ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>().NotifyProxyBecameIdle();
@@ -1156,6 +1693,22 @@ namespace FullyAutomaticOmniCrafter
         public static bool Prefix(Pawn ___pawn)
         {
             return !OmniWorkProxyUtility.IsProxy(___pawn);
+        }
+    }
+
+    /// <summary>
+    /// 机会任务会把工作泵派发的原 Job 放入队列，再依靠普通思考树恢复。代理禁用了自主思考，
+    /// 因此直接跳过机会任务，避免合法工作被永久留在队列中；显式 finalizer 不受影响。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.TryOpportunisticJob))]
+    public static class Patch_OmniWorkProxy_DisableOpportunisticJobs
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn ___pawn, ref Job __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return true;
+            __result = null;
+            return false;
         }
     }
 
