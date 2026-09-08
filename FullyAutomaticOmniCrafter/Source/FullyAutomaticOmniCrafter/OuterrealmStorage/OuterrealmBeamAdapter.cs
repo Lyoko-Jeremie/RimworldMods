@@ -298,11 +298,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
         }
 
-        private static void BatchPostfix(object op, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey, object[] __args, ref bool __result)
+        private static void BatchPostfix(object op, IntVec3 cell, HashSet<IntVec3> excludedDestinations, int ownerKey,
+            ref object __4, ref bool __result)
         {
             if (!enabled || op == null) return;
             Map map = mapOf(op);
-            object batch = __args[4];
+            // 当前地图没有超维存储终端时不存在任何需要适配的源或目的地。
+            // 必须在读取、遍历或写回第三方 batch 前退出，保证普通地面物到普通存储区的
+            // 原生批次完全不经过本兼容层。
+            if (map == null || Storage?.HasVaultOnMap(map) != true) return;
+            object batch = __4;
             IList transfers = batch == null ? null : transfersOf(batch);
 
             // 原光束已将 vault 当普通存储格选中：把格子目的地改写为容器目的地，
@@ -333,7 +338,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     if (batch == null) { batch = newBatch(cell); transfers = transfersOf(batch); }
                     transfers.Add(newContainerTransfer(thing, cell, destinationVault, thing.stackCount));
                 }
-                if (transfers != null && transfers.Count > 0) { __args[4] = batch; __result = true; }
+                if (transfers != null && transfers.Count > 0) { __4 = batch; __result = true; }
                 return;
             }
             int originalCount = transfers?.Count ?? 0;
@@ -359,7 +364,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 cursor.Identity = (identityStart + identityBudget) % registrations.Count;
             }
-            if (transfers != null && transfers.Count > 0) { __args[4] = batch; __result = true; }
+            if (transfers != null && transfers.Count > 0) { __4 = batch; __result = true; }
         }
 
         private static bool ContainsThing(IList transfers, Thing thing)
