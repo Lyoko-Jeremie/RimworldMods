@@ -385,6 +385,9 @@ namespace FullyAutomaticOmniCrafter
         private readonly JobGiver_Work workGiver = new JobGiver_Work();
 
         private int stationCursor;
+        private int proxySearchCursor;
+        private int nextGlobalSearchTick;
+        private bool searchContinuationPending;
         private bool proxiesRecovered;
         private int configuredProxyCount = DefaultProxyCount;
         private int nextWorkerSequence = 1;
@@ -396,7 +399,6 @@ namespace FullyAutomaticOmniCrafter
             public Pawn pawn;
             public Building_OmniWorkstation station;
             public Job issuedJob;
-            public int nextSearchTick;
         }
 
         public MapComponent_OmniWorkstation(Map map) : base(map)
@@ -417,15 +419,16 @@ namespace FullyAutomaticOmniCrafter
         {
             configuredProxyCount = Mathf.Clamp(value,
                 MinConfigurableProxyCount, MaxConfigurableProxyCount);
-            int tick = Find.TickManager.TicksGame;
-            for (int i = 0; i < proxies.Count; i++)
-                proxies[i].nextSearchTick = tick;
+            WakeSearchPump();
         }
 
         public void Register(Building_OmniWorkstation station)
         {
             if (station != null && !stations.Contains(station))
+            {
                 stations.Add(station);
+                WakeSearchPump();
+            }
         }
 
         public void Deregister(Building_OmniWorkstation station)
@@ -439,6 +442,7 @@ namespace FullyAutomaticOmniCrafter
                 record.station = null;
                 OmniWorkProxyUtility.Unassign(record.pawn);
             }
+            WakeSearchPump();
         }
 
         public void NotifyConfigurationChanged(Building_OmniWorkstation station)
@@ -449,9 +453,21 @@ namespace FullyAutomaticOmniCrafter
                 if (record.station != station) continue;
                 StopIssuedJob(record);
                 record.station = null;
-                record.nextSearchTick = Find.TickManager.TicksGame;
                 OmniWorkProxyUtility.Unassign(record.pawn);
             }
+            // 范围扩大后，立即退出全局“无工作”退避并启动单通道搜索。
+            WakeSearchPump();
+        }
+
+        private void WakeSearchPump()
+        {
+            nextGlobalSearchTick = Find.TickManager?.TicksGame ?? 0;
+            searchContinuationPending = true;
+        }
+
+        public void NotifyProxyBecameIdle()
+        {
+            WakeSearchPump();
         }
 
         public override void FinalizeInit()
@@ -480,13 +496,34 @@ namespace FullyAutomaticOmniCrafter
                 for (int i = 0; i < proxies.Count; i++)
                     OmniWorkProxyUtility.Sanitize(proxies[i].pawn);
             }
-            if (tick % AssignmentInterval != map.uniqueID % AssignmentInterval) return;
+            if (tick % AssignmentInterval == map.uniqueID % AssignmentInterval)
+            {
+                RemoveInvalidStations();
+                EnsureProxyCount();
+                for (int i = 0; i < proxies.Count; i++)
+                    RefreshProxyState(proxies[i]);
+                if (tick >= nextGlobalSearchTick)
+                    searchContinuationPending = true;
+            }
 
-            RemoveInvalidStations();
-            EnsureProxyCount();
+            if (!searchContinuationPending) return;
+            if (!TryGetNextIdleProxy(out ProxyRecord record))
+            {
+                searchContinuationPending = false;
+                nextGlobalSearchTick = tick + AssignmentInterval;
+                return;
+            }
 
-            for (int i = 0; i < proxies.Count; i++)
-                ServiceProxy(proxies[i], tick);
+            // 每 Tick 至多执行一次昂贵搜索。成功则下一 Tick 立即交给下一个代理；失败则整体退避。
+            if (TryAssignWork(record))
+            {
+                nextGlobalSearchTick = tick;
+            }
+            else
+            {
+                searchContinuationPending = false;
+                nextGlobalSearchTick = tick + EmptySearchBackoff;
+            }
         }
 
         private void RecoverExistingThings()
@@ -508,8 +545,9 @@ namespace FullyAutomaticOmniCrafter
                 if (!(pawns[i] is Pawn pawn) || !OmniWorkProxyUtility.IsProxy(pawn)) continue;
                 EnsureWorkerName(pawn);
                 PrepareProxy(pawn);
-                proxies.Add(new ProxyRecord { pawn = pawn, nextSearchTick = Find.TickManager.TicksGame });
+                proxies.Add(new ProxyRecord { pawn = pawn });
             }
+            WakeSearchPump();
         }
 
         private void RemoveInvalidStations()
@@ -544,7 +582,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 Pawn pawn = CreateProxy();
                 if (pawn == null) break;
-                proxies.Add(new ProxyRecord { pawn = pawn, nextSearchTick = Find.TickManager.TicksGame });
+                proxies.Add(new ProxyRecord { pawn = pawn });
                 created++;
             }
 
@@ -627,10 +665,10 @@ namespace FullyAutomaticOmniCrafter
             return null;
         }
 
-        private void ServiceProxy(ProxyRecord record, int tick)
+        private bool RefreshProxyState(ProxyRecord record)
         {
             Pawn pawn = record.pawn;
-            if (pawn == null || pawn.Destroyed || !pawn.Spawned || pawn.Map != map) return;
+            if (pawn == null || pawn.Destroyed || !pawn.Spawned || pawn.Map != map) return false;
 
             if (record.issuedJob != null && (record.station == null || !record.station.Operational))
             {
@@ -646,14 +684,33 @@ namespace FullyAutomaticOmniCrafter
                 OmniWorkProxyUtility.Unassign(pawn);
             }
 
-            if (record.issuedJob != null) return;
+            if (record.issuedJob != null) return false;
 
             // 原 Job 结束时 JobTracker 可能立即启动一个 Wait/生活 Job，统一停止后再由调度器分配。
             if (pawn.CurJob != null)
                 pawn.jobs.EndCurrentJob(JobCondition.InterruptForced, false);
 
-            if (tick < record.nextSearchTick) return;
+            return pawn.CurJob == null;
+        }
 
+        private bool TryGetNextIdleProxy(out ProxyRecord result)
+        {
+            result = null;
+            int count = proxies.Count;
+            for (int checkedCount = 0; checkedCount < count; checkedCount++)
+            {
+                if (proxySearchCursor >= count) proxySearchCursor = 0;
+                ProxyRecord candidate = proxies[proxySearchCursor++];
+                if (!RefreshProxyState(candidate)) continue;
+                result = candidate;
+                return true;
+            }
+            return false;
+        }
+
+        private bool TryAssignWork(ProxyRecord record)
+        {
+            Pawn pawn = record.pawn;
             int checkedStations = 0;
             while (checkedStations < MaxStationsCheckedPerAssignment && stations.Count > 0)
             {
@@ -682,15 +739,16 @@ namespace FullyAutomaticOmniCrafter
                     record.issuedJob = null;
                     record.station = null;
                     OmniWorkProxyUtility.Unassign(pawn);
+                    return false;
                 }
                 else
                 {
                     OmniWorkProxyUtility.SetActive(pawn, true);
                 }
-                return;
+                return true;
             }
 
-            record.nextSearchTick = tick + EmptySearchBackoff;
+            return false;
         }
 
         private void MoveProxyToStation(Pawn pawn, Building_OmniWorkstation station)
@@ -835,8 +893,41 @@ namespace FullyAutomaticOmniCrafter
         [HarmonyPrefix]
         public static void Prefix(Pawn ___pawn)
         {
-            if (OmniWorkProxyUtility.IsProxy(___pawn))
-                OmniWorkProxyUtility.SetActive(___pawn, false);
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
+            bool wasActive = OmniWorkProxyUtility.IsActive(___pawn);
+            OmniWorkProxyUtility.SetActive(___pawn, false);
+            if (wasActive && ___pawn.Spawned)
+                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>().NotifyProxyBecameIdle();
+        }
+    }
+
+    /// <summary>代理仅作为 JobDriver 载体，始终跳过身体、装备、阴影等地图绘制。</summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.DynamicDrawPhaseAt))]
+    public static class Patch_OmniWorkProxy_HideMapDraw
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn __instance)
+        {
+            return !OmniWorkProxyUtility.IsProxy(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.DrawGUIOverlay))]
+    public static class Patch_OmniWorkProxy_HideMapOverlay
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn __instance)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(__instance)) return true;
+
+            // 工作中只绘制 Worker 序号名称；空闲时不绘制名称或任何其他覆盖层。
+            if (OmniWorkProxyUtility.IsActive(__instance) && __instance.Spawned &&
+                !__instance.Map.fogGrid.IsFogged(__instance.Position))
+            {
+                GenMapUI.DrawPawnLabel(__instance,
+                    GenMapUI.LabelDrawPosFor(__instance, -0.6f));
+            }
+            return false;
         }
     }
 
