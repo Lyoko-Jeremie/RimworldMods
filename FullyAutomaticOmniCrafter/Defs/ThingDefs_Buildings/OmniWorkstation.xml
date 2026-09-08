@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
 
+    <!-- 代理专用空白背景，不参与随机背景池，也不禁用任何工作。 -->
+    <BackstoryDef>
+        <defName>FAOC_OmniWorkProxyChildhood</defName>
+        <identifier>FAOC_OmniWorkProxyChildhood</identifier>
+        <slot>Childhood</slot>
+        <title>blank work proxy</title>
+        <titleShort>work proxy</titleShort>
+        <description>An artificial blank background reserved for universal workstation proxies.</description>
+        <shuffleable>false</shuffleable>
+    </BackstoryDef>
+
+    <BackstoryDef>
+        <defName>FAOC_OmniWorkProxyAdulthood</defName>
+        <identifier>FAOC_OmniWorkProxyAdulthood</identifier>
+        <slot>Adulthood</slot>
+        <title>blank work proxy</title>
+        <titleShort>work proxy</titleShort>
+        <description>An artificial blank background reserved for universal workstation proxies.</description>
+        <shuffleable>false</shuffleable>
+    </BackstoryDef>
+
 <!--    <DesignatorDropdownGroupDef>-->
 <!--        <defName>OmniWorkstation_DropdownGroup</defName>-->
 <!--    </DesignatorDropdownGroupDef>-->
@@ -45,6 +66,12 @@
         <!-- Humanlike PawnKindDef 在 1.6 中必须显式定义这两个区间。 -->
         <initialResistanceRange>0~0</initialResistanceRange>
         <initialWillRange>0~0</initialWillRange>
+        <fixedChildBackstories>
+            <li>FAOC_OmniWorkProxyChildhood</li>
+        </fixedChildBackstories>
+        <fixedAdultBackstories>
+            <li>FAOC_OmniWorkProxyAdulthood</li>
+        </fixedAdultBackstories>
         <startingHediffs>
             <li>
                 <def>FAOC_OmniWorkProxyBoost</def>
