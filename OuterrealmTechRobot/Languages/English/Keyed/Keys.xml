@@ -166,6 +166,9 @@ As arranged, or perhaps by coincidence, they have brought an ownerless Artificia
     <ArtificialMaidHighDimActive>Now in high-dimensional space</ArtificialMaidHighDimActive>
     <ArtificialMaid_HighDimEnter>{0} has entered high-dimensional space.</ArtificialMaid_HighDimEnter>
     <ArtificialMaid_HighDimExit>{0} has returned from high-dimensional space.</ArtificialMaid_HighDimExit>
+    <ArtificialMaidHighDimFogRadiusLabel>Fog reveal radius: {0}</ArtificialMaidHighDimFogRadiusLabel>
+    <ArtificialMaidHighDimFogRadiusDesc>Set this Artificial Maid's fog reveal radius while moving in high-dimensional mode ({0}–{1} cells). Entering a fogged room still reveals the entire room.</ArtificialMaidHighDimFogRadiusDesc>
+    <ArtificialMaidHighDimFogRadiusSlider>High-dimensional fog reveal radius: {0} cells</ArtificialMaidHighDimFogRadiusSlider>
     <!-- Servitude system -->
     <AM_Servitude_BindLabel>Establish servitude...</AM_Servitude_BindLabel>
     <AM_Servitude_BindDesc>Designate a target as this pawn's dedicated servant. The artificial maid will follow and care for her master.</AM_Servitude_BindDesc>

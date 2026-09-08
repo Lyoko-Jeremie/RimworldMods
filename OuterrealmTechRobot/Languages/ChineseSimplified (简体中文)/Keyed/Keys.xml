@@ -166,6 +166,9 @@
     <ArtificialMaidHighDimActive>正在高维空间</ArtificialMaidHighDimActive>
     <ArtificialMaid_HighDimEnter>人造人女仆 {0} 已进入高维空间。</ArtificialMaid_HighDimEnter>
     <ArtificialMaid_HighDimExit>人造人女仆 {0} 已从高维空间返回。</ArtificialMaid_HighDimExit>
+    <ArtificialMaidHighDimFogRadiusLabel>开雾半径：{0}</ArtificialMaidHighDimFogRadiusLabel>
+    <ArtificialMaidHighDimFogRadiusDesc>设置此人造人女仆在高维模式下移动时打开迷雾的半径（{0}–{1} 格）。进入被迷雾覆盖的房间时仍会揭开整个房间。</ArtificialMaidHighDimFogRadiusDesc>
+    <ArtificialMaidHighDimFogRadiusSlider>高维开雾半径：{0} 格</ArtificialMaidHighDimFogRadiusSlider>
     <!-- 侍奉系统（Servitude） -->
     <AM_Servitude_BindLabel>建立侍奉关系...</AM_Servitude_BindLabel>
     <AM_Servitude_BindDesc>指定一个对象成为该角色的专属侍奉者。人造人女仆会跟随并照顾她的主人。</AM_Servitude_BindDesc>

@@ -42,9 +42,14 @@ namespace OuterrealmTechRobot
         public bool hostileResponseInitialized = false;
         public bool isFaking = false; // 用于抑制工作检测期间的闪烁
         public bool isHighDim = false; // 高维转换模式：穿墙自由移动、无视陷阱、单向攻击、半透明幻影
+        public int highDimFogRevealRadius = ArtificialMaidHighDimFogUtility.DefaultRevealRadius; // 高维移动时的圆形开雾半径
         public bool standbyMode = false; // 留守总开关（v2.3）：打开后侍奉系统完全不执行（跟随/保卫/守卫/救援/喂食/陪伴/勾引/自动征召联动/高维跟随全部暂停）
         public bool guardModeEnabled = false; // 征召守卫开关（v2.1 起）：征召状态下紧跟并守卫主人（与猎杀互斥）
         public bool autoDraftedByMaster = false; // 是否由主人自动征召联动触发（解除征召时仅自动来源被连带解除）
+
+        // 运行时去重：只有女仆实际换格后才执行开雾，不写入存档。
+        private IntVec3 lastHighDimFogCell = IntVec3.Invalid;
+        private int lastHighDimFogRadius;
 
         private AutoBlink.CompAutoBlink _cachedBlinkComp;
         private AutoBlink.CompAutoBlink BlinkComp
@@ -196,12 +201,15 @@ namespace OuterrealmTechRobot
             Scribe_Values.Look(ref lastEnemyFoundTick, "lastEnemyFoundTick", -1);
             Scribe_Values.Look(ref hostileResponseInitialized, "hostileResponseInitialized", false);
             Scribe_Values.Look(ref isHighDim, "isHighDim", false);
+            Scribe_Values.Look(ref highDimFogRevealRadius, "highDimFogRevealRadius",
+                ArtificialMaidHighDimFogUtility.DefaultRevealRadius);
             Scribe_Values.Look(ref standbyMode, "standbyMode", false);
             Scribe_Values.Look(ref guardModeEnabled, "guardModeEnabled", false);
             Scribe_Values.Look(ref autoDraftedByMaster, "autoDraftedByMaster", false);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
+                highDimFogRevealRadius = ArtificialMaidHighDimFogUtility.ClampRevealRadius(highDimFogRevealRadius);
                 if (string.IsNullOrEmpty(serialNumber))
                 {
                     serialNumber = GenerateSerialNumber();
@@ -270,6 +278,28 @@ namespace OuterrealmTechRobot
         public override void CompTick()
         {
             base.CompTick();
+
+            if (isHighDim && Pawn != null && Pawn.Spawned && !Pawn.Dead)
+            {
+                IntVec3 currentCell = Pawn.Position;
+                int currentRadius = ArtificialMaidHighDimFogUtility.ClampRevealRadius(highDimFogRevealRadius);
+                if (currentCell != lastHighDimFogCell || currentRadius != lastHighDimFogRadius)
+                {
+                    ArtificialMaidHighDimFogUtility.RevealAt(
+                        Pawn.Map,
+                        currentCell,
+                        currentRadius,
+                        lastHighDimFogCell,
+                        lastHighDimFogRadius);
+                    lastHighDimFogCell = currentCell;
+                    lastHighDimFogRadius = currentRadius;
+                }
+            }
+            else
+            {
+                lastHighDimFogCell = IntVec3.Invalid;
+                lastHighDimFogRadius = 0;
+            }
 
             if (Pawn != null && !Pawn.Dead)
             {
@@ -835,6 +865,40 @@ namespace OuterrealmTechRobot
                         },
                         icon = ArtificialMaidTex.IconHighDim
                     };
+
+                    // 开雾半径设置只在高维模式下显示，每名女仆独立保存。
+                    if (isHighDim)
+                    {
+                        yield return new Command_Action
+                        {
+                            defaultLabel = "ArtificialMaidHighDimFogRadiusLabel".Translate(highDimFogRevealRadius),
+                            defaultDesc = "ArtificialMaidHighDimFogRadiusDesc".Translate(
+                                ArtificialMaidHighDimFogUtility.MinRevealRadius,
+                                ArtificialMaidHighDimFogUtility.MaxRevealRadius),
+                            icon = ArtificialMaidTex.IconHighDim,
+                            action = () => Find.WindowStack.Add(new Dialog_Slider(
+                                value => "ArtificialMaidHighDimFogRadiusSlider".Translate(value),
+                                ArtificialMaidHighDimFogUtility.MinRevealRadius,
+                                ArtificialMaidHighDimFogUtility.MaxRevealRadius,
+                                value =>
+                                {
+                                    int previousRadius = highDimFogRevealRadius;
+                                    highDimFogRevealRadius = value;
+                                    if (Pawn.Spawned && isHighDim)
+                                    {
+                                        ArtificialMaidHighDimFogUtility.RevealAt(
+                                            Pawn.Map,
+                                            Pawn.Position,
+                                            highDimFogRevealRadius,
+                                            Pawn.Position,
+                                            previousRadius);
+                                        lastHighDimFogCell = Pawn.Position;
+                                        lastHighDimFogRadius = highDimFogRevealRadius;
+                                    }
+                                },
+                                highDimFogRevealRadius))
+                        };
+                    }
                 }
 
                 // 留守模式（侍奉总开关，v2.3）：打开后侍奉系统完全不执行
