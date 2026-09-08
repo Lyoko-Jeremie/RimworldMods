@@ -112,6 +112,7 @@ namespace FullyAutomaticOmniCrafter
     public static class OmniWorkstationDefOf
     {
         public static PawnKindDef FAOC_OmniWorkProxy;
+        public static HediffDef FAOC_OmniWorkProxyBoost;
 
         static OmniWorkstationDefOf()
         {
@@ -338,6 +339,12 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null) return;
             pawn.mindState.Active = false;
+
+            // startingHediffs 只覆盖新建代理；这里同时升级旧存档中的既有代理。
+            HediffDef boost = OmniWorkstationDefOf.FAOC_OmniWorkProxyBoost;
+            if (boost != null && pawn.health != null && !pawn.health.hediffSet.HasHediff(boost))
+                pawn.health.AddHediff(boost);
+
             pawn.workSettings?.EnableAndInitializeIfNotAlreadyInitialized();
             if (pawn.workSettings != null)
             {

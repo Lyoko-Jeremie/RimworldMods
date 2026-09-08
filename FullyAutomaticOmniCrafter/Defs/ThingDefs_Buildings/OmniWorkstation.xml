@@ -5,6 +5,37 @@
 <!--        <defName>OmniWorkstation_DropdownGroup</defName>-->
 <!--    </DesignatorDropdownGroupDef>-->
 
+    <!--
+        工作属性必须施加在代理 Pawn 上，建筑 statBases 不会影响 JobDriver 的工作速度。
+        这里沿用时空立场投影仪的核心生产属性，但不创建服装及护盾组件，避免额外 Tick 开销。
+    -->
+    <HediffDef>
+        <defName>FAOC_OmniWorkProxyBoost</defName>
+        <label>omni work acceleration</label>
+        <description>Internal work acceleration used by the universal workstation proxy.</description>
+        <hediffClass>Hediff</hediffClass>
+        <isBad>false</isBad>
+        <everCurableByItem>false</everCurableByItem>
+        <duplicationAllowed>false</duplicationAllowed>
+        <stages>
+            <li>
+                <statOffsets>
+                    <WorkSpeedGlobal>100000</WorkSpeedGlobal>
+                    <CarryingCapacity>10000000</CarryingCapacity>
+                    <MoveSpeed>200</MoveSpeed>
+                    <ConstructSuccessChance>1</ConstructSuccessChance>
+                    <FixBrokenDownBuildingSuccessChance>1</FixBrokenDownBuildingSuccessChance>
+                    <SubcoreEncodingSpeed MayRequire="Ludeon.RimWorld.Biotech">30</SubcoreEncodingSpeed>
+                    <MechRepairSpeed MayRequire="Ludeon.RimWorld.Biotech">300</MechRepairSpeed>
+                    <MechFormingSpeed MayRequire="Ludeon.RimWorld.Biotech">120</MechFormingSpeed>
+                    <ButcheryMechanoidEfficiency MayRequire="Ludeon.RimWorld.Biotech">1</ButcheryMechanoidEfficiency>
+                    <MentalBreakThreshold>-2</MentalBreakThreshold>
+                    <FilthRate>-1.5</FilthRate>
+                </statOffsets>
+            </li>
+        </stages>
+    </HediffDef>
+
     <!-- 仅作为原版工作管线的隐藏执行载体，不拥有独立 AI 后端。 -->
     <PawnKindDef ParentName="BasePlayerPawnKind">
         <defName>FAOC_OmniWorkProxy</defName>
@@ -14,6 +45,11 @@
         <!-- Humanlike PawnKindDef 在 1.6 中必须显式定义这两个区间。 -->
         <initialResistanceRange>0~0</initialResistanceRange>
         <initialWillRange>0~0</initialWillRange>
+        <startingHediffs>
+            <li>
+                <def>FAOC_OmniWorkProxyBoost</def>
+            </li>
+        </startingHediffs>
     </PawnKindDef>
 
     <ThingDef ParentName="BuildingBase">
