@@ -821,6 +821,17 @@ namespace FullyAutomaticOmniCrafter
         private const int AssignmentInterval = 60;
         private const int EmptySearchBackoffBase = 60;
         private const int EmptySearchBackoffMax = 480;
+        // 批派发:单个泵步至多连续派发的代理数与整体时间预算(防止一 Tick 过长)。
+        private const int MaxProxyDispatchPerPump = 8;
+        private const double PumpDispatchBudgetMs = 3.0;
+        // 积压扩池:最短间隔、单步数量上限与创建时间预算(PawnGenerator 较贵)。
+        private const int ProxyCreateGrowInterval = 15;
+        private const int MaxProxyGrowsPerStep = 8;
+        private const double ProxyCreateBudgetMs = 4.0;
+        private static readonly long dispatchBudgetTicks =
+            (long)(PumpDispatchBudgetMs * Stopwatch.Frequency / 1000.0);
+        private static readonly long proxyCreateBudgetTicks =
+            (long)(ProxyCreateBudgetMs * Stopwatch.Frequency / 1000.0);
 
         private readonly List<Building_OmniWorkstation> stations =
             new List<Building_OmniWorkstation>();
@@ -852,6 +863,7 @@ namespace FullyAutomaticOmniCrafter
         private bool proxiesRecovered;
         private int configuredProxyCount = DefaultProxyCount;
         private int nextWorkerSequence = 1;
+        private int lastProxyCreateTick = int.MinValue;
 
         // ─── 性能探针(仅诊断,不参与调度逻辑)────────────────────────────────
         private int statStartTick;
@@ -1150,15 +1162,6 @@ namespace FullyAutomaticOmniCrafter
             base.MapComponentTick();
             if (!proxiesRecovered) RecoverExistingThings();
 
-            // JobTracker 的结束回调只做标记；在地图组件中统一完成安全的反生成和收容。
-            for (int i = 0; i < proxies.Count; i++)
-            {
-                ProxyRecord sleepingRecord = proxies[i];
-                if (sleepingRecord.issuedJob == null && sleepingRecord.pawn != null && sleepingRecord.pawn.Spawned &&
-                    !OmniWorkProxyUtility.IsActive(sleepingRecord.pawn))
-                    PutProxyToSleep(sleepingRecord);
-            }
-
             int tick = Find.TickManager.TicksGame;
             if (tick % AssignmentInterval == map.uniqueID % AssignmentInterval)
             {
@@ -1166,51 +1169,80 @@ namespace FullyAutomaticOmniCrafter
                 RemoveInvalidStations();
                 EnsureProxyCount();
                 for (int i = 0; i < proxies.Count; i++)
-                    RefreshProxyState(proxies[i]);
+                    RefreshProxyState(proxies[i], false);
                 int scheduledTick = ComputeNextPumpTick(tick);
                 if (scheduledTick < nextPumpTick) nextPumpTick = scheduledTick;
                 RecordMaintainSample(Stopwatch.GetTimestamp() - maintStart);
             }
 
             if (tick < nextPumpTick) return;
-            // 探针：泵步整体计时（含空闲代理轮询、到期站选择与单步派工搜索）。
+            // 探针：泵步整体计时（含到期站选择、空闲代理轮询与批量派工搜索）。
             long stepStart = Stopwatch.GetTimestamp();
             try
             {
-                if (!TryGetNextIdleProxy(out ProxyRecord record))
-                {
-                    nextPumpTick = int.MaxValue;
-                    searchState = OmniWorkSearchState.NoIdleProxy;
-                    return;
-                }
-
+                // 先选到期站、后取空闲代理：热续/收容决策总是有明确的派发目标站。
                 if (!TryGetNextDueStation(tick, out StationRuntime stationRuntime, out int earliestTick))
                 {
+                    // 无到期站：统一收容在场空闲代理入舱，再深睡到全局最早唤醒时刻。
+                    ReclaimIdleProxies();
                     nextPumpTick = earliestTick;
                     searchState = OmniWorkSearchState.Waiting;
                     return;
                 }
 
-                // 每 Tick 至多搜索一个工作站；成功和失败都轮转到下一站。
-                searchState = OmniWorkSearchState.Searching;
-                lastSearchTick = tick;
-                lastSearchWorker = record.pawn?.Name?.ToStringShort ?? "-";
-                lastSearchWork = "-";
-                lastSearchStation = stationRuntime.station;
-                lastSearchWorkType = null;
-                lastSearchGiver = null;
-                lastSearchGroupValid = false;
-                WorkSearchStepResult stepResult = TryAssignWork(record, stationRuntime);
-                if (stepResult == WorkSearchStepResult.Found)
+                // 批量派发：同一到期站连续喂给多个空闲代理，受数量上限与时间预算约束。
+                // 已派发的代理 Job 立即启动并预约目标，后续代理的扫描会被原版预约机制
+                // 自动避开已占用目标；一轮 Found 后直接续派下一代理，省去"入舱→出舱"往返。
+                bool foundAny = false;
+                bool idleExhausted = false;
+                int dispatched = 0;
+                WorkSearchStepResult lastResult = WorkSearchStepResult.Continue;
+                ProxyRecord record;
+                while (true)
+                {
+                    if (!TryGetNextIdleProxy(out record, deferSleep: true))
+                    {
+                        idleExhausted = true;
+                        break;
+                    }
+                    if (dispatched >= MaxProxyDispatchPerPump ||
+                        (dispatched > 0 && ExceededDispatchTimeBudget(stepStart)))
+                        break;
+
+                    searchState = OmniWorkSearchState.Searching;
+                    lastSearchTick = tick;
+                    lastSearchWorker = record.pawn?.Name?.ToStringShort ?? "-";
+                    lastSearchWork = "-";
+                    lastSearchStation = stationRuntime.station;
+                    lastSearchWorkType = null;
+                    lastSearchGiver = null;
+                    lastSearchGroupValid = false;
+                    lastResult = TryAssignWork(record, stationRuntime);
+                    if (lastResult != WorkSearchStepResult.Found)
+                        break;
+                    foundAny = true;
+                    dispatched++;
+                    foundJobCount++;
+                    lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
+                }
+
+                if (idleExhausted && dispatched == 0)
+                {
+                    // 池内没有空闲代理可用：深睡，等待任一 Job 结束事件唤醒。
+                    ReclaimIdleProxies();
+                    nextPumpTick = int.MaxValue;
+                    searchState = OmniWorkSearchState.NoIdleProxy;
+                    return;
+                }
+
+                if (foundAny)
                 {
                     stationRuntime.nextSearchTick = tick + 1;
                     stationRuntime.consecutiveFailures = 0;
                     stationRuntime.hot = true;
-                    lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
                     searchState = OmniWorkSearchState.Continuing;
-                    foundJobCount++;
                 }
-                else if (stepResult == WorkSearchStepResult.Exhausted)
+                else if (lastResult == WorkSearchStepResult.Exhausted)
                 {
                     // 连续穷尽按指数退避并封顶,避免地图长期无活时各站每 60 tick 周期性全组扫描;
                     // 配置变更或再次找到工作都会清零 consecutiveFailures,恢复即时响应。
@@ -1223,8 +1255,20 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else
                 {
+                    // Continue（组内无活但未穷尽）或批被数量/时间预算截断：下一 Tick 继续。
                     stationRuntime.nextSearchTick = tick + 1;
                     searchState = OmniWorkSearchState.Queued;
+                }
+
+                // 工作积压且池未满时快速补建代理，提高并行度；新代理由后续泵步派发。
+                bool grewPool = foundAny && TryGrowProxyPoolIfBacklogged();
+                if (idleExhausted)
+                {
+                    // 批内把池中所有空闲代理都派了出去：若已扩池则下一 Tick 继续派新代理，
+                    // 否则深睡等待 Job 结束事件。
+                    nextPumpTick = grewPool ? tick + 1 : int.MaxValue;
+                    searchState = grewPool ? OmniWorkSearchState.Queued : OmniWorkSearchState.NoIdleProxy;
+                    return;
                 }
                 // 下一 Tick 再选择工作站；若届时没有到期站点，选择器会一次性算出最早唤醒时间。
                 nextPumpTick = tick + 1;
@@ -1525,7 +1569,7 @@ namespace FullyAutomaticOmniCrafter
             return null;
         }
 
-        private bool RefreshProxyState(ProxyRecord record)
+        private bool RefreshProxyState(ProxyRecord record, bool deferSleep)
         {
             Pawn pawn = record.pawn;
             if (pawn == null || pawn.Destroyed) return false;
@@ -1561,6 +1605,15 @@ namespace FullyAutomaticOmniCrafter
             // 原 Job 结束时 JobTracker 可能立即启动一个 Wait/生活 Job，统一停止后再由调度器分配。
             if (pawn.CurJob != null)
                 pawn.jobs.EndCurrentJob(JobCondition.InterruptForced, false);
+
+            if (deferSleep)
+            {
+                // 热续：泵步马上就要为此空闲代理派发新 Job，留在场上等待，
+                // 跳过"入舱→出舱"往返与多余的 Sanitize 开销。
+                record.station = null;
+                OmniWorkProxyUtility.Unassign(pawn);
+                return true;
+            }
             PutProxyToSleep(record);
             return sleepingProxies.Contains(pawn);
         }
@@ -1628,7 +1681,7 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
 
-        private bool TryGetNextIdleProxy(out ProxyRecord result)
+        private bool TryGetNextIdleProxy(out ProxyRecord result, bool deferSleep)
         {
             result = null;
             int count = proxies.Count;
@@ -1637,11 +1690,58 @@ namespace FullyAutomaticOmniCrafter
                 if (proxySearchCursor >= count) proxySearchCursor = 0;
                 ProxyRecord candidate = proxies[proxySearchCursor++];
                 idleScanCount++;
-                if (!RefreshProxyState(candidate)) continue;
+                if (!RefreshProxyState(candidate, deferSleep)) continue;
                 result = candidate;
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// 把场上"空闲且非活跃"的代理统一送睡。无到期站的泵步与派发收尾时调用，
+        /// 取代原先每 Tick 的顶部收容循环，避免空闲代理滞留在场上。
+        /// </summary>
+        private void ReclaimIdleProxies()
+        {
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                ProxyRecord record = proxies[i];
+                if (record.issuedJob == null && record.pawn != null && record.pawn.Spawned &&
+                    !OmniWorkProxyUtility.IsActive(record.pawn))
+                    PutProxyToSleep(record);
+            }
+        }
+
+        private static bool ExceededDispatchTimeBudget(long stepStart)
+        {
+            return Stopwatch.GetTimestamp() - stepStart >= dispatchBudgetTicks;
+        }
+
+        /// <summary>
+        /// 工作积压（本泵步成功派发了 Job）且代理池未满时，以比 60 tick 维护更快的
+        /// 节奏补建代理，提高并行度。受最短间隔、单步数量上限与创建时间预算约束，
+        /// 避免 PawnGenerator 一次生成过多造成单 Tick 卡顿。
+        /// </summary>
+        private bool TryGrowProxyPoolIfBacklogged()
+        {
+            int tick = CurrentTick;
+            if (tick - lastProxyCreateTick < ProxyCreateGrowInterval) return false;
+            if (proxies.Count >= configuredProxyCount) return false;
+
+            long start = Stopwatch.GetTimestamp();
+            int created = 0;
+            while (proxies.Count < configuredProxyCount &&
+                   created < MaxProxyGrowsPerStep &&
+                   Stopwatch.GetTimestamp() - start < proxyCreateBudgetTicks)
+            {
+                Pawn pawn = CreateProxy();
+                if (pawn == null) break;
+                proxies.Add(new ProxyRecord { pawn = pawn });
+                created++;
+            }
+            if (created <= 0) return false;
+            lastProxyCreateTick = tick;
+            return true;
         }
 
         private bool TryGetNextDueStation(int tick, out StationRuntime result, out int earliestTick)
@@ -1691,6 +1791,12 @@ namespace FullyAutomaticOmniCrafter
         {
             Pawn pawn = record.pawn;
             Building_OmniWorkstation station = runtime.station;
+            // 热续续派的代理未经过入舱清洗，派发前补一次净化，保证新 Job 开始前状态干净。
+            if (record.needsSanitize)
+            {
+                record.needsSanitize = false;
+                OmniWorkProxyUtility.Sanitize(pawn);
+            }
             List<OmniWorkGiverGroup> groups = OmniWorkCatalog.Groups;
             if (station == null || !station.Operational || groups.Count == 0)
                 return WorkSearchStepResult.Exhausted;
