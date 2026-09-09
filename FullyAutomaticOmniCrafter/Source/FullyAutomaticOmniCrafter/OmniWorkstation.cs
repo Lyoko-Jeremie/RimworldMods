@@ -821,6 +821,8 @@ namespace FullyAutomaticOmniCrafter
         private const int AssignmentInterval = 60;
         private const int EmptySearchBackoffBase = 60;
         private const int EmptySearchBackoffMax = 480;
+        // 组级冷却:某组试探无活后,在冷却期内不再被选中(消除无活组的反复进出舱试探)。
+        private const int GroupCooldownTicks = 120;
         // 批派发:单个泵步至多连续派发的代理数与整体时间预算(防止一 Tick 过长)。
         private const int MaxProxyDispatchPerPump = 8;
         private const double PumpDispatchBudgetMs = 3.0;
@@ -952,8 +954,10 @@ namespace FullyAutomaticOmniCrafter
             public int consecutiveFailures;
             public bool hot;
             public int groupCursor;
-            public int burstGroupIndex = -1;
-            public int burstRemaining;
+            // 最近成功派发过工作的组下标(成功组优先),-1 表示尚无成功记录。
+            public int lastFoundGroup = -1;
+            // 各工作组下次可重试的 tick(组级冷却;0 表示立即可试)。
+            public int[] groupNextTryTick;
         }
 
         private enum WorkSearchStepResult
@@ -1033,13 +1037,7 @@ namespace FullyAutomaticOmniCrafter
                 OmniWorkProxyUtility.Unassign(record.pawn);
             }
             // 范围或开关变化只唤醒当前工作站，不影响其他工作站的独立退避状态。
-            StationRuntime runtime = GetOrCreateStationRuntime(station);
-            runtime.nextSearchTick = CurrentTick;
-            runtime.consecutiveFailures = 0;
-            runtime.hot = true;
-            runtime.groupCursor = 0;
-            runtime.burstGroupIndex = -1;
-            runtime.burstRemaining = 0;
+            ResetStationSearchState(GetOrCreateStationRuntime(station), CurrentTick);
             WakePumpNow();
         }
 
@@ -1057,13 +1055,8 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            StationRuntime runtime = GetOrCreateStationRuntime(station);
-            runtime.nextSearchTick = CurrentTick;
-            runtime.consecutiveFailures = 0;
-            runtime.hot = true;
-            runtime.groupCursor = 0;
-            runtime.burstGroupIndex = -1;
-            runtime.burstRemaining = 0;
+            StationRuntime filterRuntime = GetOrCreateStationRuntime(station);
+            ResetStationSearchState(filterRuntime, CurrentTick);
             WakePumpNow();
         }
 
@@ -1081,6 +1074,19 @@ namespace FullyAutomaticOmniCrafter
 
         private int CurrentTick => Find.TickManager?.TicksGame ?? 0;
 
+        /// <summary>重置工作站的搜索进度(配置/注册变更或全局唤醒时),同时清空组级冷却与成功组记录。</summary>
+        private static void ResetStationSearchState(StationRuntime runtime, int tick)
+        {
+            runtime.nextSearchTick = tick;
+            runtime.consecutiveFailures = 0;
+            runtime.hot = true;
+            runtime.groupCursor = 0;
+            runtime.lastFoundGroup = -1;
+            if (runtime.groupNextTryTick != null)
+                for (int i = 0; i < runtime.groupNextTryTick.Length; i++)
+                    runtime.groupNextTryTick[i] = 0;
+        }
+
         private void WakePumpNow()
         {
             nextPumpTick = CurrentTick;
@@ -1091,15 +1097,7 @@ namespace FullyAutomaticOmniCrafter
         {
             int tick = CurrentTick;
             for (int i = 0; i < stations.Count; i++)
-            {
-                StationRuntime runtime = GetOrCreateStationRuntime(stations[i]);
-                runtime.nextSearchTick = tick;
-                runtime.consecutiveFailures = 0;
-                runtime.hot = true;
-                runtime.groupCursor = 0;
-                runtime.burstGroupIndex = -1;
-                runtime.burstRemaining = 0;
-            }
+                ResetStationSearchState(GetOrCreateStationRuntime(stations[i]), tick);
             WakePumpNow();
         }
 
@@ -1128,7 +1126,8 @@ namespace FullyAutomaticOmniCrafter
                 {
                     station = station,
                     nextSearchTick = CurrentTick,
-                    hot = true
+                    hot = true,
+                    groupNextTryTick = new int[OmniWorkCatalog.Groups.Count]
                 };
                 stationStates.Add(station, runtime);
             }
@@ -1190,24 +1189,28 @@ namespace FullyAutomaticOmniCrafter
                     return;
                 }
 
-                // 批量派发：同一到期站连续喂给多个空闲代理，受数量上限与时间预算约束。
-                // 已派发的代理 Job 立即启动并预约目标，后续代理的扫描会被原版预约机制
-                // 自动避开已占用目标；一轮 Found 后直接续派下一代理，省去"入舱→出舱"往返。
+                // 派发循环(单站):一个"代理会话"可连续试探多个工作组(组无活→记冷却→同代理试下一组),
+                // 直到找到工作(派发)、整轮无组可试(收容该代理)或超出数量/时间预算。
+                // 组选择采用"最近成功组优先 + 光标轮转 + 组级冷却",消除光标错过活跃组导致的
+                // 批间空档,以及无活组反复进出舱的试探风暴。
                 bool foundAny = false;
                 bool idleExhausted = false;
+                bool groupExhausted = false;
                 int dispatched = 0;
-                WorkSearchStepResult lastResult = WorkSearchStepResult.Continue;
-                ProxyRecord record;
+                int groupsTried = 0;
+                ProxyRecord record = null;
                 while (true)
                 {
-                    if (!TryGetNextIdleProxy(out record, deferSleep: true))
+                    if (dispatched >= MaxProxyDispatchPerPump ||
+                        ((dispatched > 0 || groupsTried > 0) && ExceededDispatchTimeBudget(stepStart)))
+                        break;
+
+                    if (record == null &&
+                        !TryGetNextIdleProxy(out record, deferSleep: true))
                     {
                         idleExhausted = true;
                         break;
                     }
-                    if (dispatched >= MaxProxyDispatchPerPump ||
-                        (dispatched > 0 && ExceededDispatchTimeBudget(stepStart)))
-                        break;
 
                     searchState = OmniWorkSearchState.Searching;
                     lastSearchTick = tick;
@@ -1217,13 +1220,33 @@ namespace FullyAutomaticOmniCrafter
                     lastSearchWorkType = null;
                     lastSearchGiver = null;
                     lastSearchGroupValid = false;
-                    lastResult = TryAssignWork(record, stationRuntime);
-                    if (lastResult != WorkSearchStepResult.Found)
+
+                    WorkSearchStepResult stepResult = TryAssignWork(record, stationRuntime);
+                    if (stepResult == WorkSearchStepResult.Found)
+                    {
+                        foundAny = true;
+                        dispatched++;
+                        groupsTried = 0;
+                        foundJobCount++;
+                        lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
+                        record = null;   // 该代理已去工作,下一轮取新空闲代理
+                    }
+                    else if (stepResult == WorkSearchStepResult.Exhausted)
+                    {
+                        groupExhausted = true;
                         break;
-                    foundAny = true;
-                    dispatched++;
-                    foundJobCount++;
-                    lastSearchWork = SafeJobReport(record.pawn, record.issuedJob);
+                    }
+                    else
+                    {
+                        groupsTried++;   // Continue:本组无活已冷却,同一代理继续试探下一组
+                    }
+                }
+
+                // 整轮穷尽时把正在试探的代理收容;预算/数量截断则留场,由下一泵步热续复用。
+                if (groupExhausted && record != null)
+                {
+                    PutProxyToSleep(record);
+                    record = null;
                 }
 
                 if (idleExhausted && dispatched == 0)
@@ -1242,10 +1265,10 @@ namespace FullyAutomaticOmniCrafter
                     stationRuntime.hot = true;
                     searchState = OmniWorkSearchState.Continuing;
                 }
-                else if (lastResult == WorkSearchStepResult.Exhausted)
+                else if (groupExhausted)
                 {
-                    // 连续穷尽按指数退避并封顶,避免地图长期无活时各站每 60 tick 周期性全组扫描;
-                    // 配置变更或再次找到工作都会清零 consecutiveFailures,恢复即时响应。
+                    // 整轮没有可试组（全部冷却或全被过滤）。连续穷尽按指数退避并封顶；
+                    // 配置变更或再次找到工作都会清零 consecutiveFailures，恢复即时响应。
                     stationRuntime.consecutiveFailures++;
                     stationRuntime.nextSearchTick = tick +
                         ExhaustedBackoffTicks(stationRuntime.consecutiveFailures);
@@ -1255,7 +1278,7 @@ namespace FullyAutomaticOmniCrafter
                 }
                 else
                 {
-                    // Continue（组内无活但未穷尽）或批被数量/时间预算截断：下一 Tick 继续。
+                    // Continue（预算内未穷尽）或批被数量/时间预算截断：下一 Tick 继续。
                     stationRuntime.nextSearchTick = tick + 1;
                     searchState = OmniWorkSearchState.Queued;
                 }
@@ -1787,93 +1810,82 @@ namespace FullyAutomaticOmniCrafter
             return Mathf.Min(EmptySearchBackoffBase << exponent, EmptySearchBackoffMax);
         }
 
+        /// <summary>选择下一个值得搜索的工作组:最近成功组优先,否则光标轮转,跳过被过滤或冷却中的组。</summary>
+        private int SelectNextGroupIndex(StationRuntime runtime, Building_OmniWorkstation station, int tick)
+        {
+            List<OmniWorkGiverGroup> groups = OmniWorkCatalog.Groups;
+            int count = groups.Count;
+            if (count == 0) return -1;
+            if (runtime.groupNextTryTick == null || runtime.groupNextTryTick.Length != count)
+                runtime.groupNextTryTick = new int[count];
+            int[] cooldown = runtime.groupNextTryTick;
+
+            // 成功组优先:最近成功派发过的组若仍允许且冷却到期,直接复用它(连续填满该组,
+            // 避免光标绕圈导致"有活却要等一整轮"的批间空档)。
+            if (runtime.lastFoundGroup >= 0 && runtime.lastFoundGroup < count &&
+                station.AllowsWorkType(groups[runtime.lastFoundGroup].workType) &&
+                cooldown[runtime.lastFoundGroup] <= tick)
+                return runtime.lastFoundGroup;
+
+            // 从光标处线性轮转;光标保持循环推进,保证公平性。
+            if (runtime.groupCursor < 0 || runtime.groupCursor >= count) runtime.groupCursor = 0;
+            for (int scanned = 0; scanned < count; scanned++)
+            {
+                int candidate = runtime.groupCursor;
+                runtime.groupCursor++;
+                if (runtime.groupCursor >= count) runtime.groupCursor = 0;
+                if (!station.AllowsWorkType(groups[candidate].workType)) continue;
+                if (cooldown[candidate] > tick) continue;
+                return candidate;
+            }
+            return -1;   // 整轮没有可试组(全部冷却或全部被过滤)
+        }
+
+        /// <summary>对一个空闲代理执行一次"单组搜索"并尝试派发;不管理代理的入睡/唤醒归属。</summary>
         private WorkSearchStepResult TryAssignWork(ProxyRecord record, StationRuntime runtime)
         {
             Pawn pawn = record.pawn;
             Building_OmniWorkstation station = runtime.station;
-            // 热续续派的代理未经过入舱清洗，派发前补一次净化，保证新 Job 开始前状态干净。
-            if (record.needsSanitize)
-            {
-                record.needsSanitize = false;
-                OmniWorkProxyUtility.Sanitize(pawn);
-            }
             List<OmniWorkGiverGroup> groups = OmniWorkCatalog.Groups;
-            if (station == null || !station.Operational || groups.Count == 0)
+            if (pawn == null || pawn.Destroyed || station == null || !station.Operational || groups.Count == 0)
                 return WorkSearchStepResult.Exhausted;
 
-            int groupIndex;
-            if (runtime.burstRemaining > 0 && runtime.burstGroupIndex >= 0 &&
-                runtime.burstGroupIndex < groups.Count &&
-                station.AllowsWorkType(groups[runtime.burstGroupIndex].workType))
-            {
-                groupIndex = runtime.burstGroupIndex;
-            }
-            else
-            {
-                runtime.burstGroupIndex = -1;
-                runtime.burstRemaining = 0;
-                // 被过滤的组只做 O(1) 跳过；每 Tick 最多实际执行一个允许组的昂贵搜索。
-                while (runtime.groupCursor < groups.Count &&
-                       !station.AllowsWorkType(groups[runtime.groupCursor].workType))
-                    runtime.groupCursor++;
-                groupIndex = runtime.groupCursor++;
-            }
-
-            if (groupIndex >= groups.Count)
-            {
-                runtime.groupCursor = 0;
+            // 代理就位:在场则瞬移到站旁,在舱则出舱;就位失败按本轮无法执行为 Exhausted。
+            if (!WakeProxyAtStation(pawn, station))
                 return WorkSearchStepResult.Exhausted;
-            }
+            record.station = station;
+            OmniWorkProxyUtility.Assign(pawn, station);
+
+            int groupIndex = SelectNextGroupIndex(runtime, station, CurrentTick);
+            if (groupIndex < 0)
+                return WorkSearchStepResult.Exhausted;   // 整轮无组可试
 
             OmniWorkGiverGroup group = groups[groupIndex];
             lastSearchWorkType = group.workType;
             lastSearchPriority = group.priorityInType;
             lastSearchGroupValid = true;
 
-            if (!WakeProxyAtStation(pawn, station))
-                return WorkSearchStepResult.Continue;
-            record.station = station;
-            OmniWorkProxyUtility.Assign(pawn, station);
-
             Job job = TryFindJobInGroup(pawn, station, group);
             if (job == null)
             {
-                PutProxyToSleep(record);
-                if (runtime.burstGroupIndex == groupIndex)
-                {
-                    runtime.burstGroupIndex = -1;
-                    runtime.burstRemaining = 0;
-                    runtime.groupCursor = groupIndex + 1;
-                }
-                if (runtime.groupCursor >= groups.Count)
-                {
-                    runtime.groupCursor = 0;
-                    return WorkSearchStepResult.Exhausted;
-                }
+                // 本组无活:记组级冷却,泵步会用同一代理继续试探下一组(不反复进出舱)。
+                runtime.groupNextTryTick[groupIndex] = CurrentTick + GroupCooldownTicks;
                 return WorkSearchStepResult.Continue;
             }
 
-            if (runtime.burstGroupIndex == groupIndex)
+            // 热续代理未经过入舱清洗,派发前补一次净化,保证新 Job 开始前状态干净。
+            if (record.needsSanitize)
             {
-                runtime.burstRemaining--;
-                if (runtime.burstRemaining <= 0)
-                {
-                    runtime.burstGroupIndex = -1;
-                    runtime.burstRemaining = 0;
-                    runtime.groupCursor = groupIndex + 1;
-                }
-            }
-            else if (sleepingProxies.Count > 0)
-            {
-                // 同一组连续填满当前所有空闲代理；填满后继续后续组，避免搬运类永久饥饿。
-                runtime.burstGroupIndex = groupIndex;
-                runtime.burstRemaining = sleepingProxies.Count;
+                record.needsSanitize = false;
+                OmniWorkProxyUtility.Sanitize(pawn);
             }
             record.issuedJob = job;
             pawn.jobs.StartJob(job, JobCondition.InterruptForced, jobGiver: workGiver,
                 tag: job.workGiverDef?.tagToGive, preToilReservationsCanFail: true);
             if (pawn.CurJob == null)
             {
+                // StartJob 未生效(罕见):送回代理,让泵步换一个空闲代理重试,避免状态滞留。
+                record.issuedJob = null;
                 PutProxyToSleep(record);
                 return WorkSearchStepResult.Continue;
             }
@@ -1882,6 +1894,8 @@ namespace FullyAutomaticOmniCrafter
             record.issuedJob = pawn.CurJob;
             record.needsSanitize = true;
             OmniWorkProxyUtility.SetActive(pawn, true);
+            runtime.lastFoundGroup = groupIndex;
+            runtime.groupNextTryTick[groupIndex] = 0;
             return WorkSearchStepResult.Found;
         }
 
