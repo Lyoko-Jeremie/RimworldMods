@@ -1131,7 +1131,7 @@ namespace FullyAutomaticOmniCrafter
             WakePumpNow();
         }
 
-        public void NotifyProxyBecameIdle(Pawn pawn = null)
+        public void NotifyProxyBecameIdle(Pawn pawn = null, JobCondition condition = JobCondition.Succeeded)
         {
             Building_OmniWorkstation idleStation = null;
             int idleGroupIndex = -1;
@@ -1151,10 +1151,9 @@ namespace FullyAutomaticOmniCrafter
                     break;
                 }
 
-                // Job 结束说明该站刚有活干完，极可能还有排队活(如同一工位的长队)：
-                // 立即取消站级退避并清掉刚用组的冷却，让泵能马上热续该代理。
-                // 否则泵虽被唤醒，却因站仍处于退避期而判"无到期站"，把代理收容入舱
-                // 并深睡到退避结束 —— 这正是"每完成一件工作后空转约 60 tick"的根源。
+                // 成功完成说明该站很可能还有同组积压，立即清掉组冷却热续；失败结束则
+                // 冷却刚才的组，让选择器先尝试其他工作，避免同一无效 Job 每 Tick 被
+                // 全部代理重新领取并立即退回 Wait，形成高频假派工循环。
                 if (idleStation != null && idleStation.Spawned && idleStation.Map == map)
                 {
                     StationRuntime runtime = GetOrCreateStationRuntime(idleStation);
@@ -1163,7 +1162,9 @@ namespace FullyAutomaticOmniCrafter
                     runtime.hot = true;
                     if (idleGroupIndex >= 0 && runtime.groupNextTryTick != null &&
                         idleGroupIndex < runtime.groupNextTryTick.Length)
-                        runtime.groupNextTryTick[idleGroupIndex] = 0;
+                        runtime.groupNextTryTick[idleGroupIndex] = condition == JobCondition.Succeeded
+                            ? 0
+                            : CurrentTick + GroupCooldownTicks;
                 }
             }
             WakePumpNow();
@@ -1963,10 +1964,12 @@ namespace FullyAutomaticOmniCrafter
             record.issuedJob = job;
             pawn.jobs.StartJob(job, JobCondition.InterruptForced, jobGiver: workGiver,
                 tag: job.workGiverDef?.tagToGive, preToilReservationsCanFail: true);
-            if (pawn.CurJob == null)
+            if (pawn.CurJob == null || IsIdleJob(pawn.CurJob))
             {
-                // StartJob 未生效(罕见):送回代理,让泵步换一个空闲代理重试,避免状态滞留。
+                // 预留失败等路径会在 StartJob 内同步结束工作并启动 Wait；这种情况不能
+                // 计作成功派工，否则对象池还可能让 job 与 Wait 恰好保持相同引用。
                 record.issuedJob = null;
+                runtime.groupNextTryTick[groupIndex] = CurrentTick + GroupCooldownTicks;
                 PutProxyToSleep(record);
                 return WorkSearchStepResult.Continue;
             }
@@ -2294,7 +2297,7 @@ namespace FullyAutomaticOmniCrafter
     public static class Patch_OmniWorkProxy_DeactivateOnJobEnd
     {
         [HarmonyPostfix]
-        public static void Postfix(Pawn ___pawn)
+        public static void Postfix(Pawn ___pawn, JobCondition condition)
         {
             if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
             bool wasActive = OmniWorkProxyUtility.IsActive(___pawn);
@@ -2307,7 +2310,8 @@ namespace FullyAutomaticOmniCrafter
 
             OmniWorkProxyUtility.SetActive(___pawn, false);
             if (wasActive && ___pawn.Spawned)
-                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>().NotifyProxyBecameIdle(___pawn);
+                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>()
+                    .NotifyProxyBecameIdle(___pawn, condition);
         }
     }
 
