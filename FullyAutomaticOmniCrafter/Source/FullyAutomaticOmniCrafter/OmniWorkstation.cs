@@ -26,6 +26,7 @@ namespace FullyAutomaticOmniCrafter
         private bool allowUnclassifiedWork = true;
         [Unsaved] private HashSet<string> disabledWorkTypeSet;
         private static readonly List<IntVec3> RingDrawCells = new List<IntVec3>();
+        private static readonly HashSet<IntVec3> InnerBorderCells = new HashSet<IntVec3>();
 
         public bool AutomationEnabled => automationEnabled;
         public int WorkRadius => workRadius;
@@ -225,6 +226,7 @@ namespace FullyAutomaticOmniCrafter
         private static void DrawWorkRadiusRing(IntVec3 center, float radius, Color color)
         {
             RingDrawCells.Clear();
+            InnerBorderCells.Clear();
             int extent = Mathf.CeilToInt(radius);
             float radiusSquared = radius * radius;
             float innerRadiusSquared = (radius - 1f) * (radius - 1f);
@@ -248,8 +250,27 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
+            // DrawFieldEdges 会描出格子集合的所有边界。环带内侧也属于边界，
+            // 因此把紧邻环带的内部空格列为忽略边界，只保留范围的外边缘。
+            for (int i = 0; i < RingDrawCells.Count; i++)
+            {
+                IntVec3 cell = RingDrawCells[i];
+                AddInnerBorderCell(center, cell + IntVec3.North, innerRadiusSquared);
+                AddInnerBorderCell(center, cell + IntVec3.East, innerRadiusSquared);
+                AddInnerBorderCell(center, cell + IntVec3.South, innerRadiusSquared);
+                AddInnerBorderCell(center, cell + IntVec3.West, innerRadiusSquared);
+            }
+
             if (RingDrawCells.Count > 0)
-                GenDraw.DrawFieldEdges(RingDrawCells, color);
+                GenDraw.DrawFieldEdges(RingDrawCells, color, null, InnerBorderCells);
+        }
+
+        private static void AddInnerBorderCell(IntVec3 center, IntVec3 cell, float innerRadiusSquared)
+        {
+            int x = cell.x - center.x;
+            int z = cell.z - center.z;
+            if (x * x + z * z < innerRadiusSquared)
+                InnerBorderCells.Add(cell);
         }
 
         public override string GetInspectString()
