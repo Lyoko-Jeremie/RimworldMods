@@ -864,7 +864,6 @@ namespace FullyAutomaticOmniCrafter
         private bool lastSearchGroupValid;
         private bool proxiesRecovered;
         private int configuredProxyCount = DefaultProxyCount;
-        private int nextWorkerSequence = 1;
         private int lastProxyCreateTick = int.MinValue;
 
         // ─── 性能探针(仅诊断,不参与调度逻辑)────────────────────────────────
@@ -990,10 +989,8 @@ namespace FullyAutomaticOmniCrafter
             sleepHolder.contents = sleepingProxies;
             sleepingProxies.dontTickContents = true;
             Scribe_Values.Look(ref configuredProxyCount, "omniWorkstationProxyCount", DefaultProxyCount);
-            Scribe_Values.Look(ref nextWorkerSequence, "omniWorkstationNextWorkerSequence", 1);
             configuredProxyCount = Mathf.Clamp(configuredProxyCount,
                 MinConfigurableProxyCount, MaxConfigurableProxyCount);
-            if (nextWorkerSequence < 1) nextWorkerSequence = 1;
         }
 
         public void SetConfiguredProxyCount(int value)
@@ -1466,7 +1463,6 @@ namespace FullyAutomaticOmniCrafter
             {
                 Pawn pawn = sleeping[i];
                 if (pawn == null || pawn.Destroyed || !OmniWorkProxyUtility.IsProxy(pawn)) continue;
-                EnsureWorkerName(pawn);
                 PrepareProxy(pawn);
                 proxies.Add(new ProxyRecord { pawn = pawn });
             }
@@ -1485,12 +1481,13 @@ namespace FullyAutomaticOmniCrafter
             for (int i = pawns.Count - 1; i >= 0; i--)
             {
                 if (!(pawns[i] is Pawn pawn) || !OmniWorkProxyUtility.IsProxy(pawn)) continue;
-                EnsureWorkerName(pawn);
                 PrepareProxy(pawn);
                 ProxyRecord record = new ProxyRecord { pawn = pawn };
                 proxies.Add(record);
                 PutProxyToSleep(record);
             }
+            // 读档恢复后按槽位制整体重排：旧存档中从 1 起算的编号会被纠正为 0..N-1。
+            RenumberProxies();
             WakePumpNow();
         }
 
@@ -1510,6 +1507,7 @@ namespace FullyAutomaticOmniCrafter
 
         private void EnsureProxyCount()
         {
+            int removedInvalid = 0;
             for (int i = proxies.Count - 1; i >= 0; i--)
             {
                 Pawn pawn = proxies[i].pawn;
@@ -1517,6 +1515,7 @@ namespace FullyAutomaticOmniCrafter
                     ((pawn.Spawned && pawn.Map == map) || sleepingProxies.Contains(pawn))) continue;
                 OmniWorkProxyUtility.Unassign(pawn);
                 proxies.RemoveAt(i);
+                removedInvalid++;
             }
 
             int operationalCount = 0;
@@ -1552,6 +1551,9 @@ namespace FullyAutomaticOmniCrafter
                 proxies.RemoveAt(i);
                 removed++;
             }
+
+            // 代理池组成发生变化后按槽位制重排编号，保证名字中的编号始终从 0 连续。
+            if (removedInvalid + created + removed > 0) RenumberProxies();
         }
 
         private Pawn CreateProxy()
@@ -1562,7 +1564,6 @@ namespace FullyAutomaticOmniCrafter
             try
             {
                 Pawn pawn = PawnGenerator.GeneratePawn(OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer);
-                EnsureWorkerName(pawn);
                 PrepareProxy(pawn);
                 if (!sleepingProxies.TryAdd(pawn))
                 {
@@ -1601,19 +1602,22 @@ namespace FullyAutomaticOmniCrafter
                 map.mapPawns.DeRegisterPawn(pawn);
         }
 
-        private void EnsureWorkerName(Pawn pawn)
+        /// <summary>
+        /// 槽位制重排：代理名字中的编号恒等于它在代理池 proxies 中的下标，因此任何时刻
+        /// 编号都从 0 开始且连续(0..N-1，N=当前在册代理数)。新建、回收或读档恢复后调用。
+        /// 名字已是正确编号的代理直接跳过，不产生额外字符串分配。
+        /// </summary>
+        private void RenumberProxies()
         {
-            if (pawn.Name is NameSingle existing && existing.Numerical && existing.Number > 0)
+            for (int i = 0; i < proxies.Count; i++)
             {
-                int sequence = existing.Number;
-                if (sequence >= nextWorkerSequence) nextWorkerSequence = sequence + 1;
-                // 名称本身会写入存档；每次恢复时重新翻译，以兼容旧名称和切换语言后的存档。
-                pawn.Name = new NameSingle("OmniWorkstation_WorkerName".Translate(sequence), true);
-                return;
+                Pawn pawn = proxies[i].pawn;
+                if (pawn == null || pawn.Destroyed) continue;
+                string expected = "OmniWorkstation_WorkerName".Translate(i);
+                NameSingle current = pawn.Name as NameSingle;
+                if (current == null || !current.Numerical || current.Name != expected)
+                    pawn.Name = new NameSingle(expected, true);
             }
-
-            pawn.Name = new NameSingle("OmniWorkstation_WorkerName".Translate(nextWorkerSequence), true);
-            nextWorkerSequence++;
         }
 
         private Building_OmniWorkstation FirstOperationalStation()
@@ -1635,6 +1639,18 @@ namespace FullyAutomaticOmniCrafter
             {
                 StopIssuedJob(record);
                 record.station = null;
+                OmniWorkProxyUtility.Unassign(pawn);
+            }
+
+            // Job 会被原版对象池复用，不能只靠引用变化判断任务是否已经结束：旧的
+            // issuedJob 可能在结束后立刻被复用成 Wait，并再次成为 pawn.CurJob。
+            // 无论引用是否相同，只要当前已无 Job 或进入原版等待 Job，就必须释放代理，
+            // 否则 active 会永久占满代理池并让工作泵停在 NoIdleProxy 深睡状态。
+            if (record.issuedJob != null && (pawn.CurJob == null || IsIdleJob(pawn.CurJob)))
+            {
+                record.issuedJob = null;
+                record.station = null;
+                record.lastGroupIndex = -1;
                 OmniWorkProxyUtility.Unassign(pawn);
             }
 
@@ -1795,6 +1811,8 @@ namespace FullyAutomaticOmniCrafter
                 created++;
             }
             if (created <= 0) return false;
+            // 新代理全部追加在池尾，按其下标从 0 连续重排命名。
+            RenumberProxies();
             lastProxyCreateTick = tick;
             return true;
         }
