@@ -9,12 +9,14 @@
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter2_l</texPath>
+            <texPath>Things/Building/Production/OmniArtificialMaidFabricator</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(3,3)</drawSize>
+            <drawOffset>(0,0,0.5)</drawOffset>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
-        <uiIconPath>Things/Building/Production/OmniCrafter2_l</uiIconPath>
+        <uiIconPath>Things/Building/Production/OmniArtificialMaidFabricator</uiIconPath>
+        <size>(3,2)</size>
         <altitudeLayer>Building</altitudeLayer>
         <passability>PassThroughOnly</passability>
         <pathCost>1</pathCost>
@@ -23,7 +25,6 @@
         <staticSunShadowHeight>0.0</staticSunShadowHeight>
         <fillPercent>0.5</fillPercent>
         <canOverlapZones>false</canOverlapZones>
-        <size>(3,3)</size>
         <costList>
             <Steel>200</Steel>
         </costList>

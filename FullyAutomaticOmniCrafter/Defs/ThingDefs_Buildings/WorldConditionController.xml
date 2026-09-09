@@ -17,13 +17,13 @@
         <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
 
         <graphicData>
-            <texPath>Things/Building/Production/ManualEventTrigger</texPath>
+            <texPath>Things/Building/Production/WorldConditionController</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <shaderType>CutoutComplex</shaderType>
             <drawSize>(3,3)</drawSize>
             <drawOffset>(0,0,0.5)</drawOffset>
         </graphicData>
-        <uiIconPath>Things/Building/Production/ManualEventTrigger</uiIconPath>
+        <uiIconPath>Things/Building/Production/WorldConditionController</uiIconPath>
 
         <size>(3,2)</size>
         <passability>Standable</passability>

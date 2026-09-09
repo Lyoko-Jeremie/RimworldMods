@@ -8,11 +8,12 @@
         <containedPawnsSelectable>true</containedPawnsSelectable>
         <tickerType>Normal</tickerType>
         <graphicData>
-            <texPath>Things/Building/Production/OmniCrafter2_l</texPath>
+            <texPath>Things/Building/Production/ArtificialMaidDisplayCase</texPath>
             <graphicClass>Graphic_Single</graphicClass>
             <drawSize>(1,2)</drawSize>
             <shaderType>CutoutComplex</shaderType>
         </graphicData>
+        <uiIconPath>Things/Building/Production/ArtificialMaidDisplayCase</uiIconPath>
         <altitudeLayer>Building</altitudeLayer>
         <drawerType>MapMeshAndRealTime</drawerType>
         <passability>PassThroughOnly</passability>
