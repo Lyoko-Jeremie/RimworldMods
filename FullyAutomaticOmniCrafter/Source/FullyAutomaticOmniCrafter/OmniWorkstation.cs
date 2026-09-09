@@ -923,6 +923,8 @@ namespace FullyAutomaticOmniCrafter
             public Building_OmniWorkstation station;
             public Job issuedJob;
             public bool needsSanitize;
+            // 最近一次成功派发的工作组下标(用于 Job 结束后的热续复位),-1 表示尚无。
+            public int lastGroupIndex = -1;
         }
 
         /// <summary>
@@ -1103,16 +1105,37 @@ namespace FullyAutomaticOmniCrafter
 
         public void NotifyProxyBecameIdle(Pawn pawn = null)
         {
+            Building_OmniWorkstation idleStation = null;
+            int idleGroupIndex = -1;
             if (pawn != null)
             {
                 for (int i = 0; i < proxies.Count; i++)
                 {
                     ProxyRecord record = proxies[i];
                     if (record.pawn != pawn) continue;
+                    // 清理前先取会话归属，用于下面的热续复位。
+                    idleStation = record.station;
+                    idleGroupIndex = record.lastGroupIndex;
                     record.issuedJob = null;
                     record.station = null;
+                    record.lastGroupIndex = -1;
                     OmniWorkProxyUtility.Unassign(pawn);
                     break;
+                }
+
+                // Job 结束说明该站刚有活干完，极可能还有排队活(如同一工位的长队)：
+                // 立即取消站级退避并清掉刚用组的冷却，让泵能马上热续该代理。
+                // 否则泵虽被唤醒，却因站仍处于退避期而判"无到期站"，把代理收容入舱
+                // 并深睡到退避结束 —— 这正是"每完成一件工作后空转约 60 tick"的根源。
+                if (idleStation != null && idleStation.Spawned && idleStation.Map == map)
+                {
+                    StationRuntime runtime = GetOrCreateStationRuntime(idleStation);
+                    runtime.nextSearchTick = CurrentTick;
+                    runtime.consecutiveFailures = 0;
+                    runtime.hot = true;
+                    if (idleGroupIndex >= 0 && runtime.groupNextTryTick != null &&
+                        idleGroupIndex < runtime.groupNextTryTick.Length)
+                        runtime.groupNextTryTick[idleGroupIndex] = 0;
                 }
             }
             WakePumpNow();
@@ -1671,6 +1694,7 @@ namespace FullyAutomaticOmniCrafter
             OmniWorkProxyUtility.Unassign(pawn);
             record.issuedJob = null;
             record.station = null;
+            record.lastGroupIndex = -1;
             if (sleepingProxies.Contains(pawn)) return;
 
             if (pawn.Spawned)
@@ -1901,6 +1925,7 @@ namespace FullyAutomaticOmniCrafter
             // StartJob 可能先插入机会任务并把原任务入队，跟踪实际运行中的 Job。
             record.issuedJob = pawn.CurJob;
             record.needsSanitize = true;
+            record.lastGroupIndex = groupIndex;
             OmniWorkProxyUtility.SetActive(pawn, true);
             runtime.lastFoundGroup = groupIndex;
             runtime.groupNextTryTick[groupIndex] = 0;
