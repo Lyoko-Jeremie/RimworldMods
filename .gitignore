@@ -115,6 +115,8 @@ fabric.properties
 !OuterrealmTechDailyThings/**/*
 !ImageOptFix/
 !ImageOptFix/**/*
+!GasStove/
+!GasStove/**/*
 !.gitignore
 
 !readme.md
