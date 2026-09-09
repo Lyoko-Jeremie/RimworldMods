@@ -121,6 +121,9 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>悬浮面板左上角锚点（逻辑屏幕坐标）；小于 0 表示从未拖动、使用默认位置。</summary>
         public float omniWorkstationMonitorX = -1f;
         public float omniWorkstationMonitorY = -1f;
+        /// <summary>悬浮监视窗口尺寸；小于等于 0 表示使用默认尺寸。</summary>
+        public float omniWorkstationMonitorWidth = -1f;
+        public float omniWorkstationMonitorHeight = -1f;
 
         public override void ExposeData()
         {
@@ -175,6 +178,8 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref omniWorkstationMonitorVisible, "omniWorkstationMonitorVisible", false);
             Scribe_Values.Look(ref omniWorkstationMonitorX, "omniWorkstationMonitorX", -1f);
             Scribe_Values.Look(ref omniWorkstationMonitorY, "omniWorkstationMonitorY", -1f);
+            Scribe_Values.Look(ref omniWorkstationMonitorWidth, "omniWorkstationMonitorWidth", -1f);
+            Scribe_Values.Look(ref omniWorkstationMonitorHeight, "omniWorkstationMonitorHeight", -1f);
         }
     }
 

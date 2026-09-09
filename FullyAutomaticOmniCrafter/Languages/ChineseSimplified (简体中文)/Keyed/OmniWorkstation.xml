@@ -52,13 +52,16 @@
     <OmniWorkstation_RadiusCoverageTip>覆盖约 {0} 格</OmniWorkstation_RadiusCoverageTip>
     <OmniWorkstation_ProxyLimitTip>上限越高，可同时执行的 Job 越多，CPU 负载越高；空闲代理会休眠，不产生持续开销</OmniWorkstation_ProxyLimitTip>
     <OmniWorkstation_MonitorTitle>代理状态监视</OmniWorkstation_MonitorTitle>
-    <OmniWorkstation_MonitorCollapse>收起</OmniWorkstation_MonitorCollapse>
-    <OmniWorkstation_MonitorCollapseTip>把面板收起为一个小开关按钮。</OmniWorkstation_MonitorCollapseTip>
+    <OmniWorkstation_MonitorCollapse>关闭</OmniWorkstation_MonitorCollapse>
+    <OmniWorkstation_MonitorCollapseTip>关闭代理状态监视窗口。可通过万能工作站的命令重新打开。</OmniWorkstation_MonitorCollapseTip>
     <OmniWorkstation_MonitorDetail>详情</OmniWorkstation_MonitorDetail>
     <OmniWorkstation_MonitorDetailTip>打开完整的代理状态窗口。</OmniWorkstation_MonitorDetailTip>
-    <OmniWorkstation_MonitorShow>打开监视</OmniWorkstation_MonitorShow>
-    <OmniWorkstation_MonitorShowTip>显示悬浮的代理监视面板。它悬浮在地图之上，不影响正常操作。</OmniWorkstation_MonitorShowTip>
     <OmniWorkstation_MonitorIdle>当前没有活动的工作代理</OmniWorkstation_MonitorIdle>
     <OmniWorkstation_MonitorMoreTip>另有 {0} 条（见详情）</OmniWorkstation_MonitorMoreTip>
     <OmniWorkstation_MonitorDragTip>按住拖动可移动本面板。</OmniWorkstation_MonitorDragTip>
+    <OmniWorkstation_MonitorResizeTip>拖动右下角可调整窗口大小；窗口高度决定同时显示的代理数量。</OmniWorkstation_MonitorResizeTip>
+    <OmniWorkstation_MonitorSearchTip>搜索代理名称或当前工作。</OmniWorkstation_MonitorSearchTip>
+    <OmniWorkstation_MonitorSearchEmpty>没有符合搜索条件的活动代理</OmniWorkstation_MonitorSearchEmpty>
+    <OmniWorkstation_MonitorToggle>代理状态监视</OmniWorkstation_MonitorToggle>
+    <OmniWorkstation_MonitorToggleDesc>显示或隐藏全局代理状态监视窗口。</OmniWorkstation_MonitorToggleDesc>
 </LanguageData>

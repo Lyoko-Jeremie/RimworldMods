@@ -52,13 +52,16 @@
     <OmniWorkstation_RadiusCoverageTip>Covers approximately {0} cells</OmniWorkstation_RadiusCoverageTip>
     <OmniWorkstation_ProxyLimitTip>A higher limit means more jobs may run at once and higher CPU load; idle proxies sleep and cost nothing</OmniWorkstation_ProxyLimitTip>
     <OmniWorkstation_MonitorTitle>Work proxy monitor</OmniWorkstation_MonitorTitle>
-    <OmniWorkstation_MonitorCollapse>Hide</OmniWorkstation_MonitorCollapse>
-    <OmniWorkstation_MonitorCollapseTip>Collapse this panel into a small toggle button.</OmniWorkstation_MonitorCollapseTip>
+    <OmniWorkstation_MonitorCollapse>Close</OmniWorkstation_MonitorCollapse>
+    <OmniWorkstation_MonitorCollapseTip>Close the proxy status monitor. Reopen it from a universal workstation command.</OmniWorkstation_MonitorCollapseTip>
     <OmniWorkstation_MonitorDetail>Details</OmniWorkstation_MonitorDetail>
     <OmniWorkstation_MonitorDetailTip>Open the full proxy status window.</OmniWorkstation_MonitorDetailTip>
-    <OmniWorkstation_MonitorShow>Open monitor</OmniWorkstation_MonitorShow>
-    <OmniWorkstation_MonitorShowTip>Show the floating work proxy monitor. It floats over the map and does not block normal gameplay.</OmniWorkstation_MonitorShowTip>
     <OmniWorkstation_MonitorIdle>No active work proxies</OmniWorkstation_MonitorIdle>
     <OmniWorkstation_MonitorMoreTip>+{0} more (see Details)</OmniWorkstation_MonitorMoreTip>
     <OmniWorkstation_MonitorDragTip>Drag to move this panel.</OmniWorkstation_MonitorDragTip>
+    <OmniWorkstation_MonitorResizeTip>Drag the lower-right corner to resize. Window height controls how many proxies are shown at once.</OmniWorkstation_MonitorResizeTip>
+    <OmniWorkstation_MonitorSearchTip>Search proxy names or current work.</OmniWorkstation_MonitorSearchTip>
+    <OmniWorkstation_MonitorSearchEmpty>No active proxies match the search.</OmniWorkstation_MonitorSearchEmpty>
+    <OmniWorkstation_MonitorToggle>Proxy status monitor</OmniWorkstation_MonitorToggle>
+    <OmniWorkstation_MonitorToggleDesc>Show or hide the global proxy status monitor window.</OmniWorkstation_MonitorToggleDesc>
 </LanguageData>
