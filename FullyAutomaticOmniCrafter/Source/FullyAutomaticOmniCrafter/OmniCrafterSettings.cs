@@ -115,6 +115,13 @@ namespace FullyAutomaticOmniCrafter
         
         public OmniPhantomWall2_PassabilitySettings customPassabilitySettings = new OmniPhantomWall2_PassabilitySettings();
 
+        // ─── 万能工作站代理状态悬浮监视面板（OmniWorkstationMonitor）─────────
+        /// <summary>悬浮监视面板是否可见。默认收起，屏幕中右缘会显示"打开监视"入口按钮。</summary>
+        public bool omniWorkstationMonitorVisible = false;
+        /// <summary>悬浮面板左上角锚点（逻辑屏幕坐标）；小于 0 表示从未拖动、使用默认位置。</summary>
+        public float omniWorkstationMonitorX = -1f;
+        public float omniWorkstationMonitorY = -1f;
+
         public override void ExposeData()
         {
             base.ExposeData();
@@ -163,6 +170,11 @@ namespace FullyAutomaticOmniCrafter
             
             Scribe_Deep.Look(ref customPassabilitySettings, "customPassabilitySettings");
             if (customPassabilitySettings == null) customPassabilitySettings = new OmniPhantomWall2_PassabilitySettings();
+
+            // ── 万能工作站代理状态悬浮监视面板状态 ──
+            Scribe_Values.Look(ref omniWorkstationMonitorVisible, "omniWorkstationMonitorVisible", false);
+            Scribe_Values.Look(ref omniWorkstationMonitorX, "omniWorkstationMonitorX", -1f);
+            Scribe_Values.Look(ref omniWorkstationMonitorY, "omniWorkstationMonitorY", -1f);
         }
     }
 

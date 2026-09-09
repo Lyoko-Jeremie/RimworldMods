@@ -1156,6 +1156,12 @@ namespace FullyAutomaticOmniCrafter
             base.MapRemoved();
         }
 
+        public override void MapComponentOnGUI()
+        {
+            base.MapComponentOnGUI();
+            OmniWorkstationMonitor.Draw(this);
+        }
+
         public override void MapComponentTick()
         {
             base.MapComponentTick();

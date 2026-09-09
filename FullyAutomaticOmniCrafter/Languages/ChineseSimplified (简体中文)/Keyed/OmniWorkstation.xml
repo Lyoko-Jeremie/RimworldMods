@@ -51,4 +51,14 @@
     <OmniWorkstation_StatsProxyFlow>出舱 {0} · 入舱 {1} · 空闲轮询 {2}</OmniWorkstation_StatsProxyFlow>
     <OmniWorkstation_RadiusCoverageTip>覆盖约 {0} 格</OmniWorkstation_RadiusCoverageTip>
     <OmniWorkstation_ProxyLimitTip>上限越高，可同时执行的 Job 越多，CPU 负载越高；空闲代理会休眠，不产生持续开销</OmniWorkstation_ProxyLimitTip>
+    <OmniWorkstation_MonitorTitle>代理状态监视</OmniWorkstation_MonitorTitle>
+    <OmniWorkstation_MonitorCollapse>收起</OmniWorkstation_MonitorCollapse>
+    <OmniWorkstation_MonitorCollapseTip>把面板收起为一个小开关按钮。</OmniWorkstation_MonitorCollapseTip>
+    <OmniWorkstation_MonitorDetail>详情</OmniWorkstation_MonitorDetail>
+    <OmniWorkstation_MonitorDetailTip>打开完整的代理状态窗口。</OmniWorkstation_MonitorDetailTip>
+    <OmniWorkstation_MonitorShow>打开监视</OmniWorkstation_MonitorShow>
+    <OmniWorkstation_MonitorShowTip>显示悬浮的代理监视面板。它悬浮在地图之上，不影响正常操作。</OmniWorkstation_MonitorShowTip>
+    <OmniWorkstation_MonitorIdle>当前没有活动的工作代理</OmniWorkstation_MonitorIdle>
+    <OmniWorkstation_MonitorMoreTip>另有 {0} 条（见详情）</OmniWorkstation_MonitorMoreTip>
+    <OmniWorkstation_MonitorDragTip>按住拖动可移动本面板。</OmniWorkstation_MonitorDragTip>
 </LanguageData>

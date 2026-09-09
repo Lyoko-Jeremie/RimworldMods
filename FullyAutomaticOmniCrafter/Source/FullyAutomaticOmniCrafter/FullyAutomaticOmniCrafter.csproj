@@ -410,6 +410,7 @@
     <Compile Include="OmniAutoSurgeon.cs" />
     <Compile Include="OmniCrafterMod.cs" />
     <Compile Include="OmniWorkstation.cs" />
+    <Compile Include="OmniWorkstationMonitor.cs" />
     <Compile Include="OmniForceFieldDome.cs" />
     <Compile Include="OmniPhantomWall.cs" />
     <Compile Include="OmniPhantomWall2.cs" />
