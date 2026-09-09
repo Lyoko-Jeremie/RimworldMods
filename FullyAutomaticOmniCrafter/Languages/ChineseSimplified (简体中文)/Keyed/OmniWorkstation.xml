@@ -33,6 +33,7 @@
     <OmniWorkstation_SearchGroupFormat>{0}｜{1}｜优先级 {2}</OmniWorkstation_SearchGroupFormat>
     <OmniWorkstation_SearchGiverFormat>{0}｜{1}</OmniWorkstation_SearchGiverFormat>
     <OmniWorkstation_ProxyColumn>工作代理</OmniWorkstation_ProxyColumn>
+    <OmniWorkstation_WorkerName>工作站代理-{0}</OmniWorkstation_WorkerName>
     <OmniWorkstation_WorkColumn>当前工作</OmniWorkstation_WorkColumn>
     <OmniWorkstation_Search_Waiting>等待常规搜索</OmniWorkstation_Search_Waiting>
     <OmniWorkstation_Search_Queued>已唤醒，等待搜索</OmniWorkstation_Search_Queued>

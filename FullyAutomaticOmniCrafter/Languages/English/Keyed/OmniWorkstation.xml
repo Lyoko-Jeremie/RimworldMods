@@ -33,6 +33,7 @@
     <OmniWorkstation_SearchGroupFormat>{0} | {1} | priority {2}</OmniWorkstation_SearchGroupFormat>
     <OmniWorkstation_SearchGiverFormat>{0} | {1}</OmniWorkstation_SearchGiverFormat>
     <OmniWorkstation_ProxyColumn>Work proxy</OmniWorkstation_ProxyColumn>
+    <OmniWorkstation_WorkerName>Worker-{0}</OmniWorkstation_WorkerName>
     <OmniWorkstation_WorkColumn>Current work</OmniWorkstation_WorkColumn>
     <OmniWorkstation_Search_Waiting>Waiting for regular search</OmniWorkstation_Search_Waiting>
     <OmniWorkstation_Search_Queued>Awake and queued to search</OmniWorkstation_Search_Queued>

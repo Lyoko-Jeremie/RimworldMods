@@ -1574,14 +1574,16 @@ namespace FullyAutomaticOmniCrafter
 
         private void EnsureWorkerName(Pawn pawn)
         {
-            if (pawn.Name is NameSingle existing && existing.Name.StartsWith("Worker", StringComparison.Ordinal) &&
-                int.TryParse(existing.Name.Substring(6), out int sequence) && sequence > 0)
+            if (pawn.Name is NameSingle existing && existing.Numerical && existing.Number > 0)
             {
+                int sequence = existing.Number;
                 if (sequence >= nextWorkerSequence) nextWorkerSequence = sequence + 1;
+                // 名称本身会写入存档；每次恢复时重新翻译，以兼容旧名称和切换语言后的存档。
+                pawn.Name = new NameSingle("OmniWorkstation_WorkerName".Translate(sequence), true);
                 return;
             }
 
-            pawn.Name = new NameSingle("Worker" + nextWorkerSequence, true);
+            pawn.Name = new NameSingle("OmniWorkstation_WorkerName".Translate(nextWorkerSequence), true);
             nextWorkerSequence++;
         }
 
