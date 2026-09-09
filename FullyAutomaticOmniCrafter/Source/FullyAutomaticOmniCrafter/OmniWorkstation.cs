@@ -25,6 +25,7 @@ namespace FullyAutomaticOmniCrafter
         private List<string> disabledWorkTypeDefNames = new List<string>();
         private bool allowUnclassifiedWork = true;
         [Unsaved] private HashSet<string> disabledWorkTypeSet;
+        private static readonly List<IntVec3> RingDrawCells = new List<IntVec3>();
 
         public bool AutomationEnabled => automationEnabled;
         public int WorkRadius => workRadius;
@@ -218,7 +219,37 @@ namespace FullyAutomaticOmniCrafter
         {
             base.DrawExtraSelectionOverlays();
             if (Spawned)
-                GenDraw.DrawRadiusRing(Position, WorkRadius, automationEnabled ? Color.cyan : Color.gray);
+                DrawWorkRadiusRing(Position, WorkRadius, automationEnabled ? Color.cyan : Color.gray);
+        }
+
+        private static void DrawWorkRadiusRing(IntVec3 center, float radius, Color color)
+        {
+            RingDrawCells.Clear();
+            int extent = Mathf.CeilToInt(radius);
+            float radiusSquared = radius * radius;
+            float innerRadiusSquared = (radius - 1f) * (radius - 1f);
+            for (int x = -extent; x <= extent; x++)
+            {
+                float xSquared = x * x;
+                if (xSquared > radiusSquared) continue;
+
+                float maxZ = Mathf.Sqrt(radiusSquared - xSquared);
+                float minZ = xSquared < innerRadiusSquared
+                    ? Mathf.Sqrt(innerRadiusSquared - xSquared)
+                    : 0f;
+                int zStart = Mathf.CeilToInt(minZ);
+                int zEnd = Mathf.FloorToInt(maxZ);
+
+                for (int z = zStart; z <= zEnd; z++)
+                {
+                    RingDrawCells.Add(center + new IntVec3(x, 0, z));
+                    if (z != 0)
+                        RingDrawCells.Add(center + new IntVec3(x, 0, -z));
+                }
+            }
+
+            if (RingDrawCells.Count > 0)
+                GenDraw.DrawFieldEdges(RingDrawCells, color);
         }
 
         public override string GetInspectString()
@@ -2204,15 +2235,19 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>原版技能读取会把 levelInt 截断到 20；代理需要向工作及 Mod 门槛报告真实的 999。</summary>
+    /// <summary>
+    /// 代理保存 999 级技能，但对外尊重当前游戏环境实际允许的技能上限。
+    /// 原版或第三方 Mod 先计算出的结果即为当前有效上限，再由此处限制为至多 999。
+    /// </summary>
     [HarmonyPatch(typeof(SkillRecord), nameof(SkillRecord.GetLevel))]
     public static class Patch_OmniWorkProxy_SkillLevel
     {
         [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(SkillRecord __instance, ref int __result)
         {
             if (OmniWorkProxyUtility.IsProxy(__instance.Pawn))
-                __result = 999;
+                __result = Mathf.Min(999, __result);
         }
     }
 
