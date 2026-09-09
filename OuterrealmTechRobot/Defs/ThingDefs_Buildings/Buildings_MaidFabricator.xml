@@ -41,7 +41,7 @@
         
         
         <hasInteractionCell>True</hasInteractionCell>
-        <interactionCellOffset>(0,0,-2)</interactionCellOffset>
+        <interactionCellOffset>(0,0,-1)</interactionCellOffset>
         <surfaceType>Item</surfaceType>
         <constructionSkillPrerequisite>1</constructionSkillPrerequisite>
         <recipes>
