@@ -36,6 +36,7 @@
         <description>Internal work acceleration used by the universal workstation proxy.</description>
         <hediffClass>Hediff</hediffClass>
         <isBad>false</isBad>
+        <blocksSocialInteraction>true</blocksSocialInteraction>
         <everCurableByItem>false</everCurableByItem>
         <duplicationAllowed>false</duplicationAllowed>
         <stages>
