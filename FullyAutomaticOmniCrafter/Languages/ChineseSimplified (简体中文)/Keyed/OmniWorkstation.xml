@@ -65,4 +65,8 @@
     <OmniWorkstation_MonitorSearchEmpty>没有符合搜索条件的活动代理</OmniWorkstation_MonitorSearchEmpty>
     <OmniWorkstation_MonitorToggle>代理状态监视</OmniWorkstation_MonitorToggle>
     <OmniWorkstation_MonitorToggleDesc>显示或隐藏全局代理状态监视窗口。</OmniWorkstation_MonitorToggleDesc>
+    <OmniWorkstation_StatsRegionMiss>区域漏活探测 {0} 次 · 重查命中 {1} 次 · 诊断{2}</OmniWorkstation_StatsRegionMiss>
+    <OmniWorkstation_DiagnoseRegionMiss>区域漏活诊断</OmniWorkstation_DiagnoseRegionMiss>
+    <OmniWorkstation_DiagnoseRegionMissOn>已开启</OmniWorkstation_DiagnoseRegionMissOn>
+    <OmniWorkstation_DiagnoseRegionMissOff>已关闭</OmniWorkstation_DiagnoseRegionMissOff>
 </LanguageData>

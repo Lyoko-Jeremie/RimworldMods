@@ -65,4 +65,8 @@
     <OmniWorkstation_MonitorSearchEmpty>No active proxies match the search.</OmniWorkstation_MonitorSearchEmpty>
     <OmniWorkstation_MonitorToggle>Proxy status monitor</OmniWorkstation_MonitorToggle>
     <OmniWorkstation_MonitorToggleDesc>Show or hide the global proxy status monitor window.</OmniWorkstation_MonitorToggleDesc>
+    <OmniWorkstation_StatsRegionMiss>Region-miss probes {0} · hits {1} · diagnostic {2}</OmniWorkstation_StatsRegionMiss>
+    <OmniWorkstation_DiagnoseRegionMiss>Region miss diagnostic</OmniWorkstation_DiagnoseRegionMiss>
+    <OmniWorkstation_DiagnoseRegionMissOn>on</OmniWorkstation_DiagnoseRegionMissOn>
+    <OmniWorkstation_DiagnoseRegionMissOff>off</OmniWorkstation_DiagnoseRegionMissOff>
 </LanguageData>

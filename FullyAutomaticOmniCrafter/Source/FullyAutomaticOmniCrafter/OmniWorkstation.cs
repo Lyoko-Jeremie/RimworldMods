@@ -626,6 +626,9 @@ namespace FullyAutomaticOmniCrafter
             if (Widgets.ButtonText(new Rect(inRect.width - 136f, 4f, 132f, 24f),
                 "OmniWorkstation_StatsReset".Translate()))
                 manager.ResetStats();
+            if (Widgets.ButtonText(new Rect(inRect.width - 408f, 4f, 132f, 24f),
+                "OmniWorkstation_DiagnoseRegionMiss".Translate()))
+                manager.ToggleDiagnoseRegionMiss();
 
             Widgets.Label(new Rect(0f, 38f, inRect.width, 24f),
                 "OmniWorkstation_StatusCounts".Translate(manager.ActiveProxyCount, manager.TotalProxyCount,
@@ -664,6 +667,15 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
                 "OmniWorkstation_StatsProxyFlow".Translate(stats.wakeProxyCount, stats.sleepProxyCount,
                     stats.idleScanCount));
+            statsY += statLineHeight;
+            // 诊断区:区域遍历漏活探测(默认关闭)。probes 为"搜索无结果"次数,hits 为其中
+            // "用代理网格重查能命中"的次数 —— hits/probes 即漏活比例。
+            Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
+                "OmniWorkstation_StatsRegionMiss".Translate(manager.RegionMissProbeCount,
+                    manager.RegionMissHitCount,
+                    (manager.DiagnoseRegionMiss
+                        ? "OmniWorkstation_DiagnoseRegionMissOn"
+                        : "OmniWorkstation_DiagnoseRegionMissOff").Translate()));
             statsY += statLineHeight + 10f;
 
             float listTop = statsY;
@@ -939,6 +951,13 @@ namespace FullyAutomaticOmniCrafter
         private const int EmptySearchBackoffMax = 120;
         private const int IdleRetryInterval = 30;
         private const int IdleGraceTicks = 180;
+        // 泵在"无到期站 / 无空闲代理"时也要周期性醒来：代理池被占满期间不会有任何事件
+        // 唤醒泵，个别不推进的 Job 就足以让整张地图再也派发不出工作。
+        private const int IdlePumpFallbackInterval = 60;
+        // 代理位置与 Job 引用在这么长时间内都没有变化时，判定该 Job 已停滞。
+        // 原版 PatherTick 在等待异步寻路时会直接 return，Job 完全不推进；
+        // 第三方 JobDriver 也可能长时间原地等待。
+        private const int StalledJobTimeoutTicks = 2500;
         // 原版没有提供“不校验禁用状态但更新工作表”的接口。缓存字段访问器，只在工作站
         // 或筛选版本变化时写入，避免在热路径反射，也避免 SetPriority 的第三方禁用校验。
         private static readonly AccessTools.FieldRef<Pawn_WorkSettings, DefMap<WorkTypeDef, int>>
@@ -980,6 +999,35 @@ namespace FullyAutomaticOmniCrafter
         private long wakeProxyCount;
         private long sleepProxyCount;
         private long idleScanCount;
+
+        // ─── 区域遍历漏活诊断(默认关闭)─────────────────────────────────────
+        private bool diagnoseRegionMiss;
+        private long regionMissProbeCount;
+        private long regionMissHitCount;
+
+        /// <summary>
+        /// 开启后，每当 GenClosest.ClosestThingReachable 对代理返回 null，都会用代理专用网格
+        /// 再做一次全局可达搜索；若重查能命中，说明该目标是被原版区域遍历（map.regionGrid）
+        /// 挡掉的。默认关闭：重查要枚举 listerThings 的候选集，属于明显的额外开销。
+        /// </summary>
+        public bool DiagnoseRegionMiss => diagnoseRegionMiss;
+
+        public long RegionMissProbeCount => regionMissProbeCount;
+        public long RegionMissHitCount => regionMissHitCount;
+
+        public void ToggleDiagnoseRegionMiss()
+        {
+            diagnoseRegionMiss = !diagnoseRegionMiss;
+            regionMissProbeCount = 0;
+            regionMissHitCount = 0;
+        }
+
+        /// <summary>由 GenClosest.ClosestThingReachable 的探测补丁回调。</summary>
+        public void NotifyRegionMissProbe(bool found)
+        {
+            regionMissProbeCount++;
+            if (found) regionMissHitCount++;
+        }
 
         public int ConfiguredProxyCount => configuredProxyCount;
         public int TotalProxyCount => proxies.Count;
@@ -1030,6 +1078,10 @@ namespace FullyAutomaticOmniCrafter
             public int configuredWorkFilterVersion = -1;
             public int idleSinceTick = -1;
             public bool waitingForWork;
+            // 停滞检测：Job 引用变化或位置移动都会刷新进度时间戳，用于识别"在跑但完全不推进"的 Job。
+            public Job lastTrackedJob;
+            public IntVec3 lastTrackedPosition = IntVec3.Invalid;
+            public int lastProgressTick = -1;
         }
 
         /// <summary>
@@ -1452,7 +1504,11 @@ namespace FullyAutomaticOmniCrafter
                 if (!TryGetNextDueStation(tick, out StationRuntime stationRuntime, out int earliestTick))
                 {
                     ReclaimIdleProxies();
-                    nextPumpTick = earliestTick;
+                    // 所有站都在深睡时不能永久停摆：代理池被占满期间没有任何事件会唤醒泵，
+                    // 一个停滞的 Job 就足以让整张地图再也派发不出工作。保留固定重试周期。
+                    nextPumpTick = earliestTick == int.MaxValue
+                        ? tick + IdlePumpFallbackInterval
+                        : earliestTick;
                     searchState = OmniWorkSearchState.Waiting;
                     return;
                 }
@@ -1467,8 +1523,10 @@ namespace FullyAutomaticOmniCrafter
 
                 if (!TryGetNextIdleProxy(out ProxyRecord record, deferSleep: true))
                 {
+                    // 代理池被占满属于常态，但深睡后只能等事件唤醒；同样保留固定重试周期，
+                    // 任何原因导致的停摆最多持续一个周期，代理释放后泵会自行恢复派发。
                     stationRuntime.nextSearchTick = int.MaxValue;
-                    nextPumpTick = int.MaxValue;
+                    nextPumpTick = tick + IdlePumpFallbackInterval;
                     searchState = OmniWorkSearchState.NoIdleProxy;
                     return;
                 }
@@ -1605,6 +1663,9 @@ namespace FullyAutomaticOmniCrafter
             sb.AppendLine("wakeProxy=" + s.wakeProxyCount
                 + " sleepProxy=" + s.sleepProxyCount
                 + " idleScan=" + s.idleScanCount);
+            sb.AppendLine("regionMissDiag=" + diagnoseRegionMiss
+                + " probes=" + regionMissProbeCount
+                + " hits=" + regionMissHitCount);
             return sb.ToString();
         }
 
@@ -1846,6 +1907,17 @@ namespace FullyAutomaticOmniCrafter
                 return record.issuedJob == null && sleepingProxies.Contains(pawn);
             if (pawn.Map != map) return false;
 
+            // 进度跟踪：Job 引用变化与位置移动都算推进。停滞判定依赖这个时间戳，
+            // 因此必须在所有提前返回之前刷新。
+            int now = CurrentTick;
+            if (record.lastProgressTick < 0 || pawn.CurJob != record.lastTrackedJob ||
+                pawn.Position != record.lastTrackedPosition)
+            {
+                record.lastTrackedJob = pawn.CurJob;
+                record.lastTrackedPosition = pawn.Position;
+                record.lastProgressTick = now;
+            }
+
             if (record.issuedJob != null && (record.station == null || !record.station.Operational))
             {
                 StopIssuedJob(record);
@@ -1889,7 +1961,24 @@ namespace FullyAutomaticOmniCrafter
                 OmniWorkProxyUtility.Unassign(pawn);
             }
 
-            if (record.issuedJob != null) return false;
+            if (record.issuedJob != null)
+            {
+                // 停滞兜底：原版 PatherTick 在等待异步寻路时会直接 return（Job 完全不推进），
+                // 第三方 JobDriver 也可能长期原地等待。调度器自己派发的等待不计入停滞，
+                // 否则宽限等待会被误判成卡死。
+                if (!record.waitingForWork && IsStalledJob(record, pawn, now))
+                {
+                    Log.WarningOnce("[OmniWorkstation] released a stalled job: " + pawn,
+                        Gen.HashCombineInt(pawn.thingIDNumber, 77120433));
+                    StopIssuedJob(record);
+                    record.station = null;
+                    OmniWorkProxyUtility.Unassign(pawn);
+                    PutProxyToSleep(record);
+                    WakePumpNow();
+                    return sleepingProxies.Contains(pawn);
+                }
+                return false;
+            }
 
             // 原 Job 结束时 JobTracker 可能立即启动一个 Wait/生活 Job，统一停止后再由调度器分配。
             if (pawn.CurJob != null)
@@ -1905,6 +1994,19 @@ namespace FullyAutomaticOmniCrafter
             }
             PutProxyToSleep(record);
             return sleepingProxies.Contains(pawn);
+        }
+
+        /// <summary>
+        /// 判定代理是否卡在一个完全不推进的 Job 上：Job 引用与位置在 StalledJobTimeoutTicks
+        /// 内都没有变化，且它当前确实在跑一个非等待 Job。用于释放永久占用代理池的停滞
+        /// Job —— 否则一旦全部代理都被占住，泵不会再收到任何事件，整张地图都会停止派发。
+        /// 代价是耗时超过该阈值的原地工作会被中断一次，之后原版会重新选中并继续。
+        /// </summary>
+        private static bool IsStalledJob(ProxyRecord record, Pawn pawn, int now)
+        {
+            if (record.lastProgressTick < 0) return false;
+            if (now - record.lastProgressTick <= StalledJobTimeoutTicks) return false;
+            return pawn.CurJob != null && !IsIdleJob(pawn.CurJob);
         }
 
         internal static bool IsIdleJob(Job job)
@@ -2544,6 +2646,35 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    /// <summary>
+    /// 区域遍历漏活诊断。ClosestThingReachable 的主路径是原版区域遍历（map.regionGrid +
+    /// RegionType.Set_Passable），只有在被 maxRegions 截断时才会转全局搜索；因此"原版区域
+    /// 系统认为不可达"的目标会被直接忽略，即使代理的寻路网格可以到达。本补丁只在诊断
+    /// 开关打开时，用代理网格重查一次相同的候选集，以量化这种漏活的实际规模。
+    /// </summary>
+    [HarmonyPatch(typeof(GenClosest), nameof(GenClosest.ClosestThingReachable))]
+    public static class Patch_OmniWorkProxy_DiagnoseRegionMiss
+    {
+        [HarmonyPostfix]
+        public static void Postfix(IntVec3 root, Map map, ThingRequest thingReq, PathEndMode peMode,
+            TraverseParms traverseParams, float maxDistance, Predicate<Thing> validator,
+            IEnumerable<Thing> customGlobalSearchSet, ref Thing __result)
+        {
+            if (__result != null || map == null) return;
+            Pawn pawn = traverseParams.pawn;
+            if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn)) return;
+            MapComponent_OmniWorkstation manager = map.GetComponent<MapComponent_OmniWorkstation>();
+            if (manager == null || !manager.DiagnoseRegionMiss) return;
+
+            // 重查走 ClosestThing_Global_Reachable，其可达性判定正是被 patch 过的
+            // Reachability.CanReach（代理专用网格），正好用来对照区域遍历的结果。
+            IEnumerable<Thing> searchSet = customGlobalSearchSet ?? map.listerThings.ThingsMatching(thingReq);
+            Thing probe = GenClosest.ClosestThing_Global_Reachable(root, map, searchSet, peMode,
+                traverseParams, maxDistance, validator);
+            manager.NotifyRegionMissProbe(probe != null);
+        }
+    }
+
     /// <summary>新增范围内 Designation 时立即唤醒探路代理，避免等待周期退避。</summary>
     [HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.AddDesignation))]
     public static class Patch_OmniWorkstation_WakeOnDesignation
@@ -2680,7 +2811,12 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        /// <summary>可达性放行，使 CanReach 与所用网格一致地通畅（CanReachImmediate 走的是网格本身）。</summary>
+        /// <summary>
+        /// 代理的可达性放行。代理的寻路网格通行成本恒为 10，"可达"对代理等价于
+        /// "目标格在地图内且目标不是已失效对象"。原实现无条件放行，连目标已被移除、
+        /// 位于其它地图或越出地图边界的情况也返回 true，导致 JobGiver 反复选中
+        /// 根本执行不了的目标。这里先做有效性判定，再交回自定义网格判定。
+        /// </summary>
         [HarmonyPatch(typeof(Reachability), nameof(Reachability.CanReach),
             new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(TraverseParms) })]
         public static class Patch_Reachability_CanReach
@@ -2690,13 +2826,20 @@ namespace FullyAutomaticOmniCrafter
                 ref bool __result, Map ___map)
             {
                 Pawn pawn = traverseParams.pawn;
-                if (pawn != null && OmniWorkProxyUtility.IsProxy(pawn) &&
-                    (!dest.HasThing || dest.Thing.Map == ___map))
+                if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn)) return true;
+
+                if ((dest.HasThing && (dest.Thing.Destroyed || dest.Thing.Map != ___map)) ||
+                    !dest.Cell.IsValid || !dest.Cell.InBounds(___map) ||
+                    OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid == null)
                 {
-                    __result = true;
+                    __result = false;
                     return false;
                 }
-                return true;
+
+                __result = ___map.pathing
+                    .Get(OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid)
+                    .pathGrid.Walkable(dest.Cell);
+                return false;
             }
         }
 
