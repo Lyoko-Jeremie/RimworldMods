@@ -1508,9 +1508,14 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < proxies.Count; i++)
             {
                 ProxyRecord record = proxies[i];
-                if (!OmniWorkProxyUtility.IsActive(record.pawn) || record.issuedJob == null) continue;
-                string name = record.pawn.Name?.ToStringShort ?? "Worker";
-                output.Add(new OmniWorkProxyStatus(name, SafeJobReport(record.pawn, record.issuedJob)));
+                Pawn pawn = record.pawn;
+                if (!OmniWorkProxyUtility.IsActive(pawn)) continue;
+                // 以 Pawn.CurJob 为显示来源：record.issuedJob 只是调度记录，对应的 Job
+                // 归还对象池后可能已被复用成其它 Pawn 的任务。
+                Job job = pawn.CurJob ?? record.issuedJob;
+                if (job == null) continue;
+                string name = pawn.Name?.ToStringShort ?? "Worker";
+                output.Add(new OmniWorkProxyStatus(name, SafeJobReport(pawn, job)));
             }
         }
 
@@ -1613,6 +1618,12 @@ namespace FullyAutomaticOmniCrafter
         private static string SafeJobReport(Pawn pawn, Job job)
         {
             if (job == null) return "-";
+            string fallback = job.def?.label ?? job.def?.defName ?? "-";
+            // 只有该 Job 确实由这个 Pawn 执行时才交给原版生成报告：Job.GetReport 会经
+            // Job.GetCachedDriver 创建并缓存 JobDriver。Job 一旦归还原版对象池，实例会被
+            // 复用给其它 Pawn，此时原版用 Log.Error 报 “Tried to use the same driver for
+            // 2 pawns”（是日志而非异常，下面的 catch 拦不住），所以在这里主动回避。
+            if (pawn == null || pawn.CurJob != job) return fallback;
             try
             {
                 string report = job.GetReport(pawn);
@@ -1622,7 +1633,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 // 第三方 JobDriver 的报告生成失败时只降级显示 Def，不影响调度窗口。
             }
-            return job.def?.label ?? job.def?.defName ?? "-";
+            return fallback;
         }
 
         private void RecoverExistingThings()
@@ -1921,13 +1932,24 @@ namespace FullyAutomaticOmniCrafter
             return job != null && job.def == JobDefOf.Wait_MaintainPosture && job.expiryInterval <= 1;
         }
 
-        /// <summary>静态补丁入口：查询指定代理是否正处在原版接力缓冲中。</summary>
-        internal bool IsVanillaRelayWait(Pawn pawn)
+        /// <summary>
+        /// 静态补丁入口：若代理正处在原版接力缓冲中，则把 issuedJob 同步为当前 Job 并返回 true。
+        /// 真实 Job 在插入缓冲的这一 tick 已经归还原版对象池，该实例可能立刻被复用成其它 Pawn
+        /// 的任务；继续持有旧引用会让状态窗口拿到别人的 Job 去调用原版 GetReport。
+        /// </summary>
+        internal bool TryTrackVanillaRelayWait(Pawn pawn)
         {
             if (pawn == null) return false;
             for (int i = 0; i < proxies.Count; i++)
-                if (proxies[i].pawn == pawn)
-                    return IsVanillaRelayWait(proxies[i]);
+            {
+                ProxyRecord record = proxies[i];
+                if (record.pawn != pawn) continue;
+                if (!IsVanillaRelayWait(record)) return false;
+                record.issuedJob = pawn.CurJob;
+                record.trackedStartedJob = null;
+                record.trackedStartedJobTick = -1;
+                return true;
+            }
             return false;
         }
 
@@ -2418,7 +2440,7 @@ namespace FullyAutomaticOmniCrafter
             // 原版工作成功后插入的 1 tick Wait_MaintainPosture 是接力缓冲：它下一 tick 结束时
             // 原版会自行 TryFindAndStartJob，代理原地接续下一项工作。若在此按空闲回收，代理
             // 会被立即拽回工作站并进入宽限等待，表现为"做完一件就回站、其余时间都在等"。
-            if (manager.IsVanillaRelayWait(___pawn)) return;
+            if (manager.TryTrackVanillaRelayWait(___pawn)) return;
 
             Job current = ___pawn.CurJob;
             if (!MapComponent_OmniWorkstation.IsIdleState(___pawn))
