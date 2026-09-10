@@ -875,6 +875,10 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null || !IsProxy(pawn)) return;
 
+            // 代理不穿任何服装、不持任何武器：生成、出舱、读档与入舱前都先剥离一次，
+            // 保证第三方在生成或读档阶段补上的服装与装备不会跟随代理留在场上。
+            ReleaseWornGear(pawn);
+
             if (pawn.story != null)
             {
                 pawn.story.Childhood = OmniWorkstationDefOf.FAOC_OmniWorkProxyChildhood;
@@ -932,6 +936,56 @@ namespace FullyAutomaticOmniCrafter
                 skill.xpSinceMidnight = 0f;
                 skill.passion = Passion.Major;
             }
+        }
+
+        /// <summary>
+        /// 脱下代理身上的全部服装并卸下全部装备，让它们落回地面。
+        /// 代理未上场（刚生成、无地图）时无处安放，只能直接销毁——这种状态下的服装与
+        /// 装备都是生成阶段刚造出来的新物件，销毁不会丢玩家的东西。
+        /// </summary>
+        public static void ReleaseWornGear(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            bool canPlace = pawn.Spawned && pawn.MapHeld != null && pawn.Position.IsValid;
+            IntVec3 pos = canPlace ? pawn.Position : IntVec3.Invalid;
+
+            if (pawn.apparel != null && pawn.apparel.WornApparelCount > 0)
+            {
+                if (canPlace) pawn.apparel.DropAll(pos, false, true);
+                else pawn.apparel.DestroyAll(DestroyMode.Vanish);
+            }
+
+            if (pawn.equipment != null && pawn.equipment.HasAnything())
+            {
+                if (canPlace) pawn.equipment.DropAllEquipment(pos, false);
+                else pawn.equipment.DestroyAllEquipment(DestroyMode.Vanish);
+            }
+        }
+
+        /// <summary>
+        /// 入舱前释放代理身上的一切随身物品：手上搬运的工件、物品栏库存、服装与装备全部落回地面。
+        /// 代理在休眠期间身上必须空无一物，否则工件会跟着它一起被深保存进休眠舱，
+        /// 服装与武器也会被"顺手带走"而不再出现在地图上。
+        /// </summary>
+        public static void ReleaseAllHeldThings(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            bool canPlace = pawn.Spawned && pawn.MapHeld != null && pawn.Position.IsValid;
+            IntVec3 pos = canPlace ? pawn.Position : IntVec3.Invalid;
+
+            if (pawn.carryTracker != null && pawn.carryTracker.CarriedThing != null)
+            {
+                if (canPlace) pawn.carryTracker.TryDropCarriedThing(pos, ThingPlaceMode.Near, out _);
+                else pawn.carryTracker.innerContainer.ClearAndDestroyContents(DestroyMode.Vanish);
+            }
+
+            if (pawn.inventory != null && pawn.inventory.innerContainer.Count > 0)
+            {
+                if (canPlace) pawn.inventory.DropAllNearPawn(pos, false, false);
+                else pawn.inventory.DestroyAll(DestroyMode.Vanish);
+            }
+
+            ReleaseWornGear(pawn);
         }
     }
 
@@ -2078,6 +2132,9 @@ namespace FullyAutomaticOmniCrafter
             // 原版无工作时通常会启动 Wait/GotoWander；入舱前明确结束，避免保存一个冻结 Job。
             if (pawn.CurJob != null)
                 EndCurrentJobForManagement(pawn);
+            // 入舱前把手上的工件、物品栏库存和身上的服装装备全部释放到地面：
+            // 代理休眠时身上必须空无一物，否则这些物品会被一起深保存进休眠舱。
+            OmniWorkProxyUtility.ReleaseAllHeldThings(pawn);
             OmniWorkProxyUtility.SetActive(pawn, false);
             if (pawn.mindState != null) pawn.mindState.Active = false;
             OmniWorkProxyUtility.Unassign(pawn);
@@ -2896,6 +2953,161 @@ namespace FullyAutomaticOmniCrafter
             // 它同步 nextCell 并清路径，但保留 moving，因而会 SetNewPathRequest()，由原版在
             // 下一 tick 从新位置重新寻路并自行判定 AtDestinationPosition() → PatherArrived()。
             pather.ResetToCurrentPosition();
+        }
+    }
+
+    /// <summary>
+    /// 代理不需要任何需求，包括第三方 Mod 通过 NeedDef 追加的需求。
+    /// 原版与第三方都只能经由 Pawn_NeedsTracker.AddOrRemoveNeedsAsAppropriate 增删需求，
+    /// 这里对代理直接短路并清空 AllNeeds 与 MiscNeeds，使生成、出舱、读档以及第三方
+    /// 主动调用后都保持零需求。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_NeedsTracker), nameof(Pawn_NeedsTracker.AddOrRemoveNeedsAsAppropriate))]
+    public static class Patch_OmniWorkProxy_RemoveAllNeeds
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn_NeedsTracker __instance, Pawn ___pawn)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return true;
+            if (__instance.AllNeeds.Count > 0)
+            {
+                // 不调用 Mod Need 的回调，避免其在清理阶段重新注入状态。
+                __instance.AllNeeds.Clear();
+                __instance.MiscNeeds.Clear();
+                __instance.BindDirectNeedFields();
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 代理没有"出装"概念：生成阶段原本会依 PawnKindDef 造出的初始服装、库存与武器整段跳过，
+    /// 代理因此不会带着殖民者的补给生成，也不会把库存里的服装顺手穿到自己身上。
+    /// </summary>
+    [HarmonyPatch(typeof(PawnGenerator), "GenerateGearFor")]
+    public static class Patch_OmniWorkProxy_NoStartingGear
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn pawn)
+        {
+            return !OmniWorkProxyUtility.IsProxy(pawn);
+        }
+    }
+
+    /// <summary>
+    /// 代理永远不穿服装：任何来源（原版 OptimizeApparel、第三方换装、玩家手动操作）的
+    /// 穿戴请求都在此处被拒绝，服装留在原处，不会被代理"穿走"。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_ApparelTracker), nameof(Pawn_ApparelTracker.Wear))]
+    public static class Patch_OmniWorkProxy_NoWearApparel
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn_ApparelTracker __instance)
+        {
+            return !OmniWorkProxyUtility.IsProxy(__instance.pawn);
+        }
+    }
+
+    /// <summary>代理不装备任何武器或工具：装备请求一律拒绝。</summary>
+    [HarmonyPatch(typeof(Pawn_EquipmentTracker), nameof(Pawn_EquipmentTracker.AddEquipment))]
+    public static class Patch_OmniWorkProxy_NoEquipWeapon
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn_EquipmentTracker __instance)
+        {
+            return !OmniWorkProxyUtility.IsProxy(__instance.pawn);
+        }
+    }
+
+    /// <summary>
+    /// 代理不参与着装优化：既不为了更好的服装去搬运衣服，也不会因"穿着不合着装政策"去脱衣服。
+    /// 这是"服装被不需要穿着的代理穿走"的源头思考节点。
+    /// </summary>
+    [HarmonyPatch(typeof(JobGiver_OptimizeApparel), "TryGiveJob", new Type[] { typeof(Pawn) })]
+    public static class Patch_OmniWorkProxy_NoApparelOptimizeJob
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn pawn, ref Job __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(pawn)) return true;
+            __result = null;
+            return false;
+        }
+    }
+
+    /// <summary>代理不主动拾取武器或工具来装备自己。</summary>
+    [HarmonyPatch(typeof(JobGiver_PickUpOpportunisticWeapon), "TryGiveJob", new Type[] { typeof(Pawn) })]
+    public static class Patch_OmniWorkProxy_NoOpportunisticWeaponJob
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn pawn, ref Job __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(pawn)) return true;
+            __result = null;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 代理的最大血量固定为 999999。
+    /// 原版部位血量恒为 CeilToInt(部位 hitPoints × HealthScale)（BodyPartDef.GetMaxHealth），
+    /// 而人类全身部位 hitPoints 之和为 100，因此把 HealthScale 定为 999999 / 100 即可让
+    /// 满血总量落在 999999。非代理立即短路，代价仅一次引用比较。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.HealthScale), MethodType.Getter)]
+    public static class Patch_OmniWorkProxy_MaxHitPoints
+    {
+        private const float TargetMaxHitPoints = 999999f;
+        private const float HumanTotalBodyHitPoints = 100f;
+
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance, ref float __result)
+        {
+            if (OmniWorkProxyUtility.IsProxy(__instance))
+                __result = TargetMaxHitPoints / HumanTotalBodyHitPoints;
+        }
+    }
+
+    /// <summary>
+    /// 代理的舒适温度范围固定为 -10000 ~ 10000。
+    /// 原版 SafeTemperatureRange（决定低温症/中暑是否发展）只是在此基础上外扩 10 度，
+    /// 因此这一处覆盖即可让代理在任何温度下都不产生温度相关伤害。
+    /// </summary>
+    [HarmonyPatch(typeof(GenTemperature), nameof(GenTemperature.ComfortableTemperatureRange),
+        new Type[] { typeof(Pawn) })]
+    public static class Patch_OmniWorkProxy_TemperatureRange
+    {
+        private const float MinComfortableTemperature = -10000f;
+        private const float MaxComfortableTemperature = 10000f;
+
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn p, ref FloatRange __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(p)) return true;
+            __result = new FloatRange(MinComfortableTemperature, MaxComfortableTemperature);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 代理受攻击时不受任何伤害。原版 Thing.TakeDamage 先调用 PreApplyDamage，
+    /// 一旦 absorbed 为 true 就直接返回，不再生成伤口、流血或部位损伤。
+    /// 这是 Pawn 伤害管线唯一的入口，因此一处吸收即可覆盖原版与第三方的全部攻击来源。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_HealthTracker), nameof(Pawn_HealthTracker.PreApplyDamage))]
+    public static class Patch_OmniWorkProxy_AbsorbAllDamage
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn ___pawn, out bool absorbed)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(___pawn))
+            {
+                // 非代理交回原版；absorbed 由原版自行判定。
+                absorbed = false;
+                return true;
+            }
+            absorbed = true;
+            return false;
         }
     }
 }
