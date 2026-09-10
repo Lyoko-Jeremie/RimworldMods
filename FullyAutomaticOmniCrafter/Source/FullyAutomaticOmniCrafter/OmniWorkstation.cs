@@ -2621,4 +2621,33 @@ namespace FullyAutomaticOmniCrafter
             }
         }
     }
+
+    /// <summary>
+    /// 跳过逐格移动：原版寻路规划完成后，直接把代理放到路径终点，由原版自身的
+    /// AtDestinationPosition() → PatherArrived() 完成"到达"。落点仍完全由原版计算，
+    /// 这里只去掉"一格一格走过去"的过程，因此不会引入第二套落点判据。
+    /// 仅在寻路进行中的 tick 触发；空闲代理由 Patch_OmniWorkProxy_FreezeWhenInactive 跳过 Tick。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_PathFollower), nameof(Pawn_PathFollower.PatherTick))]
+    public static class Patch_OmniWorkProxy_SkipMovement
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn ___pawn)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
+            Pawn_PathFollower pather = ___pawn.pather;
+            if (pather == null || !pather.Moving) return;
+
+            PawnPath path = pather.curPath;
+            if (path == null || !path.Found || path.NodesLeftCount <= 1) return;
+
+            // Peek 按"从当前位置向前"计数，故最后一项即原版算出的路径终点。
+            IntVec3 end = path.Peek(path.NodesLeftCount - 1);
+            if (!end.IsValid || end == ___pawn.Position) return;
+
+            ___pawn.Position = end;
+            // 同步 pather 内部状态；endCurrentJob:false 保证不打断正在执行的 Job。
+            ___pawn.Notify_Teleported(false);
+        }
+    }
 }
