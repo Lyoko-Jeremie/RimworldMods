@@ -879,6 +879,14 @@ namespace FullyAutomaticOmniCrafter
             // 保证第三方在生成或读档阶段补上的服装与装备不会跟随代理留在场上。
             ReleaseWornGear(pawn);
 
+            // 检测层拦截：原版 JobGiver_OptimizeApparel 在扫描任何服装之前，先比较
+            // Find.TickManager.TicksGame 与 pawn.mindState.nextApparelOptimizeTick，
+            // 一旦尚未到期就直接返回 null。把它钉在 int.MaxValue，代理既不会产生
+            // 着装优化 Job，也不会周期性去 listerThings 里枚举全图服装（原版每
+            // 6000~9000 tick 才允许一次扫描，是明显的白名单外开销）。
+            // 这是最早的一道拦截，早于一切候选集构建与评分。
+            if (pawn.mindState != null) pawn.mindState.nextApparelOptimizeTick = int.MaxValue;
+
             if (pawn.story != null)
             {
                 pawn.story.Childhood = OmniWorkstationDefOf.FAOC_OmniWorkProxyChildhood;
@@ -1972,6 +1980,14 @@ namespace FullyAutomaticOmniCrafter
                 record.lastProgressTick = now;
             }
 
+            // 代理不穿戴、不装备：维护扫描发现代理身上正跑着着装/装备 Job 时立即中止，
+            // 否则它会被 JobDriver_Wear 的延迟 toil 钉在原地（该 toil 依赖代理自身 tick）。
+            if (IsForbiddenGearJob(pawn.CurJob))
+            {
+                CancelForbiddenGearJob(pawn);
+                return sleepingProxies.Contains(pawn);
+            }
+
             if (record.issuedJob != null && (record.station == null || !record.station.Operational))
             {
                 StopIssuedJob(record);
@@ -2374,6 +2390,20 @@ namespace FullyAutomaticOmniCrafter
             "Lovin", "Meditate", "Flee", "ExitMapBest", "JoinCaravan"
         };
 
+        /// <summary>
+        /// 代理不穿戴、不装备，所以 Wear / Equip 这两类 Job 只要启动就必须立刻取消。
+        /// JobDriver_Wear 会停在延迟 toil 上等待 EquipDelay 走完，而延迟 toil 完全依赖
+        /// Pawn.Tick → JobTrackerTick 推进；代理一旦在等待期间被判为空闲（Pawn.Tick 被
+        /// Patch_OmniWorkProxy_FreezeWhenInactive 跳过），进度条就永远停在原地，表现为
+        /// "站在服装旁、显示正在穿着、然后一直不动"。JobGiver 层的拦截是第一道防线，
+        /// 这里是最后一道兜底。
+        /// </summary>
+        internal static bool IsForbiddenGearJob(Job job)
+        {
+            JobDef def = job?.def;
+            return def != null && (def == JobDefOf.Wear || def == JobDefOf.Equip);
+        }
+
         private static void StopIssuedJob(ProxyRecord record)
         {
             if (record?.station?.Map != null)
@@ -2408,6 +2438,29 @@ namespace FullyAutomaticOmniCrafter
             {
                 OmniWorkProxyUtility.EndManagedTransition(pawn);
             }
+        }
+
+        /// <summary>
+        /// 立即中止代理身上的着装/装备 Job，并把代理交还调度器重新指派。
+        /// 结束 Job 走受管转换，避免 EndCurrentJob 补丁把这次取消误判为"代理自然空闲"
+        /// 而把它送进宽限等待链；随后立即入舱，代理不会留在原地空转。
+        /// </summary>
+        public void CancelForbiddenGearJob(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                ProxyRecord record = proxies[i];
+                if (record.pawn != pawn) continue;
+                EndCurrentJobForManagement(pawn);
+                OmniWorkProxyUtility.SetActive(pawn, false);
+                if (pawn.mindState != null) pawn.mindState.Active = false;
+                PutProxyToSleep(record);
+                WakePumpNow();
+                return;
+            }
+            // 不在代理池中的代理（例如已解绑）只负责把 Job 收掉。
+            EndCurrentJobForManagement(pawn);
         }
     }
 
@@ -2565,7 +2618,12 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>空闲代理完全跳过 Pawn Tick；被调度到工作后才恢复 JobDriver 等必要更新。</summary>
+    /// <summary>
+    /// 空闲代理完全跳过 Pawn Tick；被调度到工作后才恢复 JobDriver 等必要更新。
+    /// 另外，只要代理手上还拿着非等待 Job，就一律放行 Tick —— JobDriver 的延迟 toil、
+    /// 进度条与寻路全都靠 Pawn.Tick 推进。若调度状态短暂不同步导致"有真实 Job 却被
+    /// 冻结"，Job 将永远无法结束，表现为代理攥着进度条站在原地一动不动。
+    /// </summary>
     [HarmonyPatch(typeof(Pawn), "Tick")]
     [HarmonyPriority(Priority.First)]
     public static class Patch_OmniWorkProxy_FreezeWhenInactive
@@ -2573,7 +2631,11 @@ namespace FullyAutomaticOmniCrafter
         [HarmonyPrefix]
         public static bool Prefix(Pawn __instance)
         {
-            return !OmniWorkProxyUtility.IsProxy(__instance) || OmniWorkProxyUtility.IsActive(__instance);
+            if (!OmniWorkProxyUtility.IsProxy(__instance)) return true;
+            if (OmniWorkProxyUtility.IsActive(__instance)) return true;
+            // 兜底：非活跃但仍在跑真实 Job 属于状态不一致，放行 Tick 让它正常收尾。
+            return __instance.CurJob != null &&
+                   !MapComponent_OmniWorkstation.IsIdleJob(__instance.CurJob);
         }
     }
 
@@ -2639,9 +2701,18 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
             if (!___pawn.Spawned) return;
+            MapComponent_OmniWorkstation manager =
+                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>();
+            if (manager == null) return;
+            // 代理不穿戴、不装备：这类 Job 一启动就取消，代理不会握着无法完成的
+            // 穿戴进度条停在原地，而是立刻入舱等调度器重新指派正常工作。
+            if (MapComponent_OmniWorkstation.IsForbiddenGearJob(newJob))
+            {
+                manager.CancelForbiddenGearJob(___pawn);
+                return;
+            }
             if (MapComponent_OmniWorkstation.IsIdleState(___pawn)) return;
-            ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>()
-                .NotifyProxyStartedJob(___pawn, ___pawn.CurJob);
+            manager.NotifyProxyStartedJob(___pawn, ___pawn.CurJob);
         }
     }
 
