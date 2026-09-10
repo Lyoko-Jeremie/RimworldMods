@@ -44,6 +44,10 @@
 24. 消耗电量就能自动快速完成研究的自动研究仪；AutoResearch
 25. 即使尸体消失也能重生的万能重生平台；OmniResurrector
 26. 终极存储解决方案，能无限存储任何物品的万能存储器，超维存储仓；OmniStorage
+27. 修改世界状态的世界条件控制器，当前可以去除不想要的地图状态；WorldConditionController
+28. 可以设置个人体感温度的个人温控终端，去到哪里都能保持舒适的体感温度；OmniPersonalTemperatureController
+29. 解放你的双手，包揽区域内的所有工作，自动完成所有工作任务的万能工作站；OmniWorkstation
+
 
 
 本 Mod 原名 [全自动万能制造机 FullyAutomaticOmniCrafter]
@@ -264,6 +268,14 @@ The currently available buildings are as follows:
 21. OmniBiosphere: Can control the habitability of living areas or specified activity areas; OmniBiosphere
 22. OmniKiller: A device that can eliminate targets in various overwhelming ways; OmniKiller
 23. OmniJoySoothe: Can soothe depression and fatigue; OmniJoySoothe
+24. AutoResearch: Consumes electricity to automatically and quickly complete research; AutoResearch
+25. OmniResurrector: Can even resurrect corpses that have disappeared; OmniResurrector
+26. OmniStorage: Ultimate storage solution, capable of storing any item infinitely, hyper-dimensional storage warehouse; OmniStorage
+27. WorldConditionController: Can modify world conditions, currently able to remove unwanted map states; WorldConditionController
+28. OmniPersonalTemperatureController: Can set personal body temperature, maintaining a comfortable body temperature wherever you go; OmniPersonalTemperatureController
+29. OmniWorkstation: Can automatically complete all tasks in the area, freeing your hands; OmniWorkstation
+
+
 
 This Mod was originally named [FullyAutomaticOmniCrafter].
         
