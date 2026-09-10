@@ -2278,6 +2278,49 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
+    /// 代理的单趟搬运量上限。
+    /// 1.6 的 Pawn_CarryTracker.MaxStackSpaceEver 对容量取 Min(td.stackLimit, 携带量 / 单件体积)，
+    /// 因此即使代理的 CarryingCapacity 已被 FAOC_OmniWorkProxyBoost 提升到千万级，
+    /// 单趟仍然只能搬一个堆叠（钢铁 75）。此处仅对代理跳过 stackLimit 封顶，
+    /// 让容量回到 CarryingCapacity / VolumePerUnit。
+    /// 实际取用量仍会与 job.count、源堆数量、目标剩余空间三者取小；
+    /// 放下时原版 GenPlace 会按 stackLimit 自动拆分，不需要额外处理。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_CarryTracker), nameof(Pawn_CarryTracker.MaxStackSpaceEver), new Type[] { typeof(ThingDef) })]
+    public static class Patch_OmniWorkProxy_CarryStackLimit
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn_CarryTracker __instance, ThingDef td, ref int __result)
+        {
+            if (td == null || __instance == null || !OmniWorkProxyUtility.IsProxy(__instance.pawn)) return;
+            float volumePerUnit = td.VolumePerUnit;
+            if (volumePerUnit <= 0f) return;
+            int capacity = Mathf.RoundToInt(__instance.pawn.GetStatValue(StatDefOf.CarryingCapacity) / volumePerUnit);
+            if (capacity > __result) __result = capacity;
+        }
+    }
+
+    /// <summary>
+    /// 代理的负重上限。
+    /// 1.6 的 MassUtility.Capacity 恒为 BodySize × 35，既不读 CarryingCapacity 也不读任何 stat，
+    /// 因此 FAOC_OmniWorkProxyBoost 里再高的 CarryingCapacity 也影响不到走 MassUtility 的路径
+    /// （拾取到背包、装车、驮运、超重减速、商队与装备界面显示）。
+    /// 这里让代理的负重直接跟随 CarryingCapacity，与上面的单趟搬运量补丁同一来源，
+    /// 避免出现"能拿多少"和"能背多重"两套互不相干的数字。
+    /// 非代理立即短路；MassUtility.Capacity 调用点较多（含 UI 绘制），代价仅一次引用比较。
+    /// </summary>
+    [HarmonyPatch(typeof(MassUtility), nameof(MassUtility.Capacity))]
+    public static class Patch_OmniWorkProxy_MassCapacity
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn p, ref float __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(p)) return;
+            __result = p.GetStatValue(StatDefOf.CarryingCapacity);
+        }
+    }
+
+    /// <summary>
     /// 原版工作缓存不会收录没有 WorkTypeDef 的 WorkGiver。被动模式在缓存完成后把它们
     /// 追加为最低回退项，使实际选择和启动仍完整经过原版 JobGiver_Work。
     /// </summary>
