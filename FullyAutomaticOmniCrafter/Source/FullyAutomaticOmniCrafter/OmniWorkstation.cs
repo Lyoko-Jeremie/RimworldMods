@@ -759,7 +759,6 @@ namespace FullyAutomaticOmniCrafter
         private static readonly Dictionary<Pawn, Building_OmniWorkstation> Assignments =
             new Dictionary<Pawn, Building_OmniWorkstation>();
         private static readonly HashSet<Pawn> ActiveProxies = new HashSet<Pawn>();
-        private static readonly HashSet<Pawn> SearchPermits = new HashSet<Pawn>();
         private static readonly HashSet<Pawn> ManagedTransitions = new HashSet<Pawn>();
 
         public static bool IsProxy(Pawn pawn)
@@ -777,18 +776,7 @@ namespace FullyAutomaticOmniCrafter
             if (pawn == null) return;
             Assignments.Remove(pawn);
             ActiveProxies.Remove(pawn);
-            SearchPermits.Remove(pawn);
             ClearAreaRestriction(pawn);
-        }
-
-        public static void GrantSearchPermit(Pawn pawn)
-        {
-            if (pawn != null) SearchPermits.Add(pawn);
-        }
-
-        public static bool ConsumeSearchPermit(Pawn pawn)
-        {
-            return pawn != null && SearchPermits.Remove(pawn);
         }
 
         public static void BeginManagedTransition(Pawn pawn)
@@ -1281,7 +1269,6 @@ namespace FullyAutomaticOmniCrafter
                 record.needsSanitize = true;
                 record.waitingForWork = false;
                 record.idleSinceTick = -1;
-                OmniWorkProxyUtility.ConsumeSearchPermit(pawn);
                 OmniWorkProxyUtility.SetActive(pawn, true);
                 StationRuntime runtime = GetOrCreateStationRuntime(record.station);
                 runtime.probePending = false;
@@ -1423,8 +1410,6 @@ namespace FullyAutomaticOmniCrafter
             if (!proxiesRecovered) RecoverExistingThings();
 
             int tick = Find.TickManager.TicksGame;
-            if (tick % 30 == 0 && stations.Count > 0)
-                LogSchedulerSnapshot(stations[0], GetOrCreateStationRuntime(stations[0]));
             if (tick % AssignmentInterval == map.uniqueID % AssignmentInterval)
             {
                 long maintStart = Stopwatch.GetTimestamp();
@@ -1836,8 +1821,8 @@ namespace FullyAutomaticOmniCrafter
                 OmniWorkProxyUtility.Unassign(pawn);
             }
 
-            // 空闲宽限期中的 Wait 是调度状态而非待回收 Job；它结束后会凭一次性许可
-            // 进入原版思考树，因此维护扫描不能提前解除工作站与允许区绑定。
+            // 空闲宽限期中的 Wait 是调度状态而非待回收 Job；它结束后原版会自行
+            // 进入思考树，因此维护扫描不能提前解除工作站与允许区绑定。
             if (record.waitingForWork && record.station != null &&
                 pawn.CurJob != null && IsIdleJob(pawn.CurJob))
                 return false;
@@ -1855,8 +1840,7 @@ namespace FullyAutomaticOmniCrafter
 
             if (record.issuedJob != null && pawn.CurJob != record.issuedJob)
             {
-                // 原版可能插入机会任务或 finalizer；非许可的自主搜索已被禁止，因此当前
-                // Job 非空时可以安全视为同一工作链并继续跟踪。
+                // 原版可能插入机会任务或 finalizer；当前 Job 非空时可以视为同一工作链继续跟踪。
                 if (pawn.CurJob != null && !IsIdleJob(pawn.CurJob))
                 {
                     record.issuedJob = pawn.CurJob;
@@ -2043,130 +2027,6 @@ namespace FullyAutomaticOmniCrafter
             return Mathf.Min(EmptySearchBackoffBase << exponent, EmptySearchBackoffMax);
         }
 
-        // ─── 临时诊断:验证代理的允许区是否真正生效(定位完毕后应移除)──────────
-        // 判定依据:允许区只有在 EffectiveAreaRestrictionInPawnCurrentMap 非空且
-        // TrueCount > 0 时,ForbidUtility.InAllowedArea 才会排除区域外的目标。
-        // 若此处显示 effectiveArea 为空、与 workArea 不是同一对象、trueCount 为 0,
-        // 或工作站格/代理格不在区域内,则 WorkGiver_Miner 的全局候选集不受覆盖半径
-        // 约束,会选中范围外的矿脉,而 Patch_OmniWorkProxy_StartPath 必然拒绝执行,
-        // 形成"选中→立即失败→回站→再选中"的空转循环。节流为每 600 tick 最多一条。
-        private const int AreaDiagInterval = 600;
-        private int areaDiagLastTick = -999999;
-
-        private void LogAreaDiagnostics(Pawn pawn, Building_OmniWorkstation station, StationRuntime runtime)
-        {
-            int tick = CurrentTick;
-            if (tick - areaDiagLastTick < AreaDiagInterval) return;
-            areaDiagLastTick = tick;
-
-            Area_OmniWorkstation workArea = runtime?.workArea;
-            Pawn_PlayerSettings settings = pawn?.playerSettings;
-            Area rawArea = settings?.AreaRestrictionInPawnCurrentMap;
-            Area effectiveArea = settings?.EffectiveAreaRestrictionInPawnCurrentMap;
-
-            StringBuilder sb = new StringBuilder(320);
-            sb.Append("[OmniWorkstation][AreaDiag] tick=").Append(tick);
-            sb.Append(" proxy=").Append(pawn?.Name?.ToStringShort ?? "-");
-            sb.Append(" radius=").Append(station?.WorkRadius ?? -1);
-            sb.Append(" playerSettings=").Append(settings != null);
-            sb.Append(" rawArea=").Append(rawArea?.GetType().Name ?? "null");
-            sb.Append(" effectiveArea=").Append(effectiveArea?.GetType().Name ?? "null");
-            sb.Append(" workArea=").Append(workArea?.GetType().Name ?? "null");
-            sb.Append(" effectiveIsWorkArea=").Append(ReferenceEquals(effectiveArea, workArea));
-            sb.Append(" workAreaInManager=").Append(workArea != null && map.areaManager.AllAreas.Contains(workArea));
-            sb.Append(" trueCount=").Append(workArea?.TrueCount ?? -1);
-            sb.Append(" stationCellInArea=")
-                .Append(workArea != null && station != null && workArea[station.Position]);
-            sb.Append(" proxyCellInArea=")
-                .Append(workArea != null && pawn != null && pawn.Spawned && workArea[pawn.Position]);
-            sb.Append(" faction=").Append(pawn?.Faction?.def?.defName ?? "null");
-            sb.Append(" hostFaction=").Append(pawn?.HostFaction?.def?.defName ?? "null");
-            sb.Append(" lord=").Append(pawn != null && pawn.GetLord() != null);
-            sb.Append(" roamer=").Append(pawn?.Roamer ?? false);
-            sb.Append(" disableAreaControl=").Append(pawn?.RaceProps.disableAreaControl ?? false);
-            Log.Message(sb.ToString());
-        }
-
-        // ─── 临时诊断:调度快照(定位完毕后应移除)────────────────────────────────
-        // 用于验证"任务量大时并发退化为 1":站点同一时刻只允许一个探路者(probePawn),
-        // 其余完成工作的代理会在 NotifyProxyBecameIdle 的"被占用"分支里被送进睡舱,
-        // 而那条分支不唤醒泵;一旦探路者陷入"找到 job 又立即失败",idleSinceTick 会被
-        // 反复重置,它永远熬不到 IdleGraceTicks,于是既不放弃也不唤醒泵,整个代理池停摆。
-        // 节流采用"状态签名变化才输出",避免定时器丢掉卡住时的演化序列。
-        private string schedDiagSignature;
-
-        private void LogSchedulerSnapshot(Building_OmniWorkstation station, StationRuntime runtime)
-        {
-            if (station == null || runtime == null) return;
-
-            int active = 0;
-            int spawned = 0;
-            int asleep = 0;
-            int working = 0;
-            int ready = 0;
-            for (int i = 0; i < proxies.Count; i++)
-            {
-                ProxyRecord record = proxies[i];
-                Pawn p = record.pawn;
-                if (p == null || p.Destroyed) continue;
-                if (OmniWorkProxyUtility.IsActive(p)) active++;
-                if (record.issuedJob != null) working++;
-                if (p.Spawned)
-                {
-                    spawned++;
-                    if (p.CurJob == null) ready++;
-                }
-                else if (sleepingProxies != null && sleepingProxies.Contains(p))
-                {
-                    asleep++;
-                    ready++;
-                }
-            }
-
-            string probeName = runtime.probePawn?.Name?.ToStringShort ?? "-";
-            bool searchShut = runtime.nextSearchTick == int.MaxValue;
-            bool pumpDeep = nextPumpTick == int.MaxValue;
-            int trueCount = runtime.workArea?.TrueCount ?? -1;
-
-            string signature = searchState.ToString() + "|" + active + "|" + spawned + "|" + asleep
-                + "|" + working + "|" + ready + "|" + runtime.probePending + "|" + probeName
-                + "|" + searchShut + "|" + pumpDeep + "|" + runtime.consecutiveFailures + "|" + trueCount
-                + "|" + OmniWorkProxyScanDiag.ShouldSkipCalls + "|" + OmniWorkProxyScanDiag.ShouldSkipTrue
-                + "|" + OmniWorkProxyScanDiag.JobOnThingCalls + "|" + OmniWorkProxyScanDiag.JobOnThingNull
-                + "|" + OmniWorkProxyScanDiag.StartJobCalls + "|" + OmniWorkProxyScanDiag.StartJobNotified
-                + "|" + OmniWorkProxyScanDiag.StartJobIdle + "|" + OmniWorkProxyScanDiag.StartJobNotSpawned;
-            if (signature == schedDiagSignature) return;
-            schedDiagSignature = signature;
-
-            StringBuilder sb = new StringBuilder(320);
-            sb.Append("[OmniWorkstation][Sched] tick=").Append(CurrentTick);
-            sb.Append(" state=").Append(searchState.ToString());
-            sb.Append(" pumpDeep=").Append(pumpDeep);
-            sb.Append(" searchShut=").Append(searchShut);
-            sb.Append(" total=").Append(proxies.Count);
-            sb.Append(" active=").Append(active);
-            sb.Append(" working=").Append(working);
-            sb.Append(" ready=").Append(ready);
-            sb.Append(" spawned=").Append(spawned);
-            sb.Append(" asleep=").Append(asleep);
-            sb.Append(" probePending=").Append(runtime.probePending);
-            sb.Append(" probePawn=").Append(probeName);
-            sb.Append(" failures=").Append(runtime.consecutiveFailures);
-            sb.Append(" radius=").Append(station.WorkRadius);
-            sb.Append(" trueCount=").Append(trueCount);
-            sb.Append(" minerSkip=").Append(OmniWorkProxyScanDiag.ShouldSkipCalls)
-                .Append("/").Append(OmniWorkProxyScanDiag.ShouldSkipTrue);
-            sb.Append(" mineJob=").Append(OmniWorkProxyScanDiag.JobOnThingCalls)
-                .Append("/").Append(OmniWorkProxyScanDiag.JobOnThingNull);
-            sb.Append(" startJob=").Append(OmniWorkProxyScanDiag.StartJobCalls)
-                .Append("/").Append(OmniWorkProxyScanDiag.StartJobNotified)
-                .Append("/").Append(OmniWorkProxyScanDiag.StartJobIdle)
-                .Append("/").Append(OmniWorkProxyScanDiag.StartJobNotSpawned);
-            sb.Append(" idleReason=").Append(OmniWorkProxyScanDiag.LastIdleReason ?? "-");
-            Log.Message(sb.ToString());
-            OmniWorkProxyScanDiag.Reset();
-        }
-
         /// <summary>
         /// 唤醒一个代理并交给原版 Pawn_JobTracker。1 tick 的等待 Job 结束时，原版
         /// EndCurrentJob 会自然进入 TryFindAndStartJob，不在地图组件内主动搜索具体工作。
@@ -2184,8 +2044,6 @@ namespace FullyAutomaticOmniCrafter
             StationRuntime runtime = GetOrCreateStationRuntime(station);
             if (pawn.playerSettings != null)
                 pawn.playerSettings.AreaRestrictionInPawnCurrentMap = runtime.workArea;
-            LogAreaDiagnostics(pawn, station, runtime);
-            LogSchedulerSnapshot(station, runtime);
 
             // 热续代理未经过入舱清洗,派发前补一次净化,保证新 Job 开始前状态干净。
             if (record.needsSanitize)
@@ -2200,7 +2058,6 @@ namespace FullyAutomaticOmniCrafter
             record.idleSinceTick = -1;
             record.waitingForWork = true;
             runtime.probePawn = pawn;
-            OmniWorkProxyUtility.GrantSearchPermit(pawn);
             Job probe = JobMaker.MakeJob(JobDefOf.Wait_MaintainPosture, 1);
             record.issuedJob = probe;
             pawn.jobs.StartJob(probe, JobCondition.InterruptForced, cancelBusyStances: false,
@@ -2218,7 +2075,7 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 在工作站中心启动一段等待；等待自然结束时消费一次许可并进入原版思考树。
+        /// 在工作站中心启动一段等待；等待自然结束时原版会进入思考树选取下一项工作。
         /// 调度器不调用任何 WorkGiver，也不枚举具体工作目标。
         /// </summary>
         private void StartSearchWait(ProxyRecord record, Building_OmniWorkstation station, int waitTicks)
@@ -2233,13 +2090,10 @@ namespace FullyAutomaticOmniCrafter
             StationRuntime runtime = GetOrCreateStationRuntime(station);
             if (pawn.playerSettings != null)
                 pawn.playerSettings.AreaRestrictionInPawnCurrentMap = runtime.workArea;
-            LogAreaDiagnostics(pawn, station, runtime);
-            LogSchedulerSnapshot(station, runtime);
             if (pawn.CurJob != null) EndCurrentJobForManagement(pawn);
 
             pawn.mindState.Active = true;
             OmniWorkProxyUtility.SetActive(pawn, true);
-            OmniWorkProxyUtility.GrantSearchPermit(pawn);
             record.waitingForWork = true;
             Job wait = JobMaker.MakeJob(JobDefOf.Wait_MaintainPosture, Mathf.Max(1, waitTicks));
             record.issuedJob = wait;
@@ -2493,22 +2347,6 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 代理只能在工作站授予的一次性窗口中进入原版思考树。搜索内容仍完全由
-    /// TryFindAndStartJob/DetermineNextJob 决定，这里只阻止高速工作完成后的同步搜索风暴。
-    /// </summary>
-    [HarmonyPatch(typeof(Pawn_JobTracker), "TryFindAndStartJob")]
-    [HarmonyPriority(Priority.First)]
-    public static class Patch_OmniWorkProxy_SearchPermit
-    {
-        [HarmonyPrefix]
-        public static bool Prefix(Pawn ___pawn)
-        {
-            return !OmniWorkProxyUtility.IsProxy(___pawn) ||
-                   OmniWorkProxyUtility.ConsumeSearchPermit(___pawn);
-        }
-    }
-
-    /// <summary>
     /// 捕获原版或第三方在任意路径启动的真实 Job。与 EndCurrentJob 补丁配合且幂等，
     /// 可覆盖机会任务、finalizer 及其他 Mod 直接调用 StartJob 的情况。
     /// </summary>
@@ -2516,24 +2354,11 @@ namespace FullyAutomaticOmniCrafter
     public static class Patch_OmniWorkProxy_TrackVanillaJobStart
     {
         [HarmonyPostfix]
-        public static void Postfix(Pawn ___pawn)
+        public static void Postfix(Pawn ___pawn, Job newJob)
         {
             if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
-            OmniWorkProxyScanDiag.StartJobCalls++;
-            if (!___pawn.Spawned)
-            {
-                OmniWorkProxyScanDiag.StartJobNotSpawned++;
-                return;
-            }
-            if (MapComponent_OmniWorkstation.IsIdleState(___pawn))
-            {
-                OmniWorkProxyScanDiag.StartJobIdle++;
-                OmniWorkProxyScanDiag.LastIdleReason =
-                    (___pawn.CurJob?.def?.defName ?? "nojob") + "@" +
-                    (___pawn.mindState != null ? ___pawn.mindState.lastJobTag.ToString() : "?");
-                return;
-            }
-            OmniWorkProxyScanDiag.StartJobNotified++;
+            if (!___pawn.Spawned) return;
+            if (MapComponent_OmniWorkstation.IsIdleState(___pawn)) return;
             ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>()
                 .NotifyProxyStartedJob(___pawn, ___pawn.CurJob);
         }
@@ -2614,60 +2439,6 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    // ─── 临时诊断:采矿扫描链计数(定位完毕后应移除)──────────────────────────
-    // ShouldSkip 调用数为 0  → PawnCanUseWorkGiver 根本没走到 Miner;
-    // JobOnThing 调用数为 0  → 候选集为空,或扫描提前退出;
-    // JobOnThing 调用数 > 0 且全返回 null → 候选被逐条拒掉。
-    public static class OmniWorkProxyScanDiag
-    {
-        public static int ShouldSkipCalls;
-        public static int ShouldSkipTrue;
-        public static int JobOnThingCalls;
-        public static int JobOnThingNull;
-        public static int StartJobCalls;
-        public static int StartJobNotified;
-        public static int StartJobIdle;
-        public static int StartJobNotSpawned;
-        public static string LastIdleReason;
-
-        public static void Reset()
-        {
-            ShouldSkipCalls = 0;
-            ShouldSkipTrue = 0;
-            JobOnThingCalls = 0;
-            JobOnThingNull = 0;
-            StartJobCalls = 0;
-            StartJobNotified = 0;
-            StartJobIdle = 0;
-            StartJobNotSpawned = 0;
-            LastIdleReason = null;
-        }
-    }
-
-    [HarmonyPatch(typeof(WorkGiver_Miner), nameof(WorkGiver_Miner.ShouldSkip))]
-    public static class Patch_OmniWorkProxyScanDiag_ShouldSkip
-    {
-        [HarmonyPostfix]
-        public static void Postfix(Pawn pawn, bool __result)
-        {
-            if (!OmniWorkProxyUtility.IsProxy(pawn)) return;
-            OmniWorkProxyScanDiag.ShouldSkipCalls++;
-            if (__result) OmniWorkProxyScanDiag.ShouldSkipTrue++;
-        }
-    }
-
-    [HarmonyPatch(typeof(MineAIUtility), nameof(MineAIUtility.JobOnThing))]
-    public static class Patch_OmniWorkProxyScanDiag_JobOnThing
-    {
-        [HarmonyPostfix]
-        public static void Postfix(Pawn pawn, Job __result)
-        {
-            if (!OmniWorkProxyUtility.IsProxy(pawn)) return;
-            OmniWorkProxyScanDiag.JobOnThingCalls++;
-            if (__result == null) OmniWorkProxyScanDiag.JobOnThingNull++;
-        }
-    }
-
     /// <summary>隐藏代理 Pawn，避免其参与选择和渲染。</summary>
     [HarmonyPatch(typeof(InvisibilityUtility), nameof(InvisibilityUtility.IsHiddenFromPlayer))]
     public static class Patch_OmniWorkProxy_Hidden
@@ -2702,6 +2473,10 @@ namespace FullyAutomaticOmniCrafter
 
     /// <summary>
     /// 仅替换代理 Pawn 的空间移动。预约、携带、存放和工作 Toil 仍由原 JobDriver 原样执行。
+    /// 代理不做真实寻路，但仍会被放置到目标的可交互位置：绝大多数工作 Toil 用
+    /// FailOnCannotTouch（= CanReachImmediate + Touch/InteractionCell，不寻路）判定失败，
+    /// 把代理留在工作站格会让 Toil 一启动就判 Incompletable，EndCurrentJob 随即在同一 tick
+    /// 内重选同一目标，形成 "started 10 jobs in one tick" 的报错循环。
     /// </summary>
     [HarmonyPatch(typeof(Pawn_PathFollower), nameof(Pawn_PathFollower.StartPath))]
     public static class Patch_OmniWorkProxy_StartPath
@@ -2720,7 +2495,7 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
 
-            // 落点恒为工作站建筑所在格;代理通常已在原地,跳过无意义的位置重置与缓存失效。
+            // 代理通常已在目标的可交互格上，跳过无意义的位置重置与缓存失效。
             if (pawn.Position != arrival)
             {
                 pawn.Position = arrival;
@@ -2732,25 +2507,108 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 代理从不做真实位移。落点恒为工作站建筑所在格，只保留“目标位于覆盖范围内且由
-        /// 当前格可达”的前置校验，用于拒绝范围外目标；原位落点也会照常通知 driver 已到达。
+        /// 代理不做真实位移，但落点必须是目标的可交互格：Touch/ClosestTouch 取目标邻域内
+        /// 可站立格，InteractionCell 优先取建筑交互格，OnCell 取目标格本身。覆盖半径与
+        /// 单次可达性校验共同用于拒绝范围外或被墙隔断的目标。
         /// </summary>
         private static bool TryResolveArrivalCell(Pawn pawn, Building_OmniWorkstation station,
             LocalTargetInfo destination, ref PathEndMode peMode, out IntVec3 arrival)
         {
             arrival = IntVec3.Invalid;
+            Map map = pawn.Map;
+            if (map == null) return false;
             if (!destination.IsValid || destination.HasThing && destination.ThingDestroyed) return false;
 
             TargetInfo resolvedInfo = GenPath.ResolvePathMode(pawn,
-                destination.ToTargetInfo(pawn.Map), ref peMode);
+                destination.ToTargetInfo(map), ref peMode);
             LocalTargetInfo resolved = (LocalTargetInfo)resolvedInfo;
             if (!resolved.IsValid || !station.Covers(resolved.Cell)) return false;
 
-            if (!pawn.Map.reachability.CanReach(pawn.Position, resolved, peMode, TraverseParms.For(pawn)))
+            IntVec3 candidate;
+            if (peMode == PathEndMode.InteractionCell && resolved.HasThing)
+                candidate = resolved.Thing.InteractionCell;
+            else if (peMode == PathEndMode.OnCell)
+                candidate = resolved.Cell;
+            else if (!TryFindTouchArrivalCell(pawn, resolved.Cell, out candidate))
                 return false;
 
-            arrival = station.Position;
+            if (!candidate.IsValid) return false;
+            if (candidate != pawn.Position &&
+                (!candidate.Standable(map) || candidate.IsForbidden(pawn))) return false;
+            // 单次可达性校验取代原先的全局寻路检查，代价相同但作用于真实落点。
+            if (!pawn.CanReach(candidate, PathEndMode.OnCell, Danger.Deadly)) return false;
+
+            arrival = candidate;
             return true;
+        }
+
+        /// <summary>
+        /// 为 Touch 类目标挑落点，判据必须与工作 Toil 的失败条件逐字一致：
+        /// FailOnCannotTouch 走 ReachabilityImmediate.CanReachImmediate，而它对 Touch 还会经
+        /// TouchPathEndModeUtility.IsAdjacentOrInsideAndAllowedToTouch 要求斜向相邻时两个正交
+        /// 邻格至少一个可通行。只判 Standable 会挑到斜向被岩石夹住的格，Toil 启动瞬间即判
+        /// Incompletable，EndCurrentJob 随即在同一 tick 内重选同一目标。
+        /// 落点不要求落在覆盖半径内：目标本身已由调用方按半径约束，而代理是瞬移的，
+        /// 边缘目标的合法落点常常正好落在半径外一格。
+        /// </summary>
+        internal static bool TryFindTouchArrivalCell(Pawn pawn, IntVec3 target, out IntVec3 arrival)
+        {
+            arrival = IntVec3.Invalid;
+            Map map = pawn?.Map;
+            if (map == null || !target.IsValid || !target.InBounds(map)) return false;
+            LocalTargetInfo resolved = new LocalTargetInfo(target);
+            arrival = CellFinder.StandableCellNear(target, map, 6f,
+                c => !c.IsForbidden(pawn) &&
+                     ReachabilityImmediate.CanReachImmediate(c, resolved, map,
+                         PathEndMode.Touch, pawn));
+            return arrival.IsValid;
+        }
+    }
+
+    /// <summary>
+    /// 原版 WorkGiver_ConstructAffectFloor（打磨/清除地面/清除地基共用基类）的 HasJobOnCell
+    /// 只校验 designation 与格预约，完全不验证落点是否可达；而 MineAIUtility.JobOnThing 会
+    /// 用 Standable + CanReachImmediate 预验证邻格。代理不做真实寻路，缺少这项预验证时，
+    /// 目标格被占据或四周被围住的候选照样会被选中，随后 Toil 启动即失败并在同一 tick 内反复
+    /// 重选同一格，打满原版 jobsGivenThisTick 保护。这里让代理沿用与落点相同的判据否决候选。
+    /// </summary>
+    [HarmonyPatch(typeof(WorkGiver_ConstructAffectFloor), nameof(WorkGiver_ConstructAffectFloor.HasJobOnCell))]
+    public static class Patch_OmniWorkProxy_RequireTouchArrivalCell
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn pawn, IntVec3 c, ref bool __result)
+        {
+            if (!__result || !OmniWorkProxyUtility.IsProxy(pawn)) return;
+            if (!Patch_OmniWorkProxy_StartPath.TryFindTouchArrivalCell(pawn, c, out _))
+                __result = false;
+        }
+    }
+
+    /// <summary>
+    /// 原版在 StartJob 之后若 Toil 立即失败，会在同一 tick 内同步重选下一项工作；连续重入最终
+    /// 由 jobsGivenThisTick > 10 的保护兜底，并打出 "started 10 jobs in one tick"。代理不做真实
+    /// 寻路，比普通殖民者更容易撞上"某项工作此刻确实做不了"的目标，于是保护被频繁触发。
+    /// 这里把同一 tick 内的重复搜索折叠为一次：被跳过的那些由下一 tick JobTrackerTickInterval
+    /// 的 curJob == null 分支重新发起，因此不会像一次性许可那样把代理永久钉死在空闲态。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_JobTracker), "TryFindAndStartJob")]
+    [HarmonyPriority(Priority.Last)]
+    public static class Patch_OmniWorkProxy_ThrottleSameTickRescan
+    {
+        private static readonly HashSet<Pawn> SearchedThisTick = new HashSet<Pawn>();
+        private static int searchedTick = -1;
+
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn ___pawn)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return true;
+            int tick = Find.TickManager?.TicksGame ?? 0;
+            if (tick != searchedTick)
+            {
+                searchedTick = tick;
+                SearchedThisTick.Clear();
+            }
+            return SearchedThisTick.Add(___pawn);
         }
     }
 }
