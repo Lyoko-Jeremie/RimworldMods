@@ -2762,15 +2762,28 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>原版非优先级 Thing 搜索启用整区剪枝，避免扫描完全位于覆盖范围外的 Region。</summary>
+    /// <summary>
+    /// 代理的目标搜索必须绕开原版区域遍历。ClosestThingReachable 的主路径是
+    /// RegionwiseBFSWorker（map.regionGrid + RegionType.Set_Passable），而代理用的是"全通"
+    /// 寻路网格：封闭空间里的目标区域遍历根本扫不到，又因为 regionsSeen &lt; maxRegions 让原版
+    /// 主动放弃全局搜索，目标就永远选不中 —— 表现为封闭房间内的建造/搬运任务永不派发，
+    /// 直到玩家开墙把区域连通。
+    /// 这里把区域预算压到 1（使 regionsSeen &gt;= maxRegions，从而 flag2 = false）并允许全局
+    /// 搜索，代理直接走全局搜索；其可达性判定正是被 patch 过的代理专用网格，代价只是
+    /// 枚举候选列表加一次廉价的 Walkable 判定。同时打开整区剪枝开关，避免扫描完全位于
+    /// 覆盖范围外的 Region。
+    /// </summary>
     [HarmonyPatch(typeof(GenClosest), nameof(GenClosest.ClosestThingReachable))]
-    public static class Patch_OmniWorkProxy_EnableAllowedRegionPruning
+    public static class Patch_OmniWorkProxy_ForceGlobalSearch
     {
         [HarmonyPrefix]
-        public static void Prefix(TraverseParms traverseParams, ref bool ignoreEntirelyForbiddenRegions)
+        public static void Prefix(TraverseParms traverseParams, ref int searchRegionsMax,
+            ref bool forceAllowGlobalSearch, ref bool ignoreEntirelyForbiddenRegions)
         {
-            if (OmniWorkProxyUtility.IsProxy(traverseParams.pawn))
-                ignoreEntirelyForbiddenRegions = true;
+            if (!OmniWorkProxyUtility.IsProxy(traverseParams.pawn)) return;
+            searchRegionsMax = 1;
+            forceAllowGlobalSearch = true;
+            ignoreEntirelyForbiddenRegions = true;
         }
     }
 
