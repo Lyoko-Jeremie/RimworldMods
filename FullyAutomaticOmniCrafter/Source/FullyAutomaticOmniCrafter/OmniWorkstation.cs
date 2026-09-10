@@ -868,6 +868,11 @@ namespace FullyAutomaticOmniCrafter
             (long)(PumpDispatchBudgetMs * Stopwatch.Frequency / 1000.0);
         private static readonly long proxyCreateBudgetTicks =
             (long)(ProxyCreateBudgetMs * Stopwatch.Frequency / 1000.0);
+        // 原版没有提供“不校验禁用状态但更新工作表”的接口。缓存字段访问器，只在工作站
+        // 或筛选版本变化时写入，避免在热路径反射，也避免 SetPriority 的第三方禁用校验。
+        private static readonly AccessTools.FieldRef<Pawn_WorkSettings, DefMap<WorkTypeDef, int>>
+            workPrioritiesRef = AccessTools.FieldRefAccess<Pawn_WorkSettings,
+                DefMap<WorkTypeDef, int>>("priorities");
 
         private readonly List<Building_OmniWorkstation> stations =
             new List<Building_OmniWorkstation>();
@@ -958,7 +963,7 @@ namespace FullyAutomaticOmniCrafter
             public Building_OmniWorkstation station;
             public Job issuedJob;
             public bool needsSanitize;
-            // 代理保留上次同步结果；再次租给同一配置版本的工作站时无需重建原版 WorkGiver 缓存。
+            // 代理保留上次投影来源；再次租给同一配置版本的工作站时无需重建原版 WorkGiver 缓存。
             public Building_OmniWorkstation configuredStation;
             public int configuredWorkFilterVersion = -1;
         }
@@ -1598,15 +1603,6 @@ namespace FullyAutomaticOmniCrafter
             OmniWorkProxyUtility.Sanitize(pawn);
 
             pawn.workSettings?.EnableAndInitializeIfNotAlreadyInitialized();
-            if (pawn.workSettings != null)
-            {
-                List<WorkTypeDef> workTypes = DefDatabase<WorkTypeDef>.AllDefsListForReading;
-                for (int i = 0; i < workTypes.Count; i++)
-                {
-                    WorkTypeDef workType = workTypes[i];
-                    if (!pawn.WorkTypeIsDisabled(workType)) pawn.workSettings.SetPriority(workType, 1);
-                }
-            }
 
             // 工作中的代理仍是合法 Pawn，但不进入殖民者、警报和普通 AI 使用的 MapPawns 列表。
             if (pawn.Spawned && pawn.Map == map)
@@ -1915,7 +1911,10 @@ namespace FullyAutomaticOmniCrafter
             return WorkSearchStepResult.Found;
         }
 
-        /// <summary>将当前工作站的筛选写入代理自身的原版工作设置。</summary>
+        /// <summary>
+        /// 将工作站筛选直接投影到代理的原版优先级表。绕过 SetPriority 的禁用校验，
+        /// 但仍让原版与第三方 WorkGiver 读取同一份 Pawn_WorkSettings 数据。
+        /// </summary>
         private static void ApplyStationWorkSettings(ProxyRecord record, Building_OmniWorkstation station)
         {
             Pawn pawn = record.pawn;
@@ -1925,14 +1924,15 @@ namespace FullyAutomaticOmniCrafter
             if (record.configuredStation == station &&
                 record.configuredWorkFilterVersion == station.WorkFilterVersion) return;
 
+            DefMap<WorkTypeDef, int> priorities = workPrioritiesRef(settings);
+            priorities.SetAll(0);
             List<WorkTypeDef> workTypes = OmniWorkCatalog.WorkTypes;
             for (int i = 0; i < workTypes.Count; i++)
             {
                 WorkTypeDef workType = workTypes[i];
-                bool enabled = station.AllowsWorkType(workType);
-                if (settings.WorkIsActive(workType) == enabled) continue;
-                settings.SetPriority(workType, enabled ? 1 : 0);
+                if (station.AllowsWorkType(workType)) priorities[workType] = 1;
             }
+            settings.Notify_UseWorkPrioritiesChanged();
             record.configuredStation = station;
             record.configuredWorkFilterVersion = station.WorkFilterVersion;
         }
@@ -2282,26 +2282,32 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>背景、特质或第三方基因均不得禁用通用代理的工作。</summary>
+    /// <summary>
+    /// 代理只在绑定工作站的工作会话内放行该站选择的工作类型。工作优先级由真实
+    /// Pawn_WorkSettings 控制，能力、ShouldSkip 与 WorkGiver 自身约束仍由原版处理。
+    /// </summary>
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.WorkTypeIsDisabled))]
-    public static class Patch_OmniWorkProxy_EnableEveryWorkType
+    public static class Patch_OmniWorkProxy_EnableAssignedWorkType
     {
         [HarmonyPrefix]
-        public static bool Prefix(Pawn __instance, ref bool __result)
+        public static bool Prefix(Pawn __instance, WorkTypeDef w, ref bool __result)
         {
-            if (!OmniWorkProxyUtility.IsProxy(__instance)) return true;
+            if (w == null || !OmniWorkProxyUtility.TryGetStation(__instance,
+                    out Building_OmniWorkstation station) || !station.AllowsWorkType(w))
+                return true;
             __result = false;
             return false;
         }
     }
 
+    /// <summary>绑定期间放行工作标签；具体工作类型已由工作站优先级表限定。</summary>
     [HarmonyPatch(typeof(Pawn), nameof(Pawn.WorkTagIsDisabled))]
-    public static class Patch_OmniWorkProxy_EnableEveryWorkTag
+    public static class Patch_OmniWorkProxy_EnableAssignedWorkTag
     {
         [HarmonyPrefix]
         public static bool Prefix(Pawn __instance, ref bool __result)
         {
-            if (!OmniWorkProxyUtility.IsProxy(__instance)) return true;
+            if (!OmniWorkProxyUtility.TryGetStation(__instance, out _)) return true;
             __result = false;
             return false;
         }
