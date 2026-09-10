@@ -1848,6 +1848,10 @@ namespace FullyAutomaticOmniCrafter
                 pawn.CurJob != null && IsIdleJob(pawn.CurJob))
                 return false;
 
+            // 原版接力缓冲（真实工作成功结束后的 1 tick Wait_MaintainPosture）同属工作链
+            // 中间态：维护扫描若在此解除绑定，代理会被送进休眠舱，原版便无法原地接续工作。
+            if (IsVanillaRelayWait(record)) return false;
+
             // Job 会被原版对象池复用，不能只靠引用变化判断任务是否已经结束：旧的
             // issuedJob 可能在结束后立刻被复用成 Wait，并再次成为 pawn.CurJob。
             // 无论引用是否相同，只要当前已无 Job 或进入原版等待 Job，就必须释放代理，
@@ -1900,6 +1904,31 @@ namespace FullyAutomaticOmniCrafter
         internal static bool IsIdleState(Pawn pawn)
         {
             return pawn == null || IsIdleJob(pawn.CurJob) || pawn.mindState?.IsIdle == true;
+        }
+
+        /// <summary>
+        /// 原版 Pawn_JobTracker.EndCurrentJob 在真实工作成功结束且代理未在移动时，会插入一个
+        /// 1 tick 的 Wait_MaintainPosture 作为接力缓冲：它下一 tick 结束时原版会照常调用
+        /// TryFindAndStartJob，代理因此可以原地接续下一项工作。它是工作链的中间态而非空闲，
+        /// 一旦按空闲回收，代理会被立刻拽回工作站，原版接力就此被打断。
+        /// 调度器自派的探路等待与宽限等待 def 相同、1 tick 探路的时长也相同，只能靠
+        /// waitingForWork 区分：真实工作开始时该标记已被清除，调度器派发时才会置位。
+        /// </summary>
+        private static bool IsVanillaRelayWait(ProxyRecord record)
+        {
+            if (record == null || record.waitingForWork) return false;
+            Job job = record.pawn?.CurJob;
+            return job != null && job.def == JobDefOf.Wait_MaintainPosture && job.expiryInterval <= 1;
+        }
+
+        /// <summary>静态补丁入口：查询指定代理是否正处在原版接力缓冲中。</summary>
+        internal bool IsVanillaRelayWait(Pawn pawn)
+        {
+            if (pawn == null) return false;
+            for (int i = 0; i < proxies.Count; i++)
+                if (proxies[i].pawn == pawn)
+                    return IsVanillaRelayWait(proxies[i]);
+            return false;
         }
 
         /// <summary>按休眠舱的方式反生成并深保存代理；容器本身从不 Tick 内容物。</summary>
@@ -2370,6 +2399,7 @@ namespace FullyAutomaticOmniCrafter
     /// <summary>
     /// 原版 EndCurrentJob 会同步寻找下一项工作。真实 Job 继续留场并更新记录；
     /// 原版最终落入等待状态时，通知生命周期调度器返回工作站并进入空闲宽限期。
+    /// 唯一例外是原版自己的 1 tick 接力缓冲 Wait，它不是空闲，必须放行让代理原地接续。
     /// </summary>
     [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob))]
     [HarmonyPriority(Priority.First)]
@@ -2380,19 +2410,25 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!OmniWorkProxyUtility.IsProxy(___pawn) ||
                 OmniWorkProxyUtility.IsManagedTransition(___pawn)) return;
+            if (!___pawn.Spawned) return;
+            MapComponent_OmniWorkstation manager =
+                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>();
+            if (manager == null) return;
+
+            // 原版工作成功后插入的 1 tick Wait_MaintainPosture 是接力缓冲：它下一 tick 结束时
+            // 原版会自行 TryFindAndStartJob，代理原地接续下一项工作。若在此按空闲回收，代理
+            // 会被立即拽回工作站并进入宽限等待，表现为"做完一件就回站、其余时间都在等"。
+            if (manager.IsVanillaRelayWait(___pawn)) return;
+
             Job current = ___pawn.CurJob;
             if (!MapComponent_OmniWorkstation.IsIdleState(___pawn))
             {
                 OmniWorkProxyUtility.SetActive(___pawn, true);
-                if (___pawn.Spawned)
-                    ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>()
-                        .NotifyProxyStartedJob(___pawn, current);
+                manager.NotifyProxyStartedJob(___pawn, current);
                 return;
             }
 
-            if (___pawn.Spawned)
-                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>()
-                    .NotifyProxyBecameIdle(___pawn, condition);
+            manager.NotifyProxyBecameIdle(___pawn, condition);
         }
     }
 
