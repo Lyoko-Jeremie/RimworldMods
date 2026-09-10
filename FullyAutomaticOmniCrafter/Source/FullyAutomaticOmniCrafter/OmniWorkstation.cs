@@ -2646,8 +2646,12 @@ namespace FullyAutomaticOmniCrafter
             if (!end.IsValid || end == ___pawn.Position) return;
 
             ___pawn.Position = end;
-            // 同步 pather 内部状态；endCurrentJob:false 保证不打断正在执行的 Job。
-            ___pawn.Notify_Teleported(false);
+            // 不能用 Notify_Teleported：它内部会 StopDead()，把 moving 置 false 并清空路径，
+            // 随后 ResetToCurrentPosition 因 !moving 直接返回、不再请求新路径，pather 会永久
+            // 停住且永不触发 PatherArrived，表现为 Job 卡死。这里改调 ResetToCurrentPosition，
+            // 它同步 nextCell 并清路径，但保留 moving，因而会 SetNewPathRequest()，由原版在
+            // 下一 tick 从新位置重新寻路并自行判定 AtDestinationPosition() → PatherArrived()。
+            pather.ResetToCurrentPosition();
         }
     }
 }
