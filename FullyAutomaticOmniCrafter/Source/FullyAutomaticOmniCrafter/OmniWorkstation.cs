@@ -708,10 +708,31 @@ namespace FullyAutomaticOmniCrafter
         public static HediffDef FAOC_OmniWorkProxyBoost;
         public static BackstoryDef FAOC_OmniWorkProxyChildhood;
         public static BackstoryDef FAOC_OmniWorkProxyAdulthood;
+        public static PathGridDef FAOC_OmniWorkProxyPathGrid;
 
         static OmniWorkstationDefOf()
         {
             DefOfHelper.EnsureInitializedInCtor(typeof(OmniWorkstationDefOf));
+        }
+    }
+
+    /// <summary>
+    /// 代理专用的寻路网格：全图通行成本恒为 10，无视地形（深水/浅水/山体/真空）、建筑、
+    /// 天气与火焰成本。配合 Def 上的 fencePassable/flying，使代理可以直接穿过并停留在任意
+    /// 格子。这样落点、"是否已到达"（Pawn_PathFollower.AtDestinationPosition 即
+    /// CanReachImmediate）与全部可达性判定都交回原版执行，代理不需要任何自定义落点计算，
+    /// 也不存在与工作 Toil 失败条件不一致的可能。
+    /// </summary>
+    public class OmniWorkProxyPathGrid : PathGrid
+    {
+        public OmniWorkProxyPathGrid(Map map, PathGridDef def) : base(map, def)
+        {
+        }
+
+        public override int CalculatedCostAt(IntVec3 c, bool perceivedStatic, IntVec3 prevCell,
+            int? baseCostOverride = null)
+        {
+            return 10;
         }
     }
 
@@ -2472,143 +2493,132 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 仅替换代理 Pawn 的空间移动。预约、携带、存放和工作 Toil 仍由原 JobDriver 原样执行。
-    /// 代理不做真实寻路，但仍会被放置到目标的可交互位置：绝大多数工作 Toil 用
-    /// FailOnCannotTouch（= CanReachImmediate + Touch/InteractionCell，不寻路）判定失败，
-    /// 把代理留在工作站格会让 Toil 一启动就判 Incompletable，EndCurrentJob 随即在同一 tick
-    /// 内重选同一目标，形成 "started 10 jobs in one tick" 的报错循环。
+    /// 把代理接入原版寻路的独立网格。落点、"是否已到达"（Pawn_PathFollower.AtDestinationPosition
+    /// 即 CanReachImmediate）与全部可达性判定因此都交回原版执行，代理不再需要任何自定义落点
+    /// 计算，也就不存在与工作 Toil 失败条件不一致的可能。
     /// </summary>
-    [HarmonyPatch(typeof(Pawn_PathFollower), nameof(Pawn_PathFollower.StartPath))]
-    public static class Patch_OmniWorkProxy_StartPath
+    public static class Patch_OmniWorkProxy_PathGrid
     {
-        [HarmonyPrefix]
-        public static bool Prefix(Pawn ___pawn, LocalTargetInfo dest, PathEndMode peMode)
+        /// <summary>
+        /// Pawn.GetPathContext：代理统一取自定义网格。必须优先于原版 Flying 分支，否则会落到
+        /// 原版飞行网格（它仍受地形与建筑约束）。
+        /// </summary>
+        [HarmonyPatch(typeof(Pawn), nameof(Pawn.GetPathContext))]
+        public static class Patch_Pawn_GetPathContext
         {
-            Pawn pawn = ___pawn;
-            if (!OmniWorkProxyUtility.TryGetStation(pawn, out Building_OmniWorkstation station))
+            [HarmonyPrefix]
+            public static bool Prefix(Pawn __instance, Pathing pathing, ref PathingContext __result)
+            {
+                if (!OmniWorkProxyUtility.IsProxy(__instance) ||
+                    OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid == null) return true;
+                __result = pathing.Get(OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid);
+                return false;
+            }
+        }
+
+        /// <summary>Pathing.For(TraverseParms)：覆盖 Reachability/WorkGiver 等经 TraverseParms 取网格的调用点。</summary>
+        [HarmonyPatch(typeof(Pathing), nameof(Pathing.For), new Type[] { typeof(TraverseParms) })]
+        public static class Patch_Pathing_For_TraverseParms
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(Pathing __instance, TraverseParms parms, ref PathingContext __result)
+            {
+                Pawn pawn = parms.pawn;
+                if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn) ||
+                    OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid == null) return true;
+                __result = __instance.Get(OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid);
+                return false;
+            }
+        }
+
+        /// <summary>PathFinderMapData.ParameterizeGridJob：真正把网格交给寻路 worker，路径才会穿越不可通行格。</summary>
+        [HarmonyPatch(typeof(PathFinderMapData), nameof(PathFinderMapData.ParameterizeGridJob))]
+        public static class Patch_PathFinderMapData_ParameterizeGridJob
+        {
+            [HarmonyPostfix]
+            public static void Postfix(PathRequest request, ref PathGridJob job, Map ___map)
+            {
+                Pawn pawn = request.pawn;
+                if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn) ||
+                    OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid == null) return;
+                PathingContext ctx = ___map.pathing.Get(OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid);
+                job.pathGridDirect = ctx.pathGrid.Grid_Unsafe.AsReadOnly();
+            }
+        }
+
+        /// <summary>不因建筑挡路触发破墙 Job。</summary>
+        [HarmonyPatch(typeof(Pawn_PathFollower), "BuildingBlockingNextPathCell")]
+        public static class Patch_BuildingBlockingNextPathCell
+        {
+            [HarmonyPostfix]
+            public static void Postfix(ref Building __result, Pawn ___pawn)
+            {
+                if (OmniWorkProxyUtility.IsProxy(___pawn)) __result = null;
+            }
+        }
+
+        /// <summary>不等门、不手动开门。</summary>
+        [HarmonyPatch(typeof(Pawn_PathFollower), nameof(Pawn_PathFollower.NextCellDoorToWaitForOrManuallyOpen))]
+        public static class Patch_NextCellDoorToWaitForOrManuallyOpen
+        {
+            [HarmonyPostfix]
+            public static void Postfix(ref Building_Door __result, Pawn ___pawn)
+            {
+                if (OmniWorkProxyUtility.IsProxy(___pawn)) __result = null;
+            }
+        }
+
+        /// <summary>代理可占据任意格子（含墙内、山体、深水）。</summary>
+        [HarmonyPatch(typeof(Pawn_PathFollower), "PawnCanOccupy")]
+        public static class Patch_PawnCanOccupy
+        {
+            [HarmonyPostfix]
+            public static void Postfix(ref bool __result, Pawn ___pawn)
+            {
+                if (OmniWorkProxyUtility.IsProxy(___pawn)) __result = true;
+            }
+        }
+
+        /// <summary>可达性放行，使 CanReach 与所用网格一致地通畅（CanReachImmediate 走的是网格本身）。</summary>
+        [HarmonyPatch(typeof(Reachability), nameof(Reachability.CanReach),
+            new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(TraverseParms) })]
+        public static class Patch_Reachability_CanReach
+        {
+            [HarmonyPrefix]
+            public static bool Prefix(LocalTargetInfo dest, TraverseParms traverseParams,
+                ref bool __result, Map ___map)
+            {
+                Pawn pawn = traverseParams.pawn;
+                if (pawn != null && OmniWorkProxyUtility.IsProxy(pawn) &&
+                    (!dest.HasThing || dest.Thing.Map == ___map))
+                {
+                    __result = true;
+                    return false;
+                }
                 return true;
-
-            if (!TryResolveArrivalCell(pawn, station, dest, ref peMode, out IntVec3 arrival))
-            {
-                pawn.pather.StopDead();
-                pawn.jobs.curDriver?.Notify_PatherFailed();
-                return false;
             }
+        }
 
-            // 代理通常已在目标的可交互格上，跳过无意义的位置重置与缓存失效。
-            if (pawn.Position != arrival)
+        /// <summary>可站立判定放宽，避免代理落在网格允许但原版判定为不可站的格上。</summary>
+        [HarmonyPatch(typeof(GenGrid), nameof(GenGrid.StandableBy))]
+        public static class Patch_GenGrid_StandableBy
+        {
+            [HarmonyPostfix]
+            public static void Postfix(Pawn pawn, ref bool __result)
             {
-                pawn.Position = arrival;
-                pawn.Notify_Teleported(endCurrentJob: false, resetTweenedPos: false);
+                if (OmniWorkProxyUtility.IsProxy(pawn)) __result = true;
             }
-            pawn.pather.StopDead();
-            pawn.jobs.curDriver?.Notify_PatherArrived();
-            return false;
         }
 
-        /// <summary>
-        /// 代理不做真实位移，但落点必须是目标的可交互格：Touch/ClosestTouch 取目标邻域内
-        /// 可站立格，InteractionCell 优先取建筑交互格，OnCell 取目标格本身。覆盖半径与
-        /// 单次可达性校验共同用于拒绝范围外或被墙隔断的目标。
-        /// </summary>
-        private static bool TryResolveArrivalCell(Pawn pawn, Building_OmniWorkstation station,
-            LocalTargetInfo destination, ref PathEndMode peMode, out IntVec3 arrival)
+        /// <summary>代理视为飞行，与所用网格的 flying 语义一致。</summary>
+        [HarmonyPatch(typeof(Pawn), nameof(Pawn.Flying), MethodType.Getter)]
+        public static class Patch_Pawn_Flying
         {
-            arrival = IntVec3.Invalid;
-            Map map = pawn.Map;
-            if (map == null) return false;
-            if (!destination.IsValid || destination.HasThing && destination.ThingDestroyed) return false;
-
-            TargetInfo resolvedInfo = GenPath.ResolvePathMode(pawn,
-                destination.ToTargetInfo(map), ref peMode);
-            LocalTargetInfo resolved = (LocalTargetInfo)resolvedInfo;
-            if (!resolved.IsValid || !station.Covers(resolved.Cell)) return false;
-
-            IntVec3 candidate;
-            if (peMode == PathEndMode.InteractionCell && resolved.HasThing)
-                candidate = resolved.Thing.InteractionCell;
-            else if (peMode == PathEndMode.OnCell)
-                candidate = resolved.Cell;
-            else if (!TryFindTouchArrivalCell(pawn, resolved.Cell, out candidate))
-                return false;
-
-            if (!candidate.IsValid) return false;
-            if (candidate != pawn.Position &&
-                (!candidate.Standable(map) || candidate.IsForbidden(pawn))) return false;
-            // 单次可达性校验取代原先的全局寻路检查，代价相同但作用于真实落点。
-            if (!pawn.CanReach(candidate, PathEndMode.OnCell, Danger.Deadly)) return false;
-
-            arrival = candidate;
-            return true;
-        }
-
-        /// <summary>
-        /// 为 Touch 类目标挑落点，判据必须与工作 Toil 的失败条件逐字一致：
-        /// FailOnCannotTouch 走 ReachabilityImmediate.CanReachImmediate，而它对 Touch 还会经
-        /// TouchPathEndModeUtility.IsAdjacentOrInsideAndAllowedToTouch 要求斜向相邻时两个正交
-        /// 邻格至少一个可通行。只判 Standable 会挑到斜向被岩石夹住的格，Toil 启动瞬间即判
-        /// Incompletable，EndCurrentJob 随即在同一 tick 内重选同一目标。
-        /// 落点不要求落在覆盖半径内：目标本身已由调用方按半径约束，而代理是瞬移的，
-        /// 边缘目标的合法落点常常正好落在半径外一格。
-        /// </summary>
-        internal static bool TryFindTouchArrivalCell(Pawn pawn, IntVec3 target, out IntVec3 arrival)
-        {
-            arrival = IntVec3.Invalid;
-            Map map = pawn?.Map;
-            if (map == null || !target.IsValid || !target.InBounds(map)) return false;
-            LocalTargetInfo resolved = new LocalTargetInfo(target);
-            arrival = CellFinder.StandableCellNear(target, map, 6f,
-                c => !c.IsForbidden(pawn) &&
-                     ReachabilityImmediate.CanReachImmediate(c, resolved, map,
-                         PathEndMode.Touch, pawn));
-            return arrival.IsValid;
-        }
-    }
-
-    /// <summary>
-    /// 原版 WorkGiver_ConstructAffectFloor（打磨/清除地面/清除地基共用基类）的 HasJobOnCell
-    /// 只校验 designation 与格预约，完全不验证落点是否可达；而 MineAIUtility.JobOnThing 会
-    /// 用 Standable + CanReachImmediate 预验证邻格。代理不做真实寻路，缺少这项预验证时，
-    /// 目标格被占据或四周被围住的候选照样会被选中，随后 Toil 启动即失败并在同一 tick 内反复
-    /// 重选同一格，打满原版 jobsGivenThisTick 保护。这里让代理沿用与落点相同的判据否决候选。
-    /// </summary>
-    [HarmonyPatch(typeof(WorkGiver_ConstructAffectFloor), nameof(WorkGiver_ConstructAffectFloor.HasJobOnCell))]
-    public static class Patch_OmniWorkProxy_RequireTouchArrivalCell
-    {
-        [HarmonyPostfix]
-        public static void Postfix(Pawn pawn, IntVec3 c, ref bool __result)
-        {
-            if (!__result || !OmniWorkProxyUtility.IsProxy(pawn)) return;
-            if (!Patch_OmniWorkProxy_StartPath.TryFindTouchArrivalCell(pawn, c, out _))
-                __result = false;
-        }
-    }
-
-    /// <summary>
-    /// 原版在 StartJob 之后若 Toil 立即失败，会在同一 tick 内同步重选下一项工作；连续重入最终
-    /// 由 jobsGivenThisTick > 10 的保护兜底，并打出 "started 10 jobs in one tick"。代理不做真实
-    /// 寻路，比普通殖民者更容易撞上"某项工作此刻确实做不了"的目标，于是保护被频繁触发。
-    /// 这里把同一 tick 内的重复搜索折叠为一次：被跳过的那些由下一 tick JobTrackerTickInterval
-    /// 的 curJob == null 分支重新发起，因此不会像一次性许可那样把代理永久钉死在空闲态。
-    /// </summary>
-    [HarmonyPatch(typeof(Pawn_JobTracker), "TryFindAndStartJob")]
-    [HarmonyPriority(Priority.Last)]
-    public static class Patch_OmniWorkProxy_ThrottleSameTickRescan
-    {
-        private static readonly HashSet<Pawn> SearchedThisTick = new HashSet<Pawn>();
-        private static int searchedTick = -1;
-
-        [HarmonyPrefix]
-        public static bool Prefix(Pawn ___pawn)
-        {
-            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return true;
-            int tick = Find.TickManager?.TicksGame ?? 0;
-            if (tick != searchedTick)
+            [HarmonyPostfix]
+            public static void Postfix(Pawn __instance, ref bool __result)
             {
-                searchedTick = tick;
-                SearchedThisTick.Clear();
+                if (OmniWorkProxyUtility.IsProxy(__instance)) __result = true;
             }
-            return SearchedThisTick.Add(___pawn);
         }
     }
 }

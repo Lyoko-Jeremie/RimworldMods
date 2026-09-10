@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- 万能工作站代理专用的寻路网格。
+       workerType 指向恒 10 成本的 OmniWorkProxyPathGrid：无视地形（深水/浅水/山体/真空）、
+       建筑、天气与火焰成本；flying=true 让原版按"飞行"网格寻路，fencePassable=true 允许穿越围栏。
+       这样代理的落点、"是否已到达"（Pawn_PathFollower.AtDestinationPosition 即 CanReachImmediate）
+       以及全部可达性判定都交回原版执行，不需要任何自定义落点计算。 -->
+  <PathGridDef>
+    <defName>FAOC_OmniWorkProxyPathGrid</defName>
+    <fencePassable>true</fencePassable>
+    <flying>true</flying>
+    <workerType>FullyAutomaticOmniCrafter.OmniWorkProxyPathGrid</workerType>
+  </PathGridDef>
+
+</Defs>

@@ -44,7 +44,7 @@
                 <statOffsets>
                     <WorkSpeedGlobal>100000</WorkSpeedGlobal>
                     <CarryingCapacity>10000000</CarryingCapacity>
-                    <MoveSpeed>200</MoveSpeed>
+                    <MoveSpeed>200000</MoveSpeed>
                     <ConstructSuccessChance>1</ConstructSuccessChance>
                     <FixBrokenDownBuildingSuccessChance>1</FixBrokenDownBuildingSuccessChance>
                     <SubcoreEncodingSpeed MayRequire="Ludeon.RimWorld.Biotech">30</SubcoreEncodingSpeed>
