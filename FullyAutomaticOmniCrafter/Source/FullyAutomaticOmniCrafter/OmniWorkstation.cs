@@ -1260,7 +1260,15 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < proxies.Count; i++)
             {
                 ProxyRecord record = proxies[i];
-                if (record.pawn != pawn || record.station == null) continue;
+                if (record.pawn != pawn) continue;
+                if (record.station == null)
+                {
+                    // 绑定意外丢失:代理已经启动了真实 Job,却无法据此唤醒泵扩容。
+                    // 这里只记录异常信号,不做兜底恢复——绑定缺失意味着已丢失权威归属。
+                    Log.WarningOnce("[OmniWorkstation] NotifyProxyStartedJob lost station binding: " + pawn,
+                        Gen.HashCombineInt(pawn.thingIDNumber, 51907231));
+                    continue;
+                }
 
                 if (record.trackedStartedJob == job && record.trackedStartedJobTick == job.startTick)
                 {
@@ -2124,7 +2132,9 @@ namespace FullyAutomaticOmniCrafter
                 + "|" + working + "|" + ready + "|" + runtime.probePending + "|" + probeName
                 + "|" + searchShut + "|" + pumpDeep + "|" + runtime.consecutiveFailures + "|" + trueCount
                 + "|" + OmniWorkProxyScanDiag.ShouldSkipCalls + "|" + OmniWorkProxyScanDiag.ShouldSkipTrue
-                + "|" + OmniWorkProxyScanDiag.JobOnThingCalls + "|" + OmniWorkProxyScanDiag.JobOnThingNull;
+                + "|" + OmniWorkProxyScanDiag.JobOnThingCalls + "|" + OmniWorkProxyScanDiag.JobOnThingNull
+                + "|" + OmniWorkProxyScanDiag.StartJobCalls + "|" + OmniWorkProxyScanDiag.StartJobNotified
+                + "|" + OmniWorkProxyScanDiag.StartJobIdle + "|" + OmniWorkProxyScanDiag.StartJobNotSpawned;
             if (signature == schedDiagSignature) return;
             schedDiagSignature = signature;
 
@@ -2148,6 +2158,11 @@ namespace FullyAutomaticOmniCrafter
                 .Append("/").Append(OmniWorkProxyScanDiag.ShouldSkipTrue);
             sb.Append(" mineJob=").Append(OmniWorkProxyScanDiag.JobOnThingCalls)
                 .Append("/").Append(OmniWorkProxyScanDiag.JobOnThingNull);
+            sb.Append(" startJob=").Append(OmniWorkProxyScanDiag.StartJobCalls)
+                .Append("/").Append(OmniWorkProxyScanDiag.StartJobNotified)
+                .Append("/").Append(OmniWorkProxyScanDiag.StartJobIdle)
+                .Append("/").Append(OmniWorkProxyScanDiag.StartJobNotSpawned);
+            sb.Append(" idleReason=").Append(OmniWorkProxyScanDiag.LastIdleReason ?? "-");
             Log.Message(sb.ToString());
             OmniWorkProxyScanDiag.Reset();
         }
@@ -2211,6 +2226,10 @@ namespace FullyAutomaticOmniCrafter
             Pawn pawn = record?.pawn;
             if (pawn == null || pawn.Destroyed || !pawn.Spawned) return;
             MoveProxyToStation(pawn, station);
+            // 与 WakeProxyForVanillaSearch 保持一致:探路期间必须持有有效的工作站绑定,
+            // 否则 NotifyProxyStartedJob 会跳过该代理,TryGetStation 也会一并失效。
+            record.station = station;
+            OmniWorkProxyUtility.Assign(pawn, station);
             StationRuntime runtime = GetOrCreateStationRuntime(station);
             if (pawn.playerSettings != null)
                 pawn.playerSettings.AreaRestrictionInPawnCurrentMap = runtime.workArea;
@@ -2499,8 +2518,22 @@ namespace FullyAutomaticOmniCrafter
         [HarmonyPostfix]
         public static void Postfix(Pawn ___pawn)
         {
-            if (!OmniWorkProxyUtility.IsProxy(___pawn) || !___pawn.Spawned ||
-                MapComponent_OmniWorkstation.IsIdleState(___pawn)) return;
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
+            OmniWorkProxyScanDiag.StartJobCalls++;
+            if (!___pawn.Spawned)
+            {
+                OmniWorkProxyScanDiag.StartJobNotSpawned++;
+                return;
+            }
+            if (MapComponent_OmniWorkstation.IsIdleState(___pawn))
+            {
+                OmniWorkProxyScanDiag.StartJobIdle++;
+                OmniWorkProxyScanDiag.LastIdleReason =
+                    (___pawn.CurJob?.def?.defName ?? "nojob") + "@" +
+                    (___pawn.mindState != null ? ___pawn.mindState.lastJobTag.ToString() : "?");
+                return;
+            }
+            OmniWorkProxyScanDiag.StartJobNotified++;
             ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>()
                 .NotifyProxyStartedJob(___pawn, ___pawn.CurJob);
         }
@@ -2591,6 +2624,11 @@ namespace FullyAutomaticOmniCrafter
         public static int ShouldSkipTrue;
         public static int JobOnThingCalls;
         public static int JobOnThingNull;
+        public static int StartJobCalls;
+        public static int StartJobNotified;
+        public static int StartJobIdle;
+        public static int StartJobNotSpawned;
+        public static string LastIdleReason;
 
         public static void Reset()
         {
@@ -2598,6 +2636,11 @@ namespace FullyAutomaticOmniCrafter
             ShouldSkipTrue = 0;
             JobOnThingCalls = 0;
             JobOnThingNull = 0;
+            StartJobCalls = 0;
+            StartJobNotified = 0;
+            StartJobIdle = 0;
+            StartJobNotSpawned = 0;
+            LastIdleReason = null;
         }
     }
 
