@@ -85,15 +85,52 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>在 RJW 思考树最外层直接拒绝代理，避免任何后续条件读取已清空的第三方需求。</summary>
+    /// <summary>
+    /// 在 RJW 思考树的每一个条件节点上拒绝代理，避免任何后续分支读取代理上不存在的第三方状态。
+    ///
+    /// 只拦 ThinkNode_ConditionalSexChecks 是不够的：RJW 的 ThinkNode_ConditionalHornyOrFrustrated
+    /// 是它与并列的另一个类（都直接继承 Verse.AI.ThinkNode_Conditional），Satisfied 各自 override，
+    /// 给其中一个 override 打补丁不会影响另一个。这里枚举 RJW 程序集内所有 ThinkNode_Conditional
+    /// 子类的 Satisfied，把整类条件节点一起挡掉。
+    /// </summary>
     [HarmonyPatch]
     internal static class Patch_RJW_OmniWorkProxy_SkipThinkTree
     {
-        private static readonly MethodBase Target = OmniWorkProxyRjwCompat.ResolveMethod(
-            OmniWorkProxyRjwCompat.RjwSexChecksType, "Satisfied", new[] { typeof(Pawn) });
+        private static readonly List<MethodBase> Targets = new List<MethodBase>();
 
-        private static bool Prepare() => Target != null;
-        private static MethodBase TargetMethod() => Target;
+        private static bool Prepare()
+        {
+            Assembly assembly = OmniWorkProxyRjwCompat.RjwAssembly;
+            if (assembly == null) return false;
+
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                // 个别类型加载失败时仍尽量补全其它节点，避免整块隔离失效。
+                types = ex.Types;
+            }
+
+            if (types == null) return false;
+
+            for (int i = 0; i < types.Length; i++)
+            {
+                Type type = types[i];
+                if (type == null || type.IsAbstract ||
+                    !typeof(ThinkNode_Conditional).IsAssignableFrom(type)) continue;
+                MethodBase method = AccessTools.DeclaredMethod(type, "Satisfied", new[] { typeof(Pawn) });
+                if (method != null) Targets.Add(method);
+            }
+            return Targets.Count > 0;
+        }
+
+        private static IEnumerable<MethodBase> TargetMethods()
+        {
+            return Targets;
+        }
 
         [HarmonyPrefix]
         private static bool Prefix(Pawn __0, ref bool __result)

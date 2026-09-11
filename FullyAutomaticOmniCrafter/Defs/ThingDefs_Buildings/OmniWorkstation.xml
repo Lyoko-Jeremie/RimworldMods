@@ -58,11 +58,41 @@
         </stages>
     </HediffDef>
 
-    <!-- 仅作为原版工作管线的隐藏执行载体，不拥有独立 AI 后端。 -->
+    <!--
+        仅作为原版工作管线的隐藏执行载体，不拥有独立 AI 后端。
+
+        ===================== 警告：本 PawnKindDef 必须是男性 =====================
+        下面的 <fixedGender>Male</fixedGender> 不允许删除，也不允许改成 Female/Random，
+        更不允许把代理种族换成任何"可能生成为女性"的配置。原因（源码 + 实测日志均已确认）：
+
+          1. RJW 的 transpiler rjw.Pawn_Sterile 把 Pawn.Sterile() 里的
+             ModsConfig.BiotechActive 判定改写成了常量 true，于是该分支与是否安装
+             Biotech 无关，一律会去读 fertility；
+          2. RJW 的另一个 transpiler rjw.Various_GetStatValue.UseRjwFertilityInstead 把
+             Pawn.Sterile() 里的 GetStatValue(StatDefOf.Fertility) 整段替换成了
+             pawn.health.capacities.GetLevel(rjw.xxx.reproduction)；
+          3. rjw.xxx.reproduction 由 DefDatabase<PawnCapacityDef>.GetNamed("RJW_Fertility")
+             初始化，而这次静态初始化发生在 Def 数据库尚未填充的时刻，日志可见
+             "Failed to find Verse.PawnCapacityDef named RJW_Fertility. There are 0 defs of
+             this type loaded."，因此它永久为 null；
+          4. 原版 PawnGenerator.GenerateInitialHediffs 只对女性 Pawn 调用
+             PregnancyUtility.PregnancyChanceForPawn 进而调用 Pawn.Sterile()，于是生成
+             女性代理时必定在 DefMap.get_Item(null) 抛 NullReferenceException，
+             代理直接生成失败（曾表现为点击"重建工作代理"后刷 NRE）。
+
+        男性代理不会走到这条路径。第一道防线就是这里的 fixedGender；代码侧还有两道：
+        MapComponent_OmniWorkstation.CreateProxy 显式设置
+        PawnGenerationRequest.FixedGender = Gender.Male，以及 Patch_OmniWorkProxy_Sterile
+        对代理直接返回"绝育"。
+        历史存档中若已存在女性代理，请用工作站上的"重建工作代理"按钮整批换掉。
+        ==========================================================================
+    -->
     <PawnKindDef ParentName="BasePlayerPawnKind">
         <defName>FAOC_OmniWorkProxy</defName>
         <label>omni work proxy</label>
         <race>Human</race>
+        <!-- 必须为男性，原因见上方警告块。 -->
+        <fixedGender>Male</fixedGender>
         <combatPower>0</combatPower>
         <!-- Humanlike PawnKindDef 在 1.6 中必须显式定义这两个区间。 -->
         <initialResistanceRange>0~0</initialResistanceRange>

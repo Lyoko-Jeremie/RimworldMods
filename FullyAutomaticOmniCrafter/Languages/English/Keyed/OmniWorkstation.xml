@@ -21,6 +21,9 @@
     <OmniWorkstation_ProxyLimit>Map work proxies: {0}</OmniWorkstation_ProxyLimit>
     <OmniWorkstation_ProxyLimitDesc>Sets the total number of work proxies shared by all universal workstations on this map. Multiple proxies may use one workstation concurrently.</OmniWorkstation_ProxyLimitDesc>
     <OmniWorkstation_ProxyLimitCurrent>Current map work proxy count: {0}</OmniWorkstation_ProxyLimitCurrent>
+    <OmniWorkstation_RecreateProxies>Rebuild work proxies</OmniWorkstation_RecreateProxies>
+    <OmniWorkstation_RecreateProxiesDesc>Destroys every work proxy on this map and creates a fresh batch. Items the proxies are carrying or wearing are dropped on the ground first. Use this to recover from proxies stuck in a broken state.</OmniWorkstation_RecreateProxiesDesc>
+    <OmniWorkstation_ProxiesRecreated>Rebuilt work proxies: {0} destroyed, {1} recreated.</OmniWorkstation_ProxiesRecreated>
     <OmniWorkstation_OpenStatus>Proxy status: {0} active</OmniWorkstation_OpenStatus>
     <OmniWorkstation_OpenStatusDesc>Shows active work proxies, their current jobs, and the work-search state.</OmniWorkstation_OpenStatusDesc>
     <OmniWorkstation_StatusTitle>Universal workstation proxy status</OmniWorkstation_StatusTitle>

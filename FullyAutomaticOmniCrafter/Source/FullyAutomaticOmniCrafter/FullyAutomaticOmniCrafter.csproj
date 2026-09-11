@@ -414,6 +414,7 @@
     <Compile Include="OmniWorkProxyNavigation.cs" />
     <Compile Include="OmniWorkFailureCache.cs" />
     <Compile Include="Patch_OmniWorkProxyNavigation.cs" />
+    <Compile Include="Patch_OmniWorkProxyNeeds.cs" />
     <Compile Include="Patch_OmniWorkFailure.cs" />
     <Compile Include="Patch_OmniWorkIngredientSearch.cs" />
     <Compile Include="OmniWorkstationMonitor.cs" />

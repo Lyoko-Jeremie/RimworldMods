@@ -21,6 +21,9 @@
     <OmniWorkstation_ProxyLimit>全图工作代理：{0}</OmniWorkstation_ProxyLimit>
     <OmniWorkstation_ProxyLimitDesc>设置当前地图由所有万能工作站共享的工作代理总数。同一工作站可以同时使用多个代理。</OmniWorkstation_ProxyLimitDesc>
     <OmniWorkstation_ProxyLimitCurrent>当前地图工作代理总数：{0}</OmniWorkstation_ProxyLimitCurrent>
+    <OmniWorkstation_RecreateProxies>重建工作代理</OmniWorkstation_RecreateProxies>
+    <OmniWorkstation_RecreateProxiesDesc>销毁本张地图上的全部工作代理并重新创建一批。代理随身携带或穿戴的物品会先掉落到地面。用于代理陷入异常状态时的一次性恢复。</OmniWorkstation_RecreateProxiesDesc>
+    <OmniWorkstation_ProxiesRecreated>已重建工作代理：销毁 {0} 个，新建 {1} 个。</OmniWorkstation_ProxiesRecreated>
     <OmniWorkstation_OpenStatus>代理状态：{0} 活跃</OmniWorkstation_OpenStatus>
     <OmniWorkstation_OpenStatusDesc>查看当前活跃的工作代理、正在执行的工作以及工作搜索状态。</OmniWorkstation_OpenStatusDesc>
     <OmniWorkstation_StatusTitle>万能工作站代理状态</OmniWorkstation_StatusTitle>

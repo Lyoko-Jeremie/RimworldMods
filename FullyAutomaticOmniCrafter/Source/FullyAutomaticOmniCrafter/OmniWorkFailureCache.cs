@@ -184,6 +184,18 @@ namespace FullyAutomaticOmniCrafter
             expired.Clear();
         }
 
+        /// <summary>
+        /// 整表作废。代理池被整体重建后，以 Pawn 为键的尝试记录与导航失败标记都已失去
+        /// 意义，留着只会长期强引用已销毁的代理。
+        /// </summary>
+        internal void ClearAll()
+        {
+            failures.Clear();
+            attempts.Clear();
+            navigationFailures.Clear();
+            expired.Clear();
+        }
+
         internal static OmniWorkFailureCache For(Pawn pawn)
         {
             return OmniWorkProxyUtility.IsProxy(pawn) && pawn.Spawned
