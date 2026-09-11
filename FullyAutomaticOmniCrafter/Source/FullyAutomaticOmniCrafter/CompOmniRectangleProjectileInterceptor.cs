@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -208,9 +209,13 @@ namespace FullyAutomaticOmniCrafter
 
     public class Dialog_OmniRectangleInterceptorSettings : Window
     {
+        // 尺寸只允许整数（单位：格），滑条与输入框均按整数处理
+        private const int MinSize = 1;
+        private const int MaxSize = 256;
+
         private CompOmniRectangleProjectileInterceptor comp;
-        private float width;
-        private float height;
+        private int width;
+        private int height;
         private string widthBuffer;
         private string heightBuffer;
         private float idleAlphaMultiplier;
@@ -220,10 +225,10 @@ namespace FullyAutomaticOmniCrafter
         public Dialog_OmniRectangleInterceptorSettings(CompOmniRectangleProjectileInterceptor comp)
         {
             this.comp = comp;
-            this.width = comp.Width;
-            this.height = comp.Height;
-            this.widthBuffer = width.ToString("0.0");
-            this.heightBuffer = height.ToString("0.0");
+            this.width = Mathf.Clamp(Mathf.RoundToInt(comp.Width), MinSize, MaxSize);
+            this.height = Mathf.Clamp(Mathf.RoundToInt(comp.Height), MinSize, MaxSize);
+            this.widthBuffer = width.ToString();
+            this.heightBuffer = height.ToString();
             this.idleAlphaMultiplier = comp.idleAlphaMultiplier;
             this.doCloseButton = true;
             this.doCloseX = true;
@@ -236,13 +241,14 @@ namespace FullyAutomaticOmniCrafter
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
 
-            // 宽度设置
-            listing.Label("OmniInterceptor_Width".Translate() + ": " + width.ToString("0.0"));
-            float newWidth = listing.Slider(width, 1f, 256f);
-            if (newWidth != width)
+            // 宽度设置（整数）
+            listing.Label("OmniInterceptor_Width".Translate() + ": " + width);
+            float newWidth = listing.Slider(width, MinSize, MaxSize);
+            int roundedWidth = Mathf.Clamp(Mathf.RoundToInt(newWidth), MinSize, MaxSize);
+            if (roundedWidth != width)
             {
-                width = newWidth;
-                widthBuffer = width.ToString("0.0");
+                width = roundedWidth;
+                widthBuffer = width.ToString();
                 comp.SetSize(width, height);
             }
 
@@ -252,22 +258,24 @@ namespace FullyAutomaticOmniCrafter
             if (wBuffer != widthBuffer)
             {
                 widthBuffer = wBuffer;
-                if (float.TryParse(widthBuffer, out float parsed) && parsed >= 1f && parsed <= 256f)
+                if (int.TryParse(widthBuffer, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedWidth)
+                    && parsedWidth >= MinSize && parsedWidth <= MaxSize)
                 {
-                    width = parsed;
+                    width = parsedWidth;
                     comp.SetSize(width, height);
                 }
             }
 
             listing.Gap();
 
-            // 高度设置
-            listing.Label("OmniInterceptor_Height".Translate() + ": " + height.ToString("0.0"));
-            float newHeight = listing.Slider(height, 1f, 256f);
-            if (newHeight != height)
+            // 高度设置（整数）
+            listing.Label("OmniInterceptor_Height".Translate() + ": " + height);
+            float newHeight = listing.Slider(height, MinSize, MaxSize);
+            int roundedHeight = Mathf.Clamp(Mathf.RoundToInt(newHeight), MinSize, MaxSize);
+            if (roundedHeight != height)
             {
-                height = newHeight;
-                heightBuffer = height.ToString("0.0");
+                height = roundedHeight;
+                heightBuffer = height.ToString();
                 comp.SetSize(width, height);
             }
 
@@ -277,9 +285,10 @@ namespace FullyAutomaticOmniCrafter
             if (hBuffer != heightBuffer)
             {
                 heightBuffer = hBuffer;
-                if (float.TryParse(heightBuffer, out float parsed) && parsed >= 1f && parsed <= 256f)
+                if (int.TryParse(heightBuffer, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedHeight)
+                    && parsedHeight >= MinSize && parsedHeight <= MaxSize)
                 {
-                    height = parsed;
+                    height = parsedHeight;
                     comp.SetSize(width, height);
                 }
             }
