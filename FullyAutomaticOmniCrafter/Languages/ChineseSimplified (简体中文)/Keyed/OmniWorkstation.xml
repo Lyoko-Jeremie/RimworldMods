@@ -13,7 +13,16 @@
     <OmniWorkstation_EnableAll>全部启用</OmniWorkstation_EnableAll>
     <OmniWorkstation_DisableAll>全部禁用</OmniWorkstation_DisableAll>
     <OmniWorkstation_ResetFilter>恢复默认</OmniWorkstation_ResetFilter>
+    <OmniWorkstation_ResetFilterDesc>把工作类型恢复为默认集合：灭火、医生、基本、烹饪、酿酒、狩猎、建造、种植、采矿、割除、锻造、缝制、制作、搬运、清洁、研究。</OmniWorkstation_ResetFilterDesc>
     <OmniWorkstation_ApplyAllStations>应用到全部</OmniWorkstation_ApplyAllStations>
+    <OmniWorkstation_ApplyAllStationsDesc>把当前工作站的工作类型配置套用到本张地图上其他所有万能工作站。</OmniWorkstation_ApplyAllStationsDesc>
+    <OmniWorkstation_CopyFilter>复制</OmniWorkstation_CopyFilter>
+    <OmniWorkstation_CopyFilterDesc>复制当前工作站的工作类型配置，之后可在其他工作站点击「粘贴」应用。</OmniWorkstation_CopyFilterDesc>
+    <OmniWorkstation_PasteFilter>粘贴</OmniWorkstation_PasteFilter>
+    <OmniWorkstation_PasteFilterDesc>把已复制的工作类型配置应用到当前工作站。</OmniWorkstation_PasteFilterDesc>
+    <OmniWorkstation_FilterCopied>已复制当前工作站的工作类型配置。</OmniWorkstation_FilterCopied>
+    <OmniWorkstation_FilterPasted>已把复制的工作类型配置粘贴到当前工作站。</OmniWorkstation_FilterPasted>
+    <OmniWorkstation_FilterClipboardEmpty>剪贴板为空：请先在工作类型窗口点击「复制」。</OmniWorkstation_FilterClipboardEmpty>
     <OmniWorkstation_UnclassifiedWork>未分类 Mod 工作</OmniWorkstation_UnclassifiedWork>
     <OmniWorkstation_UnclassifiedWorkDesc>控制没有声明 WorkTypeDef 的标准 WorkGiver。默认启用。</OmniWorkstation_UnclassifiedWorkDesc>
     <OmniWorkstation_FilterApplied>已将工作过滤配置应用到当前地图的 {0} 个万能工作站。</OmniWorkstation_FilterApplied>

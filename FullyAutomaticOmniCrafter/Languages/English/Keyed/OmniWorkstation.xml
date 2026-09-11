@@ -13,7 +13,16 @@
     <OmniWorkstation_EnableAll>Enable all</OmniWorkstation_EnableAll>
     <OmniWorkstation_DisableAll>Disable all</OmniWorkstation_DisableAll>
     <OmniWorkstation_ResetFilter>Reset defaults</OmniWorkstation_ResetFilter>
+    <OmniWorkstation_ResetFilterDesc>Restores the default work type set: firefight, doctor, basic, cook, brew, hunt, construct, grow, mine, plant cut, smith, tailor, craft, haul, clean, and research.</OmniWorkstation_ResetFilterDesc>
     <OmniWorkstation_ApplyAllStations>Apply to all</OmniWorkstation_ApplyAllStations>
+    <OmniWorkstation_ApplyAllStationsDesc>Applies this workstation's work type configuration to every other universal workstation on this map.</OmniWorkstation_ApplyAllStationsDesc>
+    <OmniWorkstation_CopyFilter>Copy</OmniWorkstation_CopyFilter>
+    <OmniWorkstation_CopyFilterDesc>Copies this workstation's work type configuration so it can be pasted into other workstations.</OmniWorkstation_CopyFilterDesc>
+    <OmniWorkstation_PasteFilter>Paste</OmniWorkstation_PasteFilter>
+    <OmniWorkstation_PasteFilterDesc>Applies the copied work type configuration to this workstation.</OmniWorkstation_PasteFilterDesc>
+    <OmniWorkstation_FilterCopied>Copied this workstation's work type configuration.</OmniWorkstation_FilterCopied>
+    <OmniWorkstation_FilterPasted>Pasted the copied work type configuration onto this workstation.</OmniWorkstation_FilterPasted>
+    <OmniWorkstation_FilterClipboardEmpty>The clipboard is empty. Click "Copy" in a work types window first.</OmniWorkstation_FilterClipboardEmpty>
     <OmniWorkstation_UnclassifiedWork>Unclassified mod work</OmniWorkstation_UnclassifiedWork>
     <OmniWorkstation_UnclassifiedWorkDesc>Controls standard WorkGivers that do not declare a WorkTypeDef. Enabled by default.</OmniWorkstation_UnclassifiedWorkDesc>
     <OmniWorkstation_FilterApplied>Applied the work filter to {0} universal workstations on this map.</OmniWorkstation_FilterApplied>

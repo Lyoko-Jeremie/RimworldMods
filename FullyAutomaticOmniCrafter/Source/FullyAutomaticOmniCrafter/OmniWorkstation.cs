@@ -20,11 +20,27 @@ namespace FullyAutomaticOmniCrafter
         public const int MinWorkRadius = 1;
         public const int MaxWorkRadius = 256;
 
+        /// <summary>
+        /// 默认启用的工作类型：灭火、医生、基本、烹饪、酿酒、狩猎、建造、种植、采矿、割除、
+        /// 锻造、缝制、制作、搬运、清洁、研究。原版没有独立的“酿酒”工作类型，部分 Mod
+        /// （如 RimCuisine 2 的 RC2_Brewing）会自行新增，因此除固定 defName 外还对
+        /// 名称包含 Brewing 的类型做宽松匹配，避免把默认值绑死在某个 Mod 上。
+        /// </summary>
+        private static readonly HashSet<string> DefaultEnabledWorkTypeDefNames =
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                "Firefighter", "Doctor", "BasicWorker", "Cooking", "Hunting", "Construction",
+                "Growing", "Mining", "PlantCutting", "Smithing", "Tailoring", "Crafting",
+                "Hauling", "Cleaning", "Research", "Brewing", "RC2_Brewing"
+            };
+
         private bool automationEnabled = true;
         private int workRadius = 30;
         private int legacyWorkRadiusIndex = 1;
         private List<string> disabledWorkTypeDefNames = new List<string>();
         private bool allowUnclassifiedWork = true;
+        // 旧存档没有该字段，载入后需要把默认过滤器补齐，否则老工作站仍会保持“全部启用”。
+        private bool workFilterInitialized;
         [Unsaved] private int workFilterVersion;
         [Unsaved] private HashSet<string> disabledWorkTypeSet;
         private static readonly List<IntVec3> RingDrawCells = new List<IntVec3>();
@@ -55,6 +71,8 @@ namespace FullyAutomaticOmniCrafter
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
+            // 新放置的工作站立刻套用默认过滤器；读档走 ExposeData 的 PostLoadInit 分支。
+            if (!respawningAfterLoad && !workFilterInitialized) ApplyDefaultWorkFilter();
             map.GetComponent<MapComponent_OmniWorkstation>().Register(this);
         }
 
@@ -74,6 +92,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref legacyWorkRadiusIndex, "workRadiusIndex", 1);
             Scribe_Collections.Look(ref disabledWorkTypeDefNames, "disabledWorkTypeDefNames", LookMode.Value);
             Scribe_Values.Look(ref allowUnclassifiedWork, "allowUnclassifiedWork", true);
+            Scribe_Values.Look(ref workFilterInitialized, "workFilterInitialized", false);
             if (disabledWorkTypeDefNames == null) disabledWorkTypeDefNames = new List<string>();
             disabledWorkTypeSet = null;
             if (workRadius < MinWorkRadius)
@@ -82,6 +101,9 @@ namespace FullyAutomaticOmniCrafter
                 workRadius = legacyRadii[Mathf.Clamp(legacyWorkRadiusIndex, 0, legacyRadii.Length - 1)];
             }
             workRadius = Mathf.Clamp(workRadius, MinWorkRadius, MaxWorkRadius);
+            // 旧存档里的工作站没有初始化标记，读档后补上默认过滤器。
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && !workFilterInitialized)
+                ApplyDefaultWorkFilter();
         }
 
         public bool AllowsWorkType(WorkTypeDef workType)
@@ -108,6 +130,7 @@ namespace FullyAutomaticOmniCrafter
                 SyncDisabledWorkTypeList();
             }
 
+            workFilterInitialized = true;
             workFilterVersion++;
             Map?.GetComponent<MapComponent_OmniWorkstation>()
                 .NotifyWorkFilterChanged(this, workType, enabled);
@@ -124,9 +147,71 @@ namespace FullyAutomaticOmniCrafter
                     disabledWorkTypeSet.Add(workTypes[i].defName);
             }
             allowUnclassifiedWork = enabled;
+            workFilterInitialized = true;
             SyncDisabledWorkTypeList();
             workFilterVersion++;
             Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
+        }
+
+        /// <summary>该工作类型是否属于默认启用集合。</summary>
+        public static bool IsDefaultEnabledWorkType(WorkTypeDef workType)
+        {
+            if (workType == null) return false;
+            string defName = workType.defName;
+            if (defName.NullOrEmpty()) return false;
+            if (DefaultEnabledWorkTypeDefNames.Contains(defName)) return true;
+            return defName.IndexOf("Brewing", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>把过滤器恢复为默认集合：只有默认启用集合中的工作类型可用，其余全部关闭。</summary>
+        public void ApplyDefaultWorkFilter()
+        {
+            EnsureWorkTypeSet();
+            disabledWorkTypeSet.Clear();
+            List<WorkTypeDef> workTypes = OmniWorkCatalog.WorkTypes;
+            for (int i = 0; i < workTypes.Count; i++)
+            {
+                WorkTypeDef workType = workTypes[i];
+                if (!IsDefaultEnabledWorkType(workType)) disabledWorkTypeSet.Add(workType.defName);
+            }
+            allowUnclassifiedWork = true;
+            workFilterInitialized = true;
+            SyncDisabledWorkTypeList();
+            workFilterVersion++;
+        }
+
+        /// <summary>恢复默认过滤器并通知地图组件重建工作站的搜索状态。</summary>
+        public void ResetWorkFilterToDefault()
+        {
+            ApplyDefaultWorkFilter();
+            Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
+        }
+
+        /// <summary>导出当前过滤器，供剪贴板跨工作站复制。</summary>
+        public OmniWorkFilterSnapshot ExportWorkFilter()
+        {
+            EnsureWorkTypeSet();
+            return new OmniWorkFilterSnapshot(new List<string>(disabledWorkTypeDefNames), allowUnclassifiedWork);
+        }
+
+        /// <summary>用剪贴板内容整批替换当前过滤器，并通知地图组件刷新该工作站。</summary>
+        public bool ImportWorkFilter(OmniWorkFilterSnapshot snapshot)
+        {
+            if (snapshot == null) return false;
+            EnsureWorkTypeSet();
+            disabledWorkTypeSet.Clear();
+            List<string> defNames = snapshot.DisabledWorkTypeDefNames;
+            for (int i = 0; i < defNames.Count; i++)
+            {
+                string defName = defNames[i];
+                if (!defName.NullOrEmpty()) disabledWorkTypeSet.Add(defName);
+            }
+            allowUnclassifiedWork = snapshot.AllowUnclassifiedWork;
+            workFilterInitialized = true;
+            SyncDisabledWorkTypeList();
+            workFilterVersion++;
+            Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
+            return true;
         }
 
         public void CopyWorkFilterFrom(Building_OmniWorkstation source)
@@ -136,6 +221,7 @@ namespace FullyAutomaticOmniCrafter
             disabledWorkTypeDefNames = new List<string>(source.disabledWorkTypeSet);
             disabledWorkTypeSet = new HashSet<string>(source.disabledWorkTypeSet, StringComparer.Ordinal);
             allowUnclassifiedWork = source.allowUnclassifiedWork;
+            workFilterInitialized = true;
             workFilterVersion++;
         }
 
@@ -308,6 +394,39 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    /// <summary>工作站工作类型过滤器的不可变快照；供跨工作站复制粘贴使用。</summary>
+    public sealed class OmniWorkFilterSnapshot
+    {
+        public readonly List<string> DisabledWorkTypeDefNames;
+        public readonly bool AllowUnclassifiedWork;
+
+        public OmniWorkFilterSnapshot(List<string> disabledWorkTypeDefNames, bool allowUnclassifiedWork)
+        {
+            DisabledWorkTypeDefNames = disabledWorkTypeDefNames ?? new List<string>();
+            AllowUnclassifiedWork = allowUnclassifiedWork;
+        }
+    }
+
+    /// <summary>工作类型过滤器的临时剪贴板，让玩家把一台工作站的配置粘贴到其他工作站；不参与存档。</summary>
+    public static class OmniWorkFilterClipboard
+    {
+        private static OmniWorkFilterSnapshot snapshot;
+
+        public static bool HasData => snapshot != null;
+
+        public static void CopyFrom(Building_OmniWorkstation station)
+        {
+            if (station == null || station.Destroyed) return;
+            snapshot = station.ExportWorkFilter();
+        }
+
+        public static bool TryPasteTo(Building_OmniWorkstation station)
+        {
+            if (snapshot == null || station == null || station.Destroyed) return false;
+            return station.ImportWorkFilter(snapshot);
+        }
+    }
+
     /// <summary>工作范围设置窗口：滑块负责快速调整，输入框负责精确数值。</summary>
     public sealed class Dialog_OmniWorkstationRadius : Window
     {
@@ -468,6 +587,10 @@ namespace FullyAutomaticOmniCrafter
     /// <summary>每个工作站独立保存过滤器；重叠范围采用“任一覆盖站允许即可”的并集语义。</summary>
     public sealed class Dialog_OmniWorkstationWorkFilter : Window
     {
+        // 行高与复选框尺寸（24）一致、行距略大 1 像素，让列表比原先 32/34 更紧凑。
+        private const float RowHeight = 24f;
+        private const float RowSpacing = 25f;
+
         private readonly Building_OmniWorkstation station;
         private Vector2 scrollPosition;
         private string searchText = string.Empty;
@@ -499,21 +622,54 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(0f, 88f, 90f, 28f), "OmniWorkstation_FilterSearch".Translate());
             searchText = Widgets.TextField(new Rect(94f, 86f, inRect.width - 94f, 30f), searchText);
 
-            float buttonY = 124f;
+            // 按钮分两行排布：第一行是整站开关，第二行是跨工作站复制/粘贴。
             float gap = 6f;
-            float buttonWidth = (inRect.width - gap * 3f) / 4f;
-            if (Widgets.ButtonText(new Rect(0f, buttonY, buttonWidth, 30f), "OmniWorkstation_EnableAll".Translate()))
-                station.SetAllWorkTypesEnabled(true);
-            if (Widgets.ButtonText(new Rect(buttonWidth + gap, buttonY, buttonWidth, 30f), "OmniWorkstation_DisableAll".Translate()))
-                station.SetAllWorkTypesEnabled(false);
-            if (Widgets.ButtonText(new Rect((buttonWidth + gap) * 2f, buttonY, buttonWidth, 30f), "OmniWorkstation_ResetFilter".Translate()))
-                station.SetAllWorkTypesEnabled(true);
-            if (Widgets.ButtonText(new Rect((buttonWidth + gap) * 3f, buttonY, buttonWidth, 30f), "OmniWorkstation_ApplyAllStations".Translate()))
-                station.Map?.GetComponent<MapComponent_OmniWorkstation>().ApplyWorkFilterToAll(station);
+            float buttonWidth = (inRect.width - gap * 2f) / 3f;
+            float buttonHeight = 30f;
+            float firstRowY = 124f;
+            float secondRowY = firstRowY + buttonHeight + 4f;
 
-            Rect outRect = new Rect(0f, 164f, inRect.width, inRect.height - 208f);
+            if (Widgets.ButtonText(new Rect(0f, firstRowY, buttonWidth, buttonHeight), "OmniWorkstation_EnableAll".Translate()))
+                station.SetAllWorkTypesEnabled(true);
+            if (Widgets.ButtonText(new Rect(buttonWidth + gap, firstRowY, buttonWidth, buttonHeight), "OmniWorkstation_DisableAll".Translate()))
+                station.SetAllWorkTypesEnabled(false);
+
+            Rect resetRect = new Rect((buttonWidth + gap) * 2f, firstRowY, buttonWidth, buttonHeight);
+            if (Widgets.ButtonText(resetRect, "OmniWorkstation_ResetFilter".Translate()))
+                station.ResetWorkFilterToDefault();
+            TooltipHandler.TipRegion(resetRect, "OmniWorkstation_ResetFilterDesc".Translate());
+
+            Rect copyRect = new Rect(0f, secondRowY, buttonWidth, buttonHeight);
+            if (Widgets.ButtonText(copyRect, "OmniWorkstation_CopyFilter".Translate()))
+            {
+                OmniWorkFilterClipboard.CopyFrom(station);
+                Messages.Message("OmniWorkstation_FilterCopied".Translate(), MessageTypeDefOf.SilentInput, false);
+            }
+            TooltipHandler.TipRegion(copyRect, "OmniWorkstation_CopyFilterDesc".Translate());
+
+            Rect pasteRect = new Rect(buttonWidth + gap, secondRowY, buttonWidth, buttonHeight);
+            // 剪贴板为空时把「粘贴」按钮画成灰色，提示当前没有可粘贴的配置。
+            Color previousColor = GUI.color;
+            if (!OmniWorkFilterClipboard.HasData) GUI.color = Color.gray;
+            if (Widgets.ButtonText(pasteRect, "OmniWorkstation_PasteFilter".Translate()))
+            {
+                if (OmniWorkFilterClipboard.TryPasteTo(station))
+                    Messages.Message("OmniWorkstation_FilterPasted".Translate(), MessageTypeDefOf.SilentInput, false);
+                else
+                    Messages.Message("OmniWorkstation_FilterClipboardEmpty".Translate(), MessageTypeDefOf.RejectInput, false);
+            }
+            GUI.color = previousColor;
+            TooltipHandler.TipRegion(pasteRect, "OmniWorkstation_PasteFilterDesc".Translate());
+
+            Rect applyAllRect = new Rect((buttonWidth + gap) * 2f, secondRowY, buttonWidth, buttonHeight);
+            if (Widgets.ButtonText(applyAllRect, "OmniWorkstation_ApplyAllStations".Translate()))
+                station.Map?.GetComponent<MapComponent_OmniWorkstation>().ApplyWorkFilterToAll(station);
+            TooltipHandler.TipRegion(applyAllRect, "OmniWorkstation_ApplyAllStationsDesc".Translate());
+
+            float listTop = secondRowY + buttonHeight + 10f;
+            Rect outRect = new Rect(0f, listTop, inRect.width, inRect.height - (listTop + 44f));
             int visibleCount = CountVisibleRows();
-            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, visibleCount * 34f));
+            Rect viewRect = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, visibleCount * RowSpacing));
             Widgets.BeginScrollView(outRect, ref scrollPosition, viewRect);
 
             float y = 0f;
@@ -523,15 +679,15 @@ namespace FullyAutomaticOmniCrafter
             {
                 WorkTypeDef workType = workTypes[i];
                 if (!MatchesSearch(workType)) continue;
-                Rect row = new Rect(0f, y, viewRect.width, 32f);
-                if ((Mathf.RoundToInt(y / 34f) & 1) == 1) Widgets.DrawLightHighlight(row);
+                Rect row = new Rect(0f, y, viewRect.width, RowHeight);
+                if ((Mathf.RoundToInt(y / RowSpacing) & 1) == 1) Widgets.DrawLightHighlight(row);
                 bool enabled = station.AllowsWorkType(workType);
                 string label = OmniWorkCatalog.WorkTypeLabel(workType);
                 Widgets.CheckboxLabeled(row, label, ref enabled);
                 TooltipHandler.TipRegion(row, workType.defName + GetModSuffix(workType));
                 if (enabled != station.AllowsWorkType(workType))
                     station.SetWorkTypeEnabled(workType, enabled);
-                y += 34f;
+                y += RowSpacing;
             }
             Widgets.EndScrollView();
         }
@@ -542,13 +698,13 @@ namespace FullyAutomaticOmniCrafter
                 !"OmniWorkstation_UnclassifiedWork".Translate().ToString()
                     .ToLowerInvariant().Contains(searchText.ToLowerInvariant())) return;
 
-            Rect row = new Rect(0f, y, width, 32f);
+            Rect row = new Rect(0f, y, width, RowHeight);
             bool enabled = station.AllowUnclassifiedWork;
             Widgets.CheckboxLabeled(row, "OmniWorkstation_UnclassifiedWork".Translate(), ref enabled);
             TooltipHandler.TipRegion(row, "OmniWorkstation_UnclassifiedWorkDesc".Translate());
             if (enabled != station.AllowUnclassifiedWork)
                 station.SetWorkTypeEnabled(null, enabled);
-            y += 34f;
+            y += RowSpacing;
         }
 
         private int CountVisibleRows()
