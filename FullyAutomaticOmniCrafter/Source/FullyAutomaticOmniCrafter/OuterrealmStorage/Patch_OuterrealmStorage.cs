@@ -16,7 +16,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
     /// <summary>
     /// 超维存储所需的全部 Harmony patches（§5 清单）。
-    /// 由 OmniCrafterMod 构造中的 HarmonyInstance.PatchAll() 自动应用。
+    /// 由 OmniCrafterHarmonyBootstrap（[StaticConstructorOnStartup]，def 加载之后）自动应用。
     ///
     /// P1 已实现：#5 SplitOff 同步（防超卖）、TryAbsorbStack 回滚补偿、
     /// #6 ListerHaulables 锁定短路、#8 ReservationManager 预留数量检查、

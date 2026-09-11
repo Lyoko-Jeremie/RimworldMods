@@ -127,7 +127,8 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/Outerrea
 		<!-- </li>-->
 
         <li>Jeremie.Fully.Automatic.OmniCrafter</li>
-        
+
+		<li>rim.job.world</li>
 	</loadAfter>
 	<modDependencies>
 		<li>

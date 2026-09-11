@@ -915,11 +915,13 @@ namespace FullyAutomaticOmniCrafter
                 }
             }
 
-            // 刻意不清空 needs。清空 AllNeeds 后再 BindDirectNeedFields() 会把 mood/joy/food/rest
-            // 等直接字段一并置为 null，第三方（例如 RJW 的 xxx.need_sex）对这类空状态普遍不判空；
-            // 更糟的是 RJW 会把"没有 Need_Sex 实例"直接判定为性挫折，把代理拉进性行为 think 子树。
-            // 需求"不参与生活"改由 Patch_OmniWorkProxyNeeds_NoConsumption 在需求 tick 层实现：
-            // 保留实例、值恒定在生成初值，既无副作用也不会滑到第三方的触发阈值。
+            if (pawn.needs != null && pawn.needs.AllNeeds.Count > 0)
+            {
+                // 不调用 Mod Need 的回调，避免其在清理阶段重新注入状态。
+                pawn.needs.AllNeeds.Clear();
+                pawn.needs.MiscNeeds.Clear();
+                pawn.needs.BindDirectNeedFields();
+            }
 
             HediffDef boost = OmniWorkstationDefOf.FAOC_OmniWorkProxyBoost;
             if (pawn.health != null)
@@ -1984,19 +1986,7 @@ namespace FullyAutomaticOmniCrafter
 
             try
             {
-                // ★★★ 代理必须是男性，禁止改动 ★★★
-                // 理由详见 Defs/ThingDefs_Buildings/OmniWorkstation.xml 里 FAOC_OmniWorkProxy
-                // 上方的警告块，简言之：RJW 的两个 transpiler 会把 Pawn.Sterile() 里的
-                // fertility 读取替换成 rjw.xxx.reproduction，而该静态字段在 def 数据库尚未
-                // 填充时被初始化、永久为 null；原版只在"女性"分支调用 Pawn.Sterile()
-                // （PawnGenerator.GenerateInitialHediffs → PregnancyUtility.PregnancyChanceForPawn），
-                // 于是生成女性代理必定在 DefMap.get_Item(null) 抛 NullReferenceException。
-                // PawnKindDef 上已声明 fixedGender=Male，这里再显式钉一次 request，
-                // 以防第三方 prefix（例如 RJW 的 Generate_Nymph）覆盖 KindDef 的性别设置。
-                PawnGenerationRequest request = new PawnGenerationRequest(
-                    OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer);
-                request.FixedGender = Gender.Male;
-                Pawn pawn = PawnGenerator.GeneratePawn(request);
+                Pawn pawn = PawnGenerator.GeneratePawn(OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer);
                 PrepareProxy(pawn);
                 if (!sleepingProxies.TryAdd(pawn))
                 {
@@ -3037,39 +3027,26 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    // 这里曾经是 Patch_OmniWorkProxy_RemoveAllNeeds：它短路
-    // Pawn_NeedsTracker.AddOrRemoveNeedsAsAppropriate，并把 AllNeeds / MiscNeeds 清空。
-    // 该做法已废弃，原因有三：
-    //   1. 清空后 BindDirectNeedFields() 会把 mood/joy/food/rest 等直接字段置为 null，
-    //      第三方（尤其 RJW 的 xxx.need_sex）普遍不做判空；
-    //   2. RJW 的 xxx.need_sex 对"没有 Need_Sex 实例"的 Pawn 会直接返回 SexNeed.Frustrated，
-    //      于是 is_hornyorfrustrated 恒为 true，代理被拉进性行为 think 子树，
-    //      并在那里因代理缺少其它状态抛 NullReferenceException；
-    //   3. 该方法是原版生成、出舱、读档以及第三方增删需求时的唯一收口，短路它会跳过
-    //      Need.OnNeedRemoved() 等回调，代理的 need 集合也无法随环境正常建立。
-    // 代理"不受需求影响"改由保留实例 + Patch_OmniWorkProxyNeeds_NoConsumption 在需求 tick
-    // 层面对代理整体跳过实现：值恒定在生成初值，不需要清空、也不会滑到第三方阈值。
-
     /// <summary>
-    /// 代理恒为绝育。
-    ///
-    /// 这既符合语义（工作代理不该生育），也用于绕开一条会直接崩掉 Pawn 生成的第三方路径：
-    /// RJW 的 Pawn_Sterile transpiler 把 Pawn.Sterile() 里的 ModsConfig.BiotechActive 判定
-    /// 改写成了常量 true，于是即使没有 Biotech 也会去读 Biotech 专属的
-    /// PawnCapacityDefOf.Fertility；该 Def 缺失时为 null，PawnCapacitiesHandler.GetLevel(null)
-    /// 会在 DefMap 的索引器里抛 NullReferenceException（堆栈最内层就是 DefMap.get_Item [0x00000]）。
-    /// 原版 GenerateInitialHediffs 只对女性 Pawn 调用 PregnancyUtility.PregnancyChanceForPawn
-    /// → Sterile()，所以表现为"生成女性代理时崩溃"。这里在 Sterile 之前先行返回 true，
-    /// 把整条链短路掉。
+    /// 代理不需要任何需求，包括第三方 Mod 通过 NeedDef 追加的需求。
+    /// 原版与第三方都只能经由 Pawn_NeedsTracker.AddOrRemoveNeedsAsAppropriate 增删需求，
+    /// 这里对代理直接短路并清空 AllNeeds 与 MiscNeeds，使生成、出舱、读档以及第三方
+    /// 主动调用后都保持零需求。
     /// </summary>
-    [HarmonyPatch(typeof(Pawn), nameof(Pawn.Sterile))]
-    public static class Patch_OmniWorkProxy_Sterile
+    [HarmonyPatch(typeof(Pawn_NeedsTracker), nameof(Pawn_NeedsTracker.AddOrRemoveNeedsAsAppropriate))]
+    public static class Patch_OmniWorkProxy_RemoveAllNeeds
     {
         [HarmonyPrefix]
-        public static bool Prefix(Pawn __instance, ref bool __result)
+        public static bool Prefix(Pawn_NeedsTracker __instance, Pawn ___pawn)
         {
-            if (!OmniWorkProxyUtility.IsProxy(__instance)) return true;
-            __result = true;
+            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return true;
+            if (__instance.AllNeeds.Count > 0)
+            {
+                // 不调用 Mod Need 的回调，避免其在清理阶段重新注入状态。
+                __instance.AllNeeds.Clear();
+                __instance.MiscNeeds.Clear();
+                __instance.BindDirectNeedFields();
+            }
             return false;
         }
     }

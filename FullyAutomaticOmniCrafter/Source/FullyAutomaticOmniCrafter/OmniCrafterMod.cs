@@ -39,35 +39,15 @@ namespace FullyAutomaticOmniCrafter
             
             // HarmonyLib.Harmony.DEBUG = true;
             HarmonyInstance = new HarmonyLib.Harmony("Jeremie.Fully.Automatic.OmniCrafter");
-            // 核心保护先完整安装；可选光束兼容失败不得截断选择、保存和所有权补丁。
-            System.Type[] patchTypes = typeof(OmniCrafterMod).Assembly.GetTypes();
-            foreach (System.Type type in patchTypes)
-                if (System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)
-                    && !type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
-                    && !type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal))
-                    HarmonyInstance.CreateClassProcessor(type).Patch();
-            Log.Message("[OuterrealmStorage] Core Harmony patches installed.");
-            OuterrealmStorage.OuterrealmBeamAdapter.Install();
-            foreach (System.Type type in patchTypes)
-            {
-                if (!type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
-                    || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
-                try { HarmonyInstance.CreateClassProcessor(type).Patch(); }
-                catch (System.Exception error)
-                {
-                    Log.Error("[OuterrealmStorage] Optional beam compatibility failed: " + type.FullName + "\n" + error);
-                }
-            }
-            foreach (System.Type type in patchTypes)
-            {
-                if (!type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal)
-                    || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
-                try { HarmonyInstance.CreateClassProcessor(type).Patch(); }
-                catch (System.Exception error)
-                {
-                    Log.Error("[OuterrealmStorage] Optional VEF compatibility failed: " + type.FullName + "\n" + error);
-                }
-            }
+
+            // 【重要】这里绝不能安装任何补丁。
+            // 本构造函数运行于 LoadedModManager.CreateModClasses()，此时 DefDatabase 尚未填充。
+            // 而 Harmony 2.4 底层走 MonoMod，建立 detour 时会调用
+            // System.RuntimeMethodHandle.GetFunctionPointer()，Mono 会借此运行
+            // "被 patch 方法所属类型"的静态构造。若该类型像 RJW 的 rjw.xxx 那样在 cctor 里
+            // 用 DefDatabase<T>.GetNamed 取值，其字段就会被永久钉成 null（静态字段只初始化
+            // 一次），导致该 mod 全面失效。全部补丁安装因此移到 [StaticConstructorOnStartup]
+            // （def 加载之后），见本文件末尾的 OmniCrafterHarmonyBootstrap。
         }
 
         // ── Formula evaluation ────────────────────────────────────────────────
@@ -479,6 +459,66 @@ namespace FullyAutomaticOmniCrafter
             listing.End();
             Widgets.EndScrollView();
             Settings.Write();
+        }
+    }
+
+    /// <summary>
+    /// Harmony 补丁的真正安装点。
+    ///
+    /// 必须放在 [StaticConstructorOnStartup]（由 RimWorld 在 def 加载完成后经
+    /// StaticConstructorOnStartupUtility.CallAll() 调用）里，而不是 Mod 构造函数里。
+    ///
+    /// 原因见 OmniCrafterMod 构造函数中的说明：在 def 加载之前调用 Patch() 时，MonoMod 会经
+    /// MonoRuntime.Compile → MethodHandle.GetFunctionPointer() 提前运行"被 patch 方法所属
+    /// 类型"的静态构造；若该类型在 cctor 里读取 DefDatabase（典型例子：RJW 的 rjw.xxx，
+    /// 其 91 个字段全部由 DefDatabase&lt;T&gt;.GetNamed 初始化），字段会被永久钉成 null，
+    /// 该 mod 随即全面失效。
+    ///
+    /// 本类只做补丁安装、不调用任何被 patch 的方法，因此与其它
+    /// [StaticConstructorOnStartup] 类之间不存在执行顺序依赖。
+    /// </summary>
+    [StaticConstructorOnStartup]
+    internal static class OmniCrafterHarmonyBootstrap
+    {
+        static OmniCrafterHarmonyBootstrap()
+        {
+            HarmonyLib.Harmony harmony = OmniCrafterMod.HarmonyInstance;
+            if (harmony == null)
+            {
+                Log.Error("[OuterrealmStorage] Harmony 实例尚未创建，补丁安装已放弃。");
+                return;
+            }
+
+            System.Type[] patchTypes = typeof(OmniCrafterMod).Assembly.GetTypes();
+
+            // 核心保护先完整安装；可选光束兼容失败不得截断选择、保存和所有权补丁。
+            foreach (System.Type type in patchTypes)
+                if (System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)
+                    && !type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
+                    && !type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal))
+                    harmony.CreateClassProcessor(type).Patch();
+            Log.Message("[OuterrealmStorage] Core Harmony patches installed.");
+            OuterrealmStorage.OuterrealmBeamAdapter.Install();
+            foreach (System.Type type in patchTypes)
+            {
+                if (!type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
+                    || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
+                try { harmony.CreateClassProcessor(type).Patch(); }
+                catch (System.Exception error)
+                {
+                    Log.Error("[OuterrealmStorage] Optional beam compatibility failed: " + type.FullName + "\n" + error);
+                }
+            }
+            foreach (System.Type type in patchTypes)
+            {
+                if (!type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal)
+                    || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
+                try { harmony.CreateClassProcessor(type).Patch(); }
+                catch (System.Exception error)
+                {
+                    Log.Error("[OuterrealmStorage] Optional VEF compatibility failed: " + type.FullName + "\n" + error);
+                }
+            }
         }
     }
 

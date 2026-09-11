@@ -439,6 +439,8 @@ Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/FullyAut
 		<!-- 	<steamWorkshopUrl>steam://url/CommunityFilePage/3493889625</steamWorkshopUrl>-->
 		<!-- </li>-->
 
+        <li>rim.job.world</li>
+        
 	</loadAfter>
 	<modDependencies>
 		<li>
