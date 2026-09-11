@@ -449,29 +449,32 @@ namespace FullyAutomaticOmniCrafter
                             Designator_PhantomWall2Passability.customSettings.CopyFrom(this.settings);
                         }
 
-                        Designator_PhantomWall2Passability designator = Find.ReverseDesignatorDatabase.Get<Designator_PhantomWall2Passability>();
+                        // 工具实例由 DesignationCategoryDef.ResolveDesignators() 依据
+                        // Defs/ThingDefs_Buildings/DesignationCategoryDef.xml 里的 specialDesignatorClasses 统一创建，
+                        // 直接从建筑分类里取即可。
+                        // 不能查 Find.ReverseDesignatorDatabase：那是原版硬编码列表，不含任何 Mod 的 Designator。
+                        Designator_PhantomWall2Passability designator = null;
+                        DesignationCategoryDef omniCategory = DefDatabase<DesignationCategoryDef>.GetNamed("OmniCrafter_Category", false);
+                        if (omniCategory != null)
+                        {
+                            List<Designator> designators = omniCategory.AllResolvedDesignators;
+                            for (int i = 0; i < designators.Count; i++)
+                            {
+                                if (designators[i] is Designator_PhantomWall2Passability found)
+                                {
+                                    designator = found;
+                                    break;
+                                }
+                            }
+                        }
+
                         if (designator != null)
                         {
                             Find.DesignatorManager.Select(designator);
                         }
                         else
                         {
-                            // 备选方案：从菜单中找
-                            // 检查 OmniCrafter_Category
-                            DesignationCategoryDef omniCategory = DefDatabase<DesignationCategoryDef>.GetNamed("OmniCrafter_Category", false);
-                            if (omniCategory != null)
-                            {
-                                designator = omniCategory.AllResolvedDesignators.OfType<Designator_PhantomWall2Passability>().FirstOrDefault();
-                            }
-
-                            if (designator != null)
-                            {
-                                Find.DesignatorManager.Select(designator);
-                            }
-                            else
-                            {
-                                Messages.Message("OPW_DesignatorNotFound".Translate(), MessageTypeDefOf.RejectInput, false);
-                            }
+                            Messages.Message("OPW_DesignatorNotFound".Translate(), MessageTypeDefOf.RejectInput, false);
                         }
                     }
                 };

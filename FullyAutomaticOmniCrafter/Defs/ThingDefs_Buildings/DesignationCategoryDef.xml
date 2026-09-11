@@ -11,5 +11,17 @@
 
         <!-- 核心机制：控制这个菜单栏在游戏底部的排列顺序 -->
         <order>750</order>
+
+        <!--
+            特殊设计器：幻影墙通行规则批量设置工具。
+            必须在此用 XML 声明，不能靠 Harmony 补丁注入 ——
+            DesignationCategoryDef.ResolveReferences() 在 def 解析的同步阶段就执行完，
+            而 Harmony 补丁要到 StaticConstructorOnStartupUtility.CallAll()（同一批长事件末尾的
+            ExecuteWhenFinished 队列）才安装，那时 ResolveDesignators() 已经跑完，
+            补丁永远不会生效，工具不会出现在建筑菜单里。
+        -->
+        <specialDesignatorClasses>
+            <li>FullyAutomaticOmniCrafter.Designator_PhantomWall2Passability</li>
+        </specialDesignatorClasses>
     </DesignationCategoryDef>
 </Defs>
