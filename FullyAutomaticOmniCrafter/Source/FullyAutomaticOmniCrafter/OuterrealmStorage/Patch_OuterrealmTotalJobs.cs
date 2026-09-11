@@ -83,9 +83,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     {
         private static bool Prefix(Pawn pawn, IntVec3 rootCell, IntRange desiredQuantity, Predicate<Thing> validThing, ref List<Thing> __result)
         {
-            if (pawn?.Map == null || GameComponent_OuterrealmStorage.Instance?.HasVaultOnMap(pawn.Map) != true) return true;
-            Region root = rootCell.GetRegion(pawn.Map);
-            if (root == null || desiredQuantity.max <= 0) return true;
+            bool proxy = OmniWorkProxyUtility.IsProxy(pawn);
+            if (pawn?.Map == null || !proxy && GameComponent_OuterrealmStorage.Instance?.HasVaultOnMap(pawn.Map) != true) return true;
+            Region root = proxy ? null : rootCell.GetRegion(pawn.Map);
+            if (!proxy && root == null || desiredQuantity.max <= 0) return true;
+            OmniWorkProxyUtility.TryGetStation(pawn, out Building_OmniWorkstation station);
+            OmniWorkFailureCache failures = proxy ? OmniWorkFailureCache.For(pawn) : null;
             TraverseParms traverse = TraverseParms.For(pawn);
             var chosen = new List<Thing>();
             var seen = new HashSet<object>();
@@ -95,8 +98,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 for (int i = 0; i < things.Count; i++)
                 {
                     Thing thing = things[i];
-                    if (thing.Fogged() || thing.IsForbidden(pawn) || !pawn.CanReserve(thing) || !validThing(thing)
-                        || !ReachabilityWithinRegion.ThingFromRegionListerReachable(thing, region, PathEndMode.ClosestTouch, pawn)) continue;
+                    if (thing.Fogged() || thing.IsForbidden(pawn) || !pawn.CanReserve(thing) || !validThing(thing)) continue;
+                    if (proxy)
+                    {
+                        if (station != null && !station.Covers(thing.PositionHeld) ||
+                            failures != null && !failures.Allows(pawn, null, thing) ||
+                            !OmniWorkProxyNavigation.TryFindEnd(pawn, pawn.Map, rootCell,
+                                thing, PathEndMode.ClosestTouch, out _)) continue;
+                    }
+                    else if (!ReachabilityWithinRegion.ThingFromRegionListerReachable(thing, region,
+                        PathEndMode.ClosestTouch, pawn)) continue;
                     OuterrealmSource source;
                     bool storage = OuterrealmSourceResolver.TryResolve(thing, out source);
                     if (!storage && OuterrealmVaultUtil.IsProjection(thing)) continue;
@@ -108,11 +119,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 return false;
             }
-            // 保留原版区域遍历、候选过滤和区域内可达性，只替换数量与去重规则。
-            Process(rootCell.GetThingList(root.Map), root);
-            if (accumulated < desiredQuantity.max)
-                RegionTraverser.BreadthFirstTraverse(root, (from, to) => to.Allows(traverse, false),
-                    region => Process(region.ListerThings.ThingsMatching(ThingRequest.ForGroup(ThingRequestGroup.HaulableEver)), region), 99999);
+            // 代理全局扫描并沿用条目预算；普通居民仍按原版区域遍历。
+            if (proxy)
+                Process(pawn.Map.listerThings.ThingsInGroup(ThingRequestGroup.HaulableEver), null);
+            else
+            {
+                Process(rootCell.GetThingList(root.Map), root);
+                if (accumulated < desiredQuantity.max)
+                    RegionTraverser.BreadthFirstTraverse(root, (from, to) => to.Allows(traverse, false),
+                        region => Process(region.ListerThings.ThingsMatching(ThingRequest.ForGroup(ThingRequestGroup.HaulableEver)), region), 99999);
+            }
             __result = accumulated >= desiredQuantity.min ? chosen : null;
             return false;
         }

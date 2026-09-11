@@ -194,7 +194,8 @@ Pawn 到达 vault
 - `OuterrealmTotalJobUtility` 仅接管原版 `Reload` / `RefuelAtomic`。其 `job.count` 始终是全任务余量，
   不构造 `countQueue`；`TargetRemaining` 记录各路线剩余数量，同 Entry 别名合并为一条路线。
   正式预留同时验证全部条目预算；Reload 不抢占穿戴物预留，RefuelAtomic 预留目标建筑。
-- `Patch_OuterrealmFuelSelection` 沿用原版区域遍历、过滤和可达性判定，按 Entry 可用量累计；
+- `Patch_OuterrealmFuelSelection` 对普通居民沿用原版区域遍历、过滤和可达性判定；万能工作站代理
+  改为专用网格上的全局候选扫描，两条分支都按 Entry 可用量累计；
   `MakeReloadJob` 不再把展示 stackCount 求和当作全任务数量。未知/第三方 JobDef 不自动套用此协议。
 - 每趟按计划、任务余量及 carry 容量取料，按实际取得量同时减少库存、claim 和 job.count；
   未取得的来源回到队首，普通地图原料和提前取得的随身实物也保留多趟需求。

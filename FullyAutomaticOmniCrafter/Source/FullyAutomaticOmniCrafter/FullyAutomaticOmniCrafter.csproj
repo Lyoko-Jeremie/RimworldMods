@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -375,6 +375,7 @@
     <Compile Include="CompPersonalTemperature.cs" />
     <Compile Include="Dialog_PersonalTemperature.cs" />
     <Compile Include="Patch_PersonalTemperature.cs" />
+    <Compile Include="Patch_RjwOmniWorkProxyCompat.cs" />
     <Compile Include="CompBreathingLight.cs" />
     <Compile Include="CompInstantResearch.cs" />
     <Compile Include="CompJoyToleranceCleanWave.cs" />
@@ -410,6 +411,11 @@
     <Compile Include="OmniAutoSurgeon.cs" />
     <Compile Include="OmniCrafterMod.cs" />
     <Compile Include="OmniWorkstation.cs" />
+    <Compile Include="OmniWorkProxyNavigation.cs" />
+    <Compile Include="OmniWorkFailureCache.cs" />
+    <Compile Include="Patch_OmniWorkProxyNavigation.cs" />
+    <Compile Include="Patch_OmniWorkFailure.cs" />
+    <Compile Include="Patch_OmniWorkIngredientSearch.cs" />
     <Compile Include="OmniWorkstationMonitor.cs" />
     <Compile Include="OmniForceFieldDome.cs" />
     <Compile Include="OmniPhantomWall.cs" />

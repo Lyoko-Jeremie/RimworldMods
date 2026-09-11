@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -731,9 +731,7 @@ namespace FullyAutomaticOmniCrafter
     /// <summary>
     /// 代理专用的寻路网格：全图通行成本恒为 10，无视地形（深水/浅水/山体/真空）、建筑、
     /// 天气与火焰成本。配合 Def 上的 fencePassable/flying，使代理可以直接穿过并停留在任意
-    /// 格子。这样落点、"是否已到达"（Pawn_PathFollower.AtDestinationPosition 即
-    /// CanReachImmediate）与全部可达性判定都交回原版执行，代理不需要任何自定义落点计算，
-    /// 也不存在与工作 Toil 失败条件不一致的可能。
+    /// 格子。OmniWorkProxyNavigation 统一解释终点、接触与路径，不使用普通区域连通性。
     /// </summary>
     public class OmniWorkProxyPathGrid : PathGrid
     {
@@ -1016,15 +1014,15 @@ namespace FullyAutomaticOmniCrafter
         // 泵在"无到期站 / 无空闲代理"时也要周期性醒来：代理池被占满期间不会有任何事件
         // 唤醒泵，个别不推进的 Job 就足以让整张地图再也派发不出工作。
         private const int IdlePumpFallbackInterval = 60;
-        // 代理位置与 Job 引用在这么长时间内都没有变化时，判定该 Job 已停滞。
-        // 原版 PatherTick 在等待异步寻路时会直接 return，Job 完全不推进；
-        // 第三方 JobDriver 也可能长时间原地等待。
+        // 移动阶段长时间没有推进才算导航停滞；不限制合法原地工作的持续时间。
         private const int StalledJobTimeoutTicks = 2500;
         // 原版没有提供“不校验禁用状态但更新工作表”的接口。缓存字段访问器，只在工作站
         // 或筛选版本变化时写入，避免在热路径反射，也避免 SetPriority 的第三方禁用校验。
         private static readonly AccessTools.FieldRef<Pawn_WorkSettings, DefMap<WorkTypeDef, int>>
             workPrioritiesRef = AccessTools.FieldRefAccess<Pawn_WorkSettings,
                 DefMap<WorkTypeDef, int>>("priorities");
+
+        internal readonly OmniWorkFailureCache WorkFailures = new OmniWorkFailureCache();
 
         private readonly List<Building_OmniWorkstation> stations =
             new List<Building_OmniWorkstation>();
@@ -1144,6 +1142,8 @@ namespace FullyAutomaticOmniCrafter
             public Job lastTrackedJob;
             public IntVec3 lastTrackedPosition = IntVec3.Invalid;
             public int lastProgressTick = -1;
+            public bool lastTrackedMoving;
+            public int lastTrackedStartTick = -1;
         }
 
         /// <summary>
@@ -1398,6 +1398,7 @@ namespace FullyAutomaticOmniCrafter
                     OmniWorkProxyUtility.SetActive(pawn, true);
                     return;
                 }
+                WorkFailures.Started(pawn, job);
                 record.trackedStartedJob = job;
                 record.trackedStartedJobTick = job.startTick;
                 record.issuedJob = job;
@@ -1548,6 +1549,7 @@ namespace FullyAutomaticOmniCrafter
             if (tick % AssignmentInterval == map.uniqueID % AssignmentInterval)
             {
                 long maintStart = Stopwatch.GetTimestamp();
+                WorkFailures.Prune();
                 RemoveInvalidStations();
                 EnsureProxyCount();
                 for (int i = 0; i < proxies.Count; i++)
@@ -1972,12 +1974,17 @@ namespace FullyAutomaticOmniCrafter
             // 进度跟踪：Job 引用变化与位置移动都算推进。停滞判定依赖这个时间戳，
             // 因此必须在所有提前返回之前刷新。
             int now = CurrentTick;
+            bool moving = pawn.pather != null && pawn.pather.Moving;
+            int startTick = pawn.CurJob?.startTick ?? -1;
             if (record.lastProgressTick < 0 || pawn.CurJob != record.lastTrackedJob ||
+                startTick != record.lastTrackedStartTick || moving != record.lastTrackedMoving ||
                 pawn.Position != record.lastTrackedPosition)
             {
                 record.lastTrackedJob = pawn.CurJob;
                 record.lastTrackedPosition = pawn.Position;
                 record.lastProgressTick = now;
+                record.lastTrackedMoving = moving;
+                record.lastTrackedStartTick = startTick;
             }
 
             // 代理不穿戴、不装备：维护扫描发现代理身上正跑着着装/装备 Job 时立即中止，
@@ -2033,13 +2040,12 @@ namespace FullyAutomaticOmniCrafter
 
             if (record.issuedJob != null)
             {
-                // 停滞兜底：原版 PatherTick 在等待异步寻路时会直接 return（Job 完全不推进），
-                // 第三方 JobDriver 也可能长期原地等待。调度器自己派发的等待不计入停滞，
-                // 否则宽限等待会被误判成卡死。
+                // 仅兜底第三方干预或异常读档造成的移动停滞；调度等待和原地工作不在此中断。
                 if (!record.waitingForWork && IsStalledJob(record, pawn, now))
                 {
                     Log.WarningOnce("[OmniWorkstation] released a stalled job: " + pawn,
                         Gen.HashCombineInt(pawn.thingIDNumber, 77120433));
+                    WorkFailures.NavigationFailed(pawn, pawn.pather.Destination);
                     StopIssuedJob(record);
                     record.station = null;
                     OmniWorkProxyUtility.Unassign(pawn);
@@ -2070,13 +2076,13 @@ namespace FullyAutomaticOmniCrafter
         /// 判定代理是否卡在一个完全不推进的 Job 上：Job 引用与位置在 StalledJobTimeoutTicks
         /// 内都没有变化，且它当前确实在跑一个非等待 Job。用于释放永久占用代理池的停滞
         /// Job —— 否则一旦全部代理都被占住，泵不会再收到任何事件，整张地图都会停止派发。
-        /// 代价是耗时超过该阈值的原地工作会被中断一次，之后原版会重新选中并继续。
+        /// 仅检查移动阶段，合法的长时间原地工作不属于导航停滞。
         /// </summary>
         private static bool IsStalledJob(ProxyRecord record, Pawn pawn, int now)
         {
             if (record.lastProgressTick < 0) return false;
             if (now - record.lastProgressTick <= StalledJobTimeoutTicks) return false;
-            return pawn.CurJob != null && !IsIdleJob(pawn.CurJob);
+            return pawn.CurJob != null && !IsIdleJob(pawn.CurJob) && pawn.pather != null && pawn.pather.Moving;
         }
 
         internal static bool IsIdleJob(Job job)
@@ -2746,73 +2752,40 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
-    /// <summary>
-    /// 全局候选搜索原本会在 allowed-area validator 之前逐个执行 Reachability。
-    /// 代理从工作站中心出发，先把最大距离收紧到覆盖半径，可在寻路前排除范围外目标。
-    /// </summary>
+    /// <summary>范围以工作站为圆心，不随代理取料位置漂移。</summary>
     [HarmonyPatch(typeof(GenClosest), nameof(GenClosest.ClosestThing_Global_Reachable))]
-    public static class Patch_OmniWorkProxy_ClampGlobalReachableDistance
+    public static class Patch_OmniWorkProxy_GlobalSearchFilter
     {
         [HarmonyPrefix]
-        public static void Prefix(TraverseParms traverseParams, ref float maxDistance)
+        public static void Prefix(TraverseParms traverseParams, ref Predicate<Thing> validator)
         {
-            if (OmniWorkProxyUtility.TryGetStation(traverseParams.pawn,
-                    out Building_OmniWorkstation station))
-                maxDistance = Mathf.Min(maxDistance, station.WorkRadius);
+            Pawn pawn = traverseParams.pawn;
+            if (!OmniWorkProxyUtility.IsProxy(pawn)) return;
+            Predicate<Thing> original = validator;
+            OmniWorkProxyUtility.TryGetStation(pawn, out Building_OmniWorkstation station);
+            OmniWorkFailureCache failures = OmniWorkFailureCache.For(pawn);
+            validator = thing => thing != null &&
+                (station == null || station.Covers(thing.PositionHeld)) &&
+                (failures == null || failures.Allows(pawn, null, thing)) &&
+                (original == null || original(thing));
         }
     }
 
-    /// <summary>
-    /// 代理的目标搜索必须绕开原版区域遍历。ClosestThingReachable 的主路径是
-    /// RegionwiseBFSWorker（map.regionGrid + RegionType.Set_Passable），而代理用的是"全通"
-    /// 寻路网格：封闭空间里的目标区域遍历根本扫不到，又因为 regionsSeen &lt; maxRegions 让原版
-    /// 主动放弃全局搜索，目标就永远选不中 —— 表现为封闭房间内的建造/搬运任务永不派发，
-    /// 直到玩家开墙把区域连通。
-    /// 这里把区域预算压到 1（使 regionsSeen &gt;= maxRegions，从而 flag2 = false）并允许全局
-    /// 搜索，代理直接走全局搜索；其可达性判定正是被 patch 过的代理专用网格，代价只是
-    /// 枚举候选列表加一次廉价的 Walkable 判定。同时打开整区剪枝开关，避免扫描完全位于
-    /// 覆盖范围外的 Region。
-    /// </summary>
+    /// <summary>直接搜索全局候选，彻底绕开普通区域遍历及其提前退出条件。</summary>
     [HarmonyPatch(typeof(GenClosest), nameof(GenClosest.ClosestThingReachable))]
     public static class Patch_OmniWorkProxy_ForceGlobalSearch
     {
         [HarmonyPrefix]
-        public static void Prefix(TraverseParms traverseParams, ref int searchRegionsMax,
-            ref bool forceAllowGlobalSearch, ref bool ignoreEntirelyForbiddenRegions)
-        {
-            if (!OmniWorkProxyUtility.IsProxy(traverseParams.pawn)) return;
-            searchRegionsMax = 1;
-            forceAllowGlobalSearch = true;
-            ignoreEntirelyForbiddenRegions = true;
-        }
-    }
-
-    /// <summary>
-    /// 区域遍历漏活诊断。ClosestThingReachable 的主路径是原版区域遍历（map.regionGrid +
-    /// RegionType.Set_Passable），只有在被 maxRegions 截断时才会转全局搜索；因此"原版区域
-    /// 系统认为不可达"的目标会被直接忽略，即使代理的寻路网格可以到达。本补丁只在诊断
-    /// 开关打开时，用代理网格重查一次相同的候选集，以量化这种漏活的实际规模。
-    /// </summary>
-    [HarmonyPatch(typeof(GenClosest), nameof(GenClosest.ClosestThingReachable))]
-    public static class Patch_OmniWorkProxy_DiagnoseRegionMiss
-    {
-        [HarmonyPostfix]
-        public static void Postfix(IntVec3 root, Map map, ThingRequest thingReq, PathEndMode peMode,
+        public static bool Prefix(IntVec3 root, Map map, ThingRequest thingReq, PathEndMode peMode,
             TraverseParms traverseParams, float maxDistance, Predicate<Thing> validator,
-            IEnumerable<Thing> customGlobalSearchSet, ref Thing __result)
+            IEnumerable<Thing> customGlobalSearchSet, bool lookInHaulSources, ref Thing __result)
         {
-            if (__result != null || map == null) return;
-            Pawn pawn = traverseParams.pawn;
-            if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn)) return;
-            MapComponent_OmniWorkstation manager = map.GetComponent<MapComponent_OmniWorkstation>();
-            if (manager == null || !manager.DiagnoseRegionMiss) return;
-
-            // 重查走 ClosestThing_Global_Reachable，其可达性判定正是被 patch 过的
-            // Reachability.CanReach（代理专用网格），正好用来对照区域遍历的结果。
-            IEnumerable<Thing> searchSet = customGlobalSearchSet ?? map.listerThings.ThingsMatching(thingReq);
-            Thing probe = GenClosest.ClosestThing_Global_Reachable(root, map, searchSet, peMode,
-                traverseParams, maxDistance, validator);
-            manager.NotifyRegionMissProbe(probe != null);
+            if (!OmniWorkProxyUtility.IsProxy(traverseParams.pawn)) return true;
+            __result = map == null || thingReq.IsUndefined && customGlobalSearchSet == null
+                ? null : GenClosest.ClosestThing_Global_Reachable(root, map,
+                customGlobalSearchSet ?? map.listerThings.ThingsMatching(thingReq), peMode,
+                traverseParams, maxDistance, validator, canLookInHaulableSources: lookInHaulSources);
+            return false;
         }
     }
 
@@ -2866,9 +2839,7 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 把代理接入原版寻路的独立网格。落点、"是否已到达"（Pawn_PathFollower.AtDestinationPosition
-    /// 即 CanReachImmediate）与全部可达性判定因此都交回原版执行，代理不再需要任何自定义落点
-    /// 计算，也就不存在与工作 Toil 失败条件不一致的可能。
+    /// 将携带 Pawn 的网格查询接入代理网格；导航执行和终点语义集中在 OmniWorkProxyNavigation。
     /// </summary>
     public static class Patch_OmniWorkProxy_PathGrid
     {
@@ -2904,21 +2875,6 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        /// <summary>PathFinderMapData.ParameterizeGridJob：真正把网格交给寻路 worker，路径才会穿越不可通行格。</summary>
-        [HarmonyPatch(typeof(PathFinderMapData), nameof(PathFinderMapData.ParameterizeGridJob))]
-        public static class Patch_PathFinderMapData_ParameterizeGridJob
-        {
-            [HarmonyPostfix]
-            public static void Postfix(PathRequest request, ref PathGridJob job, Map ___map)
-            {
-                Pawn pawn = request.pawn;
-                if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn) ||
-                    OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid == null) return;
-                PathingContext ctx = ___map.pathing.Get(OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid);
-                job.pathGridDirect = ctx.pathGrid.Grid_Unsafe.AsReadOnly();
-            }
-        }
-
         /// <summary>不因建筑挡路触发破墙 Job。</summary>
         [HarmonyPatch(typeof(Pawn_PathFollower), "BuildingBlockingNextPathCell")]
         public static class Patch_BuildingBlockingNextPathCell
@@ -2946,40 +2902,25 @@ namespace FullyAutomaticOmniCrafter
         public static class Patch_PawnCanOccupy
         {
             [HarmonyPostfix]
-            public static void Postfix(ref bool __result, Pawn ___pawn)
+            public static void Postfix(IntVec3 c, ref bool __result, Pawn ___pawn)
             {
-                if (OmniWorkProxyUtility.IsProxy(___pawn)) __result = true;
+                if (OmniWorkProxyUtility.IsProxy(___pawn))
+                    __result = OmniWorkProxyNavigation.Walkable(___pawn.Map, c);
             }
         }
 
-        /// <summary>
-        /// 代理的可达性放行。代理的寻路网格通行成本恒为 10，"可达"对代理等价于
-        /// "目标格在地图内且目标不是已失效对象"。原实现无条件放行，连目标已被移除、
-        /// 位于其它地图或越出地图边界的情况也返回 true，导致 JobGiver 反复选中
-        /// 根本执行不了的目标。这里先做有效性判定，再交回自定义网格判定。
-        /// </summary>
+        /// <summary>可达性与执行共享终点规则，不以普通 Region 判断代理的连通性。</summary>
         [HarmonyPatch(typeof(Reachability), nameof(Reachability.CanReach),
             new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(TraverseParms) })]
         public static class Patch_Reachability_CanReach
         {
             [HarmonyPrefix]
-            public static bool Prefix(LocalTargetInfo dest, TraverseParms traverseParams,
-                ref bool __result, Map ___map)
+            public static bool Prefix(IntVec3 start, LocalTargetInfo dest, PathEndMode peMode,
+                TraverseParms traverseParams, ref bool __result, Map ___map)
             {
                 Pawn pawn = traverseParams.pawn;
-                if (pawn == null || !OmniWorkProxyUtility.IsProxy(pawn)) return true;
-
-                if ((dest.HasThing && (dest.Thing.Destroyed || dest.Thing.Map != ___map)) ||
-                    !dest.Cell.IsValid || !dest.Cell.InBounds(___map) ||
-                    OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid == null)
-                {
-                    __result = false;
-                    return false;
-                }
-
-                __result = ___map.pathing
-                    .Get(OmniWorkstationDefOf.FAOC_OmniWorkProxyPathGrid)
-                    .pathGrid.Walkable(dest.Cell);
+                if (!OmniWorkProxyUtility.IsProxy(pawn)) return true;
+                __result = OmniWorkProxyNavigation.TryFindEnd(pawn, ___map, start, dest, peMode, out _);
                 return false;
             }
         }
@@ -2989,9 +2930,10 @@ namespace FullyAutomaticOmniCrafter
         public static class Patch_GenGrid_StandableBy
         {
             [HarmonyPostfix]
-            public static void Postfix(Pawn pawn, ref bool __result)
+            public static void Postfix(IntVec3 c, Map map, Pawn pawn, ref bool __result)
             {
-                if (OmniWorkProxyUtility.IsProxy(pawn)) __result = true;
+                if (OmniWorkProxyUtility.IsProxy(pawn))
+                    __result = OmniWorkProxyNavigation.Walkable(map, c);
             }
         }
 
@@ -3004,39 +2946,6 @@ namespace FullyAutomaticOmniCrafter
             {
                 if (OmniWorkProxyUtility.IsProxy(__instance)) __result = true;
             }
-        }
-    }
-
-    /// <summary>
-    /// 跳过逐格移动：原版寻路规划完成后，直接把代理放到路径终点，由原版自身的
-    /// AtDestinationPosition() → PatherArrived() 完成"到达"。落点仍完全由原版计算，
-    /// 这里只去掉"一格一格走过去"的过程，因此不会引入第二套落点判据。
-    /// 仅在寻路进行中的 tick 触发；空闲代理由 Patch_OmniWorkProxy_FreezeWhenInactive 跳过 Tick。
-    /// </summary>
-    [HarmonyPatch(typeof(Pawn_PathFollower), nameof(Pawn_PathFollower.PatherTick))]
-    public static class Patch_OmniWorkProxy_SkipMovement
-    {
-        [HarmonyPostfix]
-        public static void Postfix(Pawn ___pawn)
-        {
-            if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
-            Pawn_PathFollower pather = ___pawn.pather;
-            if (pather == null || !pather.Moving) return;
-
-            PawnPath path = pather.curPath;
-            if (path == null || !path.Found || path.NodesLeftCount <= 1) return;
-
-            // Peek 按"从当前位置向前"计数，故最后一项即原版算出的路径终点。
-            IntVec3 end = path.Peek(path.NodesLeftCount - 1);
-            if (!end.IsValid || end == ___pawn.Position) return;
-
-            ___pawn.Position = end;
-            // 不能用 Notify_Teleported：它内部会 StopDead()，把 moving 置 false 并清空路径，
-            // 随后 ResetToCurrentPosition 因 !moving 直接返回、不再请求新路径，pather 会永久
-            // 停住且永不触发 PatherArrived，表现为 Job 卡死。这里改调 ResetToCurrentPosition，
-            // 它同步 nextCell 并清路径，但保留 moving，因而会 SetNewPathRequest()，由原版在
-            // 下一 tick 从新位置重新寻路并自行判定 AtDestinationPosition() → PatherArrived()。
-            pather.ResetToCurrentPosition();
         }
     }
 
