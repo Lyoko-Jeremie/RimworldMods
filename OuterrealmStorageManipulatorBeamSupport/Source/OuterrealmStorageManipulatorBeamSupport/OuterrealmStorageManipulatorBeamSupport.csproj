@@ -81,6 +81,9 @@
       <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="readme.md" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- 构建后把程序集放到 mod 的 Assemblies/，RimWorld 才会加载。 -->
   <Target Name="CopyToAssemblies" AfterTargets="Build">
