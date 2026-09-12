@@ -117,6 +117,8 @@ fabric.properties
 !ImageOptFix/**/*
 !GasStove/
 !GasStove/**/*
+!OuterrealmStorageManipulatorBeamSupport/
+!OuterrealmStorageManipulatorBeamSupport/**/*
 !.gitignore
 
 !readme.md

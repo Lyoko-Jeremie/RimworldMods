@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
+using FullyAutomaticOmniCrafter.OuterrealmStorage;
 using Verse;
 
-namespace FullyAutomaticOmniCrafter.OuterrealmStorage
+namespace OuterrealmStorageManipulatorBeamSupport
 {
     internal sealed class OuterrealmBeamLease
     {
@@ -14,8 +15,12 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public bool Extracting;
     }
 
-    /// <summary>每局光束未兑现数量。只保存查询身份，不拥有实物；所有访问共用锁。</summary>
-    internal sealed class OuterrealmBeamLedger
+    /// <summary>
+    /// 每局光束未兑现数量。只保存查询身份，不拥有实物；所有访问共用锁。
+    /// 通过 IOuterrealmExternalReservation 把预留注入超维存储的全局可用量口径，
+    /// 使普通 Pawn 预留与光束预留互相可见。
+    /// </summary>
+    internal sealed class OuterrealmBeamLedger : IOuterrealmExternalReservation
     {
         private readonly object gate = new object();
         private readonly Dictionary<object, OuterrealmBeamLease> leases = new Dictionary<object, OuterrealmBeamLease>();
@@ -140,5 +145,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 if (remove != null) for (int i = 0; i < remove.Count; i++) Release(remove[i]);
             }
         }
+
+        // ── IOuterrealmExternalReservation：把光束预留注入超维存储的全局可用量口径 ──
+
+        long IOuterrealmExternalReservation.ReservedFor(OuterrealmEntry entry) => Reserved(entry);
+
+        // 查询上下文（当前线程/当前物品/当前操作者）由适配器维护，这里只做转发。
+        bool IOuterrealmExternalReservation.HasForeignReservation(Pawn caller, Thing query, OuterrealmEntry entry)
+            => OuterrealmBeamAdapter.HasForeignReservation(caller, query, entry);
+
+        long IOuterrealmExternalReservation.AdjustAvailable(Pawn caller, Thing query, long available)
+            => OuterrealmBeamAdapter.ReservationAvailable(caller, query, available);
+
+        int IOuterrealmExternalReservation.AdjustRequest(Pawn caller, Thing query, int requested, long available)
+            => OuterrealmBeamAdapter.ReservationRequest(caller, query, requested, available);
     }
 }

@@ -491,24 +491,12 @@ namespace FullyAutomaticOmniCrafter
 
             System.Type[] patchTypes = typeof(OmniCrafterMod).Assembly.GetTypes();
 
-            // 核心保护先完整安装；可选光束兼容失败不得截断选择、保存和所有权补丁。
+            // 核心保护先完整安装；可选 VEF 兼容失败不得截断选择、保存和所有权补丁。
             foreach (System.Type type in patchTypes)
                 if (System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)
-                    && !type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
                     && !type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal))
                     harmony.CreateClassProcessor(type).Patch();
             Log.Message("[OuterrealmStorage] Core Harmony patches installed.");
-            OuterrealmStorage.OuterrealmBeamAdapter.Install();
-            foreach (System.Type type in patchTypes)
-            {
-                if (!type.Name.StartsWith("Patch_Beam_", System.StringComparison.Ordinal)
-                    || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
-                try { harmony.CreateClassProcessor(type).Patch(); }
-                catch (System.Exception error)
-                {
-                    Log.Error("[OuterrealmStorage] Optional beam compatibility failed: " + type.FullName + "\n" + error);
-                }
-            }
             foreach (System.Type type in patchTypes)
             {
                 if (!type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal)

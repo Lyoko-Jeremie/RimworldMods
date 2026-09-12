@@ -4,7 +4,7 @@ using Verse.AI;
 namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 {
     /// <summary>超维存储查询对象的来源类型。查询身份只在本层区分，业务代码统一使用解析结果。</summary>
-    internal enum OuterrealmSourceKind
+    public enum OuterrealmSourceKind
     {
         None,
         Projection,
@@ -13,7 +13,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     }
 
     /// <summary>一次只读来源解析结果；不拥有库存，也不代表已经取出。</summary>
-    internal readonly struct OuterrealmSource
+    public readonly struct OuterrealmSource
     {
         public readonly OuterrealmSourceKind Kind;
         public readonly Thing QueryThing;
@@ -43,7 +43,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     /// 普通投影、唯一权威锚点和随身权威候选的统一解析与最终取出网关。
     /// Reserve 只能使用 TryResolve 做只读判断；只有实际携带、穿戴、装备等所有权边界才能调用 Checkout。
     /// </summary>
-    internal static class OuterrealmSourceResolver
+    public static class OuterrealmSourceResolver
     {
         public static bool TryResolve(Thing thing, out OuterrealmSource source)
         {

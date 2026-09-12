@@ -76,6 +76,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return t != null && ProjectionCopies.TryGetValue(t, out _);
         }
 
+        /// <summary>判断对象是否为超维存储库存中的查询对象（含无 holder 的唯一权威锚点）。
+        /// 供可选兼容层与投影判定配合使用；实现委托给补丁层工具类避免重复判定逻辑。</summary>
+        public static bool IsVaultStoredThing(Thing t)
+        {
+            return OuterrealmPatchUtil.IsVaultStoredThing(t);
+        }
+
         /// <summary>
         /// 安全的物品显示名：Corpse 在 Bugged 状态（Corpse.LabelNoCount 会 Log.Error
         /// "LabelNoCount on Corpse while Bugged" 并返回空串）——用 def 标签兜底；其余走原版 LabelCapNoCount。

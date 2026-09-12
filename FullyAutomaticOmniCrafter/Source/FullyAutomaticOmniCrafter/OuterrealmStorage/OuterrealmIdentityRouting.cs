@@ -26,9 +26,6 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private static Dictionary<OuterrealmEntry, OuterrealmAnchorState> States =>
             CurrentRuntime?.States;
 
-        /// <summary>兼容查询只读枚举；调用方不得修改字典或状态。</summary>
-        internal static Dictionary<OuterrealmEntry, OuterrealmAnchorState> StatesForReading => States;
-
         /// <summary>
         /// 当前通用安全边界：实际堆上限为 1 的 Item 视为不可替代实例。
         /// Corpse 含 Pawn 地图生命周期，暂不建立伪 Spawn 锚点，但仍保留默认仓路由元数据。
@@ -696,9 +693,9 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            // 光束尚未抓取时维持当前锚点，避免其他查询或归仓把目标迁到另一地图。
+            // 外部搬运系统尚未抓取时维持当前锚点，避免其他查询或归仓把目标迁到另一地图。
             if (CanServe(state.CurrentVault, entry)
-                && GameComponent_OuterrealmStorage.Instance?.Runtime.Beams.Reserved(entry) > 0) return;
+                && OuterrealmExternalReservationRegistry.AnyReserved(entry)) return;
             int now = Find.TickManager?.TicksGame ?? 0;
             if (state.SoftClaimant != null && now < state.SoftUntilTick && CanServe(state.CurrentVault, entry))
             {
@@ -770,7 +767,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             Thing thing = entry?.Proto;
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
-            if (entry != null && gs?.Runtime.Beams.Reserved(entry) > 0) return true;
+            if (entry != null && OuterrealmExternalReservationRegistry.AnyReserved(entry)) return true;
             OuterrealmRuntimeRegistration registration;
             Map map = gs != null && thing != null
                 && gs.Runtime.TryGetRegistration(thing, out registration)

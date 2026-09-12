@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Excluded>
+    <exclude>AGENTS.md</exclude>
+    <exclude>docs</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\.idea</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\.reasonix</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\.vs</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\Analysis</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\Docs</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\obj</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\packages</exclude>
+    <exclude>Source\FullyAutomaticOmniCrafter\Tests</exclude>
+    <exclude>Tools</exclude>
+    <exclude>*.zstd</exclude>
+    <exclude>*.dds</exclude>
+    <exclude>*.dds.zstd</exclude>
+  </Excluded>
+</Configuration>

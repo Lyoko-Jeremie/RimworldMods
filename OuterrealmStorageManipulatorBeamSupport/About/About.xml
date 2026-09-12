@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ModMetaData>
+	<name>OuterrealmTech OuterrealmStorage ManipulatorBeamSupport 超维科技 超维存储 牵引光束搬运器 适配补丁</name>
+<!--	<name>全自动万能制造机 FullyAutomaticOmniCrafter</name>-->
+    <author>Jeremie</author>
+    <supportedVersions>
+		<li>1.6</li>
+    </supportedVersions>
+	<packageId>Jeremie.OuterrealmTech.OuterrealmStorage.ManipulatorBeamSupport</packageId>
+    <description>
+[h1] 超维科技 超维存储 牵引光束搬运器 适配补丁 [/h1]
+
+为超维存储添加对牵引光束搬运器的适配支持
+
+为避免牵引光束搬运器更新影响超维存储Mod，将相关适配逻辑提取为独立的mod。
+
+[hr][/hr]
+
+Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmStorageManipulatorBeamSupport
+
+---
+
+[h1] OuterrealmTech OuterrealmStorage ManipulatorBeamSupport [/h1]
+
+Add support for Manipulator Beam Emitter to the OuterrealmTech's OuterrealmStorage
+
+[hr][/hr]
+
+Source Code : https://github.com/Lyoko-Jeremie/RimworldMods/tree/master/OuterrealmStorageManipulatorBeamSupport
+
+	</description>
+	<loadBefore>
+	</loadBefore>
+	<loadAfter>
+		<li>Jeremie.Fully.Automatic.OmniCrafter</li>
+		<li>natsuki.manipulatorbeam</li>
+	</loadAfter>
+	<modDependencies>
+		<li>
+			<packageId>brrainz.harmony</packageId>
+			<displayName>Harmony</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+			<downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+		</li>
+		<li>
+			<packageId>natsuki.manipulatorbeam</packageId>
+			<displayName>Manipulator Beam Emitter</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/3683998684</steamWorkshopUrl>
+		</li>
+		<li>
+			<packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>
+			<displayName>OuterrealmTech 超维科技</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/3712146789</steamWorkshopUrl>
+		</li>
+	</modDependencies>
+</ModMetaData>

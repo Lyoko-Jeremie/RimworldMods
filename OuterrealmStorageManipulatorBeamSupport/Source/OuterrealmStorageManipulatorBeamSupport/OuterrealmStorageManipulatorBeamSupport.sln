@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37628.2 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OuterrealmStorageManipulatorBeamSupport", "OuterrealmStorageManipulatorBeamSupport.csproj", "{E58F0F35-466E-4E70-9180-9AE3EE60AEDE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullyAutomaticOmniCrafter", "..\..\..\FullyAutomaticOmniCrafter\Source\FullyAutomaticOmniCrafter\FullyAutomaticOmniCrafter.csproj", "{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E58F0F35-466E-4E70-9180-9AE3EE60AEDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E58F0F35-466E-4E70-9180-9AE3EE60AEDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E58F0F35-466E-4E70-9180-9AE3EE60AEDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E58F0F35-466E-4E70-9180-9AE3EE60AEDE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {71C9BCD6-0D20-4047-B5B0-017FED3ADBDC}
+	EndGlobalSection
+EndGlobal

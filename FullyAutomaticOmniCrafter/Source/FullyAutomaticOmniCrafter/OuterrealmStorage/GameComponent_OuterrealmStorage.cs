@@ -145,7 +145,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public GameComponent_OuterrealmStorage(Game game)
         {
             ownerGame = game;
-            Runtime = new OuterrealmStorageRuntimeState(game, NotifyReservationChanged);
+            Runtime = new OuterrealmStorageRuntimeState(game);
         }
 
         public override void LoadedGame()
@@ -1116,6 +1116,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             reservationVersion++;
         }
 
+        /// <summary>该条目是否正处于 DoBill 提交中（提交期间不暴露暂时释放的数量）。
+        /// 供可选兼容层读取，避免其直接依赖 Runtime 内部结构。</summary>
+        public bool IsTransferring(OuterrealmEntry entry)
+        {
+            return entry != null && Runtime.Bills.IsTransferring(entry);
+        }
+
+        /// <summary>该仓库范围内已注册的唯一锚点集合（仅供只读遍历）。
+        /// 供可选兼容层按仓查询，避免每次扫描遍历整个全局账本。</summary>
+        public HashSet<OuterrealmRuntimeRegistration> RegistrationsFor(Building_OuterrealmVault vault)
+        {
+            return Runtime.RegistrationsFor(vault);
+        }
+
         /// <summary>返回该全局条目已被所有地图、所有终端预留的数量。</summary>
         public long ReservedCountOf(OuterrealmEntry entry)
         {
@@ -1124,11 +1138,11 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 return 0L;
             }
             // Checkout 的 Comp/容器回调可能重入选料；提交过程中不暴露暂时释放的数量。
-            if (Runtime.Bills.IsTransferring(entry) || Runtime.Beams.IsExtracting(entry)) return entry.Count;
+            if (Runtime.Bills.IsTransferring(entry) || OuterrealmExternalReservationRegistry.AnyExtracting(entry)) return entry.Count;
             EnsureReservedTotals();
             long reserved;
             return (reservedTotals.TryGetValue(entry, out reserved) ? reserved : 0L)
-                + Runtime.Beams.Reserved(entry);
+                + OuterrealmExternalReservationRegistry.ReservedTotal(entry);
         }
 
         /// <summary>预留版本变化后仅重建一次全局缓存，避免每座仓分别扫描同一批 reservation。</summary>
