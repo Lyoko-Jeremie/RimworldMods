@@ -1,22 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Reflection;
 using FullyAutomaticOmniCrafter;
 using FullyAutomaticOmniCrafter.OuterrealmStorage;
-using HarmonyLib;
 using RimWorld;
 using Verse;
 
 namespace OuterrealmStorageManipulatorBeamSupport
 {
     /// <summary>
-    /// 新版牵引光束（IBeamOperator 协议）与超维存储的边界适配器。
+    /// 新版牵引光束（IBeamOperator 协议）与超维存储的边界适配器：11 个 Harmony 边界的实现。
     ///
-    /// 编译期引用 ManipulatorBeam.dll 与主 mod 源码，但第三方类型只经 AccessTools 字符串
-    /// 解析（TypeByName / GetMethod），运行时调用使用表达式树编译委托，不重复反射。
-    /// 未安装或签名变化时 Require 抛异常：整组补丁回滚并写日志，主 mod 不受影响。
+    /// 反射绑定与安装流程分别在 OuterrealmBeamBinding / OuterrealmBeamInstaller；本文件只放
+    /// 边界逻辑与线程局部状态。第三方类型一律经委托字段访问（安装时用表达式树编译），
+    /// 边界方法内不做反射。
     ///
     /// 为什么不需要「借种子 / 注入候选」：新版光束的源扫描是
     /// BeamManipulatorUtility.FillTransferQueue / ScanForAnyHaulWork 按
@@ -24,24 +21,30 @@ namespace OuterrealmStorageManipulatorBeamSupport
     /// 查询投影与唯一权威锚点都经 map.listerThings.Add 注册（伪 Spawned），因此光束能自然
     /// 发现它们；旧版按 cell.GetThingList(thingGrid) 逐格扫描才需要种子与注入。
     ///
-    /// 安装的 10 个边界见 Install。
+    /// 其中 AdvanceChannel 是续搬修正：Checkout 取空条目后主 mod 会移除源投影，光束据此中止
+    /// 搬运、把在途实体丢回 vault 格并被自动吸收，形成无限循环。
     /// </summary>
     internal static class OuterrealmBeamAdapter
     {
-        private const string PatchId = "Jeremie.OuterrealmStorage.ManipulatorBeamSupport";
-        private static Func<object, Map> mapOf;
-        private static Func<object, Pawn> pawnOf;
-        private static Func<object, int> ownerOf;
-        private static Func<object, object> manipulatorOf;
-        private static Func<object, Thing> thingOf, containerOf;
-        private static Func<object, IntVec3> destinationOf;
-        private static Func<object, int> countOf;
-        private static Func<object, bool> stripOf;
-        private static Action<object, int> setCount;
-        private static Action<object, Thing> setDestinationContainer;
-        private static Action<object, int> releaseClaim;
-        private static Action<object, Thing> releaseInTransit;
-        private static volatile bool enabled;
+        internal const string PatchId = "Jeremie.OuterrealmStorage.ManipulatorBeamSupport";
+        // 以下委托与开关由 OuterrealmBeamInstaller.Install 赋值。
+        internal static Func<object, Map> mapOf;
+        internal static Func<object, Pawn> pawnOf;
+        internal static Func<object, int> ownerOf;
+        internal static Func<object, object> manipulatorOf;
+        internal static Func<object, Thing> thingOf, containerOf;
+        internal static Func<object, IntVec3> destinationOf;
+        internal static Func<object, int> countOf;
+        internal static Func<object, bool> stripOf;
+        internal static Action<object, int> setCount;
+        internal static Action<object, Thing> setDestinationContainer;
+        // 续搬用（见 AdvancePrefix）：通道 → transfer、通道 → 在途实体、transfer.thing 赋值。
+        internal static Func<object, object> transferOf;
+        internal static Func<object, Thing> carriedInTransitOf;
+        internal static Action<object, Thing> setThing;
+        internal static Action<object, int> releaseClaim;
+        internal static Action<object, Thing> releaseInTransit;
+        internal static volatile bool enabled;
         internal static bool IsInstalled => enabled;
 
         // 查询上下文只影响当前线程、当前物品和当前 Pawn，异常时由 Finalizer 恢复。
@@ -83,133 +86,6 @@ namespace OuterrealmStorageManipulatorBeamSupport
         internal static int ReservationRequest(Pawn pawn, Thing thing, int requested, long available)
             => query.Thing == thing && query.Pawn == pawn
                 ? (int)Math.Min(requested, Math.Max(0, available)) : requested;
-
-        public static void Install()
-        {
-            Type op = AccessTools.TypeByName("ManipulatorBeam.IBeamOperator");
-            if (op == null) return;
-            Harmony harmony = new Harmony(PatchId);
-            try
-            {
-                Type utility = RequiredType("BeamManipulatorUtility");
-                Type building = RequiredType("Building_BeamManipulator");
-                Type transfer = RequiredType("BeamTransfer");
-                Type claims = RequiredType("BeamClaimUtility");
-                Type set = typeof(HashSet<IntVec3>);
-                MethodInfo destination = Require(utility, "TryFindStorageDestinationFor", true, typeof(bool),
-                    new[] { "op", "thing", "excludedDestinations", "ownerKey", "destination" },
-                    op, typeof(Thing), set, typeof(int), typeof(IntVec3).MakeByRefType());
-                MethodInfo candidate = Require(utility, "CanBeamTransferThing", true, typeof(bool),
-                    new[] { "op", "thing", "ownerKey" }, op, typeof(Thing), typeof(int));
-                MethodInfo enqueue = Require(utility, "TryClaimAndEnqueue", true, typeof(bool),
-                    new[] { "transfer", "destinationQueue", "excludedThings", "ownerKey" },
-                    transfer, typeof(List<>).MakeGenericType(transfer), typeof(HashSet<Thing>), typeof(int));
-                MethodInfo take = Require(building, "TryLiftForTransfer", false, typeof(bool),
-                    new[] { "op", "transfer", "carriedThing" }, op, transfer, typeof(Thing).MakeByRefType());
-                MethodInfo extract = Require(building, "ExtractThingForTransfer", true, typeof(Thing), new[] { "transfer" }, transfer);
-                MethodInfo release = Require(claims, "ReleaseClaim", true, typeof(void), new[] { "transfer", "ownerKey" }, transfer, typeof(int));
-                MethodInfo clear = Require(claims, "ReleaseAllClaimsForOwner", true, typeof(void), new[] { "map", "ownerKey" }, typeof(Map), typeof(int));
-                MethodInfo claimContainer = Require(claims, "TryClaimDestinationContainer", true, typeof(bool),
-                    new[] { "transfer", "ownerKey" }, transfer, typeof(int));
-                MethodInfo finish = Require(utility, "FinishTransfer", true, typeof(bool),
-                    new[] { "op", "carriedThing", "transfer", "fallbackCell" },
-                    op, typeof(Thing), transfer, typeof(IntVec3));
-                MethodInfo releaseTransit = Require(building, "ReleaseInTransitThing", false, typeof(void),
-                    new[] { "thing" }, typeof(Thing));
-                // 目的地保护也是协议的一部分，不能只安装源端。
-                MethodInfo group = Require(utility, "IsBeamStorageGroupAllowed", true, typeof(bool), new[] { "group" }, typeof(SlotGroup));
-                mapOf = Getter<Map>(op, "Map", false);
-                pawnOf = Getter<Pawn>(op, "Pawn", false);
-                ownerOf = Getter<int>(op, "OwnerKey", false);
-                manipulatorOf = Getter<object>(op, "Manipulator", false);
-                thingOf = Getter<Thing>(transfer, "thing", true);
-                containerOf = Getter<Thing>(transfer, "destinationContainer", true);
-                countOf = Getter<int>(transfer, "count", true);
-                stripOf = Getter<bool>(transfer, "isStripJob", true);
-                destinationOf = Getter<IntVec3>(transfer, "destination", true);
-                setCount = Setter<int>(transfer, "count");
-                // 目的地「格 → 容器」改写用字段赋值：transfer 对象身份必须保持不变，
-                // 因为新版 FillTransferQueue 在构造该 transfer 时已对它做过 claim 登记。
-                setDestinationContainer = Setter<Thing>(transfer, "destinationContainer");
-                releaseClaim = Bind<Action<object, int>>(release);
-                ParameterExpression machine = Expression.Parameter(typeof(object), "machine");
-                ParameterExpression carried = Expression.Parameter(typeof(Thing), "carried");
-                releaseInTransit = Expression.Lambda<Action<object, Thing>>(Expression.Call(
-                    Expression.Convert(machine, building), releaseTransit, carried), machine, carried).Compile();
-
-                Patch(harmony, candidate, "CandidatePrefix", null, "CandidateFinalizer");
-                Patch(harmony, destination, "DestinationPrefix", null, "DestinationFinalizer");
-                Patch(harmony, enqueue, "EnqueuePrefix", null, "EnqueueFinalizer");
-                Patch(harmony, take, "LiftPrefix", null, "LiftFinalizer");
-                Patch(harmony, extract, "ExtractPrefix");
-                Patch(harmony, release, null, null, "ReleaseFinalizer");
-                Patch(harmony, clear, null, null, "ClearFinalizer");
-                Patch(harmony, claimContainer, "ContainerClaimPrefix");
-                Patch(harmony, finish, "FinishPrefix");
-                Patch(harmony, group, null, "GroupPostfix");
-                enabled = true;
-                Log.Message("[OuterrealmStorageManipulatorBeamSupport] IBeamOperator compatibility installed (10 boundaries).");
-            }
-            catch (Exception error)
-            {
-                enabled = false;
-                harmony.UnpatchAll(PatchId);
-                Log.Error("[OuterrealmStorageManipulatorBeamSupport] IBeamOperator compatibility disabled; installation rolled back. " + error);
-            }
-        }
-
-        private static Type RequiredType(string name) => AccessTools.TypeByName("ManipulatorBeam." + name)
-            ?? throw new MissingMemberException(name);
-
-        private static MethodInfo Require(Type type, string name, bool isStatic, Type result, string[] names, params Type[] types)
-        {
-            MethodInfo method = type.GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic |
-                (isStatic ? BindingFlags.Static : BindingFlags.Instance), null, types, null);
-            if (method == null || method.ReturnType != result || method.IsStatic != isStatic || method.ContainsGenericParameters)
-                throw new MissingMethodException(type.FullName, name);
-            ParameterInfo[] args = method.GetParameters();
-            for (int i = 0; i < args.Length; i++)
-                if (args[i].Name != names[i] || args[i].IsOut != types[i].IsByRef || args[i].IsIn)
-                    throw new MissingMethodException(type.FullName, name + " parameter " + names[i]);
-            return method;
-        }
-
-        private static Func<object, T> Getter<T>(Type type, string name, bool field)
-        {
-            ParameterExpression arg = Expression.Parameter(typeof(object));
-            Expression member = field ? (Expression)Expression.Field(Expression.Convert(arg, type), name)
-                : Expression.Property(Expression.Convert(arg, type), name);
-            if (!typeof(T).IsAssignableFrom(member.Type)) throw new MissingMemberException(type.FullName, name);
-            return Expression.Lambda<Func<object, T>>(Expression.Convert(member, typeof(T)), arg).Compile();
-        }
-
-        private static Action<object, T> Setter<T>(Type type, string name)
-        {
-            ParameterExpression arg = Expression.Parameter(typeof(object));
-            ParameterExpression value = Expression.Parameter(typeof(T));
-            return Expression.Lambda<Action<object, T>>(Expression.Assign(Expression.Field(Expression.Convert(arg, type), name), value), arg, value).Compile();
-        }
-
-        private static T Bind<T>(MethodInfo method) where T : Delegate
-        {
-            ParameterInfo[] signature = typeof(T).GetMethod("Invoke").GetParameters();
-            ParameterInfo[] target = method.GetParameters();
-            ParameterExpression[] args = new ParameterExpression[signature.Length];
-            Expression[] call = new Expression[args.Length];
-            for (int i = 0; i < args.Length; i++)
-            {
-                args[i] = Expression.Parameter(signature[i].ParameterType, signature[i].Name);
-                call[i] = signature[i].ParameterType == target[i].ParameterType ? (Expression)args[i] : Expression.Convert(args[i], target[i].ParameterType);
-            }
-            return Expression.Lambda<T>(Expression.Call(method, call), args).Compile();
-        }
-
-        private static void Patch(Harmony harmony, MethodInfo target, string prefix = null, string postfix = null, string finalizer = null)
-        {
-            harmony.Patch(target, prefix == null ? null : new HarmonyMethod(typeof(OuterrealmBeamAdapter), prefix),
-                postfix == null ? null : new HarmonyMethod(typeof(OuterrealmBeamAdapter), postfix),
-                finalizer: finalizer == null ? null : new HarmonyMethod(typeof(OuterrealmBeamAdapter), finalizer));
-        }
 
         /// <summary>该格是否为某 vault 的存储格；是则返回 vault，否则 null（O(1) slotGroup 查询）。</summary>
         private static Building_OuterrealmVault VaultAtCell(IntVec3 cell, Map map)
@@ -268,12 +144,19 @@ namespace OuterrealmStorageManipulatorBeamSupport
             __state = query;
             query = default;
             if (!enabled || !IsStored(thing)) return true;
-            if (op == null || !OuterrealmSourceResolver.TryResolve(thing, out OuterrealmSource source) || !Allowed(source, true)
+            OuterrealmSource source;
+            bool resolved = OuterrealmSourceResolver.TryResolve(thing, out source);
+            if (op == null || !resolved || !Allowed(source, true)
                 || Ledger?.IsExtracting(source.Entry) == true || Storage.IsTransferring(source.Entry))
-            { __result = false; return false; }
+            {
+                __result = false; return false;
+            }
             long own = Ledger?.Own(thing, ownerKey) ?? 0;
             long available = source.Entry.Count - Storage.ReservedCountOf(source.Entry) + own;
-            if (available <= 0) { __result = false; return false; }
+            if (available <= 0)
+            {
+                __result = false; return false;
+            }
             query = new QueryScope { Thing = thing, Pawn = pawnOf(op), Entry = source.Entry, Own = own };
             return true;
         }
@@ -286,7 +169,11 @@ namespace OuterrealmStorageManipulatorBeamSupport
             __state = vaultStorageSearch;
             vaultStorageSearch = enabled && IsStored(thing);
             if (!vaultStorageSearch) return true;
-            if (OuterrealmSourceResolver.TryResolve(thing, out OuterrealmSource source) && Allowed(source, false)) return true;
+            OuterrealmSource source;
+            if (OuterrealmSourceResolver.TryResolve(thing, out source) && Allowed(source, false))
+            {
+                return true;
+            }
             __result = false;
             return false;
         }
@@ -297,7 +184,36 @@ namespace OuterrealmStorageManipulatorBeamSupport
         private static void GroupPostfix(SlotGroup group, ref bool __result)
         {
             if (__result && group?.parent is Building_OuterrealmVault vault)
+            {
+                // 源是 vault 物品时（vaultStorageSearch）排除 vault 目的地，避免共享库存循环搬运。
                 __result = vault.HaulDestinationEnabled && !vaultStorageSearch;
+            }
+        }
+
+        /// <summary>通道推进前的续搬修正。
+        ///
+        /// 背景：Checkout 取空条目后，主 mod 会移除该条目并让各 vault 视图同步移除源投影
+        ///（NotifyEntriesEmptied → view.SyncEntry）。而光束 ManipulatorBeam.AdvanceChannel 每 tick
+        /// 都检查 channel.activeTransfer.thing，一旦发现 Destroyed 就 AbortChannel，把已提取的
+        /// 在途实体丢回设备落点附近——那里正是 vault 格，于是被自动吸收回库、投影重建、光束
+        /// 再次搬运，形成无限循环。
+        ///
+        /// 搬运的真实载体是通道里的 carriedThingInTransit（本适配器 Checkout 出的权威实例），
+        /// transfer.thing 对光束只是源的身份凭证，因此只要该 transfer 仍属于本账本（本次搬运
+        /// 仍在途），就把源引用换成在途实体，让搬运照常走完 FinishTransfer 正常入库。
+        /// 其余情况一律不改动。</summary>
+        private static void AdvancePrefix(object channel)
+        {
+            if (!enabled || channel == null) return;
+            object transfer = transferOf(channel);
+            if (transfer == null) return;
+            Thing source = thingOf(transfer);
+            if (source != null && !source.Destroyed) return;
+            OuterrealmBeamLease lease;
+            if (Ledger?.TryGet(transfer, out lease) != true) return;
+            Thing carried = carriedInTransitOf(channel);
+            if (carried == null || carried.Destroyed) return;
+            setThing(transfer, carried);
         }
 
         private static bool CanDepositInto(Building_OuterrealmVault vault, Map map, Thing thing)
@@ -320,34 +236,44 @@ namespace OuterrealmStorageManipulatorBeamSupport
                 return true;
             Thing destinationContainer = containerOf(transfer);
             object manipulator = manipulatorOf(op);
-            if (manipulator == null) return true;
+            if (manipulator == null)
+            {
+                return true;
+            }
 
             if (destinationContainer is Building_MatterEnergyConverter converter)
             {
                 CompTransporter transporter = converter.GetComp<CompTransporter>();
                 ThingOwner innerContainer = transporter?.innerContainer;
-                if (innerContainer == null) return true;
+                if (innerContainer == null)
+                {
+                    return true;
+                }
 
                 // MEC 同时继承 Building_Storage。光束通用容器路径会先调用其存储区
                 // IHaulDestination.Accepts，错误地用地面存储筛选器拒绝装载模式中的物品。
                 // 直接写入 CompTransporter.innerContainer；ThingOwner.NotifyAdded 会自动调用
                 // CompTransporter.Notify_ThingAdded，扣减 leftToLoad 并刷新质量缓存。
                 releaseInTransit(manipulator, carriedThing);
-                if (!innerContainer.TryAdd(carriedThing, true)) return true;
+                bool mecAdded = innerContainer.TryAdd(carriedThing, true);
+                if (!mecAdded) return true;
                 __result = true;
                 return false;
             }
 
             if (!(destinationContainer is Building_OuterrealmVault vault)
                 || !CanDepositInto(vault, mapOf(op), carriedThing))
+            {
                 return true;
+            }
 
             // BeamContainerUtility 以 Destroyed/stackCount/holdingOwner 判断交付成功；但 vault
             // 的不可堆叠权威实例（尸体等）按设计保持未生成且无 holder，会被误判失败并重新落地。
             // 在此直接以 vault 的 Deposit 结果为提交结果，并从光束在途容器解除，禁止 finally
             // ReturnInTransitThing + EnsureCarriedThingLanded 把已入库的权威实例再次放回地图。
             releaseInTransit(manipulator, carriedThing);
-            if (!vault.view.TryAdd(carriedThing, false)) return true;
+            bool added = vault.view.TryAdd(carriedThing, false);
+            if (!added) return true;
             __result = true;
             return false;
         }
@@ -360,13 +286,20 @@ namespace OuterrealmStorageManipulatorBeamSupport
             RewriteVaultDestination(transfer);
             Thing thing = thingOf(transfer);
             if (!IsStored(thing)) return true;
-            if (!UnityData.IsInMainThread || stripOf(transfer) || !OuterrealmSourceResolver.TryResolve(thing, out OuterrealmSource source)
-                || !Allowed(source, ForUse(transfer))) { __result = false; return false; }
+            OuterrealmSource source;
+            bool resolved = OuterrealmSourceResolver.TryResolve(thing, out source);
+            bool allowed = resolved && Allowed(source, ForUse(transfer));
+            if (!UnityData.IsInMainThread || stripOf(transfer) || !resolved || !allowed)
+            {
+                __result = false; return false;
+            }
             int requested = countOf(transfer) > 0 ? Math.Min(countOf(transfer), thing.stackCount) : thing.stackCount;
             long available = Math.Max(0, source.Entry.Count - Storage.ReservedCountOf(source.Entry));
             requested = (int)Math.Min(requested, available);
             if (Ledger == null || !Ledger.TryAcquire(transfer, source, thing.Map, ownerKey, requested, available))
-            { __result = false; return false; }
+            {
+                __result = false; return false;
+            }
             __state = new EnqueueState { Acquired = true, AlreadyExcluded = excludedThings.Contains(thing) };
             setCount(transfer, requested);
             return true;
@@ -377,7 +310,8 @@ namespace OuterrealmStorageManipulatorBeamSupport
         {
             if (__state.Acquired)
             {
-                bool valid = __exception == null && __result && Ledger.Resize(transfer, countOf(transfer));
+                bool resized = false;
+                bool valid = __exception == null && __result && (resized = Ledger.Resize(transfer, countOf(transfer)));
                 if (!valid)
                 {
                     __result = false;
@@ -400,16 +334,33 @@ namespace OuterrealmStorageManipulatorBeamSupport
             if (!IsStored(thingOf(transfer)))
             {
                 // 锚点已被其他路径取出时，旧队列不能继续搬走现在属于地图的实物。
-                if (Ledger?.TryGet(transfer, out OuterrealmBeamLease stale) != true) return true;
+                OuterrealmBeamLease stale;
+                if (Ledger?.TryGet(transfer, out stale) != true)
+                {
+                    return true;
+                }
                 Ledger.Release(transfer);
                 __result = false;
                 return false;
             }
-            if (op == null || !UnityData.IsInMainThread || Ledger == null || !Ledger.TryGet(transfer, out OuterrealmBeamLease lease)
-                || lease.Extracting || lease.Owner != ownerOf(op) || lease.Map != mapOf(op)
-                || !OuterrealmSourceResolver.TryResolve(thingOf(transfer), out OuterrealmSource source)
-                || source.Entry != lease.Source.Entry || !Allowed(source, ForUse(transfer)))
-            { __result = false; return false; }
+            OuterrealmBeamLease lease = null;
+            OuterrealmSource source = default(OuterrealmSource);
+            string why = null;
+            if (op == null) why = "op=null";
+            else if (!UnityData.IsInMainThread) why = "非主线程";
+            else if (Ledger == null) why = "Ledger=null";
+            else if (!Ledger.TryGet(transfer, out lease)) why = "无租约";
+            else if (lease.Extracting) why = "已在提取中";
+            else if (lease.Owner != ownerOf(op)) why = "owner 不匹配";
+            else if (lease.Map != mapOf(op)) why = "map 不匹配";
+            else if (!OuterrealmSourceResolver.TryResolve(thingOf(transfer), out source)) why = "无法解析来源";
+            else if (source.Entry != lease.Source.Entry) why = "条目已变化";
+            else if (!Allowed(source, ForUse(transfer))) why = "权限不允许";
+            if (why != null)
+            {
+                __result = false;
+                return false;
+            }
             __state = new LiftState { Previous = lift, Lease = lease, Storage = Storage };
             lift = __state;
             return true;
@@ -417,16 +368,29 @@ namespace OuterrealmStorageManipulatorBeamSupport
 
         private static bool ExtractPrefix(object transfer, ref Thing __result)
         {
-            if (!enabled || transfer == null || !IsStored(thingOf(transfer))) return true;
+            if (!enabled || transfer == null) return true;
+            if (!IsStored(thingOf(transfer)))
+            {
+                return true;
+            }
             __result = null;
             LiftState state = lift;
-            if (state == null || state.Lease.Transfer != transfer || state.Lease.Extracting) return false;
+            if (state == null || state.Lease.Transfer != transfer || state.Lease.Extracting)
+            {
+                return false;
+            }
             OuterrealmBeamLease lease = state.Lease;
             int count = countOf(transfer);
-            if (count <= 0 || count != lease.Count || !Allowed(lease.Source, ForUse(transfer))
-                || lease.Source.Entry.Count - state.Storage.ReservedCountOf(lease.Source.Entry) + lease.Count < count) return false;
-            if (Ledger == null || !Ledger.BeginExtraction(lease)) return false;
-            // 预留在 Checkout 完成前持续有效；回调重入不能再次获得同一额度。
+            bool allowed = Allowed(lease.Source, ForUse(transfer));
+            long avail = lease.Source.Entry.Count - state.Storage.ReservedCountOf(lease.Source.Entry) + lease.Count;
+            if (count <= 0 || count != lease.Count || !allowed || avail < count)
+            {
+                return false;
+            }
+            if (Ledger == null || !Ledger.BeginExtraction(lease))
+            {
+                return false;
+            }
             state.Actual = OuterrealmSourceResolver.Checkout(lease.Source, count);
             __result = state.Actual;
             return false;
@@ -438,21 +402,40 @@ namespace OuterrealmStorageManipulatorBeamSupport
             try
             {
                 Thing actual = __state.Actual;
-                if (actual != null && !actual.Destroyed && !actual.Spawned && actual.holdingOwner == null)
+                bool returned = actual != null && !actual.Destroyed && !actual.Spawned && actual.holdingOwner == null;
+                if (returned)
                     __state.Storage.Deposit(actual, __state.Lease.Source.Vault);
             }
             finally
             {
-                try { Ledger?.Release(__state.Lease.Transfer, true); }
+                // 提取成功且物品在途时**不能**在这里结束提取：Checkout 把条目取空后，
+                // 主 mod 会立即移除条目并同步销毁源投影，光束随后每 tick 检查
+                // transfer.thing.Destroyed 并走 AbortChannel，把在途物品丢回 vault 格 →
+                // 被 vault 吸收 → 投影重建 → 再次搬运 → 无限循环。
+                // 因此租约与提取隔离保留到光束的搬运唯一终点 ReleaseClaim（ReleaseFinalizer）。
+                // 回存（本次搬运失败）、提取失败或异常路径则立即结束，避免条目被永久冻结。
+                try
+                {
+                    Thing actual = __state.Actual;
+                    bool inTransit = actual != null && !actual.Destroyed && !actual.Spawned && actual.holdingOwner != null;
+                    Ledger?.Release(__state.Lease.Transfer, __exception != null || !inTransit);
+                }
                 finally { lift = __state.Previous; }
             }
             return __exception;
         }
 
         private static Exception ReleaseFinalizer(object transfer, Exception __exception)
-        { Ledger?.Release(transfer); return __exception; }
+        {
+            // 搬运唯一终点：此时才结束提取隔离并清租约（提取中的租约只在这里被真正释放）。
+            Ledger?.Release(transfer, true);
+            return __exception;
+        }
 
         private static Exception ClearFinalizer(Map map, int ownerKey, Exception __exception)
-        { Ledger?.ReleaseOwner(map, ownerKey); return __exception; }
+        {
+            Ledger?.ReleaseOwner(map, ownerKey);
+            return __exception;
+        }
     }
 }

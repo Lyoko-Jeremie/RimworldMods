@@ -28,7 +28,9 @@
 
 ```
 Source/OuterrealmStorageManipulatorBeamSupport/
-├─ OuterrealmBeamAdapter.cs           边界适配器：反射绑定 + 10 个 Harmony 边界
+├─ OuterrealmBeamAdapter.cs           11 个 Harmony 边界的实现（边界逻辑 + 线程局部状态）
+├─ OuterrealmBeamBinding.cs           反射绑定与 Harmony 辅助（Require/Getter/Setter/Bind/Patch）
+├─ OuterrealmBeamInstaller.cs         把 11 个边界安装到光束上（§4.2），失败整组回滚
 ├─ OuterrealmBeamLedger.cs            每局预留账本，实现主 mod 的 IOuterrealmExternalReservation
 ├─ OuterrealmBeamSupportComponent.cs  每局状态载体 + [StaticConstructorOnStartup] 安装入口
 ├─ Properties/AssemblyInfo.cs
@@ -39,7 +41,14 @@ Source/OuterrealmStorageManipulatorBeamSupport/
    └─ BeamCompat.csproj
 ```
 
+**没有任何诊断日志**：适配器只输出一行安装成功（`IBeamOperator compatibility installed (11 boundaries)`）
+或安装失败的错误；曾经用于定位 §5.4 循环故障的 `[BeamSupport#N]` 全量日志已随排查结束移除。
+需要再次排查时，临时在边界方法里加 `Log.Message` 并把高频路径（候选扫描、目的地搜索）排除在外，
+否则正常搬运会把日志刷爆。
+
 构建产物由 csproj 的 `CopyToAssemblies` Target 自动复制到 `../../Assemblies/`。
+**构建前请退出游戏**：`Assemblies/*.dll` 被运行中的 RimWorld 映射锁定，复制会以
+`MSB3027/MSB3021` 失败，而游戏仍会加载旧 dll（表现为「改了代码却没有效果/没有日志」）。
 
 ---
 
@@ -119,7 +128,7 @@ public static class OuterrealmExternalReservationRegistry
 
 ---
 
-## 4. 新版光束协议与安装的 10 个边界
+## 4. 新版光束协议与安装的 11 个边界
 
 ### 4.1 为什么不需要「借种子 + 注入候选」
 
@@ -131,7 +140,7 @@ public static class OuterrealmExternalReservationRegistry
 结论：新版**自然发现** vault 物品，因此本适配器**删除**了 `ScanForAnyHaulWork` 补丁与
 `BatchPostfix` 的源注入 / Cursor 轮转逻辑。不要重新引入它们。
 
-### 4.2 安装的 10 个边界
+### 4.2 安装的 11 个边界
 
 `PatchId = "Jeremie.OuterrealmStorage.ManipulatorBeamSupport"`，全部安装成功后才置 `enabled = true`；
 任一 `Require` 抛出即 `UnpatchAll` 回滚并写日志，**主 mod 不受影响**。
@@ -143,18 +152,19 @@ public static class OuterrealmExternalReservationRegistry
 | 3 | `BeamManipulatorUtility.TryClaimAndEnqueue` | Prefix + Finalizer | 目的地格→容器改写；申请条目级数量预留；失败清理队列、排除集合与双方 claim |
 | 4 | `Building_BeamManipulator.TryLiftForTransfer` | Prefix + Finalizer | 最终权限与设备身份复查；Checkout 后孤立实物同步回存 |
 | 5 | `Building_BeamManipulator.ExtractThingForTransfer` | Prefix | 普通投影与唯一锚点统一 Checkout（覆盖整堆不经 SplitOff 的分支） |
-| 6 | `BeamClaimUtility.ReleaseClaim` | Finalizer | 取消或完成时幂等释放数量预留 |
-| 7 | `BeamClaimUtility.ReleaseAllClaimsForOwner` | Finalizer | 设备整机取消时释放本设备未兑现预留 |
+| 6 | `BeamClaimUtility.ReleaseClaim` | Finalizer | 取消或完成时幂等释放数量预留；**搬运的唯一终点**，在此结束提取隔离 |
+| 7 | `BeamClaimUtility.ReleaseAllClaimsForOwner` | Finalizer | 设备整机取消时**强制**释放本设备全部预留（含提取中的） |
 | 8 | `BeamClaimUtility.TryClaimDestinationContainer` | Prefix | vault 是无限容量吸收端，豁免第三方的容器独占锁 |
 | 9 | `BeamManipulatorUtility.FinishTransfer` | Prefix | 以 vault 的 `Deposit` 结果为提交结果；MEC 装载直写 `innerContainer` |
 | 10 | `BeamManipulatorUtility.IsBeamStorageGroupAllowed` | Postfix | 遵守 `HaulDestinationEnabled`（禁止存入、冻结） |
+| 11 | `Building_BeamManipulator.AdvanceChannel` | Prefix | **续搬修正**：源投影已被空条目清理移除时，把 `transfer.thing` 换成在途实体，避免搬运中止后回库循环（§5.4） |
 
 签名解析统一走 `RequiredType(...)` + `Require(type, name, isStatic, result, paramNames, paramTypes)`：
 **同名方法存在不代表兼容** —— 参数名、参数个数、out/ref、返回值与静态性全部核对。
 
 ---
 
-## 5. 三条核心机制
+## 5. 四条核心机制
 
 ### 5.1 源发现与候选放行
 
@@ -175,8 +185,15 @@ public static class OuterrealmExternalReservationRegistry
 
 - 按 `transfer` 对象存明细，按 `OuterrealmEntry` 汇总总量，按 `(queryThing, owner)` 存自身额度；
 - `TryAcquire` 在入队时申请；`Resize` 只允许**缩小**，绝不在入队后放大；
-- `BeginExtraction` 置提交隔离（`Extracting`），提交期间主 mod 的 `ReservedCountOf` 返回整条目，
-  不对外暴露暂时释放的数量；外层提取结束后 `Release(transfer, finishExtraction: true)` 统一释放；
+- `BeginExtraction` 置提交隔离（`Extracting`），提交期间主 mod 的 `ReservedCountOf` 返回整条目；
+- **提取隔离的生存期 = 提取动作 → 搬运结束**：
+  - `ExtractPrefix` 调 `BeginExtraction`；
+  - `LiftFinalizer` **只在物品已回存或提取失败/异常**时结束提取（`Release(transfer, true)`）；
+    物品已在途时传 `false`，因 `Release` 对「提取中且未要求结束」的租约**原样保留**，
+    使 `Ledger.TryGet(transfer)` 在整段搬运期间可查（`AdvancePrefix` 依赖它）；
+  - `ReleaseClaim`（`ReleaseFinalizer`）传 `true` —— 这是搬运唯一终点，提取隔离与租约在此真正释放；
+  - `ReleaseAllClaimsForOwner` 走 `ReleaseMatching(..., force: true)`，避免设备拆除时提取中租约泄漏；
+    `ForgetMap` / `ForgetVault` 保持 `force: false`，不打断在途搬运。
 - `changed` / `released` 回调映射到主 mod 的 `NotifyReservationChanged` /
   `NotifyIdentityReservationReleased`。
 
@@ -207,6 +224,57 @@ setDestinationContainer(transfer, vault);   // 字段赋值，transfer 身份保
 2. 以 `vault.view.TryAdd` 的返回值为提交结果 —— 因为 vault 的不可堆叠权威实例（尸体等）
    按设计保持未生成且无 holder，若沿用光束的 `Destroyed/stackCount/holdingOwner` 判据会误判失败。
 
+### 5.4 回库无限循环的成因与续搬修正（`AdvancePrefix`）
+
+**现象**：把 vault 里某条目**恰好取空**的那一批（例如条目剩 610、`stackLimit` 1000）会反复
+—— 物品出现在 vault 建筑上、光束去拿又松开、物品回库、再循环。前面每一批都正常。
+
+**成因链**（全部由实测日志与光束源码确认）：
+
+1. `ExtractPrefix` 的 `Checkout` 把条目取空（`entryCountAfter=0`）；
+2. 主 mod 立即 `RemoveEntry` + `NotifyEntriesEmptied` → `view.SyncEntry` → **源投影被移除/销毁**；
+3. 光束 `ManipulatorBeam.AdvanceChannel` **每 tick** 检查
+   `channel.activeTransfer.thing == null || .Destroyed`，命中即
+   `AbortChannel(..., markSourceUnavailable: true)` 并 `return false`；
+4. `AbortChannel` 用 `FinishTransfer(op, carried, **null**, fallbackCell)` 把**已提取的在途实体**
+   丢回设备落点附近（正是 vault 格）—— `transfer` 传 `null`，所以 `FinishPrefix` 会静默放行，
+   日志里**看不到 `»Finish`**；
+5. 落回 vault 格 → 被自动吸收 → `Deposit` → 投影重建 → 光束再次发现 → 回到第 1 步。
+
+**为什么只有最后一批**：前面每批提取后条目仍 > 0，投影存活；只有「本次提取恰好取空条目」
+才会触发条目移除与投影销毁。
+
+**修正**：搬运的真实载体是通道里的 `carriedThingInTransit`（本适配器 Checkout 出的权威实例），
+`transfer.thing` 对光束只是**源的身份凭证**。`AdvancePrefix` 在该 transfer 仍属于本账本
+（即提取隔离仍生效 = 本次搬运在途）时，把 `transfer.thing` 换成在途实体：
+
+```csharp
+if (source == null || source.Destroyed)      // 源凭据已失效
+{
+    if (Ledger.TryGet(transfer, out lease)   // 且这是本适配器发起的在途搬运
+        && channel.carriedThingInTransit != null && !carried.Destroyed)
+    {
+        setThing(transfer, carried);         // 字段赋值：transfer 身份不变
+    }
+}
+```
+
+`AdvanceChannel` 的源检查随即通过，搬运照常走到 `FinishTransfer` 正常入库。
+安全依据：`FinishTransfer` / `EnsureCarriedThingLanded` 只使用 `destination` 与 `fallbackCell`，
+**从不读 `transfer.thing`**（已逐行核对）。其余情况（源存活、无租约、在途实体为空）一律不改动。
+
+**不要**改用「阻止 `AbortChannel`」的写法：`AbortChannel(...); return false;` 里那个 `return false`
+是调用方的，跳过中止只会让通道卡在原地、物品永远留在在途容器里。
+
+当时用于定位的诊断日志特征（**相关日志已随排查结束移除**，此处仅作同类问题的回看参考）：
+
+```
+Extract 成功 count=610 actual=… entryCountAfter=0      ← 条目被取空
+LiftFinalizer actual=…/holder=ThingOwner`1             ← 物品在途，提取隔离保留
+Advance 源投影已销毁 → 以在途实体续搬                   ← 修正生效
+Finish vault.view.TryAdd=True                          ← 正常入库，循环终止
+```
+
 ---
 
 ## 6. 生命周期与线程
@@ -235,7 +303,7 @@ cd F:\SteamLibrary\steamapps\common\RimWorld\Mods\FullyAutomaticOmniCrafter\Sour
 dotnet build -c Debug   # 主 mod
 ```
 
-**测试覆盖**（当前 10 个测试 / 17 个断言）：
+**测试覆盖**（当前 11 个测试 / 22 个断言）：
 
 - 候选放行：纯查询投影可被光束取用
 - 入队申请条目级预留并反映到全局可用量
@@ -245,10 +313,12 @@ dotnet build -c Debug   # 主 mod
 - 冻结 / 禁止存入的仓库不能作为目的地
 - 入队失败时预留与 claim 原子回滚
 - 目的地缩量同步释放额度，且不能扩大
+- **源投影被空条目清理移除后由在途实体续搬**（`transfer.thing` 换成在途实体、通道仍能推进）
 
 **测试的性质**：`Doubles.cs` 提供游戏与主 mod 的类型替身，`BeamCompat.csproj` 直接编译
-`OuterrealmBeamAdapter.cs` 与 `OuterrealmBeamLedger.cs` 生产源码。它验证的是
-反射绑定、协议时序与账本逻辑，**不能替代**实机 Harmony 绑定、寻路、Comp 回调与存档读写。
+`OuterrealmBeamAdapter.cs` / `OuterrealmBeamBinding.cs` / `OuterrealmBeamInstaller.cs` /
+`OuterrealmBeamLedger.cs` 生产源码。它验证的是反射绑定、协议时序与账本逻辑，
+**不能替代**实机 Harmony 绑定、寻路、Comp 回调与存档读写。
 
 ---
 
@@ -261,24 +331,26 @@ dotnet build -c Debug   # 主 mod
    ```
    注意 `$env:TEMP` 每次会话可能变化，别依赖旧路径。
 
-2. **核对第 4.2 节的 10 个方法**是否仍存在、参数名/类型/out-ref/静态性是否一致；
+2. **核对第 4.2 节的 11 个方法**是否仍存在、参数名/类型/out-ref/静态性是否一致；
    同时核对 `IBeamOperator` 成员（`Map`/`Pawn`/`OwnerKey`/`Manipulator`）、
-   `BeamTransfer` 字段（`thing`/`destinationContainer`/`count`/`isStripJob`/`destination`）。
+   `BeamTransfer` 字段（`thing`/`destinationContainer`/`count`/`isStripJob`/`destination`）、
+   `BeamChannelRuntime` 字段（`activeTransfer`/`carriedThingInTransit`）。
    这些字段名由 `Getter/Setter` 表达式树直接绑定，改名即启动失败。
 
 3. **跑测试**（第 7 节命令 1）。`SignatureAudit` 会直接报出缺失或不符的方法。
 
 4. **写坏存档的排查**：若光束更新后出现物品复制或丢失，先确认
    `FinishPrefix` 与 `ExtractPrefix` 是否仍在 `enabled` 状态下生效
-   （日志：`IBeamOperator compatibility installed (10 boundaries)`）。
+   （日志：`IBeamOperator compatibility installed (11 boundaries)`）。
 
 5. **新增边界的原则**：只补**最终消费/所有权转移边界**。不要在 Reserve 阶段生成实物；
    不要为了「让光束看见」而借出实物或注入批次 —— 新版按 `listerThings` 扫描，不需要。
 
 6. **不要删除的注释与不变量**：
    - `RewriteVaultDestination` 必须在 claim 之前；
-   - `setDestinationContainer` 必须用字段赋值，不能替换 transfer 对象；
+   - `setDestinationContainer` / `setThing` 必须用字段赋值，不能替换 transfer 对象；
    - `FinishPrefix` 必须自行 `ReleaseInTransitThing`；
+   - `LiftFinalizer` 在物品在途时**不得**结束提取（否则 `AdvancePrefix` 失去判据）；
    - `query` 上下文必须由 Finalizer 恢复。
 
 ---
@@ -287,10 +359,11 @@ dotnet build -c Debug   # 主 mod
 
 | 项 | 状态 |
 |---|---|
-| 游戏内实机回归（Harmony 启动绑定、寻路、Comp 回调、保存→读取→保存） | **未验证**，须看游戏日志与实机操作 |
+| 游戏内实机回归（Harmony 启动绑定、寻路、Comp 回调、保存→读取→保存） | 已实测「取空条目搬运」场景恢复正常；其余路径仍建议留意日志 |
 | 不装本 mod 时的实机行为与存档兼容 | 代码路径已按等价设计收敛，**未实机确认** |
 | 自动型设备 `Building_BeamManipulatorAuto` 的实际搬运路径 | 未单独测试（共用同一 `Building_BeamManipulator` 边界） |
 | 不经 `TryClaimAndEnqueue` 的入库路径 | 若存在则退回「落格 + vault tick 吸收」（功能正确但有延迟） |
+| 诊断日志 | **已全部移除**；适配器仅在安装成功/失败时各写一行日志 |
 | 光束 dll 的 `HintPath` | 8 级相对路径指向 `F:\294100\...`，换环境需调整 |
 | 只支持最新版协议 | 旧版（`TryBuildBatchFromCell` 时代）**不再支持**，相关代码已删除 |
 

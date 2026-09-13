@@ -126,23 +126,26 @@ namespace OuterrealmStorageManipulatorBeamSupport
             if (owners.Count == 0) ownTotals.Remove(query);
         }
 
-        public void ReleaseOwner(Map map, int owner) => ReleaseMatching(map, owner, null);
-        public void ForgetMap(Map map) => ReleaseMatching(map, null, null);
-        public void ForgetVault(Building_OuterrealmVault vault) => ReleaseMatching(null, null, vault);
+        // 设备拆除/复位要求释放全部 claim 时必须强制结束"提取中"的租约；
+        // 否则它们会因 Release 的保留语义（提取中的租约等外层提取结束才释放）而永远留在账本里。
+        public void ReleaseOwner(Map map, int owner) => ReleaseMatching(map, owner, null, force: true);
+        public void ForgetMap(Map map) => ReleaseMatching(map, null, null, force: false);
+        public void ForgetVault(Building_OuterrealmVault vault) => ReleaseMatching(null, null, vault, force: false);
 
-        private void ReleaseMatching(Map map, int? owner, Building_OuterrealmVault vault)
+        private void ReleaseMatching(Map map, int? owner, Building_OuterrealmVault vault, bool force)
         {
             lock (gate)
             {
                 List<object> remove = null;
                 foreach (OuterrealmBeamLease lease in leases.Values)
                     if ((map == null || lease.Map == map) && (!owner.HasValue || lease.Owner == owner.Value)
-                        && (vault == null || lease.Source.Vault == vault) && !lease.Extracting)
+                        && (vault == null || lease.Source.Vault == vault) && (force || !lease.Extracting))
                     {
                         if (remove == null) remove = new List<object>();
                         remove.Add(lease.Transfer);
                     }
-                if (remove != null) for (int i = 0; i < remove.Count; i++) Release(remove[i]);
+                // 强制路径必须传 finishExtraction=true，否则 Release 会按保留语义直接返回、什么也不清。
+                if (remove != null) for (int i = 0; i < remove.Count; i++) Release(remove[i], force);
             }
         }
 

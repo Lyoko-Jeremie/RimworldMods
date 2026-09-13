@@ -10,6 +10,8 @@
     <Reference Include="0Harmony"><HintPath>../../packages/Lib.Harmony.2.4.2/lib/net10.0/0Harmony.dll</HintPath></Reference>
     <!-- 直接编译适配器生产源码；游戏与主 mod 类型由 Doubles.cs 提供替身。 -->
     <Compile Include="../../OuterrealmBeamAdapter.cs" Link="Production/OuterrealmBeamAdapter.cs" />
+    <Compile Include="../../OuterrealmBeamBinding.cs" Link="Production/OuterrealmBeamBinding.cs" />
+    <Compile Include="../../OuterrealmBeamInstaller.cs" Link="Production/OuterrealmBeamInstaller.cs" />
     <Compile Include="../../OuterrealmBeamLedger.cs" Link="Production/OuterrealmBeamLedger.cs" />
     <Compile Include="Doubles.cs" />
     <Compile Include="Program.cs" />

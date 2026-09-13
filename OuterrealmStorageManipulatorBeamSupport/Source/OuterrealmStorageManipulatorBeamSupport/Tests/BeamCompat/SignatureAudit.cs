@@ -8,6 +8,14 @@ using System.Reflection.PortableExecutable;
 
 internal static class SignatureAudit
 {
+    // 这些边界是实例方法，其余边界都是静态方法。
+    private static readonly HashSet<string> InstanceMethods = new HashSet<string>
+    {
+        "Building_BeamManipulator.TryLiftForTransfer",
+        "Building_BeamManipulator.ReleaseInTransitThing",
+        "Building_BeamManipulator.AdvanceChannel"
+    };
+
     // 直接检查用户提供的 DLL 元数据，不加载游戏或执行第三方静态构造器。
     // 期望表只列出适配器实际绑定并依赖的边界；签名不符时适配器安装会整组回滚，
     // 因此这里的严格核对就是「适配是否仍然有效」的第一道证明。
@@ -23,6 +31,7 @@ internal static class SignatureAudit
             ["Building_BeamManipulator.TryLiftForTransfer"] = "Boolean(IBeamOperator,BeamTransfer,Thing&):op,transfer,carriedThing",
             ["Building_BeamManipulator.ExtractThingForTransfer"] = "Thing(BeamTransfer):transfer",
             ["Building_BeamManipulator.ReleaseInTransitThing"] = "Void(Thing):thing",
+            ["Building_BeamManipulator.AdvanceChannel"] = "Boolean(IBeamOperator,Int32,BeamChannelRuntime):op,index,channel",
             ["BeamClaimUtility.ReleaseClaim"] = "Void(BeamTransfer,Int32):transfer,ownerKey",
             ["BeamClaimUtility.ReleaseAllClaimsForOwner"] = "Void(Map,Int32):map,ownerKey",
             ["BeamClaimUtility.TryClaimDestinationContainer"] = "Boolean(BeamTransfer,Int32):transfer,ownerKey"
@@ -52,8 +61,7 @@ internal static class SignatureAudit
                     if (byref != ((parameter.Attributes & ParameterAttributes.Out) != 0)) throw new Exception(key + " out/ref mismatch");
                 }
                 string actual = signature.ReturnType + "(" + string.Join(",", signature.ParameterTypes) + "):" + string.Join(",", names);
-                bool shouldBeStatic = !key.EndsWith(".TryLiftForTransfer", StringComparison.Ordinal)
-                    && !key.EndsWith(".ReleaseInTransitThing", StringComparison.Ordinal);
+                bool shouldBeStatic = !InstanceMethods.Contains(key);
                 if (actual != wanted || shouldBeStatic != ((method.Attributes & MethodAttributes.Static) != 0))
                     throw new Exception(key + " unexpected signature: " + actual);
                 expected.Remove(key);

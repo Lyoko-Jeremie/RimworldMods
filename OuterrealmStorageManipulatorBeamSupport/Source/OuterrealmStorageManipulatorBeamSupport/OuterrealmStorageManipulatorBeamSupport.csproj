@@ -67,6 +67,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="OuterrealmBeamAdapter.cs" />
+    <Compile Include="OuterrealmBeamBinding.cs" />
+    <Compile Include="OuterrealmBeamInstaller.cs" />
     <Compile Include="OuterrealmBeamLedger.cs" />
     <Compile Include="OuterrealmBeamSupportComponent.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

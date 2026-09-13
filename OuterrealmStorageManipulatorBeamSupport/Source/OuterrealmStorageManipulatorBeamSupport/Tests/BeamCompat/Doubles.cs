@@ -6,6 +6,11 @@ using OuterrealmStorageManipulatorBeamSupport;
 
 namespace Verse
 {
+    /// <summary>诊断日志（Describe）所需的替身。</summary>
+    public class ThingDef { public string defName = "DoubleDef"; }
+    /// <summary>诊断日志开关替身：Adapter 已改为不依赖 DevMode，此处保留仅为兼容旧引用。</summary>
+    public static class Prefs { public static bool DevMode; }
+
     public struct IntVec3 : IEquatable<IntVec3>
     {
         public int x;
@@ -22,6 +27,7 @@ namespace Verse
     }
     public class Thing
     {
+        public ThingDef def = new ThingDef();
         public int stackCount = 75;
         public int thingIDNumber;
         public bool Destroyed, Spawned = true, Stored, Forbidden;
@@ -47,6 +53,7 @@ namespace Verse
     }
     public class Map
     {
+        public int uniqueID;
         public readonly Lister listerHaulables = new Lister();
         internal readonly Dictionary<IntVec3, Building_OuterrealmVault> Vaults = new Dictionary<IntVec3, Building_OuterrealmVault>();
         internal readonly Dictionary<IntVec3, RimWorld.SlotGroup> SlotGroups = new Dictionary<IntVec3, RimWorld.SlotGroup>();
@@ -72,6 +79,7 @@ namespace Verse
     public static class Log
     {
         public static void Message(string text) => Console.WriteLine(text);
+        public static void Warning(string text) => Console.WriteLine("[warn] " + text);
         public static void Error(string text) => throw new Exception(text);
     }
 }
@@ -292,6 +300,14 @@ namespace ManipulatorBeam
         public BeamTransfer(Thing thing, IntVec3 sourceCell, Thing destinationContainer, int count)
         { this.thing = thing; this.sourceCell = sourceCell; destination = IntVec3.Invalid; this.destinationContainer = destinationContainer; this.count = count; }
     }
+    /// <summary>通道运行时状态：续搬边界只用到 activeTransfer 与 carriedThingInTransit。</summary>
+    public sealed class BeamChannelRuntime
+    {
+        public BeamTransfer activeTransfer;
+        public bool transporting;
+        public bool carriedThingLifted;
+        public Thing carriedThingInTransit;
+    }
     public static class BeamManipulatorUtility
     {
         public static bool RejectDestination, ThrowEnqueue, ThrowAfterEnqueue;
@@ -371,6 +387,17 @@ namespace ManipulatorBeam
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static Thing ExtractThingForTransfer(BeamTransfer transfer) => transfer.thing;
         public Thing Lift(IBeamOperator op, BeamTransfer transfer) => TryLiftForTransfer(op, transfer, out Thing thing) ? thing : null;
+        /// <summary>复刻光束 AdvanceChannel 的源检查：源为空/已销毁即中止（返回 false）。</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private bool AdvanceChannel(IBeamOperator op, int index, BeamChannelRuntime channel)
+        {
+            BeamTransfer transfer = channel?.activeTransfer;
+            if (transfer == null) return false;
+            if (transfer.thing == null || transfer.thing.Destroyed) return false;
+            if (!channel.carriedThingLifted) return false;
+            return true;
+        }
+        public bool Advance(IBeamOperator op, BeamChannelRuntime channel) => AdvanceChannel(op, 0, channel);
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal void ReleaseInTransitThing(Thing thing)
         {

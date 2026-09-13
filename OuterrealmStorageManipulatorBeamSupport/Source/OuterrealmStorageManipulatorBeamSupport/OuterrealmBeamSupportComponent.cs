@@ -60,7 +60,7 @@ namespace OuterrealmStorageManipulatorBeamSupport
         {
             try
             {
-                OuterrealmBeamAdapter.Install();
+                OuterrealmBeamInstaller.Install();
             }
             catch (Exception error)
             {

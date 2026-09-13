@@ -26,7 +26,7 @@ internal static class Program
         // 可选：审核用户提供的真实 ManipulatorBeam.dll 元数据签名。
         if (args.Length > 0) SignatureAudit.Run(args[0]);
 
-        OuterrealmBeamAdapter.Install();
+        OuterrealmBeamInstaller.Install();
 
         Test("候选放行：纯查询投影可被光束取用", () =>
         {
@@ -124,6 +124,31 @@ internal static class Program
                 Check(f.Storage.ReservedCountOf(f.Entry) == 10, "缩量后预留同步收缩");
             }
             finally { BeamManipulatorUtility.ShrinkTo = 0; }
+        });
+
+        Test("源投影被空条目清理移除后由在途实体续搬（防回库循环）", () =>
+        {
+            var f = new Fixture();
+            var transfer = new BeamTransfer(f.Query, f.VaultCell, f.NonVaultCell);
+            BeamManipulatorUtility.Enqueue(transfer, f.Op.OwnerKey, new List<BeamTransfer>(), f.Excluded);
+            var manipulator = new Building_BeamManipulator();
+            Thing carried = manipulator.Lift(f.Op, transfer);
+            Check(carried != null, "取得实物");
+            Check(carried.holdingOwner != null, "实物已进入光束在途容器");
+
+            var channel = new BeamChannelRuntime
+            {
+                activeTransfer = transfer,
+                transporting = true,
+                carriedThingLifted = true,
+                carriedThingInTransit = carried
+            };
+            Check(manipulator.Advance(f.Op, channel), "源存活时正常推进");
+
+            // 模拟主 mod 的取空清理：条目已空、源投影被移除并销毁。
+            f.Query.Destroyed = true;
+            Check(manipulator.Advance(f.Op, channel), "源销毁后仍能推进（续搬修正生效）");
+            Check(ReferenceEquals(transfer.thing, carried), "源引用已换成在途实体");
         });
 
         Console.WriteLine("Passed " + passed + " beam compatibility assertions (production adapter with game doubles).");
