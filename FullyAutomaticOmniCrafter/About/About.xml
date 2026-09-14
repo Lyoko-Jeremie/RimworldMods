@@ -209,6 +209,8 @@
 
 当前， 本mod的[超维存储] 与 [LWM's Deep Storage] 存在兼容性问题，LWM's Deep Storage 会不管三七二十一修改所有的Building_Storage，推荐在 LWM's Deep Storage 的mod设置里面把 “将所有存储建筑改为 Deep Storage” 关掉再重启游戏。
 
+当使用 牵引光束搬运器 时 https://steamcommunity.com/sharedfiles/filedetails/?id=3683998684 ， 请安装 牵引光束搬运器适配补丁 https://steamcommunity.com/sharedfiles/filedetails/?id=3801624004 ，否则会导致物品复制等问题。
+
 [hr][/hr]
 
 [h3]建议配合使用的mod[/h3]
@@ -404,10 +406,21 @@ Outdoor version: Only prevent enemies from passing through
 
 [hr][/hr]
 
+Compatibility:
+
+Now, the [Omni Storage] of this mod has compatibility issues with [LWM's Deep Storage]. LWM's Deep Storage will modify all Building_Storage indiscriminately. It is recommended to turn off "Convert all storage buildings to Deep Storage" in the mod settings of LWM's Deep Storage and restart the game.
+
+When using the Tractor Beam Hauler https://steamcommunity.com/sharedfiles/filedetails/?id=3683998684, please install the Tractor Beam Hauler compatibility patch https://steamcommunity.com/sharedfiles/filedetails/?id=3801624004, otherwise it may cause item duplication and other issues.
+
+
+[hr][/hr]
+
 [h3]Recommended mods to use with Fully Automatic OmniCrafter[/h3]
 
 [list]
 [*] MinifyEverything Allows all buildings to be minified (only buildings that can be minified can be successfully produced) https://steamcommunity.com/sharedfiles/filedetails/?id=872762753
+[*] AutoBlink Blink framework https://steamcommunity.com/sharedfiles/filedetails/?id=3493889625
+[*] Jump All Mech Allows all mechanical bodies to support blinking https://steamcommunity.com/sharedfiles/filedetails/?id=3553578022
 [/list]
 
 [hr][/hr]
