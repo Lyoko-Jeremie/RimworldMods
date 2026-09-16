@@ -411,6 +411,8 @@
     <Compile Include="OmniCrafterMod.cs" />
     <Compile Include="OmniWorkstation.cs" />
     <Compile Include="OmniWorkProxyNavigation.cs" />
+    <Compile Include="OmniWorkProxyVisuals.cs" />
+    <Compile Include="Patch_OmniWorkProxyVisuals.cs" />
     <Compile Include="OmniWorkFailureCache.cs" />
     <Compile Include="Patch_OmniWorkProxyNavigation.cs" />
     <Compile Include="Patch_OmniWorkFailure.cs" />
