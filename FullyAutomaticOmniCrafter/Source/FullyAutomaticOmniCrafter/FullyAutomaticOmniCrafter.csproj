@@ -482,6 +482,11 @@
     <Compile Include="StatusAllocationTerminal.cs" />
     <Compile Include="SubspaceAssetBlackhole.cs" />
     <Compile Include="VoidDeleter.cs" />
+    <Compile Include="PhantomWallCombatRules.cs" />
+    <Compile Include="PhantomWallSightUtility.cs" />
+    <Compile Include="Patch_PhantomWallSight.cs" />
+    <Compile Include="Patch_PhantomWallProjectile.cs" />
+    <Compile Include="Patch_PhantomWallBeam.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

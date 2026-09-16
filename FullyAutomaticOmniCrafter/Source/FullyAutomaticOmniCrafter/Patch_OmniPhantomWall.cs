@@ -711,100 +711,13 @@ namespace FullyAutomaticOmniCrafter
     {
         public static void Postfix(Projectile __instance, Thing thing, ref bool __result)
         {
-            if (!(thing is Building_OmniPhantomWall) && !(thing is Building_OmniPhantomWall2))
+            if (!PhantomWallCombatRules.IsPhantomWall(thing))
                 return;
 
-            // Launcher 属性返回发射者 Thing（武器持有者/建筑炮台）
-            Thing launcher = __instance.Launcher;
-            if (launcher != null && launcher.Faction == Faction.OfPlayer)
-            {
-                // 玩家发射的子弹穿透幻影墙
-                __result = false;
-            }
-            else
-            {
-                // 敌人发射的子弹被幻影墙拦截
-                __result = true;
-            }
-        }
-    }
-
-    // ── 激光穿透补丁 ──────────────────────────────────────────────────
-    /// <summary>
-    /// 让玩家发射的激光穿过幻影墙，敌人发射的激光被挡住。
-    /// 激光（Verb_ShootBeam）使用 GenSight.LastPointOnLineOfSight 进行命中检测，
-    /// 其中使用了 CanBeSeenOverFast 检查建筑是否阻挡视线（Fillage == Full）。
-    /// </summary>
-    [HarmonyPatch(typeof(GenGrid), "CanBeSeenOverFast")]
-    public static class GenGrid_CanBeSeenOverFast_Patch
-    {
-        // 我们使用 ThreadLocal 来标记当前的视线检查是否来自于 Verb
-        private static System.Threading.ThreadLocal<Verb> currentVerb = new System.Threading.ThreadLocal<Verb>();
-
-        [HarmonyPatch(typeof(Verb), "TryFindShootLineFromTo")]
-        [HarmonyPrefix]
-        public static void Verb_TryFindShootLineFromTo_Prefix(Verb __instance) => currentVerb.Value = __instance;
-
-        [HarmonyPatch(typeof(Verb), "TryFindShootLineFromTo")]
-        [HarmonyPostfix]
-        public static void Verb_TryFindShootLineFromTo_Postfix() => currentVerb.Value = null;
-
-        [HarmonyPatch(typeof(Verb_ShootBeam), "TryGetHitCell")]
-        [HarmonyPrefix]
-        public static void ShootBeam_TryGetHitCell_Prefix(Verb_ShootBeam __instance) => currentVerb.Value = __instance;
-
-        [HarmonyPatch(typeof(Verb_ShootBeam), "TryGetHitCell")]
-        [HarmonyPostfix]
-        public static void ShootBeam_TryGetHitCell_Postfix() => currentVerb.Value = null;
-
-        [HarmonyPatch(typeof(Verb_ShootBeam), "BurstingTick")]
-        [HarmonyPrefix]
-        public static void ShootBeam_BurstingTick_Prefix(Verb_ShootBeam __instance) => currentVerb.Value = __instance;
-
-        [HarmonyPatch(typeof(Verb_ShootBeam), "BurstingTick")]
-        [HarmonyPostfix]
-        public static void ShootBeam_BurstingTick_Postfix() => currentVerb.Value = null;
-
-        [HarmonyPatch(typeof(Verb_ShootBeam), "ApplyDamage")]
-        [HarmonyPrefix]
-        public static void ShootBeam_ApplyDamage_Prefix(Verb_ShootBeam __instance) => currentVerb.Value = __instance;
-
-        [HarmonyPatch(typeof(Verb_ShootBeam), "ApplyDamage")]
-        [HarmonyPostfix]
-        public static void ShootBeam_ApplyDamage_Postfix() => currentVerb.Value = null;
-
-        public static void Postfix(IntVec3 c, Map map, ref bool __result)
-        {
-            // 如果已经被判定为不阻挡（__result == true），则无需处理
-            // 注意：CanBeSeenOverFast 返回 true 表示“可以被看透”，即“不阻挡”
-            // if (__result) return;
-
-            // 检查该位置是否有幻影墙
-            Building edifice = c.GetEdifice(map);
-            if (!(edifice is Building_OmniPhantomWall) && !(edifice is Building_OmniPhantomWall2))
-                return;
-
-            // 如果当前正处于 Verb 的路径计算中
-            Verb verb = currentVerb.Value;
-            if (verb != null)
-            {
-                if (verb.caster?.Faction == Faction.OfPlayer)
-                {
-                    // 玩家行为：设为不阻挡视线
-                    __result = true;
-                }
-                else
-                {
-                    // 敌人行为：设为阻挡视线
-                    __result = false;
-                }
-            }
-            else
-            {
-                // 非 Verb 发起的检查（可能是 AI 寻找路径或其他逻辑）
-                // 默认维持原有 Fillage 逻辑，或者根据需要调整。
-                // 这里的 edifice.def.Fillage 通常是 Full，所以 __result 默认是 false。
-            }
+            // 我方发射、且目标不是我方 → 子弹穿过幻影墙；
+            // 其余情况（敌方/中立/无发射者，或我方打我方）→ 被幻影墙拦下。
+            // 绝大多数非我方弹会在 Projectile.CheckForFreeIntercept 中被直接吞掉，不会走到这里。
+            __result = !PhantomWallCombatRules.MayPierce(__instance.Launcher, __instance.intendedTarget);
         }
     }
 
