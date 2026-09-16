@@ -15,9 +15,11 @@
         <thingClass>FullyAutomaticOmniCrafter.Building_OmniPhantomWall</thingClass>
         <tickerType>Never</tickerType> <!-- 关键：绝对不刷新，零 CPU 损耗 -->
 
+        <!-- 在菜单中隐藏此建筑 -->
         <!-- 下拉菜单配置放在父类，子类自动继承 -->
 <!--        <designatorDropdown>OmniPhantomWall_DropdownGroup</designatorDropdown>-->
-        <designationCategory>OmniCrafter_Category</designationCategory> <!-- 所在的建筑栏 -->
+        <!-- 所在的建筑栏 -->
+<!--        <designationCategory>OmniCrafter_Category</designationCategory>-->
 
         <!-- 1. 视觉属性：完全照搬原版的墙 -->
         <graphicData>
@@ -88,6 +90,9 @@
             <Beauty>100</Beauty>
         </statBases>
 
+        <!-- 在菜单中隐藏此建筑 -->
+<!--        <menuHidden>true</menuHidden>-->
+        
         <building>
             <!-- 进一步告诉普通AI不要闲着没事砸它 -->
             <ai_neverTrashThis>true</ai_neverTrashThis>
@@ -105,9 +110,6 @@
 <!--            <isPowerConduit>true</isPowerConduit>-->
             <!-- ↓ 加这一行，允许在此建筑上挂壁灯等附件 -->
             <supportsWallAttachments>true</supportsWallAttachments>
-
-            <!-- 在菜单中隐藏此建筑 -->
-            <menuHidden>true</menuHidden>
         </building>
         <rotatable>false</rotatable>
         
