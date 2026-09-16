@@ -106,4 +106,33 @@ namespace FullyAutomaticOmniCrafter
             return true;
         }
     }
+
+    /// <summary>
+    /// 落点加固：非我方弹的落点恰好是幻影墙格时，静默吞掉整发弹。
+    ///
+    /// 原版 CheckForFreeIntercept 会显式跳过「落点格」（见该方法第一行判断），
+    /// 因此落点正好压在幻影墙上的敌弹不会被吞；原版随后会把它当"撞墙"处理
+    /// （爆炸弹则在墙格引爆）。这里补上按格判定，使「进入/穿过幻影墙格」这一条
+    /// 在落点情形下也成立，且不留下墙格爆炸。
+    /// </summary>
+    [HarmonyPatch(typeof(Projectile), "ImpactSomething")]
+    public static class Patch_Projectile_ImpactSomething_PhantomWall
+    {
+        public static bool Prefix(Projectile __instance)
+        {
+            Map map = __instance.Map;
+            if (map == null)
+                return true;
+
+            if (!PhantomWallCombatRules.IsPhantomWallAt(__instance.Position, map))
+                return true;
+
+            // 我方弹（目标非我方）保持原版落点行为
+            if (PhantomWallCombatRules.MayPierce(__instance.Launcher, __instance.intendedTarget))
+                return true;
+
+            __instance.Destroy(DestroyMode.Vanish);
+            return false;
+        }
+    }
 }
