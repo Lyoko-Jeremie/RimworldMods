@@ -49,4 +49,61 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
     }
+
+    /// <summary>
+    /// 补漏：当弹「一 tick 位移超过 1 格」且「新位置距发射点 ≤ 5 格」时，
+    /// 原版 CheckForFreeInterceptBetween 会直接 return false（跳过全部格子检查），
+    /// 于是敌方高速弹可能整体穿过幻影墙而不被处理（既不吞、也不撞墙）。
+    /// 这里只在「原版确定会跳过」的情形下，沿线段按 0.2 格采样，补上幻影墙格的判定。
+    /// </summary>
+    [HarmonyPatch(typeof(Projectile), "CheckForFreeInterceptBetween")]
+    public static class Patch_Projectile_CheckForFreeInterceptBetween_PhantomWall
+    {
+        // Projectile.origin 是 protected 字段；缓存一次 FieldRef，之后零反射开销。
+        private static readonly AccessTools.FieldRef<Projectile, Vector3> originRef =
+            AccessTools.FieldRefAccess<Projectile, Vector3>("origin");
+
+        public static bool Prefix(Projectile __instance, Vector3 lastExactPos, Vector3 newExactPos, ref bool __result)
+        {
+            Map map = __instance.Map;
+            if (map == null)
+                return true;
+
+            IntVec3 from = lastExactPos.ToIntVec3();
+            IntVec3 to = newExactPos.ToIntVec3();
+
+            // 这些情形原版会自行逐格检查，交回原版处理
+            if (to == from || !from.InBounds(map) || !to.InBounds(map))
+                return true;
+            if (to.AdjacentToCardinal(from))
+                return true;
+            if (originRef == null)
+                return true;
+            if (VerbUtility.InterceptChanceFactorFromDistance(originRef(__instance), to) > 0f)
+                return true;
+
+            // 走到这里说明原版会直接跳过检查：仅补上“路径经过幻影墙格”这一种情况
+            Vector3 delta = newExactPos - lastExactPos;
+            Vector3 step = delta.normalized * 0.2f;
+            int steps = (int)(delta.MagnitudeHorizontal() / 0.2f);
+            Vector3 pos = lastExactPos;
+
+            for (int i = 0; i <= steps; i++)
+            {
+                pos += step;
+                IntVec3 cell = pos.ToIntVec3();
+                if (!cell.InBounds(map) || !PhantomWallCombatRules.IsPhantomWallAt(cell, map))
+                    continue;
+
+                // 我方弹（目标非我方）继续飞，由 CanHit 补丁放行穿墙
+                if (PhantomWallCombatRules.MayPierce(__instance.Launcher, __instance.intendedTarget))
+                    continue;
+
+                __instance.Destroy(DestroyMode.Vanish);
+                __result = true;
+                return false;
+            }
+            return true;
+        }
+    }
 }
