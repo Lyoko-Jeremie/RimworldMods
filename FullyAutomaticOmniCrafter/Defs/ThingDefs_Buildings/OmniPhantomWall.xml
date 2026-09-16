@@ -105,6 +105,9 @@
 <!--            <isPowerConduit>true</isPowerConduit>-->
             <!-- ↓ 加这一行，允许在此建筑上挂壁灯等附件 -->
             <supportsWallAttachments>true</supportsWallAttachments>
+
+            <!-- 在菜单中隐藏此建筑 -->
+            <menuHidden>true</menuHidden>
         </building>
         <rotatable>false</rotatable>
         
