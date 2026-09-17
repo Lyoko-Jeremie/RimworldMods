@@ -709,6 +709,9 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Projectile), "CanHit")]
     public static class Projectile_CanHit_Patch
     {
+        // 【临时诊断】定位「我方弹停在墙上」用；最多打印 40 条，定位完成后可整段删除。
+        private static int diagCount;
+
         public static void Postfix(Projectile __instance, Thing thing, ref bool __result)
         {
             if (!PhantomWallCombatRules.IsPhantomWall(thing))
@@ -717,7 +720,22 @@ namespace FullyAutomaticOmniCrafter
             // 我方发射、且目标不是我方 → 子弹穿过幻影墙；
             // 其余情况（敌方/中立/无发射者，或我方打我方）→ 被幻影墙拦下。
             // 绝大多数非我方弹会在 Projectile.CheckForFreeIntercept 中被直接吞掉，不会走到这里。
-            __result = !PhantomWallCombatRules.MayPierce(__instance.Launcher, __instance.intendedTarget);
+            Thing launcher = __instance.Launcher;
+            bool mayPierce = PhantomWallCombatRules.MayPierce(launcher, __instance.intendedTarget);
+            __result = !mayPierce;
+
+            if (diagCount < 40)
+            {
+                diagCount++;
+                Log.Message(
+                    $"[PhantomWallDiag] CanHit wall: mayPierce={mayPierce}, " +
+                    $"launcher={launcher?.ToStringSafe() ?? "null"}, " +
+                    $"launcherFaction={launcher?.Faction?.ToStringSafe() ?? "null"}, " +
+                    $"launcherIsOurs={PhantomWallCombatRules.IsOurs(launcher)}, " +
+                    $"intendedTarget={__instance.intendedTarget}, " +
+                    $"targetIsOurs={PhantomWallCombatRules.TargetIsOurs(__instance.intendedTarget)}, " +
+                    $"hitFlags={__instance.HitFlags}, pos={__instance.Position}");
+            }
         }
     }
 

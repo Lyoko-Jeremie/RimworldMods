@@ -261,4 +261,33 @@ namespace FullyAutomaticOmniCrafter
             return false;
         }
     }
+
+    /// <summary>
+    /// 掩体（cover）修正：幻影墙不作为掩体。
+    ///
+    /// 这是「我方隔墙射击时子弹偶发停在墙上」的根因：
+    ///   • CoverUtility.BaseBlockChance(this Thing) 对 Fillage == Full 的建筑返回 0.75；
+    ///   • ShotReport.HitReportFor 用 CoverUtility.CalculateCoverGiverSet /
+    ///     CalculateOverallBlockChance 把幻影墙算成目标的掩体；
+    ///   • Verb_LaunchProjectile.TryCastShot 里 `!Rand.Chance(shotReport.PassCoverChance)`
+    ///     有概率成立 → 走 "ToCover" 分支，直接把弹的落点（usedTarget）设成该掩体（幻影墙）
+    ///     → 弹在墙格结算并消失：表现就是「有时穿墙、有时被墙拦下」，且与目标距离无关。
+    ///
+    /// 让幻影墙的掩体值恒为 0 之后：
+    ///   • 我方：不再被误导向掩体，隔墙射击稳定穿墙；
+    ///   • 敌方：同样不再获得幻影墙的掩体加成，但其弹经过墙格时会被
+    ///     Patch_Projectile_CheckForFreeIntercept_PhantomWall 吞掉，因此仍打不到墙后。
+    /// </summary>
+    [HarmonyPatch(typeof(CoverUtility), nameof(CoverUtility.BaseBlockChance), new[] { typeof(Thing) })]
+    internal static class Patch_CoverUtility_BaseBlockChance_PhantomWall
+    {
+        internal static void Postfix(Thing thing, ref float __result)
+        {
+            if (__result <= 0f)
+                return;
+
+            if (PhantomWallCombatRules.IsPhantomWall(thing))
+                __result = 0f;
+        }
+    }
 }
