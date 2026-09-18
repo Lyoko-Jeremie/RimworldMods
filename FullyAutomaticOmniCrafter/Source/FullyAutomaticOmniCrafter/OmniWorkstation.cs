@@ -1367,6 +1367,38 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref configuredProxyCount, "omniWorkstationProxyCount", DefaultProxyCount);
             configuredProxyCount = Mathf.Clamp(configuredProxyCount,
                 MinConfigurableProxyCount, MaxConfigurableProxyCount);
+            // 读档兜底：Pawn_NeedsTracker.ExposeData 会直接从存档恢复 needs 列表并重新绑定
+            // joy/mood 等字段，这条路径不经过被 Patch_OmniWorkProxy_RemoveAllNeeds 短路的
+            // AddOrRemoveNeedsAsAppropriate，因此存档里带上需求的代理会跨存档延续下来。
+            if (Scribe.mode == LoadSaveMode.PostLoadInit) SanitizeAllProxiesAfterLoad();
+        }
+
+        /// <summary>
+        /// 读档完成后对地图上的全部代理无条件净化一次，使代理在任何来源（历史存档、异常路径
+        /// 或第三方直写）带回的状态需求后都立刻回到零需求状态。代理池记录不参与序列化，
+        /// 且保存时正停留在场上的代理不会进入休眠舱，因此这里同时覆盖三处来源。
+        /// </summary>
+        private void SanitizeAllProxiesAfterLoad()
+        {
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                Pawn pooled = proxies[i]?.pawn;
+                if (pooled != null && !pooled.Destroyed) OmniWorkProxyUtility.Sanitize(pooled);
+            }
+
+            for (int i = 0; i < sleepingProxies.Count; i++)
+            {
+                Pawn sleeping = sleepingProxies[i];
+                if (sleeping != null && !sleeping.Destroyed) OmniWorkProxyUtility.Sanitize(sleeping);
+            }
+
+            List<Pawn> spawned = map?.mapPawns?.AllPawns;
+            if (spawned == null) return;
+            for (int i = 0; i < spawned.Count; i++)
+            {
+                Pawn pawn = spawned[i];
+                if (OmniWorkProxyUtility.IsProxy(pawn)) OmniWorkProxyUtility.Sanitize(pawn);
+            }
         }
 
         public void SetConfiguredProxyCount(int value)
@@ -2631,17 +2663,22 @@ namespace FullyAutomaticOmniCrafter
         };
 
         /// <summary>
-        /// 代理不穿戴、不装备，所以 Wear / Equip 这两类 Job 只要启动就必须立刻取消。
-        /// JobDriver_Wear 会停在延迟 toil 上等待 EquipDelay 走完，而延迟 toil 完全依赖
-        /// Pawn.Tick → JobTrackerTick 推进；代理一旦在等待期间被判为空闲（Pawn.Tick 被
-        /// Patch_OmniWorkProxy_FreezeWhenInactive 跳过），进度条就永远停在原地，表现为
-        /// "站在服装旁、显示正在穿着、然后一直不动"。JobGiver 层的拦截是第一道防线，
-        /// 这里是最后一道兜底。
+        /// 判定代理被禁止的 Job。方法名沿用历史命名（最初只涵盖着装/装备），现在同时涵盖娱乐：
+        /// 1) 着装/装备：JobDriver_Wear 会停在延迟 toil 上等待 EquipDelay 走完，而延迟 toil 完全
+        ///    依赖 Pawn.Tick → JobTrackerTick 推进；代理一旦在等待期间被判为空闲（Pawn.Tick 被
+        ///    Patch_OmniWorkProxy_FreezeWhenInactive 跳过），进度条就永远停在原地，表现为
+        ///    "站在服装旁、显示正在穿着、然后一直不动"。
+        /// 2) 娱乐：代理不做任何娱乐行为，否则代理池会被娱乐占用。JobGiver 层的拦截
+        ///    (Patch_OmniWorkProxy_NoJoyJob) 是第一道防线，这里按 JobDef.joyKind 语义兜底，
+        ///    可覆盖绕过 JoyGiver 直接启动娱乐 Job 的第三方路径；判定不依赖 defName 名单，
+        ///    因此对各 Mod 自定义的娱乐 JobDef 同样生效。
         /// </summary>
         internal static bool IsForbiddenGearJob(Job job)
         {
             JobDef def = job?.def;
-            return def != null && (def == JobDefOf.Wear || def == JobDefOf.Equip);
+            if (def == null) return false;
+            if (def == JobDefOf.Wear || def == JobDefOf.Equip) return true;
+            return def.joyKind != null;
         }
 
         private static void StopIssuedJob(ProxyRecord record)
@@ -3203,6 +3240,26 @@ namespace FullyAutomaticOmniCrafter
                 __instance.MiscNeeds.Clear();
                 __instance.BindDirectNeedFields();
             }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 代理不做任何娱乐行为。原版全部娱乐 Job 都由 JobGiver_GetJoy 及其子类
+    /// (JobGiver_IdleJoy / JobGiver_GetJoyInBed) 产生，子类在自身条件判断之后都会回落到
+    /// 基类的 TryGiveJob，因此只需在基类入口对代理返回 null，就能一次性封死原版与全部
+    /// 第三方 JoyGiver（例如 ColonyFitness 训练站的娱乐 Job）。基类自身不校验
+    /// needs.joy 是否存在（只依赖上游 ThinkNode_Priority_GetJoy 的 null 检查），
+    /// 在这里拦截同时消除了"零需求代理被娱乐链解引用"的隐患。
+    /// </summary>
+    [HarmonyPatch(typeof(JobGiver_GetJoy), "TryGiveJob", new Type[] { typeof(Pawn) })]
+    public static class Patch_OmniWorkProxy_NoJoyJob
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn pawn, ref Job __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(pawn)) return true;
+            __result = null;
             return false;
         }
     }
