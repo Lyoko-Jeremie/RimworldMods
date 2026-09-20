@@ -196,10 +196,27 @@ namespace FullyAutomaticOmniCrafter
             expired.Clear();
         }
 
+        /// <summary>
+        /// 清除某个代理以 Pawn 为键的记录（代理被强删 / 强制回收时调用）。
+        /// failures 的键是 (WorkGiver, 目标, 账单)，无法按 Pawn 反查，交给 Prune 过期处理。
+        /// </summary>
+        internal void Forget(Pawn pawn)
+        {
+            if (pawn == null) return;
+            attempts.Remove(pawn);
+            navigationFailures.Remove(pawn);
+            expired.Clear();
+        }
+
+        /// <summary>
+        /// 取代理的失败表。跨图工作时必须以**归属图**的表为准，否则失败隔离会写进代理
+        /// 恰好待着的那张图，归属池完全看不到这些记录。
+        /// </summary>
         internal static OmniWorkFailureCache For(Pawn pawn)
         {
-            return OmniWorkProxyUtility.IsProxy(pawn) && pawn.Spawned
-                ? pawn.Map.GetComponent<MapComponent_OmniWorkstation>().WorkFailures : null;
+            if (!OmniWorkProxyUtility.IsProxy(pawn)) return null;
+            MapComponent_OmniWorkstation manager = GameComponent_OmniWorkProxyRegistry.ManagerOf(pawn);
+            return manager?.WorkFailures;
         }
     }
 

@@ -229,6 +229,33 @@ namespace FullyAutomaticOmniCrafter
                 "OmniCrafter_EnablePinyinSearch".Translate(),
                 ref Settings.enablePinyinSearch);
 
+            // ── 万能工作站代理总览（R-7）──────────────────────────────────
+            listing.GapLine(12f);
+            listing.Label("OmniWorkstation_ManagerTitle".Translate());
+            listing.Label("OmniWorkstation_ManagerOpenDesc".Translate());
+            listing.Gap(4f);
+            if (listing.ButtonText("OmniWorkstation_ManagerOpen".Translate()))
+                Find.WindowStack.Add(new Window_OmniWorkstationManager());
+
+            // ── 万能工作站跨图入口授权模式 ────────────────────────────────
+            listing.GapLine(12f);
+            listing.Label("OmniWorkstation_EntryAuthLabel".Translate());
+            listing.Label("OmniWorkstation_EntryAuthDesc".Translate());
+            listing.Gap(4f);
+            bool entryAuthStrict = Settings.entryAuthStrict;
+            if (listing.RadioButton("OmniWorkstation_EntryAuthStrict".Translate(), entryAuthStrict,
+                    tooltip: "OmniWorkstation_EntryAuthStrictDesc".Translate()))
+            {
+                Settings.entryAuthStrict = true;
+                OmniWorkProxyEntryAuthorization.InvalidateAll();
+            }
+            if (listing.RadioButton("OmniWorkstation_EntryAuthWarn".Translate(), !entryAuthStrict,
+                    tooltip: "OmniWorkstation_EntryAuthWarnDesc".Translate()))
+            {
+                Settings.entryAuthStrict = false;
+                OmniWorkProxyEntryAuthorization.InvalidateAll();
+            }
+
             // ── 超维存储仓右键菜单刷新模式（§4） ────────────────────────
             listing.GapLine(12f);
             listing.Label("VaultMenuRefreshModeLabel".Translate());

@@ -387,6 +387,10 @@
     <Compile Include="CompOmniProjectileInterceptor.cs" />
     <Compile Include="CompOmniRectangleProjectileInterceptor.cs" />
     <Compile Include="CompOmniResurrector.cs" />
+    <Compile Include="OmniWorkProxyRegistry.cs" />
+    <Compile Include="Hediff_OmniWorkProxyHome.cs" />
+    <Compile Include="OmniWorkProxyEntryAuthorization.cs" />
+    <Compile Include="Window_OmniWorkstationManager.cs" />
     <Compile Include="CompWeaponCreator.cs" />
     <Compile Include="Comp_SNS_OuterrealmTech_TemporalBarrierProjector_CompShieldRanged.cs" />
     <Compile Include="DebugTools_PoisonFood.cs" />

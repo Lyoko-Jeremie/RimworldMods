@@ -180,7 +180,16 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref omniWorkstationMonitorY, "omniWorkstationMonitorY", -1f);
             Scribe_Values.Look(ref omniWorkstationMonitorWidth, "omniWorkstationMonitorWidth", -1f);
             Scribe_Values.Look(ref omniWorkstationMonitorHeight, "omniWorkstationMonitorHeight", -1f);
+
+            // ── 万能工作站跨图入口授权模式 ──
+            Scribe_Values.Look(ref entryAuthStrict, "entryAuthStrict", true);
         }
+
+        /// <summary>
+        /// 跨图入口授权是否严格（默认 true）。
+        /// true = 未授权的地图直接拒绝派发（`ThinkResult.NoJob`）；false = 仅警告，仍放行但写日志便于诊断。
+        /// </summary>
+        public bool entryAuthStrict = true;
     }
 
 }

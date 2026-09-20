@@ -55,11 +55,12 @@ namespace FullyAutomaticOmniCrafter
         {
             get
             {
+                // 工作站**不需要供电**：Def 里 basePowerConsumption 为 0。保留 CompPowerTrader 只为
+                // 维持"电网节点"能力（transmitsPower），所以这里刻意不检查 PowerOn —— 未接电网、
+                // 电网断电、或根本没有电力组件时，工作站都视为可用。CompFlickable 保留给玩家手动停用。
                 if (!Spawned || !automationEnabled || this.IsBurning() || this.IsBrokenDown()) return false;
                 CompFlickable flickable = GetComp<CompFlickable>();
-                if (flickable != null && !flickable.SwitchIsOn) return false;
-                CompPowerTrader power = GetComp<CompPowerTrader>();
-                return power == null || power.PowerOn;
+                return flickable == null || flickable.SwitchIsOn;
             }
         }
 
@@ -68,12 +69,27 @@ namespace FullyAutomaticOmniCrafter
             return Spawned && cell.InBounds(Map) && Position.InHorDistOf(cell, WorkRadius);
         }
 
+        /// <summary>
+        /// 跨图范围判定：**同坐标投影**——以工作站坐标为圆心，用同一坐标系在任意图上求半径。
+        /// 工作站在本图时行为与原 Covers 完全一致；跨图时以目标图自身的边界为准
+        /// （多层楼层的图与地面图同尺寸同坐标系，因此投影天然成立）。
+        /// 入口授权的"覆盖判定"也复用此方法。
+        /// </summary>
+        public bool CoversOn(Map pawnMap, IntVec3 cell)
+        {
+            if (!Spawned || pawnMap == null) return false;
+            if (!cell.InBounds(pawnMap)) return false;
+            return Position.InHorDistOf(cell, WorkRadius);
+        }
+
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
             // 新放置的工作站立刻套用默认过滤器；读档走 ExposeData 的 PostLoadInit 分支。
             if (!respawningAfterLoad && !workFilterInitialized) ApplyDefaultWorkFilter();
             map.GetComponent<MapComponent_OmniWorkstation>().Register(this);
+            // 工作站集合变化会影响"哪些入口被覆盖"，立即失效入口授权缓存。
+            OmniWorkProxyEntryAuthorization.Invalidate(map);
         }
 
         public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
@@ -82,6 +98,7 @@ namespace FullyAutomaticOmniCrafter
             if (map != null)
                 map.GetComponent<MapComponent_OmniWorkstation>().Deregister(this);
             base.DeSpawn(mode);
+            if (map != null) OmniWorkProxyEntryAuthorization.Invalidate(map);
         }
 
         public override void ExposeData()
@@ -749,11 +766,14 @@ namespace FullyAutomaticOmniCrafter
     {
         public string name;
         public string work;
+        /// <summary>对应代理；逐代理操作（停止并回收 / 重建此代理）需要它。</summary>
+        public Pawn pawn;
 
-        public OmniWorkProxyStatus(string name, string work)
+        public OmniWorkProxyStatus(string name, string work, Pawn pawn)
         {
             this.name = name;
             this.work = work;
+            this.pawn = pawn;
         }
     }
 
@@ -809,6 +829,35 @@ namespace FullyAutomaticOmniCrafter
             Widgets.Label(new Rect(0f, 142f, inRect.width, 24f),
                 "OmniWorkstation_LastSearchSource".Translate(manager.LastSearchSource));
 
+            // ─── 跨图管理（R-7 的最小管理视图）──────────────────────────────
+            // 驻外 = 归属本图池、但当前在别的图上工作的代理；无第三方换图 Mod 时恒为 0。
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            int abroadCount = 0;
+            if (registry != null && manager.OwningMap != null)
+            {
+                List<Pawn> abroadList = registry.Scratch;
+                registry.EnumerateForeign(manager.OwningMap, abroadList);
+                abroadCount = abroadList.Count;
+            }
+            Widgets.Label(new Rect(0f, 168f, inRect.width, 24f),
+                "OmniWorkstation_AbroadCount".Translate(abroadCount));
+            if (registry != null)
+            {
+                string toggleKey = registry.GlobalWorkEnabled
+                    ? "OmniWorkstation_GlobalWorkOn"
+                    : "OmniWorkstation_GlobalWorkOff";
+                if (Widgets.ButtonText(new Rect(inRect.width - 540f, 4f, 132f, 24f),
+                        toggleKey.Translate()))
+                {
+                    registry.SetGlobalWorkEnabled(!registry.GlobalWorkEnabled);
+                    Messages.Message("OmniWorkstation_GlobalWorkDesc".Translate(),
+                        MessageTypeDefOf.TaskCompletion, false);
+                }
+                if (Widgets.ButtonText(new Rect(inRect.width - 540f, 32f, 132f, 24f),
+                        "OmniWorkstation_VerifyMirrors".Translate()))
+                    registry.VerifyAllMirrors();
+            }
+
             // ─── 性能探针统计区(诊断用;ResetStats 清零后观察)────────────────
             // 数字一律在 C# 侧格式化为字符串,翻译 key 只使用纯 {N} 占位符,
             // 避免翻译管线不识别 {N:F1} 这类复合格式说明符。
@@ -816,7 +865,7 @@ namespace FullyAutomaticOmniCrafter
             double dispatchRate = stats.spanTicks > 0
                 ? stats.foundJobCount / (stats.spanTicks / 60.0)
                 : 0.0;
-            float statsY = 168f;
+            float statsY = 196f;
             const float statLineHeight = 20f;
             Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
                 "OmniWorkstation_StatsSpanDispatch".Translate(stats.spanTicks, stats.foundJobCount,
@@ -842,7 +891,38 @@ namespace FullyAutomaticOmniCrafter
                     (manager.DiagnoseRegionMiss
                         ? "OmniWorkstation_DiagnoseRegionMissOn"
                         : "OmniWorkstation_DiagnoseRegionMissOff").Translate()));
-            statsY += statLineHeight + 10f;
+            statsY += statLineHeight;
+
+            // ─── 跨图准入（R-10 可视化）：可去地图与未被覆盖的入口 ─────────────
+            if (registry != null && manager.OwningMap != null)
+            {
+                OmniWorkProxyEntryAuthorization.GetReachableMaps(manager.OwningMap, ReachableScratch);
+                ReachableNameScratch.Clear();
+                for (int i = 0; i < ReachableScratch.Count; i++)
+                {
+                    Map reachable = ReachableScratch[i];
+                    ReachableNameScratch.Add(reachable.Parent?.LabelCap ?? ("#" + reachable.uniqueID));
+                }
+                string reachableText = ReachableNameScratch.Count == 0
+                    ? "OmniWorkstation_ReachableMapsNone".Translate().ToString()
+                    : string.Join("、", ReachableNameScratch);
+                Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
+                    "OmniWorkstation_ReachableMaps".Translate(reachableText));
+                statsY += statLineHeight;
+                Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
+                    "OmniWorkstation_UncoveredPortals".Translate(
+                        OmniWorkProxyEntryAuthorization.UncoveredPortals(manager.OwningMap)));
+                statsY += statLineHeight;
+            }
+            statsY += 10f;
+
+            // 池修复（R-9）：只登记请求，真正的销毁/生成交给下一 tick。
+            if (registry != null)
+            {
+                if (Widgets.ButtonText(new Rect(inRect.width - 270f, 32f, 132f, 24f),
+                        "OmniWorkstation_RepairPool".Translate()))
+                    manager.RequestRepairPool();
+            }
 
             float listTop = statsY;
             Widgets.DrawLineHorizontal(0f, listTop - 6f, inRect.width);
@@ -858,10 +938,26 @@ namespace FullyAutomaticOmniCrafter
                 Rect row = new Rect(0f, i * 30f, viewRect.width, 30f);
                 if ((i & 1) == 1) Widgets.DrawLightHighlight(row);
                 Widgets.Label(new Rect(4f, row.y + 3f, 150f, 24f), activeRows[i].name);
-                Widgets.Label(new Rect(160f, row.y + 3f, viewRect.width - 164f, 24f), activeRows[i].work);
+                float actionsX = viewRect.width - 230f;
+                Widgets.Label(new Rect(160f, row.y + 3f, actionsX - 166f, 24f), activeRows[i].work);
+
+                // 逐代理操作（R-8）：只登记请求 —— OnGUI 阶段改动地图上的 Pawn 集合会破坏
+                // 原版迭代，因此实际销毁/生成一律交给下一 tick 执行。
+                Pawn rowPawn = activeRows[i].pawn;
+                if (rowPawn == null || rowPawn.Destroyed || registry == null) continue;
+                if (Widgets.ButtonText(new Rect(actionsX, row.y + 2f, 110f, 26f),
+                        "OmniWorkstation_ProxyReclaim".Translate()))
+                    manager.RequestProxyReclaim(rowPawn);
+                if (Widgets.ButtonText(new Rect(actionsX + 115f, row.y + 2f, 110f, 26f),
+                        "OmniWorkstation_ProxyRecreate".Translate()))
+                    manager.RequestProxyRecreate(rowPawn);
             }
             Widgets.EndScrollView();
         }
+
+        // 复用列表：窗口每 30 帧重绘一次，避免反复分配（AGENTS.md 性能要求）。
+        private static readonly List<Map> ReachableScratch = new List<Map>();
+        private static readonly List<string> ReachableNameScratch = new List<string>();
 
         private static string FormatF1(double value)
         {
@@ -884,6 +980,7 @@ namespace FullyAutomaticOmniCrafter
     {
         public static PawnKindDef FAOC_OmniWorkProxy;
         public static HediffDef FAOC_OmniWorkProxyBoost;
+        public static HediffDef FAOC_OmniWorkProxyHome;
         public static BackstoryDef FAOC_OmniWorkProxyChildhood;
         public static BackstoryDef FAOC_OmniWorkProxyAdulthood;
         public static PathGridDef FAOC_OmniWorkProxyPathGrid;
@@ -991,10 +1088,39 @@ namespace FullyAutomaticOmniCrafter
             return pawn != null && ManagedTransitions.Contains(pawn);
         }
 
+        // allowedAreas 是 Pawn_PlayerSettings 的私有字段（Dictionary<Map, Area>）：跨图工作的代理
+        // 可能在多张图上留下 Area_OmniWorkStation，回收时必须整表清理；只清"当前图"会留下残留，
+        // 并且会一直持有 pocket map 的强引用。
+        private static readonly AccessTools.FieldRef<Pawn_PlayerSettings, Dictionary<Map, Area>> AllowedAreasRef =
+            AccessTools.FieldRefAccess<Pawn_PlayerSettings, Dictionary<Map, Area>>("allowedAreas");
+        private static readonly List<Map> AreaCleanupScratch = new List<Map>();
+
         public static void ClearAreaRestriction(Pawn pawn)
         {
-            if (pawn?.playerSettings?.AreaRestrictionInPawnCurrentMap is Area_OmniWorkstation)
-                pawn.playerSettings.AreaRestrictionInPawnCurrentMap = null;
+            Pawn_PlayerSettings settings = pawn?.playerSettings;
+            if (settings == null) return;
+
+            Dictionary<Map, Area> allowedAreas;
+            try
+            {
+                allowedAreas = AllowedAreasRef(settings);
+            }
+            catch (Exception)
+            {
+                // 原版字段改名时退化为只清当前图，保证不抛异常。
+                if (settings.AreaRestrictionInPawnCurrentMap is Area_OmniWorkstation)
+                    settings.AreaRestrictionInPawnCurrentMap = null;
+                return;
+            }
+            if (allowedAreas == null || allowedAreas.Count == 0) return;
+
+            // 先收集再删除：不能边遍历 Dictionary 边改集合。
+            AreaCleanupScratch.Clear();
+            foreach (KeyValuePair<Map, Area> pair in allowedAreas)
+                if (pair.Value is Area_OmniWorkstation) AreaCleanupScratch.Add(pair.Key);
+            for (int i = 0; i < AreaCleanupScratch.Count; i++)
+                allowedAreas.Remove(AreaCleanupScratch[i]);
+            AreaCleanupScratch.Clear();
         }
 
         public static void SetActive(Pawn pawn, bool active)
@@ -1451,6 +1577,8 @@ namespace FullyAutomaticOmniCrafter
             runtime.probePending = false;
             runtime.probePawn = null;
             ResetStationSearchState(runtime, CurrentTick);
+            // 半径 / 启用状态变化会改变"哪些入口被覆盖"，立即失效入口授权缓存。
+            OmniWorkProxyEntryAuthorization.Invalidate(map);
             WakePumpNow();
         }
 
@@ -1503,7 +1631,7 @@ namespace FullyAutomaticOmniCrafter
             runtime.consecutiveFailures = 0;
         }
 
-        private void WakePumpNow()
+        internal void WakePumpNow()
         {
             nextPumpTick = CurrentTick;
             searchState = OmniWorkSearchState.Queued;
@@ -1720,12 +1848,22 @@ namespace FullyAutomaticOmniCrafter
 
         public override void MapRemoved()
         {
-            for (int i = 0; i < proxies.Count; i++)
+            // 池随地图消失：归属本池的代理（含正在其它地图上工作的）必须一并强删，
+            // 否则会留下既不受工作站控制、也无法被任何池回收的无主代理。
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry != null)
             {
-                Pawn pawn = proxies[i].pawn;
-                OmniWorkProxyUtility.Unassign(pawn);
-                if (pawn != null && pawn.Spawned && pawn.Map == map)
-                    pawn.Destroy(DestroyMode.Vanish);
+                registry.NotifyHomeMapRemoved(map);
+            }
+            else
+            {
+                for (int i = 0; i < proxies.Count; i++)
+                {
+                    Pawn pawn = proxies[i].pawn;
+                    OmniWorkProxyUtility.Unassign(pawn);
+                    if (pawn != null && pawn.Spawned && pawn.Map == map)
+                        pawn.Destroy(DestroyMode.Vanish);
+                }
             }
             sleepingProxies.ClearAndDestroyContents();
             proxies.Clear();
@@ -1751,13 +1889,31 @@ namespace FullyAutomaticOmniCrafter
                 PerformRecreateAllProxies();
             }
 
+            // 界面登记的延迟管理请求（R-8 / R-9）：与地图集合的改动时机一致。
+            ProcessPendingManagementRequests();
+
             int tick = Find.TickManager.TicksGame;
+
+            // 全局总闸：关闭时本池停止派发任何工作，并把场上代理收回休眠舱（不销毁，
+            // 配置与代理数量保持不变）。仅在每个维护周期执行一次回收，避免每 tick 遍历。
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry != null && !registry.GlobalWorkEnabled)
+            {
+                if (tick % AssignmentInterval == map.uniqueID % AssignmentInterval)
+                    ReclaimAllActive();
+                nextPumpTick = int.MaxValue;
+                return;
+            }
+
             if (tick % AssignmentInterval == map.uniqueID % AssignmentInterval)
             {
                 long maintStart = Stopwatch.GetTimestamp();
                 WorkFailures.Prune();
                 RemoveInvalidStations();
                 EnsureProxyCount();
+                MaintainAbroadProxies(tick);
+                // 入口授权表：每个维护周期全量重算一次（入口数量少，成本可忽略）。
+                OmniWorkProxyEntryAuthorization.Refresh(map);
                 for (int i = 0; i < proxies.Count; i++)
                     RefreshProxyState(proxies[i], false);
                 int scheduledTick = ComputeNextPumpTick(tick);
@@ -1843,7 +1999,7 @@ namespace FullyAutomaticOmniCrafter
                 Job job = pawn.CurJob ?? record.issuedJob;
                 if (job == null) continue;
                 string name = pawn.Name?.ToStringShort ?? "Worker";
-                output.Add(new OmniWorkProxyStatus(name, SafeJobReport(pawn, job)));
+                output.Add(new OmniWorkProxyStatus(name, SafeJobReport(pawn, job), pawn));
             }
         }
 
@@ -1974,12 +2130,15 @@ namespace FullyAutomaticOmniCrafter
             stationStates.Clear();
             proxies.Clear();
 
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+
             List<Pawn> sleeping = sleepingProxies.InnerListForReading;
             for (int i = 0; i < sleeping.Count; i++)
             {
                 Pawn pawn = sleeping[i];
                 if (pawn == null || pawn.Destroyed || !OmniWorkProxyUtility.IsProxy(pawn)) continue;
                 PrepareProxy(pawn);
+                registry?.Register(pawn, map, -1);
                 proxies.Add(new ProxyRecord { pawn = pawn });
             }
 
@@ -1998,7 +2157,16 @@ namespace FullyAutomaticOmniCrafter
             for (int i = pawns.Count - 1; i >= 0; i--)
             {
                 if (!(pawns[i] is Pawn pawn) || !OmniWorkProxyUtility.IsProxy(pawn)) continue;
+                // 索引里查不到时，先用代理身上的 Hediff 镜像把归属救回来
+                // （索引损坏，或从旧版本存档升级上来的代理）。
+                registry?.TryRestoreFromMirror(pawn);
+                // 归属其它图的代理此刻是"驻外工作"，不能被本图收养走：否则两张图的池会互相抢夺，
+                // 并且本图的休眠舱会把不属于本池的代理深保存进来。
+                if (registry != null && registry.TryGetHome(pawn, out GameComponent_OmniWorkProxyRegistry.ProxyHomeRecord home)
+                    && home.homeMap != null && home.homeMap != map)
+                    continue;
                 PrepareProxy(pawn);
+                registry?.Register(pawn, map, -1);
                 ProxyRecord record = new ProxyRecord { pawn = pawn };
                 proxies.Add(record);
                 PutProxyToSleep(record);
@@ -2056,17 +2224,45 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        private void EnsureProxyCount()
+        internal void EnsureProxyCount()
         {
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
             int removedInvalid = 0;
             for (int i = proxies.Count - 1; i >= 0; i--)
             {
-                Pawn pawn = proxies[i].pawn;
-                if (pawn != null && !pawn.Destroyed &&
-                    ((pawn.Spawned && pawn.Map == map) || sleepingProxies.Contains(pawn))) continue;
-                OmniWorkProxyUtility.Unassign(pawn);
-                proxies.RemoveAt(i);
-                removedInvalid++;
+                ProxyRecord record = proxies[i];
+                Pawn pawn = record.pawn;
+
+                // 记录失效：代理已销毁 → 注销归属并移出池。
+                if (pawn == null || pawn.Destroyed)
+                {
+                    registry?.Unregister(pawn);
+                    proxies.RemoveAt(i);
+                    removedInvalid++;
+                    continue;
+                }
+
+                if (registry != null)
+                {
+                    if (!registry.TryGetHome(pawn, out GameComponent_OmniWorkProxyRegistry.ProxyHomeRecord home))
+                    {
+                        registry.Register(pawn, map, record.station?.thingIDNumber ?? -1);
+                    }
+                    else if (home.homeMap != null && home.homeMap != map)
+                    {
+                        // 归属已被转到别的池：本图只移出视图，绝不触碰代理本体。
+                        proxies.RemoveAt(i);
+                        continue;
+                    }
+                }
+
+                if (sleepingProxies.Contains(pawn)) continue;
+
+                // 归属本池的代理即使此刻在别的图上（驻外工作）也必须保留在池内，
+                // 由 MaintainAbroadProxies 负责把它带回来；这里绝不能像旧实现那样删除记录，
+                // 否则代理会变成既不受工作站控制、也无法被任何池回收的孤儿。
+                if (pawn.Spawned && pawn.Map != map)
+                    registry?.NotifySpawned(pawn, pawn.Map);
             }
 
             int operationalCount = 0;
@@ -2093,6 +2289,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 ProxyRecord record = proxies[i];
                 if (record.issuedJob != null) continue;
+                registry?.Unregister(record.pawn);
                 OmniWorkProxyUtility.Unassign(record.pawn);
                 if (record.pawn != null && !record.pawn.Destroyed)
                 {
@@ -2105,6 +2302,245 @@ namespace FullyAutomaticOmniCrafter
 
             // 代理池组成发生变化后按槽位制重排编号，保证名字中的编号始终从 0 连续。
             if (removedInvalid + created + removed > 0) RenumberProxies();
+        }
+
+        // ── 供全局管理组件（GameComponent_OmniWorkProxyRegistry）调用的内部接口 ──────────
+
+        /// <summary>本组件所属地图；registry 用来判断"代理当前图是否就是它的归属图"。</summary>
+        internal Map OwningMap => map;
+
+        /// <summary>驻外代理的回收超时（tick）。零第三方依赖的兜底回收周期。</summary>
+        private const int AbroadReclaimTicks = 1500;
+
+        private ProxyRecord FindProxyRecord(Pawn pawn)
+        {
+            for (int i = 0; i < proxies.Count; i++)
+                if (proxies[i].pawn == pawn) return proxies[i];
+            return null;
+        }
+
+        /// <summary>按记录停止代理当前工作（registry 的强删/回收使用）。</summary>
+        internal void StopIssuedJobForRecord(Pawn pawn)
+        {
+            if (pawn == null) return;
+            ProxyRecord record = FindProxyRecord(pawn);
+            if (record != null)
+            {
+                StopIssuedJob(record);
+                return;
+            }
+            OmniWorkProxyUtility.SetActive(pawn, false);
+            if (pawn.mindState != null) pawn.mindState.Active = false;
+            if (pawn.CurJob != null) EndCurrentJobForManagement(pawn);
+        }
+
+        /// <summary>强制入睡：不销毁，直接收回**本图**（归属图）的休眠舱。</summary>
+        internal void ForceSleep(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            ProxyRecord record = FindProxyRecord(pawn);
+            if (record == null)
+            {
+                record = new ProxyRecord { pawn = pawn };
+                proxies.Add(record);
+            }
+            PutProxyToSleep(record);
+        }
+
+        /// <summary>
+        /// 清空本池：休眠舱（销毁内容物）与在册记录一起清干净。"重建本池"用；
+        /// 代理本体的销毁由调用方（registry.ForceDestroy）负责，这里只清本地视图与失败表。
+        /// </summary>
+        internal void ClearSleepingPool()
+        {
+            sleepingProxies.ClearAndDestroyContents();
+            proxies.Clear();
+            sleepProxyCount = 0;
+            WorkFailures.ClearAll();
+            proxySearchCursor = 0;
+        }
+
+        /// <summary>清掉休眠舱里已失效的条目（已销毁 / 已不是代理），保留正常代理（R-9 池修复用）。</summary>
+        internal void ClearSleepingPoolOfInvalid()
+        {
+            List<Pawn> sleeping = sleepingProxies.InnerListForReading;
+            for (int i = sleeping.Count - 1; i >= 0; i--)
+            {
+                Pawn pawn = sleeping[i];
+                if (pawn != null && !pawn.Destroyed && OmniWorkProxyUtility.IsProxy(pawn)) continue;
+                sleepingProxies.Remove(pawn);
+                if (sleepProxyCount > 0) sleepProxyCount--;
+            }
+        }
+
+        /// <summary>校验本池全部代理（含休眠舱内）的归属镜像，返回校验数量。</summary>
+        internal int VerifyPoolMirrors()
+        {
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry == null) return 0;
+            List<Pawn> list = registry.Scratch;
+            registry.EnumeratePool(map, list);
+            for (int i = 0; i < list.Count; i++) registry.VerifyMirror(list[i]);
+            return list.Count;
+        }
+
+        /// <summary>全局总闸关闭时：把本池所有代理（含驻外）收回本图休眠舱，不销毁。</summary>
+        internal void ReclaimAllActive()
+        {
+            for (int i = proxies.Count - 1; i >= 0; i--)
+            {
+                ProxyRecord record = proxies[i];
+                if (record.pawn == null || record.pawn.Destroyed) continue;
+                if (sleepingProxies.Contains(record.pawn)) continue;
+                StopIssuedJob(record);
+                PutProxyToSleep(record);
+            }
+        }
+
+        /// <summary>清理某代理在各图失败表中的条目（强删时调用）。</summary>
+        internal void PurgeFailureFor(Pawn pawn)
+        {
+            WorkFailures.Forget(pawn);
+        }
+
+        // ── 界面登记的延迟管理请求（R-8 / R-9）────────────────────────────────
+        // Gizmo 与状态窗口的按钮都运行在 OnGUI 阶段，而销毁/生成 Pawn 会改动地图上的集合，
+        // 因此界面只登记意图，真正执行统一放在下一 tick。
+
+        private readonly List<Pawn> pendingProxyReclaims = new List<Pawn>();
+        private readonly List<Pawn> pendingProxyRecreates = new List<Pawn>();
+        private bool pendingPoolRepair;
+
+        /// <summary>登记"停止该代理并立即收回其归属池"（不销毁）。</summary>
+        public void RequestProxyReclaim(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            if (!pendingProxyReclaims.Contains(pawn)) pendingProxyReclaims.Add(pawn);
+        }
+
+        /// <summary>登记"重建该代理"（销毁并让所属池补建）。</summary>
+        public void RequestProxyRecreate(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            if (!pendingProxyRecreates.Contains(pawn)) pendingProxyRecreates.Add(pawn);
+        }
+
+        /// <summary>登记"修复本池"（清理失效项 + 按配置补齐数量）。</summary>
+        public void RequestRepairPool()
+        {
+            pendingPoolRepair = true;
+        }
+
+        /// <summary>在 tick 中执行界面登记的管理请求：与地图集合的改动时机一致。</summary>
+        private void ProcessPendingManagementRequests()
+        {
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+
+            if (pendingPoolRepair)
+            {
+                pendingPoolRepair = false;
+                int created = registry == null ? 0 : registry.RepairPool(map);
+                Messages.Message("OmniWorkstation_RepairPoolDone".Translate(created),
+                    MessageTypeDefOf.TaskCompletion, false);
+            }
+
+            if (pendingProxyReclaims.Count > 0)
+            {
+                for (int i = 0; i < pendingProxyReclaims.Count; i++)
+                {
+                    Pawn pawn = pendingProxyReclaims[i];
+                    if (pawn == null || pawn.Destroyed) continue;
+                    if (registry != null && registry.ReclaimNow(pawn))
+                        Messages.Message("OmniWorkstation_ProxyReclaimed".Translate(),
+                            MessageTypeDefOf.TaskCompletion, false);
+                }
+                pendingProxyReclaims.Clear();
+            }
+
+            if (pendingProxyRecreates.Count > 0)
+            {
+                for (int i = 0; i < pendingProxyRecreates.Count; i++)
+                {
+                    Pawn pawn = pendingProxyRecreates[i];
+                    if (pawn == null || pawn.Destroyed) continue;
+                    if (registry != null && registry.RecreateSingle(pawn))
+                        Messages.Message("OmniWorkstation_ProxyRecreated".Translate(),
+                            MessageTypeDefOf.TaskCompletion, false);
+                }
+                pendingProxyRecreates.Clear();
+            }
+        }
+
+        /// <summary>
+        /// 驻外代理"空闲"时的回收超时（tick）：给它一段在目标图找工作的宽限期，
+        /// 超时仍空闲即视为那边没有活可干，收回本池。
+        /// </summary>
+        private const int AbroadIdleReclaimTicks = 600;
+
+        /// <summary>
+        /// 驻外看护：归属本图、但当前在别的图上的代理，空闲超时或占用超时后强制收回本图休眠舱。
+        ///
+        /// **不做"走楼梯 / portal 回程 job"**：原版没有"单个 Pawn 走进 portal 即换图"的通用 API ——
+        /// `EnterPortalUtility.JobOnPortal` 只构造 `HaulToPortal`，且 `HasJobOnPortal` 要求
+        /// `leftToLoad` 非空（Source/RimWorld/EnterPortalUtility.cs:23-30）；玩家手动进入走的是
+        /// `LordJob_LoadAndEnterPortal` 的 Lord 机制，而代理不在殖民者列表里。第三方 portal
+        /// （MultiFloors 的 Stair、SimplePortal 等）各有自己的换图实现，逐个写适配器会违反
+        /// "零 Mod 依赖"约束。因此回程统一走"传送回收"，正确性由本方法保证。
+        ///
+        /// 无第三方 Mod 时列表恒空，本方法不产生任何实际工作。
+        /// </summary>
+        private void MaintainAbroadProxies(int tick)
+        {
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry == null) return;
+
+            // 低频镜像校验（每 240 tick）：以权威表为准修正本池代理身上的归属镜像。
+            // 只遍历本池，遵守池隔离；单次开销是每代理 O(hediffs) 的线性扫描。
+            if (tick % 240 == 0)
+            {
+                List<Pawn> verifyList = registry.Scratch;
+                registry.EnumeratePool(map, verifyList);
+                for (int i = 0; i < verifyList.Count; i++)
+                    registry.VerifyMirror(verifyList[i]);
+            }
+
+            List<Pawn> list = registry.Scratch;
+            registry.EnumerateForeign(map, list);
+            for (int i = 0; i < list.Count; i++)
+            {
+                Pawn pawn = list[i];
+                if (pawn == null || pawn.Destroyed)
+                {
+                    registry.Unregister(pawn);
+                    continue;
+                }
+
+                registry.TryGetHome(pawn, out GameComponent_OmniWorkProxyRegistry.ProxyHomeRecord home);
+                int since = home?.abroadSinceTick ?? -1;
+                if (since < 0) continue;
+
+                // 正在执行真实工作：给更长宽限（那边确实可能有活），超时仍未结束才视为卡住并收回。
+                bool working = pawn.Spawned && pawn.MapHeld != null && !IsIdleState(pawn);
+                int timeout = working ? AbroadReclaimTicks : AbroadIdleReclaimTicks;
+                if (tick - since < timeout) continue;
+
+                // 超时仍未回到归属图：传送回收（零依赖兜底，任何 Mod 下都成立）。
+                ReclaimAbroadProxy(pawn);
+            }
+        }
+
+        /// <summary>把驻外代理强制收回**归属图**（本图）休眠舱。</summary>
+        private void ReclaimAbroadProxy(Pawn pawn)
+        {
+            ProxyRecord record = FindProxyRecord(pawn);
+            if (record == null)
+            {
+                record = new ProxyRecord { pawn = pawn };
+                proxies.Add(record);
+            }
+            StopIssuedJob(record);
+            PutProxyToSleep(record);
+            WakePumpNow();
         }
 
         /// <summary>
@@ -2126,6 +2562,23 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         private void PerformRecreateAllProxies()
         {
+            // 归属本图池的代理全部强删（包括此刻正在其它地图上工作的），再按分批路径重建。
+            // registry 按 homeMap 过滤，因此其他池的代理一律不受影响（池隔离）。
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry != null)
+            {
+                int destroyedCount = registry.ForceRecreatePool(map);
+                WorkFailures.ClearAll();
+                proxySearchCursor = 0;
+                searchState = OmniWorkSearchState.Waiting;
+                nextPumpTick = CurrentTick;
+                WakePumpNow();
+                Messages.Message(
+                    "OmniWorkstation_ProxiesRecreated".Translate(destroyedCount, proxies.Count),
+                    MessageTypeDefOf.TaskCompletion, false);
+                return;
+            }
+
             int destroyed = 0;
 
             // 场上代理：先停 Job、解绑，再让携带物落地，最后销毁。
@@ -2176,8 +2629,11 @@ namespace FullyAutomaticOmniCrafter
             {
                 Pawn pawn = PawnGenerator.GeneratePawn(OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer);
                 PrepareProxy(pawn);
+                // 归属登记：代理属于"创建它的这台地图的池"，与它以后被搬到哪张图无关。
+                GameComponent_OmniWorkProxyRegistry.Instance?.Register(pawn, map, station.thingIDNumber);
                 if (!sleepingProxies.TryAdd(pawn))
                 {
+                    GameComponent_OmniWorkProxyRegistry.Instance?.Unregister(pawn);
                     pawn.Destroy(DestroyMode.Vanish);
                     return null;
                 }
@@ -2200,8 +2656,9 @@ namespace FullyAutomaticOmniCrafter
             pawn.workSettings?.EnableAndInitializeIfNotAlreadyInitialized();
 
             // 工作中的代理仍是合法 Pawn，但不进入殖民者、警报和普通 AI 使用的 MapPawns 列表。
-            if (pawn.Spawned && pawn.Map == map)
-                map.mapPawns.DeRegisterPawn(pawn);
+            // 跨图驻外时同样从"当前所在图"的列表里移出，否则会在那张图的面板上冒出来。
+            if (pawn.Spawned && pawn.Map != null)
+                pawn.Map.mapPawns.DeRegisterPawn(pawn);
         }
 
         /// <summary>
@@ -2434,11 +2891,10 @@ namespace FullyAutomaticOmniCrafter
             record.idleSinceTick = -1;
             if (sleepingProxies.Contains(pawn)) return;
 
+            // 任意图都可反生成：跨图回收是本设计的核心能力（驻外代理必须能被收回归属池）。
+            // 曾在别的图上的代理 DeSpawn 后统一收入**归属图**（本图）的休眠舱。
             if (pawn.Spawned)
-            {
-                if (pawn.Map != map) return;
                 pawn.DeSpawn(DestroyMode.Vanish);
-            }
             if (pawn.holdingOwner != null)
                 pawn.holdingOwner.Remove(pawn);
             if (!sleepingProxies.TryAdd(pawn))
@@ -2900,6 +3356,7 @@ namespace FullyAutomaticOmniCrafter
     /// 另外，只要代理手上还拿着非等待 Job，就一律放行 Tick —— JobDriver 的延迟 toil、
     /// 进度条与寻路全都靠 Pawn.Tick 推进。若调度状态短暂不同步导致"有真实 Job 却被
     /// 冻结"，Job 将永远无法结束，表现为代理攥着进度条站在原地一动不动。
+    /// 驻外代理（当前不在归属图）同样一律放行：它需要跑完工作或回程 job。
     /// </summary>
     [HarmonyPatch(typeof(Pawn), "Tick")]
     [HarmonyPriority(Priority.First)]
@@ -2910,6 +3367,9 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!OmniWorkProxyUtility.IsProxy(__instance)) return true;
             if (OmniWorkProxyUtility.IsActive(__instance)) return true;
+            // 驻外代理必须保持可 Tick，否则连回程 job 都无法推进。
+            Map home = GameComponent_OmniWorkProxyRegistry.HomeMapOf(__instance);
+            if (__instance.Spawned && home != null && __instance.Map != home) return true;
             // 兜底：非活跃但仍在跑真实 Job 属于状态不一致，放行 Tick 让它正常收尾。
             return __instance.CurJob != null &&
                    !MapComponent_OmniWorkstation.IsIdleJob(__instance.CurJob);
@@ -2920,6 +3380,8 @@ namespace FullyAutomaticOmniCrafter
     /// 原版 EndCurrentJob 会同步寻找下一项工作。真实 Job 继续留场并更新记录；
     /// 原版最终落入等待状态时，通知生命周期调度器返回工作站并进入空闲宽限期。
     /// 唯一例外是原版自己的 1 tick 接力缓冲 Wait，它不是空闲，必须放行让代理原地接续。
+    /// 所有管理动作都以**归属图**的组件为准：跨图工作时若用代理当前所在图的组件，
+    /// 记录查不到，代理就会变成无主状态。
     /// </summary>
     [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob))]
     [HarmonyPriority(Priority.First)]
@@ -2931,9 +3393,12 @@ namespace FullyAutomaticOmniCrafter
             if (!OmniWorkProxyUtility.IsProxy(___pawn) ||
                 OmniWorkProxyUtility.IsManagedTransition(___pawn)) return;
             if (!___pawn.Spawned) return;
-            MapComponent_OmniWorkstation manager =
-                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>();
+            MapComponent_OmniWorkstation manager = GameComponent_OmniWorkProxyRegistry.ManagerOf(___pawn);
             if (manager == null) return;
+
+            // 驻外：代理当前图不是归属图，一律交给驻外看护处理，
+            // 不能在这里按"空闲"把它拽回，否则回程 job 会在半途被自己打断。
+            if (manager.OwningMap != ___pawn.Map) return;
 
             // 原版工作成功后插入的 1 tick Wait_MaintainPosture 是接力缓冲：它下一 tick 结束时
             // 原版会自行 TryFindAndStartJob，代理原地接续下一项工作。若在此按空闲回收，代理
@@ -2978,8 +3443,8 @@ namespace FullyAutomaticOmniCrafter
         {
             if (!OmniWorkProxyUtility.IsProxy(___pawn)) return;
             if (!___pawn.Spawned) return;
-            MapComponent_OmniWorkstation manager =
-                ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>();
+            MapComponent_OmniWorkstation manager = GameComponent_OmniWorkProxyRegistry.ManagerOf(___pawn)
+                ?? ___pawn.Map.GetComponent<MapComponent_OmniWorkstation>();
             if (manager == null) return;
             // 代理不穿戴、不装备：这类 Job 一启动就取消，代理不会握着无法完成的
             // 穿戴进度条停在原地，而是立刻入舱等调度器重新指派正常工作。
@@ -2988,8 +3453,48 @@ namespace FullyAutomaticOmniCrafter
                 manager.CancelForbiddenGearJob(___pawn);
                 return;
             }
+            // 驻外工作时不能以"代理当前所在图"为准，否则记录会写进别的图、归属池看不到。
+            if (manager.OwningMap != ___pawn.Map) return;
             if (MapComponent_OmniWorkstation.IsIdleState(___pawn)) return;
             manager.NotifyProxyStartedJob(___pawn, ___pawn.CurJob);
+        }
+    }
+
+    /// <summary>
+    /// 代理出现在（或被搬到）某张图：更新全局归属表的"驻外"状态。
+    /// 所有标准换图路径（DeSpawn + GenSpawn.Spawn）都会经过这里，
+    /// 因此第三方 Mod 把代理搬到哪张图都能被无差别观测到。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.SpawnSetup))]
+    public static class Patch_OmniWorkProxy_TrackMapChange
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance, Map map)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(__instance)) return;
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry == null) return;
+            registry.NotifySpawned(__instance, map);
+            registry.VerifyMirror(__instance);
+        }
+    }
+
+    /// <summary>
+    /// 代理离开地图：区分"我方送入休眠舱"与"被第三方容器（车辆 / 门户 / 平台）接住"，
+    /// 后者需要在超时后强制收回归属池。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.DeSpawn))]
+    public static class Patch_OmniWorkProxy_TrackDeSpawn
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(__instance)) return;
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry == null) return;
+            registry.NotifyDespawned(__instance);
+            // 校验回写：入舱 / 被容器接住是归属最容易与镜像不一致的时刻，以权威表为准修正。
+            registry.VerifyMirror(__instance);
         }
     }
 
@@ -3023,6 +3528,39 @@ namespace FullyAutomaticOmniCrafter
         }
     }
 
+    /// <summary>
+    /// 入口授权（R-10）：代理只在"归属池有权进入的图"上接受工作查询。
+    ///
+    /// MultiFloors 会先把 pawn 瞬移到候选层、再递归重跑同一个 TryIssueJobPackage，因此那一刻
+    /// `pawn.Map` 就是候选图 —— 这里只需比较它是否等于归属图即可覆盖它，无需识别 Mod 身份。
+    /// 只约束"去"，不约束"回"：回程由驻外看护的空闲/超时传送回收兜底，否则代理会被困在别的图。
+    /// </summary>
+    [HarmonyPatch(typeof(JobGiver_Work), nameof(JobGiver_Work.TryIssueJobPackage))]
+    public static class Patch_OmniWorkProxy_EntryAuthorization
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn pawn, ref ThinkResult __result)
+        {
+            if (!OmniWorkProxyUtility.IsProxy(pawn)) return true;
+            Map queryMap = pawn.Map;
+            if (queryMap == null) return true;
+
+            Map homeMap = GameComponent_OmniWorkProxyRegistry.HomeMapOf(pawn);
+            if (homeMap == null || homeMap == queryMap) return true;
+
+            if (OmniWorkProxyEntryAuthorization.IsAuthorized(homeMap, queryMap)) return true;
+
+            if (OmniWorkProxyEntryAuthorization.StrictMode)
+            {
+                __result = ThinkResult.NoJob;
+                return false;
+            }
+            // 仅警告模式：放行但留日志，便于诊断"代理为何跑到了不该去的图"。
+            OmniWorkProxyEntryAuthorization.NotifyUnauthorized(homeMap, queryMap, pawn);
+            return true;
+        }
+    }
+
     /// <summary>范围以工作站为圆心，不随代理取料位置漂移。</summary>
     [HarmonyPatch(typeof(GenClosest), nameof(GenClosest.ClosestThing_Global_Reachable))]
     public static class Patch_OmniWorkProxy_GlobalSearchFilter
@@ -3036,7 +3574,7 @@ namespace FullyAutomaticOmniCrafter
             OmniWorkProxyUtility.TryGetStation(pawn, out Building_OmniWorkstation station);
             OmniWorkFailureCache failures = OmniWorkFailureCache.For(pawn);
             validator = thing => thing != null &&
-                (station == null || station.Covers(thing.PositionHeld)) &&
+                (station == null || station.CoversOn(pawn.Map, thing.PositionHeld)) &&
                 (failures == null || failures.Allows(pawn, null, thing)) &&
                 (original == null || original(thing));
         }

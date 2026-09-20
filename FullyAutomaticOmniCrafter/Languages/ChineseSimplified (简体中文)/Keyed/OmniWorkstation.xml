@@ -81,4 +81,35 @@
     <OmniWorkstation_DiagnoseRegionMiss>区域漏活诊断</OmniWorkstation_DiagnoseRegionMiss>
     <OmniWorkstation_DiagnoseRegionMissOn>已开启</OmniWorkstation_DiagnoseRegionMissOn>
     <OmniWorkstation_DiagnoseRegionMissOff>已关闭</OmniWorkstation_DiagnoseRegionMissOff>
+    <OmniWorkstation_AbroadCount>跨图工作代理：{0}</OmniWorkstation_AbroadCount>
+    <OmniWorkstation_VerifyMirrors>校验归属镜像</OmniWorkstation_VerifyMirrors>
+    <OmniWorkstation_GlobalWorkOn>全局自动工作：开</OmniWorkstation_GlobalWorkOn>
+    <OmniWorkstation_GlobalWorkOff>全局自动工作：关</OmniWorkstation_GlobalWorkOff>
+    <OmniWorkstation_GlobalWorkDesc>全局自动工作已切换：关闭时所有地图的工作站都会停止派发工作，并把工作代理收回各自工作站所在地图的休眠舱；代理不会被销毁，随身物品会先落回地面。</OmniWorkstation_GlobalWorkDesc>
+    <OmniWorkstation_EntryAuthLabel>跨图工作准入</OmniWorkstation_EntryAuthLabel>
+    <OmniWorkstation_EntryAuthDesc>控制工作代理能否进入"入口没有被任何工作站半径覆盖"的地图。入口指楼梯、传送门、以及可载人的车辆停靠点。</OmniWorkstation_EntryAuthDesc>
+    <OmniWorkstation_EntryAuthStrict>严格：未授权地图不派发（推荐）</OmniWorkstation_EntryAuthStrict>
+    <OmniWorkstation_EntryAuthStrictDesc>工作站半径必须覆盖通往该地图的入口，代理才会去那张图工作。</OmniWorkstation_EntryAuthStrictDesc>
+    <OmniWorkstation_EntryAuthWarn>仅警告：仍然派发，只记录日志</OmniWorkstation_EntryAuthWarn>
+    <OmniWorkstation_EntryAuthWarnDesc>保留原版行为，只在日志里记录"代理去了未授权地图"，用于排查。</OmniWorkstation_EntryAuthWarnDesc>
+    <OmniWorkstation_ReachableMaps>可去地图：{0}</OmniWorkstation_ReachableMaps>
+    <OmniWorkstation_ReachableMapsNone>无</OmniWorkstation_ReachableMapsNone>
+    <OmniWorkstation_UncoveredPortals>未被覆盖的入口：{0}</OmniWorkstation_UncoveredPortals>
+    <OmniWorkstation_ProxyReclaim>停止并回收</OmniWorkstation_ProxyReclaim>
+    <OmniWorkstation_ProxyRecreate>重建此代理</OmniWorkstation_ProxyRecreate>
+    <OmniWorkstation_ProxyReclaimed>已把 1 个工作代理停止并收回其归属池。</OmniWorkstation_ProxyReclaimed>
+    <OmniWorkstation_ProxyRecreated>已重建 1 个工作代理。</OmniWorkstation_ProxyRecreated>
+    <OmniWorkstation_RepairPool>修复本池</OmniWorkstation_RepairPool>
+    <OmniWorkstation_RepairPoolDone>已修复工作代理池：新补建 {0} 个。</OmniWorkstation_RepairPoolDone>
+    <OmniWorkstation_ManagerTitle>万能工作站代理总览</OmniWorkstation_ManagerTitle>
+    <OmniWorkstation_ManagerOpen>打开总览</OmniWorkstation_ManagerOpen>
+    <OmniWorkstation_ManagerOpenDesc>查看全游戏所有地图的代理池与代理：每个代理的归属地图、当前所在地图与坐标、正在做的工作，并可批量重建、修复或逐个回收。</OmniWorkstation_ManagerOpenDesc>
+    <OmniWorkstation_ManagerSummary>{0} 个代理池 · {1} 个工作代理</OmniWorkstation_ManagerSummary>
+    <OmniWorkstation_ManagerPoolHeader>{0}：{1} 个工作站 · 代理 {2} / 上限 {3}</OmniWorkstation_ManagerPoolHeader>
+    <OmniWorkstation_ManagerPoolDetail>跨图 {0} · 未被覆盖入口 {1} · 可去：{2}</OmniWorkstation_ManagerPoolDetail>
+    <OmniWorkstation_ManagerIdle>空闲</OmniWorkstation_ManagerIdle>
+    <OmniWorkstation_ManagerRecreateAll>重建全部代理</OmniWorkstation_ManagerRecreateAll>
+    <OmniWorkstation_ManagerRecreateAllDone>已重建全部代理池：销毁 {0} 个。</OmniWorkstation_ManagerRecreateAllDone>
+    <OmniWorkstation_ManagerRepairAll>修复全部池</OmniWorkstation_ManagerRepairAll>
+    <OmniWorkstation_ManagerRepairAllDone>已修复全部代理池：新补建 {0} 个。</OmniWorkstation_ManagerRepairAllDone>
 </LanguageData>

@@ -81,4 +81,35 @@
     <OmniWorkstation_DiagnoseRegionMiss>Region miss diagnostic</OmniWorkstation_DiagnoseRegionMiss>
     <OmniWorkstation_DiagnoseRegionMissOn>on</OmniWorkstation_DiagnoseRegionMissOn>
     <OmniWorkstation_DiagnoseRegionMissOff>off</OmniWorkstation_DiagnoseRegionMissOff>
+    <OmniWorkstation_AbroadCount>Proxies working on another map: {0}</OmniWorkstation_AbroadCount>
+    <OmniWorkstation_VerifyMirrors>Verify ownership mirrors</OmniWorkstation_VerifyMirrors>
+    <OmniWorkstation_GlobalWorkOn>Global automatic work: on</OmniWorkstation_GlobalWorkOn>
+    <OmniWorkstation_GlobalWorkOff>Global automatic work: off</OmniWorkstation_GlobalWorkOff>
+    <OmniWorkstation_GlobalWorkDesc>Global automatic work toggled: when off, workstations on every map stop dispatching work and recall their proxies into the cryptosleep storage of the map their workstation is on. Proxies are not destroyed; carried items are dropped first.</OmniWorkstation_GlobalWorkDesc>
+    <OmniWorkstation_EntryAuthLabel>Cross-map work admission</OmniWorkstation_EntryAuthLabel>
+    <OmniWorkstation_EntryAuthDesc>Controls whether work proxies may enter a map whose entrances are not covered by any workstation radius. Entrances include stairs, portals, and boarding points of crewed vehicles.</OmniWorkstation_EntryAuthDesc>
+    <OmniWorkstation_EntryAuthStrict>Strict: never dispatch to unauthorized maps (recommended)</OmniWorkstation_EntryAuthStrict>
+    <OmniWorkstation_EntryAuthStrictDesc>A workstation radius must cover the entrance leading to that map before proxies will work there.</OmniWorkstation_EntryAuthStrictDesc>
+    <OmniWorkstation_EntryAuthWarn>Warn only: still dispatch, just log it</OmniWorkstation_EntryAuthWarn>
+    <OmniWorkstation_EntryAuthWarnDesc>Keeps vanilla behaviour and only logs that a proxy went to an unauthorized map, for diagnostics.</OmniWorkstation_EntryAuthWarnDesc>
+    <OmniWorkstation_ReachableMaps>Reachable maps: {0}</OmniWorkstation_ReachableMaps>
+    <OmniWorkstation_ReachableMapsNone>none</OmniWorkstation_ReachableMapsNone>
+    <OmniWorkstation_UncoveredPortals>Uncovered entrances: {0}</OmniWorkstation_UncoveredPortals>
+    <OmniWorkstation_ProxyReclaim>Stop and recall</OmniWorkstation_ProxyReclaim>
+    <OmniWorkstation_ProxyRecreate>Rebuild this proxy</OmniWorkstation_ProxyRecreate>
+    <OmniWorkstation_ProxyReclaimed>Stopped 1 work proxy and recalled it to its owning pool.</OmniWorkstation_ProxyReclaimed>
+    <OmniWorkstation_ProxyRecreated>Rebuilt 1 work proxy.</OmniWorkstation_ProxyRecreated>
+    <OmniWorkstation_RepairPool>Repair this pool</OmniWorkstation_RepairPool>
+    <OmniWorkstation_RepairPoolDone>Repaired the work proxy pool: {0} newly created.</OmniWorkstation_RepairPoolDone>
+    <OmniWorkstation_ManagerTitle>Universal workstation proxy overview</OmniWorkstation_ManagerTitle>
+    <OmniWorkstation_ManagerOpen>Open overview</OmniWorkstation_ManagerOpen>
+    <OmniWorkstation_ManagerOpenDesc>Shows every proxy pool on every map: each proxy's owning map, its current map and position, and its current job — plus batch rebuild, batch repair, and per-proxy recall.</OmniWorkstation_ManagerOpenDesc>
+    <OmniWorkstation_ManagerSummary>{0} pools · {1} work proxies</OmniWorkstation_ManagerSummary>
+    <OmniWorkstation_ManagerPoolHeader>{0}: {1} workstations · proxies {2} / limit {3}</OmniWorkstation_ManagerPoolHeader>
+    <OmniWorkstation_ManagerPoolDetail>abroad {0} · uncovered entrances {1} · reachable: {2}</OmniWorkstation_ManagerPoolDetail>
+    <OmniWorkstation_ManagerIdle>idle</OmniWorkstation_ManagerIdle>
+    <OmniWorkstation_ManagerRecreateAll>Rebuild all proxies</OmniWorkstation_ManagerRecreateAll>
+    <OmniWorkstation_ManagerRecreateAllDone>Rebuilt every proxy pool: {0} destroyed.</OmniWorkstation_ManagerRecreateAllDone>
+    <OmniWorkstation_ManagerRepairAll>Repair all pools</OmniWorkstation_ManagerRepairAll>
+    <OmniWorkstation_ManagerRepairAllDone>Repaired every proxy pool: {0} newly created.</OmniWorkstation_ManagerRepairAllDone>
 </LanguageData>
