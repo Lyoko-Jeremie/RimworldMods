@@ -178,6 +178,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         private readonly HashSet<Thing> borrowedCopies = new HashSet<Thing>();
 
+        /// <summary>只读诊断出口：当前仍以租约形式借出（真 Spawned 在存储格、已从全局扣减）的实物集合。
+        /// 仅供诊断 UI 枚举，调用方不得修改集合内容或据此改变租约状态。</summary>
+        public ICollection<Thing> BorrowedCopiesForReading => borrowedCopies;
+
         public bool IsBorrowed(Thing copy)
         {
             return copy != null && borrowedCopies.Contains(copy);

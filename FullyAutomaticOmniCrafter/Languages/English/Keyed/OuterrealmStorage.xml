@@ -138,4 +138,49 @@
   <OuterrealmItemMenu_Back>Back to items</OuterrealmItemMenu_Back>
   <OuterrealmItemMenu_ActionsTitle>Actions: {0}</OuterrealmItemMenu_ActionsTitle>
   <OuterrealmItemMenu_NoActions>The selected pawn has no available actions for this target.</OuterrealmItemMenu_NoActions>
+
+  <!-- ★ Projection diagnostics window (read-only: inspect what this terminal currently projects) -->
+  <VaultProjectionDiagnostics>Projection diagnostics</VaultProjectionDiagnostics>
+  <VaultProjectionDiagnosticsDesc>Opens a read-only diagnostics window: shows which items this building currently projects and in what quantities, and highlights rows that need attention or look wrong (pending materialization, filtered out, projected stack size off, leftover empty entries, borrowed real items).</VaultProjectionDiagnosticsDesc>
+  <VaultProjDiag_Title>Projection diagnostics: {0}</VaultProjDiag_Title>
+  <VaultProjDiag_Truncated>(row limit {0} reached, list is incomplete)</VaultProjDiag_Truncated>
+  <VaultProjDiag_MapUnknown>unknown map</VaultProjDiag_MapUnknown>
+  <VaultProjDiag_VaultInfo>Terminal at: {0} @ {1}</VaultProjDiag_VaultInfo>
+  <VaultProjDiag_Permissions>Permissions: allow deposit {0}; allow withdraw {1}; allow take for use while withdrawing disallowed {2}; frozen {3}</VaultProjDiag_Permissions>
+  <VaultProjDiag_Yes>yes</VaultProjDiag_Yes>
+  <VaultProjDiag_No>no</VaultProjDiag_No>
+  <VaultProjDiag_Stats>Projected in view: {0}, borrowed: {1}; entries allowed by the filter: {2} (of which pending materialization: {3}); problems: {4}</VaultProjDiag_Stats>
+  <VaultProjDiag_Versions>Content version {0}, reservation version {1}, materialization queue: {2}</VaultProjDiag_Versions>
+  <VaultProjDiag_QueuePending>work pending</VaultProjDiag_QueuePending>
+  <VaultProjDiag_QueueIdle>idle</VaultProjDiag_QueueIdle>
+  <VaultProjDiag_Search>Search</VaultProjDiag_Search>
+  <VaultProjDiag_Clear>Clear</VaultProjDiag_Clear>
+  <VaultProjDiag_ShowCount>Showing {0} / {1}</VaultProjDiag_ShowCount>
+  <VaultProjDiag_NoMatch>No matching rows.</VaultProjDiag_NoMatch>
+  <VaultProjDiag_OnlyNoteworthy>Show only rows that need attention</VaultProjDiag_OnlyNoteworthy>
+  <VaultProjDiag_ColName>Item</VaultProjDiag_ColName>
+  <VaultProjDiag_ColCopy>Projected stack</VaultProjDiag_ColCopy>
+  <VaultProjDiag_ColGlobal>Global total</VaultProjDiag_ColGlobal>
+  <VaultProjDiag_ColReserved>Reserved</VaultProjDiag_ColReserved>
+  <VaultProjDiag_ColAvailable>Available</VaultProjDiag_ColAvailable>
+  <VaultProjDiag_ColState>State</VaultProjDiag_ColState>
+  <VaultProjDiag_Empty>This building currently projects no items.</VaultProjDiag_Empty>
+  <VaultProjDiag_EmptyNoteworthy>No rows need attention.</VaultProjDiag_EmptyNoteworthy>
+  <VaultProjDiag_StateNormal>OK</VaultProjDiag_StateNormal>
+  <VaultProjDiag_StatePending>pending materialization</VaultProjDiag_StatePending>
+  <VaultProjDiag_StatePendingFrozen>pending materialization (frozen)</VaultProjDiag_StatePendingFrozen>
+  <VaultProjDiag_StateOrphanCopy>orphan projection</VaultProjDiag_StateOrphanCopy>
+  <VaultProjDiag_StateDenied>filtered out</VaultProjDiag_StateDenied>
+  <VaultProjDiag_StateEmptyEntry>leftover empty entry</VaultProjDiag_StateEmptyEntry>
+  <VaultProjDiag_StateMismatch>stack size mismatch</VaultProjDiag_StateMismatch>
+  <VaultProjDiag_StateBorrowed>borrowed</VaultProjDiag_StateBorrowed>
+  <VaultProjDiag_StateFrozen>frozen</VaultProjDiag_StateFrozen>
+  <VaultProjDiag_StateNoWithdraw>withdraw disallowed</VaultProjDiag_StateNoWithdraw>
+  <VaultProjDiag_TipDef>Def: {0}</VaultProjDiag_TipDef>
+  <VaultProjDiag_TipKey>Entry key: {0}</VaultProjDiag_TipKey>
+  <VaultProjDiag_TipCopyExpected>Expected projected stack: {0} (min(global total, stack limit {1}))</VaultProjDiag_TipCopyExpected>
+  <VaultProjDiag_TipAmounts>Global total {0}, reserved {1}, available {2}</VaultProjDiag_TipAmounts>
+  <VaultProjDiag_TipCopyId>Projection copy ThingID: {0}</VaultProjDiag_TipCopyId>
+  <VaultProjDiag_TipRealId>Canonical real item ThingID: {0}</VaultProjDiag_TipRealId>
+  <VaultProjDiag_TipOrphanCopy>No global entry matches this projection (ThingID {0}); it is an orphan copy and is normally cleaned up on the next view sync.</VaultProjDiag_TipOrphanCopy>
 </LanguageData>

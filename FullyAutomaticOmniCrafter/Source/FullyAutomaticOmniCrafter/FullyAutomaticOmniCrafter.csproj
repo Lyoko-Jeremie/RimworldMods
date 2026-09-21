@@ -449,6 +449,7 @@
     <Compile Include="OuterrealmStorage\Dialog_OuterrealmVaultItemFloatMenu.cs" />
     <Compile Include="OuterrealmStorage\Dialog_OuterrealmStorageManager.cs" />
     <Compile Include="OuterrealmStorage\Dialog_SubspaceAccessManager.cs" />
+    <Compile Include="OuterrealmStorage\Dialog_VaultProjectionDiagnostics.cs" />
     <Compile Include="OuterrealmStorage\GameComponent_OuterrealmStorage.cs" />
     <Compile Include="OuterrealmStorage\IOuterrealmVaultContext.cs" />
     <Compile Include="OuterrealmStorage\ITab_OuterrealmVaultContents.cs" />

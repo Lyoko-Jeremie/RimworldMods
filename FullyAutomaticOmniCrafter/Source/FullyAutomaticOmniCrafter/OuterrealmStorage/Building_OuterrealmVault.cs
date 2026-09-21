@@ -36,6 +36,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessManagerOpen") ?? 
             BaseContent.WhiteTex;
         
+        /// <summary>投影诊断按钮图标。尚无专用贴图时回退到「错误日志」图标（诊断语义相近），
+        /// 放入 UI/Commands/OmniStorage_VaultProjectionDiagnostics.png 后自动生效。</summary>
+        public static readonly Texture2D VaultProjectionDiagnosticsIcon = 
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultProjectionDiagnostics", false) ?? 
+            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ErrorLog", false) ?? 
+            BaseContent.WhiteTex;
+        
         public static readonly Texture2D SubspaceAccessOpenManagerSelfIcon = 
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_SubspaceAccessOpenManagerSelf") ?? 
             BaseContent.WhiteTex;
@@ -693,6 +700,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     defaultDesc = "SubspaceAccessManagerOpenDesc".Translate(),
                     icon = OuterrealmStorageTex.SubspaceAccessManagerOpenIcon,
                     action = () => Find.WindowStack.Add(new Dialog_SubspaceAccessManager()),
+                };
+                // 投影诊断（只读）：查看本建筑当前投影了哪些物品及各自数量，异常项置顶标色，便于了解与排查。
+                // 只读取视图、条目、预留和借出缓存，不改变任何库存或 Job 状态。
+                yield return new Command_Action
+                {
+                    defaultLabel = "VaultProjectionDiagnostics".Translate(),
+                    defaultDesc = "VaultProjectionDiagnosticsDesc".Translate(),
+                    icon = OuterrealmStorageTex.VaultProjectionDiagnosticsIcon,
+                    action = () => Find.WindowStack.Add(new Dialog_VaultProjectionDiagnostics(this)),
                 };
                 // 右键菜单模式切换（§4 自制大列表）：原版 ↔ 大列表，每建筑独立、随存档保存；
                 // label 每帧随 GetGizmos 重建，显示本建筑当前模式；Toggle 高亮 = 本建筑大列表模式。

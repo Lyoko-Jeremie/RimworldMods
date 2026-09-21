@@ -140,4 +140,49 @@
   <OuterrealmItemMenu_Back>返回物品列表</OuterrealmItemMenu_Back>
   <OuterrealmItemMenu_ActionsTitle>可用操作：{0}</OuterrealmItemMenu_ActionsTitle>
   <OuterrealmItemMenu_NoActions>当前选中的角色对该目标没有可用操作。</OuterrealmItemMenu_NoActions>
+
+  <!-- ★ 投影诊断窗口（只读：了解与排查本建筑当前投影了哪些物品） -->
+  <VaultProjectionDiagnostics>投影诊断</VaultProjectionDiagnostics>
+  <VaultProjectionDiagnosticsDesc>打开只读诊断窗口：查看本建筑当前投影了哪些物品及各自数量，并标出需要注意或异常的行（待物化、筛选已禁止、投影堆数不符预期、空条目残留、借出中的实物）。</VaultProjectionDiagnosticsDesc>
+  <VaultProjDiag_Title>投影诊断：{0}</VaultProjDiag_Title>
+  <VaultProjDiag_Truncated>（已达显示上限 {0} 行，列表不完整）</VaultProjDiag_Truncated>
+  <VaultProjDiag_MapUnknown>未知地图</VaultProjDiag_MapUnknown>
+  <VaultProjDiag_VaultInfo>终端位置：{0} @ {1}</VaultProjDiag_VaultInfo>
+  <VaultProjDiag_Permissions>权限：允许存入 {0}；允许取出 {1}；禁止取出时允许拿取 {2}；冻结 {3}</VaultProjDiag_Permissions>
+  <VaultProjDiag_Yes>是</VaultProjDiag_Yes>
+  <VaultProjDiag_No>否</VaultProjDiag_No>
+  <VaultProjDiag_Stats>视图投影 {0} 项，借出 {1} 项；存储清单允许的条目 {2} 项（其中待物化 {3} 项），异常 {4} 项</VaultProjDiag_Stats>
+  <VaultProjDiag_Versions>内容版本 {0}，预留版本 {1}，待物化队列：{2}</VaultProjDiag_Versions>
+  <VaultProjDiag_QueuePending>有待处理工作</VaultProjDiag_QueuePending>
+  <VaultProjDiag_QueueIdle>空闲</VaultProjDiag_QueueIdle>
+  <VaultProjDiag_Search>搜索</VaultProjDiag_Search>
+  <VaultProjDiag_Clear>清除</VaultProjDiag_Clear>
+  <VaultProjDiag_ShowCount>显示 {0} / {1} 项</VaultProjDiag_ShowCount>
+  <VaultProjDiag_NoMatch>没有匹配的行。</VaultProjDiag_NoMatch>
+  <VaultProjDiag_OnlyNoteworthy>仅显示需要注意的行</VaultProjDiag_OnlyNoteworthy>
+  <VaultProjDiag_ColName>物品</VaultProjDiag_ColName>
+  <VaultProjDiag_ColCopy>投影堆数</VaultProjDiag_ColCopy>
+  <VaultProjDiag_ColGlobal>全局总量</VaultProjDiag_ColGlobal>
+  <VaultProjDiag_ColReserved>已预留</VaultProjDiag_ColReserved>
+  <VaultProjDiag_ColAvailable>可用</VaultProjDiag_ColAvailable>
+  <VaultProjDiag_ColState>状态</VaultProjDiag_ColState>
+  <VaultProjDiag_Empty>本建筑当前没有投影任何物品。</VaultProjDiag_Empty>
+  <VaultProjDiag_EmptyNoteworthy>没有需要注意的行。</VaultProjDiag_EmptyNoteworthy>
+  <VaultProjDiag_StateNormal>正常</VaultProjDiag_StateNormal>
+  <VaultProjDiag_StatePending>待物化</VaultProjDiag_StatePending>
+  <VaultProjDiag_StatePendingFrozen>待物化（已冻结）</VaultProjDiag_StatePendingFrozen>
+  <VaultProjDiag_StateOrphanCopy>孤儿投影</VaultProjDiag_StateOrphanCopy>
+  <VaultProjDiag_StateDenied>筛选已禁止</VaultProjDiag_StateDenied>
+  <VaultProjDiag_StateEmptyEntry>空条目残留</VaultProjDiag_StateEmptyEntry>
+  <VaultProjDiag_StateMismatch>数量不符预期</VaultProjDiag_StateMismatch>
+  <VaultProjDiag_StateBorrowed>已借出</VaultProjDiag_StateBorrowed>
+  <VaultProjDiag_StateFrozen>已冻结</VaultProjDiag_StateFrozen>
+  <VaultProjDiag_StateNoWithdraw>已禁止取出</VaultProjDiag_StateNoWithdraw>
+  <VaultProjDiag_TipDef>Def：{0}</VaultProjDiag_TipDef>
+  <VaultProjDiag_TipKey>条目键：{0}</VaultProjDiag_TipKey>
+  <VaultProjDiag_TipCopyExpected>预期投影堆数：{0}（min(全局数量, 堆叠上限 {1})）</VaultProjDiag_TipCopyExpected>
+  <VaultProjDiag_TipAmounts>全局总量 {0}，已预留 {1}，可用 {2}</VaultProjDiag_TipAmounts>
+  <VaultProjDiag_TipCopyId>投影副本 ThingID：{0}</VaultProjDiag_TipCopyId>
+  <VaultProjDiag_TipRealId>权威实物 ThingID：{0}</VaultProjDiag_TipRealId>
+  <VaultProjDiag_TipOrphanCopy>该投影找不到对应的全局条目（ThingID {0}），属于孤儿副本，通常会在下次视图同步时被清理。</VaultProjDiag_TipOrphanCopy>
 </LanguageData>
