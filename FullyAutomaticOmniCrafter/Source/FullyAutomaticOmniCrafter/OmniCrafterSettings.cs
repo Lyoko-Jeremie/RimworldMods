@@ -116,7 +116,10 @@ namespace FullyAutomaticOmniCrafter
         public OmniPhantomWall2_PassabilitySettings customPassabilitySettings = new OmniPhantomWall2_PassabilitySettings();
 
         // ─── 万能工作站代理状态悬浮监视面板（OmniWorkstationMonitor）─────────
-        /// <summary>悬浮监视面板是否可见。默认收起，屏幕中右缘会显示"打开监视"入口按钮。</summary>
+        /// <summary>
+        /// 【已弃用】悬浮监视面板的可见性已迁移到**存档级**（GameComponent_OmniWorkProxyRegistry.MonitorVisible），
+        /// 以满足"新存档默认不显示"。本字段仅为兼容旧配置文件而保留读取，不再参与任何显示判定。
+        /// </summary>
         public bool omniWorkstationMonitorVisible = false;
         /// <summary>悬浮面板左上角锚点（逻辑屏幕坐标）；小于 0 表示从未拖动、使用默认位置。</summary>
         public float omniWorkstationMonitorX = -1f;

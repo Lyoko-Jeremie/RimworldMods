@@ -39,6 +39,10 @@ namespace FullyAutomaticOmniCrafter
         private int legacyWorkRadiusIndex = 1;
         private List<string> disabledWorkTypeDefNames = new List<string>();
         private bool allowUnclassifiedWork = true;
+        // 工作站级「跨图 / 跨层工作」开关：关闭时从这台工作站派出的代理一律不响应归属图之外的工作。
+        // 默认关闭 —— 代理默认只在归属地图内工作，需要跨层 / 跨图调度时由玩家在工作站上手动开启。
+        // 老存档没有该字段时同样按 false 补齐，即升级后默认不再跨图。
+        private bool allowCrossMapWork = false;
         // 旧存档没有该字段，载入后需要把默认过滤器补齐，否则老工作站仍会保持“全部启用”。
         private bool workFilterInitialized;
         [Unsaved] private int workFilterVersion;
@@ -49,6 +53,7 @@ namespace FullyAutomaticOmniCrafter
         public bool AutomationEnabled => automationEnabled;
         public int WorkRadius => workRadius;
         public bool AllowUnclassifiedWork => allowUnclassifiedWork;
+        public bool AllowCrossMapWork => allowCrossMapWork;
         public int WorkFilterVersion => workFilterVersion;
 
         public bool Operational
@@ -109,6 +114,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref legacyWorkRadiusIndex, "workRadiusIndex", 1);
             Scribe_Collections.Look(ref disabledWorkTypeDefNames, "disabledWorkTypeDefNames", LookMode.Value);
             Scribe_Values.Look(ref allowUnclassifiedWork, "allowUnclassifiedWork", true);
+            Scribe_Values.Look(ref allowCrossMapWork, "allowCrossMapWork", false);
             Scribe_Values.Look(ref workFilterInitialized, "workFilterInitialized", false);
             if (disabledWorkTypeDefNames == null) disabledWorkTypeDefNames = new List<string>();
             disabledWorkTypeSet = null;
@@ -313,6 +319,17 @@ namespace FullyAutomaticOmniCrafter
                 action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationWorkFilter(this))
             };
 
+            // 工作站级「跨图 / 跨层工作」开关：关闭后从这台工作站派出的代理一律不响应归属图之外的工作
+            //（硬性条件，不受“仅警告”准入模式影响）。并集语义：同一张图上任一台工作站开启即允许。
+            yield return new Command_Toggle
+            {
+                defaultLabel = "OmniWorkstation_AllowCrossMapWork".Translate(),
+                defaultDesc = "OmniWorkstation_AllowCrossMapWorkDesc".Translate(),
+                icon = TexCommand.ForbidOff,
+                isActive = () => allowCrossMapWork,
+                toggleAction = () => allowCrossMapWork = !allowCrossMapWork
+            };
+
             MapComponent_OmniWorkstation manager = Map?.GetComponent<MapComponent_OmniWorkstation>();
             if (manager != null)
             {
@@ -340,6 +357,15 @@ namespace FullyAutomaticOmniCrafter
                     // Gizmo 的 action 运行在 OnGUI 阶段，而销毁与生成 Pawn 都会改动地图上的集合，
                     // 因此这里只登记意图，实际动作交给下一 tick 执行。
                     action = () => manager.RequestRecreateAllProxies()
+                };
+
+                // 全局总览（R-7）：跨地图查看与管理所有代理池与代理，入口放在工作站上。
+                yield return new Command_Action
+                {
+                    defaultLabel = "OmniWorkstation_ManagerOpen".Translate(),
+                    defaultDesc = "OmniWorkstation_ManagerOpenDesc".Translate(),
+                    icon = TexButton.Info,
+                    action = () => Find.WindowStack.Add(new Window_OmniWorkstationManager())
                 };
             }
         }
@@ -598,6 +624,68 @@ namespace FullyAutomaticOmniCrafter
             if (workType == null) return "OmniWorkstation_UnclassifiedWork".Translate();
             if (!workType.labelShort.NullOrEmpty()) return workType.labelShort.CapitalizeFirst();
             return workType.LabelCap;
+        }
+    }
+
+    /// <summary>
+    /// 跨层机制的**能力探测**，以及由此需要做的 workgiver 兼容性调整。
+    ///
+    /// 背景（已由反编译确证）：多层级 Mod（MultiFloors 一类）会把"在别的层找到的工作"延后到换层完成后
+    /// 再恢复 —— `CrossLevelMoveJobUtility.TryResumeDeferredJob` 会经 `TileDeferredJobValidator.CanReserve`
+    /// 以 **errorOnFailed = false** 做一次静默试探（`driver.TryMakePreToilReservations(false)`）。
+    /// 但 PickUpAndHaul 的 `JobDriver_HaulToInventory.TryMakePreToilReservations(bool errorOnFailed)`
+    /// 把该参数**写死成 true**（内部 `ReservationUtility.Reserve(..., true, false)`），于是静默试探失败时
+    /// 照样 Log.Error 刷屏；而它预约的是 `maxPawns = 1` 的存储格，多个搬运工与殖民者必然互相抢占，
+    /// 代理还会白跑一趟楼梯。因此**只在检测到跨层机制时**把这份工作从代理的可用列表里剔除，
+    /// 没有跨层机制时行为完全不变。
+    ///
+    /// 探测的是"能力/类型"而不是 Mod 名字：这样既不依赖识别 Mod 身份，也能覆盖将来提供同类机制的实现。
+    /// </summary>
+    public static class OmniCrossLevelCompat
+    {
+        // 跨层机制的关键类型：任一存在，即说明存在"把工作延后到换层之后恢复"的机制。
+        private static readonly string[] CrossLevelTypeNames =
+        {
+            "MultiFloors.Jobs.CrossLevelMoveJobUtility",
+            "MultiFloors.MultiFloorsModHandler",
+            "MultiFloors.Maps.MF_LevelMapComp"
+        };
+
+        private static bool detected;
+        private static bool present;
+
+        /// <summary>是否存在跨层机制。首次探测后缓存，之后为零成本属性读取。</summary>
+        public static bool CrossLevelMechanismPresent
+        {
+            get
+            {
+                if (!detected)
+                {
+                    detected = true;
+                    for (int i = 0; i < CrossLevelTypeNames.Length; i++)
+                    {
+                        if (AccessTools.TypeByName(CrossLevelTypeNames[i]) != null)
+                        {
+                            present = true;
+                            break;
+                        }
+                    }
+                }
+                return present;
+            }
+        }
+
+        /// <summary>
+        /// 该 workgiver 是否因跨层机制而应排除给代理。
+        /// 仅针对 PickUpAndHaul 的 HaulToInventory：其 driver 无视 errorOnFailed 且死锁单个存储格。
+        /// 判定只用 defName 与 giverClass（Type），不实例化 WorkGiver，避免额外开销。
+        /// </summary>
+        public static bool SkipForProxy(WorkGiverDef def)
+        {
+            if (def == null || !CrossLevelMechanismPresent) return false;
+            if (def.defName == "HaulToInventory") return true;
+            Type giverClass = def.giverClass;
+            return giverClass != null && giverClass.FullName == "PickUpAndHaul.WorkGiver_HaulToInventory";
         }
     }
 
@@ -1320,6 +1408,21 @@ namespace FullyAutomaticOmniCrafter
             new List<Building_OmniWorkstation>();
         private readonly Dictionary<Building_OmniWorkstation, StationRuntime> stationStates =
             new Dictionary<Building_OmniWorkstation, StationRuntime>();
+
+        /// <summary>
+        /// 本池是否有任一台工作站允许代理跨图 / 跨层工作（并集语义，与入口覆盖判定一致）。
+        /// 由入口授权前缀在“代理已位于归属图之外”的路径上调用——频率低，只遍历工作站列表（通常个位数）。
+        /// 本图没有任何工作站时返回 false：此时代理本来也不该离开归属图。
+        /// </summary>
+        public bool AnyStationAllowsCrossMapWork()
+        {
+            for (int i = 0; i < stations.Count; i++)
+            {
+                Building_OmniWorkstation station = stations[i];
+                if (station != null && !station.Destroyed && station.AllowCrossMapWork) return true;
+            }
+            return false;
+        }
         private readonly List<ProxyRecord> proxies = new List<ProxyRecord>();
         private ProxySleepHolder sleepHolder;
         private ThingOwner<Pawn> sleepingProxies;
@@ -1660,7 +1763,9 @@ namespace FullyAutomaticOmniCrafter
 
                 if (station == null || !station.Operational || station.Map != map)
                 {
-                    PutProxyToSleep(record);
+                    // 不在此处直接 DeSpawn：本方法可能处在 EndCurrentJob 的调用栈里，
+                    // 反生成代理会让同一栈上后续推进的 Toil 读到 null 的 pawn.MapHeld。
+                    RequestProxySleep(record);
                     WakePumpNow();
                     return;
                 }
@@ -1671,7 +1776,7 @@ namespace FullyAutomaticOmniCrafter
                     OmniWorkProxyUtility.TryGetStation(runtime.probePawn, out Building_OmniWorkstation owner) &&
                     owner == station)
                 {
-                    PutProxyToSleep(record);
+                    RequestProxySleep(record);
                     return;
                 }
 
@@ -1689,7 +1794,7 @@ namespace FullyAutomaticOmniCrafter
                         ExhaustedBackoffTicks(runtime.consecutiveFailures);
                     exhaustedStepCount++;
                     searchState = OmniWorkSearchState.Backoff;
-                    PutProxyToSleep(record);
+                    RequestProxySleep(record);
                     WakePumpNow();
                     return;
                 }
@@ -2409,6 +2514,7 @@ namespace FullyAutomaticOmniCrafter
 
         private readonly List<Pawn> pendingProxyReclaims = new List<Pawn>();
         private readonly List<Pawn> pendingProxyRecreates = new List<Pawn>();
+        private readonly List<ProxyRecord> pendingProxySleeps = new List<ProxyRecord>();
         private bool pendingPoolRepair;
 
         /// <summary>登记"停止该代理并立即收回其归属池"（不销毁）。</summary>
@@ -2429,6 +2535,22 @@ namespace FullyAutomaticOmniCrafter
         public void RequestRepairPool()
         {
             pendingPoolRepair = true;
+        }
+
+        /// <summary>
+        /// 登记"把该代理送回休眠舱"（含 DeSpawn）。
+        /// 绝不能在 EndCurrentJob 的调用栈内直接反生成代理：那时 job/toil 链仍在栈上，
+        /// 后续 Toil 的 initAction 会读到 null 的 pawn.MapHeld 并抛 NullReferenceException
+        /// （JobDriver.Map => pawn.MapHeld）。因此统一延后到本组件的 tick 栈执行。
+        /// </summary>
+        private void RequestProxySleep(ProxyRecord record)
+        {
+            if (record == null || record.pawn == null || record.pawn.Destroyed) return;
+            for (int i = 0; i < pendingProxySleeps.Count; i++)
+            {
+                if (pendingProxySleeps[i] == record) return;
+            }
+            pendingProxySleeps.Add(record);
         }
 
         /// <summary>在 tick 中执行界面登记的管理请求：与地图集合的改动时机一致。</summary>
@@ -2468,6 +2590,17 @@ namespace FullyAutomaticOmniCrafter
                             MessageTypeDefOf.TaskCompletion, false);
                 }
                 pendingProxyRecreates.Clear();
+            }
+
+            if (pendingProxySleeps.Count > 0)
+            {
+                for (int i = 0; i < pendingProxySleeps.Count; i++)
+                {
+                    ProxyRecord record = pendingProxySleeps[i];
+                    if (record == null || record.pawn == null || record.pawn.Destroyed) continue;
+                    PutProxyToSleep(record);
+                }
+                pendingProxySleeps.Clear();
             }
         }
 
@@ -3334,6 +3467,10 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < defs.Count; i++)
             {
                 WorkGiverDef def = defs[i];
+                // 存在跨层机制时剔除 PickUpAndHaul 的 HaulToInventory（其 driver 无视 errorOnFailed，
+                // 会把跨层延迟 job 的静默试探变成 Log.Error 刷屏，且死锁单个存储格）。详见
+                // OmniCrossLevelCompat 的类注释；无跨层机制时这里恒为 false，行为不变。
+                if (OmniCrossLevelCompat.SkipForProxy(def)) continue;
                 try
                 {
                     WorkGiver giver = def.Worker;
@@ -3547,6 +3684,16 @@ namespace FullyAutomaticOmniCrafter
 
             Map homeMap = GameComponent_OmniWorkProxyRegistry.HomeMapOf(pawn);
             if (homeMap == null || homeMap == queryMap) return true;
+
+            // 工作站级「跨图 / 跨层工作」总开关（并集语义：本池任一台工作站允许即放行）。
+            // 这是硬性条件，与准入模式无关——开关关闭时即便处于“仅警告”模式也不得放行，
+            // 否则“禁止跨层”会变成一个无效开关。
+            MapComponent_OmniWorkstation homeManager = homeMap.GetComponent<MapComponent_OmniWorkstation>();
+            if (homeManager != null && !homeManager.AnyStationAllowsCrossMapWork())
+            {
+                __result = ThinkResult.NoJob;
+                return false;
+            }
 
             if (OmniWorkProxyEntryAuthorization.IsAuthorized(homeMap, queryMap)) return true;
 

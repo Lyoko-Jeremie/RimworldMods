@@ -9,6 +9,8 @@
     <OmniWorkstation_WorkFilterDesc>设置此工作站可以派发的原版和 Mod 工作类型。</OmniWorkstation_WorkFilterDesc>
     <OmniWorkstation_WorkFilterTitle>万能工作站工作类型</OmniWorkstation_WorkFilterTitle>
     <OmniWorkstation_WorkFilterHelp>配置只作用于当前工作站。重叠范围内，只要任意一个工作站允许该类型，任务就可以执行。</OmniWorkstation_WorkFilterHelp>
+    <OmniWorkstation_AllowCrossMapWork>允许跨图工作</OmniWorkstation_AllowCrossMapWork>
+    <OmniWorkstation_AllowCrossMapWorkDesc>默认关闭：代理只在归属地图内工作，不响应其他楼层 / 其他地图上的任务；需要跨层调度时请手动开启。同一张地图上任一台工作站开启即允许。此开关独立于"跨图工作准入"模式。</OmniWorkstation_AllowCrossMapWorkDesc>
     <OmniWorkstation_FilterSearch>搜索</OmniWorkstation_FilterSearch>
     <OmniWorkstation_EnableAll>全部启用</OmniWorkstation_EnableAll>
     <OmniWorkstation_DisableAll>全部禁用</OmniWorkstation_DisableAll>

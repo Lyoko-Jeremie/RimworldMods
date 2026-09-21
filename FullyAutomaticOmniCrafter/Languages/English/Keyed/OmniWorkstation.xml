@@ -9,6 +9,8 @@
     <OmniWorkstation_WorkFilterDesc>Choose which vanilla and mod work types this workstation may schedule.</OmniWorkstation_WorkFilterDesc>
     <OmniWorkstation_WorkFilterTitle>Universal workstation work types</OmniWorkstation_WorkFilterTitle>
     <OmniWorkstation_WorkFilterHelp>This configuration belongs to this workstation. In overlapping areas, work is allowed when any covering workstation enables its type.</OmniWorkstation_WorkFilterHelp>
+    <OmniWorkstation_AllowCrossMapWork>Allow cross-map work</OmniWorkstation_AllowCrossMapWork>
+    <OmniWorkstation_AllowCrossMapWorkDesc>Off by default: proxies work only on their home map and do not take jobs on other floors or maps. Turn it on to allow cross-level scheduling. Enabled on any workstation of a map allows it. This toggle is independent of the cross-map entry authorization mode.</OmniWorkstation_AllowCrossMapWorkDesc>
     <OmniWorkstation_FilterSearch>Search</OmniWorkstation_FilterSearch>
     <OmniWorkstation_EnableAll>Enable all</OmniWorkstation_EnableAll>
     <OmniWorkstation_DisableAll>Disable all</OmniWorkstation_DisableAll>

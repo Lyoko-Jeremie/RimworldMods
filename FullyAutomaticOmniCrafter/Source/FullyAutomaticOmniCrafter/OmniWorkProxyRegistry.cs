@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RimWorld;
 using Verse;
+using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter
 {
@@ -55,6 +56,19 @@ namespace FullyAutomaticOmniCrafter
 
         public bool GlobalWorkEnabled => globalWorkEnabled;
 
+        /// <summary>
+        /// 代理状态悬浮监视面板是否可见。**存档级**状态：新存档与缺该字段的老存档一律默认关闭，
+        /// 玩家手动打开后随存档保存。此前它存放在全局 Mod 配置（OmniCrafterSettings）里，
+        /// 结果是"开过一次之后每个存档都会自动弹出来"。面板的位置与尺寸仍留在全局配置中共享。
+        /// </summary>
+        private bool monitorVisible;
+
+        public bool MonitorVisible
+        {
+            get => monitorVisible;
+            set => monitorVisible = value;
+        }
+
         public List<Pawn> Scratch => pawnScratch;
 
         public static GameComponent_OmniWorkProxyRegistry Instance
@@ -89,6 +103,8 @@ namespace FullyAutomaticOmniCrafter
                 RebuildIndex();
             }
             Scribe_Values.Look(ref globalWorkEnabled, "globalWorkEnabled", true);
+            // 监视面板可见性：存档级，默认关闭（缺字段的老存档读入后也是关闭）。
+            Scribe_Values.Look(ref monitorVisible, "monitorVisible", false);
         }
 
         private void RebuildIndex()
@@ -527,9 +543,47 @@ namespace FullyAutomaticOmniCrafter
         /// <summary>登记"修复所有池"（R-9）。</summary>
         public void RequestRepairAll() { pendingRepairAll = true; }
 
+        // ── 待补发的到达回调（W-1）────────────────────────────────────────────
+        // 导航补丁在 PatherTick（即 Toil.initAction 的调用栈）里只登记，真正调用原版 PatherArrived
+        // 放在本组件的 tick 栈中，避免到达回调递归推进 job 链时把后续 Toil 留在“代理已离开地图”的
+        // 状态里（那会让 JobDriver.Map => pawn.MapHeld 变成 null 引用，并使原版错误恢复也一起失败）。
+
+        private static readonly List<Pawn> pendingArrivals = new List<Pawn>();
+
+        /// <summary>登记一个待补发的到达回调（去重；只在主线程调用）。</summary>
+        public static void RequestArrival(Pawn pawn)
+        {
+            if (pawn == null) return;
+            for (int i = 0; i < pendingArrivals.Count; i++)
+            {
+                if (pendingArrivals[i] == pawn) return;
+            }
+            pendingArrivals.Add(pawn);
+        }
+
+        private static void ProcessPendingArrivals()
+        {
+            if (pendingArrivals.Count == 0) return;
+            for (int i = 0; i < pendingArrivals.Count; i++)
+            {
+                Pawn pawn = pendingArrivals[i];
+                // 防御：代理已被回收、已离开地图或已没有 job/driver 时，绝不推进 toil 链
+                //（原版 JobDriver.Map => pawn.MapHeld，JobDriver_Wait 的 initAction 首句即访问它）。
+                if (pawn == null || pawn.Destroyed || !pawn.Spawned || pawn.MapHeld == null ||
+                    pawn.jobs == null || pawn.jobs.curJob == null || pawn.jobs.curDriver == null ||
+                    pawn.pather == null)
+                {
+                    continue;
+                }
+                Patch_OmniNavigation_Tick.FireArrival(pawn.pather);
+            }
+            pendingArrivals.Clear();
+        }
+
         public override void GameComponentTick()
         {
             base.GameComponentTick();
+            ProcessPendingArrivals();
             // 无请求时立即返回：这是每 tick 都会经过的路径，必须保持零成本。
             if (!pendingForceRecreateAll && !pendingRepairAll) return;
 

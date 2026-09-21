@@ -54,8 +54,22 @@ namespace FullyAutomaticOmniCrafter
                 ___pawn.Notify_Teleported(endCurrentJob: false);
             }
             // StopDead/Notify_Teleported 不代表 Toil 完成；必须显式走原版到达回调。
-            Arrived(__instance);
+            //
+            // 但**不能在这里同步调用**：本方法运行在 PatherTick 内部，也就是 Toil.initAction 的调用栈里，
+            // 而到达回调会递归推进整条 job/toil 链；链内一旦发生代理回收（DeSpawn）或换图，
+            // 后续 Toil 的 initAction 就会在“代理已离开地图”的状态下执行并抛 NullReferenceException
+            // （原版 JobDriver.Map => pawn.MapHeld，而 JobDriver_Wait 的 initAction 首句即访问它，
+            // 于是连原版的错误恢复 job 也一起失败，最终 pawn jobless）。
+            // 因此这里只登记，由 GameComponent_OmniWorkProxyRegistry 在自己的 tick 栈中补发。
+            GameComponent_OmniWorkProxyRegistry.RequestArrival(___pawn);
             return false;
+        }
+
+        /// <summary>供 registry 在独立调用栈中补发到达回调。</summary>
+        internal static void FireArrival(Pawn_PathFollower pather)
+        {
+            if (pather == null) return;
+            Arrived(pather);
         }
     }
 

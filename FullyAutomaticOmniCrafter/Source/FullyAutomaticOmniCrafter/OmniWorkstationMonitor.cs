@@ -20,10 +20,7 @@ namespace FullyAutomaticOmniCrafter
 
         public static void Draw(MapComponent_OmniWorkstation manager)
         {
-            OmniCrafterSettings settings = OmniCrafterMod.Settings;
-            if (settings == null) return;
-
-            if (!settings.omniWorkstationMonitorVisible)
+            if (!Visible)
             {
                 if (window != null && window.IsOpen)
                     window.Close(false);
@@ -41,23 +38,29 @@ namespace FullyAutomaticOmniCrafter
             Find.WindowStack.Add(window);
         }
 
+        /// <summary>
+        /// 是否显示监视面板。状态是**存档级**的（GameComponent_OmniWorkProxyRegistry.MonitorVisible）：
+        /// 新存档与缺该字段的老存档一律默认关闭，玩家手动打开后随存档保存。
+        /// 此前它存在全局 Mod 配置里，导致"开过一次以后每个存档都会自动弹出来"。
+        /// </summary>
         public static bool Visible
         {
             get
             {
-                OmniCrafterSettings settings = OmniCrafterMod.Settings;
-                return settings != null && settings.omniWorkstationMonitorVisible;
+                GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+                return registry != null && registry.MonitorVisible;
             }
         }
 
         public static void SetVisible(bool visible)
         {
-            OmniCrafterSettings settings = OmniCrafterMod.Settings;
-            if (settings == null || settings.omniWorkstationMonitorVisible == visible) return;
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            if (registry == null || registry.MonitorVisible == visible) return;
 
-            settings.omniWorkstationMonitorVisible = visible;
+            registry.MonitorVisible = visible;
             if (!visible && window != null && window.IsOpen)
                 window.Close(false);
+            // 位置与尺寸仍在全局配置里，这里顺手落盘（可见性已不再写配置）。
             WriteSettings();
         }
 

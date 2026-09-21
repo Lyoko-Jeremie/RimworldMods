@@ -58,7 +58,8 @@ namespace FullyAutomaticOmniCrafter
             public string work;
         }
 
-        public override Vector2 InitialSize => new Vector2(920f, 680f);
+        // 宽度在此前基础上再加宽 1/3（920 → 1227），高度不变。
+        public override Vector2 InitialSize => new Vector2(1227f, 680f);
 
         public Window_OmniWorkstationManager()
         {
@@ -213,12 +214,14 @@ namespace FullyAutomaticOmniCrafter
             Map poolMap)
         {
             if ((rect.y / RowHeight) % 2f >= 1f) Widgets.DrawLightHighlight(rect);
-            Widgets.Label(new Rect(rect.x + 12f, rect.y + 3f, 130f, 22f), proxy.name);
-            Widgets.Label(new Rect(rect.x + 146f, rect.y + 3f, 130f, 22f), proxy.homeMapLabel);
-            Widgets.Label(new Rect(rect.x + 280f, rect.y + 3f, 190f, 22f), proxy.location);
+            // 列宽随窗口加宽（1227）同步放宽：名称 / 归属地图 / 位置各增一档，
+            // 剩余宽度全部留给"当前工作"，避免加宽后右侧出现大片空白。
+            Widgets.Label(new Rect(rect.x + 12f, rect.y + 3f, 170f, 22f), proxy.name);
+            Widgets.Label(new Rect(rect.x + 186f, rect.y + 3f, 170f, 22f), proxy.homeMapLabel);
+            Widgets.Label(new Rect(rect.x + 366f, rect.y + 3f, 280f, 22f), proxy.location);
 
             float actionsX = rect.width - 236f;
-            Widgets.Label(new Rect(rect.x + 474f, rect.y + 3f, Mathf.Max(60f, actionsX - 480f), 22f),
+            Widgets.Label(new Rect(rect.x + 660f, rect.y + 3f, Mathf.Max(60f, actionsX - 666f), 22f),
                 proxy.work);
 
             Pawn pawn = proxy.pawn;

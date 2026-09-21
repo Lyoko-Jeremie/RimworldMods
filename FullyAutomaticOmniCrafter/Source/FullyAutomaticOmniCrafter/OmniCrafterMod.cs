@@ -216,7 +216,10 @@ namespace FullyAutomaticOmniCrafter
                 + checkH * 2              // logX + logY toggles
                 + 12f + 30f;              // gap + reset button
 
-            float contentH = vaultSectionH + checkH + 12f + checkH + 4f + sectionH + 16f + sectionH;
+            // 末尾额外加上“跨图工作准入”区：GapLine + 2 行说明 + 2 个单选按钮。
+            float entryAuthSectionH = 12f + lineH * 2 + 4f + checkH * 2;
+            float contentH = vaultSectionH + checkH + 12f + checkH + 4f + entryAuthSectionH +
+                             sectionH + 16f + sectionH;
 
             Rect viewRect = new Rect(0f, 0f, inRect.width - 20f, contentH);
             Widgets.BeginScrollView(inRect, ref _scrollPos, viewRect);
@@ -228,14 +231,6 @@ namespace FullyAutomaticOmniCrafter
             listing.CheckboxLabeled(
                 "OmniCrafter_EnablePinyinSearch".Translate(),
                 ref Settings.enablePinyinSearch);
-
-            // ── 万能工作站代理总览（R-7）──────────────────────────────────
-            listing.GapLine(12f);
-            listing.Label("OmniWorkstation_ManagerTitle".Translate());
-            listing.Label("OmniWorkstation_ManagerOpenDesc".Translate());
-            listing.Gap(4f);
-            if (listing.ButtonText("OmniWorkstation_ManagerOpen".Translate()))
-                Find.WindowStack.Add(new Window_OmniWorkstationManager());
 
             // ── 万能工作站跨图入口授权模式 ────────────────────────────────
             listing.GapLine(12f);
