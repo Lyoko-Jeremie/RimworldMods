@@ -1222,6 +1222,44 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
+    // ── 原版"地图可用量"判定并入 vault 全局可用量（半投影单堆上限的根因修复） ──
+    // 原版 ItemAvailability.ThingsAvailableAnywhere 仅累加 listerThings 中各堆的 stackCount，
+    // 而每座仓对每个 def 只投影一堆（stackCount = min(全局剩余, stackLimit)，原版钢铁为 75）。
+    // 它是 WorkGiver_ConstructDeliverResources.ResourceDeliverJobFor 的唯一上游门槛（全游戏仅此一处
+    // 调用）：需求 > stackLimit（例如蓝图需要 100 钢铁）时判定为 false → 记入 missingResources +
+    // break → 该蓝图/Frame 永远没有配送 job，建筑不会建造（把实物手动弹出到地面才会立即开始建造）。
+    // 本 postfix 仅在原版判定为 false 时，按"全局 Count − 全部终端预留/借出"改写为 true，
+    // 口径与 §5.2 CanReserve 一致；不改写原版 cachedResults（key 不含 amount，属原版既有怪癖），
+    // 也绝不读取投影 stackCount（§14）。改写后原版会自行走 GenClosest → 命中投影 → 原版
+    // HaulToContainer（§5.3 投影延迟 Checkout）；需求超过单趟携带量
+    // （MaxStackSpaceEver = min(stackLimit, 负重/体积)）时按原版语义多趟搬运，不引入 carry 超堆。
+    // 地面已有实物时不受影响：原版判定为 true 时本补丁直接返回。
+    [HarmonyPatch(typeof(ItemAvailability), "ThingsAvailableAnywhere")]
+    internal static class Patch_ItemAvailability_ThingsAvailableAnywhere_Vault
+    {
+        private static void Postfix(ThingDef need, int amount, Pawn pawn, ref bool __result)
+        {
+            if (__result || need == null || amount <= 0 || pawn == null)
+            {
+                return;
+            }
+            Map map = pawn.Map;
+            if (map == null)
+            {
+                return;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return; // 当前地图无 vault：完全走原版
+            }
+            if (gs.AvailableCountOf(need) >= amount)
+            {
+                __result = true;
+            }
+        }
+    }
+
     // ── 建造设计器材料选择：vault 材料纳入 stuff 候选与可用性判定 ──
     // 原版 Designator_Build.ProcessInput 对 MadeFromStuff 建筑用
     //   resourceCounter.AllCountedAmounts.Keys 作为候选来源，
@@ -1362,12 +1400,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         }
     }
 
-    // ── 施工配送兜底：地面/可自动搬运材料不足时，从超维存储取料送往蓝图/Frame ──
-    // 原版 WorkGiver_ConstructDeliverResources.ResourceDeliverJobFor 只通过
-    // itemAvailability（listerThings）与 GenClosest.ClosestThingReachable 寻找已 Spawned 的
-    // 地面材料；vault 的视图副本未 Spawned，故永远不被考虑。本 postfix 在原版返回 null
-    // （无法生成地面配送 job）时，逐个材料成本检查"地面可用量不足但 vault 有"，命中则生成
+    // ── 施工配送兜底：原版无法生成地面配送 job 时，从超维存储取料送往蓝图/Frame ──
+    // 原版 WorkGiver_ConstructDeliverResources.ResourceDeliverJobFor 通过 itemAvailability 与
+    // GenClosest.ClosestThingReachable 寻找已 Spawned 的地面材料。需求 > 单堆上限（原版钢铁 75）
+    // 的误判已由 Patch_ItemAvailability_ThingsAvailableAnywhere_Vault 在上游修正，原版随后自行
+    // 走投影延迟 Checkout 的 HaulToContainer 路径（§5.3）。本 postfix 只作兜底：投影不可达、
+    // 原版判定被其 per-tick 缓存污染、或第三方 workgiver 自行判空时，按"全局可用量"生成
     // FAOC_VaultDeliverResources job（走到 vault → 取料入 carry → 送到蓝图/Frame）。
+    // 曾经的 MapHasEnough 前置判断已删除：它与 ItemAvailability 的缓存口径不一致（后者 key 不含
+    // amount），会出现"原版因缓存判 false、本 mod 又认为地面已够"的双向不派单，建筑永不建造。
     [HarmonyPatch(typeof(WorkGiver_ConstructDeliverResources), "ResourceDeliverJobFor")]
     internal static class Patch_WorkGiver_ConstructDeliverResources_ResourceDeliverJobFor
     {
@@ -1409,12 +1450,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                // 地面已有足够的可自动搬运材料：原版会处理，这里不越权
-                if (MapHasEnough(pawn, need.thingDef, num))
-                {
-                    continue;
-                }
-                if (gs.TotalCountOf(need.thingDef) <= 0)
+                // 原版在此返回 null 只可能来自"材料不足"或"找不到可搬实物"。不再自行判断
+                // "地面是否够"（旧 MapHasEnough 与 ItemAvailability 缓存口径不一致，会造成
+                // 双方都不派单），只按全局可用量（Count − 预留）决定能否从 vault 取料。
+                if (gs.AvailableCountOf(need.thingDef) <= 0)
                 {
                     continue;
                 }
@@ -1449,34 +1488,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return job;
         }
 
-        private static bool MapHasEnough(Pawn pawn, ThingDef def, int amount)
-        {
-            List<Thing> things = pawn.Map.listerThings.ThingsOfDef(def);
-            int total = 0;
-            for (int i = 0; i < things.Count; i++)
-            {
-                Thing t = things[i];
-                if (t == null || t.IsForbidden(pawn))
-                {
-                    continue;
-                }
-                if (!HaulAIUtility.PawnCanAutomaticallyHaulFast(pawn, t, false))
-                {
-                    continue;
-                }
-                total += t.stackCount;
-                if (total >= amount)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
+        /// <summary>在当前地图的终端中找该 def 的已物化投影：走 byDef 粗索引（O(1)）+
+        /// entry→copy 索引（O(1)），不做全投影线性扫描。投影被终端 filter 禁止时已从视图移除
+        /// 并清索引，因此这里天然按终端可见性过滤。</summary>
         private static bool TryFindVaultCopy(GameComponent_OuterrealmStorage gs, Map map, ThingDef def, out Building_OuterrealmVault vault, out Thing copy)
         {
             vault = null;
             copy = null;
+            List<OuterrealmEntry> entries = gs.EntriesOfDefForReading(def);
+            if (entries == null || entries.Count == 0)
+            {
+                return false;
+            }
             List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
             for (int i = 0; i < vaults.Count; i++)
             {
@@ -1485,24 +1508,19 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 {
                     continue;
                 }
-                List<Thing> copies = v.view.InnerListForReading;
-                for (int j = 0; j < copies.Count; j++)
+                for (int j = 0; j < entries.Count; j++)
                 {
-                    Thing c = copies[j];
-                    if (c == null)
+                    OuterrealmEntry e = entries[j];
+                    if (e == null || e.Count <= 0)
                     {
                         continue;
                     }
-                    Thing inner = c.GetInnerIfMinified();
-                    if (inner != null && inner.def == def)
+                    Thing c = v.view.FindCopy(e);
+                    if (c != null && !c.Destroyed && c.stackCount > 0)
                     {
-                        OuterrealmEntry e = v.view.GetEntryOf(c);
-                        if (e != null && e.Count > 0)
-                        {
-                            vault = v;
-                            copy = c;
-                            return true;
-                        }
+                        vault = v;
+                        copy = c;
+                        return true;
                     }
                 }
             }

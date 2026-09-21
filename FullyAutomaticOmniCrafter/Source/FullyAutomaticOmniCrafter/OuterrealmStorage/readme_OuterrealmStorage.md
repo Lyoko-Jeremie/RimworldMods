@@ -278,6 +278,7 @@ Pawn 到达 vault
 - 精确 Def 搜索在原版枚举 lister/region 前，利用 `byDef` 为最近可服务终端按需补齐最多 32 个条目。
 - 软租约使用 64 槽时间轮；reservation 释放事件会立即协调对应唯一锚点，时间轮仅承担到期与异常兜底。
 - 投影规模按可见条目数而非库存 Count 增长：百万个可堆叠资源仍只有一个权威条目及每仓一个投影。
+- 原版"地图可用量"判定 `ItemAvailability.ThingsAvailableAnywhere`（全游戏唯一调用方是施工配送）按 `Count − 预留/借出` 并入 vault 全局可用量：每仓对每个 def 只投影一堆（`stackCount = min(Count, stackLimit)`），原版按 stackCount 求和会在"需求 > stackLimit"（原版钢铁 75）时误判材料不足。该补丁只改返回值、不改写原版 `cachedResults`；查询为 O(1)，复用 `TotalCountOf` 与预留汇总缓存，无 lister 遍历与寻路。
 - region 重建补丁只置 dirty；建筑每 60 tick 最多批量补注册一次。
 - `TotalCountOf`、InspectString、预留总量和 UI 可见列表均有版本缓存。
 - 高频路径避免 LINQ、重复反射和临时集合；必要反射必须静态缓存。
@@ -313,7 +314,7 @@ Pawn 到达 vault
 `Patch_OuterrealmStorage.cs` 的补丁可按职责理解：
 
 - 库存守恒：`Thing.SplitOff`、`TryAbsorbStack`、`Pawn_CarryTracker.TryStartCarry`、ReservationManager。
-- 原版存储适配：haul destination/source、施工配送、蓝图/Frame、资源计数。
+- 原版存储适配：haul destination/source、施工配送、蓝图/Frame、资源计数、`ItemAvailability`（"需求大于单堆上限"时的材料可用量口径）。
 - 查询可见性：GenClosest、食物搜索、治疗、右键菜单、可达性、region/lister 注册。
 - 操作路径：穿戴、装备、食用、治疗、建造取料、远行队收集。
 - UI/副作用隔离：存档时临时摘除投影、禁止绘制 overlay/glow、过滤左键选择。
@@ -411,7 +412,7 @@ Pawn 到达 vault
 - 穿戴、强制穿戴、装备、自动进食、治疗取药。
 - 自主穿戴在原版校验失败或第三方跳过 Wear 时，唯一服装必须回存；装备栏拒绝接收或装备回调异常时，武器必须回存。
 - 强制穿戴在走到仓库前取消：存储格不得出现实物，库存数量不变；到达并开始携带后取消：物品遵循原版携带/掉落清理。
-- 蓝图/Frame 配送与打包建筑安装。
+- 蓝图/Frame 配送与打包建筑安装；含“单一材料需求大于单堆上限（原版钢铁 75）”的蓝图：vault 有足量、地面无实物时必须自动派单并分多趟建成，无需手动弹出实物。
 - 普通搬入、禁止存入、禁止取出、允许拿取使用、冻结与 filter 变更。
 - 随身自动取用、自动存入、关闭开关及 Job 中断回收。
 - 管理器弹出、放置失败回滚、拆除最后一个 vault 后库存仍存在。

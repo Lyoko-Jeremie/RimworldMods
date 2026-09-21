@@ -752,6 +752,43 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             totalByDefVersion = version;
         }
 
+        /// <summary>全局层指定 def 的可用（未被任何地图/终端预留或借出）数量 = Count − 预留汇总。
+        /// 口径与 §5.2 CanReserve 一致：供原版"地图可用量"判定（ItemAvailability.ThingsAvailableAnywhere）
+        /// 与施工配送兜底使用。每座仓对每个 def 只投影一堆（stackCount = min(Count, stackLimit)），
+        /// 原版按 stackCount 求和会在"需求 &gt; stackLimit"（原版钢铁 75）时误判材料不足。
+        /// 调用方须先确认本图存在可服务终端（HasVaultOnMap）；本方法不做终端 filter 过滤，
+        /// 与 ResourceCounter / Designator_Build 的既有口径一致。绝不读取投影 stackCount（§14）。
+        /// 性能：TotalCountOf 与 ReservedCountOf 均为版本缓存命中 O(1)，仅按 byDef 粗索引遍历该 def
+        /// 的少量条目；无 LINQ、无反射、无全图枚举。</summary>
+        public long AvailableCountOf(ThingDef def)
+        {
+            long total = TotalCountOf(def);
+            if (total <= 0)
+            {
+                return 0L;
+            }
+            List<OuterrealmEntry> cands = EntriesOfDefForReading(def);
+            if (cands == null || cands.Count == 0)
+            {
+                // byDef 索引异常时保守返回总量：宁可让调用方尝试取料（取不到会由原版/
+                // 执行边界安全失败），也不要谎报不足导致蓝图永不派单。
+                return total;
+            }
+            long reserved = 0L;
+            for (int i = 0; i < cands.Count; i++)
+            {
+                OuterrealmEntry entry = cands[i];
+                if (entry == null || entry.Count <= 0)
+                {
+                    continue;
+                }
+                // ReservedCountOf 对"提交中"条目返回 entry.Count（暂时不暴露），与 §5.3.1 一致。
+                reserved += ReservedCountOf(entry);
+            }
+            long available = total - reserved;
+            return available > 0 ? available : 0L;
+        }
+
         /// <summary>全局层总条目数与总数量（InspectString 用）。</summary>
         public void GetSummary(out int entryCount, out long totalCount)
         {
