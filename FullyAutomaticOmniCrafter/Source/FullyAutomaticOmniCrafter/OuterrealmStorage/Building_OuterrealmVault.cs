@@ -40,7 +40,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 放入 UI/Commands/OmniStorage_VaultProjectionDiagnostics.png 后自动生效。</summary>
         public static readonly Texture2D VaultProjectionDiagnosticsIcon = 
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultProjectionDiagnostics", false) ?? 
-            ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ErrorLog", false) ?? 
+            // ContentFinder<Texture2D>.Get("UI/Commands/StatusAllocationTerminal_ErrorLog", false) ?? 
             BaseContent.WhiteTex;
         
         public static readonly Texture2D SubspaceAccessOpenManagerSelfIcon = 
