@@ -2938,11 +2938,31 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
     // "类别限制存入"模式（autoStoreFiltered）：逐个核对当前地图上的超维存储仓，产物不被任何仓接受时不 Deposit，
     // 留在 __result 里交给原版放置（可落到指定存储区）；同时适配原版存储优先级语义——若存在优先级高于
     // 接受仓的其他存储区/存储建筑也接受该产物，同样不 Deposit（原版会把物品运往那里，避免存入后再搬出）。
+    // 伪工人防护：机器内置工人（如 PRF SAL3 的 buildingPawn，pather 为 null 的"伪 Spawned" pawn）完全不干预，
+    // 产物留在原版/对方 Mod 流程（如 PRF 的数量后处理），既不绕过对方逻辑，也不会因 DrawPos 抛 NRE。
+    // 补丁内每一步都逐项兜底：任何异常都不得抛回调用链（调用方是第三方 Mod 的生产流程，异常会中断并留下脏状态）；
+    // 异常统一以 Log.ErrorOnce（用下方键去重，错误只记一次）+ Log.Warning（每次输出，便于实时定位）记录。
     [HarmonyPatch(typeof(GenRecipe), "MakeRecipeProducts")]
     internal static class Patch_GenRecipe_MakeRecipeProducts
     {
+        // 异常兜底日志的 Log.ErrorOnce 去重键；每处同时再打一条 Log.Warning（每次输出，不参与去重）。
+        private const int ErrorKeyEnumerateProducts = 0x4F455301;
+        private const int ErrorKeyAutoDeposit = 0x4F455302;
+        private const int ErrorKeyDepositMote = 0x4F455303;
+
         private static void Postfix(Pawn worker, ref IEnumerable<Thing> __result)
         {
+            // 机器内置"伪工人"防护（如 Project RimFactory SAL3 装配机的 buildingPawn）：
+            // 这类 worker 由反射伪造 mapIndexOrState 得到"伪 Spawned"，从未走原版 SpawnSetup，
+            // 因此 pather 为 null（等价于 !PawnComponentsUtility.HasSpawnedComponents(worker)）。
+            // 1) 它不是玩家真实操作的工人，产物必须留在调用方流程（如 PRF 的数量后处理/ThingQueue），
+            //    否则会被本补丁提前吸收而绕过对方的后处理逻辑；
+            // 2) Verse.PawnTweener.TweenedPosRoot 会访问 null 的 pather，本补丁里的 worker.DrawPos
+            //    会因此抛 NullReferenceException，并炸掉调用方的整条生产流程。
+            if (worker == null || worker.pather == null)
+            {
+                return;
+            }
             Hediff_SubspaceAccess access = SubspaceAccessUtility.GetAccessHediff(worker);
             bool filtered = false;
             if (access != null)
@@ -2963,32 +2983,84 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             {
                 return;
             }
-            List<Thing> deposited = new List<Thing>();
+            List<Thing> deposited = null;
             List<Thing> leftover = null;
-            foreach (Thing product in __result)
+            List<Thing> products;
+            try
             {
+                // 先物化：__result 可能是 lazy 迭代器，枚举过程本身也可能抛异常。
+                products = (__result as List<Thing>) ?? new List<Thing>(__result);
+            }
+            catch (Exception ex)
+            {
+                // 连产物都枚举不出来：放弃干预，__result 原样交回调用方。
+                // ErrorOnce 保留去重错误记录，Warning 每次输出（便于实时定位异常突发时机）。
+                string message = "[OuterrealmStorage] Failed to enumerate MakeRecipeProducts result; leaving products to the original flow: " + ex;
+                Log.ErrorOnce(message, ErrorKeyEnumerateProducts);
+                Log.Warning(message);
+                return;
+            }
+            for (int i = 0; i < products.Count; i++)
+            {
+                Thing product = products[i];
                 if (product == null)
                 {
                     continue;
                 }
-                if (filtered && !ShouldAutoStoreToVault(worker, product))
+                bool stored = false;
+                try
                 {
                     // 受限模式：产物不被当前地图任何超维存储仓接受，或存在优先级更高的其他存储目标接受它
                     // （原版优先级语义）——不存入，交给原版流程放置（含落到指定存储区）。
+                    if (!filtered || ShouldAutoStoreToVault(worker, product))
+                    {
+                        // Deposit 返回 null 表示被拒绝（投影/非法堆叠等），同样留在原版流程，避免物品凭空消失。
+                        stored = gs.Deposit(product) != null; // 吸收（冻结在超维空间）
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 本补丁 postfix 挂在所有人共用的 GenRecipe.MakeRecipeProducts 上：绝不能把异常抛回调用链，
+                    // 否则会中断调用方的业务流程并留下未复位状态。单件失败即视为未存入，交回原版流程。
+                    // ErrorOnce 保留去重错误记录，Warning 每次输出（便于实时定位异常突发时机）。
+                    string message = "[OuterrealmStorage] Auto-deposit of a crafted product failed; leaving it to the original flow: " + ex;
+                    Log.ErrorOnce(message, ErrorKeyAutoDeposit);
+                    Log.Warning(message);
+                }
+                if (stored)
+                {
+                    // 项目语言版本为 C# 7.3，不用 ??=。
+                    if (deposited == null)
+                    {
+                        deposited = new List<Thing>();
+                    }
+                    deposited.Add(product);
+                }
+                else
+                {
                     if (leftover == null)
                     {
                         leftover = new List<Thing>();
                     }
                     leftover.Add(product);
-                    continue;
                 }
-                deposited.Add(product);
-                gs.Deposit(product); // 吸收（冻结在超维空间）
             }
             __result = leftover ?? new List<Thing>();
-            if (deposited.Count > 0)
+            if (deposited != null && deposited.Count > 0 && worker.Map != null)
             {
-                MoteMaker.ThrowText(worker.DrawPos, worker.Map, "OuterrealmVault_ProductDeposited".Translate(deposited[0].LabelCapNoCount));
+                // 到这里 worker 已确认真实 spawn（pather 非 null），DrawPos 是安全的；仍兜底一次：
+                // 纯提示性 Mote 失败不应影响产物去向，也不该抛回调用方。
+                try
+                {
+                    MoteMaker.ThrowText(worker.DrawPos, worker.Map, "OuterrealmVault_ProductDeposited".Translate(deposited[0].LabelCapNoCount));
+                }
+                catch (Exception ex)
+                {
+                    // ErrorOnce 保留去重错误记录，Warning 每次输出（便于实时定位异常突发时机）。
+                    string message = "[OuterrealmStorage] Deposit notification mote failed: " + ex;
+                    Log.ErrorOnce(message, ErrorKeyDepositMote);
+                    Log.Warning(message);
+                }
             }
         }
 
