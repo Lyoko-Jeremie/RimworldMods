@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../CompPersonalTemperature.cs" Link="Production/CompPersonalTemperature.cs" />
+    <Compile Include="../../Patch_PersonalTemperature.cs" Link="Production/Patch_PersonalTemperature.cs" />
+    <Compile Include="GameDoubles.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

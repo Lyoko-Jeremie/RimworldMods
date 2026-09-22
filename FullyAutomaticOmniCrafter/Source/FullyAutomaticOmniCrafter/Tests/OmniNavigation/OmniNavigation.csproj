@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Optimize>false</Optimize>
+    <NoWarn>CS0169;CS0649</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../OmniWorkProxyNavigation.cs" Link="Production/OmniWorkProxyNavigation.cs" />
+    <Compile Include="../../OmniWorkFailureCache.cs" Link="Production/OmniWorkFailureCache.cs" />
+    <Compile Include="../../Patch_OmniWorkProxyNavigation.cs" Link="Production/Patch_OmniWorkProxyNavigation.cs" />
+    <Compile Include="../../Patch_OmniWorkFailure.cs" Link="Production/Patch_OmniWorkFailure.cs" />
+    <Compile Include="GameDoubles.cs" />
+    <Compile Include="PatchDoubles.cs" />
+    <Compile Include="Program.cs" />
+    <Reference Include="0Harmony">
+      <HintPath>../../packages/Lib.Harmony.2.4.2/lib/net10.0/0Harmony.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../OuterrealmStorage/OuterrealmQuantityBudget.cs" Link="Production/OuterrealmQuantityBudget.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmBillResourceLedger.cs" Link="Production/OuterrealmBillResourceLedger.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmBillIngredientSelector.cs" Link="Production/OuterrealmBillIngredientSelector.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmBillJobUtility.cs" Link="Production/OuterrealmBillJobUtility.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmCarryTransaction.cs" Link="Production/OuterrealmCarryTransaction.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmTotalJobUtility.cs" Link="Production/OuterrealmTotalJobUtility.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmProductCounter.cs" Link="Production/OuterrealmProductCounter.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmTransferQuantities.cs" Link="Production/OuterrealmTransferQuantities.cs" />
+    <Compile Include="../../OuterrealmStorage/Patch_OuterrealmTransfers.cs" Link="Production/Patch_OuterrealmTransfers.cs" />
+    <Compile Include="GameDoubles.cs" />
+    <Compile Include="TradeDoubles.cs" />
+    <Compile Include="TradeTests.cs" />
+    <Compile Include="../../OuterrealmStorage/Patch_OuterrealmTrade.cs" Link="Production/Patch_OuterrealmTrade.cs" />
+    <Compile Include="../../OuterrealmStorage/OuterrealmOptionalSignature.cs" Link="Production/OuterrealmOptionalSignature.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>
