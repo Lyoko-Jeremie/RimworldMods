@@ -4,6 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using RimWorld;
 using Verse;
+using Verse.AI;
 
 namespace FullyAutomaticOmniCrafter
 {
@@ -200,12 +201,19 @@ namespace FullyAutomaticOmniCrafter
             {
                 // ① 原版口袋图出口：反向链接回入口所在图，无副作用。
                 if (portal is PocketMapExit exit) return exit.entrance?.Map;
-                // ② 原版正向链接（入口 → 出口）。
-                if (portal.exit != null) return portal.exit.MapHeld;
+                // ② 原版正向链接（入口 → 出口）。必须校验 exit **真的已生成**：
+                //    SimplePortal_Building.ExposeData() 会 `base.exit = new PocketMapExit()`
+                //    塞一个未生成的占位对象（MapHeld 恒为 null），此时若直接 return null，
+                //    该入口就会被永久抹出授权表。
+                //    （详见 Docs/OmniWorkProxyCrossMapCompat_Investigation.md 缺陷 A）
+                PocketMapExit originalExit = portal.exit;
+                if (originalExit != null && originalExit.MapHeld != null) return originalExit.MapHeld;
                 // ③ 已经生成过的口袋图：只读属性。
                 if (portal.PocketMapExists) return portal.PocketMap;
                 // ④ 第三方子类（MultiFloors 的 Stair*、SimplePortal）都 override 了 GetOtherMap；
                 //    精确的原版 MapPortal 若尚未链接则**绝不**调用，避免惰性生成 pocket map。
+                //    ★ 顺序与条件不可调整：MultiFloors 的 Stair 从不设置 exit，正是靠这一步通过授权，
+                //      且其基类版本会抛 NotImplementedException，由下面的 catch 兜住。
                 if (portal.GetType() != typeof(MapPortal)) return portal.GetOtherMap();
                 return null;
             }
@@ -216,6 +224,46 @@ namespace FullyAutomaticOmniCrafter
                     portal.thingIDNumber);
                 return null;
             }
+        }
+
+        // ── 入口型 Job 的启动期校验（缺陷 C 的兜底，见调查报告 9.3）────────────
+
+        /// <summary>
+        /// 判定一份即将启动的 Job 是否"会把代理带出归属图、且本池未授权"。
+        ///
+        /// 入口授权前缀只工作在 `JobGiver_Work.TryIssueJobPackage` —— 那是"代理已经站在某张图上"的时刻；
+        /// 而第三方（如 RV Auto-Embark 的 WorkGiver_TendRoom）是在**归属图上**选中"走到入口换图"的 Job，
+        /// 该 Job 启动时 `pawn.Map` 仍是归属图，前缀看不到它。这里在那份 Job 启动的瞬间补上同一套判据。
+        ///
+        /// 与 MultiFloors 的关系：它的跨层 Job 只在"递归 TryIssueJobPackage 已获授权"之后才产出，
+        /// 因此到达这里时 IsAuthorized 必然为 true，不会被拦；而且它大量使用 `target == null`
+        /// 的形式（MakeChangeLevelThroughStairJob(null, map)），本方法第一步即跳过。
+        /// </summary>
+        public static bool DeniesEntryJob(Pawn pawn, Job job)
+        {
+            if (pawn == null || job == null) return false;
+            Map homeMap = GameComponent_OmniWorkProxyRegistry.HomeMapOf(pawn);
+            if (homeMap == null) return false;
+            return DeniesEntryTarget(homeMap, job.targetA) ||
+                   DeniesEntryTarget(homeMap, job.targetB) ||
+                   DeniesEntryTarget(homeMap, job.targetC);
+        }
+
+        private static bool DeniesEntryTarget(Map homeMap, LocalTargetInfo target)
+        {
+            // 目标可能无效（MultiFloors 的 ChangeLevelThroughStair 常用 target == null），直接跳过。
+            if (!target.IsValid || !target.HasThing) return false;
+            MapPortal portal = target.Thing as MapPortal;
+            if (portal == null) return false;
+
+            Map dest = SafeGetTargetMap(portal);
+            // 求不出目标图，或目标就是归属图（例如驻外代理的回程 Job）→ 放行。
+            if (dest == null || dest == homeMap) return false;
+
+            // 与 Patch_OmniWorkProxy_EntryAuthorization 的判据与顺序完全一致。
+            MapComponent_OmniWorkstation homeManager = homeMap.GetComponent<MapComponent_OmniWorkstation>();
+            if (homeManager != null && !homeManager.AnyStationAllowsCrossMapWork()) return true;
+            return !IsAuthorized(homeMap, dest);
         }
 
         // ── 载体探测（可选加速器；探测失败即整体静默退化为"无载体"）────────────

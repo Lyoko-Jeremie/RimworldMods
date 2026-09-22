@@ -2993,11 +2993,20 @@ namespace FullyAutomaticOmniCrafter
             Pawn pawn = record?.pawn;
             if (pawn == null || pawn.Destroyed) return;
 
-            if (record.station != null && stationStates.TryGetValue(record.station, out StationRuntime runtime) &&
-                runtime.probePawn == pawn)
+            if (record.station != null && stationStates.TryGetValue(record.station, out StationRuntime runtime))
             {
-                runtime.probePawn = null;
-                runtime.probePending = false;
+                if (runtime.probePawn == pawn)
+                {
+                    runtime.probePawn = null;
+                    runtime.probePending = false;
+                }
+                // 代理已入舱，该站的"探路等待"到此为止。
+                // nextSearchTick == int.MaxValue 是一道单向门：解锁它的常规路径（NotifyProxyBecameIdle）
+                // 被 DeactivateOnJobEnd 的 "OwningMap != pawn.Map" 对驻外代理拦住，而驻外回收路径
+                // 原先只清 probePending —— 结果代理被带出归属图一次，该站就永久停摆（泵每 60 tick 空转）。
+                // 这里只在"仍停在单向门"时解锁，正常的宽限退避值不受影响。
+                if (runtime.nextSearchTick == int.MaxValue)
+                    ResetStationSearchState(runtime, CurrentTick);
             }
 
             // 工作会话结束:入舱前统一恢复干净状态,取代原"每 250 tick 全员清洗"的周期任务。
@@ -3104,6 +3113,15 @@ namespace FullyAutomaticOmniCrafter
                 if (station == null || !station.Operational) continue;
 
                 StationRuntime runtime = GetOrCreateStationRuntime(station);
+                // 兜底解锁：探路代理已经不在池中（被第三方删除/吞掉，PutProxyToSleep 没机会执行），
+                // 该站会永久停在 int.MaxValue 单向门上。这里只按"探针已失效"精确识别，
+                // 不影响正常的探路等待（probePending）与宽限退避值。
+                if (runtime.nextSearchTick == int.MaxValue && IsDeadProbe(runtime.probePawn))
+                {
+                    runtime.probePawn = null;
+                    runtime.probePending = false;
+                    ResetStationSearchState(runtime, tick);
+                }
                 if (runtime.nextSearchTick < earliestTick)
                     earliestTick = runtime.nextSearchTick;
                 if (runtime.nextSearchTick > tick) continue;
@@ -3112,6 +3130,15 @@ namespace FullyAutomaticOmniCrafter
                 return true;
             }
             return false;
+        }
+
+        /// <summary>探路代理是否已经失效（已销毁，或已不在归属登记表中）。</summary>
+        private static bool IsDeadProbe(Pawn probe)
+        {
+            if (probe == null) return false;
+            if (probe.Destroyed) return true;
+            GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;
+            return registry != null && !registry.IsRegistered(probe);
         }
 
         private int ComputeNextPumpTick(int minimumTick)
@@ -3323,6 +3350,40 @@ namespace FullyAutomaticOmniCrafter
                 if (pawn.mindState != null) pawn.mindState.Active = false;
                 PutProxyToSleep(record);
                 WakePumpNow();
+                return;
+            }
+            // 不在代理池中的代理（例如已解绑）只负责把 Job 收掉。
+            EndCurrentJobForManagement(pawn);
+        }
+
+        /// <summary>
+        /// 中止"会把代理带出归属图、且本池未授权"的入口型 Job（典型是 SimplePortal 的 EnterSimplePortal）。
+        ///
+        /// 与 CancelForbiddenGearJob 的关键差别：这里**不能** WakePumpNow，必须给该工作站一个退避。
+        /// 否则泵下一 tick 就会重新派发，而那个 giver（如 RVAutoHome 的 WorkGiver_TendRoom，
+        /// 目标固定是同一座入口）会被立刻再次选中，形成"唤醒 → 取消"的高频抖动。
+        /// 退避后的表现与"本站当前没有可做的活"一致，符合该 Job 被判为非法的语义。
+        /// </summary>
+        public void CancelUnauthorizedEntryJob(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                ProxyRecord record = proxies[i];
+                if (record.pawn != pawn) continue;
+                Building_OmniWorkstation station = record.station;
+                EndCurrentJobForManagement(pawn);
+                OmniWorkProxyUtility.SetActive(pawn, false);
+                if (pawn.mindState != null) pawn.mindState.Active = false;
+                PutProxyToSleep(record);   // 内含 nextSearchTick 单向门解锁
+                if (station != null && stationStates.TryGetValue(station, out StationRuntime runtime))
+                {
+                    runtime.probePawn = null;
+                    runtime.probePending = false;
+                    runtime.consecutiveFailures++;
+                    runtime.nextSearchTick = CurrentTick +
+                        ExhaustedBackoffTicks(runtime.consecutiveFailures);
+                }
                 return;
             }
             // 不在代理池中的代理（例如已解绑）只负责把 Job 收掉。
@@ -3588,6 +3649,14 @@ namespace FullyAutomaticOmniCrafter
             if (MapComponent_OmniWorkstation.IsForbiddenGearJob(newJob))
             {
                 manager.CancelForbiddenGearJob(___pawn);
+                return;
+            }
+            // 入口型 Job：第三方（如 RV Auto-Embark 的 WorkGiver_TendRoom）会在**归属图上**就选中
+            // "走到入口换图"的 Job，那一刻 pawn.Map 仍是归属图，入口授权前缀看不到它，
+            // 必须在启动瞬间用同一套判据拦截。已授权的跨图工作（含 MultiFloors 的跨层 Job）不受影响。
+            if (OmniWorkProxyEntryAuthorization.DeniesEntryJob(___pawn, newJob))
+            {
+                manager.CancelUnauthorizedEntryJob(___pawn);
                 return;
             }
             // 驻外工作时不能以"代理当前所在图"为准，否则记录会写进别的图、归属池看不到。
