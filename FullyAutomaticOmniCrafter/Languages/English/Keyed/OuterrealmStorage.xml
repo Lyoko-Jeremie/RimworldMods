@@ -24,6 +24,9 @@
   <!-- Freeze toggle -->
   <VaultFrozen>Frozen</VaultFrozen>
   <VaultFrozenDesc>When enabled, hides all items in this building and pauses its work (the storage filter is left unchanged, and items remain in the outerrealm storage). Disable to show them again.</VaultFrozenDesc>
+  <!-- Cross-map portal transfer (default off; the toggle only appears when this map has a portal) -->
+  <VaultAllowPortalTransfer>Allow transfer to cross-map portals</VaultAllowPortalTransfer>
+  <VaultAllowPortalTransferDesc>When enabled, this vault's stock may be picked up by hauling jobs heading into a cross-map portal (vehicle exit, gateway, etc.). Disabled by default: such pickups are refused, so third-party automation that mistakes outerrealm projections for ground items cannot haul the stock out of this map through a portal.</VaultAllowPortalTransferDesc>
 
   <!-- Release / move-out (§6.3) -->
 

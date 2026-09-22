@@ -28,6 +28,17 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
 
         internal static int Transfer(Pawn_CarryTracker carry, OuterrealmSource source, int count)
         {
+            // 跨图入口搬运守护（建筑级开关，默认关闭；见 OuterrealmVaultUtil.IsPortalBoundJob）。
+            // vault 的查询投影是"伪 Spawned"并注册进 listerThings —— 这是有意的第三方取料兼容，
+            // 但第三方若自己扫 listerThings 统计房间存量（如 RV Auto-Embark 的「溢出导出」），
+            // 就会把库存当成地上的实物、加进 MapPortal 的待装载清单，再由搬运 Job 取走；
+            // 一旦放行，库存真的会被搬出本地图（表现为物品从车辆出口掉到车外地上）。
+            // 返回 0 = "没有搬到"，调用方（Patch_Pawn_CarryTracker_TryStartCarry）按原语义跳过后续。
+            if (source.Vault != null && !source.Vault.AllowPortalTransfer
+                && OuterrealmVaultUtil.IsPortalBoundJob(carry.pawn.CurJob))
+            {
+                return 0;
+            }
             if (carry.pawn.Dead || carry.pawn.Downed || !OuterrealmBillJobUtility.CanUse(source, carry.pawn)
                 || (carry.CarriedThing != null && !carry.CarriedThing.CanStackWith(source.QueryThing))) return 0;
             count = (int)Math.Min(Math.Min(count, carry.AvailableStackSpace(source.QueryThing.def)), Available(carry.pawn, source));

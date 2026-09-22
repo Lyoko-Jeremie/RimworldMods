@@ -28,6 +28,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultFrozen") ?? 
             BaseContent.WhiteTex;
         
+        public static readonly Texture2D VaultAllowPortalTransferIcon =
+            ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_VaultAllowPortalTransfer", false) ??
+            BaseContent.WhiteTex;
+
         public static readonly Texture2D StorageManagerOpenIcon = 
             ContentFinder<Texture2D>.Get("UI/Commands/OmniStorage_StorageManagerOpen") ?? 
             BaseContent.WhiteTex;
@@ -100,6 +104,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         private bool noWithdraw;   // on = 禁止取出（HaulSourceEnabled=false）
         private bool allowTakeForUse; // 条件开关：noWithdraw 开启时放宽工作台/食物搜索（§5.2 #7，P4 实现）
         private bool frozen;       // 冻结开关：隐藏全部物品并暂停建筑工作，但保持 filter 不变
+        // 跨图入口搬运开关（默认关闭）：关闭时不允许把本建筑库存送往 MapPortal（跨图入口）。
+        // 房间里的 vault 投影会被第三方"扫 listerThings 统计溢出"的逻辑当成地上实物，
+        // 进而经车辆出口把库存搬出本地图；本开关是拦下这条链路的建筑级闸门。
+        private bool allowPortalTransfer;
 
         // ── 右键菜单显示形态（每建筑独立，随存档保存） ──
         // 原为全局 Mod 设置（跨存档），改为建筑实例字段后每个存储仓可单独选择
@@ -112,6 +120,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public bool NoWithdraw => noWithdraw;
         public bool AllowTakeForUse => allowTakeForUse;
         public bool Frozen => frozen;
+        /// <summary>是否允许把本建筑库存送往跨图入口（MapPortal）。默认关闭。</summary>
+        public bool AllowPortalTransfer => allowPortalTransfer;
 
         /// <summary>本建筑的右键菜单显示形态（原版 / 自制大列表），每建筑独立、随存档保存。</summary>
         public RightClickMenuMode RightClickMenuMode => rightClickMenuMode;
@@ -554,6 +564,21 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             GameComponent_OuterrealmStorage.Instance?.NotifyIdentityRoutingChanged(this);
         }
 
+        /// <summary>跨图入口搬运开关 setter：本建筑是否允许把库存送往 MapPortal（跨图入口）。</summary>
+        public void SetAllowPortalTransfer(bool value)
+        {
+            allowPortalTransfer = value;
+        }
+
+        /// <summary>本地图是否真的存在跨图入口（MapPortal）。用于"检测到存在时才呈现该开关"，
+        /// 避免没有跨图 Mod 的存档里每个存储仓都多出一个无意义按钮。
+        /// ListerThings.ThingsInGroup 直接返回内部列表引用（无分配），Count 为 O(1)。</summary>
+        private bool HasPortalOnMap()
+        {
+            Map m = Map;
+            return m != null && m.listerThings.ThingsInGroup(ThingRequestGroup.MapPortal).Count > 0;
+        }
+
         /// <summary>冻结开关：隐藏全部物品并暂停建筑工作（filter 保持不变）。冻结时视图清空、副本从 listerThings 移除。
         /// §filter 视图过滤简化：冻结 = CanShow 恒 false → 同步移除全部可见副本（O(视图副本数)）；
         /// 解冻 = 同步无操作，置脏由后续 Tick 微批按 filter 重新物化。</summary>
@@ -685,6 +710,20 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                     isActive = () => frozen,
                     toggleAction = () => SetFrozen(!frozen),
                 };
+                // 跨图入口搬运开关（默认关闭）：仅当本地图真的存在跨图入口时才呈现。
+                // 关闭时拒绝"把 vault 库存送往 MapPortal"的取用，见 OuterrealmVaultUtil.IsPortalBoundJob。
+                if (HasPortalOnMap())
+                {
+                    yield return new Command_Toggle
+                    {
+                        defaultLabel = "VaultAllowPortalTransfer".Translate(),
+                        defaultDesc = "VaultAllowPortalTransferDesc".Translate(),
+                        icon = OuterrealmStorageTex.VaultAllowPortalTransferIcon,
+                        groupKey = VaultGizmoKeys.AllowPortalTransfer,
+                        isActive = () => allowPortalTransfer,
+                        toggleAction = () => SetAllowPortalTransfer(!allowPortalTransfer),
+                    };
+                }
                 // 打开全局存储管理器（§6.4：无视 filter 的内容总览与死锁逃生口；含全部弹出/取出功能）
                 yield return new Command_Action
                 {
@@ -794,6 +833,8 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Values.Look(ref noWithdraw, "noWithdraw", false);
             Scribe_Values.Look(ref allowTakeForUse, "allowTakeForUse", false);
             Scribe_Values.Look(ref frozen, "frozen", false);
+            // 跨图入口搬运开关（默认关闭；旧档无此节点自动取默认值，兼容）
+            Scribe_Values.Look(ref allowPortalTransfer, "allowPortalTransfer", false);
             // 每建筑右键菜单形态（默认原版；旧档无此节点自动取默认值，兼容）
             Scribe_Values.Look(ref rightClickMenuMode, "rightClickMenuMode", RightClickMenuMode.Vanilla);
             // 旧档没有该字段时继续使用旧版完整操作列表，行为不变。
@@ -810,5 +851,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         public const int Frozen = 714204;
         public const int RightClickMenuMode = 714205;
         public const int CustomMenuMode = 714206;
+        /// <summary>跨图入口搬运开关（每建筑独立，与"允许存入/取出"同属出入语义，故并入同一 groupKey 家族）。</summary>
+        public const int AllowPortalTransfer = 714207;
     }
 }

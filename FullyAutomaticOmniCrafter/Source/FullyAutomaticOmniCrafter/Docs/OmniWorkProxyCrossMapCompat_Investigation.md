@@ -900,3 +900,110 @@ if (originalExit != null && originalExit.MapHeld != null) return originalExit.Ma
 3. **第 13.3 节的已知局限**：RVAutoHome 这类"入口型 giver"仍会被周期性选中并取消（目标固定，无法在 giver 层屏蔽）；退避使节奏与"本站暂时无活"一致，代理不会被带出归属图，但**不会**真正去执行那份工作 —— 这符合"未授权就不该跨图"的语义。
    若后续希望更彻底地消除这次空转，可考虑在 `Pawn_WorkSettings.CacheWorkGiversInOrder` 的 Postfix 里、当 `!station.AllowCrossMapWork` 时剔除 `PotentialWorkThingRequest.group == ThingRequestGroup.MapPortal` 的 giver（已确认 `MapPortal == 76`）；这会**沉默禁用**第三方的入口型 giver，属于需要玩家/维护者拍板的取舍，故本次**未**实施。
 
+---
+
+## 14. 追加问题：超维存储库存被第三方「溢出导出」经车辆出口搬出车外
+
+### 14.1 现象
+
+车内地图（RV 口袋图）里的超维存储仓，其库存会**成组**地出现在**车外（基地图）地上**，掉落点就在车辆出口（车内的 `SimplePortal`）另一侧。
+复现时**未开启**"自动上下车"，也**未开启**跨图工作。
+
+### 14.2 根因（双侧确证）
+
+这是"投影被第三方当成地上实物"的兼容问题，与代理、与跨图许可均无关。
+
+**① 超维存储的查询投影是"伪 Spawned"，并主动注册进 `listerThings`**
+
+`OuterrealmStorage/OuterrealmVaultViewThingOwner.cs:530-572`（`RegisterInLister`）注释已写明：
+
+```
+伪 Spawned 投影（§v5）：把副本注册为"伪 Spawned"——mapIndexOrState = map.Index，
+使 Thing.Spawned / Map / MapHeld / Position 全部表现为"在地图上"；并注册进地图级
+listerThings 与 region.ListerThings（GenClosest region 搜索可见）。
+```
+
+投影的 `stackCount = min(entry.Count, def.stackLimit)`，位置在 vault 占格（`GetProjectionCell`）。这是**有意的第三方取料兼容**设计。
+
+**② RVAutoHome 的「溢出导出」自己扫 `listerThings` 统计房间存量**
+
+- 开关：`Settings.autoExportRoomProducts`（UI 名 `RVAutoHome.Set.OverflowExport`），**默认 `true`**，且与"自动上下车"（`autoEnterByWork` 等）是**彼此独立**的设置项 —— 所以关掉自动上下车并不影响它。
+- 统计：`AutoRoomSupply.CountRoomByDef`（`:586-602`）用 `room.listerThings.AllThings`，条件仅 `!Destroyed && Spawned && def.category == Item` → **投影全部命中**，于是超维存储的**全部库存**被算成"房间地上有这么多东西"。
+- 导出：`AutoRoomExport.ExportRoom`（每 600 tick）算出"溢出量"（库存 − 按房间物理容量算出的应保留量，常年为正），再从同一个 `listerThings.AllThings` 挑满足 `Spawned && def == key && !IsForbidden && stackCount > 0 && !IsQueued(roomPortal, …)` 的 Thing —— **投影全部命中**（该判据没有 `StoreUtility.GetSlotGroup(val) == null` 这一保护；而"车外→车内"的补给路径 `AutoRoomSupply.cs:79` 反而是有的）。
+- 结果：投影被 `SimplePortalCompat.AddToTheToLoadList(roomPortal, …)` 加进**车辆出口的待装载清单**。
+
+**③ 搬运时走本项目已接管的取出路径 → 实物真的从全局库存被扣减并搬出本地图**
+
+`readme_OuterrealmStorage.md` 不变量 5：实际取出必须走 `Withdraw`/`WithdrawCanonical` 或已接管的 `Thing.SplitOff`、`Pawn_CarryTracker.TryStartCarry`。所以殖民者"搬投影"= **真的取出实物** → 经 portal 落到车外地上；库存有剩余则投影再次物化，600 tick 后重复 → 观察到的"一组一组地丢出去"。
+
+> 附注：这不是该设计第一次被误伤。`RegisterInLister` 注释里已记录过"搬运工取出 → 放入 → 副本重生 → **无限搬运循环**"，那次是靠 `CurrentHaulDestinationOf → SlotGroupParentAt` 让**原版**把投影判定为"已在 vault 中"防住的；但 RVAutoHome 不查这个，它自己扫 `listerThings`，所以那道防线对它无效。
+
+### 14.3 实施：建筑级开关（默认关闭）
+
+按维护者要求，闸门放在**超维存储终端建筑**上（不是 mod 设置），**默认关闭**（不允许把库存送往跨图入口），且**只在本地图真的存在跨图入口时才呈现**。
+
+| 位置 | 改动 |
+|---|---|
+| `OuterrealmStorage/OuterrealmVaultUtil.cs` | 新增 `IsPortalBoundJob(Job)` + 私有 `IsPortalTarget(LocalTargetInfo)`：判定 job 的 `targetA/B/C` 任一是否为 `MapPortal`（target 无效时跳过）。与工作代理侧"入口型 Job 校验"同源 |
+| `OuterrealmStorage/Building_OuterrealmVault.cs` | 字段 `allowPortalTransfer`（默认 `false`）+ 属性 `AllowPortalTransfer` + setter `SetAllowPortalTransfer` + `ExposeData`（key `allowPortalTransfer`）；`GetGizmos()` 在"冻结"之后按 `HasPortalOnMap()` 条件化地 yield 一个 `Command_Toggle`；`VaultGizmoKeys.AllowPortalTransfer = 714207`；`OuterrealmStorageTex.VaultAllowPortalTransferIcon`（缺贴图时回退 `BaseContent.WhiteTex`）；`HasPortalOnMap()` 用 `map.listerThings.ThingsInGroup(ThingRequestGroup.MapPortal).Count > 0`（O(1)、零分配） |
+| `OuterrealmStorage/OuterrealmCarryTransaction.cs` | `Transfer(...)` 开头新增守护：`source.Vault != null && !source.Vault.AllowPortalTransfer && OuterrealmVaultUtil.IsPortalBoundJob(carry.pawn.CurJob)` → `return 0`（等价于"没搬到"，调用方 `Patch_Pawn_CarryTracker_TryStartCarry` 按原语义跳过后续） |
+| `Languages/{English, ChineseSimplified (简体中文)}/Keyed/OuterrealmStorage.xml` | 新增 `VaultAllowPortalTransfer` / `VaultAllowPortalTransferDesc` |
+
+设计要点：
+- 拦截放在**取出的原子点**（`OuterrealmCarryTransaction.Transfer`），因此无论第三方从哪条路径把投影当搬运对象，真正"扣库存"的那一步都会被拦住。
+- 只在**来源确实属于某座 vault**（`source.Vault != null`）时生效；随身视图 / 权威候选等无建筑来源保持原行为。
+- `allowPortalTransfer == true` 时完全放行（玩家显式选择把库存交给跨图搬运）。
+
+### 14.4 未验证
+
+1. **本机未执行 `dotnet build -c Debug`**：本次会话的 shell 工具被主机门禁锁定（连 `Get-Date` 都被拒），编译验证需在有 shell 的环境执行。
+2. **未做游戏内复现**：结论来自反编译源码 + 本 mod 源码的静态链路分析。
+3. **就地验证建议**：装回三个 Mod，车内 vault 存入一组物品、保持"溢出导出"开启、`allowPortalTransfer` 保持默认关闭 → 物品应**不再**出现在车外；再把该开关打开 → 应恢复跨图搬运（验证开关生效且默认值正确）。
+
+---
+
+## 15. 兼容性保证：未安装相关 Mod 时必须零影响
+
+第 9 节（工作代理跨图准入）与第 14 节（超维存储跨图入口搬运守护）的所有新判据，都必须满足"**没有跨图 Mod 的存档里，行为与改动前完全一致**"。逐条核对如下。
+
+### 15.1 判据一律基于**原版**类型与枚举，不引用任何第三方程序集
+
+| 判据 | 依据 | 缺失跨图 Mod 时的结果 |
+|---|---|---|
+| `OmniWorkProxyEntryAuthorization.DeniesEntryJob` / `DeniesEntryTarget` | `target.Thing is RimWorld.MapPortal`（**原版**类型） | 恒 `false` → 不拦任何 Job |
+| `OuterrealmVaultUtil.IsPortalBoundJob` / `IsPortalTarget` | 同上 | 恒 `false` → `Transfer` 不提前返回 |
+| `Building_OuterrealmVault.HasPortalOnMap()` | `ThingRequestGroup.MapPortal`（**原版**枚举成员） | 恒 `false` → 该 Gizmo **不出现** |
+| `OmniWorkProxyEntryAuthorization.BuildCarrierGetter` | 按类型名 + 字段名**软探测** `InteriorSpaceMapComponent.ownerThing`，任一步失败即整体禁用 | 返回 `null` → 载体路径整段跳过 |
+| `OmniWorkProxyEntryAuthorization.SafeGetTargetMap` 第 ④ 步 | 只在入口本身已是 `MapPortal` 子类时才被调用 | 无入口 → 不调用 |
+
+**没有任何 `AccessTools.TypeByName` 之外的第三方类型引用，也没有对第三方程序集的强依赖**：`MultiFloors` / `SimplePortal` / `RVwithPD` 全部只通过"原版基类 override"与"类型名软探测"被间接识别。
+
+### 15.2 无条件新增的代码路径，其"未命中"分支与改动前逐字节等价
+
+- `OuterrealmCarryTransaction.Transfer` 开头新增的守卫是**前置 `if` + `return 0`**；未命中时**原样执行**原有全部逻辑（不改写任何既有语句、不改变返回值）。
+- `Building_OuterrealmVault.GetGizmos()` 新增的 Gizmo 被 `if (HasPortalOnMap())` **整体包裹**，且位于原有的 `if (Faction == Faction.OfPlayer)` 块内 → 未命中时 Gizmo 列表与改动前**完全一致**。
+- `allowPortalTransfer` 字段默认 `false`，`ExposeData` 用 `Scribe_Values.Look(..., false)` → **旧存档缺该节点时取默认值**，不产生迁移或行为变化。
+
+### 15.3 留下的唯一可测成本
+
+| 位置 | 成本 | 说明 |
+|---|---|---|
+| `Transfer` 的守卫 | 2 次 bool/引用判断 + 最多 3 次 `is MapPortal` 类型检查 | 仅在**从超维存储取物**时执行，非每 tick |
+| `GetGizmos` 的 `HasPortalOnMap()` | `ListerThings.ThingsInGroup(...)`（数组索引，零分配）+ `Count`（O(1)） | 每个存储仓每帧一次，可忽略 |
+
+两者都不构成可观测的行为或性能差异。
+
+### 15.4 自证方法（无需玩游戏）
+
+1. 在**未启用**任何 MapPortal 提供方（SimplePortal / RV with built-in PD / Odyssey 坑道门）的存档中，检查超维存储仓的 Gizmo 栏：**不应出现**"允许跨图入口搬运"按钮。
+2. 全局搜索新判据的调用点，确认没有任何一处引用第三方命名空间：
+   `grep -n "MapPortal" OmniWorkProxyEntryAuthorization.cs OuterrealmStorage/*.cs` → 只应出现 `RimWorld.MapPortal` / `ThingRequestGroup.MapPortal`。
+3. 若第三方 Mod 不存在导致 `AccessTools` 探测失败，唯一后果是**功能降级为"无载体"**（保守未授权），已在 `BuildCarrierGetter` 内 try/catch 静默处理，不产生日志刷屏。
+
+### 15.5 一处需要留意的边界（非缺陷，但应知晓）
+
+判据使用**原版 `MapPortal`**，因此**原版的坑道门（pit gate，Odyssey）与任何第三方入口都会被同等对待**：
+- 只要地图上存在这类入口，Gizmo 就会出现（这是"检测到存在"的正确语义）；
+- `allowPortalTransfer` 保持默认关闭时，玩家把 vault 物品搬进坑道门也会被拒绝 —— 这是**功能本意**（库存不应被自动搬离本地图）。
+- 若希望连"显示"都更严格（例如只对第三方 portal 显示），需要引入 Mod 身份判断，那会破坏第 15.1 节的"零第三方依赖"原则，**故不采用**。
+

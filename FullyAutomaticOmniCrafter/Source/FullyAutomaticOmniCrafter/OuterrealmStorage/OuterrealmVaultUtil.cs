@@ -355,5 +355,34 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>兜底反射字段（SetThingToInstallFromMinified 不可用时直接写 private 字段）。</summary>
         private static readonly FieldInfo MiniToInstallField =
             AccessTools.Field(typeof(Blueprint_Install), "miniToInstall");
+
+        // ── 跨图入口搬运守护（§18：库存不得被自动搬离本地图）────────────────────
+
+        /// <summary>
+        /// 该 Job 是否会把物品送往跨图入口（MapPortal）。
+        ///
+        /// 背景：vault 的查询投影是"伪 Spawned"并注册进 listerThings —— 这是有意的第三方取料兼容
+        /// （见 OuterrealmVaultViewThingOwner.RegisterInLister）。但第三方若**自己扫 listerThings
+        /// 统计房间存量**，就会把库存当成"地上的实物"。典型是 RV Auto-Embark &amp; Disembark 的
+        /// 「溢出导出」：它按 listerThings.AllThings 算出"溢出量"，把命中的 Thing（含 vault 投影）
+        /// 加入 MapPortal 的待装载清单，随后由 SimplePortal 的搬运 Job 取走 —— 一旦放行，
+        /// 库存就真的被搬出本地图（落在地图外/车外地上）。
+        ///
+        /// 判据与工作代理侧的"入口型 Job 校验"同源；target 无效时跳过
+        /// （第三方常用 target == null 形式，如 MultiFloors 的 MakeChangeLevelThroughStairJob(null, map)）。
+        /// </summary>
+        public static bool IsPortalBoundJob(Job job)
+        {
+            if (job == null)
+            {
+                return false;
+            }
+            return IsPortalTarget(job.targetA) || IsPortalTarget(job.targetB) || IsPortalTarget(job.targetC);
+        }
+
+        private static bool IsPortalTarget(LocalTargetInfo target)
+        {
+            return target.IsValid && target.HasThing && target.Thing is MapPortal;
+        }
     }
 }
