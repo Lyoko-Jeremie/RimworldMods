@@ -141,8 +141,12 @@
             <Flammability>0.5</Flammability>
         </statBases>
 
-        <!-- 调度由 MapComponent 集中驱动，建筑本身不需要 Tick。 -->
-        <tickerType>Never</tickerType>
+        <!--
+            代理调度仍由 MapComponent 集中驱动，但电力组件必须参与 Normal tick：
+            CompPowerPlant.CompTick 每 tick 调用 UpdateDesiredPowerOutput，
+            否则 CompOmniPowerGenerator 的模式/功率调整不会刷新到 PowerOutput。
+        -->
+        <tickerType>Normal</tickerType>
         <building>
             <paintable>true</paintable>
 <!--            <menuHidden>true</menuHidden>-->
@@ -151,14 +155,15 @@
             <li Class="CompProperties_Flickable" />
             <li Class="CompProperties_Breakdownable" />
             <!--
-                工作站不消耗电力：basePowerConsumption 为 0。
-                保留 CompPowerTrader + transmitsPower 只为维持"电网节点"能力，
-                这样玩家原有的穿墙布线不会被拆站打断；供电状态也不影响工作
-                （Operational 刻意不检查 PowerOn）。
+                工作站自带电源：改用 CompOmniPowerGenerator（CompPowerPlant 派生）。
+                basePowerConsumption 取负值表示发电，默认 Manual 模式输出 1000W，
+                玩家可在工作站上用 Gizmo 切换模式 / 调整功率（与 OmniPowerGenerator 一致）。
+                transmitsPower 保持 true，工作站仍是电网节点，原有穿墙布线不受影响；
+                供电状态不参与工作判定（Operational 刻意不检查 PowerOn）。
             -->
             <li Class="CompProperties_Power">
-                <compClass>CompPowerTrader</compClass>
-                <basePowerConsumption>0</basePowerConsumption>
+                <compClass>FullyAutomaticOmniCrafter.CompOmniPowerGenerator</compClass>
+                <basePowerConsumption>-1000</basePowerConsumption>
                 <shortCircuitInRain>false</shortCircuitInRain>
                 <transmitsPower>true</transmitsPower>
             </li>

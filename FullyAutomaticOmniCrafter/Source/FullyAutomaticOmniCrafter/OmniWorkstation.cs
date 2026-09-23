@@ -60,9 +60,11 @@ namespace FullyAutomaticOmniCrafter
         {
             get
             {
-                // 工作站**不需要供电**：Def 里 basePowerConsumption 为 0。保留 CompPowerTrader 只为
-                // 维持"电网节点"能力（transmitsPower），所以这里刻意不检查 PowerOn —— 未接电网、
-                // 电网断电、或根本没有电力组件时，工作站都视为可用。CompFlickable 保留给玩家手动停用。
+                // 工作站**自带电源**：Def 里 CompProperties_Power 使用 CompOmniPowerGenerator
+                // （CompPowerPlant 派生），basePowerConsumption 为 -1000，默认 Manual 模式输出 1000W，
+                // 因此不依赖外部电网。这里刻意不检查 PowerOn —— 未接电网、电网断电、或根本没有
+                // 电力组件时，工作站都视为可用；transmitsPower 仍为 true，保留"电网节点"能力。
+                // CompFlickable 保留给玩家手动停用（CompOmniPowerGenerator 同样尊重该开关）。
                 if (!Spawned || !automationEnabled || this.IsBurning() || this.IsBrokenDown()) return false;
                 CompFlickable flickable = GetComp<CompFlickable>();
                 return flickable == null || flickable.SwitchIsOn;
