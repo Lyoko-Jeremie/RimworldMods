@@ -478,6 +478,7 @@
     <Compile Include="OuterrealmStorage\OuterrealmVaultViewThingOwner.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmExternalReservation.cs" />
     <Compile Include="OuterrealmStorage\OuterrealmVEFCompat.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmSRCCompat.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmFloatMenu.cs" />
     <Compile Include="OuterrealmStorage\Patch_OuterrealmStorage.cs" />
     <Compile Include="OuterrealmStorage\SubspaceAccessUtility.cs" />

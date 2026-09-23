@@ -513,22 +513,33 @@ namespace FullyAutomaticOmniCrafter
 
             System.Type[] patchTypes = typeof(OmniCrafterMod).Assembly.GetTypes();
 
-            // 核心保护先完整安装；可选 VEF 兼容失败不得截断选择、保存和所有权补丁。
+            // 核心保护先完整安装；可选第三方兼容失败不得截断选择、保存和所有权补丁。
             foreach (System.Type type in patchTypes)
                 if (System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)
-                    && !type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal))
+                    && !IsOptionalCompatPatch(type))
                     harmony.CreateClassProcessor(type).Patch();
             Log.Message("[OuterrealmStorage] Core Harmony patches installed.");
             foreach (System.Type type in patchTypes)
             {
-                if (!type.Name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal)
+                if (!IsOptionalCompatPatch(type)
                     || !System.Attribute.IsDefined(type, typeof(HarmonyLib.HarmonyPatch), false)) continue;
                 try { harmony.CreateClassProcessor(type).Patch(); }
                 catch (System.Exception error)
                 {
-                    Log.Error("[OuterrealmStorage] Optional VEF compatibility failed: " + type.FullName + "\n" + error);
+                    Log.Error("[OuterrealmStorage] Optional third-party compatibility failed: " + type.FullName + "\n" + error);
                 }
             }
+        }
+
+        /// <summary>
+        /// 可选第三方兼容补丁的命名分组：安装失败只记日志，不得影响核心补丁。
+        /// `Patch_VEF_` 为 Vanilla Expanded Framework 兼容，`Patch_Optional_` 为其它第三方可选兼容。
+        /// </summary>
+        private static bool IsOptionalCompatPatch(System.Type type)
+        {
+            string name = type.Name;
+            return name.StartsWith("Patch_VEF_", System.StringComparison.Ordinal)
+                || name.StartsWith("Patch_Optional_", System.StringComparison.Ordinal);
         }
     }
 
