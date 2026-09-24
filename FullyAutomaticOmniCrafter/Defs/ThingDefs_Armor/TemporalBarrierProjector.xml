@@ -102,6 +102,11 @@
                 <compClass>FullyAutomaticOmniCrafter.Comp_SNS_OuterrealmTech_TemporalBarrierProjector_CompShieldRanged</compClass>
                 <blocksRangedWeapons>false</blocksRangedWeapons> <!-- 允许穿戴者向外射击 -->
             </li>
+            <!-- 装备技能等级提升：穿戴期间把穿戴者的全部技能等级提升到 20（原版上限），脱下即还原。 -->
+            <!-- 组件本体 FullyAutomaticOmniCrafter.CompSkillLevelBoost 是通用的，任何 Apparel 都可以挂载复用。 -->
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_SkillLevelBoost">
+                <skillLevel>20</skillLevel>
+            </li>
             <!-- AutoBlink 传送 -->
             <li Class="CompProperties_CauseHediff_Apparel" MayRequire="rabiosus.autoblink">
                 <hediff>SNS_TemporalBarrier_AutoBlink_Hediff</hediff>
