@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullyAutomaticOmniCrafter",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlienRace", "..\..\..\..\..\..\..\..\RimworldCodeIL\AlienRaces\Source\AlienRace\AlienRace\AlienRace.csproj", "{E74E552B-B48E-4672-8CA6-DF18E5366928}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBlink", "..\..\..\..\..\..\..\..\RimworldCodeIL\AutoBlink\AutoBlink.csproj", "{CC632B70-0BB3-4770-868C-06EF32B3F4B2}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,10 +27,6 @@ Global
 		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CC632B70-0BB3-4770-868C-06EF32B3F4B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC632B70-0BB3-4770-868C-06EF32B3F4B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CC632B70-0BB3-4770-868C-06EF32B3F4B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CC632B70-0BB3-4770-868C-06EF32B3F4B2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
