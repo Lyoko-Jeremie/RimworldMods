@@ -14,8 +14,10 @@ namespace FullyAutomaticOmniCrafter
 {
     /// <summary>
     /// 万能工作站只保存玩家配置；地图组件管理代理生命周期，具体工作由原版思考树搜索。
+    /// 继承 Building_VirtualStoreHost：额外实现原版存储 / 搬运接口（只出不进的虚拟存储），
+    /// 实际行为全部由挂在 Def 上的 CompOmniVirtualStore 提供，本类不含存储逻辑。
     /// </summary>
-    public sealed class Building_OmniWorkstation : Building
+    public sealed class Building_OmniWorkstation : Building_VirtualStoreHost
     {
         public const int MinWorkRadius = 1;
         public const int MaxWorkRadius = 256;

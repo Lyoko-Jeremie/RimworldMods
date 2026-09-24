@@ -618,7 +618,11 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        private Thing MakeThing(ThingDef def, ThingDef stuff, QualityCategory quality, int count)
+        /// <summary>
+        /// 生成一件物品：建筑类走 MinifiedThing 打包逻辑，其余按 stackLimit 分堆并设置品质。
+        /// internal static 以便虚拟存储（CompOmniVirtualStore）补货时复用同一套生成规则。
+        /// </summary>
+        internal static Thing MakeThing(ThingDef def, ThingDef stuff, QualityCategory quality, int count)
         {
             try
             {

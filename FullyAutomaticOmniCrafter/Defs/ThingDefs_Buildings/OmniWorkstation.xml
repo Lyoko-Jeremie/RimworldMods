@@ -155,6 +155,17 @@
             <li Class="CompProperties_Flickable" />
             <li Class="CompProperties_Breakdownable" />
             <!--
+                虚拟存储：内部容器按玩家设定的目标数量自动补货，物品不可见（未 Spawn、不占地图格）、
+                只出不进。原版存储 / 搬运接口由 Building_OmniWorkstation 的基类
+                Building_VirtualStoreHost 实现，本组件只负责容器、清单、开关与补货。
+                ticksBetweenChecks=1 表示每 tick 对账；maxStacksPerTick 限制单次补货新增的堆数，
+                避免目标数量极大时单帧生成海量 Thing。
+            -->
+            <li Class="FullyAutomaticOmniCrafter.CompProperties_OmniVirtualStore">
+                <ticksBetweenChecks>1</ticksBetweenChecks>
+                <maxStacksPerTick>200</maxStacksPerTick>
+            </li>
+            <!--
                 工作站自带电源：改用 CompOmniPowerGenerator（CompPowerPlant 派生）。
                 basePowerConsumption 取负值表示发电，默认 Manual 模式输出 1000W，
                 玩家可在工作站上用 Gizmo 切换模式 / 调整功率（与 OmniPowerGenerator 一致）。

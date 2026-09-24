@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <OmniVirtualStore_GizmoToggle>Virtual store</OmniVirtualStore_GizmoToggle>
+    <OmniVirtualStore_GizmoToggleDesc>Enable or disable the virtual store. Disabling destroys everything currently stored and pauses restocking; the configured list is kept.</OmniVirtualStore_GizmoToggleDesc>
+    <OmniVirtualStore_GizmoDropAll>Drop to ground</OmniVirtualStore_GizmoDropAll>
+    <OmniVirtualStore_GizmoDropAllDesc>Drop everything in the virtual store to the ground near the workstation. The list is unchanged and the target amounts are restocked afterwards.</OmniVirtualStore_GizmoDropAllDesc>
+    <OmniVirtualStore_DroppedToGround>Dropped the virtual store contents to the ground.</OmniVirtualStore_DroppedToGround>
+    <OmniVirtualStore_DropFailed>Nothing to drop, or there is no free space near the workstation.</OmniVirtualStore_DropFailed>
+    <OmniVirtualStore_GizmoConfig>Virtual store list</OmniVirtualStore_GizmoConfig>
+    <OmniVirtualStore_GizmoConfigDesc>Choose which items the virtual store keeps in stock and in what amounts. The items are invisible on the map but can be taken and used.</OmniVirtualStore_GizmoConfigDesc>
+    <OmniVirtualStore_DropAllNoItems>Drop to ground (store is empty)</OmniVirtualStore_DropAllNoItems>
+    <OmniVirtualStore_DropAll>Drop to ground</OmniVirtualStore_DropAll>
+    <OmniVirtualStore_InspectDisabled>Virtual store: disabled</OmniVirtualStore_InspectDisabled>
+    <OmniVirtualStore_InspectEmpty>Virtual store: enabled (list is empty)</OmniVirtualStore_InspectEmpty>
+    <OmniVirtualStore_InspectEnabled>Virtual store: {0} item type(s) · {1} item(s)</OmniVirtualStore_InspectEnabled>
+    <OmniVirtualStore_WindowTitle>Virtual store</OmniVirtualStore_WindowTitle>
+    <OmniVirtualStore_Enabled>Enabled</OmniVirtualStore_Enabled>
+    <OmniVirtualStore_Disabled>Disabled</OmniVirtualStore_Disabled>
+    <OmniVirtualStore_ClearList>Clear list</OmniVirtualStore_ClearList>
+    <OmniVirtualStore_RefreshHint>Info</OmniVirtualStore_RefreshHint>
+    <OmniVirtualStore_RefreshHintText>The virtual store is take-only: nothing is drawn on the map and haulers can never store things into it, yet every ingredient search (bills, construction hauling, manual taking) can draw from it, and whatever is taken is restocked up to the configured amount.</OmniVirtualStore_RefreshHintText>
+    <OmniVirtualStore_All>All items</OmniVirtualStore_All>
+    <OmniVirtualStore_WantedTitle>Target amounts</OmniVirtualStore_WantedTitle>
+    <OmniVirtualStore_WantedEmpty>Click an item in the middle list to add it.</OmniVirtualStore_WantedEmpty>
+    <OmniVirtualStore_Remove>Remove</OmniVirtualStore_Remove>
+    <OmniVirtualStore_Hint>Click items to add or remove them; edit the target amount on the right (no upper limit).</OmniVirtualStore_Hint>
+</LanguageData>

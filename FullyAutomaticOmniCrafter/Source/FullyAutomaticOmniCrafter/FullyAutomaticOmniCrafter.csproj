@@ -381,6 +381,9 @@
     <Compile Include="CompManualEventTrigger.cs" />
     <Compile Include="CompWorldConditionController.cs" />
     <Compile Include="CompOmniKiller.cs" />
+    <Compile Include="Building_VirtualStoreHost.cs" />
+    <Compile Include="CompOmniVirtualStore.cs" />
+    <Compile Include="Window_OmniVirtualStoreConfig.cs" />
     <Compile Include="OmniMechRepairField.cs" />
     <Compile Include="CompOmniPowerBattery.cs" />
     <Compile Include="CompOmniPowerGenerator.cs" />

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+    <OmniVirtualStore_GizmoToggle>虚拟存储</OmniVirtualStore_GizmoToggle>
+    <OmniVirtualStore_GizmoToggleDesc>启用或停用虚拟存储。停用会立即销毁存储中的全部物品并暂停自动补货；已填写的清单会保留。</OmniVirtualStore_GizmoToggleDesc>
+    <OmniVirtualStore_GizmoDropAll>丢到地上</OmniVirtualStore_GizmoDropAll>
+    <OmniVirtualStore_GizmoDropAllDesc>把虚拟存储中的全部物品丢到工作站附近地面。清单不变，之后会按目标数量自动补回。</OmniVirtualStore_GizmoDropAllDesc>
+    <OmniVirtualStore_DroppedToGround>已把虚拟存储中的物品丢到地面。</OmniVirtualStore_DroppedToGround>
+    <OmniVirtualStore_DropFailed>没有可丢出的物品，或者工作站附近没有空间。</OmniVirtualStore_DropFailed>
+    <OmniVirtualStore_GizmoConfig>虚拟存储清单</OmniVirtualStore_GizmoConfig>
+    <OmniVirtualStore_GizmoConfigDesc>设置虚拟存储中长期维持的物品与数量。物品不显示在地图上，但可以被取出使用。</OmniVirtualStore_GizmoConfigDesc>
+    <OmniVirtualStore_DropAllNoItems>丢到地上（存储为空）</OmniVirtualStore_DropAllNoItems>
+    <OmniVirtualStore_DropAll>丢到地上</OmniVirtualStore_DropAll>
+    <OmniVirtualStore_InspectDisabled>虚拟存储：已停用</OmniVirtualStore_InspectDisabled>
+    <OmniVirtualStore_InspectEmpty>虚拟存储：已启用（清单为空）</OmniVirtualStore_InspectEmpty>
+    <OmniVirtualStore_InspectEnabled>虚拟存储：{0} 种物品 · 共 {1} 件</OmniVirtualStore_InspectEnabled>
+    <OmniVirtualStore_WindowTitle>虚拟存储</OmniVirtualStore_WindowTitle>
+    <OmniVirtualStore_Enabled>已启用</OmniVirtualStore_Enabled>
+    <OmniVirtualStore_Disabled>已停用</OmniVirtualStore_Disabled>
+    <OmniVirtualStore_ClearList>清空清单</OmniVirtualStore_ClearList>
+    <OmniVirtualStore_RefreshHint>说明</OmniVirtualStore_RefreshHint>
+    <OmniVirtualStore_RefreshHintText>虚拟存储只出不进：物品不会显示在地图上，也不会被搬运工存进来；但任何取料路径（制作、施工搬运、手动取出）都能取用，取走多少就会自动补回清单设定的数量。</OmniVirtualStore_RefreshHintText>
+    <OmniVirtualStore_All>全部物品</OmniVirtualStore_All>
+    <OmniVirtualStore_WantedTitle>目标数量</OmniVirtualStore_WantedTitle>
+    <OmniVirtualStore_WantedEmpty>点击中间列表中的物品即可加入清单。</OmniVirtualStore_WantedEmpty>
+    <OmniVirtualStore_Remove>移除</OmniVirtualStore_Remove>
+    <OmniVirtualStore_Hint>点击列表加入或移除物品；右侧可修改目标数量（不设上限）。</OmniVirtualStore_Hint>
+</LanguageData>
