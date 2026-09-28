@@ -43,7 +43,7 @@ namespace FullyAutomaticOmniCrafter
         {
             this.store = store;
             doCloseX = true;
-            doCloseButton = true;
+            doCloseButton = false; // 隐藏最下方正中的关闭按钮，只保留右上角 X
             closeOnClickedOutside = false;
             absorbInputAroundWindow = true;
             draggable = true;
@@ -183,7 +183,14 @@ namespace FullyAutomaticOmniCrafter
             List<ThingDef> list = CurrentList();
             Rect view = new Rect(0f, 0f, listOuter.width - 16f, Mathf.Max(list.Count * RowHeight, 1f));
             Widgets.BeginScrollView(listOuter, ref listScroll, view);
-            for (int i = 0; i < list.Count; i++)
+
+            // 虚拟滚动：物品数上千时逐行调用 Widgets.ThingIcon / Widgets.Label（材质解析 + 文本测量）
+            // 会严重拖慢帧率，这里只绘制可视区内的行（上下各多留一行作缓冲）。
+            float scrollY = listScroll.y;
+            int firstRow = Mathf.Max(0, Mathf.FloorToInt(scrollY / RowHeight) - 1);
+            int lastRow = Mathf.Min(list.Count - 1,
+                Mathf.CeilToInt((scrollY + listOuter.height) / RowHeight) + 1);
+            for (int i = firstRow; i <= lastRow; i++)
             {
                 ThingDef def = list[i];
                 if (def == null) continue;
@@ -280,7 +287,14 @@ namespace FullyAutomaticOmniCrafter
             {
                 Rect view = new Rect(0f, 0f, listOuter.width - 16f, Mathf.Max(items.Count * RowHeight, 1f));
                 Widgets.BeginScrollView(listOuter, ref wantedScroll, view);
-                for (int i = 0; i < items.Count; i++)
+
+                // 虚拟滚动：清单很长时逐行创建文本框（GUI 控件 + 字符串解析）开销很大，
+                // 只绘制可视区内的行（上下各多留一行作缓冲）。
+                float wantedScrollY = wantedScroll.y;
+                int firstRow = Mathf.Max(0, Mathf.FloorToInt(wantedScrollY / RowHeight) - 1);
+                int lastRow = Mathf.Min(items.Count - 1,
+                    Mathf.CeilToInt((wantedScrollY + listOuter.height) / RowHeight) + 1);
+                for (int i = firstRow; i <= lastRow; i++)
                 {
                     VirtualStoreItem item = items[i];
                     if (item?.thingDef == null) continue;
