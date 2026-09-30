@@ -41,6 +41,7 @@
     </Reference>
     <Reference Include="AutoBlink">
       <HintPath>..\..\..\..\..\..\workshop\content\294100\3493889625\1.6\Assemblies\AutoBlink.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
