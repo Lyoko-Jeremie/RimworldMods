@@ -423,6 +423,7 @@
     <Compile Include="Patch_OmniWorkProxyVisuals.cs" />
     <Compile Include="OmniWorkFailureCache.cs" />
     <Compile Include="Patch_OmniWorkProxyNavigation.cs" />
+    <Compile Include="Patch_OmniWorkProxyJobSpeed.cs" />
     <Compile Include="Patch_OmniWorkFailure.cs" />
     <Compile Include="Patch_OmniWorkIngredientSearch.cs" />
     <Compile Include="OmniWorkstationMonitor.cs" />

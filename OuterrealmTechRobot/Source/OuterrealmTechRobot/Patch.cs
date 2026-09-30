@@ -1090,6 +1090,46 @@ namespace OuterrealmTechRobot
         }
     }
 
+    /// <summary>
+    /// 人造人女仆的 interval 节拍对齐。
+    ///
+    /// 原版 1.6 的工作推进分两条通道：每 tick 的 DriverTick（tickAction、Delay 型 toil 的倒计时）与
+    /// 按 period 触发的 DriverTickInterval（tickIntervalAction，绝大多数工作进度都在这里）。
+    /// period = clamp(Thing.UpdateRateTicks, 1, 15)，而 Pawn.UpdateRateTicks 对非动物单位走
+    /// GenTicks.GetCameraUpdateRate：不在镜头内（女仆在外干活时基本如此）返回 15。
+    /// 于是 Patch_JobDriver_Mine_DoDamage 的「一击凿穿」在镜头外每 15 tick 才发生一次，
+    /// 一块花岗岩（900 HP，每次挥击 80 伤害）仍要约 180 tick —— 这是挖掘加速缺失的一环。
+    ///
+    /// 这里让「手上有非空闲 Job」的女仆把节拍压到每 tick 一次，DriverTickInterval 以 delta = 1 每 tick 推进，
+    /// 挖掘、建造、种植、烹饪、研究、治疗等 interval 型工作都在接活后的下一个 tick 内完成
+    /// （工作速度已由 race statBases 的 WorkSpeedGlobal / MiningSpeed 放大到一次推进即完成的量级）。
+    /// 空闲 / 等待 / 纯移动 Job 保持原版节拍，避免为空转行为白付 interval 开销。
+    ///
+    /// 若以后需要让女仆的所有 Job（含侍奉类）都走 1 tick 节拍，删掉下面的空闲 Job 判断即可。
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.UpdateRateTicks), MethodType.Getter)]
+    public static class Patch_Pawn_UpdateRateTicks_ArtificialMaid
+    {
+        // 原版空转型 Job：这些 Job 期间没有工作进度可推进，保持原版节拍即可。
+        private static readonly HashSet<string> IdleJobDefNames = new HashSet<string>
+        {
+            "Wait", "Wait_MaintainPosture", "Wait_Wander", "Goto", "GotoWander",
+            "LayDown", "Meditate", "SocialRelax", "Lovin"
+        };
+
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(Pawn __instance, ref int __result)
+        {
+            // 已是最快节拍直接短路；非女仆只付一次 ThingDef 引用比较。
+            if (__result <= 1) return;
+            if (__instance == null || __instance.def != ArtificialMaidDefOf.ArtificialMaid) return;
+            Job job = __instance.CurJob;
+            if (job?.def == null || IdleJobDefNames.Contains(job.def.defName)) return;
+            __result = 1;
+        }
+    }
+
     [HarmonyPatch(typeof(JobDriver_ActivateMonolith), "MakeNewToils")]
     public static class Patch_JobDriver_ActivateMonolith_MakeNewToils
     {
