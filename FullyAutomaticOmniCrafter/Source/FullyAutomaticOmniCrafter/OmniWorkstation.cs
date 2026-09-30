@@ -2764,7 +2764,15 @@ namespace FullyAutomaticOmniCrafter
 
             try
             {
-                Pawn pawn = PawnGenerator.GeneratePawn(OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer);
+                // 代理是工具而非"人"：生成阶段就明确禁止它获得亲属关系。
+                // 默认重载 GeneratePawn(kindDef, faction) 的 CanGeneratePawnRelations 为 true，
+                // 新代理会与场上任意人类 pawn（包括其它代理）随机结成父母 / 配偶，
+                // 既无意义，又会让代理被写进殖民者家谱。
+                Pawn pawn = PawnGenerator.GeneratePawn(new PawnGenerationRequest(
+                    OmniWorkstationDefOf.FAOC_OmniWorkProxy, Faction.OfPlayer,
+                    canGeneratePawnRelations: false,
+                    colonistRelationChanceFactor: 0f,
+                    relationWithExtraPawnChanceFactor: 0f));
                 PrepareProxy(pawn);
                 // 归属登记：代理属于"创建它的这台地图的池"，与它以后被搬到哪张图无关。
                 GameComponent_OmniWorkProxyRegistry.Instance?.Register(pawn, map, station.thingIDNumber);
@@ -2802,6 +2810,12 @@ namespace FullyAutomaticOmniCrafter
         /// 槽位制重排：代理名字中的编号恒等于它在代理池 proxies 中的下标，因此任何时刻
         /// 编号都从 0 开始且连续(0..N-1，N=当前在册代理数)。新建、回收或读档恢复后调用。
         /// 名字已是正确编号的代理直接跳过，不产生额外字符串分配。
+        ///
+        /// 名字必须保持为 NameTriple：humanlike 的 Name 在原版被多处直接当作 NameTriple 使用
+        /// （PawnRelationWorker_Parent.ResolveMyName 的强制转换、SpouseRelationUtility.
+        /// ResolveNameForSpouseOnGeneration 的 as 后直接解引用），NameSingle 会让这些路径
+        /// 抛 InvalidCastException / NullReferenceException。First 与 Nick 都取编号以保证
+        /// 显示稳定，Last 非空以维持 Name.IsValid。
         /// </summary>
         private void RenumberProxies()
         {
@@ -2810,9 +2824,10 @@ namespace FullyAutomaticOmniCrafter
                 Pawn pawn = proxies[i].pawn;
                 if (pawn == null || pawn.Destroyed) continue;
                 string expected = "OmniWorkstation_WorkerName".Translate(i);
-                NameSingle current = pawn.Name as NameSingle;
-                if (current == null || !current.Numerical || current.Name != expected)
-                    pawn.Name = new NameSingle(expected, true);
+                NameTriple current = pawn.Name as NameTriple;
+                if (current != null && current.First == expected && current.Nick == expected) continue;
+                // 旧存档中的代理名字可能是 NameSingle，这里一并纠正为 NameTriple。
+                pawn.Name = new NameTriple(expected, expected, "OmniWorkstation_WorkerSurname".Translate());
             }
         }
 

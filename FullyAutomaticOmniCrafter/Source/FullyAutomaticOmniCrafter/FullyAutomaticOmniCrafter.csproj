@@ -418,6 +418,7 @@
     <Compile Include="OmniAutoSurgeon.cs" />
     <Compile Include="OmniCrafterMod.cs" />
     <Compile Include="OmniWorkstation.cs" />
+    <Compile Include="Patch_OmniWorkProxyRelations.cs" />
     <Compile Include="OmniWorkProxyNavigation.cs" />
     <Compile Include="OmniWorkProxyVisuals.cs" />
     <Compile Include="Patch_OmniWorkProxyVisuals.cs" />
