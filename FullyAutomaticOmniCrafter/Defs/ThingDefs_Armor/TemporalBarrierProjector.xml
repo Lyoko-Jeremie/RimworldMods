@@ -10,8 +10,13 @@
         <!-- https://ludeon.com/forums/index.php?topic=37912.0 -->
         
         <!-- 绝不自然刷新 -->
+        <!-- generateCommonality=0：所有「按 commonality 加权抽取」的入口（PawnApparelGenerator 的随机装备池、
+             specificApparelRequirements、ApparelRequirement 等）权重恒为 0，永远不会被抽中。 -->
         <generateCommonality>0</generateCommonality>
-        <!--        <generateAllowChance>0</generateAllowChance>-->
+        <!-- generateAllowChance=0：PawnApparelGenerator.CanUsePair 里的 Rand.ChanceSeeded(0f, ...) 恒为 false，
+             任何穿戴者连候选池都进不去（原版只有 Odyssey 的玩家派系 kindDef 设了 ignoreApparelAllowChance，
+             袭击者等 NPC 不受该豁免影响）。 -->
+        <generateAllowChance>0</generateAllowChance>
 <!--        <stockGenerators>0</stockGenerators>-->
         <!-- 不会在交易商出现（只可售出不可购买） -->
         <tradeability>Sellable</tradeability>
@@ -178,6 +183,17 @@
         <costList>
         </costList>
         <apparel>
+            <!-- 生成期开关（只影响原版的「免费补偿发放」逻辑，不影响玩家获得、穿戴与任何属性）：
+                 PawnApparelGenerator.AddFreeWarmthAsNeeded / AddFreeVacuumResistanceAsNeeded /
+                 AddFreeToxicEnvironmentResistanceAsNeeded 这三条路径会绕过 kindDef.apparelMoney、apparelTags
+                 与 CanUsePair，直接扫描全量装备表，谓词只检查 Price 上限 + canBeGeneratedToSatisfy* 开关。
+                 其中 AddFreeWarmthAsNeeded 的 TryMaxBy 分支按 InsulationCold 取最大值（完全不看 commonality），
+                 本装备 InsulationCold=10000 是全局最高值，Price 又只有 1，若不在此显式排除，寒冷环境生成的
+                 袭击者等 NPC 会被当作「免费保暖层」直接发到身上。 -->
+            <canBeGeneratedToSatisfyWarmth>false</canBeGeneratedToSatisfyWarmth>
+            <canBeGeneratedToSatisfyVacuumResistance>false</canBeGeneratedToSatisfyVacuumResistance>
+            <canBeGeneratedToSatisfyToxicEnvironmentResistance>false</canBeGeneratedToSatisfyToxicEnvironmentResistance>
+
             <bodyPartGroups>
                 <li MayRequire="Ingendum.AnimalApparelFramework">AnimalBody</li>
                 <li MayRequire="Ingendum.AnimalApparelFramework">AnimalLegs</li>
