@@ -452,4 +452,4 @@ dotnet run --project .\Tests\DoBillResources\DoBillResources.csproj -c Release
 牵引光束搬运器（Manipulator Beam）的适配已移至独立 mod `OuterrealmStorageManipulatorBeamSupport`，本 mod 不包含任何光束代码。
 
 - 本 mod 只提供中立的第三方预留接入点：`IOuterrealmExternalReservation` 与 `OuterrealmExternalReservationRegistry`（`OuterrealmStorage/OuterrealmExternalReservation.cs`）；未注册任何提供者时，全部可用量口径与不带适配 mod 时逐条一致。
-- 光束适配本身的边界（CanBeamTransferThing / TryFindStorageDestinationFor / TryClaimAndEnqueue / TryLiftForTransfer / ExtractThingForTransfer / FinishTransfer / ReleaseClaim / ReleaseAllClaimsForOwner / TryClaimDestinationContainer / ReleaseInTransitThing / IsBeamStorageGroupAllowed）与测试位于该独立 mod。
+- 光束适配本身的边界（CanBeamTransferThing / TryFindBestStorageCellCore / TryClaimAndEnqueue / TryLiftForTransfer / ExtractThingForTransfer / FinishTransfer / ReleaseClaim / ReleaseAllClaimsForOwner / TryClaimDestinationContainer / ReleaseInTransitThing / IsBeamStorageGroupAllowed）与测试位于该独立 mod。
