@@ -984,6 +984,18 @@ namespace FullyAutomaticOmniCrafter
                         ? "OmniWorkstation_DiagnoseRegionMissOn"
                         : "OmniWorkstation_DiagnoseRegionMissOff").Translate()));
             statsY += statLineHeight;
+            // 死亡守卫审计（档 1）：killed / setDead / downed / destroyed 四个计数分别是
+            // 被拦下的 Pawn.Kill、SetDead、倒地次数，以及被第三方直接销毁的次数。
+            Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
+                "OmniWorkstation_DeathGuard".Translate(OmniWorkProxyDeathGuard.BlockedKillCount,
+                    OmniWorkProxyDeathGuard.BlockedSetDeadCount,
+                    OmniWorkProxyDeathGuard.BlockedDownedCount,
+                    OmniWorkProxyDeathGuard.ExternalDestroyCount,
+                    OmniWorkProxyDeathGuard.BlockedVacuumExposureCount));
+            statsY += statLineHeight;
+            Widgets.Label(new Rect(0f, statsY, inRect.width, statLineHeight),
+                "OmniWorkstation_DeathGuardLast".Translate(OmniWorkProxyDeathGuard.LastReason));
+            statsY += statLineHeight;
 
             // ─── 跨图准入（R-10 可视化）：可去地图与未被覆盖的入口 ─────────────
             if (registry != null && manager.OwningMap != null)
@@ -1377,6 +1389,71 @@ namespace FullyAutomaticOmniCrafter
 
             ReleaseWornGear(pawn);
         }
+
+        // ── 死亡守卫支持（档 3 / 阻止倒地 / 兜底清痕）────────────────────────────
+
+        /// <summary>
+        /// 白名单：允许该代理真正死亡。仅供本 mod 自己的"主动处死"入口使用（万能杀手、
+        /// 物质能量转换器），必须与 EndAllowDeath 成对使用（try/finally），否则静态集合
+        /// 会一直持有该 Pawn。代理池的强删 / 重建走 Destroy(Vanish)，不需要这个豁免。
+        /// </summary>
+        private static readonly HashSet<Pawn> DeathAllowed = new HashSet<Pawn>();
+
+        public static void BeginAllowDeath(Pawn pawn)
+        {
+            if (pawn != null) DeathAllowed.Add(pawn);
+        }
+
+        public static void EndAllowDeath(Pawn pawn)
+        {
+            if (pawn != null) DeathAllowed.Remove(pawn);
+        }
+
+        public static bool AllowsDeath(Pawn pawn)
+        {
+            return pawn != null && DeathAllowed.Contains(pawn);
+        }
+
+        // Pawn_HealthTracker.MakeUndowned 是 private，原版也没有公开的"解除倒地"入口；
+        // 反射句柄只在静态构造时解析一次，之后直接 Invoke。
+        private static readonly System.Reflection.MethodInfo MakeUndownedMethod =
+            AccessTools.Method(typeof(Pawn_HealthTracker), "MakeUndowned");
+        // 参数数组复用：Invoke 只读取参数内容；本调用只出现在出舱与维护周期等低频路径上，
+        // 因此不再额外缓存委托（Harmony 2.4 的 MethodInvoker 是静态类，不能作为变量类型）。
+        private static readonly object[] MakeUndownedArgs = new object[1] { null };
+
+        /// <summary>
+        /// 把代理从倒地状态恢复。只做状态修复，不判断"是否应该倒地"——调用方（维护周期 /
+        /// 出舱路径）已经确认了代理不该带着 Down 状态继续占住槽位。它会走原版 MakeUndowned，
+        /// 因此"不再倒地"的消息由 Patch_OmniWorkProxy_NoPlayerNotification 一并抑制。
+        /// </summary>
+        public static void ClearDownedState(Pawn pawn)
+        {
+            if (pawn?.health == null) return;
+            if (!pawn.health.Downed) return;
+            if (MakeUndownedMethod == null) return;
+            try
+            {
+                MakeUndownedMethod.Invoke(pawn.health, MakeUndownedArgs);
+            }
+            catch (Exception error)
+            {
+                Log.ErrorOnce("[OmniWorkstation] failed to clear downed state: " + error,
+                    Gen.HashCombineInt(pawn.thingIDNumber, 64021337));
+            }
+        }
+
+        /// <summary>
+        /// 销毁代理留下的尸体。死亡代理的 Corpse.InnerPawn 仍然 IsColonist == true，
+        /// ColonistBar 会把这种尸体当作殖民者列进头像栏 —— 这正是"头像栏堆满头像"的来源。
+        /// </summary>
+        public static void DestroyProxyCorpse(Pawn pawn)
+        {
+            if (pawn == null) return;
+            Corpse corpse = pawn.Corpse;
+            if (corpse == null || corpse.Destroyed) return;
+            corpse.Destroy(DestroyMode.Vanish);
+        }
     }
 
     /// <summary>
@@ -1545,6 +1622,8 @@ namespace FullyAutomaticOmniCrafter
             public int lastProgressTick = -1;
             public bool lastTrackedMoving;
             public int lastTrackedStartTick = -1;
+            // 持续倒地检测（维护周期把长时间倒地的代理收回休眠舱）。
+            public int downedSinceTick = -1;
         }
 
         /// <summary>
@@ -2001,6 +2080,10 @@ namespace FullyAutomaticOmniCrafter
             // 界面登记的延迟管理请求（R-8 / R-9）：与地图集合的改动时机一致。
             ProcessPendingManagementRequests();
 
+            // 死亡守卫登记的软回收（档 3）：Pawn.Kill / SetDead 的前缀只登记意图，
+            // 真正的状态清理与回收在这里执行（理由见 pendingDeathGuardRecoveries 的注释）。
+            ProcessDeathGuardRecoveries();
+
             int tick = Find.TickManager.TicksGame;
 
             // 全局总闸：关闭时本池停止派发任何工作，并把场上代理收回休眠舱（不销毁，
@@ -2020,6 +2103,10 @@ namespace FullyAutomaticOmniCrafter
                 WorkFailures.Prune();
                 RemoveInvalidStations();
                 EnsureProxyCount();
+                // 长时间倒地的代理收回休眠舱（阻止倒地之外的兜底，见 ReclaimStuckDownedProxies）。
+                ReclaimStuckDownedProxies(tick);
+                // 清掉代理身上残留的真空暴露实例（新增添加已被拦截，这里只处理历史残留）。
+                PurgeVacuumExposureFromProxies();
                 MaintainAbroadProxies(tick);
                 // 入口授权表：每个维护周期全量重算一次（入口数量少，成本可忽略）。
                 OmniWorkProxyEntryAuthorization.Refresh(map);
@@ -2131,6 +2218,8 @@ namespace FullyAutomaticOmniCrafter
 
         public void ResetStats()
         {
+            // 死亡守卫的审计计数一并清零，方便"清零后观察一次事件"。
+            OmniWorkProxyDeathGuard.ResetStats();
             statStartTick = CurrentTick;
             stepCount = 0;
             stepNsTotal = 0;
@@ -2201,6 +2290,12 @@ namespace FullyAutomaticOmniCrafter
             sb.AppendLine("regionMissDiag=" + diagnoseRegionMiss
                 + " probes=" + regionMissProbeCount
                 + " hits=" + regionMissHitCount);
+            sb.AppendLine("deathGuardKilled=" + OmniWorkProxyDeathGuard.BlockedKillCount
+                + " deathGuardSetDead=" + OmniWorkProxyDeathGuard.BlockedSetDeadCount
+                + " deathGuardDowned=" + OmniWorkProxyDeathGuard.BlockedDownedCount
+                + " deathGuardDestroyed=" + OmniWorkProxyDeathGuard.ExternalDestroyCount
+                + " deathGuardVacuum=" + OmniWorkProxyDeathGuard.BlockedVacuumExposureCount);
+            sb.AppendLine("deathGuardLast=" + OmniWorkProxyDeathGuard.LastReason);
             return sb.ToString();
         }
 
@@ -2346,6 +2441,25 @@ namespace FullyAutomaticOmniCrafter
                 if (pawn == null || pawn.Destroyed)
                 {
                     registry?.Unregister(pawn);
+                    proxies.RemoveAt(i);
+                    removedInvalid++;
+                    continue;
+                }
+
+                // 代理已死但未被销毁（第三方直呼 SetDead、异常读档等）：死亡的代理不再是可用的
+                // 池成员，必须连尸体一起清掉并让池补建，否则会留下永久占位的僵尸槽位，并且尸体会
+                // 因为 Corpse.InnerPawn.IsColonist 被 ColonistBar 当作殖民者列进头像栏。
+                // 这里不走 ForceDestroy：它会 ReleaseAllHeldThings，对已反生成的代理会直接销毁
+                // 随身物品、可能吞掉玩家物资；只在代理仍在地图上时把物品放回地面。
+                if (pawn.Dead)
+                {
+                    if (pawn.Spawned) OmniWorkProxyUtility.ReleaseAllHeldThings(pawn);
+                    if (pawn.holdingOwner != null) pawn.holdingOwner.Remove(pawn);
+                    OmniWorkProxyUtility.Unassign(pawn);
+                    registry?.Unregister(pawn);
+                    WorkFailures.Forget(pawn);
+                    OmniWorkProxyUtility.DestroyProxyCorpse(pawn);
+                    if (!pawn.Destroyed) pawn.Destroy(DestroyMode.Vanish);
                     proxies.RemoveAt(i);
                     removedInvalid++;
                     continue;
@@ -2520,6 +2634,107 @@ namespace FullyAutomaticOmniCrafter
         private readonly List<Pawn> pendingProxyRecreates = new List<Pawn>();
         private readonly List<ProxyRecord> pendingProxySleeps = new List<ProxyRecord>();
         private bool pendingPoolRepair;
+
+        // ── 死亡守卫（档 1 / 档 3）────────────────────────────────────────────
+        // Pawn.Kill / Pawn_HealthTracker.SetDead 的前缀只登记意图，真正的状态清理与回收
+        // 统一在 tick 栈执行：那些调用常常发生在 Toil / JobDriver / HediffComp.Tick 的栈上，
+        // 就地 DeSpawn 会让后续 Toil 读到 null 的 pawn.MapHeld（项目此前已踩过这个坑）。
+        private readonly List<Pawn> pendingDeathGuardRecoveries = new List<Pawn>();
+
+        /// <summary>代理持续倒地多久（tick）后收回休眠舱。</summary>
+        private const int DownedReclaimTicks = 600;
+
+        /// <summary>登记"该代理刚被拦下一次死亡 / 置死"（去重；只在主线程调用）。</summary>
+        internal void RequestDeathGuardRecovery(Pawn pawn)
+        {
+            if (pawn == null || pawn.Destroyed) return;
+            for (int i = 0; i < pendingDeathGuardRecoveries.Count; i++)
+            {
+                if (pendingDeathGuardRecoveries[i] == pawn) return;
+            }
+            pendingDeathGuardRecoveries.Add(pawn);
+        }
+
+        /// <summary>
+        /// 执行死亡守卫登记的软回收：清掉致死来源（hediff 等）并把代理收回休眠舱。
+        /// 必须在 tick 栈里执行（原因见上一段字段注释）。
+        /// </summary>
+        private void ProcessDeathGuardRecoveries()
+        {
+            if (pendingDeathGuardRecoveries.Count == 0) return;
+            for (int i = 0; i < pendingDeathGuardRecoveries.Count; i++)
+            {
+                Pawn pawn = pendingDeathGuardRecoveries[i];
+                if (pawn == null || pawn.Destroyed) continue;
+                ProxyRecord record = FindProxyRecord(pawn);
+                if (record == null) continue;
+                if (record.issuedJob != null) StopIssuedJob(record);
+                record.station = null;
+                OmniWorkProxyUtility.Unassign(pawn);
+                // 致死来源必须清掉（例如真空暴露 hediff），否则每个 tick 都会再次触发判死。
+                OmniWorkProxyUtility.Sanitize(pawn);
+                record.needsSanitize = false;
+                OmniWorkProxyUtility.ClearDownedState(pawn);
+                PutProxyToSleep(record);
+            }
+            pendingDeathGuardRecoveries.Clear();
+        }
+
+        /// <summary>
+        /// 维护周期：把"持续倒地"的代理收回休眠舱。
+        ///
+        /// 倒地在入口处已被 Patch_OmniWorkProxy_BlockDowned 拦住，这里处理读档带回的 Down
+        /// 状态或第三方直写 healthState 的情形。代理不在殖民者列表里，不会被原版的救援 / 医疗
+        /// 流程照顾，不主动回收就会永久占住一个槽位。
+        /// </summary>
+        private void ReclaimStuckDownedProxies(int tick)
+        {
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                ProxyRecord record = proxies[i];
+                Pawn pawn = record.pawn;
+                if (pawn == null || pawn.Destroyed || !pawn.Downed)
+                {
+                    record.downedSinceTick = -1;
+                    continue;
+                }
+                if (record.downedSinceTick < 0)
+                {
+                    record.downedSinceTick = tick;
+                    continue;
+                }
+                if (tick - record.downedSinceTick < DownedReclaimTicks) continue;
+
+                if (record.issuedJob != null) StopIssuedJob(record);
+                record.station = null;
+                OmniWorkProxyUtility.Unassign(pawn);
+                OmniWorkProxyUtility.ClearDownedState(pawn);
+                record.needsSanitize = true;
+                PutProxyToSleep(record);
+                record.downedSinceTick = -1;
+            }
+        }
+
+        /// <summary>
+        /// 维护周期：清掉代理身上残留的真空暴露（Odyssey）。
+        ///
+        /// 新增已经被 Patch_OmniWorkProxy_BlockVacuumExposure 拦下，这里处理三类残留：
+        /// 拦截生效之前已经积累的、读档带回来的、以及第三方绕过 AddHediff 直写 hediffSet 的。
+        /// 只做检测与登记，真正的移除交给 tick 软回收里的 Sanitize（入舱前会清掉除
+        /// FAOC_OmniWorkProxyBoost 外的全部 hediff）。未安装 Odyssey 时立即返回。
+        /// </summary>
+        private void PurgeVacuumExposureFromProxies()
+        {
+            HediffDef vacuumExposure = HediffDefOf.VacuumExposure;
+            if (vacuumExposure == null) return;
+            for (int i = 0; i < proxies.Count; i++)
+            {
+                Pawn pawn = proxies[i].pawn;
+                if (pawn == null || pawn.Destroyed || pawn.health == null) continue;
+                if (!pawn.health.hediffSet.HasHediff(vacuumExposure)) continue;
+                RequestDeathGuardRecovery(pawn);
+            }
+        }
 
         /// <summary>登记"停止该代理并立即收回其归属池"（不销毁）。</summary>
         public void RequestProxyReclaim(Pawn pawn)
@@ -3079,6 +3294,9 @@ namespace FullyAutomaticOmniCrafter
                 // PawnComponentsUtility 会在出舱生成时重建 Need 等组件，必须再次清理。
                 pawn.mindState.Active = false;
                 OmniWorkProxyUtility.Sanitize(pawn);
+                // 出舱前清掉任何残留的倒地状态：代理不会被原版救援 / 医疗照顾，
+                // 带着 Down 状态出舱就等于永久占住一个槽位。
+                OmniWorkProxyUtility.ClearDownedState(pawn);
                 map.mapPawns.DeRegisterPawn(pawn);
                 wakeProxyCount++;
             }

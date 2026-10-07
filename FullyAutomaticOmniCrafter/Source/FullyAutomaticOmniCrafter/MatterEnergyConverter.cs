@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -367,7 +367,13 @@ namespace FullyAutomaticOmniCrafter
         {
             if (pawn == null || pawn.Destroyed) return;
             if (!pawn.Dead)
-                pawn.Kill(null); // 触发完整的死亡社交通知；会在原位生成尸体
+            {
+                // 工作代理受死亡守卫保护（Patch_OmniWorkProxyDeathGuard）：这里是我方的显式处死
+                // 路径，必须走豁免通道，否则代理无法被转换成能量。用 finally 保证豁免被释放。
+                OmniWorkProxyUtility.BeginAllowDeath(pawn);
+                try { pawn.Kill(null); } // 触发完整的死亡社交通知；会在原位生成尸体
+                finally { OmniWorkProxyUtility.EndAllowDeath(pawn); }
+            }
             // Kill() 会生成一个 Corpse Thing，我们直接销毁它
             if (!pawn.Destroyed)
                 pawn.Destroy(DestroyMode.Vanish);

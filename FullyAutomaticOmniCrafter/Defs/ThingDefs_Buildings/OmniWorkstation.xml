@@ -39,6 +39,14 @@
         <blocksSocialInteraction>true</blocksSocialInteraction>
         <everCurableByItem>false</everCurableByItem>
         <duplicationAllowed>false</duplicationAllowed>
+        <!--
+            代理是工具而非生物：不允许它因为"状态判死"而死。原版 Pawn_HealthTracker.ShouldBeDead()
+            的第一条判断就是 hediffSet.HasPreventsDeath（Verse/HediffSet.cs），返回 false 后
+            lethalSeverity 超标、lethal capacity 归零（Consciousness / Breathing / BloodFiltration /
+            BloodPumping / Metabolism）、核心部位效率归零、致命伤害阈值四条分支全部失效。
+            显式的 Pawn.Kill / SetDead 由 Patch_OmniWorkProxyDeathGuard 在代码层拦截。
+        -->
+        <preventsDeath>true</preventsDeath>
         <stages>
             <li>
                 <statOffsets>
@@ -53,6 +61,14 @@
                     <ButcheryMechanoidEfficiency MayRequire="Ludeon.RimWorld.Biotech">1</ButcheryMechanoidEfficiency>
                     <MentalBreakThreshold>-2</MentalBreakThreshold>
                     <FilthRate>-1.5</FilthRate>
+                    <!--
+                        修法 1：Odyssey 的真空免疫。VacuumResistance 上限为 1，给到 1 后：
+                        Pawn.HarmedByVacuum 为 false（真空灼伤与真空暴露累积一起停摆）、
+                        VacuumUtility.PawnVacuumTickInterval 的 sevOffset 归零、
+                        HediffComp_VacuumExposure 让已积累的 VacuumExposure 正常消退（-0.1/秒）。
+                        MayRequire 保证未安装 Odyssey 时不引用不存在的 StatDef。
+                    -->
+                    <VacuumResistance MayRequire="Ludeon.RimWorld.Odyssey">1</VacuumResistance>
                 </statOffsets>
             </li>
         </stages>

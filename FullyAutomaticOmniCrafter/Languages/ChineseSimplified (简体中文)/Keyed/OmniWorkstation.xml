@@ -115,4 +115,6 @@
     <OmniWorkstation_ManagerRecreateAllDone>已重建全部代理池：销毁 {0} 个。</OmniWorkstation_ManagerRecreateAllDone>
     <OmniWorkstation_ManagerRepairAll>修复全部池</OmniWorkstation_ManagerRepairAll>
     <OmniWorkstation_ManagerRepairAllDone>已修复全部代理池：新补建 {0} 个。</OmniWorkstation_ManagerRepairAllDone>
+    <OmniWorkstation_DeathGuard>死亡守卫：拦截处死 {0} / 拦截置死 {1} / 拦截倒地 {2} / 外部销毁 {3} / 拦截真空暴露 {4}</OmniWorkstation_DeathGuard>
+    <OmniWorkstation_DeathGuardLast>死亡守卫最近事件：{0}</OmniWorkstation_DeathGuardLast>
 </LanguageData>

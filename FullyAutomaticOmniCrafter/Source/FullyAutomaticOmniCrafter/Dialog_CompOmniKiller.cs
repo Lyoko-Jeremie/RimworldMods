@@ -346,7 +346,14 @@ namespace FullyAutomaticOmniCrafter
 
             if (listing.ButtonText("OmniKiller_KillCommand".Translate()))
             {
-                ApplyToAll(p => p.Kill(null));
+                // 工作代理受死亡守卫保护（Patch_OmniWorkProxyDeathGuard）：玩家在这里显式处死
+                // 必须走豁免通道，否则代理永远杀不掉。豁免与 Kill 必须成对，用 finally 保证释放。
+                ApplyToAll(p =>
+                {
+                    OmniWorkProxyUtility.BeginAllowDeath(p);
+                    try { p.Kill(null); }
+                    finally { OmniWorkProxyUtility.EndAllowDeath(p); }
+                });
             }
 
             if (listing.ButtonText("OmniKiller_StackNegativeHediffs".Translate()))

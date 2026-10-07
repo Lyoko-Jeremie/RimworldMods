@@ -115,4 +115,6 @@
     <OmniWorkstation_ManagerRecreateAllDone>Rebuilt every proxy pool: {0} destroyed.</OmniWorkstation_ManagerRecreateAllDone>
     <OmniWorkstation_ManagerRepairAll>Repair all pools</OmniWorkstation_ManagerRepairAll>
     <OmniWorkstation_ManagerRepairAllDone>Repaired every proxy pool: {0} newly created.</OmniWorkstation_ManagerRepairAllDone>
+    <OmniWorkstation_DeathGuard>death guard: kills blocked {0} / set-dead blocked {1} / downed blocked {2} / destroyed externally {3} / vacuum hediffs blocked {4}</OmniWorkstation_DeathGuard>
+    <OmniWorkstation_DeathGuardLast>death guard last event: {0}</OmniWorkstation_DeathGuardLast>
 </LanguageData>
