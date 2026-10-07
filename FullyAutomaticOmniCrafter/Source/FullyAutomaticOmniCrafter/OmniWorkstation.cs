@@ -1289,21 +1289,12 @@ namespace FullyAutomaticOmniCrafter
                 pawn.story.Title = null;
             }
 
-            if (pawn.needs?.mood?.thoughts?.memories != null)
-            {
-                MemoryThoughtHandler memoryHandler = pawn.needs.mood.thoughts.memories;
-                List<Thought_Memory> memories = memoryHandler.Memories;
-                for (int i = memories.Count - 1; i >= 0; i--)
-                {
-                    Thought_Memory memory = memories[i];
-                    if (memory != null && memory.MoodOffset() < 0f)
-                        memoryHandler.RemoveMemory(memory);
-                }
-            }
-
             if (pawn.needs != null && pawn.needs.AllNeeds.Count > 0)
             {
                 // 不调用 Mod Need 的回调，避免其在清理阶段重新注入状态。
+                // 心情需求（Need_Mood）也在此一并移除：记忆思绪与情境思绪都挂在它上面，
+                // 需求被移除后整个 ThoughtHandler 随之丢弃，因此不需要单独清理记忆思绪
+                //（历史上这里有一段"移除负向记忆"的代码，在零需求方案落地后永远不成立，已删除）。
                 pawn.needs.AllNeeds.Clear();
                 pawn.needs.MiscNeeds.Clear();
                 pawn.needs.BindDirectNeedFields();
@@ -4232,6 +4223,39 @@ namespace FullyAutomaticOmniCrafter
                 __instance.BindDirectNeedFields();
             }
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 代理不产生任何思绪：切断"记忆思绪"的唯一落库点。
+    ///
+    /// 原版的全部记忆思绪（含 <c>TryGainMemory(ThoughtDef)</c>、<c>TryGainMemoryFast</c>、
+    /// 以及记忆过期后沿 <c>def.nextThought</c> 补写的链路）最终都落到
+    /// <c>MemoryThoughtHandler.TryGainMemory(Thought_Memory, Pawn)</c> 这一个方法上；代理在这里
+    /// 直接放弃写入，于是：
+    /// <list type="number">
+    /// <item>代理永远没有记忆思绪。即便第三方 Mod 越过
+    /// <c>Pawn_NeedsTracker.AddOrRemoveNeedsAsAppropriate</c>（本文件
+    /// <c>Patch_OmniWorkProxy_RemoveAllNeeds</c>）直写 needs 把 Need_Mood 塞回来，代理也不会被
+    /// 思绪影响——没有记忆，情境思绪又只由 <c>Need_Mood.NeedInterval</c> 驱动。</item>
+    /// <item>原版有若干调用点直接解引用 <c>pawn.needs.mood.thoughts.memories</c> 而不判空
+    /// （HediffComp_RecoveryThought、QuestPart_AddMemoryThought、IndividualThoughtToAdd、
+    /// CompTargetEffect_MoodBoost、进食与睡眠路径等）。代理的 <c>needs.mood</c> 恒为 null，
+    /// 这些路径本会抛 NullReferenceException；本补丁在最外层、先于
+    /// <c>ThoughtUtility.CanGetThought</c> 返回，使它们"静默无效"而不是刷红字。</item>
+    /// </list>
+    /// 代理从生成起就没有 Need_Mood（代理 kindDef 在
+    /// <c>PawnComponentsUtility.CreateInitialComponents</c> 之前就已就位），所以这里的兜底只在
+    /// 第三方或异常路径上真正起作用；正常流程中它等价于一次 kindDef 引用比较。
+    /// </summary>
+    [HarmonyPatch(typeof(MemoryThoughtHandler), nameof(MemoryThoughtHandler.TryGainMemory),
+        new Type[] { typeof(Thought_Memory), typeof(Pawn) })]
+    public static class Patch_OmniWorkProxy_NoThoughts
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MemoryThoughtHandler __instance)
+        {
+            return !OmniWorkProxyUtility.IsProxy(__instance.pawn);
         }
     }
 
