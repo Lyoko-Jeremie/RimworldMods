@@ -23,7 +23,7 @@ internal static class SignatureAudit
     {
         var expected = new Dictionary<string, string>
         {
-            ["BeamManipulatorUtility.TryFindStorageDestinationFor"] = "Boolean(IBeamOperator,Thing,HashSet<IntVec3>,Int32,IntVec3&):op,thing,excludedDestinations,ownerKey,destination",
+            ["BeamManipulatorUtility.TryFindBestStorageCellCore"] = "Boolean(Map,Thing,IntVec3,HashSet<IntVec3>,IntVec3&):map,thing,referenceCell,excludedDestinations,destination",
             ["BeamManipulatorUtility.CanBeamTransferThing"] = "Boolean(IBeamOperator,Thing,Int32):op,thing,ownerKey",
             ["BeamManipulatorUtility.TryClaimAndEnqueue"] = "Boolean(BeamTransfer,List<BeamTransfer>,HashSet<Thing>,Int32):transfer,destinationQueue,excludedThings,ownerKey",
             ["BeamManipulatorUtility.FinishTransfer"] = "Boolean(IBeamOperator,Thing,BeamTransfer,IntVec3):op,carriedThing,transfer,fallbackCell",

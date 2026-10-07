@@ -16,7 +16,9 @@
 - 光束的 `IBeamOperator` 协议在 2026 年的更新中**删除了 `TryBuildBatchFromCell` /
   `TryBuildBatchFromCellAuto`**，`BeamHaulBatch` 沦为死类型；
 - 旧适配器在 `Install()` 中第一个 `Require(...)` 就抛 `MissingMethodException`，
-  触发 `UnpatchAll` **整组回滚** —— 兼容性静默失效，只在日志留一行错误；
+  触发 `UnpatchAll` **整组回滚** —— 兼容性静默失效，只在日志留一行错误
+  （2026-10-04 的光束 1.1.0 移除了公开的 `TryFindStorageDestinationFor` 时再次发生，
+  现安装器已改为「先全量核对、失败时一次列出全部不兼容项」）；
 - 每次光束更新都会让主 mod 承担一次「改不改、怎么改」的风险。
 
 因此把适配完全外移到本 mod：主 mod 只保留一个**中立的第三方预留接入点**，
@@ -29,8 +31,8 @@
 ```
 Source/OuterrealmStorageManipulatorBeamSupport/
 ├─ OuterrealmBeamAdapter.cs           11 个 Harmony 边界的实现（边界逻辑 + 线程局部状态）
-├─ OuterrealmBeamBinding.cs           反射绑定与 Harmony 辅助（Require/Getter/Setter/Bind/Patch）
-├─ OuterrealmBeamInstaller.cs         把 11 个边界安装到光束上（§4.2），失败整组回滚
+├─ OuterrealmBeamBinding.cs           反射绑定与 Harmony 辅助（Require/Capture/Getter/Setter/Bind/Patch）
+├─ OuterrealmBeamInstaller.cs         把 11 个边界安装到光束上（§4.2）：先全量核对、再绑定、后打补丁，失败整组回滚
 ├─ OuterrealmBeamLedger.cs            每局预留账本，实现主 mod 的 IOuterrealmExternalReservation
 ├─ OuterrealmBeamSupportComponent.cs  每局状态载体 + [StaticConstructorOnStartup] 安装入口
 ├─ Properties/AssemblyInfo.cs
@@ -142,13 +144,15 @@ public static class OuterrealmExternalReservationRegistry
 
 ### 4.2 安装的 11 个边界
 
-`PatchId = "Jeremie.OuterrealmStorage.ManipulatorBeamSupport"`，全部安装成功后才置 `enabled = true`；
-任一 `Require` 抛出即 `UnpatchAll` 回滚并写日志，**主 mod 不受影响**。
+`PatchId = "Jeremie.OuterrealmStorage.ManipulatorBeamSupport"`，流程是「先全量核对 → 再绑定字段与委托
+→ 最后打补丁」，全部通过后才置 `enabled = true`；有任何不兼容即 `UnpatchAll` 回滚并写日志，
+**主 mod 不受影响**。核对只记录不中断，失败时日志一次列出**全部**缺失/不兼容项
+（形如 `ManipulatorBeam protocol mismatch (2): <项 A>; <项 B>`），不再是「只报第一个」。
 
 | # | 目标方法 | 补丁 | 职责 |
 |---|---|---|---|
 | 1 | `BeamManipulatorUtility.CanBeamTransferThing` | Prefix + Finalizer | 源有效性、剩余数量与自身预留上下文；维护 ThreadStatic `query` |
-| 2 | `BeamManipulatorUtility.TryFindStorageDestinationFor` | Prefix + Finalizer | 源是 vault 物品时置 `vaultStorageSearch`，排除其他 vault 目的地，避免共享库存循环搬运 |
+| 2 | `BeamManipulatorUtility.TryFindBestStorageCellCore` | Prefix + Finalizer | 源是 vault 物品时置 `vaultStorageSearch`，排除其他 vault 目的地，避免共享库存循环搬运。**2026-10-04 的光束 1.1.0 把公开入口 `TryFindStorageDestinationFor` 收进了这个私有方法**（普通搬运、探针补给、在途改道全部经由这一处，`thing` 即本次搜索的源物品），因此改绑到这里；光束再重构时按 §8 重新核对 |
 | 3 | `BeamManipulatorUtility.TryClaimAndEnqueue` | Prefix + Finalizer | 目的地格→容器改写；申请条目级数量预留；失败清理队列、排除集合与双方 claim |
 | 4 | `Building_BeamManipulator.TryLiftForTransfer` | Prefix + Finalizer | 最终权限与设备身份复查；Checkout 后孤立实物同步回存 |
 | 5 | `Building_BeamManipulator.ExtractThingForTransfer` | Prefix | 普通投影与唯一锚点统一 Checkout（覆盖整堆不经 SplitOff 的分支） |
@@ -159,8 +163,9 @@ public static class OuterrealmExternalReservationRegistry
 | 10 | `BeamManipulatorUtility.IsBeamStorageGroupAllowed` | Postfix | 遵守 `HaulDestinationEnabled`（禁止存入、冻结） |
 | 11 | `Building_BeamManipulator.AdvanceChannel` | Prefix | **续搬修正**：源投影已被空条目清理移除时，把 `transfer.thing` 换成在途实体，避免搬运中止后回库循环（§5.4） |
 
-签名解析统一走 `RequiredType(...)` + `Require(type, name, isStatic, result, paramNames, paramTypes)`：
-**同名方法存在不代表兼容** —— 参数名、参数个数、out/ref、返回值与静态性全部核对。
+签名解析统一走 `RequiredType(...)` + `Require(problems, type, name, isStatic, result, paramNames, paramTypes)`：
+**同名方法存在不代表兼容** —— 参数名、参数个数、out/ref、返回值与静态性全部核对；
+核对结果收集到 `problems` 而不是立即抛出，字段/属性绑定失败由 `Capture` 同样收集。
 
 ---
 
@@ -303,7 +308,7 @@ cd F:\SteamLibrary\steamapps\common\RimWorld\Mods\FullyAutomaticOmniCrafter\Sour
 dotnet build -c Debug   # 主 mod
 ```
 
-**测试覆盖**（当前 11 个测试 / 22 个断言）：
+**测试覆盖**（当前 12 个测试 / 24 个断言）：
 
 - 候选放行：纯查询投影可被光束取用
 - 入队申请条目级预留并反映到全局可用量
@@ -311,6 +316,7 @@ dotnet build -c Debug   # 主 mod
 - 实际抓取只 Checkout 一次并释放预留
 - 禁止取出时无候选
 - 冻结 / 禁止存入的仓库不能作为目的地
+- **源是 vault 物品时排除 vault 目的地**（改绑 `TryFindBestStorageCellCore` 后 Prefix 与 `GroupPostfix` 的联动仍生效）
 - 入队失败时预留与 claim 原子回滚
 - 目的地缩量同步释放额度，且不能扩大
 - **源投影被空条目清理移除后由在途实体续搬**（`transfer.thing` 换成在途实体、通道仍能推进）
@@ -366,6 +372,7 @@ dotnet build -c Debug   # 主 mod
 | 诊断日志 | **已全部移除**；适配器仅在安装成功/失败时各写一行日志 |
 | 光束 dll 的 `HintPath` | 8 级相对路径指向 `F:\294100\...`，换环境需调整 |
 | 只支持最新版协议 | 旧版（`TryBuildBatchFromCell` 时代）**不再支持**，相关代码已删除 |
+| 目的地搜索锚点 | 绑定的是**私有** `TryFindBestStorageCellCore`（公开入口 `TryFindStorageDestinationFor` 已在光束 1.1.0 移除）；光束再次重构时必须按 §8 重新核对，否则兼容层整组回滚 |
 
 ---
 

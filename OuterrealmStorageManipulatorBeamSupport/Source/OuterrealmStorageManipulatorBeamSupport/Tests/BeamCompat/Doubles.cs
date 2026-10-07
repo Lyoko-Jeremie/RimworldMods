@@ -314,8 +314,12 @@ namespace ManipulatorBeam
         public static int ShrinkTo;
         public static SlotGroup DestinationGroup = new SlotGroup();
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static bool TryFindStorageDestinationFor(IBeamOperator op, Thing thing, HashSet<IntVec3> excludedDestinations, int ownerKey, out IntVec3 destination)
-        { destination = new IntVec3(99); return CanBeamTransferThing(op, thing, ownerKey) && IsBeamStorageGroupAllowed(DestinationGroup); }
+        private static bool TryFindBestStorageCellCore(Map map, Thing thing, IntVec3 referenceCell, HashSet<IntVec3> excludedDestinations, out IntVec3 destination)
+        { destination = new IntVec3(99); return thing != null && IsBeamStorageGroupAllowed(DestinationGroup); }
+        /// <summary>复刻普通搬运调用目的地搜索的形态（thing = 源物品），供「源是 vault 物品时
+        /// 排除 vault 目的地」断言使用；真实光束由 FillOrdinaryStorageQueue 调用同一锚点。</summary>
+        public static bool SearchDestination(Thing thing, out IntVec3 destination)
+            => TryFindBestStorageCellCore(thing?.Map, thing, thing?.Position ?? IntVec3.Invalid, null, out destination);
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static bool CanBeamTransferThing(IBeamOperator op, Thing thing, int ownerKey)
         {

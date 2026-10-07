@@ -98,6 +98,18 @@ internal static class Program
             Check(!BeamManipulatorUtility.GroupAllowed(group), "禁止存入目的地被拒");
         });
 
+        Test("源是 vault 物品时排除 vault 目的地（改绑目的地搜索锚点后仍生效）", () =>
+        {
+            var f = new Fixture();
+            BeamManipulatorUtility.DestinationGroup = new RimWorld.SlotGroup { parent = f.Vault };
+            try
+            {
+                Check(!BeamManipulatorUtility.SearchDestination(f.Query, out _), "vault 源搜索时不接受 vault 目的地");
+                Check(BeamManipulatorUtility.SearchDestination(new Thing(), out _), "非 vault 源仍接受 vault 目的地");
+            }
+            finally { BeamManipulatorUtility.DestinationGroup = new RimWorld.SlotGroup(); }
+        });
+
         Test("入队失败时预留与 claim 原子回滚", () =>
         {
             var f = new Fixture();
