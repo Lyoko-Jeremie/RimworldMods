@@ -2974,9 +2974,25 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 filtered = access.autoStoreFiltered;
             }
-            else if (!OuterrealmMarkUtility.IsMarked(worker))
+            else
             {
-                return; // 未授权且非旧量子链路植入体：不干预
+                bool autoTake;
+                bool autoStore;
+                bool autoStoreFiltered;
+                if (SubspaceAccessUtility.TryGetAutoFlags(worker, out autoTake, out autoStore, out autoStoreFiltered))
+                {
+                    // 万能工作站代理：隐式视同授权（全局开关开启 + 本图存在允许存入的终端）。
+                    // 本图没有允许存入的终端时不干预，产物落原版流程。
+                    if (!autoStore)
+                    {
+                        return;
+                    }
+                    filtered = autoStoreFiltered;
+                }
+                else if (!OuterrealmMarkUtility.IsMarked(worker))
+                {
+                    return; // 未授权且非旧量子链路植入体：不干预
+                }
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
             if (gs == null)

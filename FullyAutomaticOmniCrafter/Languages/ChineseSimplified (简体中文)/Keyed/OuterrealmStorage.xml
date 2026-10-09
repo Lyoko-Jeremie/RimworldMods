@@ -107,6 +107,8 @@
   <SubspaceAccess_FilterAnimal>动物</SubspaceAccess_FilterAnimal>
   <SubspaceAccess_FilterMechanoid>机械体</SubspaceAccess_FilterMechanoid>
   <SubspaceAccess_ShowIcons>显示图像</SubspaceAccess_ShowIcons>
+  <SubspaceAccess_ProxyAccess>允许万能工作站代理随身存取</SubspaceAccess_ProxyAccess>
+  <SubspaceAccess_ProxyAccessDesc>开启后，万能工作站的工作代理可直接随身存取超维存储：取出材料与存入物品都不需要走到终端建筑旁，也不受工作站工作范围限制。终端自身的禁止存入、禁止取出、冻结与存储清单（filter）限制仍然生效，代理也不属于下方授权列表中的 pawn——本开关即其授权。默认关闭。</SubspaceAccess_ProxyAccessDesc>
   <!-- Vault right-click menu refresh mode -->
   <VaultMenuRefreshModeLabel>超维存储仓访问端口右键菜单刷新模式</VaultMenuRefreshModeLabel>
   <VaultMenuRefreshModeDesc>控制右键菜单打开期间的重新生成频率。存储条目较多时重新生成开销很大，此设置可缓解卡顿。</VaultMenuRefreshModeDesc>

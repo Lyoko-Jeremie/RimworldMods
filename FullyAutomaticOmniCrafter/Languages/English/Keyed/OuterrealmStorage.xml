@@ -105,6 +105,8 @@
   <SubspaceAccess_FilterAnimal>Animal</SubspaceAccess_FilterAnimal>
   <SubspaceAccess_FilterMechanoid>Mechanoid</SubspaceAccess_FilterMechanoid>
   <SubspaceAccess_ShowIcons>Show icons</SubspaceAccess_ShowIcons>
+  <SubspaceAccess_ProxyAccess>Allow omni workstation proxies remote access</SubspaceAccess_ProxyAccess>
+  <SubspaceAccess_ProxyAccessDesc>When on, omni workstation work proxies take from and deposit into subspace storage remotely: no need to walk to a terminal, and the workstation work area does not apply. Per-terminal restrictions (no deposit, no withdraw, frozen, storage filter) still apply, and proxies are not listed as authorized pawns below - this toggle is their authorization. Off by default.</SubspaceAccess_ProxyAccessDesc>
   <!-- Vault right-click menu refresh mode -->
   <VaultMenuRefreshModeLabel>Outerrealm vault access point right-click menu refresh mode</VaultMenuRefreshModeLabel>
   <VaultMenuRefreshModeDesc>Controls how often the right-click menu is regenerated while open. Regenerating is expensive when the vault holds many item types; this reduces stutter.</VaultMenuRefreshModeDesc>

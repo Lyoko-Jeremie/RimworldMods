@@ -150,4 +150,15 @@ namespace FullyAutomaticOmniCrafter
         internal static bool IsIdleJob(Verse.AI.Job job)=>job==null;
     }
     public class OmniWorkProxyPathGrid : Verse.PathGrid { }
+
+    /// <summary>
+    /// 超维存储随身访问判定——测试替身：测试不启用零距离，保持原导航语义，
+    /// 因此导航断言仍按"终点由代理网格决定"评估。
+    /// </summary>
+    internal static class OmniWorkProxyVaultAccess
+    {
+        internal static bool Applies(Verse.Pawn pawn, Verse.Map map) => false;
+        internal static bool IsVaultAccessPoint(Verse.Map map, Verse.LocalTargetInfo target) => false;
+        internal static bool IsVaultCell(Verse.Map map, Verse.IntVec3 cell) => false;
+    }
 }

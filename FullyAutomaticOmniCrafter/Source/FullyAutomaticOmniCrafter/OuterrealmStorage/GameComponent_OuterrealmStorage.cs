@@ -127,6 +127,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// </summary>
         private bool exposeAllToOrbitalTrade;
 
+        /// <summary>
+        /// 是否允许万能工作站的工作代理以"随身访问"方式直接使用超维存储：
+        /// 取出与存入都不再需要走到终端建筑旁（同一地图内任意位置，含工作站工作范围之外）。
+        /// 这是殖民地级规则，随当前存档保存；默认关闭以保持旧存档行为。
+        /// 代理不携带访问 Hediff，本开关开启时由 SubspaceAccessUtility 视同已授权。
+        /// </summary>
+        private bool proxySubspaceAccess;
+
         // ── 弹出队列（§6.4）：与建筑生命周期解耦，建筑拆除后队列继续运行 ──
         private List<VaultEjectJob> ejectQueue = new List<VaultEjectJob>();
 
@@ -142,6 +150,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             set => exposeAllToOrbitalTrade = value;
         }
 
+        /// <summary>万能工作站代理是否可随身存取超维存储（殖民地级规则，随存档）。</summary>
+        public bool ProxySubspaceAccess
+        {
+            get => proxySubspaceAccess;
+            set
+            {
+                proxySubspaceAccess = value;
+                // 同步热路径（代理导航/forbidden 判定）使用的弱引用缓存。
+                OmniWorkProxyVaultAccess.NotifyEnabledChanged(value);
+            }
+        }
+
         public GameComponent_OuterrealmStorage(Game game)
         {
             ownerGame = game;
@@ -152,12 +172,15 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             base.LoadedGame();
             OuterrealmIdentityRouting.ReconcileAll();
+            // 读档后同步代理随身访问的热路径缓存（开关由 Scribe 直接写字段，不经过 setter）。
+            OmniWorkProxyVaultAccess.NotifyEnabledChanged(proxySubspaceAccess);
         }
 
         public override void StartedNewGame()
         {
             base.StartedNewGame();
             OuterrealmIdentityRouting.ReconcileAll();
+            OmniWorkProxyVaultAccess.NotifyEnabledChanged(proxySubspaceAccess);
         }
 
         // ── 存入 ────────────────────────────────────────────────────────────────
@@ -1793,6 +1816,7 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             Scribe_Collections.Look(ref managerCatShow, "managerCatShow", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref managerThingShow, "managerThingShow", LookMode.Value, LookMode.Value);
             Scribe_Values.Look(ref exposeAllToOrbitalTrade, "exposeAllToOrbitalTrade", false);
+            Scribe_Values.Look(ref proxySubspaceAccess, "proxySubspaceAccess", false);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (managerCatShow == null)

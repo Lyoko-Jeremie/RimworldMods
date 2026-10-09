@@ -51,6 +51,91 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             return GetAccessHediff(pawn) != null;
         }
 
+        /// <summary>代理随身访问的全局开关（超维存储访问授权界面上的按钮，随存档保存）。</summary>
+        public static bool ProxyAccessEnabled => OmniWorkProxyVaultAccess.Enabled;
+
+        /// <summary>本图是否存在允许取出的终端（已 Spawned、未禁止取出、未冻结）。</summary>
+        private static bool HasVaultForTake(Map map)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return false;
+            }
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault != null && vault.Spawned && vault.MapHeld == map && vault.HaulSourceEnabled)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>本图是否存在允许存入的终端（已 Spawned、未禁止存入、未冻结）。</summary>
+        private static bool HasVaultForStore(Map map)
+        {
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            if (gs == null || !gs.HasVaultOnMap(map))
+            {
+                return false;
+            }
+            List<Building_OuterrealmVault> vaults = gs.VaultsForReading;
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                Building_OuterrealmVault vault = vaults[i];
+                if (vault != null && vault.Spawned && vault.MapHeld == map && vault.HaulDestinationEnabled)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 统一的随身访问状态读取入口：真实授权 Hediff 优先；万能工作站的工作代理在全局开关
+        /// 开启、且当前地图存在可服务终端时视同已授权（三个子开关等效全开）。
+        ///
+        /// "可服务终端"按方向分别要求：取出要有允许取出的终端、存入要有允许存入的终端，
+        /// 因此视同授权不会把随身访问变成跨图能力，也不会绕过终端的出入权限开关；
+        /// 逐物品的 filter 判定仍由实际交付边界（view.TryAdd → Accepts/CanShow）负责。
+        /// </summary>
+        public static bool TryGetAutoFlags(Pawn pawn, out bool autoTake, out bool autoStore,
+            out bool autoStoreFiltered)
+        {
+            autoTake = false;
+            autoStore = false;
+            autoStoreFiltered = false;
+            if (pawn == null)
+            {
+                return false;
+            }
+            Hediff_SubspaceAccess hediff = GetAccessHediff(pawn);
+            if (hediff != null)
+            {
+                autoTake = hediff.autoTake;
+                autoStore = hediff.autoStore;
+                autoStoreFiltered = hediff.autoStoreFiltered;
+                return true;
+            }
+            if (!ProxyAccessEnabled || !OmniWorkProxyUtility.IsProxy(pawn))
+            {
+                return false;
+            }
+            Map map = pawn.Map;
+            if (map == null)
+            {
+                return false;
+            }
+            autoTake = HasVaultForTake(map);
+            autoStore = HasVaultForStore(map);
+            // 与 Hediff 的默认值一致：按类别限制存入（逐产物核对终端 filter 与原版存储优先级）。
+            autoStoreFiltered = true;
+            return autoTake || autoStore;
+        }
+
         /// <summary>取访问能力 Hediff 实例（for 循环，避免 LINQ 分配）。</summary>
         public static Hediff_SubspaceAccess GetAccessHediff(Pawn pawn)
         {
@@ -72,8 +157,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// <summary>该 Pawn 当前是否允许自动从全局库存取用。</summary>
         public static bool CanAutoTake(Pawn pawn)
         {
-            Hediff_SubspaceAccess hediff = GetAccessHediff(pawn);
-            return hediff != null && hediff.autoTake;
+            bool autoTake;
+            bool autoStore;
+            bool autoStoreFiltered;
+            return TryGetAutoFlags(pawn, out autoTake, out autoStore, out autoStoreFiltered) && autoTake;
         }
 
         /// <summary>
@@ -87,10 +174,13 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // 建筑访问的唯一物品不在任何视图 ThingOwner 中；先按当前工作台/制作人位置
             // 选择最近终端并把权威实例加入候选。该路径不要求随身访问 Hediff。
             OuterrealmIdentityRouting.InjectBillCandidates(thingValidator, pawn, billGiver, relevantThings);
-            Hediff_SubspaceAccess hediff = GetAccessHediff(pawn);
-            if (hediff == null || !hediff.autoTake)
+            bool autoTake;
+            bool autoStore;
+            bool autoStoreFiltered;
+            if (!TryGetAutoFlags(pawn, out autoTake, out autoStore, out autoStoreFiltered) || !autoTake)
             {
-                // 未授权，或该 pawn 关闭了"自动取用"开关：不注入随身副本（手动取用不受影响）。
+                // 未授权，或该 pawn 关闭了"自动取用"开关（含代理开关关闭/本图无允许取出的终端）：
+                // 不注入随身副本（手动取用不受影响）。
                 return;
             }
             GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;

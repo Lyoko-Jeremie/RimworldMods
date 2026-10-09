@@ -269,6 +269,30 @@ Pawn 到达 vault
 
 `OuterrealmMarkUtility.IsMarked` 同时兼容新的访问 Hediff 与旧 `FAOC_QuantumLinkImplant`。
 
+### 8.1 万能工作站代理的视同授权（殖民地级开关）
+
+`GameComponent_OuterrealmStorage.ProxySubspaceAccess` 是随存档的殖民地级规则，由访问授权界面
+（`Dialog_SubspaceAccessManager`）上的开关控制。开启后**工作代理不携带访问 Hediff**，
+由 `SubspaceAccessUtility.TryGetAutoFlags` 视同已授权（三个子开关等效全开）：
+
+- 取出与存入分别要求当前地图存在"允许取出"（`HaulSourceEnabled`）与"允许存入"
+  （`HaulDestinationEnabled`）的终端，因此视同授权**不会**把随身访问变成跨图能力，也不绕过
+  终端的出入权限开关；逐物品的 filter 与存储优先级仍由实际交付边界判定。
+- 代理不出现在授权界面右栏，开关本身即其授权；关闭后代理立即回到全部原版路径。
+- 代理随身访问的开关值在 `OmniWorkProxyVaultAccess` 内做弱引用缓存（`IntVec3.IsForbidden`
+  是热路径）；缓存由 `GameComponent` 的 setter、`LoadedGame`、`StartedNewGame` 刷新。
+
+代理的"随身"在这条路径上表现为**距离为 0**，而不是新增 JobDef 或提前 Checkout：
+
+- `OmniWorkProxyNavigation.TryFindEnd/IsAt` 对"超维存储访问点"（终端建筑本体、终端视图副本、
+  终端占用格）直接返回原地，`Patch_OmniNavigation_Tick` 照常补发到达回调。
+- `Patch_OmniWorkProxyVaultForbid` 只对"代理 + 代理随身开关开启 + 该格属于终端"豁免
+  `IntVec3.IsForbidden(Pawn)`，使工作站 `WorkRadius` 之外的终端也能进入存储目的地与取料候选；
+  非终端格与其它区域限制完全走原版。副作用：超维存储终端在代理视角下不再属于工作范围限制，
+  因此该终端上的维修/灭火等原版工作也可能被代理接受。
+- 因此取出仍走 `TryStartCarry → OuterrealmSourceResolver.Checkout`，存入仍走
+  `DepositHauledThingInContainer → view.TryAdd → Deposit`，库存守恒路径与限制判定不被绕过。
+
 ## 9. 视图同步与性能
 
 - 内容变化写入 GameComponent 的去重可续队列；在后续 Tick 内按预算同步到已注册 vault。

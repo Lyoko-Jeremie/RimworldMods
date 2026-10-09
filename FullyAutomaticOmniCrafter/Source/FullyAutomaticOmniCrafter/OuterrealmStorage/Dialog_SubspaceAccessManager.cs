@@ -126,6 +126,18 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             // 显示图像开关（默认关闭以加速界面打开）
             Checkbox(new Rect(0f, y, inRect.width / 2f, 30f), "SubspaceAccess_ShowIcons", ref showPawnIcons, ref filterChanged);
             y += 35f;
+            // 万能工作站代理随身存取开关（殖民地级规则，随存档）：代理不携带授权 Hediff，
+            // 开启后由 SubspaceAccessUtility 视同已授权，且不受工作站工作范围（Area_OmniWorkstation）限制。
+            Rect proxyRect = new Rect(0f, y, inRect.width / 2f, 30f);
+            GameComponent_OuterrealmStorage storage = GameComponent_OuterrealmStorage.Instance;
+            bool proxyAccess = storage != null && storage.ProxySubspaceAccess;
+            Checkbox(proxyRect, "SubspaceAccess_ProxyAccess", ref proxyAccess, ref filterChanged);
+            TooltipHandler.TipRegion(proxyRect, "SubspaceAccess_ProxyAccessDesc".Translate());
+            if (storage != null && proxyAccess != storage.ProxySubspaceAccess)
+            {
+                storage.ProxySubspaceAccess = proxyAccess;
+            }
+            y += 35f;
             if (filterChanged)
             {
                 dirty = true;

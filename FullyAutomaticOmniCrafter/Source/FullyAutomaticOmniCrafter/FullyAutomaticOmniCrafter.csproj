@@ -421,6 +421,8 @@
     <Compile Include="Patch_OmniWorkProxyDeathGuard.cs" />
     <Compile Include="Patch_OmniWorkProxyRelations.cs" />
     <Compile Include="OmniWorkProxyNavigation.cs" />
+    <Compile Include="OmniWorkProxyVaultAccess.cs" />
+    <Compile Include="Patch_OmniWorkProxyVaultForbid.cs" />
     <Compile Include="OmniWorkProxyVisuals.cs" />
     <Compile Include="Patch_OmniWorkProxyVisuals.cs" />
     <Compile Include="OmniWorkFailureCache.cs" />

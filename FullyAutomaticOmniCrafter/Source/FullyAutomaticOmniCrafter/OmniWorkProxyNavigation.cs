@@ -55,6 +55,12 @@ namespace FullyAutomaticOmniCrafter
         internal static bool IsAt(Pawn pawn, Map map, IntVec3 start,
             LocalTargetInfo target, PathEndMode mode)
         {
+            // 代理随身访问：超维存储访问点无需移动即可交互。
+            if (OmniWorkProxyVaultAccess.Applies(pawn, map)
+                && OmniWorkProxyVaultAccess.IsVaultAccessPoint(map, target))
+            {
+                return Walkable(map, start);
+            }
             if (!Walkable(map, start) || !Resolve(pawn, map, ref target, ref mode, out CellRect rect))
                 return false;
             return (mode == PathEndMode.Touch ? rect.ExpandedBy(1) : rect).Contains(start);
@@ -65,6 +71,17 @@ namespace FullyAutomaticOmniCrafter
             bool adjacentOnly = false, bool reserveCell = false)
         {
             end = IntVec3.Invalid;
+            // 代理随身访问：超维存储访问点的距离按 0 计算——停在原地，由原版到达回调继续执行
+            // 取出/存入 toil（它们本身与位置无关：Checkout 入 carry、TryAdd 进全局层）。
+            // 必须在 Resolve 之前判定：终端建筑没有 interactionCell，InteractionCell 模式的
+            // 规范化会直接失败（施工配送的 GotoThing(vault, InteractionCell) 就走这条路）。
+            if (OmniWorkProxyVaultAccess.Applies(pawn, map)
+                && OmniWorkProxyVaultAccess.IsVaultAccessPoint(map, target))
+            {
+                if (!Walkable(map, start)) return false;
+                end = start;
+                return true;
+            }
             if (!Walkable(map, start) || !Resolve(pawn, map, ref target, ref mode, out CellRect occupied))
                 return false;
             CellRect candidates = mode == PathEndMode.Touch ? occupied.ExpandedBy(1) : occupied;
