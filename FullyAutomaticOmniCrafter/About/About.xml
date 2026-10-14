@@ -6,6 +6,7 @@
     <author>Jeremie</author>
     <supportedVersions>
 		<li>1.6</li>
+		<li>1.7</li>
     </supportedVersions>
 	<packageId>Jeremie.Fully.Automatic.OmniCrafter</packageId>
     <description>
