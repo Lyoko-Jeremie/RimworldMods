@@ -259,11 +259,17 @@ namespace FullyAutomaticOmniCrafter
 
             try
             {
+#if RIMWORLD_17
+                // 1.7（Waylith）改用 Brutal 渲染后端，UnityStubs 没有 Material(string) 这个
+                // "运行时编译 ShaderLab 源码"的入口；置空后由下面的 else 分支走既有的回退动画。
+                Material mat = null;
+#else
                 // CS0618: Material(string) is marked obsolete in Unity 2021.2+ but still functional
                 // in Unity 2022.3 (RimWorld's engine). We suppress the warning intentionally.
 #pragma warning disable 618
                 Material mat = new Material(shaderSource);
 #pragma warning restore 618
+#endif
                 if (mat != null && mat.shader != null && mat.shader.isSupported)
                 {
                     breathingLightShader = mat.shader;

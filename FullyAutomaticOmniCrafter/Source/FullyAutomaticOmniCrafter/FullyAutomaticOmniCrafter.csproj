@@ -13,20 +13,65 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+  <!-- ===== 双版本构建开关（1.6 / 1.7） =====
+       用法（任选其一）：
+         dotnet build -c Release                          → 构建 1.6，输出到 ..\..\1.6\Assemblies\
+         dotnet build -c Release -p:RimWorldVersion=1.7   → 构建 1.7，输出到 ..\..\1.7\Assemblies\
+         dotnet build -c Release17                        → 配置名以 17 结尾时自动判定为 1.7
+       游戏根目录可用 -p:RimWorldDirV16=... / -p:RimWorldDirV17=... 覆盖（换机器或非 Steam 布局时用）。
+       版本宏：1.6 → RIMWORLD_16，1.7 → RIMWORLD_17，源码可用 #if 区分两版 API 差异。 -->
+  <PropertyGroup>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == '' and $(Configuration.EndsWith('17'))">1.7</RimWorldVersion>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == ''">1.6</RimWorldVersion>
+    <RimWorldDirV16 Condition="'$(RimWorldDirV16)' == ''">..\..\..\..\..\RimWorld-16\</RimWorldDirV16>
+    <RimWorldDirV17 Condition="'$(RimWorldDirV17)' == ''">..\..\..\..\</RimWorldDirV17>
+  </PropertyGroup>
+  <!-- 1.6：完整 Unity 程序集族位于 RimWorldWin64_Data\Managed；1.7（Waylith）只提供 Assembly-CSharp + UnityStubs 桩。 -->
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.6'">
+    <GameAssembliesDir>$(RimWorldDirV16)RimWorldWin64_Data\Managed\</GameAssembliesDir>
+    <ModAssembliesDir>..\..\1.6\Assemblies\</ModAssembliesDir>
+    <VersionDefine>RIMWORLD_16</VersionDefine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.7'">
+    <GameAssembliesDir>$(RimWorldDirV17)</GameAssembliesDir>
+    <ModAssembliesDir>..\..\1.7\Assemblies\</ModAssembliesDir>
+    <VersionDefine>RIMWORLD_17</VersionDefine>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;$(VersionDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>TRACE;$(VersionDefine)</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug17|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;$(VersionDefine)</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release17|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>TRACE;$(VersionDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -36,7 +81,21 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(GameAssembliesDir)Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.7（Waylith）用 UnityStubs 桩替代整个 UnityEngine.*Module 程序集族；1.6 不需要它。 -->
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="UnityStubs">
+      <HintPath>$(GameAssembliesDir)UnityStubs.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.7 的 DrawMesh 重载使用 Waylith 自己的 DrawPropertyBlock 类型，必须引用该程序集才能解析签名。 -->
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="Waylith">
+      <HintPath>$(GameAssembliesDir)Waylith.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="Waylith.UnityCompat">
+      <HintPath>$(GameAssembliesDir)Waylith.UnityCompat.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -49,317 +108,320 @@
     <Reference Include="System.Xml" />
     <Reference Include="ToolGood.Words, Version=3.0.3.3, Culture=neutral, PublicKeyToken=d330f4fd115e6143, processorArchitecture=MSIL">
       <HintPath>packages\ToolGood.Words.3.0.3.3\lib\net40\ToolGood.Words.dll</HintPath>
+      <!-- 第三方依赖作为部署资产随 Mod 分发，由 1.6/1.7\Assemblies 各自保留一份；
+           不参与构建复制，避免游戏运行时锁定该文件导致 MSB3027/MSB3021 构建失败。 -->
+      <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.AI.Navigation">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.AI.Navigation.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.AI.Navigation">
+      <HintPath>$(GameAssembliesDir)Unity.AI.Navigation.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Burst">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.Burst.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.Burst">
+      <HintPath>$(GameAssembliesDir)Unity.Burst.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Burst.Unsafe">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.Burst.Unsafe.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.Burst.Unsafe">
+      <HintPath>$(GameAssembliesDir)Unity.Burst.Unsafe.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Collections">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.Collections.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.Collections">
+      <HintPath>$(GameAssembliesDir)Unity.Collections.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Collections.LowLevel.ILSupport">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.Collections.LowLevel.ILSupport">
+      <HintPath>$(GameAssembliesDir)Unity.Collections.LowLevel.ILSupport.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Mathematics">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.Mathematics.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.Mathematics">
+      <HintPath>$(GameAssembliesDir)Unity.Mathematics.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.MemoryProfiler">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.MemoryProfiler.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.MemoryProfiler">
+      <HintPath>$(GameAssembliesDir)Unity.MemoryProfiler.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Profiling.Core">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.Profiling.Core.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.Profiling.Core">
+      <HintPath>$(GameAssembliesDir)Unity.Profiling.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.TextMeshPro">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="Unity.TextMeshPro">
+      <HintPath>$(GameAssembliesDir)Unity.TextMeshPro.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine">
+      <HintPath>$(GameAssembliesDir)UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.AccessibilityModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.AccessibilityModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.AccessibilityModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.AccessibilityModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.AIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.AIModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.AIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.AIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.AndroidJNIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.AndroidJNIModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.AndroidJNIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.AndroidJNIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.AnimationModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.AnimationModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.AnimationModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ARModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ARModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ARModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ARModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.AssetBundleModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.AssetBundleModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.AudioModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.AudioModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.AudioModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.AudioModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ClothModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ClothModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ClothModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ClothModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ClusterInputModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ClusterInputModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ClusterInputModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ClusterInputModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ClusterRendererModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ClusterRendererModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ClusterRendererModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ClusterRendererModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ContentLoadModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ContentLoadModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ContentLoadModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ContentLoadModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.CoreModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.CrashReportingModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.CrashReportingModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.CrashReportingModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.CrashReportingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.DirectorModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.DirectorModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.DirectorModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.DirectorModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.DSPGraphModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.DSPGraphModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.DSPGraphModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.DSPGraphModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.GameCenterModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.GameCenterModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.GameCenterModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.GameCenterModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.GIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.GIModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.GIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.GIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.GridModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.GridModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.GridModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.GridModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.HotReloadModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.HotReloadModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.HotReloadModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.HotReloadModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ImageConversionModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ImageConversionModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.IMGUIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.IMGUIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.InputModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.InputModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.InputModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.InputModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.JSONSerializeModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.JSONSerializeModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.JSONSerializeModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.JSONSerializeModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.LocalizationModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.LocalizationModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.LocalizationModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.LocalizationModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.NVIDIAModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.NVIDIAModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.NVIDIAModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.NVIDIAModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ParticleSystemModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ParticleSystemModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.PerformanceReportingModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.PerformanceReportingModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.PerformanceReportingModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.PerformanceReportingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.Physics2DModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.Physics2DModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.Physics2DModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.Physics2DModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.PhysicsModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.PhysicsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ProfilerModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ProfilerModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ProfilerModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ProfilerModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.PropertiesModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.PropertiesModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.PropertiesModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.PropertiesModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.ScreenCaptureModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.ScreenCaptureModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.ScreenCaptureModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.ScreenCaptureModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.SharedInternalsModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.SharedInternalsModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.SharedInternalsModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.SharedInternalsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.SpriteMaskModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.SpriteMaskModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.SpriteMaskModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.SpriteMaskModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.SpriteShapeModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.SpriteShapeModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.SpriteShapeModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.SpriteShapeModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.StreamingModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.StreamingModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.StreamingModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.StreamingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.SubstanceModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.SubstanceModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.SubstanceModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.SubstanceModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.SubsystemsModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.SubsystemsModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.SubsystemsModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.SubsystemsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TerrainModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TerrainModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TerrainModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TerrainModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TerrainPhysicsModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TerrainPhysicsModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TerrainPhysicsModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TerrainPhysicsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TextCoreFontEngineModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TextCoreFontEngineModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TextCoreFontEngineModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TextCoreFontEngineModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TextCoreTextEngineModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TextCoreTextEngineModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TextCoreTextEngineModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TextCoreTextEngineModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TextRenderingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TilemapModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TilemapModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TilemapModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TilemapModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.TLSModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TLSModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TLSModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TLSModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UI.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UI">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UIElementsModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UIElementsModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UIElementsModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UIElementsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UmbraModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UmbraModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UmbraModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UmbraModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityAnalyticsCommonModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityAnalyticsCommonModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityAnalyticsCommonModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityAnalyticsCommonModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityAnalyticsModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityAnalyticsModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityAnalyticsModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityAnalyticsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityConnectModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityConnectModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityConnectModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityConnectModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityCurlModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityCurlModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityCurlModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityCurlModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityTestProtocolModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityTestProtocolModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityTestProtocolModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityTestProtocolModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityWebRequestAssetBundleModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityWebRequestAudioModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityWebRequestAudioModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityWebRequestModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityWebRequestModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityWebRequestModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityWebRequestTextureModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityWebRequestTextureModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.UnityWebRequestWWWModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UnityWebRequestWWWModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.VehiclesModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.VehiclesModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.VehiclesModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.VehiclesModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.VFXModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.VFXModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.VFXModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.VFXModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.VideoModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.VideoModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.VideoModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.VideoModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.VirtualTexturingModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.VirtualTexturingModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.VirtualTexturingModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.VirtualTexturingModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.VRModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.VRModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.VRModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.VRModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.WindModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.WindModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.WindModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.WindModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="UnityEngine.XRModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.XRModule.dll</HintPath>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.XRModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.XRModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
