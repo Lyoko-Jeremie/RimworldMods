@@ -78,22 +78,47 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             OuterrealmBillResourcePlan plan;
             bool valid = BuildPlan(driver.pawn, job, false, out plan);
             if (valid && plan.Sources.Count == 0) return false;
+            // 失败原因只用于 Ledger.Block 的开发者模式日志，不引入跨工程依赖。
+            string failureReason = "ingredient-reservation";
             try
             {
-                if (!valid || Ledger.IsBlocked(driver.pawn, job.bill) || !Ledger.Begin(plan)) return true;
+                if (!valid)
+                {
+                    failureReason = "plan-invalid";
+                    return true;
+                }
+                if (Ledger.IsBlocked(driver.pawn, job.bill))
+                {
+                    // 本 tick 已被抑制：静默放弃，不再重复记录。
+                    failureReason = "plan-blocked";
+                    return true;
+                }
+                if (!Ledger.Begin(plan))
+                {
+                    failureReason = "quantity-short";
+                    return true;
+                }
                 Ledger.TryGet(job, out plan);
                 Pawn pawn = driver.pawn;
                 Thing giver = job.targetA.Thing;
                 if (!pawn.Reserve(job.targetA, job, errorOnFailed: errorOnFailed)
-                    || (IsBill(job) && giver != null && giver.def.hasInteractionCell && !pawn.ReserveSittableOrSpot(giver.InteractionCell, job, errorOnFailed))) return true;
+                    || (IsBill(job) && giver != null && giver.def.hasInteractionCell && !pawn.ReserveSittableOrSpot(giver.InteractionCell, job, errorOnFailed)))
+                {
+                    failureReason = "giver-reserve-failed";
+                    return true;
+                }
                 result = ReserveTargets(pawn, job, plan, false, errorOnFailed);
+                if (!result)
+                {
+                    failureReason = "reserve-failed";
+                }
                 return true;
             }
             finally
             {
                 if (!result)
                 {
-                    Ledger.Block(driver.pawn, job, "ingredient-reservation");
+                    Ledger.Block(driver.pawn, job, failureReason);
                     // 未开始任何 toil 时，也应同步清理本次取得的实物和预留。
                     driver.pawn.Map?.reservationManager.ReleaseClaimedBy(driver.pawn, job);
                     Ledger.Release(job);

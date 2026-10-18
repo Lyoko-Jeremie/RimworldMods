@@ -375,15 +375,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 bool routedAnchor = OuterrealmIdentityRouting.CanAccessAnchor(t, claimant);
                 if (claimant?.Map == null)
                 {
-                    __result = false;
-                    return false;
+                    return Refuse(ref __result, OuterrealmReservationDiagnostics.NoMap, claimant, target,
+                        canonicalEntry, stackCount, 0L, 0L, 0L, false);
                 }
                 if (routedAnchor)
                 {
                     if (OuterrealmExternalReservationRegistry.HasForeignReservation(claimant, t, canonicalEntry))
                     {
-                        __result = false;
-                        return false;
+                        return Refuse(ref __result, OuterrealmReservationDiagnostics.ForeignReservation, claimant, target,
+                            canonicalEntry, stackCount, 0L, ReservedForDiagnostics(gs, canonicalEntry),
+                            OwnForDiagnostics(claimant, canonicalEntry), false);
                     }
                     // 唯一物品锚点的实际堆叠上限为 1，不需要覆盖原版数量检查。
                     // 必须让原版继续检查 maxPawns、已有 reserver、reservation layer 与
@@ -392,18 +393,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
                 }
                 if (!SubspaceAccessUtility.CanAutoTake(claimant))
                 {
-                    __result = false;
-                    return false;
+                    return Refuse(ref __result, OuterrealmReservationDiagnostics.NoSubspaceAccess, claimant, target,
+                        canonicalEntry, stackCount, 0L, 0L, 0L, false);
                 }
                 if (OuterrealmBillJobUtility.Ledger?.IsTransferring(canonicalEntry) == true)
                 {
-                    __result = false;
-                    return false;
+                    return Refuse(ref __result, OuterrealmReservationDiagnostics.Transferring, claimant, target,
+                        canonicalEntry, stackCount, 0L, ReservedForDiagnostics(gs, canonicalEntry),
+                        OwnForDiagnostics(claimant, canonicalEntry), true);
                 }
                 int canonicalReq = stackCount == ReservationManager.StackCount_All ? 1 : stackCount;
+                long ledgerOwn = OwnForDiagnostics(claimant, canonicalEntry);
                 long availableCanonical = OuterrealmQuantityBudget<OuterrealmEntry>.Available(canonicalEntry.Count,
-                    gs.ReservedCountOf(canonicalEntry), OuterrealmBillJobUtility.Ledger?.Own(claimant.CurJob, canonicalEntry) ?? 0);
-                __result = canonicalReq > 0 && canonicalReq <= availableCanonical;
+                    gs.ReservedCountOf(canonicalEntry), ledgerOwn);
+                if (canonicalReq > 0 && canonicalReq > availableCanonical)
+                {
+                    return Refuse(ref __result, OuterrealmReservationDiagnostics.QuantityShort, claimant, target,
+                        canonicalEntry, canonicalReq, availableCanonical, ReservedForDiagnostics(gs, canonicalEntry),
+                        ledgerOwn, false);
+                }
+                __result = canonicalReq > 0;
                 return false;
             }
             if (t == null || !(t.holdingOwner is OuterrealmVaultViewThingOwner view))
@@ -419,7 +428,14 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             available = OuterrealmExternalReservationRegistry.AdjustAvailable(claimant, t, available);
             // 外部搬运系统候选只需确认存在可取数量，入队时再按目的地需求固化数量。
             req = OuterrealmExternalReservationRegistry.AdjustRequest(claimant, t, req, available);
-            if (req <= 0) { __result = false; return false; }
+            if (req <= 0)
+            {
+                OuterrealmEntry rejectedEntry = OuterrealmReservationDiagnostics.Enabled ? view.GetEntryOf(t) : null;
+                return Refuse(ref __result, OuterrealmReservationDiagnostics.ExternalRejected, claimant, target,
+                    rejectedEntry, stackCount, available,
+                    rejectedEntry != null ? ReservedForDiagnostics(gs, rejectedEntry) : 0L,
+                    rejectedEntry != null ? OwnForDiagnostics(claimant, rejectedEntry) : 0L, false);
+            }
             OuterrealmBillResourcePlan billPlan;
             if (OuterrealmBillJobUtility.Ledger?.TryGet(claimant?.CurJob, out billPlan) == true)
             {
@@ -429,20 +445,57 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             }
             if (req > available)
             {
-                __result = false; // 数量不足：阻止预留
-                return false;
+                OuterrealmEntry shortageEntry = OuterrealmReservationDiagnostics.Enabled ? view.GetEntryOf(t) : null;
+                return Refuse(ref __result, OuterrealmReservationDiagnostics.QuantityShort, claimant, target,
+                    shortageEntry, req, available,
+                    shortageEntry != null ? ReservedForDiagnostics(gs, shortageEntry) : 0L,
+                    shortageEntry != null ? OwnForDiagnostics(claimant, shortageEntry) : 0L,
+                    shortageEntry != null && OuterrealmBillJobUtility.Ledger?.IsTransferring(shortageEntry) == true);
             }
             __result = true; // 数量足够：短路放行（见上，避免原版按副本 stackCount 误拒）
             return false;
+        }
+
+        /// <summary>记录一次诊断并拒绝预留（原方法被跳过，<c>__result</c> 置 false）。</summary>
+        internal static bool Refuse(ref bool __result, string reason, Pawn claimant, LocalTargetInfo target,
+            OuterrealmEntry entry, long requested, long available, long reserved, long ledgerOwn, bool transferring)
+        {
+            __result = false;
+            OuterrealmReservationDiagnostics.Refusal(reason, claimant, claimant != null ? claimant.CurJob : null,
+                target.Thing, entry, requested, available, reserved, ledgerOwn, transferring);
+            return false;
+        }
+
+        /// <summary>仅在启用诊断时才做 O(全图预留) 汇总，正常运行零开销。</summary>
+        internal static long ReservedForDiagnostics(GameComponent_OuterrealmStorage storage, OuterrealmEntry entry)
+        {
+            return OuterrealmReservationDiagnostics.Enabled && storage != null && entry != null
+                ? storage.ReservedCountOf(entry) : 0L;
+        }
+
+        internal static long OwnForDiagnostics(Pawn claimant, OuterrealmEntry entry)
+        {
+            return OuterrealmReservationDiagnostics.Enabled && claimant != null && entry != null
+                ? OuterrealmBillJobUtility.Ledger?.Own(claimant.CurJob, entry) ?? 0L : 0L;
         }
     }
 
     [HarmonyPatch(typeof(ReservationManager), "Reserve")]
     internal static class Patch_ReservationManager_Reserve
     {
-        private static bool Prefix(Pawn claimant, Job job, LocalTargetInfo target, int maxPawns, ref int stackCount, ref bool __result)
+        private static bool Prefix(Pawn claimant, Job job, LocalTargetInfo target, int maxPawns, ref int stackCount,
+            ref bool errorOnFailed, ref bool __result)
         {
             Thing t = target.Thing;
+            // 超维目标（建筑本体 / 查询投影 / 唯一锚点）的预留失败是**确定性竞争**而不是编程错误：
+            // 可用量由全局条目记账决定，多个 Pawn 同时取同一种物品时后到者必然被拒。
+            // 原版 Reserve 在 errorOnFailed=true 时会 Log.Error（红字 "Could not reserve ..."），
+            // 上层 StartJob 随后再报黄字 "TryMakePreToilReservations() returned false"，
+            // 两者都会随重试刷屏。这里统一降级为静默失败，玩家可见结果仍是"本次没拿到原料"。
+            if (errorOnFailed && IsOuterrealmReservationTarget(t))
+            {
+                errorOnFailed = false;
+            }
             if (t != null && t.holdingOwner is OuterrealmVaultViewThingOwner reservationView
                 && stackCount == ReservationManager.StackCount_All)
             {
@@ -467,16 +520,26 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (gs != null && gs.TryGetCanonicalEntry(t, out canonicalEntry))
             {
                 bool routedAnchor = OuterrealmIdentityRouting.CanAccessAnchor(t, claimant);
-                if ((!routedAnchor && !SubspaceAccessUtility.CanAutoTake(claimant)) || claimant.Map == null)
+                if (claimant == null || claimant.Map == null)
                 {
-                    __result = false;
-                    return false;
+                    return Patch_ReservationManager_CanReserve.Refuse(ref __result,
+                        OuterrealmReservationDiagnostics.NoMap, claimant, target, canonicalEntry,
+                        stackCount, 0L, 0L, 0L, false);
+                }
+                if (!routedAnchor && !SubspaceAccessUtility.CanAutoTake(claimant))
+                {
+                    return Patch_ReservationManager_CanReserve.Refuse(ref __result,
+                        OuterrealmReservationDiagnostics.NoSubspaceAccess, claimant, target, canonicalEntry,
+                        stackCount, 0L, 0L, 0L, false);
                 }
                 int canonicalReq = stackCount == ReservationManager.StackCount_All ? t.stackCount : stackCount;
                 if (canonicalReq > 0 && canonicalReq > canonicalEntry.Count)
                 {
-                    __result = false;
-                    return false;
+                    return Patch_ReservationManager_CanReserve.Refuse(ref __result,
+                        OuterrealmReservationDiagnostics.QuantityShort, claimant, target, canonicalEntry,
+                        canonicalReq, canonicalEntry.Count,
+                        Patch_ReservationManager_CanReserve.ReservedForDiagnostics(gs, canonicalEntry),
+                        Patch_ReservationManager_CanReserve.OwnForDiagnostics(claimant, canonicalEntry), false);
                 }
                 return true;
             }
@@ -501,13 +564,30 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             if (e0 == null || e0.Count <= 0)
             {
                 view.DisposeOrphanCopy(t);
-                __result = false;
-                return false;
+                return Patch_ReservationManager_CanReserve.Refuse(ref __result,
+                    OuterrealmReservationDiagnostics.OrphanCopy, claimant, target, null,
+                    req, 0L, 0L, 0L, false);
             }
             // 新预留的数量检查统一交给原版 Reserve -> 已补丁的 CanReserve。
             // 这样原版可先命中“同一 Pawn + 同一 Job 已有足量 reservation”的幂等快速路径；
             // 若在 Prefix 提前按 G-R 拒绝，会把重复 Reserve 错判成失败。
             return true;
+        }
+
+        /// <summary>目标是否属于超维存储（本体 / 查询投影 / 唯一锚点）。类型判断优先，避免热路径上的索引查询。</summary>
+        private static bool IsOuterrealmReservationTarget(Thing t)
+        {
+            if (t == null)
+            {
+                return false;
+            }
+            if (t is Building_OuterrealmVault || t.holdingOwner is OuterrealmVaultViewThingOwner)
+            {
+                return true;
+            }
+            GameComponent_OuterrealmStorage gs = GameComponent_OuterrealmStorage.Instance;
+            OuterrealmEntry entry;
+            return gs != null && gs.TryGetCanonicalEntry(t, out entry);
         }
 
         // §P0：Reserve 成功后使预留缓存失效（版本号 +1）。Prefix 短路（拒绝/本体放行）时
