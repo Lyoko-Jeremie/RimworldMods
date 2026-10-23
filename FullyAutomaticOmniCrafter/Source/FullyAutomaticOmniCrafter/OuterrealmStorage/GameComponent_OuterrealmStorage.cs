@@ -166,6 +166,10 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         {
             ownerGame = game;
             Runtime = new OuterrealmStorageRuntimeState(game);
+            // 读档创建 Thing 之前再确保一次：移除 LWM Deep Storage 通过
+            // makeAllStorageDeepStorage 强加给超维存储仓的 CompDeepStorage（幂等）。
+            // 详见 OuterrealmLwmDeepStorageCompat 的说明。
+            OuterrealmLwmDeepStorageCompat.Apply();
         }
 
         public override void LoadedGame()

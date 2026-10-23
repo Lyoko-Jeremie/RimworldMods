@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -516,6 +516,7 @@
     <Compile Include="OmniCrafterSmartInfiniteBattery.cs" />
     <Compile Include="OmniCrafterUi.cs" />
     <Compile Include="OuterrealmStorage\Building_OuterrealmVault.cs" />
+    <Compile Include="OuterrealmStorage\OuterrealmLwmDeepStorageCompat.cs" />
     <Compile Include="OuterrealmStorage\CustomFloatMenuUtil.cs" />
     <Compile Include="OuterrealmStorage\Dialog_OuterrealmVaultItemFloatMenu.cs" />
     <Compile Include="OuterrealmStorage\Dialog_OuterrealmStorageManager.cs" />

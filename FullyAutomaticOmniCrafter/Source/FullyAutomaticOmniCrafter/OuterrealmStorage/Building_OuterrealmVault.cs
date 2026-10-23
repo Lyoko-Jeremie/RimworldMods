@@ -189,8 +189,39 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             base.DeSpawn(mode);
         }
 
-        // Destroy 无需 override：Building_Storage.Destroy 已处理存储组移除与
-        // BillUtility.Notify_ISlotGroupRemoved（bill 存储模式引用清理，vault 此前缺失，继承后自动补上）。
+        /// <summary>
+        /// Destroy 额外用 try/finally 兜底：第三方 Mod（尤其 LWM Deep Storage 的
+        /// Notify_ReceivedThing / Notify_LostThing 补丁）可能在拆除掉落阶段抛异常，
+        /// 异常会中断 Building_Storage.Destroy 尾部的存储组解绑与
+        /// BillUtility.Notify_ISlotGroupRemoved，留下"已销毁但地图上仍有残影、且无法再次销毁"
+        /// 的建筑。这里在异常路径补做这些清理，避免存储组/槽位注册残留进存档。
+        /// </summary>
+        public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
+        {
+            bool completed = false;
+            try
+            {
+                base.Destroy(mode);
+                completed = true;
+            }
+            finally
+            {
+                absorbTimers.Clear();
+                if (!completed)
+                {
+                    // base（Building_Storage.Destroy）尾部清理未执行：补做
+                    if (storageGroup != null)
+                    {
+                        storageGroup.RemoveMember(this);
+                        storageGroup = null;
+                    }
+                    if (slotGroup != null)
+                    {
+                        BillUtility.Notify_ISlotGroupRemoved(slotGroup);
+                    }
+                }
+            }
+        }
 
         public override void Notify_MinifiedThingAboutToBeDestroyed(DestroyMode mode)
         {
@@ -378,13 +409,24 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
         /// 双接口后搬运工存入已走 v3 容器（HaulToContainer → view 吸收），不落格；本钩子只服务
         /// 掉落物/异常 Spawn 在 vault 格上的物品：登记吸收倒计时（15 tick）→ 到期吸收进全局层。
         /// 禁止存入（noDeposit）开启时不登记——物品留格子由玩家处置（§noDeposit 落格门控）。
-        /// override 基类 Building_Storage（原版教学提示经 base 保留）。</summary>
+        ///
+        /// 注意：<b>不调用 base.Notify_ReceivedThing</b>。原版基类实现只是
+        /// storedConceptLearnOpportunity 教学提示（已在下方内联复刻）；而 LWM Deep Storage
+        /// 在该方法上挂了 Postfix，且其补丁无条件访问 __instance.Map。拆除流程中
+        /// Thing.Destroy 先 DeSpawn 再掉落内容物，此时本建筑可能已 Map==null 却仍收到落格
+        /// 通知，base 调用会进入 LWM 补丁抛 NPE，打断 Destroy 后续清理并留下幽灵建筑。</summary>
         public override void Notify_ReceivedThing(Thing newItem)
         {
-            base.Notify_ReceivedThing(newItem); // 原版 storedConceptLearnOpportunity 教学提示
-            if (newItem == null || newItem.Destroyed || !Spawned || view == null)
+            if (newItem == null || newItem.Destroyed || !Spawned || Destroyed || view == null)
             {
                 return;
+            }
+            // 内联原版教学提示（等价 base，但不经过第三方 Harmony 补丁）
+            if (Faction == Faction.OfPlayer && newItem.def != null
+                && newItem.def.storedConceptLearnOpportunity != null)
+            {
+                LessonAutoActivator.TeachOpportunity(
+                    newItem.def.storedConceptLearnOpportunity, OpportunityType.GoodToKnow);
             }
             if (view.IsBorrowed(newItem) || OuterrealmVaultUtil.IsOuterrealmBorrowed(newItem))
             {
@@ -397,7 +439,16 @@ namespace FullyAutomaticOmniCrafter.OuterrealmStorage
             absorbTimers[newItem] = GenTicks.TicksGame + AbsorbDelayTicks;
         }
 
-        // Notify_LostThing 继承基类空实现。
+        /// <summary>
+        /// 不调用 base.Notify_LostThing：原版基类是空实现，但 LWM Deep Storage 在其上挂了
+        /// 无条件访问 __instance.Map.GetComponent&lt;MapComponentDS&gt;() 的 Postfix。
+        /// 当本建筑已 DeSpawn（拆除中/残影状态）而原版 Thing.DeSpawn 仍对格内物品回调
+        /// parent.Notify_LostThing 时会 NPE，进而打断 DeSpawn。本建筑内容在全局层，
+        /// 格上物品仅短暂驻留，无需该补丁的缓存刷新，因此直接短路。
+        /// </summary>
+        public override void Notify_LostThing(Thing newItem)
+        {
+        }
 
         // ── IStoreSettingsParent / IHaulDestination / IHaulSource ───────────────
 
