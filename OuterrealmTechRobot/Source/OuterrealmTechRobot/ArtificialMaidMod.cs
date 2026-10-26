@@ -50,6 +50,11 @@ namespace OuterrealmTechRobot
         {
             var harmony = new Harmony("Jeremie.Outerrealm.Tech.ArtificialMaid");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+
+            // AutoBlink 联动通过独立桥接程序集实现（1.6/1.7 各自版本，见 1.6/1.7\Assemblies）。
+            // 初始化失败只禁用 AutoBlink 联动，不能影响主程序集其他补丁与功能。
+            AutoBlinkBridgeHost.Initialize(harmony);
+
             DSFICompatibility.Initialize(harmony);
 
             LongEventHandler.ExecuteWhenFinished(() =>

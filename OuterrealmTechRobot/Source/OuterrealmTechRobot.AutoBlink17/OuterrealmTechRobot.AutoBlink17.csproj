@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- ===== 1.7 AutoBlink 桥接程序集 =====
+       1.7 的 AutoBlink 已完全重写（CompAutoBlink 只剩空壳，新增 BlinkController / AutoBlinkApi / observer 钩子），
+       主工程通过 OuterrealmTechRobot.IAutoBlinkBridge 接口隔离版本差异，本工程只负责 1.7 侧的实现。
+       构建：MSBuild.exe OuterrealmTechRobot.AutoBlink17.csproj /p:Configuration=Debug
+       输出：Mod 根目录 1.7\Assemblies\OuterrealmTechRobot.AutoBlink17.dll -->
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{95B74855-C224-4EA3-9F6B-63A93E66D8BB}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>OuterrealmTechRobot.AutoBlink17</RootNamespace>
+    <AssemblyName>OuterrealmTechRobot.AutoBlink17</AssemblyName>
+    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\1.7\Assemblies\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\1.7\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;RIMWORLD_17</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\1.7\Assemblies\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\1.7\</IntermediateOutputPath>
+    <DefineConstants>TRACE;RIMWORLD_17</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Harmony 2.4.2（主工程 packages 目录）：桥接接口方法签名需要 HarmonyLib.Harmony，实际 1.7 实现不 patch -->
+    <Reference Include="0Harmony, Version=2.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\OuterrealmTechRobot\packages\Lib.Harmony.2.4.2\lib\net48\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.7 游戏根目录（Waylith 版本）：RimWorld 只提供 Assembly-CSharp + UnityStubs 等程序集 -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\..\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityStubs">
+      <HintPath>..\..\..\..\UnityStubs.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Waylith">
+      <HintPath>..\..\..\..\Waylith.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Waylith.UnityCompat">
+      <HintPath>..\..\..\..\Waylith.UnityCompat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.7 AutoBlink：真实 AutoBlink.dll 面向 .NET 10（引用 System.Runtime 10.0.0.0），
+         .NET Framework 4.8.1 的旧式工程直接引用会报 CS1705（见 ReferenceShim 说明），
+         因此改用同程序集名/同版本（AutoBlink, 2.0.0.0）的编译期参考垫片，运行时绑定 workshop 中的真实 AutoBlink.dll。 -->
+    <ProjectReference Include="ReferenceShim\AutoBlink.ReferenceShim.csproj">
+      <Project>{54A327CB-FF88-43CE-B862-69C0DCF516B0}</Project>
+      <Name>AutoBlink.ReferenceShim</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AutoBlinkBridge17.cs" />
+    <Compile Include="AutoBlinkCarrySyncObserver.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 主工程：复用 OuterrealmTechRobot.IAutoBlinkBridge 接口；强传 RimWorldVersion=1.7 让主工程按 1.7 API 编译 -->
+    <ProjectReference Include="..\OuterrealmTechRobot\OuterrealmTechRobot.csproj">
+      <Project>{90993FE5-5D7E-48DA-8BE5-CFC8A0DC196A}</Project>
+      <Name>OuterrealmTechRobot</Name>
+      <Private>False</Private>
+      <AdditionalProperties>RimWorldVersion=1.7</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

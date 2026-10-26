@@ -3,7 +3,7 @@ using HarmonyLib;
 using RimWorld;
 using Verse;
 
-namespace OuterrealmTechRobot
+namespace OuterrealmTechRobot.AutoBlink16
 {
     /// <summary>
     /// 携带 autoblink 同步（核心联动）：
@@ -11,7 +11,7 @@ namespace OuterrealmTechRobot
     /// 被携带的 Pawn（如倒地的主人）不会跟着瞬移。本 Postfix 在两个执行点之后把
     /// carryTracker 中的被携带 Pawn 一并同步到目标格，实现"携带主人一起 blink"。
     /// 性能：两个方法仅在真正 blink 时调用（低频），Postfix 首行空判定即返回，每 tick 零开销。
-    /// 兼容：csproj 已强引用 AutoBlink，直接访问 API；不触碰其冷却/排除/路径逻辑。
+    /// 兼容：本桥接程序集已强引用 1.6 版 AutoBlink，直接访问 API；不触碰其冷却/排除/路径逻辑。
     /// </summary>
     [HarmonyPatch(typeof(AutoBlink.CompAutoBlink), "ExecuteBlink")]
     public static class Patch_AutoBlink_ExecuteBlink_CarrySync

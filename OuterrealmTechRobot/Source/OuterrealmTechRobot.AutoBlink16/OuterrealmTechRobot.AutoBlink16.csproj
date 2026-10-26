@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{7C3A1D6E-4B2F-4E8A-9A31-2F5D8C6B1E42}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>OuterrealmTechRobot.AutoBlink16</RootNamespace>
+    <AssemblyName>OuterrealmTechRobot.AutoBlink16</AssemblyName>
+    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <!-- ===== 1.6 专用桥接工程 =====
+       本工程只针对 RimWorld 1.6 编译：直接引用 1.6 版 AutoBlink.dll（CompAutoBlink 仍保留
+       BlinkToCellDirect / lastBlinkTick / Props），实现主程序集 OuterrealmTechRobot.IAutoBlinkBridge，
+       并把「携带同步」的两个 Harmony Postfix 收进本程序集，避免主程序集绑定到某一版 AutoBlink API。
+       输出到 Mod 根 1.6\Assemblies\，由 RimWorld 1.6 的 ModAssemblyHandler 与主程序集一同加载。 -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\1.6\Assemblies\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\1.6\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;RIMWORLD_16</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\1.6\Assemblies\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\1.6\</IntermediateOutputPath>
+    <DefineConstants>TRACE;RIMWORLD_16</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony, Version=2.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\OuterrealmTechRobot\packages\Lib.Harmony.2.4.2\lib\net48\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\..\..\RimWorld-16\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AutoBlink">
+      <HintPath>..\..\..\..\..\..\workshop\content\294100\3493889625\1.6\Assemblies\AutoBlink.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\..\..\..\RimWorld-16\RimWorldWin64_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\..\..\RimWorld-16\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>..\..\..\..\..\RimWorld-16\RimWorldWin64_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\..\..\..\..\RimWorld-16\RimWorldWin64_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\..\..\..\..\..\RimWorld-16\RimWorldWin64_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AutoBlinkBridge16.cs" />
+    <Compile Include="Patch_AutoBlink_CarrySync.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 主工程只提供 IAutoBlinkBridge 接口（不引用 AutoBlink）；强制其按 1.6 游戏程序集编译，
+         保证 Verse.Pawn / Verse.IntVec3 来自同一份 Assembly-CSharp，避免跨版本类型不一致。 -->
+    <ProjectReference Include="..\OuterrealmTechRobot\OuterrealmTechRobot.csproj">
+      <Project>{90993FE5-5D7E-48DA-8BE5-CFC8A0DC196A}</Project>
+      <Name>OuterrealmTechRobot</Name>
+      <Private>False</Private>
+      <AdditionalProperties>RimWorldVersion=1.6</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

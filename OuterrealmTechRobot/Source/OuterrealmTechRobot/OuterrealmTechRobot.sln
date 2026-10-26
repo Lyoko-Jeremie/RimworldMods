@@ -1,13 +1,13 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37301.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OuterrealmTechRobot", "OuterrealmTechRobot.csproj", "{90993FE5-5D7E-48DA-8BE5-CFC8A0DC196A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullyAutomaticOmniCrafter", "..\..\..\FullyAutomaticOmniCrafter\Source\FullyAutomaticOmniCrafter\FullyAutomaticOmniCrafter.csproj", "{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OuterrealmTechRobot.AutoBlink16", "..\OuterrealmTechRobot.AutoBlink16\OuterrealmTechRobot.AutoBlink16.csproj", "{7C3A1D6E-4B2F-4E8A-9A31-2F5D8C6B1E42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlienRace", "..\..\..\..\..\..\..\..\RimworldCodeIL\AlienRaces\Source\AlienRace\AlienRace\AlienRace.csproj", "{E74E552B-B48E-4672-8CA6-DF18E5366928}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OuterrealmTechRobot.AutoBlink17", "..\OuterrealmTechRobot.AutoBlink17\OuterrealmTechRobot.AutoBlink17.csproj", "{95B74855-C224-4EA3-9F6B-63A93E66D8BB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,14 +19,14 @@ Global
 		{90993FE5-5D7E-48DA-8BE5-CFC8A0DC196A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{90993FE5-5D7E-48DA-8BE5-CFC8A0DC196A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{90993FE5-5D7E-48DA-8BE5-CFC8A0DC196A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{49FF93C8-14C8-4DAD-9172-0BBA7FBCE395}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E74E552B-B48E-4672-8CA6-DF18E5366928}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C3A1D6E-4B2F-4E8A-9A31-2F5D8C6B1E42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C3A1D6E-4B2F-4E8A-9A31-2F5D8C6B1E42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C3A1D6E-4B2F-4E8A-9A31-2F5D8C6B1E42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C3A1D6E-4B2F-4E8A-9A31-2F5D8C6B1E42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95B74855-C224-4EA3-9F6B-63A93E66D8BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95B74855-C224-4EA3-9F6B-63A93E66D8BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95B74855-C224-4EA3-9F6B-63A93E66D8BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95B74855-C224-4EA3-9F6B-63A93E66D8BB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

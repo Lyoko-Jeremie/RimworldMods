@@ -13,20 +13,65 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+  <!-- ===== 双版本构建开关（1.6 / 1.7） =====
+       用法（任选其一）：
+         MSBuild -p:Configuration=Debug                       → 构建 1.6，输出到 ..\..\1.6\Assemblies\
+         MSBuild -p:Configuration=Debug -p:RimWorldVersion=1.7 → 构建 1.7，输出到 ..\..\1.7\Assemblies\
+         MSBuild -p:Configuration=Debug17                     → 配置名以 17 结尾时自动判定为 1.7
+       游戏根目录可用 -p:RimWorldDirV16=... / -p:RimWorldDirV17=... 覆盖。
+       版本宏：1.6 → RIMWORLD_16，1.7 → RIMWORLD_17。 -->
+  <PropertyGroup>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == '' and $(Configuration.EndsWith('17'))">1.7</RimWorldVersion>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == ''">1.6</RimWorldVersion>
+    <RimWorldDirV16 Condition="'$(RimWorldDirV16)' == ''">..\..\..\..\..\RimWorld-16\</RimWorldDirV16>
+    <RimWorldDirV17 Condition="'$(RimWorldDirV17)' == ''">..\..\..\..\</RimWorldDirV17>
+  </PropertyGroup>
+  <!-- 1.6：完整 Unity 程序集族位于 RimWorldWin64_Data\Managed；1.7（Waylith）只提供 Assembly-CSharp + UnityStubs 桩。 -->
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.6'">
+    <GameAssembliesDir>$(RimWorldDirV16)RimWorldWin64_Data\Managed\</GameAssembliesDir>
+    <ModAssembliesDir>..\..\1.6\Assemblies\</ModAssembliesDir>
+    <VersionDefine>RIMWORLD_16</VersionDefine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.7'">
+    <GameAssembliesDir>$(RimWorldDirV17)</GameAssembliesDir>
+    <ModAssembliesDir>..\..\1.7\Assemblies\</ModAssembliesDir>
+    <VersionDefine>RIMWORLD_17</VersionDefine>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;$(VersionDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>TRACE;$(VersionDefine)</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug17|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;$(VersionDefine)</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release17|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>TRACE;$(VersionDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -36,11 +81,41 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(GameAssembliesDir)Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="AutoBlink">
-      <HintPath>..\..\..\..\..\..\workshop\content\294100\3493889625\1.6\Assemblies\AutoBlink.dll</HintPath>
+    <!-- 1.7（Waylith）：UnityStubs 桩替代整个 UnityEngine.*Module 程序集族。 -->
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="UnityStubs">
+      <HintPath>$(GameAssembliesDir)UnityStubs.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="Waylith">
+      <HintPath>$(GameAssembliesDir)Waylith.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="Waylith.UnityCompat">
+      <HintPath>$(GameAssembliesDir)Waylith.UnityCompat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.6：只引用本项目实际用到的 Unity 模块。 -->
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine">
+      <HintPath>$(GameAssembliesDir)UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.CoreModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.IMGUIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="UnityEngine.UIModule">
+      <HintPath>$(GameAssembliesDir)UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -51,26 +126,6 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UIModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArtificialMaidBackupCloud.cs" />
@@ -81,6 +136,8 @@
     <Compile Include="ArtificialMaidMod.cs" />
     <Compile Include="ArtificialMaidTransferUtility.cs" />
     <Compile Include="ArtificialMaidTransportBox.cs" />
+    <Compile Include="AutoBlinkIntegration\AutoBlinkBridgeHost.cs" />
+    <Compile Include="AutoBlinkIntegration\IAutoBlinkBridge.cs" />
     <Compile Include="Building_ArtificialMaidDisplayCase.cs" />
     <Compile Include="CompArtificialMaid.cs" />
     <Compile Include="CompArtificialMaidPacker.cs" />
@@ -104,7 +161,6 @@
     <Compile Include="Features\Servitude\JobDriver_AMFollowMaster.cs" />
     <Compile Include="Features\Servitude\JobDriver_AMCarryMaster.cs" />
     <Compile Include="Features\Servitude\JobDriver_AMLapPillow.cs" />
-    <Compile Include="Features\Servitude\Harmony\Patch_AutoBlink_CarrySync.cs" />
     <Compile Include="Features\Servitude\Harmony\Patch_CarryDropGuard.cs" />
     <Compile Include="Features\Servitude\Harmony\Patch_CarryRender.cs" />
     <Compile Include="Features\Servitude\Harmony\Patch_Pawn_GetGizmos_CarryMaster.cs" />
@@ -135,18 +191,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\..\..\RimworldCodeIL\AlienRaces\Source\AlienRace\AlienRace\AlienRace.csproj">
-      <Project>{e74e552b-b48e-4672-8ca6-df18e5366928}</Project>
-      <Name>AlienRace</Name>
-      <Private>False</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\FullyAutomaticOmniCrafter\Source\FullyAutomaticOmniCrafter\FullyAutomaticOmniCrafter.csproj">
-      <Project>{49ff93c8-14c8-4dad-9172-0bba7fbce395}</Project>
-      <Name>FullyAutomaticOmniCrafter</Name>
-      <Private>False</Private>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="AGENTS.md" />

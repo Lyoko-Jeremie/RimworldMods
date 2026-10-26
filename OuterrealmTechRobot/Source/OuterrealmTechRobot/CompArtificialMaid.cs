@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using RimWorld;
 using UnityEngine;
@@ -50,19 +50,6 @@ namespace OuterrealmTechRobot
         // 运行时去重：只有女仆实际换格后才执行开雾，不写入存档。
         private IntVec3 lastHighDimFogCell = IntVec3.Invalid;
         private int lastHighDimFogRadius;
-
-        private AutoBlink.CompAutoBlink _cachedBlinkComp;
-        private AutoBlink.CompAutoBlink BlinkComp
-        {
-            get
-            {
-                if (_cachedBlinkComp == null && Pawn != null)
-                {
-                    _cachedBlinkComp = Pawn.GetComp<AutoBlink.CompAutoBlink>();
-                }
-                return _cachedBlinkComp;
-            }
-        }
 
         // 侍奉系统相关 JobDef 集合（留守开关打开时用于打断当前侍奉 Job；懒加载，避免启动期依赖）
         private static HashSet<JobDef> _servitudeJobDefs;
@@ -417,11 +404,14 @@ namespace OuterrealmTechRobot
 
         internal bool TryBlinkToTarget(Pawn target)
         {
-            var blinkComp = BlinkComp;
-            if (blinkComp == null) return false;
+            if (target == null || Pawn == null || Pawn.Map == null) return false;
 
-            // 检查冷却
-            if (Find.TickManager.TicksGame - blinkComp.lastBlinkTick < blinkComp.Props.blinkIntervalTicks) return false;
+            // AutoBlink 已通过独立桥接程序集隔离（1.6 与 1.7 的 API 互不兼容），桥接不可用则跳过瞬移。
+            var bridge = AutoBlinkBridgeHost.Instance;
+            if (bridge == null) return false;
+
+            // 检查冷却（各版本桥接按自己的 AutoBlink API 查询）
+            if (!bridge.TryGetCooldownRemaining(Pawn, out int remaining) || remaining > 0) return false;
 
             // 寻找落脚点
             IntVec3 cell = IntVec3.Invalid;
@@ -435,12 +425,8 @@ namespace OuterrealmTechRobot
                 }
             }
 
-            if (cell.IsValid)
-            {
-                blinkComp.BlinkToCellDirect(cell);
-                return true;
-            }
-            return false;
+            if (!cell.IsValid) return false;
+            return bridge.TryBlinkToCell(Pawn, cell);
         }
 
         private void ApplyHealingProtocol()

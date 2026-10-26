@@ -1,10 +1,15 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Configuration>
   <Excluded>
     <exclude>Tools</exclude>
+    <exclude>Backup</exclude>
     <exclude>Source\OuterrealmTechRobot\.idea</exclude>
     <exclude>Source\OuterrealmTechRobot\.vs</exclude>
     <exclude>Source\OuterrealmTechRobot\obj</exclude>
     <exclude>Source\OuterrealmTechRobot\packages</exclude>
+    <exclude>Source\OuterrealmTechRobot.AutoBlink16\obj</exclude>
+    <exclude>Source\OuterrealmTechRobot.AutoBlink17\obj</exclude>
+    <exclude>build.ps1</exclude>
+    <exclude>sync-to-1.6.ps1</exclude>
   </Excluded>
 </Configuration>
