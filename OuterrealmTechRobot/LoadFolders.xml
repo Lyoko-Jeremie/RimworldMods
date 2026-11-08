@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  注意：一旦存在 LoadFolders.xml，RimWorld 只会加载下列目录，
+  不会自动加载 Mod 根目录。因此每个版本都必须显式列出 <li>/</li>（根目录），
+  否则根目录下的 Defs、Textures、Languages、Patches 全部不会被读取。
+  版本目录（1.6 / 1.7）只存放该版本的 Assemblies，避免类型重复。
+-->
+<loadFolders>
+  <v1.6>
+    <li>/</li>
+    <li>1.6</li>
+  </v1.6>
+  <v1.7>
+    <li>/</li>
+    <li>1.7</li>
+  </v1.7>
+</loadFolders>
