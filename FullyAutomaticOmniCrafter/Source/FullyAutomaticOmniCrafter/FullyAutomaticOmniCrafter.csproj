@@ -500,6 +500,7 @@
     <Compile Include="Patch_CompBiosphere.cs" />
     <Compile Include="Patch_MinifyProtection.cs" />
     <Compile Include="Patch_OmniAutoSurgeonSurgery.cs" />
+    <Compile Include="Patch_Optional_ReplaceStuff_PhantomWall.cs" />
     <Compile Include="Patch_OmniPhantomWall.cs" />
     <Compile Include="Patch_OmniPhantomWallTerrain.cs" />
     <Compile Include="Patch_OmniPhantomWall_DoorFix.cs" />
