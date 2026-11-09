@@ -129,6 +129,7 @@ namespace FullyAutoHydroponicsThingComp
         {
             // 如果你需要绑定一个真正的 ThingComp 处理逻辑，可以写在这里
             // this.compClass = typeof(你可能需要的空Comp类); 
+            this.compClass = typeof(CompSerum);
 
             // 但如果仅仅是作为属性标签(Property)，这里什么都不写也可以
         }
