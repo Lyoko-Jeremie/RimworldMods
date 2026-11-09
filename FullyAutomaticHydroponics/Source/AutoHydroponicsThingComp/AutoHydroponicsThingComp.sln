@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37111.16 d17.14
@@ -8,18 +8,23 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug17|Any CPU = Debug17|Any CPU
 		Release|Any CPU = Release|Any CPU
+		Release17|Any CPU = Release17|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Debug17|Any CPU.ActiveCfg = Debug17|Any CPU
+		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Debug17|Any CPU.Build.0 = Debug17|Any CPU
 		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Release17|Any CPU.ActiveCfg = Release17|Any CPU
+		{FBC2472F-D480-4ECA-B0F1-222F6D93D57E}.Release17|Any CPU.Build.0 = Release17|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5A0A6371-93DA-457F-A516-86B9B4F7AAAC}
-	EndGlobalSection
-EndGlobal
+	EndGlobal

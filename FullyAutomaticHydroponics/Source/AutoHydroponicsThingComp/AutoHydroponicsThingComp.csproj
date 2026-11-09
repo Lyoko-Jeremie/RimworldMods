@@ -13,26 +13,81 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+  <!-- ===== 双版本构建开关（1.6 / 1.7） =====
+       用法（任选其一）：
+         dotnet build -c Release                          → 构建 1.6，输出到 ..\..\1.6\Assemblies\
+         dotnet build -c Release -p:RimWorldVersion=1.7    → 构建 1.7，输出到 ..\..\1.7\Assemblies\
+         dotnet build -c Release17                         → 配置名以 17 结尾时自动判定为 1.7
+       游戏根目录可用 -p:RimWorldDirV16=... / -p:RimWorldDirV17=... 覆盖（换机器或非 Steam 布局时用）。
+       版本宏：1.6 → RIMWORLD_16，1.7 → RIMWORLD_17，源码可用 #if 区分两版 API 差异。 -->
+  <PropertyGroup>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == '' and $(Configuration.EndsWith('17'))">1.7</RimWorldVersion>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == ''">1.6</RimWorldVersion>
+    <RimWorldDirV16 Condition="'$(RimWorldDirV16)' == ''">..\..\..\..\..\RimWorld-16\</RimWorldDirV16>
+    <RimWorldDirV17 Condition="'$(RimWorldDirV17)' == ''">..\..\..\..\</RimWorldDirV17>
+  </PropertyGroup>
+  <!-- 1.6：完整 Unity 程序集族位于 RimWorldWin64_Data\Managed；
+       1.7（Waylith）：只有 Assembly-CSharp + UnityStubs 桩，UnityEngine 命名空间由 UnityStubs.dll 提供。 -->
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.6'">
+    <GameAssembliesDir>$(RimWorldDirV16)RimWorldWin64_Data\Managed\</GameAssembliesDir>
+    <ModAssembliesDir>..\..\1.6\Assemblies\</ModAssembliesDir>
+    <VersionDefine>RIMWORLD_16</VersionDefine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.7'">
+    <GameAssembliesDir>$(RimWorldDirV17)</GameAssembliesDir>
+    <ModAssembliesDir>..\..\1.7\Assemblies\</ModAssembliesDir>
+    <VersionDefine>RIMWORLD_17</VersionDefine>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;$(VersionDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>TRACE;$(VersionDefine)</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug17|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE;$(VersionDefine)</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release17|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RimWorldVersion)\</IntermediateOutputPath>
+    <DefineConstants>TRACE;$(VersionDefine)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(GameAssembliesDir)Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.6：游戏自带完整 UnityEngine（含各 Module）程序集族，整族引用即可满足编译；
+         1.7：Waylith 用 UnityStubs 桩替代整个 UnityEngine 命名空间，不能再引用 UnityEngine.*.dll。 -->
+    <Reference Condition="'$(RimWorldVersion)' == '1.6'" Include="$(GameAssembliesDir)UnityEngine*.dll">
+      <Private>False</Private>
+    </Reference>
+    <Reference Condition="'$(RimWorldVersion)' == '1.7'" Include="UnityStubs">
+      <HintPath>$(GameAssembliesDir)UnityStubs.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -41,12 +96,7 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoHydroponicsManager.cs" />
@@ -57,9 +107,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="1.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
