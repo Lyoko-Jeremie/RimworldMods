@@ -119,6 +119,8 @@ fabric.properties
 !GasStove/**/*
 !OuterrealmStorageManipulatorBeamSupport/
 !OuterrealmStorageManipulatorBeamSupport/**/*
+!JeremieAtmosphereOverhaulPatch/
+!JeremieAtmosphereOverhaulPatch/**/*
 !.gitignore
 
 !readme.md

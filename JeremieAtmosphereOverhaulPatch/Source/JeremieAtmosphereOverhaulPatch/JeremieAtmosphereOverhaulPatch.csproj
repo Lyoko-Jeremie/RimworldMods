@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{7E1C4B2A-9D3F-4A6E-8B51-2C7D9E0F3A64}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Jeremie.AtmosphereOverhaulPatch</RootNamespace>
+    <AssemblyName>JeremieAtmosphereOverhaulPatch</AssemblyName>
+    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- ===== 路径配置（只支持 1.7）=====
+       默认假设本 Mod 位于 <RimWorld>/Mods/JeremieAtmosphereOverhaulPatch/，
+       源码位于 Source/JeremieAtmosphereOverhaulPatch/，因此向上四级即游戏根目录。
+       换机器或非 Steam 布局时可用 -p:RimWorldDir=... 覆盖。
+       构建输出固定到 Mod 根目录的 Assemblies/。 -->
+  <PropertyGroup>
+    <RimWorldDir Condition="'$(RimWorldDir)' == ''">..\..\..\..\</RimWorldDir>
+    <ModAssembliesDir Condition="'$(ModAssembliesDir)' == ''">..\..\Assemblies\</ModAssembliesDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(ModAssembliesDir)</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Harmony 随 Mod 自带一份，仅编译期引用；运行时的 0Harmony 由 Harmony Mod 提供。 -->
+    <Reference Include="0Harmony">
+      <HintPath>packages\Lib.Harmony.2.4.2\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RimWorldDir)Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- 1.7（Waylith）用 UnityStubs 桩替代 UnityEngine 程序集族。 -->
+    <Reference Include="UnityStubs">
+      <HintPath>$(RimWorldDir)UnityStubs.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Waylith">
+      <HintPath>$(RimWorldDir)Waylith.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Waylith.UnityCompat">
+      <HintPath>$(RimWorldDir)Waylith.UnityCompat.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="**\*.cs" Exclude="obj\**\*.cs;bin\**\*.cs" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

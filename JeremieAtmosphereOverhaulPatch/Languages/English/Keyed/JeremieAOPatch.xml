@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+    <AOPatch_SettingsCategory>Atmosphere Overhaul Patch</AOPatch_SettingsCategory>
+
+    <AOPatch_Intro>This page controls the compatibility layer between Atmosphere Overhaul and other temperature mods. Modules are independent; a missing target is skipped automatically.</AOPatch_Intro>
+    <AOPatch_Master>Enable compatibility patches</AOPatch_Master>
+    <AOPatch_MasterDesc>Master switch. When off, no module installs any patch - a one-click rollback without uninstalling the mod.</AOPatch_MasterDesc>
+    <AOPatch_TargetsHeader>Target modules (bracketed text is the current state)</AOPatch_TargetsHeader>
+
+    <AOPatch_Module_GoodClimate>Good Climate vacuum link</AOPatch_Module_GoodClimate>
+    <AOPatch_Module_GoodClimateDesc>When Good Climate closes a vent because of vacuum, also set the Atmosphere Overhaul air-vent speed limit to 0. Vanilla never links the two, so a "closed" vent still leaks.</AOPatch_Module_GoodClimateDesc>
+
+    <AOPatch_Module_VTE>Vanilla Temperature Expanded</AOPatch_Module_VTE>
+    <AOPatch_Module_VTEDesc>Reserved module. Currently presence/type diagnostics only; its climate devices will later be bound to Atmosphere Overhaul continuous sources.</AOPatch_Module_VTEDesc>
+
+    <AOPatch_Module_CCC>Centralized Climate Control (Continued)</AOPatch_Module_CCC>
+    <AOPatch_Module_CCCDesc>Reserved module. It currently declares no 1.7 support, so on 1.7 it is usually not loaded and this module is skipped.</AOPatch_Module_CCCDesc>
+
+    <AOPatch_Module_Omni>OuterrealmTech</AOPatch_Module_Omni>
+    <AOPatch_Module_OmniDesc>Reserved module. Will make the OmniBiosphere write into the real Atmosphere Overhaul temperature field instead of only overriding reads.</AOPatch_Module_OmniDesc>
+
+    <AOPatch_State_NotInstalled>Not installed</AOPatch_State_NotInstalled>
+    <AOPatch_State_Disabled>Disabled</AOPatch_State_Disabled>
+    <AOPatch_State_Applied>Applied</AOPatch_State_Applied>
+    <AOPatch_State_Skipped>Skipped</AOPatch_State_Skipped>
+    <AOPatch_State_Failed>Failed</AOPatch_State_Failed>
+
+    <AOPatch_VerboseLogging>Verbose logging</AOPatch_VerboseLogging>
+    <AOPatch_VerboseLoggingDesc>Write per-module details to Player.log for troubleshooting. Keep it off normally.</AOPatch_VerboseLoggingDesc>
+
+    <AOPatch_NeedReapply>Switches changed. Click the button below or restart the game to apply.</AOPatch_NeedReapply>
+    <AOPatch_Reapply>Reinstall patches now</AOPatch_Reapply>
+    <AOPatch_ReapplyDone>Compatibility patches reinstalled.</AOPatch_ReapplyDone>
+    <AOPatch_Footer>If Atmosphere Overhaul later ships its own support for a mod, disable that module and restart; other modules are unaffected.</AOPatch_Footer>
+</LanguageData>
