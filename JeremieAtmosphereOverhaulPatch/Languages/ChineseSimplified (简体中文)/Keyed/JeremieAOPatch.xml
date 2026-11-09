@@ -2,22 +2,22 @@
 <LanguageData>
     <AOPatch_SettingsCategory>大气层重构兼容补丁</AOPatch_SettingsCategory>
 
-    <AOPatch_Intro>本页面用于控制 Atmosphere Overhaul 与其它温控 Mod 的兼容层。所有模块相互独立；缺少目标 Mod 时会自动跳过。</AOPatch_Intro>
+    <AOPatch_Intro>本页控制「大气层重构」与其它温控 Mod 之间的兼容层。各模块彼此独立，目标 Mod 不存在时会被自动跳过。</AOPatch_Intro>
     <AOPatch_Master>启用兼容补丁</AOPatch_Master>
-    <AOPatch_MasterDesc>总开关。关闭后不再安装任何模块的补丁，相当于「一键回退」，但不需要卸载 Mod。</AOPatch_MasterDesc>
+    <AOPatch_MasterDesc>总开关。关闭后任何模块都不会安装补丁——无需卸载 Mod 即可一键回退。</AOPatch_MasterDesc>
     <AOPatch_TargetsHeader>目标模块（方括号内为当前状态）</AOPatch_TargetsHeader>
 
     <AOPatch_Module_GoodClimate>Good Climate 真空联动</AOPatch_Module_GoodClimate>
-    <AOPatch_Module_GoodClimateDesc>当 Good Climate 因真空而关闭通风口时，同时把 Atmosphere Overhaul 的透气面限速设为 0。原版两者不联动，会出现「阀已关但仍在漏气」。</AOPatch_Module_GoodClimateDesc>
+    <AOPatch_Module_GoodClimateDesc>当 Good Climate 因真空关闭通风口时，同时把大气层重构的透气面限速设为 0。原版并不联动，所以「已关阀」的通风口实际上仍在漏气。</AOPatch_Module_GoodClimateDesc>
 
     <AOPatch_Module_VTE>Vanilla Temperature Expanded</AOPatch_Module_VTE>
-    <AOPatch_Module_VTEDesc>预留模块。目前只做存在性与类型诊断；后续会把其温控设备接入 Atmosphere Overhaul 的持续源。</AOPatch_Module_VTEDesc>
+    <AOPatch_Module_VTEDesc>预留模块。目前只做存在性与类型诊断；其温控设备之后会改为绑定大气层重构的持续源。</AOPatch_Module_VTEDesc>
 
     <AOPatch_Module_CCC>Centralized Climate Control (Continued)</AOPatch_Module_CCC>
-    <AOPatch_Module_CCCDesc>预留模块。该 Mod 目前只声明到 1.7 之前的版本，在 1.7 下通常不会加载，本模块会自动跳过。</AOPatch_Module_CCCDesc>
+    <AOPatch_Module_CCCDesc>预留模块。该 Mod 目前没有声明 1.7 支持，因此在 1.7 下通常不会加载，本模块会被跳过。</AOPatch_Module_CCCDesc>
 
-    <AOPatch_Module_Omni>超维科技 OuterrealmTech</AOPatch_Module_Omni>
-    <AOPatch_Module_OmniDesc>预留模块。用于把万能生物圈（CompBiosphere）的温控从「只改读取值」改为写入 Atmosphere Overhaul 的真实温度场。</AOPatch_Module_OmniDesc>
+    <AOPatch_Module_Omni>超维科技</AOPatch_Module_Omni>
+    <AOPatch_Module_OmniDesc>预留模块。之后会让万用生物圈真正写入大气层重构的温度场，而不再只覆盖读取值。</AOPatch_Module_OmniDesc>
 
     <AOPatch_State_NotInstalled>未安装</AOPatch_State_NotInstalled>
     <AOPatch_State_Disabled>已关闭</AOPatch_State_Disabled>
@@ -31,5 +31,6 @@
     <AOPatch_NeedReapply>开关已改变，需要点下方按钮或重启游戏才能生效。</AOPatch_NeedReapply>
     <AOPatch_Reapply>立即重装补丁</AOPatch_Reapply>
     <AOPatch_ReapplyDone>兼容补丁已重装。</AOPatch_ReapplyDone>
-    <AOPatch_Footer>如果 Atmosphere Overhaul 在更新中自行支持了某个 Mod，把对应模块关掉并重启即可回退；其余模块不受影响。</AOPatch_Footer>
+    <AOPatch_Footer>如果大气层重构在更新中自行支持了某个 Mod，把对应模块关掉并重启即可回退；其余模块不受影响。</AOPatch_Footer>
+    <AOPatch_CompatNotLoaded>兼容 DLL 未加载（目标 Mod 不存在，或该目录未列入 LoadFolders）：{0}</AOPatch_CompatNotLoaded>
 </LanguageData>

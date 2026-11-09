@@ -9,7 +9,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Api
     /// 本 Mod 不静态引用任何目标 Mod 的程序集，所有类型/成员都按名称查找；
     /// 查找结果缓存，避免每帧反射。
     /// </summary>
-    internal static class ReflectionCache
+    public static class ReflectionCache
     {
         private static readonly Dictionary<string, Type> Types = new Dictionary<string, Type>();
         private static readonly object Gate = new object();

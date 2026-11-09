@@ -50,7 +50,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
             list.Label("AOPatch_Intro".Translate());
             list.GapLine();
 
-            IReadOnlyList<CompatModule> modules = CompatRegistry.AllModules;
+            IReadOnlyList<CompatModuleInfo> modules = CompatRegistry.AllModules;
             bool changed = false;
 
             bool masterBefore = Settings.MasterEnabled;
@@ -68,7 +68,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
 
             for (int i = 0; i < modules.Count; i++)
             {
-                CompatModule module = modules[i];
+                CompatModuleInfo module = modules[i];
                 bool enabled = module.EnabledByUser;
 
                 string state = ("AOPatch_State_" + module.State).Translate();
@@ -81,7 +81,12 @@ namespace Jeremie.AtmosphereOverhaulPatch
                     changed = true;
                 }
 
-                if (!string.IsNullOrEmpty(module.Detail))
+                if (!module.Loaded)
+                {
+                    // 目标 Mod 不在时兼容 DLL 不会被加载；明确告诉玩家原因
+                    list.Label("    " + "AOPatch_CompatNotLoaded".Translate(module.RelativeFolder), -1f);
+                }
+                else if (!string.IsNullOrEmpty(module.Detail))
                 {
                     list.Label("    " + module.Detail, -1f);
                 }
@@ -101,7 +106,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
 
             if (list.ButtonText("AOPatch_Reapply".Translate()))
             {
-                CompatRegistry.Reapply(HarmonyInstance);
+                CompatRegistry.Reapply();
                 Messages.Message("AOPatch_ReapplyDone".Translate(), MessageTypeDefOf.TaskCompletion, false);
             }
 
@@ -142,7 +147,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
                     PatchLog.Warn("Atmosphere Overhaul 未就绪，所有 AO 相关操作将为空操作。");
                 }
 
-                CompatRegistry.Initialize(harmony);
+                CompatRegistry.Initialize();
             }
             catch (Exception exception)
             {

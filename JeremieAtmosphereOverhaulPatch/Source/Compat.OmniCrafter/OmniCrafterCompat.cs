@@ -20,7 +20,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
     ///
     /// 本模块先只做存在性检测与类型诊断，确保任意子集下都能安全启动。
     /// </summary>
-    internal sealed class OmniCrafterCompat : CompatModule
+    public sealed class OmniCrafterCompat : CompatModuleBase
     {
         private const string AssemblyName = "FullyAutomaticOmniCrafter";
         private const string BiosphereTypeName = "FullyAutomaticOmniCrafter.CompBiosphere";

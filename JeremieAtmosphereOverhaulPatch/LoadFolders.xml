@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <loadFolders>
-    <v1.7>
-        <li>/</li>
-    </v1.7>
+  <!--
+    与 Atmosphere Overhaul 对 Dubs Bad Hygiene 的做法一致：
+    每个目标 Mod 的兼容 DLL / Def / Patches 都放在独立条件目录里，
+    目标 Mod 不存在时这一整个目录不会被加载，兼容 DLL 也就不会被载入。
+
+    因此：
+    - 任意子集（0 个、1 个、全部）都能正常工作；
+    - 卸载某个兼容只需删掉对应目录，或把下面的 <li> 注释掉；
+    - 如果 AO 官方将来内置了某个 Mod 的兼容，直接注释掉对应行即可回退。
+  -->
+  <v1.7>
+    <li>/</li>
+    <li IfModActive="GOS.GoodClimate">1.7/Compat/GoodClimate</li>
+    <li IfModActive="VanillaExpanded.Temperature">1.7/Compat/VanillaTemperatureExpanded</li>
+    <li IfModActive="Mlie.CentralizedClimateControl">1.7/Compat/CentralizedClimateControl</li>
+    <li IfModActive="Jeremie.Fully.Automatic.OmniCrafter">1.7/Compat/OmniCrafter</li>
+  </v1.7>
 </loadFolders>

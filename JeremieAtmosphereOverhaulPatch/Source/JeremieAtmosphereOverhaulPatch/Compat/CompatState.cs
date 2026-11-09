@@ -1,7 +1,7 @@
 namespace Jeremie.AtmosphereOverhaulPatch.Compat
 {
     /// <summary>单个兼容模块的运行时状态。</summary>
-    internal enum CompatState
+    public enum CompatState
     {
         /// <summary>目标 Mod 未安装（或未以对应 packageId 激活）。</summary>
         NotInstalled,

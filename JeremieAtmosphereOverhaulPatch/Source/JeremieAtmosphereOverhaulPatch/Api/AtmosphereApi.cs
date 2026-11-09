@@ -16,7 +16,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Api
     ///
     /// 约定：所有方法失败都返回 false，out 值给默认值，绝不抛异常。
     /// </summary>
-    internal static class AtmosphereApi
+    public static class AtmosphereApi
     {
         private const string InterfaceTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereInterface";
 

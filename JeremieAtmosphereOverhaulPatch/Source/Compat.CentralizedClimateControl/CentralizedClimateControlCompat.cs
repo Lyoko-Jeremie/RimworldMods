@@ -13,7 +13,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
     /// 如果将来作者补上 1.7 支持，届时再把它的大管道/风机接入 AO 的持续源；
     /// 现在保持「检测 + 跳过」，避免对不存在的程序集做任何假设。
     /// </summary>
-    internal sealed class CentralizedClimateControlCompat : CompatModule
+    public sealed class CentralizedClimateControlCompat : CompatModuleBase
     {
         private const string AssemblyName = "CentralizedClimateControl";
 

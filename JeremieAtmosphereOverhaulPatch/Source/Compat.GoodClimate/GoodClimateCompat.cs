@@ -25,7 +25,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
     /// GC 的真空判定全部集中在 MapComponent 的 60 tick 循环里，挂这里只需一次补丁、
     /// 不必触碰 GC 的私有状态，也不会影响它自己的 UI 逻辑。
     /// </summary>
-    internal sealed class GoodClimateCompat : CompatModule
+    public sealed class GoodClimateCompat : CompatModuleBase
     {
         private const string GcMapComponentType = "GOS.GoodClimate.GC_MapComponent";
         private const string GcThingCompType = "GOS.GoodClimate.GC_ThingComp";

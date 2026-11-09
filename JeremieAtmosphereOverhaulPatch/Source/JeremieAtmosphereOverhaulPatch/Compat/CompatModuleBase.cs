@@ -7,31 +7,41 @@ using Verse;
 namespace Jeremie.AtmosphereOverhaulPatch.Compat
 {
     /// <summary>
-    /// 兼容模块基类。
+    /// 兼容模块的公共基类。
     ///
-    /// 每个目标 Mod 对应一个模块，生命周期统一为：
-    ///   LoadSetting → Apply（检查总开关 / 用户开关 / 目标是否存在）→ TryApply
+    /// 把「生命周期」与「设置读写」放在宿主里，具体补丁逻辑留给各兼容 DLL：
+    ///   LoadSetting → Apply（总开关 / 用户开关 / 目标是否存在）→ TryApply
     ///
-    /// 之所以把「目标是否存在」放在 TryApply 之前，是为了让任意子集（包括全都不存在）
-    /// 都能正常工作：缺少目标时状态为 NotInstalled，不做任何反射与补丁动作。
+    /// 每个模块使用独立的 Harmony id，Revert 时只卸载自己，
+    /// 因此「单独回退某个模块」不会波及其它模块。
     /// </summary>
-    internal abstract class CompatModule
+    public abstract class CompatModuleBase : ICompatModule
     {
-        /// <summary>目标 Mod 的 packageId（用于 ModLister 检测）。</summary>
+        private Harmony harmony;
+
         public abstract string PackageId { get; }
 
-        /// <summary>设置界面上显示的名称（i18n key）。</summary>
         public abstract string LabelKey { get; }
 
-        /// <summary>设置界面上显示的说明（i18n key）。</summary>
         public abstract string HintKey { get; }
 
-        public bool EnabledByUser { get; set; }
+        /// <summary>默认按类型名生成，保证每个模块互不干扰。</summary>
+        public virtual string HarmonyId
+        {
+            get { return "Jeremie.AtmosphereOverhaulPatch." + GetType().Name; }
+        }
+
+        public bool EnabledByUser { get; private set; }
 
         public CompatState State { get; protected set; } = CompatState.Disabled;
 
-        /// <summary>附加诊断信息（缺失的成员、异常摘要等），可为 null。</summary>
         public string Detail { get; protected set; }
+
+        /// <summary>本模块独占的 Harmony 实例，首次使用时惰性创建。</summary>
+        protected Harmony Harmony
+        {
+            get { return harmony ?? (harmony = new Harmony(HarmonyId)); }
+        }
 
         public bool IsTargetLoaded
         {
@@ -48,24 +58,36 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
             }
         }
 
-        /// <summary>从设置里读取本模块的用户开关。</summary>
         protected abstract bool ReadSetting();
 
-        /// <summary>把用户开关写回设置。</summary>
         protected abstract void WriteSetting(bool value);
 
         public void LoadSetting()
         {
-            EnabledByUser = ReadSetting();
+            try
+            {
+                EnabledByUser = ReadSetting();
+            }
+            catch
+            {
+                EnabledByUser = false;
+            }
         }
 
         public void SetEnabledByUser(bool value)
         {
             EnabledByUser = value;
-            WriteSetting(value);
+            try
+            {
+                WriteSetting(value);
+            }
+            catch (Exception exception)
+            {
+                PatchLog.Warn("写入模块开关失败（" + PackageId + "）：" + exception.Message);
+            }
         }
 
-        public void Apply(Harmony harmony)
+        public void Apply()
         {
             Detail = null;
 
@@ -90,7 +112,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
 
             try
             {
-                State = TryApply(harmony) ? CompatState.Applied : CompatState.Skipped;
+                State = TryApply(Harmony) ? CompatState.Applied : CompatState.Skipped;
             }
             catch (Exception exception)
             {
@@ -98,6 +120,27 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
                 Detail = exception.GetType().Name + ": " + exception.Message;
                 PatchLog.Error("模块 " + PackageId + " 安装补丁失败", exception);
             }
+        }
+
+        public void Revert()
+        {
+            if (harmony == null)
+            {
+                State = CompatState.Disabled;
+                return;
+            }
+
+            try
+            {
+                harmony.UnpatchAll(HarmonyId);
+                PatchLog.Debug("模块 " + PackageId + " 的补丁已卸载。");
+            }
+            catch (Exception exception)
+            {
+                PatchLog.Warn("模块 " + PackageId + " 卸载失败：" + exception.Message);
+            }
+
+            State = CompatState.Disabled;
         }
 
         /// <summary>安装补丁。返回 false 表示「跳过」（不算失败）。</summary>

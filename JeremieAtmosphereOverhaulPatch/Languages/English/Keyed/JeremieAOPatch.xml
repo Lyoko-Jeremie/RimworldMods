@@ -32,4 +32,5 @@
     <AOPatch_Reapply>Reinstall patches now</AOPatch_Reapply>
     <AOPatch_ReapplyDone>Compatibility patches reinstalled.</AOPatch_ReapplyDone>
     <AOPatch_Footer>If Atmosphere Overhaul later ships its own support for a mod, disable that module and restart; other modules are unaffected.</AOPatch_Footer>
+    <AOPatch_CompatNotLoaded>Compat DLL not loaded (target mod missing, or folder not listed in LoadFolders): {0}</AOPatch_CompatNotLoaded>
 </LanguageData>

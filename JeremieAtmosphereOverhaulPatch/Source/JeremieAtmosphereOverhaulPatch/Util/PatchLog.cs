@@ -6,7 +6,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Util
     /// <summary>
     /// 统一日志前缀，便于在 Player.log 中过滤本 Mod 的输出。
     /// </summary>
-    internal static class PatchLog
+    public static class PatchLog
     {
         public const string Prefix = "[AO Patch] ";
 

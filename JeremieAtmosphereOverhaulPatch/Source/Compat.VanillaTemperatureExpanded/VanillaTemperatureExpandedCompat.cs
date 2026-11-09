@@ -15,7 +15,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
     /// 正确做法是为其温控设备注册 AO 的持续源（AtmosphereSourceRates），
     /// 而不是继续改 Room.Temperature（AO 地图上会被写钩子翻译成逐格注入）。
     /// </summary>
-    internal sealed class VanillaTemperatureExpandedCompat : CompatModule
+    public sealed class VanillaTemperatureExpandedCompat : CompatModuleBase
     {
         private const string AssemblyName = "VanillaTemperatureExpanded";
 
