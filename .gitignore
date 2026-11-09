@@ -130,3 +130,6 @@ fabric.properties
 *.dds
 
 */**/.reasonix/**/*
+
+*/**/Assets.zip
+*/**/Assets.zip.*
