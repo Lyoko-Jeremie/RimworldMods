@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37203.1 d17.14
@@ -8,13 +8,19 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug17|Any CPU = Debug17|Any CPU
 		Release|Any CPU = Release|Any CPU
+		Release17|Any CPU = Release17|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Debug17|Any CPU.ActiveCfg = Debug17|Any CPU
+		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Debug17|Any CPU.Build.0 = Debug17|Any CPU
 		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Release17|Any CPU.ActiveCfg = Release17|Any CPU
+		{090F6822-BCE9-4EE1-9608-611187DEEF19}.Release17|Any CPU.Build.0 = Release17|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

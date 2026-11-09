@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using RimWorld;
@@ -387,7 +387,12 @@ namespace FullyAutomaticGrowingZone
                     int spawnCount = Mathf.Min(virtualYieldBuffer[productDef], stackLimit);
                     Thing fullStack = ThingMaker.MakeThing(productDef);
                     fullStack.stackCount = spawnCount;
-                    TryPlaceInStockpile(fullStack, position);
+
+                    // 放置失败（存储区满/无可用格）时保留虚拟库存，避免产物凭空消失；
+                    // 此处物品尚未 spawn，直接丢弃引用，交由 GC 回收即可
+                    if (!TryPlaceInStockpile(fullStack, position))
+                        break;
+
                     virtualYieldBuffer[productDef] -= spawnCount;
                 }
             }
@@ -405,21 +410,80 @@ namespace FullyAutomaticGrowingZone
             }
         }
 
+        /// <summary>
+        /// 把产物放入存储区。优先在物品尚未出生（未 spawn）时直接寻址：
+        /// 旧实现先把物品丢在种植区地上再搬运，一旦落点附近已有同种堆叠，
+        /// 新物品会被 TryAbsorbStack 吸收导致 thing.Destroyed，后续搬运被跳过，
+        /// 产物就永远留在地上（自动储存看起来"不生效"）。这里改为先找存储格再直接放置。
+        /// </summary>
         private bool TryPlaceInStockpile(Thing thing, IntVec3 fallbackCell)
         {
-            GenPlace.TryPlaceThing(thing, fallbackCell, map, ThingPlaceMode.Near);
-
-            if (!thing.Destroyed && thing.Spawned)
+            if (TryFindStoreCellForThing(thing, fallbackCell, out IntVec3 storeCell)
+                && GenPlace.TryPlaceThing(thing, storeCell, map, ThingPlaceMode.Direct))
             {
-                if (StoreUtility.TryFindBestBetterStoreCellFor(thing, null, map, StoragePriority.Unstored, null,
-                        out IntVec3 storeCell))
+                return true;
+            }
+
+            // 存储区不可用（已满 / 不接受该物品 / 无存储区）时才退回种植区地面，
+            // 并把放置结果返回给调用方，避免产物被悄悄丢失。
+            return GenPlace.TryPlaceThing(thing, fallbackCell, map, ThingPlaceMode.Near);
+        }
+
+        /// <summary>
+        /// 为尚未 spawn 的物品寻找最佳存储格。逻辑与原版
+        /// StoreUtility.TryFindBestBetterStoreCellFor 保持一致，只是用 fallbackCell 作为距离起点，
+        /// 并且不传 carrier（无主物品原版同样跳过可达性检查）。
+        /// </summary>
+        private bool TryFindStoreCellForThing(Thing thing, IntVec3 origin, out IntVec3 foundCell)
+        {
+            foundCell = IntVec3.Invalid;
+
+            List<SlotGroup> groups = map.haulDestinationManager.AllGroupsListInPriorityOrder;
+            if (groups.Count == 0)
+                return false;
+
+            StoragePriority foundPriority = StoragePriority.Unstored;
+            float closestDistSquared = int.MaxValue;
+            IntVec3 closestSlot = IntVec3.Invalid;
+
+            for (int i = 0; i < groups.Count; i++)
+            {
+                SlotGroup group = groups[i];
+                StoragePriority priority = group.Settings.Priority;
+
+                // 原版：列表按优先级降序，遇到更低或等于当前优先级的组即可停止
+                if ((int)priority < (int)foundPriority || (int)priority <= (int)StoragePriority.Unstored)
+                    break;
+
+                if (group.parent == null || !group.parent.HaulDestinationEnabled)
+                    continue;
+
+                // 原版只允许同阵营使用"有主"存储建筑；无主物品 faction=null，因此跳过有阵营的建筑
+                if (group.parent is Thing parentThing && parentThing.Faction != null)
+                    continue;
+
+                if (!group.Settings.AllowedToAccept(thing))
+                    continue;
+
+                List<IntVec3> cells = group.CellsList;
+                for (int j = 0; j < cells.Count; j++)
                 {
-                    thing.DeSpawn();
-                    GenPlace.TryPlaceThing(thing, storeCell, map, ThingPlaceMode.Near);
+                    IntVec3 cell = cells[j];
+                    float distSquared = (origin - cell).LengthHorizontalSquared;
+                    if (distSquared > closestDistSquared)
+                        continue;
+
+                    if (!StoreUtility.IsGoodStoreCell(cell, map, thing, null, null))
+                        continue;
+
+                    closestSlot = cell;
+                    closestDistSquared = distSquared;
+                    foundPriority = priority;
                 }
             }
 
-            return true;
+            foundCell = closestSlot;
+            return closestSlot.IsValid;
         }
 
         public void FlushVirtualBuffer()
@@ -439,12 +503,15 @@ namespace FullyAutomaticGrowingZone
                     }
                 }
 
-                if (!fallbackCell.IsValid) break;
+                // 该 zone 暂时不可用不影响其它 zone
+                if (!fallbackCell.IsValid) continue;
 
                 Thing stack = ThingMaker.MakeThing(def);
                 stack.stackCount = amount;
-                TryPlaceInStockpile(stack, fallbackCell);
-                virtualYieldBuffer[def] = 0;
+
+                // 只有真正放置成功才清空该物品的虚拟库存，否则留待下次刷新重试
+                if (TryPlaceInStockpile(stack, fallbackCell))
+                    virtualYieldBuffer[def] = 0;
             }
         }
 
@@ -458,11 +525,15 @@ namespace FullyAutomaticGrowingZone
                     int count = Mathf.Min(amount, def.stackLimit);
                     Thing leftovers = ThingMaker.MakeThing(def);
                     leftovers.stackCount = count;
-                    GenPlace.TryPlaceThing(leftovers, dropCell, map, ThingPlaceMode.Near);
+
+                    // 放置失败时保留剩余虚拟库存，避免产物丢失
+                    if (!GenPlace.TryPlaceThing(leftovers, dropCell, map, ThingPlaceMode.Near))
+                        break;
+
                     amount -= count;
                 }
 
-                virtualYieldBuffer[def] = 0;
+                virtualYieldBuffer[def] = amount > 0 ? amount : 0;
             }
         }
 
