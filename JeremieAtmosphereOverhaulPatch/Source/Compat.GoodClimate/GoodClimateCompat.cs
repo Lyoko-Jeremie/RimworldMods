@@ -10,26 +10,40 @@ using Verse;
 namespace Jeremie.AtmosphereOverhaulPatch.Compat
 {
     /// <summary>
-    /// Good Climate（GOS.GoodClimate）兼容。
+    /// Good Climate 兼容：把「真空关阀」翻译到 AO 的透气面。
     ///
-    /// 问题：Good Climate 的「强力换热」在检测到任一房间 Room.Vacuum &gt; 0 时，
-    /// 会 DoFlick 关闭原版 CompFlickable，向玩家发出「气压骤降」信件。
-    /// 但 Atmosphere Overhaul 的透气面只认自己的 CompAirVent.speedLimit，
-    /// 对 CompFlickable 的信号仅做 MarkDirty，不会把透气口关上，
-    /// 于是「已关阀」的通风口在 AO 气压场里仍然漏气。
+    /// 背景：
+    /// - Good Climate 的强化换热开启时，一旦两侧房间任一侧 Vacuum &gt; 0，
+    ///   它会调用 CompFlickable.DoFlick() 关掉原版阀门；
+    /// - 但 AO 的 CompAirVent 并不读 CompFlickable，它只看自己的 speedLimit；
+    /// - 所以 GC 关阀之后，AO 的透气面仍然开着，真空照样漏。
     ///
-    /// 做法：在 GC_MapComponent.MapComponentTick 之后补一刀——
-    /// 当 GC 判定真空并关阀时，把同一建筑上的 AO CompAirVent 限速设为 0。
+    /// 做法：
+    /// - 每 60 tick（与 GC 自己的检查同频）扫一遍殖民者建筑里的 Vent；
+    /// - GC 强化模式开启且任一侧处于真空时，把 AO 透气面限速压到 0；
+    /// - 真空解除后恢复它原本的限速（这是旧版缺失的部分）。
     ///
-    /// 为什么挂在 MapComponentTick 而不是 Harmony 补 GC_ThingComp：
-    /// GC 的真空判定全部集中在 MapComponent 的 60 tick 循环里，挂这里只需一次补丁、
-    /// 不必触碰 GC 的私有状态，也不会影响它自己的 UI 逻辑。
+    /// 全部走反射，不静态引用 AO 程序集；AO 版本变化时最多是「联动失效」，不会报错。
     /// </summary>
     public sealed class GoodClimateCompat : CompatModuleBase
     {
-        private const string GcMapComponentType = "GOS.GoodClimate.GC_MapComponent";
-        private const string GcThingCompType = "GOS.GoodClimate.GC_ThingComp";
-        private const string AoAirVentType = "AtmosphereOverhaul.Buildings.CompAirVent";
+        internal const string GcMapComponentType = "GOS.GoodClimate.GC_MapComponent";
+        internal const string GcThingCompType = "GOS.GoodClimate.GC_ThingComp";
+        internal const string AoAirVentType = "AtmosphereOverhaul.Buildings.CompAirVent";
+
+        private static readonly Dictionary<int, SavedLimit> SavedLimits = new Dictionary<int, SavedLimit>();
+
+        private static FieldInfo activeField;
+        private static MethodInfo setSpeedLimitMethod;
+        private static PropertyInfo speedLimitProperty;
+        private static Type airVentType;
+        private static bool resolved;
+
+        private struct SavedLimit
+        {
+            public Map Map;
+            public float Limit;
+        }
 
         public override string PackageId
         {
@@ -43,12 +57,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
 
         public override string HintKey
         {
-            get { return "AOPatch_Module_GoodClimateDesc"; }
+            get { return "AOPatch_Module_GoodClimateHint"; }
+        }
+
+        public override AoCapability Required
+        {
+            get { return AoCapability.None; }
         }
 
         protected override bool ReadSetting()
         {
-            return AOPatchMod.Settings != null && AOPatchMod.Settings.EnableGoodClimate;
+            return AOPatchMod.Settings == null || AOPatchMod.Settings.EnableGoodClimate;
         }
 
         protected override void WriteSetting(bool value)
@@ -61,167 +80,267 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
 
         protected override bool TryApply(Harmony harmony)
         {
-            if (AOPatchMod.Settings != null && !AOPatchMod.Settings.EnableGcVacuumLink)
+            Type mapComponent = ReflectionCache.Type(GcMapComponentType);
+            if (mapComponent == null)
             {
-                Detail = "vacuum-link-off";
+                Detail = "GC_MapComponent not found";
                 return false;
             }
 
-            Type mapComponentType = ReflectionCache.Type(GcMapComponentType);
-            if (mapComponentType == null)
-            {
-                Detail = "GC_MapComponent missing";
-                return false;
-            }
+            ResolveAoSide();
 
-            MethodInfo tick = ReflectionCache.Method(mapComponentType, "MapComponentTick", 0);
+            MethodInfo tick = mapComponent.GetMethod(
+                "MapComponentTick",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+                null,
+                Type.EmptyTypes,
+                null);
+
             if (tick == null)
             {
-                Detail = "MapComponentTick missing";
+                Detail = "GC_MapComponent.MapComponentTick not found";
                 return false;
             }
 
-            MethodInfo postfix = typeof(GoodClimateCompat).GetMethod(
-                nameof(Postfix_MapComponentTick),
-                BindingFlags.Static | BindingFlags.NonPublic);
-
-            if (postfix == null)
+            if (airVentType == null)
             {
-                Detail = "postfix missing";
+                Detail = "AO CompAirVent not found";
                 return false;
             }
 
-            harmony.Patch(tick, postfix: new HarmonyMethod(postfix));
-            Detail = "patched " + mapComponentType.Name + ".MapComponentTick";
+            harmony.Patch(tick, postfix: new HarmonyMethod(typeof(GoodClimateCompat), nameof(MapComponentTickPostfix)));
+            Detail = "vacuum link armed";
             return true;
         }
 
-        /// <summary>
-        /// GC 的 MapComponentTick 每 tick 被调用，内部自己用 IsHashIntervalTick(60) 限流。
-        /// 这里保持同样的节流，避免额外的逐 tick 开销。
-        /// </summary>
-        private static void Postfix_MapComponentTick(MapComponent __instance)
+        private static void ResolveAoSide()
         {
-            try
+            if (resolved)
             {
-                if (__instance == null)
-                {
-                    return;
-                }
-
-                Map map = __instance.map;
-                if (map == null || !map.IsHashIntervalTick(60))
-                {
-                    return;
-                }
-
-                AOPatchSettings settings = AOPatchMod.Settings;
-                if (settings == null || !settings.MasterEnabled || !settings.EnableGoodClimate || !settings.EnableGcVacuumLink)
-                {
-                    return;
-                }
-
-                Type gcCompType = ReflectionCache.Type(GcThingCompType);
-                Type aoVentType = ReflectionCache.Type(AoAirVentType);
-                if (gcCompType == null || aoVentType == null)
-                {
-                    return;
-                }
-
-                FieldInfo activeField = ReflectionCache.Field(gcCompType, "GoodClimate_IE_Active");
-                MethodInfo setSpeedLimit = ReflectionCache.Method(aoVentType, "SetSpeedLimit", 1);
-                PropertyInfo speedLimitProperty = ReflectionCache.Property(aoVentType, "SpeedLimit");
-                if (activeField == null || setSpeedLimit == null)
-                {
-                    return;
-                }
-
-                List<Building> buildings = map.listerBuildings.allBuildingsColonist;
-                for (int i = 0; i < buildings.Count; i++)
-                {
-                    Building building = buildings[i];
-                    if (building == null || !(building is Building_Vent))
-                    {
-                        continue;
-                    }
-
-                    object gcComp = FindComp(building, gcCompType);
-                    if (gcComp == null)
-                    {
-                        continue;
-                    }
-
-                    if (!(ReflectionCache.GetFieldValue(activeField, gcComp) is bool active) || !active)
-                    {
-                        continue;
-                    }
-
-                    Room roomA = (building.Position + building.Rotation.FacingCell).GetRoom(map);
-                    Room roomB = (building.Position - building.Rotation.FacingCell).GetRoom(map);
-                    if (roomA == null || roomB == null)
-                    {
-                        continue;
-                    }
-
-                    if (roomA.Vacuum <= 0f && roomB.Vacuum <= 0f)
-                    {
-                        continue;
-                    }
-
-                    object aoVent = FindComp(building, aoVentType);
-                    if (aoVent == null)
-                    {
-                        continue;
-                    }
-
-                    // 已经是 0 就不重复触发 MarkDirty（会重建地图障碍掩码）
-                    if (speedLimitProperty != null)
-                    {
-                        try
-                        {
-                            object current = speedLimitProperty.GetValue(aoVent, null);
-                            if (current is float speed && speed <= 0.001f)
-                            {
-                                continue;
-                            }
-                        }
-                        catch
-                        {
-                            // 读不到就当作需要关，交给 SetSpeedLimit 内部去判重
-                        }
-                    }
-
-                    try
-                    {
-                        setSpeedLimit.Invoke(aoVent, new object[] { 0f });
-                        PatchLog.Debug("真空联动：已把 " + building.LabelShortCap + " 的 AO 透气面限速设为 0");
-                    }
-                    catch (Exception exception)
-                    {
-                        PatchLog.Warn("关闭 AO 透气面失败：" + exception.GetType().Name + ": " + exception.Message);
-                    }
-                }
+                return;
             }
-            catch (Exception exception)
+
+            resolved = true;
+
+            Type thingComp = ReflectionCache.Type(GcThingCompType);
+            if (thingComp != null)
             {
-                PatchLog.Warn("Good Climate 真空联动执行异常：" + exception.GetType().Name + ": " + exception.Message);
+                activeField = ReflectionCache.Field(thingComp, "GoodClimate_IE_Active");
+            }
+
+            airVentType = ReflectionCache.Type(AoAirVentType);
+            if (airVentType != null)
+            {
+                setSpeedLimitMethod = ReflectionCache.Method(airVentType, "SetSpeedLimit", 1);
+                speedLimitProperty = airVentType.GetProperty(
+                    "SpeedLimit",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             }
         }
 
-        private static ThingComp FindComp(Building building, Type compType)
+        private static void MapComponentTickPostfix(MapComponent __instance)
         {
-            List<ThingComp> comps = building.AllComps;
-            if (comps == null)
+            AOPatchSettings settings = AOPatchMod.Settings;
+            if (settings == null || !settings.EnableGcVacuumLink)
+            {
+                return;
+            }
+
+            Map map = __instance == null ? null : __instance.map;
+            if (map == null || !map.IsHashIntervalTick(60))
+            {
+                return;
+            }
+
+            ResolveAoSide();
+            if (activeField == null || setSpeedLimitMethod == null)
+            {
+                return;
+            }
+
+            HashSet<int> alive = new HashSet<int>();
+
+            List<Building> buildings = map.listerBuildings.allBuildingsColonist;
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                Building building = buildings[i];
+                if (building == null || building.def == null || !(building is Building_Vent))
+                {
+                    continue;
+                }
+
+                ThingComp airVent = FindComp(building, airVentType);
+                if (airVent == null)
+                {
+                    continue;
+                }
+
+                alive.Add(building.thingIDNumber);
+
+                if (!IsIntensive(building))
+                {
+                    Restore(building, airVent);
+                    continue;
+                }
+
+                if (IsVacuum(building, map))
+                {
+                    Suppress(building, airVent);
+                }
+                else
+                {
+                    Restore(building, airVent);
+                }
+            }
+
+            // 清理已经不存在（被拆/被毁/换地图）的建筑记录，避免字典无限增长
+            List<int> stale = null;
+            foreach (KeyValuePair<int, SavedLimit> pair in SavedLimits)
+            {
+                if (pair.Value.Map == map && !alive.Contains(pair.Key))
+                {
+                    if (stale == null)
+                    {
+                        stale = new List<int>();
+                    }
+
+                    stale.Add(pair.Key);
+                }
+            }
+
+            if (stale != null)
+            {
+                for (int i = 0; i < stale.Count; i++)
+                {
+                    SavedLimits.Remove(stale[i]);
+                }
+            }
+        }
+
+        private static bool IsIntensive(Building building)
+        {
+            if (activeField == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                List<ThingComp> comps = building.AllComps;
+                for (int i = 0; i < comps.Count; i++)
+                {
+                    ThingComp comp = comps[i];
+                    if (comp != null && activeField.DeclaringType.IsInstanceOfType(comp))
+                    {
+                        object value = activeField.GetValue(comp);
+                        return value is bool active && active;
+                    }
+                }
+            }
+            catch
+            {
+                // 忽略
+            }
+
+            return false;
+        }
+
+        private static bool IsVacuum(Building building, Map map)
+        {
+            try
+            {
+                IntVec3 facing = building.Rotation.FacingCell;
+                Room front = (building.Position + facing).GetRoom(map);
+                Room back = (building.Position - facing).GetRoom(map);
+                return (front != null && front.Vacuum > 0f) || (back != null && back.Vacuum > 0f);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void Suppress(Building building, ThingComp airVent)
+        {
+            int id = building.thingIDNumber;
+            if (SavedLimits.ContainsKey(id))
+            {
+                return;
+            }
+
+            float current = GetSpeed(airVent);
+            SavedLimits[id] = new SavedLimit
+            {
+                Map = building.Map,
+                Limit = current > 0f ? current : 0f,
+            };
+
+            if (current > 0f)
+            {
+                SetSpeed(airVent, 0f);
+                PatchLog.Debug("真空联动：关闭 " + building.def.defName + " @ " + building.Position + "（原限速 " + current.ToString("F1") + "）");
+            }
+        }
+
+        private static void Restore(Building building, ThingComp airVent)
+        {
+            SavedLimit saved;
+            if (!SavedLimits.TryGetValue(building.thingIDNumber, out saved))
+            {
+                return;
+            }
+
+            SavedLimits.Remove(building.thingIDNumber);
+            if (saved.Limit > 0f)
+            {
+                SetSpeed(airVent, saved.Limit);
+                PatchLog.Debug("真空联动：恢复 " + building.def.defName + " @ " + building.Position + "（限速 " + saved.Limit.ToString("F1") + "）");
+            }
+        }
+
+        private static float GetSpeed(ThingComp airVent)
+        {
+            if (speedLimitProperty == null)
+            {
+                return 0f;
+            }
+
+            try
+            {
+                object value = speedLimitProperty.GetValue(airVent, null);
+                return value is float speed ? speed : 0f;
+            }
+            catch
+            {
+                return 0f;
+            }
+        }
+
+        private static void SetSpeed(ThingComp airVent, float speed)
+        {
+            try
+            {
+                setSpeedLimitMethod.Invoke(airVent, new object[] { speed });
+            }
+            catch (Exception exception)
+            {
+                PatchLog.WarnOnce("GcVacuumSetSpeed", "设置 AO 透气面限速失败：" + exception.Message);
+            }
+        }
+
+        private static ThingComp FindComp(Building building, Type type)
+        {
+            if (type == null)
             {
                 return null;
             }
 
+            List<ThingComp> comps = building.AllComps;
             for (int i = 0; i < comps.Count; i++)
             {
-                ThingComp comp = comps[i];
-                if (comp != null && comp.GetType() == compType)
+                if (comps[i] != null && type.IsInstanceOfType(comps[i]))
                 {
-                    return comp;
+                    return comps[i];
                 }
             }
 

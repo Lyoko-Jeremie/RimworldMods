@@ -93,6 +93,40 @@ namespace Jeremie.AtmosphereOverhaulPatch
             }
 
             list.GapLine();
+            list.Label("AOPatch_GlobalHeader".Translate());
+
+            list.CheckboxLabeled(
+                "AOPatch_ForceField".Translate(),
+                ref Settings.EnableForceField,
+                "AOPatch_ForceFieldDesc".Translate());
+
+            if (Settings.EnableForceField)
+            {
+                list.Label("AOPatch_ForceFieldInterval".Translate(Settings.ForceFieldIntervalTicks), -1f);
+                Settings.ForceFieldIntervalTicks = Mathf.RoundToInt(
+                    list.Slider(Settings.ForceFieldIntervalTicks, 1f, 60f));
+
+                list.Label("AOPatch_ForceFieldBudget".Translate(Settings.ForceFieldCellsPerInterval), -1f);
+                Settings.ForceFieldCellsPerInterval = Mathf.RoundToInt(
+                    list.Slider(Settings.ForceFieldCellsPerInterval, 16f, 1024f));
+
+                list.CheckboxLabeled(
+                    "AOPatch_ForceFieldKillWind".Translate(),
+                    ref Settings.ForceFieldKillWind,
+                    "AOPatch_ForceFieldKillWindDesc".Translate());
+            }
+
+            list.CheckboxLabeled(
+                "AOPatch_CccLocalizedVent".Translate(),
+                ref Settings.EnableCccLocalizedVent,
+                "AOPatch_CccLocalizedVentDesc".Translate());
+
+            list.CheckboxLabeled(
+                "AOPatch_ForceBuiltIn".Translate(),
+                ref Settings.ForceOverrideBuiltInCompat,
+                "AOPatch_ForceBuiltInDesc".Translate());
+
+            list.GapLine();
 
             list.CheckboxLabeled(
                 "AOPatch_VerboseLogging".Translate(),
@@ -108,6 +142,20 @@ namespace Jeremie.AtmosphereOverhaulPatch
             {
                 CompatRegistry.Reapply();
                 Messages.Message("AOPatch_ReapplyDone".Translate(), MessageTypeDefOf.TaskCompletion, false);
+            }
+
+            if (list.ButtonText("AOPatch_Dump".Translate()))
+            {
+                try
+                {
+                    string path = Diagnostics.Dump();
+                    Messages.Message("AOPatch_DumpDone".Translate(path), MessageTypeDefOf.TaskCompletion, false);
+                }
+                catch (Exception exception)
+                {
+                    PatchLog.Error("导出诊断失败", exception);
+                    Messages.Message("AOPatch_DumpFailed".Translate(exception.Message), MessageTypeDefOf.RejectInput, false);
+                }
             }
 
             list.GapLine();

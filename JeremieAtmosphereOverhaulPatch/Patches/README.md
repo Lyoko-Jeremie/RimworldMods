@@ -1,10 +1,14 @@
 # Patches
 
-本框架默认**不使用 XML 补丁**：所有行为都通过 C# 的兼容模块在运行时按条件安装，
-这样「目标 Mod 不存在」时天然零副作用。
+行为逻辑都在 C# 兼容模块里，这里只放**静态 Def 数据**补丁。
 
-如果将来需要按 Mod 条件注入 Def（例如给某个目标 Mod 的建筑追加 comps），
-请在这里放 XML，并且每个文件都用 `PatchOperationFindMod` 包一层，例如：
+当前文件：
+
+| 文件 | 目标 | 作用 |
+| --- | --- | --- |
+| `VteFacilities.xml` | `VanillaExpanded.Temperature` | 给风管/风阀加 `airLeakFactor=0`（管道不该漏气），给温控设备补耐压/抗风参数 |
+
+每个文件都必须用 `PatchOperationFindMod` 包一层，目标 Mod 不存在时整段跳过，例如：
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13,10 +17,12 @@
     <mods>
       <li>GOS.GoodClimate</li>
     </mods>
-    <match Class="PatchOperationAdd">
-      <xpath>/Defs/ThingDef[defName="Vent"]/comps</xpath>
+    <match Class="PatchOperationAddModExtension">
+      <xpath>Defs/ThingDef[defName="Vent"]</xpath>
       <value>
-        <li Class="Some.CompProperties" />
+        <li Class="AtmosphereOverhaul.Simulation.BuildingAtmosphereExtension">
+          <airLeakFactor>0</airLeakFactor>
+        </li>
       </value>
     </match>
   </Operation>

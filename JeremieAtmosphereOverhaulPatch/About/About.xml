@@ -33,10 +33,10 @@
 
 [h2]当前覆盖的目标[/h2]
 [list]
-[*] [b]Good Climate[/b]（GOS.GoodClimate）——修复「真空自动关阀」在 AO 地图上失效的问题：Good Climate 关的是原版 CompFlickable，而 AO 的透气面只看自己的 speedLimit，两者不联动。
-[*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature）——预留接入位与诊断。
-[*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl）——该 Mod 目前未声明 1.7 支持，框架会在检测不到时静默跳过。
-[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter）——预留接入位，用于把万能生物圈的温控接到 AO 的大气场。
+[*] [b]Good Climate[/b]（GOS.GoodClimate）——修复「真空自动关阀」在 AO 地图上失效的问题：Good Climate 关的是原版 CompFlickable，而 AO 的透气面只看自己的 speedLimit，两者不联动。关闭时把 AO 限速置 0，真空解除后恢复。
+[*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature）——接管其空调、壁挂加热/制冷与双格加热器，改用 AO 的逐格温度输出，同时保留管道效率与资源消耗。
+[*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl）——1.7 下会经 LoadFolders 版本回退加载 1.6 目录；本 Mod 把风口的真空判定改为读取 AO 气压场。
+[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter）——把万用生物圈与穹顶发生器的覆盖区域真正写入 AO 的温度与气压场，而不再只覆盖界面读数。
 [/list]
 
 [h2]软兼容[/h2]

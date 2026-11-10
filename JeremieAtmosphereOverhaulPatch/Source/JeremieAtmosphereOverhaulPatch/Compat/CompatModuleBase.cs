@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using HarmonyLib;
+using Jeremie.AtmosphereOverhaulPatch.Api;
 using Jeremie.AtmosphereOverhaulPatch.Util;
 using Verse;
 
@@ -10,7 +11,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
     /// 兼容模块的公共基类。
     ///
     /// 把「生命周期」与「设置读写」放在宿主里，具体补丁逻辑留给各兼容 DLL：
-    ///   LoadSetting → Apply（总开关 / 用户开关 / 目标是否存在）→ TryApply
+    ///   LoadSetting → Apply（总开关 / 用户开关 / 目标存在 / 内置兼容 / AO 能力）→ TryApply
     ///
     /// 每个模块使用独立的 Harmony id，Revert 时只卸载自己，
     /// 因此「单独回退某个模块」不会波及其它模块。
@@ -36,6 +37,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
         public CompatState State { get; protected set; } = CompatState.Disabled;
 
         public string Detail { get; protected set; }
+
+        /// <summary>默认不依赖任何 AO 能力；需要 AO 物理场的模块自行覆写。</summary>
+        public virtual AoCapability Required
+        {
+            get { return AoCapability.None; }
+        }
 
         /// <summary>本模块独占的 Harmony 实例，首次使用时惰性创建。</summary>
         protected Harmony Harmony
@@ -110,6 +117,29 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
                 return;
             }
 
+            // AO 已经自带该 Mod 的兼容时默认让路；用户可在设置里强制覆盖。
+            if (AOPatchMod.Settings == null || !AOPatchMod.Settings.ForceOverrideBuiltInCompat)
+            {
+                string evidence = AoBuiltInCompat.Evidence(PackageId);
+                if (!string.IsNullOrEmpty(evidence))
+                {
+                    State = CompatState.Skipped;
+                    Detail = "AO built-in: " + evidence;
+                    PatchLog.Info("跳过模块 " + PackageId + "：AO 已内置兼容（" + evidence + "）。");
+                    return;
+                }
+            }
+
+            // AO 版本变化导致 API 缺失时，降级为 Skipped，而不是 Failed。
+            AoCapability missing = Required & ~AoCapabilities.Available;
+            if (missing != AoCapability.None)
+            {
+                State = CompatState.Skipped;
+                Detail = "missing AO capability: " + AoCapabilities.Describe(missing);
+                PatchLog.Warn("跳过模块 " + PackageId + "：缺少 AO 能力 " + AoCapabilities.Describe(missing) + "。");
+                return;
+            }
+
             try
             {
                 State = TryApply(Harmony) ? CompatState.Applied : CompatState.Skipped;
@@ -133,6 +163,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
             try
             {
                 harmony.UnpatchAll(HarmonyId);
+                OnRevert();
                 PatchLog.Debug("模块 " + PackageId + " 的补丁已卸载。");
             }
             catch (Exception exception)
@@ -141,6 +172,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
             }
 
             State = CompatState.Disabled;
+        }
+
+        /// <summary>卸载补丁之后的清理钩子（例如注销运行时注册的区域）。</summary>
+        protected virtual void OnRevert()
+        {
         }
 
         /// <summary>安装补丁。返回 false 表示「跳过」（不算失败）。</summary>

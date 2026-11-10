@@ -1,4 +1,5 @@
 using HarmonyLib;
+using Jeremie.AtmosphereOverhaulPatch.Api;
 
 namespace Jeremie.AtmosphereOverhaulPatch.Compat
 {
@@ -35,6 +36,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat
 
         /// <summary>附加诊断信息，可为 null。</summary>
         string Detail { get; }
+
+        /// <summary>
+        /// 本模块依赖的 AO 能力。缺能力时模块会被标成 Skipped，
+        /// 而不是 Failed——这样 AO 版本变化只会让模块静默失效，不会报错。
+        /// </summary>
+        AoCapability Required { get; }
 
         /// <summary>从设置里读取用户开关。</summary>
         void LoadSetting();
