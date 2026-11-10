@@ -117,4 +117,24 @@
     <OmniWorkstation_ManagerRepairAllDone>Repaired every proxy pool: {0} newly created.</OmniWorkstation_ManagerRepairAllDone>
     <OmniWorkstation_DeathGuard>death guard: kills blocked {0} / set-dead blocked {1} / downed blocked {2} / destroyed externally {3} / vacuum hediffs blocked {4}</OmniWorkstation_DeathGuard>
     <OmniWorkstation_DeathGuardLast>death guard last event: {0}</OmniWorkstation_DeathGuardLast>
+    <OmniWorkstation_RangeMode>Work range: {0}</OmniWorkstation_RangeMode>
+    <OmniWorkstation_RangeModeDesc>Circular radius centres on the workstation; Player area uses an area you painted by hand, and work targets must lie inside it.</OmniWorkstation_RangeModeDesc>
+    <OmniWorkstation_RangeModeRadius>Circular radius</OmniWorkstation_RangeModeRadius>
+    <OmniWorkstation_RangeModeArea>Player area</OmniWorkstation_RangeModeArea>
+    <OmniWorkstation_SelectArea>Select area: {0}</OmniWorkstation_SelectArea>
+    <OmniWorkstation_SelectAreaDesc>Pick a vanilla allowed area on this map as the work range. Only available in Player area mode.</OmniWorkstation_SelectAreaDesc>
+    <OmniWorkstation_SelectAreaDisabled>Area selection is only available in Player area mode.</OmniWorkstation_SelectAreaDisabled>
+    <OmniWorkstation_AreaNone>none</OmniWorkstation_AreaNone>
+    <OmniWorkstation_AreaEmpty>That area is empty and cannot be used as a work range.</OmniWorkstation_AreaEmpty>
+    <OmniWorkstation_AreaEmptyFallback>The area became empty; switched back to Circular radius mode.</OmniWorkstation_AreaEmptyFallback>
+    <OmniWorkstation_AreaEmptySuffix>(empty)</OmniWorkstation_AreaEmptySuffix>
+    <OmniWorkstation_AreaClear>Switch back to Circular radius mode</OmniWorkstation_AreaClear>
+    <OmniWorkstation_AreaNoneAvailable>This map has no usable vanilla allowed areas. Create one in the Areas category first.</OmniWorkstation_AreaNoneAvailable>
+    <OmniWorkstation_AreaMissing>The area this workstation referenced no longer exists or belongs to another map; switched back to Circular radius mode.</OmniWorkstation_AreaMissing>
+    <OmniWorkstation_AreaWrongMap>That area does not belong to the workstation's map.</OmniWorkstation_AreaWrongMap>
+    <OmniWorkstation_AreaModeCrossMapDisabled>Cross-map and cross-level work is disabled in Player area mode.</OmniWorkstation_AreaModeCrossMapDisabled>
+    <OmniWorkstation_RadiusDisabledInAreaMode>Radius does not affect the work range in Player area mode.</OmniWorkstation_RadiusDisabledInAreaMode>
+    <OmniWorkstation_StatusArea>Work range: area "{0}"</OmniWorkstation_StatusArea>
+    <OmniWorkstation_StatusAreaEmpty>Work range: area (empty)</OmniWorkstation_StatusAreaEmpty>
+    <OmniWorkstation_SelectAreaHelp>Pick an allowed area on this map; paint stockpiles, storage and workbenches inside it as needed.</OmniWorkstation_SelectAreaHelp>
 </LanguageData>

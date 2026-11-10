@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -17,10 +17,19 @@ namespace FullyAutomaticOmniCrafter
     /// 继承 Building_VirtualStoreHost：额外实现原版存储 / 搬运接口（只出不进的虚拟存储），
     /// 实际行为全部由挂在 Def 上的 CompOmniVirtualStore 提供，本类不含存储逻辑。
     /// </summary>
+    /// <summary>工作范围模式：圆形半径，或玩家指定的原版活动区。</summary>
+    public enum OmniWorkRangeMode
+    {
+        Radius,
+        Area
+    }
+
     public sealed class Building_OmniWorkstation : Building_VirtualStoreHost
     {
         public const int MinWorkRadius = 1;
         public const int MaxWorkRadius = 256;
+        /// <summary>区域模式下允许代理在工作站周围活动的兜底半径（出舱、待命与回舱）。</summary>
+        public const int StandbyRadius = 2;
 
         /// <summary>
         /// 默认启用的工作类型：灭火、医生、基本、烹饪、酿酒、狩猎、建造、种植、采矿、割除、
@@ -45,6 +54,10 @@ namespace FullyAutomaticOmniCrafter
         // 默认关闭 —— 代理默认只在归属地图内工作，需要跨层 / 跨图调度时由玩家在工作站上手动开启。
         // 老存档没有该字段时同样按 false 补齐，即升级后默认不再跨图。
         private bool allowCrossMapWork = false;
+        // 工作范围模式：默认沿用旧存档的圆形半径；区域模式引用玩家已有的原版活动区。
+        private OmniWorkRangeMode workRangeMode = OmniWorkRangeMode.Radius;
+        // 玩家指定的活动区引用。区域被删除、不属于当前地图或变空时由地图组件永久回退到半径模式。
+        private Area configuredArea;
         // 旧存档没有该字段，载入后需要把默认过滤器补齐，否则老工作站仍会保持“全部启用”。
         private bool workFilterInitialized;
         [Unsaved] private int workFilterVersion;
@@ -53,6 +66,8 @@ namespace FullyAutomaticOmniCrafter
         private static readonly HashSet<IntVec3> InnerBorderCells = new HashSet<IntVec3>();
 
         public bool AutomationEnabled => automationEnabled;
+        public OmniWorkRangeMode WorkRangeMode => workRangeMode;
+        public Area ConfiguredArea => configuredArea;
         public int WorkRadius => workRadius;
         public bool AllowUnclassifiedWork => allowUnclassifiedWork;
         public bool AllowCrossMapWork => allowCrossMapWork;
@@ -75,7 +90,31 @@ namespace FullyAutomaticOmniCrafter
 
         public bool Covers(IntVec3 cell)
         {
-            return Spawned && cell.InBounds(Map) && Position.InHorDistOf(cell, WorkRadius);
+            if (!Spawned || !cell.InBounds(Map)) return false;
+            if (workRangeMode == OmniWorkRangeMode.Area)
+                return HasUsableConfiguredArea(Map) && configuredArea[cell];
+            return Position.InHorDistOf(cell, WorkRadius);
+        }
+
+        /// <summary>配置区域是否属于指定地图（不要求非空）。</summary>
+        public bool HasValidConfiguredArea(Map forMap)
+        {
+            return configuredArea != null && forMap != null && configuredArea.areaManager == forMap.areaManager;
+        }
+
+        /// <summary>区域模式下可用的范围：区域存在、属于本图且非空（空区域由维护周期回退）。</summary>
+        public bool HasUsableConfiguredArea(Map forMap)
+        {
+            return HasValidConfiguredArea(forMap) && configuredArea.TrueCount > 0;
+        }
+
+        /// <summary>
+        /// 区域模式下的工作目标判定：严格位于玩家区域内。工作站周围半径 2 格只用于代理待命，
+        /// 不扩大工作目标范围。
+        /// </summary>
+        public bool InConfiguredArea(IntVec3 cell)
+        {
+            return HasUsableConfiguredArea(Map) && cell.InBounds(Map) && configuredArea[cell];
         }
 
         /// <summary>
@@ -86,8 +125,13 @@ namespace FullyAutomaticOmniCrafter
         /// </summary>
         public bool CoversOn(Map pawnMap, IntVec3 cell)
         {
-            if (!Spawned || pawnMap == null) return false;
-            if (!cell.InBounds(pawnMap)) return false;
+            if (!Spawned || pawnMap == null || !cell.InBounds(pawnMap)) return false;
+            if (workRangeMode == OmniWorkRangeMode.Area)
+            {
+                // 活动区按地图独立保存；区域模式不支持跨图/跨层，避免用同坐标投影误判。
+                if (pawnMap != Map) return false;
+                return HasUsableConfiguredArea(pawnMap) && configuredArea[cell];
+            }
             return Position.InHorDistOf(cell, WorkRadius);
         }
 
@@ -119,6 +163,8 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Collections.Look(ref disabledWorkTypeDefNames, "disabledWorkTypeDefNames", LookMode.Value);
             Scribe_Values.Look(ref allowUnclassifiedWork, "allowUnclassifiedWork", true);
             Scribe_Values.Look(ref allowCrossMapWork, "allowCrossMapWork", false);
+            Scribe_Values.Look(ref workRangeMode, "workRangeMode", OmniWorkRangeMode.Radius);
+            Scribe_References.Look(ref configuredArea, "configuredArea");
             Scribe_Values.Look(ref workFilterInitialized, "workFilterInitialized", false);
             if (disabledWorkTypeDefNames == null) disabledWorkTypeDefNames = new List<string>();
             disabledWorkTypeSet = null;
@@ -280,6 +326,40 @@ namespace FullyAutomaticOmniCrafter
             Map?.GetComponent<MapComponent_OmniWorkstation>().NotifyConfigurationChanged(this);
         }
 
+        public void SetRangeMode(OmniWorkRangeMode mode)
+        {
+            if (workRangeMode == mode) return;
+            workRangeMode = mode;
+            if (mode == OmniWorkRangeMode.Radius) configuredArea = null;
+            Map?.GetComponent<MapComponent_OmniWorkstation>()?.NotifyConfigurationChanged(this);
+        }
+
+        /// <summary>设置玩家活动区；区域必须属于当前地图且非空。</summary>
+        public bool SetConfiguredArea(Area area)
+        {
+            if (area == null || Map == null || area.areaManager != Map.areaManager || area.TrueCount <= 0)
+                return false;
+            workRangeMode = OmniWorkRangeMode.Area;
+            configuredArea = area;
+            Map?.GetComponent<MapComponent_OmniWorkstation>()?.NotifyConfigurationChanged(this);
+            return true;
+        }
+
+        /// <summary>
+        /// 永久回退到圆形半径模式：清空区域引用、重建镜像并按需提示原因。
+        /// 用于区域变空、被删除或换图后引用失效。
+        /// </summary>
+        public void SwitchToRadiusMode(string reasonKey)
+        {
+            bool changed = workRangeMode != OmniWorkRangeMode.Radius || configuredArea != null;
+            workRangeMode = OmniWorkRangeMode.Radius;
+            configuredArea = null;
+            if (changed)
+                Map?.GetComponent<MapComponent_OmniWorkstation>()?.NotifyConfigurationChanged(this);
+            if (!reasonKey.NullOrEmpty())
+                Messages.Message(reasonKey.Translate(), MessageTypeDefOf.CautionInput, false);
+        }
+
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (Gizmo gizmo in base.GetGizmos())
@@ -307,13 +387,54 @@ namespace FullyAutomaticOmniCrafter
                 toggleAction = () => OmniWorkstationMonitor.SetVisible(!OmniWorkstationMonitor.Visible)
             };
 
+            // 工作范围模式：圆形半径，或玩家指定的原版活动区。
             yield return new Command_Action
+            {
+                defaultLabel = "OmniWorkstation_RangeMode".Translate(
+                    workRangeMode == OmniWorkRangeMode.Area
+                        ? "OmniWorkstation_RangeModeArea".Translate()
+                        : "OmniWorkstation_RangeModeRadius".Translate()),
+                defaultDesc = "OmniWorkstation_RangeModeDesc".Translate(),
+                icon = TexCommand.Install,
+                action = () =>
+                {
+                    List<FloatMenuOption> options = new List<FloatMenuOption>(2)
+                    {
+                        new FloatMenuOption("OmniWorkstation_RangeModeRadius".Translate(),
+                            () => SetRangeMode(OmniWorkRangeMode.Radius)),
+                        new FloatMenuOption("OmniWorkstation_RangeModeArea".Translate(),
+                            () => SetRangeMode(OmniWorkRangeMode.Area))
+                    };
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            };
+
+            Command_Action selectAreaCommand = new Command_Action
+            {
+                defaultLabel = "OmniWorkstation_SelectArea".Translate(
+                    ConfiguredArea != null ? ConfiguredArea.Label : "OmniWorkstation_AreaNone".Translate().ToString()),
+                defaultDesc = "OmniWorkstation_SelectAreaDesc".Translate(),
+                icon = TexCommand.ForbidOff,
+                action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationSelectArea(this))
+            };
+            if (workRangeMode != OmniWorkRangeMode.Area)
+            {
+                selectAreaCommand.Disable("OmniWorkstation_SelectAreaDisabled".Translate());
+            }
+            yield return selectAreaCommand;
+
+            Command_Action radiusCommand = new Command_Action
             {
                 defaultLabel = "OmniWorkstation_Radius".Translate(WorkRadius),
                 defaultDesc = "OmniWorkstation_RadiusDesc".Translate(),
                 icon = TexCommand.Install,
                 action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationRadius(this))
             };
+            if (workRangeMode == OmniWorkRangeMode.Area)
+            {
+                radiusCommand.Disable("OmniWorkstation_RadiusDisabledInAreaMode".Translate());
+            }
+            yield return radiusCommand;
 
             yield return new Command_Action
             {
@@ -325,7 +446,7 @@ namespace FullyAutomaticOmniCrafter
 
             // 工作站级「跨图 / 跨层工作」开关：关闭后从这台工作站派出的代理一律不响应归属图之外的工作
             //（硬性条件，不受“仅警告”准入模式影响）。并集语义：同一张图上任一台工作站开启即允许。
-            yield return new Command_Toggle
+            Command_Toggle crossMapCommand = new Command_Toggle
             {
                 defaultLabel = "OmniWorkstation_AllowCrossMapWork".Translate(),
                 defaultDesc = "OmniWorkstation_AllowCrossMapWorkDesc".Translate(),
@@ -333,6 +454,11 @@ namespace FullyAutomaticOmniCrafter
                 isActive = () => allowCrossMapWork,
                 toggleAction = () => allowCrossMapWork = !allowCrossMapWork
             };
+            if (workRangeMode == OmniWorkRangeMode.Area)
+            {
+                crossMapCommand.Disable("OmniWorkstation_AreaModeCrossMapDisabled".Translate());
+            }
+            yield return crossMapCommand;
 
             MapComponent_OmniWorkstation manager = Map?.GetComponent<MapComponent_OmniWorkstation>();
             if (manager != null)
@@ -377,8 +503,13 @@ namespace FullyAutomaticOmniCrafter
         public override void DrawExtraSelectionOverlays()
         {
             base.DrawExtraSelectionOverlays();
-            if (Spawned)
-                DrawWorkRadiusRing(Position, WorkRadius, automationEnabled ? Color.cyan : Color.gray);
+            if (!Spawned) return;
+            if (workRangeMode == OmniWorkRangeMode.Area)
+            {
+                if (HasValidConfiguredArea(Map)) configuredArea.MarkForDraw();
+                return;
+            }
+            DrawWorkRadiusRing(Position, WorkRadius, automationEnabled ? Color.cyan : Color.gray);
         }
 
         private static void DrawWorkRadiusRing(IntVec3 center, float radius, Color color)
@@ -434,9 +565,21 @@ namespace FullyAutomaticOmniCrafter
         public override string GetInspectString()
         {
             string original = base.GetInspectString();
-            string status = automationEnabled
-                ? "OmniWorkstation_StatusEnabled".Translate(WorkRadius)
-                : "OmniWorkstation_StatusDisabled".Translate();
+            string status;
+            if (!automationEnabled)
+            {
+                status = "OmniWorkstation_StatusDisabled".Translate();
+            }
+            else if (workRangeMode == OmniWorkRangeMode.Area)
+            {
+                status = HasUsableConfiguredArea(Map)
+                    ? "OmniWorkstation_StatusArea".Translate(configuredArea.Label)
+                    : "OmniWorkstation_StatusAreaEmpty".Translate();
+            }
+            else
+            {
+                status = "OmniWorkstation_StatusEnabled".Translate(WorkRadius);
+            }
             return original.NullOrEmpty() ? status : original + "\n" + status;
         }
     }
@@ -531,6 +674,68 @@ namespace FullyAutomaticOmniCrafter
                     radius = parsed;
                     station.SetWorkRadius(radius);
                 }
+            }
+            listing.End();
+        }
+    }
+
+    /// <summary>
+    /// 选择玩家活动区作为工作范围。只列出原版 Area_Allowed，
+    /// 避免把其它 Mod 自定义的不可指派区域混进列表。
+    /// </summary>
+    public sealed class Dialog_OmniWorkstationSelectArea : Window
+    {
+        private readonly Building_OmniWorkstation station;
+
+        public override Vector2 InitialSize => new Vector2(460f, 420f);
+
+        public Dialog_OmniWorkstationSelectArea(Building_OmniWorkstation station)
+        {
+            this.station = station;
+            doCloseButton = true;
+            doCloseX = true;
+            forcePause = true;
+            absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            if (station == null || station.Destroyed)
+            {
+                Close();
+                return;
+            }
+
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(inRect);
+            listing.Label("OmniWorkstation_SelectAreaHelp".Translate());
+
+            Map map = station.Spawned ? station.Map : Find.CurrentMap;
+            int shown = 0;
+            if (map != null)
+            {
+                List<Area> areas = map.areaManager.AllAreas;
+                for (int i = 0; i < areas.Count; i++)
+                {
+                    if (!(areas[i] is Area_Allowed allowed)) continue;
+                    shown++;
+                    string label = allowed.Label;
+                    if (allowed.TrueCount <= 0)
+                        label += " " + "OmniWorkstation_AreaEmptySuffix".Translate().ToString();
+                    if (!listing.ButtonText(label)) continue;
+                    if (!station.SetConfiguredArea(allowed))
+                        Messages.Message("OmniWorkstation_AreaEmpty".Translate(),
+                            MessageTypeDefOf.RejectInput, false);
+                    Close();
+                    break;
+                }
+            }
+            if (shown == 0) listing.Label("OmniWorkstation_AreaNoneAvailable".Translate());
+
+            if (listing.ButtonText("OmniWorkstation_AreaClear".Translate()))
+            {
+                station.SwitchToRadiusMode(null);
+                Close();
             }
             listing.End();
         }
@@ -1491,7 +1696,11 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < stations.Count; i++)
             {
                 Building_OmniWorkstation station = stations[i];
-                if (station != null && !station.Destroyed && station.AllowCrossMapWork) return true;
+                // 区域模式按工作站粒度禁用跨图：活动区属于单张地图，无法用同坐标投影到别图。
+                if (station != null && !station.Destroyed
+                    && station.WorkRangeMode == OmniWorkRangeMode.Radius
+                    && station.AllowCrossMapWork)
+                    return true;
             }
             return false;
         }
@@ -1647,6 +1856,10 @@ namespace FullyAutomaticOmniCrafter
             public bool probePending;
             public Pawn probePawn;
             public Area_OmniWorkstation workArea;
+            // 区域模式：玩家区域被编辑后置脏，由维护周期统一重建镜像，避免逐格抖动。
+            public bool areaDirty;
+            // 区域连续为空的维护周期数；达到 2 个周期才回退半径，避免拖拽重画时误判。
+            public int areaEmptyTicks;
         }
 
         public MapComponent_OmniWorkstation(Map map) : base(map)
@@ -1994,14 +2207,98 @@ namespace FullyAutomaticOmniCrafter
             Building_OmniWorkstation station = runtime?.station;
             if (area == null || station == null || !station.Spawned) return;
 
+            // 区域模式下镜像 = 玩家活动区 ∪ 工作站周围兜底半径：
+            // 前者是工作目标范围，后者只保证代理出舱/待命时不会被自身区域限制困在区域外。
+            bool areaMode = station.WorkRangeMode == OmniWorkRangeMode.Area
+                && station.HasValidConfiguredArea(map);
+
             // 配置修改属于低频操作；逐格比较只通知真正发生变化的格子，
             // 避免 Clear 后遗漏原版寻路区域缓存的移除通知。
             int cellCount = map.cellIndices.NumGridCells;
             for (int index = 0; index < cellCount; index++)
             {
                 IntVec3 cell = map.cellIndices.IndexToCell(index);
-                bool covered = station.Covers(cell);
+                bool covered = areaMode
+                    ? station.InConfiguredArea(cell) || station.Position.InHorDistOf(cell, Building_OmniWorkstation.StandbyRadius)
+                    : station.Covers(cell);
                 if (area[index] != covered) area[index] = covered;
+            }
+            runtime.areaDirty = false;
+            // 空区域的镜像重建不能清掉空计数，否则维护周期永远等不到第二次确认。
+            if (!areaMode || station.HasUsableConfiguredArea(map)) runtime.areaEmptyTicks = 0;
+        }
+
+        /// <summary>
+        /// 玩家活动区被编辑后由 Area.Set/Invert/Clear 的补丁回调，只置脏不立即重建。
+        /// </summary>
+        public void NotifyConfiguredAreaEdited(Area area)
+        {
+            if (area == null) return;
+            foreach (KeyValuePair<Building_OmniWorkstation, StationRuntime> pair in stationStates)
+            {
+                StationRuntime runtime = pair.Value;
+                Building_OmniWorkstation station = runtime?.station;
+                if (station != null && station.WorkRangeMode == OmniWorkRangeMode.Area
+                    && station.ConfiguredArea == area)
+                    runtime.areaDirty = true;
+            }
+        }
+
+        /// <summary>玩家活动区被删除后立即回退半径模式，避免维护周期窗口期内继续按失效区域工作。</summary>
+        public void NotifyConfiguredAreaRemoved(Area area)
+        {
+            if (area == null) return;
+            foreach (KeyValuePair<Building_OmniWorkstation, StationRuntime> pair in stationStates)
+            {
+                Building_OmniWorkstation station = pair.Value?.station;
+                if (station != null && station.ConfiguredArea == area)
+                    station.SwitchToRadiusMode("OmniWorkstation_AreaMissing");
+            }
+        }
+
+        /// <summary>
+        /// 每个维护周期检查区域模式：引用失效立即回退；空区域连续两个周期回退；
+        /// 被编辑过的区域重建镜像并唤醒一次搜索。
+        /// </summary>
+        private void ProcessAreaRangeMaintenance()
+        {
+            foreach (KeyValuePair<Building_OmniWorkstation, StationRuntime> pair in stationStates)
+            {
+                StationRuntime runtime = pair.Value;
+                Building_OmniWorkstation station = runtime?.station;
+                if (station == null || station.Destroyed) continue;
+                if (station.WorkRangeMode != OmniWorkRangeMode.Area) continue;
+
+                Area area = station.ConfiguredArea;
+                if (area == null || !station.HasValidConfiguredArea(map))
+                {
+                    station.SwitchToRadiusMode("OmniWorkstation_AreaMissing");
+                    continue;
+                }
+
+                if (area.TrueCount <= 0)
+                {
+                    runtime.areaEmptyTicks++;
+                    if (runtime.areaEmptyTicks >= 2)
+                    {
+                        station.SwitchToRadiusMode("OmniWorkstation_AreaEmptyFallback");
+                        continue;
+                    }
+                }
+                else
+                {
+                    runtime.areaEmptyTicks = 0;
+                }
+
+                if (runtime.areaDirty || runtime.workArea == null
+                    || runtime.workArea.areaManager != map.areaManager)
+                {
+                    RebuildWorkArea(runtime);
+                    // 区域变化后代理不会自动接新活：唤醒一次搜索，让工作立刻按新范围重选。
+                    ResetStationSearchState(runtime, CurrentTick);
+                    OmniWorkProxyEntryAuthorization.Invalidate(map);
+                    WakePumpNow();
+                }
             }
         }
 
@@ -2101,6 +2398,8 @@ namespace FullyAutomaticOmniCrafter
                 MaintainAbroadProxies(tick);
                 // 入口授权表：每个维护周期全量重算一次（入口数量少，成本可忽略）。
                 OmniWorkProxyEntryAuthorization.Refresh(map);
+                // 区域模式：引用失效/空区域回退、区域编辑后重建镜像并唤醒搜索。
+                ProcessAreaRangeMaintenance();
                 for (int i = 0; i < proxies.Count; i++)
                     RefreshProxyState(proxies[i], false);
                 int scheduledTick = ComputeNextPumpTick(tick);
@@ -4407,6 +4706,71 @@ namespace FullyAutomaticOmniCrafter
             }
             absorbed = true;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 玩家活动区被逐格编辑时通知地图组件。内部镜像 Area_OmniWorkstation 的写回
+    /// 也走 Area.Set，必须排除，否则重建镜像会自触发。
+    /// </summary>
+    [HarmonyPatch(typeof(Area), "Set", new Type[] { typeof(IntVec3), typeof(bool) })]
+    public static class Patch_Area_Set_NotifyOmniWorkstationArea
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Area __instance)
+        {
+            if (__instance == null || __instance is Area_OmniWorkstation) return;
+            AreaManager manager = __instance.areaManager;
+            if (manager == null) return;
+            manager.map?.GetComponent<MapComponent_OmniWorkstation>()?
+                .NotifyConfiguredAreaEdited(__instance);
+        }
+    }
+
+    /// <summary>Area.Invert 直接改 innerGrid、不经过 Area.Set，需单独通知。</summary>
+    [HarmonyPatch(typeof(Area), nameof(Area.Invert))]
+    public static class Patch_Area_Invert_NotifyOmniWorkstationArea
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Area __instance)
+        {
+            if (__instance == null || __instance is Area_OmniWorkstation) return;
+            AreaManager manager = __instance.areaManager;
+            if (manager == null) return;
+            manager.map?.GetComponent<MapComponent_OmniWorkstation>()?
+                .NotifyConfiguredAreaEdited(__instance);
+        }
+    }
+
+    /// <summary>Area.Clear 同样绕过 Area.Set，需单独通知。</summary>
+    [HarmonyPatch(typeof(Area), nameof(Area.Clear))]
+    public static class Patch_Area_Clear_NotifyOmniWorkstationArea
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Area __instance)
+        {
+            if (__instance == null || __instance is Area_OmniWorkstation) return;
+            AreaManager manager = __instance.areaManager;
+            if (manager == null) return;
+            manager.map?.GetComponent<MapComponent_OmniWorkstation>()?
+                .NotifyConfiguredAreaEdited(__instance);
+        }
+    }
+
+    /// <summary>
+    /// 活动区被真正删除后立即回退半径模式。原版 Remove 会先检查 Mutable，
+    /// 未真正移除时不再通知（否则不可删除区域每次删除失败都会误触发回退）。
+    /// </summary>
+    [HarmonyPatch(typeof(AreaManager), "Remove", new Type[] { typeof(Area) })]
+    public static class Patch_AreaManager_Remove_NotifyOmniWorkstationArea
+    {
+        [HarmonyPostfix]
+        public static void Postfix(AreaManager __instance, Area __0)
+        {
+            if (__instance == null || __0 == null) return;
+            if (__instance.AllAreas.Contains(__0)) return;
+            __instance.map?.GetComponent<MapComponent_OmniWorkstation>()?
+                .NotifyConfiguredAreaRemoved(__0);
         }
     }
 }
