@@ -56,6 +56,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private readonly HashSet<Thing> liveWindOwners = new HashSet<Thing>();
         private readonly List<Thing> deadWindOwners = new List<Thing>();
 
+        // 收集一个出风口当前真正能向哪几格送气。墙挂型一格，Surround 型八邻域一圈。
+        private readonly List<IntVec3> ventScratch = new List<IntVec3>();
+
         public AirLoopMapComponent(Map map) : base(map)
         {
         }
@@ -501,40 +504,74 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
             if (net.Consumers != null && exhaustCubicMetres > 1e-6f)
             {
-                float share = exhaustCubicMetres / Mathf.Max(1, net.Consumers.Count);
+                // 先数清楚有几个出风口真的能出气。全被堵住的出风口不该分到流量，
+                // 否则气会白白消失在墙里，回路压力凭空下降。
+                int liveVents = 0;
                 for (int i = 0; i < net.Consumers.Count; i++)
                 {
-                    CompAirFlowConsumer consumer = net.Consumers[i];
-                    if (consumer == null || consumer.parent == null || consumer.parent.Destroyed)
+                    CompAirFlowConsumer probe = net.Consumers[i];
+                    if (probe == null || probe.parent == null || probe.parent.Destroyed)
                     {
                         continue;
                     }
-                    IntVec3 vent = consumer.parent.Position +
-                                   IntVec3Utility.RotatedBy(IntVec3.North, consumer.parent.Rotation);
-                    AoBridge.AddVolumeSourceAtTemperature(
-                        map,
-                        vent,
-                        share / 5f,
-                        loop.OxygenPercent,
-                        loop.TemperatureK - 273.15f);
-
-                    // 水汽不走体积源：AO 的 MixReleasedGas 只处理氧与温度。
-                    // 把回路浓度与房间浓度的差按注入体积摊到该格，等价于两团气完全混合。
-                    // 只有在回路水汽已标定过时才搬，否则默认 0 会凭空吸干房间。
-                    if (loop.VaporValid)
+                    CollectVentCells(probe, ventScratch);
+                    if (ventScratch.Count > 0)
                     {
-                        float roomVapor;
-                        if (AoBridge.TryGetAbsoluteVapor(map, vent, out roomVapor))
+                        ++liveVents;
+                    }
+                }
+
+                if (liveVents > 0)
+                {
+                    float share = exhaustCubicMetres / liveVents;
+                    for (int i = 0; i < net.Consumers.Count; i++)
+                    {
+                        CompAirFlowConsumer consumer = net.Consumers[i];
+                        if (consumer == null || consumer.parent == null || consumer.parent.Destroyed)
                         {
-                            float vaporDelta = share * (loop.VaporContent - roomVapor) / (5f + share);
-                            if (vaporDelta != 0f)
+                            continue;
+                        }
+
+                        CollectVentCells(consumer, ventScratch);
+                        if (ventScratch.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        // 一个出风口可能同时向多格送气（Surround 八邻域）。
+                        // 体积、氧、热、湿按格数平摊，总通量不变。
+                        float perCellM3 = share / ventScratch.Count;
+                        float cellVolumes = perCellM3 / 5f;
+                        for (int k = 0; k < ventScratch.Count; k++)
+                        {
+                            IntVec3 vent = ventScratch[k];
+                            AoBridge.AddVolumeSourceAtTemperature(
+                                map,
+                                vent,
+                                cellVolumes,
+                                loop.OxygenPercent,
+                                loop.TemperatureK - 273.15f);
+
+                            // 水汽不走体积源：AO 的 MixReleasedGas 只处理氧与温度。
+                            // 把回路浓度与房间浓度的差按注入体积摊到该格，等价于两团气完全混合。
+                            // 只有在回路水汽已标定过时才搬，否则默认 0 会凭空吸干房间。
+                            if (loop.VaporValid)
                             {
-                                AoBridge.AddMoistureDelta(map, vent, vaporDelta);
+                                float roomVapor;
+                                if (AoBridge.TryGetAbsoluteVapor(map, vent, out roomVapor))
+                                {
+                                    float vaporDelta = perCellM3 * (loop.VaporContent - roomVapor) /
+                                                       (5f + perCellM3);
+                                    if (vaporDelta != 0f)
+                                    {
+                                        AoBridge.AddMoistureDelta(map, vent, vaporDelta);
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    ApplyWind(consumer, vent);
+                        ApplyWind(consumer, ventScratch);
+                    }
                 }
             }
 
@@ -640,7 +677,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         /// 温度、氧、水汽仍走 AddVolumeSourceAtTemperature，这里只写风，
         /// 所以 TemperaturePerTick 保持 0，不会重复加热。
         /// </summary>
-        private void ApplyWind(CompAirFlowConsumer consumer, IntVec3 vent)
+        private void ApplyWind(CompAirFlowConsumer consumer, List<IntVec3> cells)
         {
             Thing owner = consumer.parent;
             if (owner == null || owner.Destroyed)
@@ -661,29 +698,104 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
             liveWindOwners.Add(owner);
 
+            // 没有可出风的格，或断电、关闭、故障：把残留的风清零，
+            // 否则 AO 会一直按上一次的目标速度吹。
+            if (cells.Count == 0)
+            {
+                AoBridge.ZeroFrom(slots, owner, 0);
+                return;
+            }
+
             ThingWithComps holder = owner as ThingWithComps;
             CompPowerTrader power = holder != null ? holder.GetComp<CompPowerTrader>() : null;
             CompFlickable flick = holder != null ? holder.GetComp<CompFlickable>() : null;
             bool powered = power == null || power.PowerOn;
             bool switchedOn = flick == null || flick.SwitchIsOn;
-            bool blocked = !vent.InBounds(map) || vent.Impassable(map);
-            bool active = powered && switchedOn && !owner.IsBrokenDown() && !blocked;
-
-            // 方向就是出风口朝向：建筑旋转后的 North，与 AO 温控出风口一致。
-            IntVec3 offset = IntVec3Utility.RotatedBy(IntVec3.North, owner.Rotation);
-            Vector2 direction = new Vector2(offset.x, offset.z);
-            float length = direction.magnitude;
-            direction = length > 1e-4f ? direction / length : Vector2.zero;
+            bool active = powered && switchedOn && !owner.IsBrokenDown();
+            if (!active)
+            {
+                AoBridge.ZeroFrom(slots, owner, 0);
+                return;
+            }
 
             float airFlow = consumer.Props.baseAirExhaust *
                             Mathf.Max(0.01f, CentralizedClimateControlUtility.AirExhaustMultiplier);
-            float speed = active ? Mathf.Min(MaxWindSpeed, airFlow * WindSpeedPerAirFlowUnit) : 0f;
+            float speed = Mathf.Min(MaxWindSpeed, airFlow * WindSpeedPerAirFlowUnit);
 
-            SlotRates rates = default(SlotRates);
-            rates.MaintainTargetWind = active && speed > 0f;
-            rates.TargetWind = direction * speed;
-            rates.TargetWindBlendPerTick = WindBlendPerTick;
-            AoBridge.SetSlot(slots, owner, 0, vent, rates);
+            // 全周出风时总动量守恒：每格速度按 1/sqrt(N) 摊薄，N·v² 与单向时相同。
+            // 单向时 N=1，退化成原来的整速。
+            float perCellSpeed = speed / Mathf.Sqrt(cells.Count);
+            IntVec3 center = owner.Position;
+
+            for (int k = 0; k < cells.Count; k++)
+            {
+                IntVec3 cell = cells[k];
+
+                // 方向从建筑中心指向该格。墙挂型只有一格，等价于原来的正面朝向。
+                Vector2 direction = new Vector2(cell.x - center.x, cell.z - center.z);
+                float length = direction.magnitude;
+                bool hasDirection = length > 1e-4f;
+                if (hasDirection)
+                {
+                    direction = direction / length;
+                }
+
+                SlotRates rates = default(SlotRates);
+                rates.MaintainTargetWind = hasDirection && perCellSpeed > 0f;
+                rates.TargetWind = hasDirection ? direction * perCellSpeed : Vector2.zero;
+                rates.TargetWindBlendPerTick = WindBlendPerTick;
+                AoBridge.SetSlot(slots, owner, k, cell, rates);
+            }
+
+            // 出风格数变少时（比如 Surround 半圈被墙堵住）清掉多余槽位。
+            AoBridge.ZeroFrom(slots, owner, cells.Count);
+        }
+
+        /// <summary>
+        /// 收集一个出风口真正向哪几格送气。
+        /// 墙挂型只有正面一格；Surround 型按 CCC 自己的 PlaceWorker 约定是八邻域全周。
+        /// 原版 Building_AirVent.TickRare 只处理正面一格，与 Surround 的贴图和放置检查不一致，
+        /// 这里按建筑本身的视觉语义补齐。
+        /// </summary>
+        private void CollectVentCells(CompAirFlowConsumer consumer, List<IntVec3> cells)
+        {
+            cells.Clear();
+
+            Thing owner = consumer != null ? consumer.parent : null;
+            if (owner == null || owner.Destroyed)
+            {
+                return;
+            }
+
+            if (IsSurroundVent(owner.def))
+            {
+                foreach (IntVec3 cell in GenAdj.CellsAdjacent8Way(owner.Position, owner.Rotation, owner.def.Size))
+                {
+                    if (cell.InBounds(map) && !cell.Impassable(map))
+                    {
+                        cells.Add(cell);
+                    }
+                }
+                return;
+            }
+
+            IntVec3 vent = owner.Position + IntVec3Utility.RotatedBy(IntVec3.North, owner.Rotation);
+            if (vent.InBounds(map) && !vent.Impassable(map))
+            {
+                cells.Add(vent);
+            }
+        }
+
+        /// <summary>
+        /// 靠 PlaceWorker 而不是 defName 识别环绕型出风口。
+        /// SurroundAirVent 与 SurroundAirVentWide 都用 PlaceWorker_SurroundAirVent，
+        /// 墙挂型用 PlaceWorker_NeedsWall + PlaceWorker_AirVent。
+        /// </summary>
+        private static bool IsSurroundVent(ThingDef def)
+        {
+            return def != null &&
+                   def.placeWorkers != null &&
+                   def.placeWorkers.Contains(typeof(PlaceWorker_SurroundAirVent));
         }
 
         /// <summary>出风口被拆或改向后，注销它残留的连续源。</summary>
