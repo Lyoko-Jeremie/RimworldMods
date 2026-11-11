@@ -308,6 +308,21 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             net.Efficiency = s;
             LastEfficiency = s;
+
+            // 临时诊断：每 2000 tick 打一行，确认账本确实跑到了、且各个量不是 0。
+            if (tick % 2000 < LedgerIntervalTicks)
+            {
+                string first = "-";
+                if (_entries.Count > 0)
+                {
+                    UnitEntry e = _entries[0];
+                    first = string.Format("qi={0:F2} qFull={1:F2} cell={2}", e.Qi, e.QFull, e.Cell);
+                }
+                Log.Message(string.Format(
+                    "[AOPatch/VTE] 账本 net={0} 室内机={1} 压缩机={2} receivers={3} producers={4} a={5:F2} b={6:F2} cap={7:F1} s={8:F3} 首台[{9}]",
+                    net.GetHashCode(), _entries.Count, _compressors.Count, net.receivers.Count, net.producers.Count,
+                    a, b, capacity, s, first));
+            }
         }
 
         private static Building_AcControlUnit FindController(AcPipeNet net)

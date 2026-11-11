@@ -76,8 +76,29 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
     {
         static VanillaTemperatureExpandedBootstrap()
         {
+            // 无条件日志：先确认这个程序集本身有没有被游戏加载、这个类有没有被扫描到。
+            // 排查「有风无温度」时日志里连吊扇补丁的痕迹都没有，
+            // 要么 DLL 没加载，要么安装逻辑被静默跳过。
+            Log.Message("[AOPatch/VTE] 兼容程序集已加载。");
+
+            // RimUnity 的 DeferredModInitialization 可能在本类之后才实例化 AOPatchMod，
+            // 那时 Instance / HarmonyInstance 还是 null。等到加载完成再装，顺序就稳了。
+            if (AOPatchMod.Instance == null || AOPatchMod.HarmonyInstance == null)
+            {
+                Log.Message("[AOPatch/VTE] 宿主尚未就绪，延后到加载完成再安装。");
+                LongEventHandler.ExecuteWhenFinished(Install);
+                return;
+            }
+
+            Install();
+        }
+
+        /// <summary>真正安装补丁。可能由 cctor 直接调用，也可能由 LongEventHandler 延后调用。</summary>
+        private static void Install()
+        {
             if (AOPatchMod.Instance == null)
             {
+                Log.Error("[AOPatch/VTE] 安装时 AOPatchMod.Instance 仍为 null，VTE 兼容模块停用。");
                 return;
             }
             if (AOPatchMod.Settings != null && !AOPatchMod.Settings.MasterEnabled)
@@ -88,6 +109,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             Harmony harmony = AOPatchMod.HarmonyInstance;
             if (harmony == null)
             {
+                Log.Error("[AOPatch/VTE] AOPatchMod.HarmonyInstance 为 null，VTE 兼容模块停用。");
                 return;
             }
 

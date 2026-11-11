@@ -58,13 +58,21 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
             }
 
+            Log.Message("[AOPatch/VTE] 中央空调三管式 VRF 已接管：Building_AcUnit.TickRare + AcPipeNet.PipeSystemTick"
+                        + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）"));
             return true;
         }
 
         public static bool AcUnitTickRarePrefix(Building_AcUnit __instance)
         {
-            if (__instance == null || !AoBridge.Available)
+            if (__instance == null)
             {
+                return true;
+            }
+
+            if (!AoBridge.Available)
+            {
+                FallbackOnce("AoBridge 不可用：" + AoBridge.Failure);
                 return true;
             }
 
@@ -95,6 +103,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             // 账本已写入 AO 连续源，原 TickRare 不再需要写房间温度。
             return false;
+        }
+
+        private static bool _fallbackLogged;
+
+        private static void FallbackOnce(string reason)
+        {
+            if (_fallbackLogged)
+            {
+                return;
+            }
+            _fallbackLogged = true;
+            Log.Warning("[AOPatch/VTE] 中央空调回退原逻辑：" + reason);
         }
 
         public static bool PipeSystemTickPrefix(AcPipeNet __instance)
