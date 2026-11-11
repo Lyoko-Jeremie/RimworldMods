@@ -13,7 +13,7 @@ using Verse;
 namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNet
 {
     /// <summary>
-    /// 一个 AcPipeNet 的 250 tick 账本。
+    /// 一个 AcPipeNet 的模拟步账本（随 AO 的模拟步推进，默认 30 tick 一步）。
     ///
     /// VTE 原本是「每台室内机各自和房间换热」的单机模型，冷凝热凭空消失；
     /// 这里把它重构成三管式 VRF：先汇总整张网络的冷凝侧 a 与蒸发侧 b，
@@ -27,8 +27,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
     /// </summary>
     internal sealed class AcNetLedger
     {
-        /// <summary>账本周期，与 TickRare 对齐。</summary>
-        public const int LedgerIntervalTicks = 250;
+        /// <summary>参考周期（250 tick），只用于把「可支持几台室内机」换算成热容量。</summary>
+        public const int ReferenceIntervalTicks = 250;
 
         /// <summary>低于此值的净差视为完全平衡。</summary>
         private const float MinNetThreshold = 0.01f;
@@ -45,8 +45,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             public CompResourceTrader Trader;
             public CompPowerTrader Power;
             public IntVec3 Cell;
-            public float Qi;      // 带符号的需求，K·格 / 250 tick
-            public float QFull;   // 满额 |Qi|，K·格 / 250 tick
+            public float Qi;      // 带符号的需求，K·格 / 本次模拟步
+            public float QFull;   // 满额 |Qi|，K·格 / 本次模拟步
         }
 
         private readonly List<UnitEntry> _entries = new List<UnitEntry>(8);
@@ -58,14 +58,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
         public int LastRunTick = -99999;
         public float LastEfficiency = 1f;
 
-        public bool NeedsRun(int tick)
+        /// <summary>
+        /// 跑一次账本。由 AO 模拟步回调调用，dtTicks 是本次模拟实际推进的 tick 数
+        /// （AO 未跑完时会累加成 12/18/24/30，不能假定固定值）。
+        /// </summary>
+        public void Run(AcPipeNet net, int dtTicks)
         {
-            return LastRunTick != tick;
-        }
+            if (dtTicks <= 0)
+            {
+                return;
+            }
 
-        /// <summary>跑一次账本。调用方保证同一 tick 只调一次。</summary>
-        public void Run(AcPipeNet net)
-        {
             int tick = Find.TickManager.TicksGame;
             LastRunTick = tick;
             _entries.Clear();
@@ -124,7 +127,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     continue;
                 }
 
-                IntVec3 cell = unit.Position + IntVec3Utility.RotatedBy(OutputOffset(unit), unit.Rotation);
+                IntVec3 cell = OutputCell(unit);
                 if (!cell.InBounds(map) || GenGrid.Impassable(cell, map))
                 {
                     trader.ResourceOn = false;
@@ -145,7 +148,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
 
                 float heatFactor = AoBridge.HeatFactor(unit.def, 1f);
-                float qFull = Mathf.Abs(eps) * (LedgerIntervalTicks / 60f) * heatFactor;
+                float qFull = Mathf.Abs(eps) * (dtTicks / 60f) * heatFactor;
                 if (qFull <= 0f)
                 {
                     continue;
@@ -155,7 +158,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 float drive = Mathf.Clamp01(Mathf.Abs(target - cellTemperature) / 1f);
                 // 与原版同符号：eps 为负，目标低于格温时乘 +1 得到负值（制冷），
                 // 目标高于格温时乘 -1 得到正值（制热），于是 ACUnit 天然是双向机。
-                float qi = eps * (LedgerIntervalTicks / 60f)
+                float qi = eps * (dtTicks / 60f)
                            * (target < cellTemperature ? 1f : -1f)
                            * drive * heatFactor;
 
@@ -184,8 +187,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
 
             // 3. 压缩机容量：VTE 的 2/6 是「可支持几台满额室内机」的台数单位，
-            //    必须乘 Q_ref 才能和 K·格 / 250 tick 的净差比较。
-            float refCapacity = qRef > 0f ? qRef : DefaultRefCapacity;
+            //    必须乘 Q_ref 才能和本次模拟步的 K·格 净差比较。
+            float refCapacity = qRef > 0f ? qRef : DefaultRefCapacity * (dtTicks / (float)ReferenceIntervalTicks);
             float capacity = 0f;
             List<CompResourceTrader> producers = net.producers;
             for (int i = 0; i < producers.Count; i++)
@@ -258,9 +261,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     continue;
                 }
 
-                IntVec3 direction = IntVec3Utility.RotatedBy(OutputOffset(entry.Unit), entry.Unit.Rotation);
+                IntVec3 direction = entry.Cell - entry.Unit.Position;
                 SlotRates rates = new SlotRates();
-                rates.TemperaturePerTick = qOut / LedgerIntervalTicks;
+                rates.TemperaturePerTick = qOut / dtTicks;
                 rates.MaintainTargetWind = true;
                 rates.TargetWind = new Vector2(direction.x, direction.z)
                                    * AoBridge.OutletWindSpeed(entry.Unit.def, 15f);
@@ -275,9 +278,40 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 for (int i = 0; i < _compressors.Count; i++)
                 {
                     Thing parent = _compressors[i].parent;
-                    if (parent != null && parent.Spawned)
+                    if (parent == null || !parent.Spawned)
                     {
-                        AoBridge.PushHeat(map, parent.Position, push);
+                        continue;
+                    }
+
+                    // 制热时室外机是蒸发器，要从周围空气抽热。若不加限制，大负荷会把
+                    // 压缩机周围的五格一路抽到 -200℃，AO 的水汽随之凝结成雾，
+                    // 表现为「间歇喷出低温气体」。这里按每步最多降温 8℃、绝对下限 -30℃ 限幅。
+                    float unitPush = push;
+                    if (unitPush < 0f)
+                    {
+                        float cellTemperature;
+                        if (AoBridge.TryGetTemperature(map, parent.Position, out cellTemperature))
+                        {
+                            float outdoor = map.mapTemperature.OutdoorTemp;
+                            float baseline = cellTemperature < outdoor ? cellTemperature : outdoor;
+                            // 8℃ / 250 tick 的降温速率上限，按本次 dt 折算。
+                            float maxDrop = 8f * (dtTicks / (float)ReferenceIntervalTicks);
+                            float floor = Mathf.Max(-30f, baseline - maxDrop);
+                            float allowed = 5f * (floor - cellTemperature);
+                            if (unitPush < allowed)
+                            {
+                                unitPush = allowed;
+                            }
+                            if (unitPush > 0f)
+                            {
+                                unitPush = 0f;
+                            }
+                        }
+                    }
+
+                    if (unitPush != 0f)
+                    {
+                        AoBridge.PushHeat(map, parent.Position, unitPush);
                     }
                 }
             }
@@ -310,7 +344,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             LastEfficiency = s;
 
             // 临时诊断：每 2000 tick 打一行，确认账本确实跑到了、且各个量不是 0。
-            if (tick % 2000 < LedgerIntervalTicks)
+            if (tick % 2000 < 30)
             {
                 string first = "-";
                 if (_entries.Count > 0)
@@ -370,6 +404,47 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     producers[i].ResourceOn = false;
                 }
             }
+        }
+
+        /// <summary>墙机出风格诊断：每局只打印一次，便于确认 Rotation 与 offset 的实际关系。</summary>
+        private static bool _wallCellLogged;
+
+        /// <summary>
+        /// 实际出风格。
+        ///
+        /// 普通壁挂机（VTE_ACUnit）的 offset 是 North，取「机身正前方」。
+        /// 墙机（VTE_ACUnitWall）的 offset 是 (0,0,0)：原版靠 GetRoom(自身格) 把温度摊到整个
+        /// 房间，写哪一格都无所谓；AO 是格级模拟，必须落在房间那一侧。
+        /// Placeworker_AttachedToWall 要求 loc + CardinalDirections[rot] 是 FillCategory.Full
+        /// 的墙，也就是 Rotation 指向身后的墙，所以正面是 RotatedBy(South, Rotation)。
+        /// </summary>
+        private static IntVec3 OutputCell(Building_AcUnit unit)
+        {
+            IntVec3 offset = OutputOffset(unit);
+            Map map = unit.Map;
+            IntVec3 cell = unit.Position + IntVec3Utility.RotatedBy(offset, unit.Rotation);
+
+            if (offset != IntVec3.Zero)
+            {
+                return cell;
+            }
+
+            IntVec3 front = unit.Position + IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation);
+            IntVec3 result = front.InBounds(map) && !GenGrid.Impassable(front, map) ? front : cell;
+
+            if (!_wallCellLogged)
+            {
+                _wallCellLogged = true;
+                Log.Message("[AOPatch/VTE] 墙机出风格诊断：pos=" + unit.Position
+                            + " rot=" + unit.Rotation.AsInt
+                            + " offset=" + offset
+                            + " 自身格=" + cell
+                            + " 正面候选=" + front
+                            + " 采用=" + result
+                            + " def=" + unit.def.defName);
+            }
+
+            return result;
         }
 
         /// <summary>

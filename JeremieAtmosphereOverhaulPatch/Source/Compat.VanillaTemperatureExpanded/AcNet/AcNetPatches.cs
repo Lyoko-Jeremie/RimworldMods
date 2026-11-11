@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using Jeremie.AtmosphereOverhaulPatch.Bridge;
@@ -58,7 +59,28 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
             }
 
+            // 账本随 AO 的模拟步推进（默认 30 tick 一步），而不是每 250 tick 抽一次。
+            // 与 CCC 的 AirLoopStepPatch 同一入口：CompleteFinishedSimulation 前后
+            // lastSynchronizedSimulationTick 的差值就是本次模拟实际推进的 tick 数。
+            bool stepPatched = false;
+            Type aoMapType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
+            if (aoMapType != null)
+            {
+                FieldInfo tickField = AccessTools.Field(aoMapType, "lastSynchronizedSimulationTick");
+                MethodInfo complete = AccessTools.Method(aoMapType, "CompleteFinishedSimulation");
+                if (tickField != null && complete != null)
+                {
+                    _simulationTickField = tickField;
+                    harmony.Patch(
+                        complete,
+                        new HarmonyMethod(typeof(AcNetPatches), "SimulationStepPrefix"),
+                        new HarmonyMethod(typeof(AcNetPatches), "SimulationStepPostfix"));
+                    stepPatched = true;
+                }
+            }
+
             Log.Message("[AOPatch/VTE] 中央空调三管式 VRF 已接管：Building_AcUnit.TickRare + AcPipeNet.PipeSystemTick"
+                        + (stepPatched ? " + AO 模拟步推进" : "（未找到 CompleteFinishedSimulation，账本停摆）")
                         + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）"));
             return true;
         }
@@ -95,15 +117,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 return true;
             }
 
-            int tick = Find.TickManager.TicksGame;
-            if (ledger.NeedsRun(tick))
-            {
-                ledger.Run(net);
-            }
-
-            // 账本已写入 AO 连续源，原 TickRare 不再需要写房间温度。
+            // 温度与风由「模拟步账本」统一写进 AO 连续源，原 TickRare 不再需要写房间温度。
+            // 账本由 AO 的 CompleteFinishedSimulation 回调推进，不在这里跑。
             return false;
         }
+
+        private static FieldInfo _simulationTickField;
 
         private static bool _fallbackLogged;
 
@@ -143,6 +162,62 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             // VTE 空调的 AO 温控组件不再自行换热，避免覆盖账本槽位。
             return !(__instance.parent is Building_AcUnit);
+        }
+
+        /// <summary>记录本次模拟开始前的同步 tick，Postfix 里算差值得到真实 dt。</summary>
+        public static void SimulationStepPrefix(object __instance, out int __state)
+        {
+            __state = _simulationTickField != null ? (int)_simulationTickField.GetValue(__instance) : 0;
+        }
+
+        /// <summary>AO 完成一次模拟后，按真实 dt 推进一步所有 AcPipeNet 的账本。</summary>
+        public static void SimulationStepPostfix(object __instance, int __state)
+        {
+            if (_simulationTickField == null)
+            {
+                return;
+            }
+
+            int now = (int)_simulationTickField.GetValue(__instance);
+            int dtTicks = now - __state;
+            if (dtTicks <= 0)
+            {
+                return;
+            }
+
+            MapComponent component = __instance as MapComponent;
+            if (component == null)
+            {
+                return;
+            }
+
+            Map map = component.map;
+            if (map == null || !AoBridge.IsActive(map))
+            {
+                return;
+            }
+
+            PipeNetManager manager = map.GetComponent<PipeNetManager>();
+            if (manager == null)
+            {
+                return;
+            }
+
+            List<PipeNet> nets = manager.pipeNets;
+            for (int i = 0; i < nets.Count; i++)
+            {
+                AcPipeNet net = nets[i] as AcPipeNet;
+                if (net == null)
+                {
+                    continue;
+                }
+
+                AcNetLedger ledger = AcNetLedgerManager.Get(net);
+                if (ledger != null)
+                {
+                    ledger.Run(net, dtTicks);
+                }
+            }
         }
     }
 }
