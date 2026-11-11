@@ -38,6 +38,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private const float MaxWindSpeed = 8f;
         private const float WindBlendPerTick = 0.1f;
 
+        // 出风口等效加热的扩散补偿上限。
+        // CCC 原版 TickRare 直接把整个房间的温度推上去；AO 只能逐格写温度，
+        // 所以出风口那一格要多给几倍，让求解器把它摊到整个房间。
+        // 上限是为了在小房间 / 大出风口时不把单格烧穿。
+        private const float MaxOutletHeatSpread = 12f;
+
         private static readonly FieldInfo NetsField =
             typeof(AirFlowNetManager).GetField("cachedNets", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -393,11 +399,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                         continue;
                     }
 
-                    IntVec3 cell = producer.parent.Position;
-                    IntVec3 mouth = cell + IntVec3Utility.RotatedBy(IntVec3.North, producer.parent.Rotation);
+                    IntVec3 sampleCell;
                     float celsius;
-                    if (!AoBridge.TryGetTemperature(map, mouth, out celsius) &&
-                        !AoBridge.TryGetTemperature(map, cell, out celsius))
+                    if (!TrySampleIntake(producer, out sampleCell, out celsius))
                     {
                         continue;
                     }
@@ -407,12 +411,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     actualIntakeAirFlow += producer.Props.baseAirFlow;
 
                     float oxygen;
-                    intakeOxygenSum += AoBridge.TryGetOxygenPercent(map, mouth, out oxygen)
+                    intakeOxygenSum += AoBridge.TryGetOxygenPercent(map, sampleCell, out oxygen)
                         ? oxygen
                         : loop.OxygenPercent;
 
                     float vapor;
-                    intakeVaporSum += AoBridge.TryGetAbsoluteVapor(map, mouth, out vapor)
+                    intakeVaporSum += AoBridge.TryGetAbsoluteVapor(map, sampleCell, out vapor)
                         ? vapor
                         : loop.VaporContent;
                 }
@@ -496,8 +500,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     {
                         continue;
                     }
-                    IntVec3 mouth = producer.parent.Position +
-                                    IntVec3Utility.RotatedBy(IntVec3.North, producer.parent.Rotation);
+                    // 抽气口必须落在风机外圈的可通行格上。2x2 大风机用
+                    // 「Position + 朝向一格」会落回自身占位（Impassable），
+                    // AO 在那个格子上抽气等于对着自己抽。
+                    IntVec3 mouth;
+                    float mouthCelsius;
+                    if (!TrySampleIntake(producer, out mouth, out mouthCelsius))
+                    {
+                        continue;
+                    }
                     AoBridge.AddVolumeSource(map, mouth, -share / 5f, 0f, 0f);
                 }
             }
@@ -570,7 +581,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                             }
                         }
 
-                        ApplyWind(consumer, ventScratch);
+                        ApplyWind(consumer, ventScratch, net, loop);
                     }
                 }
             }
@@ -606,6 +617,54 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             }
         }
 
+        /// <summary>
+        /// 取一台风机的进气采样格与进气温度。
+        ///
+        /// 与原版 Building_IntakeFan.TickRare 同一口径：用 def.Size 展开整圈外邻
+        /// （GenAdj.CellsAdjacent8Way 不含建筑自身占位），取所有可读格的平均温度。
+        /// 不能用「Position + 朝向」取单格：多格风机（LargeIntakeFan 是 2x2）的
+        /// Position 是左下角，那一格仍属于建筑自身，读到的是建筑脚下的空气。
+        /// </summary>
+        private bool TrySampleIntake(CompAirFlowProducer producer, out IntVec3 cell, out float celsius)
+        {
+            cell = producer.parent.Position;
+            celsius = 0f;
+
+            int samples = 0;
+            float sum = 0f;
+            foreach (IntVec3 candidate in GenAdj.CellsAdjacent8Way(
+                         producer.parent.Position, producer.parent.Rotation, producer.parent.def.Size))
+            {
+                if (!candidate.InBounds(map))
+                {
+                    continue;
+                }
+
+                float value;
+                if (!AoBridge.TryGetTemperature(map, candidate, out value))
+                {
+                    continue;
+                }
+
+                if (samples == 0)
+                {
+                    cell = candidate;
+                }
+
+                sum += value;
+                ++samples;
+            }
+
+            if (samples == 0)
+            {
+                // 外圈一格都读不到时退回建筑自身格，至少不让回路凭空断气。
+                return AoBridge.TryGetTemperature(map, producer.parent.Position, out celsius);
+            }
+
+            celsius = sum / samples;
+            return true;
+        }
+
         /// <summary>重建风机状态。原版 TickRare 被拦截后，这几个字段没人再写。</summary>
         private void RefreshProducerState(CompAirFlowProducer producer)
         {
@@ -613,9 +672,27 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             producer.IsPoweredOff = power != null && !power.PowerOn;
             producer.IsBrokenDown = producer.parent.IsBrokenDown();
 
-            IntVec3 mouth = producer.parent.Position +
-                            IntVec3Utility.RotatedBy(IntVec3.North, producer.parent.Rotation);
-            producer.IsBlocked = !mouth.InBounds(map) || mouth.Impassable(map);
+            // 与原版 Building_IntakeFan.TickRare 同一判据：整圈外邻里任一格不可通行
+            // 即视为堵塞。这里必须带上 def.Size —— 大入风口是 2x2，
+            // 「Position + 朝向一格」落在自身占位内，而风机自身 passability = Impassable，
+            // 会让它永久显示「设备入风堵塞」，并连带把全网进气量压成 0。
+            bool blocked = false;
+            foreach (IntVec3 candidate in GenAdj.CellsAdjacent8Way(
+                         producer.parent.Position, producer.parent.Rotation, producer.parent.def.Size))
+            {
+                if (!candidate.InBounds(map))
+                {
+                    continue;
+                }
+
+                if (candidate.Impassable(map))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+
+            producer.IsBlocked = blocked;
         }
 
         private void RefreshTempControlState(CompAirFlowTempControl control)
@@ -677,7 +754,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         /// 温度、氧、水汽仍走 AddVolumeSourceAtTemperature，这里只写风，
         /// 所以 TemperaturePerTick 保持 0，不会重复加热。
         /// </summary>
-        private void ApplyWind(CompAirFlowConsumer consumer, List<IntVec3> cells)
+        private void ApplyWind(CompAirFlowConsumer consumer, List<IntVec3> cells, AirFlowNet net, AirLoop loop)
         {
             Thing owner = consumer.parent;
             if (owner == null || owner.Destroyed)
@@ -725,6 +802,34 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             // 全周出风时总动量守恒：每格速度按 1/sqrt(N) 摊薄，N·v² 与单向时相同。
             // 单向时 N=1，退化成原来的整速。
             float perCellSpeed = speed / Mathf.Sqrt(cells.Count);
+
+            // 等效加热：CCC 原版 Building_AirVent.TickRare 是直接给整个房间加温
+            //   room.Temperature += GenTemperature.ControlTemperatureTempChange(
+            //       口位, map, min(|送风-室温|,10) * 0.25 * (ExhaustAirFlow/100) * FlowEff² * 4.1667 * 12, 送风温度)
+            // 每 250 tick 一次。本兼容层改成注入真实体积气流后，热功率低了两个数量级，
+            // 所以按同一公式把这份热量折算成 AO 连续源的 TemperaturePerTick（摄氏度/游戏 tick）补回来。
+            // AO 会把这一格的热量靠求解器扩散到整个房间。
+            float heatPerTick = 0f;
+            Room ventRoom = cells[0].GetRoom(map);
+            if (ventRoom != null && !ventRoom.UsesOutdoorTemperature)
+            {
+                float supplyCelsius = loop.TemperatureK - 273.15f;
+                float delta = Mathf.Min(Mathf.Abs(supplyCelsius - ventRoom.Temperature), 10f);
+                float flowEfficiency = Mathf.Clamp01(net.FlowEfficiency);
+                float thermalOk = net.ThermalEfficiency > 0f ? 1f : 0f;
+                float energy = delta * 0.25f * (airFlow / 100f) *
+                               flowEfficiency * flowEfficiency * thermalOk *
+                               4.1666665f * 12f;
+                float roomDelta = GenTemperature.ControlTemperatureTempChange(
+                    cells[0], map, energy, supplyCelsius);
+                heatPerTick = roomDelta / 250f;
+
+                // 只加热出风口那几格，扩散到整房要打折，所以按房间格数补偿，
+                // 但夹在 MaxOutletHeatSpread 倍以内，避免单格过热。
+                float spread = Mathf.Clamp((float)ventRoom.CellCount * 0.25f, 1f, MaxOutletHeatSpread);
+                heatPerTick *= spread;
+            }
+
             IntVec3 center = owner.Position;
 
             for (int k = 0; k < cells.Count; k++)
@@ -744,6 +849,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                 rates.MaintainTargetWind = hasDirection && perCellSpeed > 0f;
                 rates.TargetWind = hasDirection ? direction * perCellSpeed : Vector2.zero;
                 rates.TargetWindBlendPerTick = WindBlendPerTick;
+                rates.TemperaturePerTick = heatPerTick / cells.Count;
                 AoBridge.SetSlot(slots, owner, k, cell, rates);
             }
 
