@@ -53,8 +53,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
         private readonly List<UnitEntry> _entries = new List<UnitEntry>(8);
         private readonly List<CompResourceTrader> _compressors = new List<CompResourceTrader>(4);
 
-        private static FieldInfo _outputOffsetField;
-        private static bool _offsetResolved;
+        /// <summary>出风格诊断：记录已打印过的机器，每台只打一次。</summary>
+        private static readonly HashSet<int> _outputLoggedIds = new HashSet<int>();
 
         public int LastRunTick = -99999;
         public float LastEfficiency = 1f;
@@ -129,9 +129,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
 
                 IntVec3 cell = OutputCell(unit);
-                bool wallMounted = IsWallMounted(unit);
-                // 墙机只要求正面在地图内；壁挂机仍要求输出格可通行。
-                if (!cell.InBounds(map) || (!wallMounted && GenGrid.Impassable(cell, map)))
+                // AO 的连续源允许写在任意地图内格；建筑自身格也可写，不能再按 Impassable 拦。
+                if (!cell.InBounds(map))
                 {
                     trader.ResourceOn = false;
                     continue;
@@ -409,39 +408,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
         }
 
-        /// <summary>出风格诊断：每局只打印一次，便于确认两类机的实际差异。</summary>
-        private static bool _wallCellLogged;
-
         /// <summary>
-        /// 实际出风格。
-        ///
-        /// VTE 两类机的 offsetNorth 都是 (0,0,0)，不能靠 offset 区分，必须看 Def：
-        /// - VTE_ACUnit（壁挂）：placeWorkers 只有 Placeworker_AcUnit，输出在自身格；
-        /// - VTE_ACUnitWall（墙机）：placeWorkers 含 Placeworker_AttachedToWall，isAttachment=true，
-        ///   输出到机身正面。Placeworker_AttachedToWall 要求 loc + CardinalDirections[rot]
-        ///   是 FillCategory.Full 的墙，即 Rotation 指向身后的墙，所以正面是 RotatedBy(South, Rotation)。
+        /// 实际出风格（按建筑的空间形态，而不是 offsetNorth）：
+        /// - 壁挂机 VTE_ACUnit 是室内设备，本身就在室内，输出自身格；
+        /// - 墙机 VTE_ACUnitWall 是墙体的一部分，出风口伸到室内，
+        ///   所以输出 RotatedBy(South, Rotation) 那一格（Rotation 指向身后的墙）。
         /// </summary>
         private static IntVec3 OutputCell(Building_AcUnit unit)
         {
-            IntVec3 offset = OutputOffset(unit);
-            IntVec3 cell = unit.Position + IntVec3Utility.RotatedBy(offset, unit.Rotation);
             bool wallMounted = IsWallMounted(unit);
+            IntVec3 cell = wallMounted
+                ? unit.Position + IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation)
+                : unit.Position;
 
-            if (wallMounted)
+            if (_outputLoggedIds.Count < 16 && _outputLoggedIds.Add(unit.thingIDNumber))
             {
-                // 墙机永远输出到机身正面，绝不回退到自身格。
-                cell = unit.Position + IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation);
-            }
-
-            if (!_wallCellLogged)
-            {
-                _wallCellLogged = true;
-                Log.Message("[AOPatch/VTE] 出风格诊断：def=" + unit.def.defName
+                Log.Message("[AOPatch/VTE] 出风格：def=" + unit.def.defName
                             + " pos=" + unit.Position
                             + " rot=" + unit.Rotation.AsInt
-                            + " offset=" + offset
                             + " 墙机=" + wallMounted
-                            + " isAttachment=" + (unit.def.building != null && unit.def.building.isAttachment)
                             + " 采用=" + cell);
             }
 
@@ -468,33 +453,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
         }
 
         /// <summary>
-        /// 出风格偏移。Building_AcUnit.outputOffsetNorth 是 private，
-        /// 但同一个值就存在 Def 的 TemperatureOutputPositionModExtension 上，直接读扩展即可。
+        /// 出风格偏移。与 VTE 源码 Building_AcUnit.SpawnSetup 完全一致：
+        /// 有 TemperatureOutputPositionModExtension 就用其 offsetNorth，否则 IntVec3.North。
+        /// VTE_ACUnit 没有扩展，所以是 North；VTE_ACUnitWall 的扩展写的是 (0,0,0)。
         /// </summary>
         private static IntVec3 OutputOffset(Building_AcUnit unit)
         {
             TemperatureOutputPositionModExtension extension =
                 unit.def.GetModExtension<TemperatureOutputPositionModExtension>();
-            if (extension != null)
-            {
-                return extension.offsetNorth;
-            }
-
-            if (!_offsetResolved)
-            {
-                _offsetResolved = true;
-                _outputOffsetField = AccessTools.Field(typeof(Building_AcUnit), "outputOffsetNorth");
-            }
-
-            if (_outputOffsetField != null)
-            {
-                object value = _outputOffsetField.GetValue(unit);
-                if (value is IntVec3)
-                {
-                    return (IntVec3)value;
-                }
-            }
-            return IntVec3.North;
+            return extension != null ? extension.offsetNorth : IntVec3.North;
         }
     }
 }

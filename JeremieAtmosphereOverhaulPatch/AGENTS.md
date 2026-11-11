@@ -31,6 +31,8 @@ i18n语言目录在 `Languages` ，源代码中需要参与显示的硬编码字
 
 当前mod是对多个mod进行patch和修改，任何时候都要查询对应mod源码 ，而不是只靠回忆或推测。 `f:\RimworldCodeIL\` 这里可以找到一些反编译结果。
 
+注意查看对应mod的i18n语言，来确定每个Def对应在游戏中到底是什么含义，不要根据Def进行推测。
+
 ### 禁止事项
 
 - 不允许访问 `../../..` 目录
@@ -76,15 +78,25 @@ F:\SteamLibrary\steamapps\workshop\content\294100/3669891833/
 
 Vanilla Temperature Expanded ：
 F:\SteamLibrary\steamapps\workshop\content\294100\3202046258
+Vanilla Temperature Expanded_zh ：
+F:\SteamLibrary\steamapps\workshop\content\294100\3247431844
 
 Centralized Climate Control ：
 F:\SteamLibrary\steamapps\workshop\content\294100\2007268173
 
 Frostpunk Heat Generator Tower ：
 F:\SteamLibrary\steamapps\workshop\content\294100\3545379519
+Frostpunk Heat Generator Tower_zh ：
+F:\SteamLibrary\steamapps\workshop\content\294100\3546110846
+
 
 OuterrealmTech ：
 F:\SteamLibrary\steamapps\common\RimWorld\Mods\FullyAutomaticOmniCrafter
 
 Dll反编译结果目录，优先查看此处反编译获得的源码 ： f:\RimworldCodeIL\
+
+
+### 警告！！！ 任何时候都要查询对应mod源码 ，而不是只靠回忆或推测或猜测
+
+
 
