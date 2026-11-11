@@ -493,6 +493,145 @@ AddTemperatureDelta(bCell, +q / (mB * cp))
 
 ---
 
+## 第十章 职责边界与拦截清单
+
+本章回答一个问题：当本 patch 与 AO、与 CCC/VTE 原版代码同时在场时，**哪一行代码归谁管**。这一章不描述理想模型，只描述实际落地的分工。
+
+### 10.1 定位：本 patch 是 AO 的扩展层
+
+本 patch 不引入第二套地图场，不自己维护房间温度，不自己实现气压投影。它做的全部事情是：
+
+1. 把第三方 mod 的建筑**翻译**成 AO 认识的源（`AtmosphereSourceRates`、`AddVolumeSource`、`RegisterAirMover`）；
+2. 把第三方 mod 里**绕过 AO 的写入**（`Room.Temperature +=`、`GenTemperature.PushHeat`、`ProxyHeat` 读值）拦下来；
+3. 在 AO 的场之外维护**它没有的东西**——管道里的存量（回路气袋）。
+
+由此可以假定：**AO 在它自己的地图上总是正常工作的**。本 patch 不检查 AO 是否失败、是否暂停、是否跳步，也不为这些情况做兜底。唯一需要跟随的是 AO 的**步进语义**（见 10.4），那是接口约定，不是健壮性兜底。
+
+### 10.2 三方职责表
+
+| 职责 | AO | 本 patch | CCC / VTE 原版 |
+|---|---|---|---|
+| 地图格温度场推进 | ✅ `AdvanceProvisional` + `ProjectAndFinalize` | ❌ 不参与 | ❌ 不参与 |
+| 房间温度汇总 | ✅ `Room.Temperature` | ❌ 不写 | ❌ 必须被拦截 |
+| 气压投影、连续性 | ✅ 投影法 | ❌ 不参与 | ❌ 不参与 |
+| 建筑热源积分 | ✅ `ApplyContinuousSourcesUnsafe` | ✅ 负责把建筑翻译成 rates | ⚠️ 原逻辑必须失效 |
+| 管道内空气质量/压力 | ❌ AO 没有这个概念 | ✅ 气袋 | ❌ 原本也没有 |
+| 管道拓扑识别 | ❌ | ✅ 读 `AirFlowNet` | ✅ 提供 `GridID`/`Connectors` |
+| 进出风口质量交换 | ✅ 提供 `AddVolumeSource` | ✅ 负责换算与调用 | ❌ 原逻辑必须失效 |
+| 存档 / 读档 | ✅ 场与房间 | ✅ 气袋五个标量 | ⚠️ 原 `ExposedData` 保留但不参与物理 |
+| 建筑存在、耗电、Def | ❌ | ❌ | ✅ |
+| 显示与 UI | ✅ 场读数 | ✅ 气袋读数、Gizmo | ⚠️ 原 inspect 字符串应被替换 |
+
+三处 ⚠️ 是本章的重点：**原版代码仍在，但物理上必须失效**。
+
+### 10.3 拦截清单
+
+原则：**凡是写 `Room.Temperature` 或绕过 AO 场直接改温的路径，一律拦截；凡是只读或只影响 UI 的，保留。**
+
+拦截的判定条件是「`FacilityMath.Atmosphere(parent) != null`」（即 AO 地图）且「气袋已对该网络接管」。任一不满足则 `return true` 放行原版，保证非 AO 地图不崩。
+
+| 目标 | 位置 | 处理 | 原因 |
+|---|---|---|---|
+| `AirFlowNet.AirFlowNetTick` | `AirFlowNet.cs:93` | 不再调用（气袋取代） | 算术平均 + 无存量 |
+| `CompAirFlowTempControl.TickRare` | `CompAirFlowTempControl.cs:79` | Prefix 返回 false，替换为气袋温控 | `IntakeTemperature = net.AverageIntakeTemperature` 取全网平均；`/96` 是经验平滑 |
+| `Building_AirVent.TickRare` | `Building_AirVent.cs:33` | Prefix 返回 false，替换为气袋出气 | `roomOrAdjacent.Temperature += a` 整房间平移，不守恒 |
+| `Building_IntakeFan.TickRare` | `Building_IntakeFan.cs:27` | Prefix 返回 false，替换为气袋进气 | 8 邻算术平均 + 固定 `baseAirFlow`，无背压 |
+| `Building_AirThermal.TickRare` 尾部 `GenTemperature.PushHeat` | `Building_AirThermal.cs` | 替换为气袋的 `Q` 注入 | 制冷剂向地板排热，走 AO 只影响 5 格 |
+| `CompAirFlowConsumer.TickRare` | `CompAirFlowConsumer.cs:120` | **保留** | 只读 `ConvertedTemperature`，用于显示 |
+| `CompAirFlow.CompInspectStringExtra` | `CompAirFlow.cs:72` | 替换文案 | 显示气袋的 `T / p / m` 而不是网络流量 |
+| `CompProperties_TempControl.minTargetTemperature` / `maxTargetTemperature` | 原版 `-50 / 50` | XML patch 解除 | 否则 -200 ℃ 地图上目标温度设不下去 |
+| `GenTemperature.EqualizeTemperaturesThroughBuilding` | AO 已 Prefix 禁用 | 不需要处理 | AO 自己已经拦了 |
+| `CompHeatPusher.CompTick` / `CompTickRare` | AO 已 Prefix 抑制 | 不需要处理 | `Buildings/3HeatSources.cs:18`、`4HeatSources.cs:18` |
+
+**必须成对拦截的理由**：气袋的出风口走 `AddVolumeSourceAtTemperature` 注入质量与温度，AO 的投影法会把它摊进房间；如果原版 `room.Temperature += a` 还活着，同一个风口就会**既注入质量又整房间平移温度**，效果翻倍，且大房间（>3000 格）因 `RoomTemperatureWriteHook.MaxRoomCells` 静默失效，表现为「小房间过热、大房间没反应」。
+
+### 10.4 气袋的步进入口
+
+气袋**不在** `MapComponentTick` 里自己数 tick，只在 AO 完成一步之后走一步。
+
+```csharp
+[HarmonyPatch(typeof(AtmosphereMapComponent), "CompleteFinishedSimulation")]
+static class AirLoopStepPatch
+{
+    static void Prefix(AtmosphereMapComponent __instance, out int __state)
+        => __state = __instance.lastSynchronizedSimulationTick;
+
+    static void Postfix(AtmosphereMapComponent __instance, int __state)
+    {
+        int dtTicks = __instance.lastSynchronizedSimulationTick - __state;
+        if (dtTicks <= 0) return;
+        AirLoopTicker.StepAll(__instance.map, dtTicks / 60f);
+    }
+}
+```
+
+**为什么不是固定 `0.2f`**：AO 的 `StartSimulationTask` 里 `elapsedTicksForCycle = lastSimulationLaunchTick - lastSynchronizedSimulationTick`，上一次任务没跑完时它会变成 12、18、24。`LocalAtmosphereSettings.TimeStep` 就是它除以 60。气袋必须用同一个 `dt`，否则压力与流量会系统性偏低。这不是兜底，是接口语义。
+
+`dt` 也可以直接用 `__instance.settings.TimeStep`；两者应相等，若不等以 `dtTicks / 60f` 为准（`TimeStep` 可能被 CFL 截断）。
+
+**为什么在这个位置写散度是安全的**：气袋调用公开接口
+
+```csharp
+AtmosphereInterface.AddVolumeSource(map, cell, cellVolumes, oxygenPercent, temperatureOffsetCelsius);
+AtmosphereInterface.AddVolumeSourceAtTemperature(map, cell, cellVolumes, oxygenPercent, gasCelsius);
+```
+
+它们内部走 `SubmitPointVolume` → `pendingPointVolumes`，**下一步的 `ApplyDivergenceDeltas` 才消费**。所以在 Postfix 里写、下一步算，不存在「写了又被清掉」的竞态。`cellVolumes` 的单位是格体积（1 = 5 m³），换算：
+
+```csharp
+float volM3       = mDot / 1.2f * dt;   // kg → m³
+float cellVolumes = volM3 / 5f;         // 1 格 = 5 m³
+```
+
+### 10.5 读档后立即重算
+
+`MapComponent` 有 `public virtual void FinalizeInit()`（`Assembly-CSharp/Verse/MapComponent.cs:36`），这是正确的钩子，**不是 `ExposeData`**。
+
+读档顺序是 `Thing.ExposeData` → `MapComponent.ExposeData` → `MapComponent.FinalizeInit`。在 `ExposeData` 时，`Building_AirPipe.SpawnSetup` 还没跑，`CompAirFlowPipe.AirFlowNet` 是 `null`、`GridID = -2`，按拓扑重建会得到空网络。
+
+```csharp
+public override void ExposeData()
+{
+    base.ExposeData();
+    Scribe_Collections.Look(ref this.loops, "airLoops", LookMode.Value, LookMode.Deep);
+    if (Scribe.mode == LoadSaveMode.LoadingVars) this.needsRecalc = true;
+}
+
+public override void FinalizeInit()
+{
+    base.FinalizeInit();
+    if (!this.needsRecalc) return;
+    this.needsRecalc = false;
+    this.RebuildLoopsFromNets();   // 按当前拓扑重算 volumeM3、重挂 net
+    this.StepAllOnce(1f / 60f);    // 立即走一个 TimeStep，把压力拉回自洽
+}
+```
+
+`StepAllOnce(1/60f)` 的目的：`volumeM3` 变了，`PressurePa = mRT/V` 会跳变；立即走一步让进出气把存档时的瞬时状态抹平，避免玩家读档后看到压力从 0 爬升。
+
+拓扑不匹配时的规则：
+
+- 存档里有、新拓扑里没有的指纹 → 丢弃；
+- 新拓扑里有、存档里没有的 → 按室内环境初始化（`T = 21 ℃`、`p = 101325 Pa`、`m = 1.2 × volumeM3`）。
+
+### 10.6 明确不做的事
+
+1. **不检查 AO 是否失败**。`CompleteFinishedSimulation` 的 Postfix 不读 `simulationException`。
+2. **不检查暂停**。`MapComponentTick` 不跑，`CompleteFinishedSimulation` 就不会被调用。
+3. **不做非 AO 地图的物理兜底**。`AtmosphereInterface.Component(map)` 为 null 或 `AddVolumeSource` 返回 false 时，气袋这一步空转，不退回「自己写房间温度」。
+4. **不自己算房间温度**。房间温度永远由 AO 从注入的质量与温度算出。
+
+### 10.7 管道格的显示
+
+管道在 AO 里是普通空气格：`AirPipe` 基类 `fillage` 未设（`FillCategory.None`），`MapObstacleMaskBuilder.AirCanMoveThrough` 判 `def.Fillage != 2` 即返回 true，所以 `obstacleMask = 1f`；`isEdifice = false` 又保证它不切割 `Room`，`altitudeLayer = FloorEmplacement` 保证不挡光。
+
+这意味着管道格的 `Temperature` 会被 AO 照常写入，但那是**地图场的值**，不是气袋的值。两层处理：
+
+1. 在 `Building_AirPipe` 上挂一个只读组件，`CompInspectStringExtra` 显示气袋的 `T / p / m`；
+2. 保留格子温度不隐藏也可以，但要接受玩家看到「管道格 21 ℃、房间 −40 ℃」的差异——因为管道格在物理上确实是一格普通空气，而管道内部是另一套账本。
+
+---
+
 ## 附录 A API 速查
 
 | API | 语义 | 单位 |
@@ -532,3 +671,8 @@ AddTemperatureDelta(bCell, +q / (mB * cp))
 | `VanillaTemperatureExpanded/Buildings/Building_AcUnit.cs` | 29-51 | VTE 双向 ACUnit |
 | `VanillaTemperatureExpanded/AcPipeNet.cs` | 128-141 | VTE 管网效率 |
 | `VanillaTemperatureExpanded/Comps/CompCeilingFan.cs` | 21-30 | VTE 吊扇无风 |
+| `RimWorld/AtmosphereMapComponent.cs` | 2962-2970 | `StartSimulationTask` 与 `elapsedTicksForCycle` |
+| `RimWorld/AtmosphereMapComponent.cs` | 3071-3095 | `CompleteFinishedSimulation`，气袋步进入口 |
+| `RimWorld/AtmosphereMapComponent.cs` | 386-393 | `SubmitPointVolume` → `pendingPointVolumes` |
+| `RimWorld/MapObstacleMaskBuilder.cs` | 180-192 | `AirCanMoveThrough`，`Fillage != 2` 即通行 |
+| `Assembly-CSharp/Verse/MapComponent.cs` | 36 | `FinalizeInit`，读档后重算钩子 |
