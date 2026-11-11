@@ -27,6 +27,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private const float MinimumVolume = 3f;
         private const float StandardPressurePa = 101325f;
 
+        // 沿程损失第一档：每格管道把阻抗抬高 2%，最多 6 倍。
+        private const float FrictionPerPipeCell = 0.02f;
+        private const float MaxFrictionFactor = 6f;
+
+        // 出风口风矢量标定。CCC 的 baseAirExhaust 是 CFM 量级，按格面积折算只有
+        // 0.02 m/s，肉眼完全察觉不到；这里按「每 CFM 0.01 m/s」放大到可见量级：
+        // 50 CFM → 0.5 m/s，300 CFM → 3 m/s，600 CFM → 6 m/s。
+        private const float WindSpeedPerAirFlowUnit = 0.01f;
+        private const float MaxWindSpeed = 8f;
+        private const float WindBlendPerTick = 0.1f;
+
         private static readonly FieldInfo NetsField =
             typeof(AirFlowNetManager).GetField("cachedNets", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -38,6 +49,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private Dictionary<long, AirLoop> loops = new Dictionary<long, AirLoop>();
         private readonly HashSet<long> aliveScratch = new HashSet<long>();
         private readonly List<long> deadScratch = new List<long>();
+
+        // 每个出风口一组 AO 连续源槽位，只用来写风矢量。
+        // 槽位名是 prefix + slot，不按 owner 区分，所以每个 owner 必须有独立 prefix。
+        private readonly Dictionary<Thing, object> windSlots = new Dictionary<Thing, object>();
+        private readonly HashSet<Thing> liveWindOwners = new HashSet<Thing>();
+        private readonly List<Thing> deadWindOwners = new List<Thing>();
 
         public AirLoopMapComponent(Map map) : base(map)
         {
@@ -92,6 +109,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             List<CompAirFlow> pipes = ReadPipes();
 
             aliveScratch.Clear();
+            liveWindOwners.Clear();
 
             for (int i = 0; i < nets.Count; i++)
             {
@@ -116,11 +134,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     loops[key] = loop;
                 }
 
+                EnsureAtmosphere(loop, net);
                 RefreshLoopShape(loop, net, pipes);
                 StepLoop(loop, net, dt);
             }
 
             PruneDeadLoops();
+            PruneDeadWindOwners();
         }
 
         /// <summary>CCC 的网络每帧都被重算，cachedNets 在重建帧里是旧的，直接跳过。</summary>
@@ -218,7 +238,77 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             loop.FlowType = (int)net.FlowType;
             loop.VolumeM3 = MinimumVolume;
             loop.ResetMassForVolume();
+            InitializeAtmosphere(loop, net);
             return loop;
+        }
+
+        /// <summary>新回路从现场继承氧与水汽，避免第一口气是「纯干氧」。</summary>
+        private void InitializeAtmosphere(AirLoop loop, AirFlowNet net)
+        {
+            IntVec3 sample;
+            if (!TryPickSampleCell(net, out sample))
+            {
+                return;
+            }
+
+            float oxygen;
+            if (AoBridge.TryGetOxygenPercent(map, sample, out oxygen))
+            {
+                loop.OxygenPercent = Mathf.Clamp(oxygen, 0f, 100f);
+            }
+
+            float vapor;
+            if (AoBridge.TryGetAbsoluteVapor(map, sample, out vapor))
+            {
+                loop.VaporContent = vapor;
+                loop.VaporValid = true;
+            }
+        }
+
+        /// <summary>
+        /// 懒标定：水汽只在第一次真正读到时才可信。
+        /// 读档后 VaporValid 为 false，这里补一次，避免用 0 去「吸干」房间湿度。
+        /// </summary>
+        private void EnsureAtmosphere(AirLoop loop, AirFlowNet net)
+        {
+            if (loop.VaporValid)
+            {
+                return;
+            }
+            InitializeAtmosphere(loop, net);
+        }
+
+        private bool TryPickSampleCell(AirFlowNet net, out IntVec3 cell)
+        {
+            if (net.Consumers != null)
+            {
+                for (int i = 0; i < net.Consumers.Count; i++)
+                {
+                    CompAirFlowConsumer consumer = net.Consumers[i];
+                    if (consumer != null && consumer.parent != null && !consumer.parent.Destroyed)
+                    {
+                        cell = consumer.parent.Position +
+                               IntVec3Utility.RotatedBy(IntVec3.North, consumer.parent.Rotation);
+                        return true;
+                    }
+                }
+            }
+
+            if (net.Producers != null)
+            {
+                for (int i = 0; i < net.Producers.Count; i++)
+                {
+                    CompAirFlowProducer producer = net.Producers[i];
+                    if (producer != null && producer.parent != null && !producer.parent.Destroyed)
+                    {
+                        cell = producer.parent.Position;
+                        return true;
+                    }
+                }
+            }
+
+            cell = IntVec3.Invalid;
+            return false;
         }
 
         /// <summary>容积与额定流量随拓扑变化重算；质量与温度保留，作为「旧气」延续。</summary>
@@ -266,6 +356,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
             loop.RatedIntakeKgPerSec = intakeAirFlow * multiplier * AirLoop.CubicMetresPerAirFlowUnit * AirLoop.AirDensityKgPerM3;
             loop.RatedExhaustKgPerSec = exhaustAirFlow * exhaustMultiplier * AirLoop.CubicMetresPerAirFlowUnit * AirLoop.AirDensityKgPerM3;
+
+            // 沿程损失第一档：把管道格数折成阻抗。同时抬高额定压差、压低风机扬程，
+            // 于是长管网在同样压差下流量更小，短管网几乎不受影响。
+            float friction = Mathf.Min(MaxFrictionFactor, 1f + pipeCells * FrictionPerPipeCell);
+            loop.EffectivePressurePa = loop.RatedPressurePa * friction;
+            loop.EffectiveFanMaxRisePa = loop.FanMaxRisePa / friction;
         }
 
         private void StepLoop(AirLoop loop, AirFlowNet net, float dt)
@@ -275,6 +371,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             float intakeSumKelvin = 0f;
             int intakeSamples = 0;
             float actualIntakeAirFlow = 0f;
+            float intakeOxygenSum = 0f;
+            float intakeVaporSum = 0f;
 
             if (net.Producers != null)
             {
@@ -304,12 +402,29 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     intakeSumKelvin += celsius + 273.15f;
                     ++intakeSamples;
                     actualIntakeAirFlow += producer.Props.baseAirFlow;
+
+                    float oxygen;
+                    intakeOxygenSum += AoBridge.TryGetOxygenPercent(map, mouth, out oxygen)
+                        ? oxygen
+                        : loop.OxygenPercent;
+
+                    float vapor;
+                    intakeVaporSum += AoBridge.TryGetAbsoluteVapor(map, mouth, out vapor)
+                        ? vapor
+                        : loop.VaporContent;
                 }
             }
 
             float intakeKelvin = intakeSamples > 0
                 ? intakeSumKelvin / intakeSamples
                 : loop.TemperatureK;
+            float intakeOxygen = intakeSamples > 0 ? intakeOxygenSum / intakeSamples : loop.OxygenPercent;
+            float intakeVapor = intakeSamples > 0 ? intakeVaporSum / intakeSamples : loop.VaporContent;
+
+            // 只有真正可用的风机才计入进气能力：全部被挡或断电时不应凭空进气。
+            float availableIntakeKgPerSec = actualIntakeAirFlow *
+                                            Mathf.Max(0.01f, CentralizedClimateControlUtility.AirFlowMultiplier) *
+                                            AirLoop.CubicMetresPerAirFlowUnit * AirLoop.AirDensityKgPerM3;
 
             // 2. 温控：换算成一阶惯性增益。原版 DeltaTemperature += energyPerSecond * eff * (Δ/96)，
             //    每 250 tick 一次；这里改成按秒连续，时间常数保持不变。
@@ -354,7 +469,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             float roomPressurePa = ResolveRoomPressure(net, loop);
 
             // 4. 推进气袋。
-            LoopStep step = loop.Step(dt, intakeKelvin, gainPerSecond, targetKelvin, roomPressurePa);
+            LoopStep step = loop.Step(
+                dt,
+                availableIntakeKgPerSec,
+                intakeKelvin,
+                intakeOxygen,
+                intakeVapor,
+                gainPerSecond,
+                targetKelvin,
+                roomPressurePa);
 
             // 5. 翻译成 AO 体积源：进风口抽气，出风口注入设定温度的气团。
             float intakeCubicMetres = step.IntakeMassKg / AirLoop.AirDensityKgPerM3;
@@ -392,8 +515,26 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                         map,
                         vent,
                         share / 5f,
-                        21f,
+                        loop.OxygenPercent,
                         loop.TemperatureK - 273.15f);
+
+                    // 水汽不走体积源：AO 的 MixReleasedGas 只处理氧与温度。
+                    // 把回路浓度与房间浓度的差按注入体积摊到该格，等价于两团气完全混合。
+                    // 只有在回路水汽已标定过时才搬，否则默认 0 会凭空吸干房间。
+                    if (loop.VaporValid)
+                    {
+                        float roomVapor;
+                        if (AoBridge.TryGetAbsoluteVapor(map, vent, out roomVapor))
+                        {
+                            float vaporDelta = share * (loop.VaporContent - roomVapor) / (5f + share);
+                            if (vaporDelta != 0f)
+                            {
+                                AoBridge.AddMoistureDelta(map, vent, vaporDelta);
+                            }
+                        }
+                    }
+
+                    ApplyWind(consumer, vent);
                 }
             }
 
@@ -487,6 +628,88 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             }
 
             return StandardPressurePa;
+        }
+
+        /// <summary>
+        /// 给一个出风口写持续风矢量。
+        ///
+        /// 走 AO 的 SourceSlots 通路而不是 AddVolumeSource：体积源只写散度，
+        /// 投影法解出的是各向同性辐散，没有方向；SourceSlots 的 MaintainTargetWind
+        /// 会把该格速度逐步拉向 TargetWind，这才是「送风口」该有的行为。
+        ///
+        /// 温度、氧、水汽仍走 AddVolumeSourceAtTemperature，这里只写风，
+        /// 所以 TemperaturePerTick 保持 0，不会重复加热。
+        /// </summary>
+        private void ApplyWind(CompAirFlowConsumer consumer, IntVec3 vent)
+        {
+            Thing owner = consumer.parent;
+            if (owner == null || owner.Destroyed)
+            {
+                return;
+            }
+
+            object slots;
+            if (!windSlots.TryGetValue(owner, out slots))
+            {
+                slots = AoBridge.NewSlots("JAP.Wind." + owner.thingIDNumber + ".");
+                if (slots == null)
+                {
+                    return;
+                }
+                windSlots[owner] = slots;
+            }
+
+            liveWindOwners.Add(owner);
+
+            ThingWithComps holder = owner as ThingWithComps;
+            CompPowerTrader power = holder != null ? holder.GetComp<CompPowerTrader>() : null;
+            CompFlickable flick = holder != null ? holder.GetComp<CompFlickable>() : null;
+            bool powered = power == null || power.PowerOn;
+            bool switchedOn = flick == null || flick.SwitchIsOn;
+            bool blocked = !vent.InBounds(map) || vent.Impassable(map);
+            bool active = powered && switchedOn && !owner.IsBrokenDown() && !blocked;
+
+            // 方向就是出风口朝向：建筑旋转后的 North，与 AO 温控出风口一致。
+            IntVec3 offset = IntVec3Utility.RotatedBy(IntVec3.North, owner.Rotation);
+            Vector2 direction = new Vector2(offset.x, offset.z);
+            float length = direction.magnitude;
+            direction = length > 1e-4f ? direction / length : Vector2.zero;
+
+            float airFlow = consumer.Props.baseAirExhaust *
+                            Mathf.Max(0.01f, CentralizedClimateControlUtility.AirExhaustMultiplier);
+            float speed = active ? Mathf.Min(MaxWindSpeed, airFlow * WindSpeedPerAirFlowUnit) : 0f;
+
+            SlotRates rates = default(SlotRates);
+            rates.MaintainTargetWind = active && speed > 0f;
+            rates.TargetWind = direction * speed;
+            rates.TargetWindBlendPerTick = WindBlendPerTick;
+            AoBridge.SetSlot(slots, owner, 0, vent, rates);
+        }
+
+        /// <summary>出风口被拆或改向后，注销它残留的连续源。</summary>
+        private void PruneDeadWindOwners()
+        {
+            // 不能用「数量相等」早退：拆一个、加一个时数量不变但集合不同，
+            // 漏掉的 owner 会让 AO 侧的风一直吹。
+            deadWindOwners.Clear();
+            foreach (KeyValuePair<Thing, object> pair in windSlots)
+            {
+                if (!liveWindOwners.Contains(pair.Key))
+                {
+                    deadWindOwners.Add(pair.Key);
+                }
+            }
+
+            for (int i = 0; i < deadWindOwners.Count; i++)
+            {
+                Thing owner = deadWindOwners[i];
+                object slots;
+                if (windSlots.TryGetValue(owner, out slots))
+                {
+                    AoBridge.RemoveAll(slots, owner, map);
+                }
+                windSlots.Remove(owner);
+            }
         }
 
         private void PruneDeadLoops()

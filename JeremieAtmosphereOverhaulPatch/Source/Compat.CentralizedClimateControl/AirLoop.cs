@@ -6,8 +6,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
     /// <summary>
     /// 一条气流回路的集总气袋。
     ///
-    /// 只保存两个独立状态量：质量与温度。压力由理想气体方程派生，不单独积分，
-    /// 所以永远不会出现「质量没变、压力却漂了」的伪状态。
+    /// 保存四个独立状态量：质量、温度、氧百分比、水汽含量。压力由理想气体方程派生，
+    /// 不单独积分，所以永远不会出现「质量没变、压力却漂了」的伪状态。
     ///
     /// 单位约定：
     ///   VolumeM3           立方米
@@ -15,6 +15,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
     ///   TemperatureK       开尔文
     ///   Rated*KgPerSec     千克每秒
     ///   PressurePa         帕斯卡（绝对压力）
+    ///   OxygenPercent      体积百分比 0-100
+    ///   VaporContent       与 AO 的 Moisture 场同量纲（即 VaporCapacity 的量纲），
+    ///                      因为出气时直接把这个差值交给 AddMoistureDelta，不做换算
     ///   1 AirFlow 单位 = 1 CFM = 0.000472 m³/s（CCC 的 baseAirFlow 就是 CFM 量级）
     /// </summary>
     public class AirLoop : IExposable
@@ -39,6 +42,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         /// <summary>质量加权温度（K）。</summary>
         public float TemperatureK = KelvinAtTwentyOneCelsius;
 
+        /// <summary>回路内氧体积百分比（0-100）。与温度一起按质量加权混合。</summary>
+        public float OxygenPercent = 21f;
+
+        /// <summary>回路内水汽含量，量纲同 AO 的 Moisture 场。</summary>
+        public float VaporContent;
+
+        /// <summary>
+        /// 水汽是否已从现场标定过。不存档：读档后为 false，会触发一次懒标定，
+        /// 避免用默认 0 去「吸干」房间湿度。
+        /// </summary>
+        public bool VaporValid;
+
         /// <summary>全部进气风机的额定质量流量（kg/s）。</summary>
         public float RatedIntakeKgPerSec;
 
@@ -50,6 +65,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
         /// <summary>出风口达到额定流量所需的回路-房间压差（Pa）。</summary>
         public float RatedPressurePa = 300f;
+
+        /// <summary>把管道沿程损失折进额定压差后的有效值（Pa）。由拓扑重算，不入存档。</summary>
+        public float EffectivePressurePa = 300f;
+
+        /// <summary>把管道沿程损失折进风机扬程后的有效值（Pa）。由拓扑重算，不入存档。</summary>
+        public float EffectiveFanMaxRisePa = 2000f;
 
         public int ProducerCount;
         public int ConsumerCount;
@@ -72,6 +93,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             Scribe_Values.Look(ref VolumeM3, "volumeM3", 18f);
             Scribe_Values.Look(ref MassKg, "massKg", 21.6f);
             Scribe_Values.Look(ref TemperatureK, "temperatureK", KelvinAtTwentyOneCelsius);
+            Scribe_Values.Look(ref OxygenPercent, "oxygenPercent", 21f);
+            Scribe_Values.Look(ref VaporContent, "vaporContent", 0f);
             Scribe_Values.Look(ref RatedIntakeKgPerSec, "ratedIntake", 0f);
             Scribe_Values.Look(ref RatedExhaustKgPerSec, "ratedExhaust", 0f);
             Scribe_Values.Look(ref FanMaxRisePa, "fanMaxRisePa", 2000f);
@@ -95,13 +118,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         /// 推进一个 AO 模拟步。
         /// </summary>
         /// <param name="dt">步长（秒），取 AO 实际推进的 tick 数 / 60。</param>
+        /// <param name="intakeCapacityKgPerSec">当前可用风机的实际质量流量上限（kg/s）。</param>
         /// <param name="intakeTemperatureK">进气温度（K），由调用方从 AO 场读出。</param>
+        /// <param name="intakeOxygenPercent">进气氧百分比（0-100）。</param>
+        /// <param name="intakeVapor">进气水汽含量，量纲同 AO Moisture 场。</param>
         /// <param name="tempControlGainPerSecond">温控器的一阶惯性增益（1/s）。0 表示无温控。</param>
         /// <param name="targetTemperatureK">温控目标温度（K）。</param>
         /// <param name="roomPressurePa">出风口所在房间的静态气压（Pa）。</param>
         public LoopStep Step(
             float dt,
+            float intakeCapacityKgPerSec,
             float intakeTemperatureK,
+            float intakeOxygenPercent,
+            float intakeVapor,
             float tempControlGainPerSecond,
             float targetTemperatureK,
             float roomPressurePa)
@@ -112,20 +141,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                 return result;
             }
 
+            float massBefore = MassKg;
+
             // 1. 进气：风机背压曲线。回路压力低于房间时全速，高于房间时线性衰减到 0。
+            //    有效扬程已被管道沿程损失压低（EffectiveFanMaxRisePa）。
             float dp = roomPressurePa - PressurePa;
-            float intakeRate = RatedIntakeKgPerSec * Mathf.Clamp01(1f + dp / Mathf.Max(1f, FanMaxRisePa));
+            float intakeRate = Mathf.Max(0f, intakeCapacityKgPerSec) *
+                               Mathf.Clamp01(1f + dp / Mathf.Max(1f, EffectiveFanMaxRisePa));
             float massIn = Mathf.Min(intakeRate * dt, VolumeM3 * AirDensityKgPerM3 * 0.25f);
             if (massIn < 0f)
             {
                 massIn = 0f;
             }
 
-            // 2. 进气与回路存量混合。
-            float massAfterIntake = MassKg + massIn;
+            // 2. 进气与回路存量混合：温度、氧、水汽都按质量加权。
+            float massAfterIntake = massBefore + massIn;
             if (massAfterIntake > 0.001f)
             {
-                TemperatureK = (MassKg * TemperatureK + massIn * intakeTemperatureK) / massAfterIntake;
+                float weight = massIn / massAfterIntake;
+                TemperatureK += (intakeTemperatureK - TemperatureK) * weight;
+                OxygenPercent += (intakeOxygenPercent - OxygenPercent) * weight;
+                if (VaporValid)
+                {
+                    VaporContent += (intakeVapor - VaporContent) * weight;
+                }
                 MassKg = massAfterIntake;
             }
 
@@ -138,7 +177,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             }
 
             // 4. 出气：压力驱动。回路相对房间正压时才有流量，负压自动截止。
-            float drive = Mathf.Clamp01((PressurePa - roomPressurePa) / Mathf.Max(1f, RatedPressurePa));
+            //    有效压差已被管道沿程损失抬高，长管网需要更大的正压才能出气。
+            float drive = Mathf.Clamp01((PressurePa - roomPressurePa) / Mathf.Max(1f, EffectivePressurePa));
             float massOut = Mathf.Min(RatedExhaustKgPerSec * drive * dt, MassKg * 0.5f);
             if (massOut < 0f)
             {
@@ -149,6 +189,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             // 5. 数值夹紧。质量下限保证压力不会塌到 0 导致下一步除零。
             MassKg = Mathf.Max(MassKg, VolumeM3 * 0.02f);
             TemperatureK = Mathf.Clamp(TemperatureK, 1f, 2000f);
+            OxygenPercent = Mathf.Clamp(OxygenPercent, 0f, 100f);
+            if (VaporContent < 0f || float.IsNaN(VaporContent) || float.IsInfinity(VaporContent))
+            {
+                VaporContent = 0f;
+            }
             if (float.IsNaN(MassKg) || float.IsInfinity(MassKg))
             {
                 MassKg = VolumeM3 * AirDensityKgPerM3;
@@ -161,6 +206,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             result.IntakeMassKg = massIn;
             result.ExhaustMassKg = massOut;
             result.ExhaustTemperatureK = TemperatureK;
+            result.ExhaustOxygenPercent = OxygenPercent;
+            result.ExhaustVapor = VaporContent;
             return result;
         }
     }
@@ -171,5 +218,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         public float IntakeMassKg;
         public float ExhaustMassKg;
         public float ExhaustTemperatureK;
+        public float ExhaustOxygenPercent;
+        public float ExhaustVapor;
     }
 }

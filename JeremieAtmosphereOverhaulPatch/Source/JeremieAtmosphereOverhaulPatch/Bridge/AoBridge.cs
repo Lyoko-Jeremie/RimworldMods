@@ -66,6 +66,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static MethodInfo _addVolumeSource;
         private static MethodInfo _addVolumeSourceAtTemperature;
         private static MethodInfo _staticPressure;
+        private static MethodInfo _tryGetOxygen;
+        private static MethodInfo _tryGetVapor;
+        private static MethodInfo _addMoistureDelta;
 
         private static readonly Dictionary<string, FieldInfo> RateFields = new Dictionary<string, FieldInfo>();
 
@@ -85,6 +88,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static bool VolumeSourceAvailable
         {
             get { Resolve(); return _addVolumeSource != null && _addVolumeSourceAtTemperature != null; }
+        }
+
+        /// <summary>氧与水汽读写接口是否可用。</summary>
+        public static bool MoistureAvailable
+        {
+            get { Resolve(); return _tryGetOxygen != null && _tryGetVapor != null && _addMoistureDelta != null; }
         }
 
         /// <summary>解析一次并缓存。可安全重复调用。</summary>
@@ -154,6 +163,21 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                         "TryGetStaticPressurePascals",
                         new[] { typeof(IntVec3), typeof(float).MakeByRefType() });
                 }
+
+                // 氧与水汽：CCC 气袋要把进气成分带进管道、出气时再吐回房间。
+                // AO 的 MixReleasedGas 只处理氧与温度，水汽必须单独走 AddMoistureDelta。
+                _tryGetOxygen = AccessTools.Method(
+                    interfaceType,
+                    "TryGetOxygenPercent",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(byte).MakeByRefType() });
+                _tryGetVapor = AccessTools.Method(
+                    interfaceType,
+                    "TryGetAbsoluteVapor",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(float).MakeByRefType() });
+                _addMoistureDelta = AccessTools.Method(
+                    interfaceType,
+                    "AddMoistureDelta",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(float) });
 
                 if (_tryGetTemperature == null) { _failure = "AtmosphereInterface.TryGetTemperature 未找到"; return; }
                 if (_slotsCtor == null) { _failure = "SourceSlots(string) 未找到"; return; }
@@ -249,6 +273,65 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             try
             {
                 _addVolumeSourceAtTemperature.Invoke(null, new object[] { map, cell, cellVolumes, oxygenPercent, gasCelsius });
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>读一格的氧体积百分比（0-100）。</summary>
+        public static bool TryGetOxygenPercent(Map map, IntVec3 cell, out float percent)
+        {
+            percent = 21f;
+            Resolve();
+            if (map == null || _tryGetOxygen == null)
+            {
+                return false;
+            }
+
+            object[] args = { map, cell, (byte)0 };
+            bool ok = (bool)_tryGetOxygen.Invoke(null, args);
+            if (ok)
+            {
+                percent = (byte)args[2];
+            }
+            return ok;
+        }
+
+        /// <summary>读一格的绝对水汽含量，量纲同 AO 的 Moisture 场。</summary>
+        public static bool TryGetAbsoluteVapor(Map map, IntVec3 cell, out float vapor)
+        {
+            vapor = 0f;
+            Resolve();
+            if (map == null || _tryGetVapor == null)
+            {
+                return false;
+            }
+
+            object[] args = { map, cell, null };
+            bool ok = (bool)_tryGetVapor.Invoke(null, args);
+            if (ok)
+            {
+                vapor = (float)args[2];
+            }
+            return ok;
+        }
+
+        /// <summary>
+        /// 给一格叠加水汽浓度增量。体积源接口不带水汽，所以出风口搬湿要走这条。
+        /// </summary>
+        public static bool AddMoistureDelta(Map map, IntVec3 cell, float deltaVapor)
+        {
+            Resolve();
+            if (map == null || _addMoistureDelta == null)
+            {
+                return false;
+            }
+            try
+            {
+                _addMoistureDelta.Invoke(null, new object[] { map, cell, deltaVapor });
                 return true;
             }
             catch (Exception)
