@@ -69,6 +69,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static MethodInfo _tryGetOxygen;
         private static MethodInfo _tryGetVapor;
         private static MethodInfo _addMoistureDelta;
+        private static Type _waterMathType;
+        private static MethodInfo _emitWater;
 
         private static readonly Dictionary<string, FieldInfo> RateFields = new Dictionary<string, FieldInfo>();
 
@@ -94,6 +96,41 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static bool MoistureAvailable
         {
             get { Resolve(); return _tryGetOxygen != null && _tryGetVapor != null && _addMoistureDelta != null; }
+        }
+
+        /// <summary>凝结水出水口是否可用（AO 有 WaterMath.EmitWater 且注册了 AO_Water）。</summary>
+        public static bool WaterAvailable
+        {
+            get
+            {
+                Resolve();
+                return _emitWater != null && DefDatabase<ThingDef>.GetNamedSilentFail("AO_Water") != null;
+            }
+        }
+
+        /// <summary>
+        /// 把以 kg 计的凝结水倒进 AO 的水池：满 0.25 kg 就在 parent 那一格生成一个 AO_Water。
+        /// 返回池里剩下的量。parent 必须是已 spawn 的建筑，否则 AO 那边放不下会丢掉。
+        /// </summary>
+        public static float EmitWater(Thing parent, float poolKg)
+        {
+            Resolve();
+            if (_emitWater == null || parent == null || !parent.Spawned || poolKg <= 0f)
+            {
+                return poolKg;
+            }
+
+            object[] args = { parent, poolKg };
+            try
+            {
+                _emitWater.Invoke(null, args);
+                return (float)args[1];
+            }
+            catch (Exception)
+            {
+                // AO 换版本把签名改了也不要让整个模拟停摆，水就地丢弃。
+                return poolKg;
+            }
         }
 
         /// <summary>解析一次并缓存。可安全重复调用。</summary>
@@ -178,6 +215,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     interfaceType,
                     "AddMoistureDelta",
                     new[] { typeof(Map), typeof(IntVec3), typeof(float) });
+
+                // 产水：AO 自带 AO_Water（250 g/单位）与 WaterMath.EmitWater，
+                // 除湿器和「空气压缩机的冷凝水」都走这条路。CCC 的空气处理机
+                // 把回路里的过饱和水汽凝结下来时，直接复用同一套出口。
+                // internal 类型，只能按名字找。
+                _waterMathType = AccessTools.TypeByName("AtmosphereOverhaul.Buildings.WaterMath");
+                if (_waterMathType != null)
+                {
+                    _emitWater = AccessTools.Method(
+                        _waterMathType,
+                        "EmitWater",
+                        new[] { typeof(Thing), typeof(float).MakeByRefType() });
+                }
 
                 if (_tryGetTemperature == null) { _failure = "AtmosphereInterface.TryGetTemperature 未找到"; return; }
                 if (_slotsCtor == null) { _failure = "SourceSlots(string) 未找到"; return; }

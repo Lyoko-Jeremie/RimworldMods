@@ -51,6 +51,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             return Mathf.Max(0.001f, 6.11f * Mathf.Exp(17.6f * t / denominator));
         }
 
+        /// <summary>
+        /// 一公斤水在该温度下能撑起多少「水汽量」，与 AO 的 WaterMath.HpaCellPerKg 同式。
+        ///
+        /// 凝结时用 CondensateKg += 水汽差 / VaporPerKg(温度) 把水汽场单位换回 kg。
+        /// </summary>
+        public static float VaporPerKg(float celsius)
+        {
+            return 461.5f * Mathf.Max(1f, celsius + 273.15f) / 500f;
+        }
+
         /// <summary>回路指纹：流量类型 + 回路内最小格索引。拓扑不变则指纹不变。</summary>
         public long Key;
 
@@ -77,6 +87,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         /// 避免用默认 0 去「吸干」房间湿度。
         /// </summary>
         public bool VaporValid;
+
+        /// <summary>
+        /// 尚未交出去给 AO 的凝结水（kg）。每满 0.25 kg 由调用方生成一枚 AO_Water。
+        /// 不存档：读档后气袋本身会重新标定，这一点零头留着也没意义。
+        /// </summary>
+        public float CondensateKg;
 
         /// <summary>全部进气风机的额定质量流量（kg/s）。</summary>
         public float RatedIntakeKgPerSec;
@@ -234,10 +250,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             // 真实空调就是这样除湿的。不钳制的话，回路会带着室外绝对湿度一路吹进房间，
             // AO 再把超出部分凝结掉，白白消耗潜热，房间湿度也会一直贴着 100%。
             //
+            // 这里只做"冷风脱水"，不在这里结算产水量：
+            // 产水按出风口所在房间的空气（室温 + 湿度）算，见 AirLoopMapComponent 的出风口段。
+            //
             // 升温方向天然安全：饱和量随温度升高而增大，Min 不会削掉任何东西。
             if (VaporValid && TemperatureK > 1f)
             {
-                VaporContent = Mathf.Min(VaporContent, VaporCapacity(TemperatureK - 273.15f));
+                float celsius = TemperatureK - 273.15f;
+                float capacity = VaporCapacity(celsius);
+                if (VaporContent > capacity)
+                {
+                    VaporContent = capacity;
+                }
             }
 
             // 4. 出气。drive 已在第 1 步算出，这里直接复用，保证「本轮进的气」与

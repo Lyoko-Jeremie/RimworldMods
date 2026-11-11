@@ -610,6 +610,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                 }
             }
 
+            // 凝结水的落地位置就是出风口本身：冷风从哪儿吹出来，水就从哪儿滴下来。
+            // 没有可用出风口时保持 null，这一轮的凝结量继续攒在 loop.CondensateKg 里。
+            Thing condensateSource = null;
+
             ++diagNets;
             if (net.Consumers != null && exhaustCubicMetres > 1e-6f)
             {
@@ -684,7 +688,37 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                                     }
                                 }
                             }
+
+                            // 冷凝水按「房间这边的空气被冷却到送风温度」算，不按气袋算。
+                            //
+                            // 物理依据：冷风把这格房间空气降到 supplyCelsius，
+                            // 超出该温度饱和量的水必然析出，量就是浓度差。
+                            // 所以产水量取决于房间有多潮，而不是管道里存了多少水 ——
+                            // 房间干燥时一滴都不会有，房间闷湿时才会哗哗出水。
+                            if (condensateSource != null && AoBridge.WaterAvailable)
+                            {
+                                float roomVaporForWater;
+                                if (AoBridge.TryGetAbsoluteVapor(map, vent, out roomVaporForWater))
+                                {
+                                    float supplyCelsiusForWater = loop.TemperatureK - 273.15f;
+                                    float supplyCapacity = AirLoop.VaporCapacity(supplyCelsiusForWater);
+                                    float excess = roomVaporForWater - supplyCapacity;
+                                    if (excess > 0f)
+                                    {
+                                        // deliveredM3 是这一步注入的体积；AO 的 1 格 = 5 m³。
+                                        float cellFraction = deliveredM3 / 5f;
+                                        // 水不能凭空出现：析出多少，就从房间里扣掉多少水汽。
+                                        // 这一步才是真正的「除湿」，只产水不扣湿等于白送。
+                                        AoBridge.AddMoistureDelta(map, vent, -excess * cellFraction);
+                                        loop.CondensateKg += excess * cellFraction /
+                                                             AirLoop.VaporPerKg(supplyCelsiusForWater);
+                                    }
+                                }
+                            }
                         }
+
+                        // 该出风口是有效送风口，凝结水就落在它脚下。
+                        condensateSource = consumer.parent;
 
                         ApplyWind(consumer, ventScratch, net, loop);
                     }
@@ -725,6 +759,24 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     }
                     control.IntakeTemperature = intakeKelvin - 273.15f;
                     control.ConvertedTemperature = loop.TemperatureK - 273.15f;
+                }
+            }
+
+            // 7. 凝结水出水。
+            //
+            // 水落在本轮有风送出的出风口脚下 —— 谁吹的风，谁滴水。
+            // 没有可用出风口的这一轮不出水，凝结量继续攒着。
+            // AO 那边每个 AO_Water 是 0.25 kg，EmitWater 会自己按这个粒度放。
+            if (loop.CondensateKg >= 0.25f)
+            {
+                if (condensateSource != null && AoBridge.WaterAvailable && condensateSource.Spawned)
+                {
+                    loop.CondensateKg = AoBridge.EmitWater(condensateSource, loop.CondensateKg);
+                }
+                else if (loop.CondensateKg > 4f)
+                {
+                    // 出水口不可用时不要无限囤积，留一点零头就好。
+                    loop.CondensateKg = 4f;
                 }
             }
         }
