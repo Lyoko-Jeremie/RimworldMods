@@ -5,4 +5,19 @@
     <AOPatch_SkeletonNotice>本版为推倒重写后的骨架，尚未实现任何兼容逻辑。所有旧补丁均已移除，后续按模块逐个加回。</AOPatch_SkeletonNotice>
     <AOPatch_Master>启用本 Mod</AOPatch_Master>
     <AOPatch_MasterDesc>总开关。关闭后不安装任何补丁。</AOPatch_MasterDesc>
+
+    <!-- VTE 中央空调三管式 VRF：inspect 面板 -->
+    <JAP.ACNet.Satisfaction>满足率</JAP.ACNet.Satisfaction>
+    <JAP.ACNet.LoadRatio>负荷</JAP.ACNet.LoadRatio>
+    <JAP.ACNet.NetworkTemp>网络目标温度</JAP.ACNet.NetworkTemp>
+    <JAP.ACNet.IndoorUnits>室内机</JAP.ACNet.IndoorUnits>
+    <JAP.ACNet.Compressors>压缩机</JAP.ACNet.Compressors>
+    <JAP.ACNet.Demand>需求</JAP.ACNet.Demand>
+    <JAP.ACNet.Capacity>容量</JAP.ACNet.Capacity>
+    <JAP.ACNet.Recovered>网内回收</JAP.ACNet.Recovered>
+    <JAP.ACNet.NetLoad>净负荷</JAP.ACNet.NetLoad>
+    <JAP.ACNet.Borne>承担</JAP.ACNet.Borne>
+    <JAP.ACNet.Unit>台</JAP.ACNet.Unit>
+    <JAP.ACNet.Workload>工作负荷</JAP.ACNet.Workload>
+    <JAP.ACNet.OutdoorLoad>室外机负荷</JAP.ACNet.OutdoorLoad>
 </LanguageData>

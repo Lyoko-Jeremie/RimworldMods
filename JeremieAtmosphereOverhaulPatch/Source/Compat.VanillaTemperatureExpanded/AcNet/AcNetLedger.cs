@@ -48,6 +48,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             public IntVec3 Cell;
             public float Qi;      // 带符号的需求，K·格 / 本次模拟步
             public float QFull;   // 满额 |Qi|，K·格 / 本次模拟步
+            public float Drive;   // 负荷率 |Qi|/QFull，与温差相关
         }
 
         private readonly List<UnitEntry> _entries = new List<UnitEntry>(8);
@@ -58,6 +59,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
         public int LastRunTick = -99999;
         public float LastEfficiency = 1f;
+
+        // 最近一次账本的只读快照，供 inspect 面板使用（单位：台当量 = 单台满额室内机的输出）。
+        public int UnitCount { get; private set; }
+        public int CompressorCount { get; private set; }
+        public float UnitReference { get; private set; }
+        public float LastDemand { get; private set; }
+        public float LastCapacity { get; private set; }
+        public float LastRecovered { get; private set; }
+        public float LastNet { get; private set; }
+        public float LastCompressorUnits { get; private set; }
+        /// <summary>室外机实际出力比例（= 电费依据），0..1。</summary>
+        public float LastLoadRatio { get; private set; }
 
         /// <summary>
         /// 跑一次账本。由 AO 模拟步回调调用，dtTicks 是本次模拟实际推进的 tick 数
@@ -74,6 +87,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             LastRunTick = tick;
             _entries.Clear();
             _compressors.Clear();
+            UnitCount = 0;
+            CompressorCount = 0;
+            UnitReference = 0f;
+            LastDemand = 0f;
+            LastCapacity = 0f;
+            LastRecovered = 0f;
+            LastNet = 0f;
+            LastCompressorUnits = 0f;
+            LastLoadRatio = 0f;
 
             Map map = net.map;
             if (map == null)
@@ -185,6 +207,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 entry.Cell = cell;
                 entry.Qi = qi;
                 entry.QFull = qFull;
+                entry.Drive = drive;
                 _entries.Add(entry);
             }
 
@@ -345,6 +368,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             net.Efficiency = s;
             LastEfficiency = s;
 
+            // inspect 面板快照：统一换算成「台当量」，即单台满额室内机的输出。
+            float unitRef = qRef > 0f ? qRef : 0f;
+            UnitReference = unitRef;
+            UnitCount = _entries.Count;
+            CompressorCount = _compressors.Count;
+            LastDemand = a + b;
+            LastCapacity = capacity;
+            LastRecovered = Mathf.Min(a, b);
+            LastNet = qNet;
+            float unitsSum = 0f;
+            for (int i = 0; i < _compressors.Count; i++)
+            {
+                unitsSum += -_compressors[i].Props.consumptionPerTick;
+            }
+            LastCompressorUnits = unitsSum;
+            LastLoadRatio = loadRatio;
+
             // 临时诊断：每 2000 tick 打一行，确认账本确实跑到了、且各个量不是 0。
             if (tick % 2000 < 30)
             {
@@ -359,6 +399,27 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     net.GetHashCode(), _entries.Count, _compressors.Count, net.receivers.Count, net.producers.Count,
                     a, b, capacity, s, first));
             }
+        }
+
+        /// <summary>查询某台室内机最近一步的负荷率，供 inspect 面板使用。</summary>
+        public bool TryGetUnitDrive(Building_AcUnit unit, out float drive)
+        {
+            drive = 0f;
+            if (unit == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                if (ReferenceEquals(_entries[i].Unit, unit))
+                {
+                    drive = _entries[i].Drive;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static Building_AcControlUnit FindController(AcPipeNet net)
@@ -410,31 +471,32 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
         /// <summary>
         /// 实际出风格（按建筑的空间形态，而不是 offsetNorth）：
-        /// - 壁挂机 VTE_ACUnit 是室内设备，本身就在室内，输出自身格；
-        /// - 墙机 VTE_ACUnitWall 是墙体的一部分，出风口伸到室内，
-        ///   所以输出 RotatedBy(South, Rotation) 那一格（Rotation 指向身后的墙）。
+        /// - 壁挂机（isAttachment / Placeworker_AttachedToWall，VTE_ACUnitWall）是室内的贴墙附件，
+        ///   本体所在格就在室内，作用格就是自身格；
+        /// - 墙体机（canPlaceOverWall，VTE_ACUnit）本身就是墙，占据墙格，
+        ///   作用格是贴图所面对的房间那一格 = Position + RotatedBy(North, Rotation)。
         /// </summary>
         private static IntVec3 OutputCell(Building_AcUnit unit)
         {
-            bool wallMounted = IsWallMounted(unit);
-            IntVec3 cell = wallMounted
-                ? unit.Position + IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation)
-                : unit.Position;
+            bool attached = IsAttachedToWall(unit);
+            IntVec3 cell = attached
+                ? unit.Position
+                : unit.Position + IntVec3Utility.RotatedBy(IntVec3.North, unit.Rotation);
 
             if (_outputLoggedIds.Count < 16 && _outputLoggedIds.Add(unit.thingIDNumber))
             {
                 Log.Message("[AOPatch/VTE] 出风格：def=" + unit.def.defName
                             + " pos=" + unit.Position
                             + " rot=" + unit.Rotation.AsInt
-                            + " 墙机=" + wallMounted
+                            + " 贴墙=" + attached
                             + " 采用=" + cell);
             }
 
             return cell;
         }
 
-        /// <summary>墙机判定：placeWorkers 含 Placeworker_AttachedToWall，或 Def 标了 isAttachment。</summary>
-        private static bool IsWallMounted(Building_AcUnit unit)
+        /// <summary>壁挂判定：placeWorkers 含 Placeworker_AttachedToWall，或 Def 标了 isAttachment。</summary>
+        private static bool IsAttachedToWall(Building_AcUnit unit)
         {
             ThingDef def = unit.def;
             // BuildableDef.placeWorkers 是 List<System.Type>，不是实例列表。
@@ -450,18 +512,6 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
             }
             return def.building != null && def.building.isAttachment;
-        }
-
-        /// <summary>
-        /// 出风格偏移。与 VTE 源码 Building_AcUnit.SpawnSetup 完全一致：
-        /// 有 TemperatureOutputPositionModExtension 就用其 offsetNorth，否则 IntVec3.North。
-        /// VTE_ACUnit 没有扩展，所以是 North；VTE_ACUnitWall 的扩展写的是 (0,0,0)。
-        /// </summary>
-        private static IntVec3 OutputOffset(Building_AcUnit unit)
-        {
-            TemperatureOutputPositionModExtension extension =
-                unit.def.GetModExtension<TemperatureOutputPositionModExtension>();
-            return extension != null ? extension.offsetNorth : IntVec3.North;
         }
     }
 }

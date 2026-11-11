@@ -79,9 +79,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
             }
 
+            // UI：让 inspect 文本与新语义一致（满足率、台当量、按热负荷计费）。
+            AcNetInspectPatches.Install(harmony);
+
             Log.Message("[AOPatch/VTE] 中央空调三管式 VRF 已接管：Building_AcUnit.TickRare + AcPipeNet.PipeSystemTick"
                         + (stepPatched ? " + AO 模拟步推进" : "（未找到 CompleteFinishedSimulation，账本停摆）")
-                        + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）"));
+                        + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）")
+                        + " + inspect");
             return true;
         }
 

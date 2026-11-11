@@ -5,4 +5,19 @@
     <AOPatch_SkeletonNotice>This build is a post-rewrite skeleton: no compatibility logic is implemented yet. All previous patches have been removed and will return module by module.</AOPatch_SkeletonNotice>
     <AOPatch_Master>Enable this mod</AOPatch_Master>
     <AOPatch_MasterDesc>Master switch. When off, no patches are installed.</AOPatch_MasterDesc>
+
+    <!-- VTE central AC three-pipe VRF: inspect panel -->
+    <JAP.ACNet.Satisfaction>Satisfaction</JAP.ACNet.Satisfaction>
+    <JAP.ACNet.LoadRatio>Load</JAP.ACNet.LoadRatio>
+    <JAP.ACNet.NetworkTemp>Network target</JAP.ACNet.NetworkTemp>
+    <JAP.ACNet.IndoorUnits>Indoor units</JAP.ACNet.IndoorUnits>
+    <JAP.ACNet.Compressors>Compressors</JAP.ACNet.Compressors>
+    <JAP.ACNet.Demand>demand</JAP.ACNet.Demand>
+    <JAP.ACNet.Capacity>capacity</JAP.ACNet.Capacity>
+    <JAP.ACNet.Recovered>Recovered</JAP.ACNet.Recovered>
+    <JAP.ACNet.NetLoad>Net load</JAP.ACNet.NetLoad>
+    <JAP.ACNet.Borne>Borne</JAP.ACNet.Borne>
+    <JAP.ACNet.Unit>unit</JAP.ACNet.Unit>
+    <JAP.ACNet.Workload>Workload</JAP.ACNet.Workload>
+    <JAP.ACNet.OutdoorLoad>Outdoor load</JAP.ACNet.OutdoorLoad>
 </LanguageData>
