@@ -31,18 +31,50 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private const float FrictionPerPipeCell = 0.02f;
         private const float MaxFrictionFactor = 6f;
 
-        // 出风口风矢量标定。CCC 的 baseAirExhaust 是 CFM 量级，按格面积折算只有
-        // 0.02 m/s，肉眼完全察觉不到；这里按「每 CFM 0.01 m/s」放大到可见量级：
-        // 50 CFM → 0.5 m/s，300 CFM → 3 m/s，600 CFM → 6 m/s。
-        private const float WindSpeedPerAirFlowUnit = 0.01f;
-        private const float MaxWindSpeed = 8f;
+        // 出风口风矢量标定。
+        //
+        // AO 的风速刻度是「米/秒」，量级由它自己的建筑给出：
+        //   AtmosphereTuning.xml   MaxWindSpeed = 120、ExplosionMaxWindSpeed = 90
+        //   Buildings_Fans.xml     小型风扇  ratedFreeAirFlowM3PerSecond=10  / outletAreaM2=1  → 10 m/s
+        //                          archotech   ratedFreeAirFlowM3PerSecond=2250/ outletAreaM2=25 → 90 m/s
+        //   Buildings_Turbojet.xml maxSpeed = 150、halfSpeed = 60
+        // 也就是 0~120 才是「有风」的量级，1 m/s 在这个刻度上等于静止。
+        // CCC 的 baseAirExhaust 是 CFM（WallAirVent = 100），按「每 CFM 0.1 m/s」折算，
+        // 100 CFM 出风口 = 10 m/s，正好与 AO 最小风扇同档，风场图上可见。
+        private const float WindSpeedPerAirFlowUnit = 0.1f;
+        private const float MaxWindSpeed = 120f;
         private const float WindBlendPerTick = 0.1f;
 
-        // 出风口等效加热的扩散补偿上限。
-        // CCC 原版 TickRare 直接把整个房间的温度推上去；AO 只能逐格写温度，
-        // 所以出风口那一格要多给几倍，让求解器把它摊到整个房间。
-        // 上限是为了在小房间 / 大出风口时不把单格烧穿。
-        private const float MaxOutletHeatSpread = 12f;
+        // 出风口热源的散布范围。
+        //
+        // 需求是「温度从出风口缓慢发散到整个房间」。只加热一格，热量会被求解器
+        // 立刻抹平又补不满，观感上就是卡在某个温度不动；整房均匀加热又不是用户要的。
+        // 所以按距离加权撒到出风口外圈若干格，靠 AO 自己的平流和扩散往外铺。
+        private const int SpreadRadiusCells = 5;
+        private const int MaxSpreadCells = 40;
+        private const float SpreadFalloffPerCell = 1f;
+
+        // 交给 AO 的交付倍率。
+        //
+        // CCC 内部的气袋模型一律不动 —— 面板上的「总流速」是按 CCC 自己的
+        // CubicMetresPerAirFlowUnit 反算出来的，改了内部标定，显示就会跟着失真。
+        // 这里只在「把结果写成 AO 体积源 / 连续源」这一步放大。
+        //
+        // 三个旋钮的物理含义不一样，不要一起拉：
+        //
+        //   体积（AoVolumeScale）：注入与抽走的空气量。它进的是 AO 的散度方程，
+        //       会直接改变房间气压。放到 100 倍会让房间持续被加压、抽气格强负压，
+        //       表现是满屋乱风 + 温度反而被吹散。10 倍以内还算安全的试错区间。
+        //
+        //   热量（AoHeatScale）：直接写 TemperaturePerTick，不参与质量守恒，
+        //       是最安全的杠杆。100 格房间、WallAirVent(100 CFM)、温差 10 ℃ 时
+        //       本来就约 0.3 ℃/秒（与原版 TickRare 同速），通常不需要放大。
+        //
+        //   风速：由 WindSpeedPerAirFlowUnit 单独标定，已与 AO 最小风扇同档。
+        //
+        // 需要更强的观感时，先拉热量，再考虑体积，最后才是风。
+        private const float AoVolumeScale = 1f;
+        private const float AoHeatScale = 1f;
 
         private static readonly FieldInfo NetsField =
             typeof(AirFlowNetManager).GetField("cachedNets", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -64,6 +96,28 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
         // 收集一个出风口当前真正能向哪几格送气。墙挂型一格，Surround 型八邻域一圈。
         private readonly List<IntVec3> ventScratch = new List<IntVec3>();
+
+        // 出风口热源的分布格：从出风格向外 BFS 若干圈，权重按距离递减。
+        // 需求是「温度从出风口缓慢发散到整个房间」，所以不能整房均匀加热，
+        // 也不能只加热一格（一格会立刻被求解器摊平又补不满）。
+        private readonly List<IntVec3> spreadCells = new List<IntVec3>();
+        private readonly List<float> spreadWeights = new List<float>();
+        private readonly Dictionary<int, int> spreadVisited = new Dictionary<int, int>();
+        private readonly List<int> spreadQueue = new List<int>();
+
+        // 运行期诊断。
+        //
+        // CCC 面板上的「总流速 / 变温效率 / 空气流动效率」全部由 AirFlowNetTick 从气袋模型算出，
+        // 与 AO 是否真的收到体积源和风矢量没有任何反馈关系 —— 出风口显示 100% 并不能证明
+        // AO 那边收到了东西。所以这里定期把「本 mod 真正交给 AO 的量」打到日志里，
+        // 用来区分「气袋没出气」和「AO 吞掉了注入」。
+        private int diagCountdown = 1;
+        private int diagNets;
+        private int diagLiveVents;
+        private float diagExhaustM3;
+        private int diagInjectedCells;
+        private float diagInjectedVolumes;
+        private float diagWindSpeed;
 
         public AirLoopMapComponent(Map map) : base(map)
         {
@@ -120,6 +174,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             aliveScratch.Clear();
             liveWindOwners.Clear();
 
+            diagNets = 0;
+            diagLiveVents = 0;
+            diagExhaustM3 = 0f;
+            diagInjectedCells = 0;
+            diagInjectedVolumes = 0f;
+            diagWindSpeed = 0f;
+
             for (int i = 0; i < nets.Count; i++)
             {
                 AirFlowNet net = nets[i];
@@ -150,6 +211,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
             PruneDeadLoops();
             PruneDeadWindOwners();
+
+            if (--diagCountdown <= 0)
+            {
+                diagCountdown = 60;
+                Log.Message(string.Concat(
+                    "[AOPatch/CCC] dt=", dt.ToString("F2"),
+                    " 回路=", diagNets.ToString(),
+                    " 出气=", diagExhaustM3.ToString("F4"), " m3/步",
+                    " 可用出风口=", diagLiveVents.ToString(),
+                    " 注入格=", diagInjectedCells.ToString(),
+                    " 注入体积=", diagInjectedVolumes.ToString("F4"),
+                    " 风速=", diagWindSpeed.ToString("F2"), " m/s"));
+            }
         }
 
         /// <summary>CCC 的网络每帧都被重算，cachedNets 在重建帧里是旧的，直接跳过。</summary>
@@ -509,12 +583,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     {
                         continue;
                     }
-                    AoBridge.AddVolumeSource(map, mouth, -share / 5f, 0f, 0f);
+                    AoBridge.AddVolumeSource(map, mouth, -share * AoVolumeScale / 5f, 0f, 0f);
                 }
             }
 
+            ++diagNets;
             if (net.Consumers != null && exhaustCubicMetres > 1e-6f)
             {
+                diagExhaustM3 += exhaustCubicMetres;
                 // 先数清楚有几个出风口真的能出气。全被堵住的出风口不该分到流量，
                 // 否则气会白白消失在墙里，回路压力凭空下降。
                 int liveVents = 0;
@@ -534,6 +610,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
                 if (liveVents > 0)
                 {
+                    diagLiveVents += liveVents;
                     float share = exhaustCubicMetres / liveVents;
                     for (int i = 0; i < net.Consumers.Count; i++)
                     {
@@ -552,7 +629,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                         // 一个出风口可能同时向多格送气（Surround 八邻域）。
                         // 体积、氧、热、湿按格数平摊，总通量不变。
                         float perCellM3 = share / ventScratch.Count;
-                        float cellVolumes = perCellM3 / 5f;
+                        // 交付倍率同时作用于体积、水汽，保证「注入的气」内部比例一致。
+                        float deliveredM3 = perCellM3 * AoVolumeScale;
+                        float cellVolumes = deliveredM3 / 5f;
                         for (int k = 0; k < ventScratch.Count; k++)
                         {
                             IntVec3 vent = ventScratch[k];
@@ -563,6 +642,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                                 loop.OxygenPercent,
                                 loop.TemperatureK - 273.15f);
 
+                            ++diagInjectedCells;
+                            diagInjectedVolumes += cellVolumes;
+
                             // 水汽不走体积源：AO 的 MixReleasedGas 只处理氧与温度。
                             // 把回路浓度与房间浓度的差按注入体积摊到该格，等价于两团气完全混合。
                             // 只有在回路水汽已标定过时才搬，否则默认 0 会凭空吸干房间。
@@ -571,8 +653,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                                 float roomVapor;
                                 if (AoBridge.TryGetAbsoluteVapor(map, vent, out roomVapor))
                                 {
-                                    float vaporDelta = perCellM3 * (loop.VaporContent - roomVapor) /
-                                                       (5f + perCellM3);
+                                    float vaporDelta = deliveredM3 * (loop.VaporContent - roomVapor) /
+                                                       (5f + deliveredM3);
                                     if (vaporDelta != 0f)
                                     {
                                         AoBridge.AddMoistureDelta(map, vent, vaporDelta);
@@ -745,14 +827,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         }
 
         /// <summary>
-        /// 给一个出风口写持续风矢量。
+        /// 给一个出风口写持续风矢量 + 径向递减的局部热源。
         ///
-        /// 走 AO 的 SourceSlots 通路而不是 AddVolumeSource：体积源只写散度，
-        /// 投影法解出的是各向同性辐散，没有方向；SourceSlots 的 MaintainTargetWind
-        /// 会把该格速度逐步拉向 TargetWind，这才是「送风口」该有的行为。
+        /// 风走 AO 的 SourceSlots：体积源只写散度，投影法解出的是各向同性辐散，没有方向；
+        /// SourceSlots 的 MaintainTargetWind 会把该格速度逐步拉向 TargetWind。
         ///
-        /// 温度、氧、水汽仍走 AddVolumeSourceAtTemperature，这里只写风，
-        /// 所以 TemperaturePerTick 保持 0，不会重复加热。
+        /// 热也走同一个 SlotRates.TemperaturePerTick，但按「出风口最热、往外递减」分布：
+        /// 总热量取自原版整房公式（roomDelta × 房间格数 ÷ 250），再按 1/(1+d) 权重
+        /// 摊到出风口附近 BFS 出来的若干格上。这样总热量与原版一致，
+        /// 空间上却是从出风口向外蔓延 —— AO 的平流（10 m/s 送风）会先把它吹成一条，
+        /// 再靠扩散铺满房间，而不是瞬间整房同温。
         /// </summary>
         private void ApplyWind(CompAirFlowConsumer consumer, List<IntVec3> cells, AirFlowNet net, AirLoop loop)
         {
@@ -802,14 +886,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             // 全周出风时总动量守恒：每格速度按 1/sqrt(N) 摊薄，N·v² 与单向时相同。
             // 单向时 N=1，退化成原来的整速。
             float perCellSpeed = speed / Mathf.Sqrt(cells.Count);
+            diagWindSpeed = Mathf.Max(diagWindSpeed, perCellSpeed);
 
-            // 等效加热：CCC 原版 Building_AirVent.TickRare 是直接给整个房间加温
-            //   room.Temperature += GenTemperature.ControlTemperatureTempChange(
-            //       口位, map, min(|送风-室温|,10) * 0.25 * (ExhaustAirFlow/100) * FlowEff² * 4.1667 * 12, 送风温度)
-            // 每 250 tick 一次。本兼容层改成注入真实体积气流后，热功率低了两个数量级，
-            // 所以按同一公式把这份热量折算成 AO 连续源的 TemperaturePerTick（摄氏度/游戏 tick）补回来。
-            // AO 会把这一格的热量靠求解器扩散到整个房间。
-            float heatPerTick = 0f;
+            // 出风口热源：总热量按原版整房公式取，但只落在出风口附近的几圈格子上。
+            //
+            // 原版 Building_AirVent.TickRare 是
+            //   roomOrAdjacent.Temperature += GenTemperature.ControlTemperatureTempChange(口位, map, energy, 送风温度)
+            // 每 250 tick 一次，等于给房间每一格加 roomDelta。AO 的 RoomTemperatureWriteHook
+            // 会把这种写入摊到每一格，结果是整房同一瞬间一起升温 —— 不是我们要的观感。
+            //
+            // 这里保留同一个"总热量"口径（roomDelta × 房间格数），但摊到 250 tick 上，
+            // 再按 1/(1+d) 权重撒在出风口外圈的格子。AO 的送风会先把热吹成一条，
+            // 再靠扩散铺满房间，观感就是"从出风口缓慢蔓延"。
+            float totalHeatPerTick = 0f;
             Room ventRoom = cells[0].GetRoom(map);
             if (ventRoom != null && !ventRoom.UsesOutdoorTemperature)
             {
@@ -822,39 +911,51 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                                4.1666665f * 12f;
                 float roomDelta = GenTemperature.ControlTemperatureTempChange(
                     cells[0], map, energy, supplyCelsius);
-                heatPerTick = roomDelta / 250f;
 
-                // 只加热出风口那几格，扩散到整房要打折，所以按房间格数补偿，
-                // 但夹在 MaxOutletHeatSpread 倍以内，避免单格过热。
-                float spread = Mathf.Clamp((float)ventRoom.CellCount * 0.25f, 1f, MaxOutletHeatSpread);
-                heatPerTick *= spread;
+                // roomDelta 是"整房每一格升这么多度"，总「格·度」= roomDelta × 格数。
+                // 除以 250 把 TickRare 的一次性动作摊成每 tick 的连续源。
+                totalHeatPerTick = roomDelta * Mathf.Max(1f, ventRoom.CellCount) / 250f * AoHeatScale;
             }
+
+            CollectSpreadCells(cells, ventRoom, spreadCells, spreadWeights);
 
             IntVec3 center = owner.Position;
 
-            for (int k = 0; k < cells.Count; k++)
+            int slot = 0;
+            for (int i = 0; i < spreadCells.Count; i++)
             {
-                IntVec3 cell = cells[k];
-
-                // 方向从建筑中心指向该格。墙挂型只有一格，等价于原来的正面朝向。
-                Vector2 direction = new Vector2(cell.x - center.x, cell.z - center.z);
-                float length = direction.magnitude;
-                bool hasDirection = length > 1e-4f;
-                if (hasDirection)
-                {
-                    direction = direction / length;
-                }
+                IntVec3 cell = spreadCells[i];
 
                 SlotRates rates = default(SlotRates);
-                rates.MaintainTargetWind = hasDirection && perCellSpeed > 0f;
-                rates.TargetWind = hasDirection ? direction * perCellSpeed : Vector2.zero;
-                rates.TargetWindBlendPerTick = WindBlendPerTick;
-                rates.TemperaturePerTick = heatPerTick / cells.Count;
-                AoBridge.SetSlot(slots, owner, k, cell, rates);
+
+                // 只有出风格本身给风；外圈格子只承担热量，风由平流自己带。
+                if (cells.IndexOf(cell) >= 0)
+                {
+                    // 方向从建筑中心指向该格。墙挂型只有一格，等价于原来的正面朝向。
+                    Vector2 direction = new Vector2(cell.x - center.x, cell.z - center.z);
+                    float length = direction.magnitude;
+                    bool hasDirection = length > 1e-4f;
+                    if (hasDirection)
+                    {
+                        direction = direction / length;
+                    }
+
+                    rates.MaintainTargetWind = hasDirection && perCellSpeed > 0f;
+                    rates.TargetWind = hasDirection ? direction * perCellSpeed : Vector2.zero;
+                    rates.TargetWindBlendPerTick = WindBlendPerTick;
+                }
+
+                if (totalHeatPerTick > 0f && i < spreadWeights.Count)
+                {
+                    rates.TemperaturePerTick = totalHeatPerTick * spreadWeights[i];
+                }
+
+                AoBridge.SetSlot(slots, owner, slot, cell, rates);
+                ++slot;
             }
 
-            // 出风格数变少时（比如 Surround 半圈被墙堵住）清掉多余槽位。
-            AoBridge.ZeroFrom(slots, owner, cells.Count);
+            // 出风格或扩散格变少时清掉多余槽位。
+            AoBridge.ZeroFrom(slots, owner, slot);
         }
 
         /// <summary>
@@ -889,6 +990,98 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             if (vent.InBounds(map) && !vent.Impassable(map))
             {
                 cells.Add(vent);
+            }
+        }
+
+        /// <summary>
+        /// 从出风格出发 BFS，收集出风口附近若干圈内可通行、同房间的格子，并给出归一化权重。
+        ///
+        /// 权重 = 1 / (1 + d)，d 是到最近出风格的距离。出风格本身最高，往外递减，
+        /// 归一化后总和为 1，于是总热量不变、只是按距离摊开，而不是整房同时升温。
+        ///
+        /// 只沿同一房间扩散：热不该顺着门口漏进走廊，也不该漏到室外。
+        /// </summary>
+        private void CollectSpreadCells(List<IntVec3> vents, Room room,
+            List<IntVec3> cells, List<float> weights)
+        {
+            cells.Clear();
+            weights.Clear();
+            spreadVisited.Clear();
+            spreadQueue.Clear();
+
+            if (vents == null || vents.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < vents.Count; i++)
+            {
+                IntVec3 vent = vents[i];
+                if (!vent.InBounds(map))
+                {
+                    continue;
+                }
+
+                int index = map.cellIndices.CellToIndex(vent);
+                if (spreadVisited.ContainsKey(index))
+                {
+                    continue;
+                }
+
+                spreadVisited[index] = 0;
+                spreadQueue.Add(index);
+            }
+
+            float weightSum = 0f;
+            int head = 0;
+            while (head < spreadQueue.Count && cells.Count < MaxSpreadCells)
+            {
+                int index = spreadQueue[head];
+                ++head;
+                int distance = spreadVisited[index];
+                IntVec3 cell = map.cellIndices.IndexToCell(index);
+
+                cells.Add(cell);
+                float weight = 1f / (1f + distance * SpreadFalloffPerCell);
+                weights.Add(weight);
+                weightSum += weight;
+
+                if (distance >= SpreadRadiusCells)
+                {
+                    continue;
+                }
+
+                for (int d = 0; d < GenAdj.AdjacentCells.Length; d++)
+                {
+                    IntVec3 next = cell + GenAdj.AdjacentCells[d];
+                    if (!next.InBounds(map) || next.Impassable(map))
+                    {
+                        continue;
+                    }
+
+                    // 只在同一房间内扩散；room 为 null（室外型出风口）时不限。
+                    if (room != null && next.GetRoom(map) != room)
+                    {
+                        continue;
+                    }
+
+                    int nextIndex = map.cellIndices.CellToIndex(next);
+                    if (spreadVisited.ContainsKey(nextIndex))
+                    {
+                        continue;
+                    }
+
+                    spreadVisited[nextIndex] = distance + 1;
+                    spreadQueue.Add(nextIndex);
+                }
+            }
+
+            if (weightSum > 1e-6f)
+            {
+                for (int i = 0; i < weights.Count; i++)
+                {
+                    weights[i] /= weightSum;
+                }
             }
         }
 

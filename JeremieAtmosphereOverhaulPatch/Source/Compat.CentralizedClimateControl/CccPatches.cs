@@ -8,14 +8,18 @@ using Verse;
 namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 {
     /// <summary>
-    /// 把 CCC 三个建筑自己的 TickRare 关掉，改由气袋在 AO 步里统一推进。
-    ///
-    /// 只关「写场」的部分：
-    ///   - Building_IntakeFan.TickRare   读八邻温度、算风量，随后被气袋取代；
-    ///   - Building_AirVent.TickRare     整房间 Room.Temperature += a，与 AO 双写；
-    ///   - Building_AirThermal.TickRare  尾部向南侧 PushHeat，与 AO 双写。
-    ///
-    /// 保留 CompAirFlowConsumer.TickRare：它只读网络均值、处理优先级变更，不写场。
+    /// 只关两处「写场」的 TickRare，其余交给原版：
+    ///   - Building_IntakeFan.TickRare   它会用八邻域重算 CurrentAirFlow 并覆盖 IsBlocked，
+    ///                                   必须拦住，否则气袋回填的风量每 250 tick 被清零；
+    ///   - Building_AirThermal.TickRare  它用单格 South 判定重写 IsBlocked，尾部还 PushHeat，
+    ///                                   必须拦住，否则温控状态被原版覆盖。
+    ///   - Building_AirVent.TickRare     它内部是 roomOrAdjacent.Temperature += ...，
+    ///                                   AO 会把这条写入摊到房间每一格（ApplyRoomTemperatureWrite），
+    ///                                   也就是整房同时升温。本项目要的是「从出风口向外蔓延」，
+    ///                                   所以不能放行，改为由 AirLoopMapComponent 在出风口附近
+    ///                                   写一个径向递减的连续热源，让 AO 的平流与扩散把它带开。
+    ///                                   这里仍要调用 CompAirFlowConsumer.TickRare，否则
+    ///                                   ConvertedTemperature 不再刷新。
     /// </summary>
     [HarmonyPatch(typeof(Building_IntakeFan), "TickRare")]
     public static class IntakeFanTickRarePatch
@@ -33,6 +37,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
     {
         public static bool Prefix(Building_AirVent __instance)
         {
+            // 只保留「刷新 ConvertedTemperature / 处理优先级变更」这一半，
+            // 写温度与写体积由 AirLoopMapComponent 负责。
             CompAirFlowConsumer consumer = __instance.CompAirFlowConsumer;
             if (consumer != null)
             {
