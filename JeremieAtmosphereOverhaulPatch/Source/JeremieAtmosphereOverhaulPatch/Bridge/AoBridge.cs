@@ -62,6 +62,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static FieldInfo _extOutletWindSpeed;
         private static FieldInfo _extOutletToleranceK;
 
+        private static Type _atmosphereComponentType;
+        private static MethodInfo _addVolumeSource;
+        private static MethodInfo _addVolumeSourceAtTemperature;
+        private static MethodInfo _staticPressure;
+
         private static readonly Dictionary<string, FieldInfo> RateFields = new Dictionary<string, FieldInfo>();
 
         /// <summary>AO 连续源 API 是否完整可用。</summary>
@@ -74,6 +79,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static string Failure
         {
             get { Resolve(); return _failure; }
+        }
+
+        /// <summary>体积源接口是否可用（CCC 气袋这类需要往 AO 写散度的模块要先查这个）。</summary>
+        public static bool VolumeSourceAvailable
+        {
+            get { Resolve(); return _addVolumeSource != null && _addVolumeSourceAtTemperature != null; }
         }
 
         /// <summary>解析一次并缓存。可安全重复调用。</summary>
@@ -125,6 +136,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     _extOutletToleranceK = AccessTools.Field(_facilityExtType, "outletToleranceK");
                 }
 
+                // 体积源与静态气压：给 CCC 气袋这类「需要向 AO 写散度」的扩展用。
+                // 解析失败不算致命，调用方各自回退。
+                _atmosphereComponentType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
+                _addVolumeSource = AccessTools.Method(
+                    interfaceType,
+                    "AddVolumeSource",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(float), typeof(float), typeof(float) });
+                _addVolumeSourceAtTemperature = AccessTools.Method(
+                    interfaceType,
+                    "AddVolumeSourceAtTemperature",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(float), typeof(float), typeof(float) });
+                if (_atmosphereComponentType != null)
+                {
+                    _staticPressure = AccessTools.Method(
+                        _atmosphereComponentType,
+                        "TryGetStaticPressurePascals",
+                        new[] { typeof(IntVec3), typeof(float).MakeByRefType() });
+                }
+
                 if (_tryGetTemperature == null) { _failure = "AtmosphereInterface.TryGetTemperature 未找到"; return; }
                 if (_slotsCtor == null) { _failure = "SourceSlots(string) 未找到"; return; }
                 if (_slotsSet == null) { _failure = "SourceSlots.Set 未找到"; return; }
@@ -158,6 +188,94 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 celsius = (float)args[2];
             }
             return ok;
+        }
+
+        /// <summary>
+        /// 读一格的静态气压（Pa，绝对压力）。
+        /// 用 AO 的 internal TryGetStaticPressurePascals，而不是公开的 TryGetPressurePascals
+        /// ——后者把 solver 单位按 1000 Pa 换算，偏差被放大到约 83 倍。
+        /// </summary>
+        public static bool TryGetStaticPressure(Map map, IntVec3 cell, out float pascals)
+        {
+            pascals = 0f;
+            Resolve();
+            if (map == null || _staticPressure == null)
+            {
+                return false;
+            }
+
+            MapComponent component = FindAtmosphereComponent(map);
+            if (component == null)
+            {
+                return false;
+            }
+
+            object[] args = { cell, null };
+            bool ok = (bool)_staticPressure.Invoke(component, args);
+            if (ok)
+            {
+                pascals = (float)args[1];
+            }
+            return ok;
+        }
+
+        /// <summary>向 AO 写一个点体积源（格体积单位，1 = 5 m³）。负值即抽气。</summary>
+        public static bool AddVolumeSource(Map map, IntVec3 cell, float cellVolumes, float oxygenPercent, float temperatureOffsetCelsius)
+        {
+            Resolve();
+            if (map == null || _addVolumeSource == null)
+            {
+                return false;
+            }
+            try
+            {
+                _addVolumeSource.Invoke(null, new object[] { map, cell, cellVolumes, oxygenPercent, temperatureOffsetCelsius });
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>向 AO 注入一团设定温度与氧含量的气体（出风口用）。</summary>
+        public static bool AddVolumeSourceAtTemperature(Map map, IntVec3 cell, float cellVolumes, float oxygenPercent, float gasCelsius)
+        {
+            Resolve();
+            if (map == null || _addVolumeSourceAtTemperature == null)
+            {
+                return false;
+            }
+            try
+            {
+                _addVolumeSourceAtTemperature.Invoke(null, new object[] { map, cell, cellVolumes, oxygenPercent, gasCelsius });
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static MapComponent FindAtmosphereComponent(Map map)
+        {
+            if (map == null || _atmosphereComponentType == null)
+            {
+                return null;
+            }
+            List<MapComponent> components = map.components;
+            if (components == null)
+            {
+                return null;
+            }
+            for (int i = 0; i < components.Count; i++)
+            {
+                if (components[i] != null && components[i].GetType() == _atmosphereComponentType)
+                {
+                    return components[i];
+                }
+            }
+            return null;
         }
 
         /// <summary>新建一组连续源槽位。prefix 决定内部句柄命名，同图内必须唯一。</summary>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!--
+    CCC 的 CompProperties_TempControl 默认 minTargetTemperature = -50、maxTargetTemperature = 50。
+    在极寒地图上玩家把目标温度调到最低也只有 -50 ℃，再被气袋的出口温度限制，等于怎么调都没用。
+    气袋接管后这两个字段只影响 UI 与少量校验，物理量由 AirLoop 自己算，这里一并放宽。
+  -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="AirThermal" or defName="LargeAirThermal"]/comps/li[@Class="CompProperties_TempControl"]</xpath>
+    <value>
+      <minTargetTemperature>-150</minTargetTemperature>
+      <maxTargetTemperature>300</maxTargetTemperature>
+    </value>
+  </Operation>
+</Patch>
