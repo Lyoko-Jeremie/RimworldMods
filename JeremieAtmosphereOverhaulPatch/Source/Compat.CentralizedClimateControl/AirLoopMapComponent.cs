@@ -54,6 +54,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private const int MaxSpreadCells = 40;
         private const float SpreadFalloffPerCell = 1f;
 
+        // 单步积分上限（秒）。
+        //
+        // AO 的基础步长是 baseIntervalTicks = 30，即 0.5 秒。但加载存档、切图、
+        // 或者 AO 卡住一段时间后补推进时，lastSynchronizedSimulationTick 的差值
+        // 会是一个巨大的数 —— 实测见过 dt = 6754 秒。用这么大的步长积分，一步就能
+        // 把气袋质量抽掉一半、压力从 101325 Pa 打到几千帕，随后出气驱动恒为下限、
+        // 进气被质量守恒一起锁死，面板表现为「总流速 0、变温效率 340000000%」。
+        //
+        // 截断而不是丢弃：丢掉会少算一截真实推进，截断只是把这部分推进按正常步长
+        // 分摊到后续几步里，物理上等价于「求解器只按自己支持的步长走」。
+        private const float MaxStepSeconds = 0.5f;
+
         // 交给 AO 的交付倍率。
         //
         // CCC 内部的气袋模型一律不动 —— 面板上的「总流速」是按 CCC 自己的
@@ -161,6 +173,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             if (dt <= 0f)
             {
                 return;
+            }
+
+            // 见 MaxStepSeconds 的注释：加载存档/切图后的第一次推进可能是几千秒。
+            if (dt > MaxStepSeconds)
+            {
+                dt = MaxStepSeconds;
             }
 
             List<AirFlowNet> nets = ReadNets();
@@ -903,17 +921,38 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             if (ventRoom != null && !ventRoom.UsesOutdoorTemperature)
             {
                 float supplyCelsius = loop.TemperatureK - 273.15f;
-                float delta = Mathf.Min(Mathf.Abs(supplyCelsius - ventRoom.Temperature), 10f);
+
+                // 「送风温度 - 格温」的符号必须单独乘进来。
+                //
+                // 原版 Building_AirVent.TickRare：
+                //   float f  = ConvertedTemperature - GetTemperature(口位);
+                //   float n1 = Mathf.Abs(f); if (n1 > 10f) n1 = 10f;
+                //   float n2 = 1f; if (f < 0f) n2 = -1f;          // ← 符号
+                //   float n5 = n1 * 0.25f * (ExhaustAirFlow/100f) * FlowEff² * thermalOk
+                //              * 4.1666665f * 12f * n2;
+                // 而 GenTemperature.ControlTemperatureTempChange 是靠 energyLimit 的正负
+                // 选「加热」还是「制冷」分支的：
+                //   return energyLimit <= 0f ? Mathf.Min(Mathf.Max(a, b), 0f)
+                //                            : Mathf.Max(Mathf.Min(a, b), 0f);
+                // 漏掉这个符号，制冷请求就被送进加热分支，算出来恒为 0 —— 只会热、不会冷。
+                float diff = supplyCelsius - ventRoom.Temperature;
+                float magnitude = Mathf.Min(Mathf.Abs(diff), 10f);
+                if (diff < 0f)
+                {
+                    magnitude = -magnitude;
+                }
+
                 float flowEfficiency = Mathf.Clamp01(net.FlowEfficiency);
                 float thermalOk = net.ThermalEfficiency > 0f ? 1f : 0f;
-                float energy = delta * 0.25f * (airFlow / 100f) *
+                float energy = magnitude * 0.25f * (airFlow / 100f) *
                                flowEfficiency * flowEfficiency * thermalOk *
                                4.1666665f * 12f;
                 float roomDelta = GenTemperature.ControlTemperatureTempChange(
                     cells[0], map, energy, supplyCelsius);
 
-                // roomDelta 是"整房每一格升这么多度"，总「格·度」= roomDelta × 格数。
+                // roomDelta 是"整房每一格变这么多度"，总「格·度」= roomDelta × 格数。
                 // 除以 250 把 TickRare 的一次性动作摊成每 tick 的连续源。
+                // 制冷时 roomDelta 为负，这里同样要允许负值通过。
                 totalHeatPerTick = roomDelta * Mathf.Max(1f, ventRoom.CellCount) / 250f * AoHeatScale;
             }
 
@@ -945,7 +984,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     rates.TargetWindBlendPerTick = WindBlendPerTick;
                 }
 
-                if (totalHeatPerTick > 0f && i < spreadWeights.Count)
+                // 制冷时 totalHeatPerTick 为负，不能用 > 0f 过滤，否则只热不冷。
+                if (totalHeatPerTick != 0f && i < spreadWeights.Count)
                 {
                     rates.TemperaturePerTick = totalHeatPerTick * spreadWeights[i];
                 }

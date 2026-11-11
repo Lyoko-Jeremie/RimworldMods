@@ -148,7 +148,31 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             float dp = roomPressurePa - PressurePa;
             float intakeRate = Mathf.Max(0f, intakeCapacityKgPerSec) *
                                Mathf.Clamp01(1f + dp / Mathf.Max(1f, EffectiveFanMaxRisePa));
+
+            // 出气驱动力。
+            //
+            // CCC 的风机是「主动送风设备」，不是「被动泄压阀」：它把空气压进房间，
+            // 房间气压高它也要顶着压降继续送。所以这里给一个 0.5~1.5 的工作区间，
+            // 而不是 0~1 —— 一旦允许取 0，回路压力只要比房间低一个沿程损失，
+            // 出气就永久关死，进气又被质量守恒一起锁住，面板表现为
+            // 「总流速 0、变温效率爆表（除零）、空气流动效率 0%」且不回弹。
+            float drive = Mathf.Clamp(1f + (PressurePa - roomPressurePa) / Mathf.Max(1f, EffectivePressurePa), 0.5f, 1.5f);
+
             float massIn = Mathf.Min(intakeRate * dt, VolumeM3 * AirDensityKgPerM3 * 0.25f);
+
+            // 质量守恒：回路存不住气，进气不可能超过出气能力。
+            //
+            // CCC 的入风口和出风口规格可以差很多（常见 9 台大入风口配 1 个出风口），
+            // 若进气按自己的额定满速灌，多余的质量会把回路压力顶到「进气门和出气门
+            // 同时关闭」的区间，然后彻底锁死 —— 就是流速逐渐归零、效率归零且不回弹。
+            //
+            // 注意这里不能乘 drive：drive 会因为压力偏离变小，乘进去就变成
+            // 「压力低 → 不许进气 → 压力更低」的正反馈死锁。
+            float exhaustCapKg = RatedExhaustKgPerSec > 1e-9f
+                ? RatedExhaustKgPerSec * dt
+                : float.MaxValue;
+            massIn = Mathf.Min(massIn, exhaustCapKg);
+
             if (massIn < 0f)
             {
                 massIn = 0f;
@@ -172,13 +196,26 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             //    时间常数与 CCC 原版 DeltaSmooth=96 的响应对齐，但按 AO 步长连续积分。
             if (tempControlGainPerSecond > 0f)
             {
+                float pressureBefore = MassKg * GasConstantDryAir * TemperatureK / Mathf.Max(0.1f, VolumeM3);
                 float alpha = 1f - Mathf.Exp(-tempControlGainPerSecond * dt);
                 TemperatureK += (targetTemperatureK - TemperatureK) * alpha;
+
+                // 等压修正：管道是定压流动系统，不是密封罐。
+                //
+                // 不修正的话，目标温度远低于室温时压力会按 PV = mRT 一路塌到房间压力以下：
+                // 出气压差变成 0（气出不去），进气却仍按背压曲线满速灌入，质量堆积又把
+                // 进气门压死 —— 表现就是「流速逐渐归零、效率归零」而且再也回不来。
+                // 反过来加热时压力虚高，同样会让进气长期关闭。
+                //
+                // 定压意味着降温时密度上升、系统自动补气，这正是风管的真实行为。
+                if (TemperatureK > 1f && pressureBefore > 0f)
+                {
+                    MassKg = pressureBefore * VolumeM3 / (GasConstantDryAir * TemperatureK);
+                }
             }
 
-            // 4. 出气：压力驱动。回路相对房间正压时才有流量，负压自动截止。
-            //    有效压差已被管道沿程损失抬高，长管网需要更大的正压才能出气。
-            float drive = Mathf.Clamp01((PressurePa - roomPressurePa) / Mathf.Max(1f, EffectivePressurePa));
+            // 4. 出气。drive 已在第 1 步算出，这里直接复用，保证「本轮进的气」与
+            //    「本轮出的气」是同一个驱动力。
             float massOut = Mathf.Min(RatedExhaustKgPerSec * drive * dt, MassKg * 0.5f);
             if (massOut < 0f)
             {
@@ -186,7 +223,28 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             }
             MassKg -= massOut;
 
-            // 5. 数值夹紧。质量下限保证压力不会塌到 0 导致下一步除零。
+            // 5. 定压兜底。管道是定压流动系统：风机在持续补气，回路不该像真空罐那样
+            //    随着温度或体积变化把压力甩到房间压力之外。
+            //
+            // 这一条专门兜住三类会让压力「一次性跑飞」的意外：
+            //   a) 加载存档/切图后第一次推进，dt 是几千秒（实测 6754 s），
+            //      一步就能把质量抽空；
+            //   b) RefreshLoopShape 重算 VolumeM3（管道增减），质量没跟着调；
+            //   c) 极端目标温度配合大 dt，PV = mRT 直接把压力压到房间压力的几分之一。
+            //
+            // 压力一旦低于房间压力一个 EffectivePressurePa，出气驱动就贴到下限，
+            // 而质量守恒又让进气跟着走低，两边一起锁死 —— 就是面板上的
+            // 「总流速 0 / 变温效率 340000000% / 流动效率 0%」。
+            if (roomPressurePa > 1000f && TemperatureK > 1f)
+            {
+                float targetMassKg = roomPressurePa * VolumeM3 / (GasConstantDryAir * TemperatureK);
+                if (targetMassKg > 0f)
+                {
+                    MassKg = Mathf.Clamp(MassKg, targetMassKg * 0.9f, targetMassKg * 1.1f);
+                }
+            }
+
+            // 6. 数值夹紧。质量下限保证压力不会塌到 0 导致下一步除零。
             MassKg = Mathf.Max(MassKg, VolumeM3 * 0.02f);
             TemperatureK = Mathf.Clamp(TemperatureK, 1f, 2000f);
             OxygenPercent = Mathf.Clamp(OxygenPercent, 0f, 100f);
