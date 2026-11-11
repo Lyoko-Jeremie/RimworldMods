@@ -2,57 +2,7 @@
 <LanguageData>
     <AOPatch_SettingsCategory>大气层重构兼容补丁</AOPatch_SettingsCategory>
 
-    <AOPatch_Intro>本页控制「大气层重构」与其它温控 Mod 之间的兼容层。各模块彼此独立，目标 Mod 不存在时会被自动跳过。</AOPatch_Intro>
-    <AOPatch_Master>启用兼容补丁</AOPatch_Master>
-    <AOPatch_MasterDesc>总开关。关闭后任何模块都不会安装补丁——无需卸载 Mod 即可一键回退。</AOPatch_MasterDesc>
-    <AOPatch_TargetsHeader>目标模块（方括号内为当前状态）</AOPatch_TargetsHeader>
-
-    <AOPatch_Module_GoodClimate>Good Climate 真空联动</AOPatch_Module_GoodClimate>
-    <AOPatch_Module_GoodClimateDesc>当 Good Climate 因真空关闭通风口时，同时把大气层重构的透气面限速设为 0，真空解除后恢复原限速。原版并不联动，所以「已关阀」的通风口实际上仍在漏气。</AOPatch_Module_GoodClimateDesc>
-    <AOPatch_Module_GoodClimateHint>真空时把 AO 透气面限速设为 0，解除后恢复。</AOPatch_Module_GoodClimateHint>
-
-    <AOPatch_Module_VTE>Vanilla Temperature Expanded</AOPatch_Module_VTE>
-    <AOPatch_Module_VTEDesc>接管 VTE 的空调、壁挂加热器/制冷器与双格加热器：改用大气层重构的逐格温度输出，同时保留其管道效率与资源消耗。若 AO 以后自行支持 VTE，本模块会自动让路。</AOPatch_Module_VTEDesc>
-    <AOPatch_Module_VTEHint>接管 VTE 四个温控类，避免 AO 双写或只加热不制冷。</AOPatch_Module_VTEHint>
-
-    <AOPatch_Module_CCC>Centralized Climate Control (Continued)</AOPatch_Module_CCC>
-    <AOPatch_Module_CCCDesc>把 CCC 风口的真空判定改为读取大气层重构的气压场，避免「AO 里房间已经加压、CCC 却仍按真空衰减」；真空会随 AO 气压回升而恢复。可选的风口局部化见下方全局选项。</AOPatch_Module_CCCDesc>
-    <AOPatch_Module_CCCHint>用 AO 气压替换原版 Room.Vacuum 判定。</AOPatch_Module_CCCHint>
-
-    <AOPatch_Module_Omni>超维科技</AOPatch_Module_Omni>
-    <AOPatch_Module_OmniDesc>让万用生物圈与穹顶发生器把覆盖区域真正写入大气层重构的温度/气压场（而不只是覆盖读取值），并可选清除区内风力。</AOPatch_Module_OmniDesc>
-    <AOPatch_Module_OmniHint>生物圈与穹顶强制稳定 AO 物理场。</AOPatch_Module_OmniHint>
-
-    <AOPatch_State_NotInstalled>未安装</AOPatch_State_NotInstalled>
-    <AOPatch_State_Disabled>已关闭</AOPatch_State_Disabled>
-    <AOPatch_State_Applied>已应用</AOPatch_State_Applied>
-    <AOPatch_State_Skipped>已跳过</AOPatch_State_Skipped>
-    <AOPatch_State_Failed>失败</AOPatch_State_Failed>
-
-    <AOPatch_GlobalHeader>全局行为</AOPatch_GlobalHeader>
-
-    <AOPatch_ForceField>强制稳定区（生物圈 / 穹顶）</AOPatch_ForceField>
-    <AOPatch_ForceFieldDesc>把生物圈与穹顶发生器覆盖的格子周期性拉回目标温度与常压，而不只是覆盖界面读数。关闭后它们回到「只改显示、不改物理场」的旧行为。</AOPatch_ForceFieldDesc>
-    <AOPatch_ForceFieldInterval>稳定间隔：{0} tick</AOPatch_ForceFieldInterval>
-    <AOPatch_ForceFieldBudget>每轮处理格数上限：{0}</AOPatch_ForceFieldBudget>
-    <AOPatch_ForceFieldKillWind>区内清零风力</AOPatch_ForceFieldKillWind>
-    <AOPatch_ForceFieldKillWindDesc>强制稳定区内的风会被逐轮衰减到 0。关闭则只稳定温度与气压。</AOPatch_ForceFieldKillWindDesc>
-
-    <AOPatch_CccLocalizedVent>CCC 风口局部化（实验）</AOPatch_CccLocalizedVent>
-    <AOPatch_CccLocalizedVentDesc>让 CCC 风口在出风口前两格额外写入温度与风脉冲，而不是只改整个房间的平均温度。默认关闭，因为具体手感需要进游戏实测调整。</AOPatch_CccLocalizedVentDesc>
-
-    <AOPatch_ForceBuiltIn>强制覆盖 AO 内置兼容</AOPatch_ForceBuiltIn>
-    <AOPatch_ForceBuiltInDesc>即使检测到大气层重构已自带该 Mod 的兼容，也仍然安装本 Mod 的补丁。仅在确认 AO 自带实现不如预期时使用。</AOPatch_ForceBuiltInDesc>
-
-    <AOPatch_VerboseLogging>详细日志</AOPatch_VerboseLogging>
-    <AOPatch_VerboseLoggingDesc>在 Player.log 中输出每个模块的细节，用于排查兼容问题。平时建议关闭。</AOPatch_VerboseLoggingDesc>
-
-    <AOPatch_NeedReapply>开关已改变，需要点下方按钮或重启游戏才能生效。</AOPatch_NeedReapply>
-    <AOPatch_Reapply>立即重装补丁</AOPatch_Reapply>
-    <AOPatch_ReapplyDone>兼容补丁已重装。</AOPatch_ReapplyDone>
-    <AOPatch_Dump>导出诊断快照</AOPatch_Dump>
-    <AOPatch_DumpDone>诊断已写入：{0}</AOPatch_DumpDone>
-    <AOPatch_DumpFailed>导出失败：{0}</AOPatch_DumpFailed>
-    <AOPatch_Footer>如果大气层重构在更新中自行支持了某个 Mod，把对应模块关掉并重启即可回退；其余模块不受影响。</AOPatch_Footer>
-    <AOPatch_CompatNotLoaded>兼容 DLL 未加载（目标 Mod 不存在，或该目录未列入 LoadFolders）：{0}</AOPatch_CompatNotLoaded>
+    <AOPatch_SkeletonNotice>本版为推倒重写后的骨架，尚未实现任何兼容逻辑。所有旧补丁均已移除，后续按模块逐个加回。</AOPatch_SkeletonNotice>
+    <AOPatch_Master>启用本 Mod</AOPatch_Master>
+    <AOPatch_MasterDesc>总开关。关闭后不安装任何补丁。</AOPatch_MasterDesc>
 </LanguageData>

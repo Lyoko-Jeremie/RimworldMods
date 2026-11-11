@@ -2,57 +2,7 @@
 <LanguageData>
     <AOPatch_SettingsCategory>Atmosphere Overhaul Patch</AOPatch_SettingsCategory>
 
-    <AOPatch_Intro>This page controls the compatibility layer between Atmosphere Overhaul and other temperature mods. Modules are independent; a missing target is skipped automatically.</AOPatch_Intro>
-    <AOPatch_Master>Enable compatibility patches</AOPatch_Master>
-    <AOPatch_MasterDesc>Master switch. When off, no module installs any patch - a one-click rollback without uninstalling the mod.</AOPatch_MasterDesc>
-    <AOPatch_TargetsHeader>Target modules (bracketed text is the current state)</AOPatch_TargetsHeader>
-
-    <AOPatch_Module_GoodClimate>Good Climate vacuum link</AOPatch_Module_GoodClimate>
-    <AOPatch_Module_GoodClimateDesc>When Good Climate closes a vent because of vacuum, also set the Atmosphere Overhaul air-vent speed limit to 0, restoring it once vacuum clears. Vanilla never links the two, so a "closed" vent still leaks.</AOPatch_Module_GoodClimateDesc>
-    <AOPatch_Module_GoodClimateHint>Zero the AO vent limit on vacuum, restore it afterwards.</AOPatch_Module_GoodClimateHint>
-
-    <AOPatch_Module_VTE>Vanilla Temperature Expanded</AOPatch_Module_VTE>
-    <AOPatch_Module_VTEDesc>Takes over VTE's air conditioner, wall heaters/coolers and the two-cell heater: they write into Atmosphere Overhaul's per-cell field while keeping their pipe efficiency and resource use. If AO later supports VTE itself, this module steps aside.</AOPatch_Module_VTEDesc>
-    <AOPatch_Module_VTEHint>Takes over the four VTE temperature classes, avoiding double writes or heat-only behavior.</AOPatch_Module_VTEHint>
-
-    <AOPatch_Module_CCC>Centralized Climate Control (Continued)</AOPatch_Module_CCC>
-    <AOPatch_Module_CCCDesc>Makes CCC vents read their vacuum from Atmosphere Overhaul's pressure field, so a room that AO has already pressurized is not still treated as vacuum. Vacuum recovers as AO pressure recovers. Optional vent localization is in the global section below.</AOPatch_Module_CCCDesc>
-    <AOPatch_Module_CCCHint>Replace vanilla Room.Vacuum with AO pressure.</AOPatch_Module_CCCHint>
-
-    <AOPatch_Module_Omni>OuterrealmTech</AOPatch_Module_Omni>
-    <AOPatch_Module_OmniDesc>Makes the OmniBiosphere and the dome generator write their covered area into Atmosphere Overhaul's real temperature/pressure field instead of only overriding reads, with optional wind damping.</AOPatch_Module_OmniDesc>
-    <AOPatch_Module_OmniHint>Forced stabilization of the AO field inside biosphere and dome.</AOPatch_Module_OmniHint>
-
-    <AOPatch_State_NotInstalled>Not installed</AOPatch_State_NotInstalled>
-    <AOPatch_State_Disabled>Disabled</AOPatch_State_Disabled>
-    <AOPatch_State_Applied>Applied</AOPatch_State_Applied>
-    <AOPatch_State_Skipped>Skipped</AOPatch_State_Skipped>
-    <AOPatch_State_Failed>Failed</AOPatch_State_Failed>
-
-    <AOPatch_GlobalHeader>Global behavior</AOPatch_GlobalHeader>
-
-    <AOPatch_ForceField>Forced stabilization (biosphere / dome)</AOPatch_ForceField>
-    <AOPatch_ForceFieldDesc>Periodically pulls the cells covered by the biosphere and dome generator back to their target temperature and standard pressure, instead of only overriding the readout. Turning this off restores the old "display only" behavior.</AOPatch_ForceFieldDesc>
-    <AOPatch_ForceFieldInterval>Stabilization interval: {0} ticks</AOPatch_ForceFieldInterval>
-    <AOPatch_ForceFieldBudget>Cells processed per round: {0}</AOPatch_ForceFieldBudget>
-    <AOPatch_ForceFieldKillWind>Zero wind inside the area</AOPatch_ForceFieldKillWind>
-    <AOPatch_ForceFieldKillWindDesc>Wind inside a stabilized area is damped to zero over several rounds. Off means only temperature and pressure are stabilized.</AOPatch_ForceFieldKillWindDesc>
-
-    <AOPatch_CccLocalizedVent>CCC localized vents (experimental)</AOPatch_CccLocalizedVent>
-    <AOPatch_CccLocalizedVentDesc>Lets CCC vents write temperature and a wind pulse into the first two cells in front of the outlet instead of only shifting the room average. Off by default because the feel needs in-game tuning.</AOPatch_CccLocalizedVentDesc>
-
-    <AOPatch_ForceBuiltIn>Override AO built-in compatibility</AOPatch_ForceBuiltIn>
-    <AOPatch_ForceBuiltInDesc>Installs this mod's patch even when Atmosphere Overhaul already ships compatibility for that mod. Use only when the built-in implementation does not behave as expected.</AOPatch_ForceBuiltInDesc>
-
-    <AOPatch_VerboseLogging>Verbose logging</AOPatch_VerboseLogging>
-    <AOPatch_VerboseLoggingDesc>Write per-module details to Player.log for troubleshooting. Keep it off normally.</AOPatch_VerboseLoggingDesc>
-
-    <AOPatch_NeedReapply>Switches changed. Click the button below or restart the game to apply.</AOPatch_NeedReapply>
-    <AOPatch_Reapply>Reinstall patches now</AOPatch_Reapply>
-    <AOPatch_ReapplyDone>Compatibility patches reinstalled.</AOPatch_ReapplyDone>
-    <AOPatch_Dump>Export diagnostics</AOPatch_Dump>
-    <AOPatch_DumpDone>Diagnostics written to: {0}</AOPatch_DumpDone>
-    <AOPatch_DumpFailed>Export failed: {0}</AOPatch_DumpFailed>
-    <AOPatch_Footer>If Atmosphere Overhaul later ships its own support for a mod, disable that module and restart; other modules are unaffected.</AOPatch_Footer>
-    <AOPatch_CompatNotLoaded>Compat DLL not loaded (target mod missing, or folder not listed in LoadFolders): {0}</AOPatch_CompatNotLoaded>
+    <AOPatch_SkeletonNotice>This build is a post-rewrite skeleton: no compatibility logic is implemented yet. All previous patches have been removed and will return module by module.</AOPatch_SkeletonNotice>
+    <AOPatch_Master>Enable this mod</AOPatch_Master>
+    <AOPatch_MasterDesc>Master switch. When off, no patches are installed.</AOPatch_MasterDesc>
 </LanguageData>

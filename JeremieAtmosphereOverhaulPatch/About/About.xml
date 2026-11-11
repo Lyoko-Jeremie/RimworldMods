@@ -6,6 +6,7 @@
         <li>1.7</li>
     </supportedVersions>
     <packageId>Jeremie.AtmosphereOverhaulPatch</packageId>
+    <modVersion>1.0.1</modVersion>
     <modDependencies>
         <li>
             <packageId>brrainz.harmony</packageId>
@@ -27,25 +28,21 @@
 [h1]Atmosphere Overhaul Patch[/h1]
 [color=#9fd3ff]大气层重构 · 第三方温控 Mod 兼容层[/color]
 
-本 Mod 只做一件事：让 Atmosphere Overhaul（AO）与其它温控类 Mod 在同一张地图上和平共处。
+[b]当前为推倒重写后的骨架版本：不包含任何补丁或兼容逻辑。[/b]
+
+所有旧实现（Harmony 补丁、强制稳定区、四个 Mod 的接管逻辑）均已移除。兼容功能会按模块逐个重新加回，每个模块自带安装与卸载，互不依赖。
 
 [b]仅支持 RimWorld 1.7。[/b]
 
-[h2]当前覆盖的目标[/h2]
+[h2]计划覆盖的目标[/h2]
 [list]
-[*] [b]Good Climate[/b]（GOS.GoodClimate）——修复「真空自动关阀」在 AO 地图上失效的问题：Good Climate 关的是原版 CompFlickable，而 AO 的透气面只看自己的 speedLimit，两者不联动。关闭时把 AO 限速置 0，真空解除后恢复。
-[*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature）——接管其空调、壁挂加热/制冷与双格加热器，改用 AO 的逐格温度输出，同时保留管道效率与资源消耗。
-[*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl）——1.7 下会经 LoadFolders 版本回退加载 1.6 目录；本 Mod 把风口的真空判定改为读取 AO 气压场。
-[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter）——把万用生物圈与穹顶发生器的覆盖区域真正写入 AO 的温度与气压场，而不再只覆盖界面读数。
+[*] [b]Good Climate[/b]（GOS.GoodClimate）
+[*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature）
+[*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl）
+[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter）
 [/list]
 
-[h2]软兼容[/h2]
-所有目标 Mod 都是可选的：无论它们全都不存在、只存在其中一个，还是全部存在，本 Mod 都会正常工作。每个目标在设置界面里都有独立开关，并显示当前状态（未安装 / 已关闭 / 已应用 / 已跳过 / 失败）。
-
-[h2]快速回退[/h2]
-如果 AO 在后续更新中自行提供了对某个 Mod 的兼容，只需在「选项 → 大气层重构兼容补丁」里关掉对应开关并重启游戏；也可以注释掉 LoadFolders.xml 中对应的一行，或直接删除 1.7/Compat/ 下的对应目录（连 DLL 一起移除）。设置里的「立即重装补丁」会先卸载全部模块、再按当前开关重新安装，可在当前会话内即时撤销。补丁按模块注册，互不依赖。
-
-[h2]说明[/h2]
-本 Mod 不修改 AO 本身的平衡数值，也不改变任何 Mod 的默认行为；所有补丁都只在对应目标存在时安装，缺少目标时零副作用。
+[h2]骨架阶段保留的内容[/h2]
+Mod 入口、设置页（仅一个总开关）、以及四个由 LoadFolders 条件加载的兼容程序集位置。这些程序集当前只含占位类，不会对游戏产生任何影响。
     </description>
 </ModMetaData>
