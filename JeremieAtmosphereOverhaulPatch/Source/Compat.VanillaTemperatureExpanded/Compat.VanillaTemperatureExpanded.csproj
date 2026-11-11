@@ -26,6 +26,10 @@
       <HintPath>..\..\Assemblies\JeremieAtmosphereOverhaulPatch.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="VanillaTemperatureExpanded">
+      <HintPath>$(RimWorldDir)..\..\workshop\content\294100\3202046258\1.6\Assemblies\VanillaTemperatureExpanded.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(RimWorldDir)Assembly-CSharp.dll</HintPath>
       <Private>false</Private>
@@ -44,7 +48,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="*.cs" />
+    <Compile Include="**\*.cs" Exclude="obj\**\*.cs;bin\**\*.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

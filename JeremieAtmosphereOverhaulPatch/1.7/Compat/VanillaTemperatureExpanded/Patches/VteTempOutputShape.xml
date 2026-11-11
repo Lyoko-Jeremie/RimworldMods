@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!--
+    给 VTE 的独立温控建筑补上「出风口形状」，给两个吊扇补上「AO 送风」。
+
+    为什么需要：
+    AO 的 CompTempControlAtmosphere 接管后，所有 Building_TempControl 子类的
+    出风口都被统一退化成 parent.Position 一格。VTE 的多格建筑因此丢掉一半出风口，
+    贴墙建筑则加热到自己脚下。CompTempOutputShape 把原来的格子布局还回去。
+
+    为什么吊扇单独一套：
+    CompCeilingFan 不是 Building_TempControl，AO 的 FacilityCompInjection 根本不注入它，
+    CompHeatPusher 的 Prefix 也拦不到它的 override CompTick。
+    它一直在走原版 PushHeat，经 AO 转成「中心 + 十字 5 格」，局部过冷约 5 倍且零风。
+
+    shape 取值：
+      TwoCellHeater  2×1 加热器，加热 pos+N、pos+N+E
+      TwoCellCooler  2×1 制冷机，冷 pos+S / pos+S+E，热 pos+N / pos+N+E
+      WallOffset     贴墙 1×1，按 wallOffsetNorth 旋转后写一格
+  -->
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_IndustrialHeater"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>TwoCellHeater</shape>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_IndustrialCooler"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>TwoCellCooler</shape>
+        <hotReturnFactor>1.25</hotReturnFactor>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_WallHeater"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>WallOffset</shape>
+        <!-- IntVec3.North = (0,0,1)；VTE 默认偏移就是 North。 -->
+        <wallOffsetNorth>(0,0,1)</wallOffsetNorth>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- VTE 用 TemperatureOutputPositionModExtension 把出风偏移设成零，让它加热自身所在格。 -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_WallMountedHeater"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>WallOffset</shape>
+        <wallOffsetNorth>(0,0,0)</wallOffsetNorth>
+      </li>
+    </value>
+  </Operation>
+
+  <!--
+    吊扇：半径取视觉扇面，风速取「能推动尘埃」的量级。
+    大型吊扇 2×2、power 50 W、heatPerSecond −32，半径与风速都按比例放大。
+  -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_SmallCeilingFan"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.CompProperties_CeilingFanAtmosphere">
+        <radius>6</radius>
+        <coolingFactor>1</coolingFactor>
+        <windSpeed>3</windSpeed>
+        <windBlendPerTick>0.1</windBlendPerTick>
+        <scanIntervalTicks>60</scanIntervalTicks>
+        <applyIntervalTicks>15</applyIntervalTicks>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_LargeCeilingFan"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.CompProperties_CeilingFanAtmosphere">
+        <radius>9</radius>
+        <coolingFactor>1</coolingFactor>
+        <windSpeed>5</windSpeed>
+        <windBlendPerTick>0.1</windBlendPerTick>
+        <scanIntervalTicks>60</scanIntervalTicks>
+        <applyIntervalTicks>15</applyIntervalTicks>
+      </li>
+    </value>
+  </Operation>
+</Patch>
