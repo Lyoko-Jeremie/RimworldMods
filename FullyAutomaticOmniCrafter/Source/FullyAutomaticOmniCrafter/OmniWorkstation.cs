@@ -17,11 +17,12 @@ namespace FullyAutomaticOmniCrafter
     /// 继承 Building_VirtualStoreHost：额外实现原版存储 / 搬运接口（只出不进的虚拟存储），
     /// 实际行为全部由挂在 Def 上的 CompOmniVirtualStore 提供，本类不含存储逻辑。
     /// </summary>
-    /// <summary>工作范围模式：圆形半径，或玩家指定的原版活动区。</summary>
+    /// <summary>工作范围模式：圆形半径、玩家指定的原版活动区，或整张地图。</summary>
     public enum OmniWorkRangeMode
     {
         Radius,
-        Area
+        Area,
+        WholeMap
     }
 
     public sealed class Building_OmniWorkstation : Building_VirtualStoreHost
@@ -93,6 +94,7 @@ namespace FullyAutomaticOmniCrafter
             if (!Spawned || !cell.InBounds(Map)) return false;
             if (workRangeMode == OmniWorkRangeMode.Area)
                 return HasUsableConfiguredArea(Map) && configuredArea[cell];
+            if (workRangeMode == OmniWorkRangeMode.WholeMap) return true;
             return Position.InHorDistOf(cell, WorkRadius);
         }
 
@@ -132,6 +134,8 @@ namespace FullyAutomaticOmniCrafter
                 if (pawnMap != Map) return false;
                 return HasUsableConfiguredArea(pawnMap) && configuredArea[cell];
             }
+            // “全图”只对本图成立，避免被解释成跨图全图。
+            if (workRangeMode == OmniWorkRangeMode.WholeMap) return pawnMap == Map;
             return Position.InHorDistOf(cell, WorkRadius);
         }
 
@@ -330,8 +334,59 @@ namespace FullyAutomaticOmniCrafter
         {
             if (workRangeMode == mode) return;
             workRangeMode = mode;
-            if (mode == OmniWorkRangeMode.Radius) configuredArea = null;
+            if (mode != OmniWorkRangeMode.Area) configuredArea = null;
             Map?.GetComponent<MapComponent_OmniWorkstation>()?.NotifyConfigurationChanged(this);
+        }
+
+        /// <summary>当前工作范围在「选择活动区」按钮上的显示文本。</summary>
+        private string CurrentRangeLabel()
+        {
+            if (workRangeMode == OmniWorkRangeMode.Area)
+                return ConfiguredArea != null
+                    ? ConfiguredArea.Label
+                    : "OmniWorkstation_AreaNone".Translate().ToString();
+            if (workRangeMode == OmniWorkRangeMode.WholeMap)
+                return "OmniWorkstation_AreaWholeMap".Translate().ToString();
+            return "OmniWorkstation_AreaRadiusMode".Translate().ToString();
+        }
+
+        /// <summary>
+        /// 选择活动区菜单：参考自动修复站，先列「全图」「圆形（无区域）」，再列本图所有原版活动区。
+        /// 选择具体区域即进入区域模式；选择圆形即清空区域并回到半径模式。
+        /// </summary>
+        private void OpenSelectAreaMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>(8)
+            {
+                new FloatMenuOption("OmniWorkstation_AreaWholeMap".Translate(),
+                    () => SetRangeMode(OmniWorkRangeMode.WholeMap)),
+                new FloatMenuOption("OmniWorkstation_AreaRadiusMode".Translate(),
+                    () => SetRangeMode(OmniWorkRangeMode.Radius))
+            };
+
+            Map map = Spawned ? Map : null;
+            if (map != null)
+            {
+                List<Area> areas = map.areaManager.AllAreas;
+                for (int i = 0; i < areas.Count; i++)
+                {
+                    if (!(areas[i] is Area_Allowed allowed)) continue;
+                    Area captured = allowed;
+                    string label = allowed.Label;
+                    if (allowed.TrueCount <= 0)
+                        label += " " + "OmniWorkstation_AreaEmptySuffix".Translate().ToString();
+                    options.Add(new FloatMenuOption(label, () => SelectConfiguredArea(captured)));
+                }
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void SelectConfiguredArea(Area area)
+        {
+            if (!SetConfiguredArea(area))
+                Messages.Message("OmniWorkstation_AreaEmpty".Translate(),
+                    MessageTypeDefOf.RejectInput, false);
         }
 
         /// <summary>设置玩家活动区；区域必须属于当前地图且非空。</summary>
@@ -339,6 +394,9 @@ namespace FullyAutomaticOmniCrafter
         {
             if (area == null || Map == null || area.areaManager != Map.areaManager || area.TrueCount <= 0)
                 return false;
+            // 重复选择同一区域不重启代理，避免误打断正在执行的工作。
+            if (workRangeMode == OmniWorkRangeMode.Area && configuredArea == area)
+                return true;
             workRangeMode = OmniWorkRangeMode.Area;
             configuredArea = area;
             Map?.GetComponent<MapComponent_OmniWorkstation>()?.NotifyConfigurationChanged(this);
@@ -387,40 +445,15 @@ namespace FullyAutomaticOmniCrafter
                 toggleAction = () => OmniWorkstationMonitor.SetVisible(!OmniWorkstationMonitor.Visible)
             };
 
-            // 工作范围模式：圆形半径，或玩家指定的原版活动区。
-            yield return new Command_Action
-            {
-                defaultLabel = "OmniWorkstation_RangeMode".Translate(
-                    workRangeMode == OmniWorkRangeMode.Area
-                        ? "OmniWorkstation_RangeModeArea".Translate()
-                        : "OmniWorkstation_RangeModeRadius".Translate()),
-                defaultDesc = "OmniWorkstation_RangeModeDesc".Translate(),
-                icon = TexCommand.Install,
-                action = () =>
-                {
-                    List<FloatMenuOption> options = new List<FloatMenuOption>(2)
-                    {
-                        new FloatMenuOption("OmniWorkstation_RangeModeRadius".Translate(),
-                            () => SetRangeMode(OmniWorkRangeMode.Radius)),
-                        new FloatMenuOption("OmniWorkstation_RangeModeArea".Translate(),
-                            () => SetRangeMode(OmniWorkRangeMode.Area))
-                    };
-                    Find.WindowStack.Add(new FloatMenu(options));
-                }
-            };
-
+            // 工作范围只保留「选择活动区」与「工作半径」两个按钮：
+            // 选择菜单同时承担模式切换（全图 / 圆形（无区域）/ 具体活动区）。
             Command_Action selectAreaCommand = new Command_Action
             {
-                defaultLabel = "OmniWorkstation_SelectArea".Translate(
-                    ConfiguredArea != null ? ConfiguredArea.Label : "OmniWorkstation_AreaNone".Translate().ToString()),
+                defaultLabel = "OmniWorkstation_SelectArea".Translate(CurrentRangeLabel()),
                 defaultDesc = "OmniWorkstation_SelectAreaDesc".Translate(),
                 icon = TexCommand.ForbidOff,
-                action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationSelectArea(this))
+                action = OpenSelectAreaMenu
             };
-            if (workRangeMode != OmniWorkRangeMode.Area)
-            {
-                selectAreaCommand.Disable("OmniWorkstation_SelectAreaDisabled".Translate());
-            }
             yield return selectAreaCommand;
 
             Command_Action radiusCommand = new Command_Action
@@ -430,7 +463,8 @@ namespace FullyAutomaticOmniCrafter
                 icon = TexCommand.Install,
                 action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationRadius(this))
             };
-            if (workRangeMode == OmniWorkRangeMode.Area)
+            // 只有圆形模式才允许调整半径；选了活动区或全图后半径不再生效。
+            if (workRangeMode != OmniWorkRangeMode.Radius)
             {
                 radiusCommand.Disable("OmniWorkstation_RadiusDisabledInAreaMode".Translate());
             }
@@ -454,7 +488,7 @@ namespace FullyAutomaticOmniCrafter
                 isActive = () => allowCrossMapWork,
                 toggleAction = () => allowCrossMapWork = !allowCrossMapWork
             };
-            if (workRangeMode == OmniWorkRangeMode.Area)
+            if (workRangeMode != OmniWorkRangeMode.Radius)
             {
                 crossMapCommand.Disable("OmniWorkstation_AreaModeCrossMapDisabled".Translate());
             }
@@ -509,6 +543,8 @@ namespace FullyAutomaticOmniCrafter
                 if (HasValidConfiguredArea(Map)) configuredArea.MarkForDraw();
                 return;
             }
+            // 全图模式没有可绘制的边界，避免误画半径环。
+            if (workRangeMode == OmniWorkRangeMode.WholeMap) return;
             DrawWorkRadiusRing(Position, WorkRadius, automationEnabled ? Color.cyan : Color.gray);
         }
 
@@ -575,6 +611,10 @@ namespace FullyAutomaticOmniCrafter
                 status = HasUsableConfiguredArea(Map)
                     ? "OmniWorkstation_StatusArea".Translate(configuredArea.Label)
                     : "OmniWorkstation_StatusAreaEmpty".Translate();
+            }
+            else if (workRangeMode == OmniWorkRangeMode.WholeMap)
+            {
+                status = "OmniWorkstation_StatusWholeMap".Translate();
             }
             else
             {
@@ -674,68 +714,6 @@ namespace FullyAutomaticOmniCrafter
                     radius = parsed;
                     station.SetWorkRadius(radius);
                 }
-            }
-            listing.End();
-        }
-    }
-
-    /// <summary>
-    /// 选择玩家活动区作为工作范围。只列出原版 Area_Allowed，
-    /// 避免把其它 Mod 自定义的不可指派区域混进列表。
-    /// </summary>
-    public sealed class Dialog_OmniWorkstationSelectArea : Window
-    {
-        private readonly Building_OmniWorkstation station;
-
-        public override Vector2 InitialSize => new Vector2(460f, 420f);
-
-        public Dialog_OmniWorkstationSelectArea(Building_OmniWorkstation station)
-        {
-            this.station = station;
-            doCloseButton = true;
-            doCloseX = true;
-            forcePause = true;
-            absorbInputAroundWindow = true;
-        }
-
-        public override void DoWindowContents(Rect inRect)
-        {
-            if (station == null || station.Destroyed)
-            {
-                Close();
-                return;
-            }
-
-            Listing_Standard listing = new Listing_Standard();
-            listing.Begin(inRect);
-            listing.Label("OmniWorkstation_SelectAreaHelp".Translate());
-
-            Map map = station.Spawned ? station.Map : Find.CurrentMap;
-            int shown = 0;
-            if (map != null)
-            {
-                List<Area> areas = map.areaManager.AllAreas;
-                for (int i = 0; i < areas.Count; i++)
-                {
-                    if (!(areas[i] is Area_Allowed allowed)) continue;
-                    shown++;
-                    string label = allowed.Label;
-                    if (allowed.TrueCount <= 0)
-                        label += " " + "OmniWorkstation_AreaEmptySuffix".Translate().ToString();
-                    if (!listing.ButtonText(label)) continue;
-                    if (!station.SetConfiguredArea(allowed))
-                        Messages.Message("OmniWorkstation_AreaEmpty".Translate(),
-                            MessageTypeDefOf.RejectInput, false);
-                    Close();
-                    break;
-                }
-            }
-            if (shown == 0) listing.Label("OmniWorkstation_AreaNoneAvailable".Translate());
-
-            if (listing.ButtonText("OmniWorkstation_AreaClear".Translate()))
-            {
-                station.SwitchToRadiusMode(null);
-                Close();
             }
             listing.End();
         }

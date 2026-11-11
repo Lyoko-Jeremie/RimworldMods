@@ -117,24 +117,19 @@
     <OmniWorkstation_ManagerRepairAllDone>已修复全部代理池：新补建 {0} 个。</OmniWorkstation_ManagerRepairAllDone>
     <OmniWorkstation_DeathGuard>死亡守卫：拦截处死 {0} / 拦截置死 {1} / 拦截倒地 {2} / 外部销毁 {3} / 拦截真空暴露 {4}</OmniWorkstation_DeathGuard>
     <OmniWorkstation_DeathGuardLast>死亡守卫最近事件：{0}</OmniWorkstation_DeathGuardLast>
-    <OmniWorkstation_RangeMode>工作范围：{0}</OmniWorkstation_RangeMode>
-    <OmniWorkstation_RangeModeDesc>圆形半径以工作站为圆心；玩家活动区使用玩家手工绘制的活动区，工作目标必须位于该区域内。</OmniWorkstation_RangeModeDesc>
-    <OmniWorkstation_RangeModeRadius>圆形半径</OmniWorkstation_RangeModeRadius>
-    <OmniWorkstation_RangeModeArea>玩家活动区</OmniWorkstation_RangeModeArea>
     <OmniWorkstation_SelectArea>选择活动区：{0}</OmniWorkstation_SelectArea>
-    <OmniWorkstation_SelectAreaDesc>选择本图的一个原版活动区作为工作范围。只有“玩家活动区”模式下可用。</OmniWorkstation_SelectAreaDesc>
-    <OmniWorkstation_SelectAreaDisabled>只有“玩家活动区”模式下才能选择活动区。</OmniWorkstation_SelectAreaDisabled>
+    <OmniWorkstation_SelectAreaDesc>选择本工作站的工作范围：全图、圆形半径，或本图的一个原版活动区。工作目标必须位于所选范围内。</OmniWorkstation_SelectAreaDesc>
+    <OmniWorkstation_AreaWholeMap>全图</OmniWorkstation_AreaWholeMap>
+    <OmniWorkstation_AreaRadiusMode>圆形（无）</OmniWorkstation_AreaRadiusMode>
     <OmniWorkstation_AreaNone>未选择</OmniWorkstation_AreaNone>
     <OmniWorkstation_AreaEmpty>该活动区为空，无法作为工作范围。</OmniWorkstation_AreaEmpty>
     <OmniWorkstation_AreaEmptyFallback>活动区已变为空，已切回圆形半径模式。</OmniWorkstation_AreaEmptyFallback>
     <OmniWorkstation_AreaEmptySuffix>（空）</OmniWorkstation_AreaEmptySuffix>
-    <OmniWorkstation_AreaClear>切回圆形半径模式</OmniWorkstation_AreaClear>
-    <OmniWorkstation_AreaNoneAvailable>本图没有可用的原版活动区。请先在“区域”分类中创建活动区。</OmniWorkstation_AreaNoneAvailable>
     <OmniWorkstation_AreaMissing>工作站引用的活动区已不存在或不属于当前地图，已切回圆形半径模式。</OmniWorkstation_AreaMissing>
     <OmniWorkstation_AreaWrongMap>该活动区不属于工作站所在地图。</OmniWorkstation_AreaWrongMap>
-    <OmniWorkstation_AreaModeCrossMapDisabled>活动区模式下不能跨图/跨层工作。</OmniWorkstation_AreaModeCrossMapDisabled>
-    <OmniWorkstation_RadiusDisabledInAreaMode>活动区模式下半径不参与工作范围判定。</OmniWorkstation_RadiusDisabledInAreaMode>
+    <OmniWorkstation_AreaModeCrossMapDisabled>非圆形模式下不能跨图/跨层工作。</OmniWorkstation_AreaModeCrossMapDisabled>
+    <OmniWorkstation_RadiusDisabledInAreaMode>只有圆形模式下才能调整工作半径。</OmniWorkstation_RadiusDisabledInAreaMode>
     <OmniWorkstation_StatusArea>工作范围：活动区“{0}”</OmniWorkstation_StatusArea>
     <OmniWorkstation_StatusAreaEmpty>工作范围：活动区（空）</OmniWorkstation_StatusAreaEmpty>
-    <OmniWorkstation_SelectAreaHelp>从本图的活动区中选择工作范围；请把料区、储存区和工作台都画进该区域。</OmniWorkstation_SelectAreaHelp>
+    <OmniWorkstation_StatusWholeMap>工作范围：全图</OmniWorkstation_StatusWholeMap>
 </LanguageData>
