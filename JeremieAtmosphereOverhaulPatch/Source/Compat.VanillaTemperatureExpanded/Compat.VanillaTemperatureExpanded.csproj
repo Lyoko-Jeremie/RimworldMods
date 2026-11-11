@@ -30,6 +30,10 @@
       <HintPath>$(RimWorldDir)..\..\workshop\content\294100\3202046258\1.6\Assemblies\VanillaTemperatureExpanded.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="PipeSystem">
+      <HintPath>$(RimWorldDir)..\..\workshop\content\294100\2023507013\1.6\Assemblies\PipeSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(RimWorldDir)Assembly-CSharp.dll</HintPath>
       <Private>false</Private>

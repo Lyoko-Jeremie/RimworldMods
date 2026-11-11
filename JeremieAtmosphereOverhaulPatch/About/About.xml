@@ -22,15 +22,12 @@
         <li>VanillaExpanded.Temperature</li>
         <li>Mlie.CentralizedClimateControl</li>
         <li>GOS.GoodClimate</li>
+        <li>HarryRobinson.FrostpunkHeatGeneratorTower</li>
         <li>Jeremie.Fully.Automatic.OmniCrafter</li>
     </loadAfter>
     <description>
 [h1]Atmosphere Overhaul Patch[/h1]
 [color=#9fd3ff]大气层重构 · 第三方温控 Mod 兼容层[/color]
-
-[b]当前为推倒重写后的骨架版本：不包含任何补丁或兼容逻辑。[/b]
-
-所有旧实现（Harmony 补丁、强制稳定区、四个 Mod 的接管逻辑）均已移除。兼容功能会按模块逐个重新加回，每个模块自带安装与卸载，互不依赖。
 
 [b]仅支持 RimWorld 1.7。[/b]
 
@@ -39,10 +36,9 @@
 [*] [b]Good Climate[/b]（GOS.GoodClimate）
 [*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature）
 [*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl）
+[*] [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower）
 [*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter）
 [/list]
 
-[h2]骨架阶段保留的内容[/h2]
-Mod 入口、设置页（仅一个总开关）、以及四个由 LoadFolders 条件加载的兼容程序集位置。这些程序集当前只含占位类，不会对游戏产生任何影响。
     </description>
 </ModMetaData>

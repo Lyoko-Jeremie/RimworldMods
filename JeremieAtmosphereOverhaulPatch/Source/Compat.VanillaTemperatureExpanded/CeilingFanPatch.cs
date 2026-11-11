@@ -1,5 +1,6 @@
 using HarmonyLib;
 using Jeremie.AtmosphereOverhaulPatch.Bridge;
+using Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNet;
 using RimWorld;
 using UnityEngine;
 using VanillaTemperatureExpanded.Buildings;
@@ -100,6 +101,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             harmony.Patch(
                 AccessTools.Method(typeof(CompCeilingFan), "CompTick"),
                 new HarmonyMethod(typeof(CeilingFanPatch), "Prefix"));
+
+            // VTE 中央空调（冷媒网）的三管式 VRF 接管。失败只停这个子模块，吊扇仍可用。
+            if (!AcNetPatches.Install(harmony))
+            {
+                Log.Warning("[AOPatch/VTE] 中央空调接管安装失败：找不到 Building_AcUnit.TickRare 或 AcPipeNet.PipeSystemTick。");
+            }
         }
     }
 }

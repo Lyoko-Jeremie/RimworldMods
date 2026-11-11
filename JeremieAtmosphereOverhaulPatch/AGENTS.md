@@ -64,3 +64,27 @@ i18n语言目录在 `Languages` ，源代码中需要参与显示的硬编码字
 
 
 ## 文档
+
+
+## 相关文件位置
+
+Atmosphere Overhaul ：
+F:\SteamLibrary\steamapps\workshop\content\294100/3830470974
+
+Good Climate ：
+F:\SteamLibrary\steamapps\workshop\content\294100/3669891833/
+
+Vanilla Temperature Expanded ：
+F:\SteamLibrary\steamapps\workshop\content\294100\3202046258
+
+Centralized Climate Control ：
+F:\SteamLibrary\steamapps\workshop\content\294100\2007268173
+
+Frostpunk Heat Generator Tower ：
+F:\SteamLibrary\steamapps\workshop\content\294100\3545379519
+
+OuterrealmTech ：
+F:\SteamLibrary\steamapps\common\RimWorld\Mods\FullyAutomaticOmniCrafter
+
+Dll反编译结果目录，优先查看此处反编译获得的源码 ： f:\RimworldCodeIL\
+

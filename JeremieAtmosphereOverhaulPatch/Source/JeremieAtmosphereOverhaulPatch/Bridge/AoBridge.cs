@@ -14,7 +14,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
     public struct SlotRates
     {
         public float TemperaturePerTick;
+        public float GroundTemperaturePerTick;
+        public float MoisturePerTick;
+        public float MistPerTick;
         public Vector2 WindPerTick;
+        public float PressurePerTick;
+        public float OxygenPercentPerTick;
         public bool MaintainTargetWind;
         public Vector2 TargetWind;
         public float TargetWindBlendPerTick;
@@ -66,6 +71,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static MethodInfo _addVolumeSource;
         private static MethodInfo _addVolumeSourceAtTemperature;
         private static MethodInfo _staticPressure;
+        private static MethodInfo _pushHeat;
         private static MethodInfo _tryGetOxygen;
         private static MethodInfo _tryGetVapor;
         private static MethodInfo _addMoistureDelta;
@@ -199,6 +205,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                         _atmosphereComponentType,
                         "TryGetStaticPressurePascals",
                         new[] { typeof(IntVec3), typeof(float).MakeByRefType() });
+                    // 室外机排热/吸热：能量单位是 K·格总量，内部均分到十字 5 格。
+                    _pushHeat = AccessTools.Method(
+                        _atmosphereComponentType,
+                        "PushHeat",
+                        new[] { typeof(IntVec3), typeof(float) });
                 }
 
                 // 氧与水汽：CCC 气袋要把进气成分带进管道、出气时再吐回房间。
@@ -243,6 +254,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _available = false;
                 _failure = e.GetType().Name + ": " + e.Message;
             }
+        }
+
+        /// <summary>该地图上是否存在 AO 的大气组件。非 AO 地图上所有接管都应回退。</summary>
+        public static bool IsActive(Map map)
+        {
+            Resolve();
+            return map != null && FindAtmosphereComponent(map) != null;
         }
 
         /// <summary>读一格的空气温度（摄氏度）。AO 不在该地图上时返回 false。</summary>
@@ -291,6 +309,35 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 pascals = (float)args[1];
             }
             return ok;
+        }
+
+        /// <summary>
+        /// 在 cell 处注入/抽取一份热量。energy 单位是 K·格总量（正=升温，负=降温），
+        /// AO 内部把它均分到中心 + 四邻共 5 格，只保留同房间的格。
+        /// 室外机排热/吸热走这条。
+        /// </summary>
+        public static bool PushHeat(Map map, IntVec3 cell, float energy)
+        {
+            Resolve();
+            if (map == null || _pushHeat == null)
+            {
+                return false;
+            }
+
+            MapComponent component = FindAtmosphereComponent(map);
+            if (component == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return (bool)_pushHeat.Invoke(component, new object[] { cell, energy });
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         /// <summary>向 AO 写一个点体积源（格体积单位，1 = 5 m³）。负值即抽气。</summary>
@@ -536,7 +583,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             // 反射写字段后整箱传给 SourceSlots.Set，Set 内部拆箱读值。
             object boxed = Activator.CreateInstance(_ratesType);
             SetRateField(boxed, "TemperaturePerTick", rates.TemperaturePerTick);
+            SetRateField(boxed, "GroundTemperaturePerTick", rates.GroundTemperaturePerTick);
+            SetRateField(boxed, "MoisturePerTick", rates.MoisturePerTick);
+            SetRateField(boxed, "MistPerTick", rates.MistPerTick);
             SetRateField(boxed, "WindPerTick", rates.WindPerTick);
+            SetRateField(boxed, "PressurePerTick", rates.PressurePerTick);
+            SetRateField(boxed, "OxygenPercentPerTick", rates.OxygenPercentPerTick);
             SetRateField(boxed, "MaintainTargetWind", rates.MaintainTargetWind);
             SetRateField(boxed, "TargetWind", rates.TargetWind);
             SetRateField(boxed, "TargetWindBlendPerTick", rates.TargetWindBlendPerTick);
