@@ -27,6 +27,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         public const float CubicMetresPerAirFlowUnit = 0.000472f;
         public const float KelvinAtTwentyOneCelsius = 294.15f;
 
+        /// <summary>
+        /// 回路质量向「房间压力」松弛的速率（1/s）。
+        ///
+        /// 太大等价于硬夹，会和每步进的进气互相顶，气压逐帧抖；太小则遇不到
+        /// 加载存档那种质量已经被抽空的局面（压力要几十秒才爬回来）。
+        /// 6/s 下 dt = 0.1 s 的松弛系数约 0.45，两三步内回到工作点。
+        /// </summary>
+        public const float PressureRelaxPerSecond = 6f;
+
+        /// <summary>
+        /// AO 的饱和水汽容量（Magnus-Tetens 形式），与该 mod 的 Moisture 场同标度。
+        ///
+        /// 常数取自 AtmosphereOverhaul 的 LocalAtmosphereSettings 默认值：
+        /// VaporCapacityBase = 6.11、MagnusTetensNumerator = 17.6、
+        /// MagnusTetensDenominatorOffset = 243、MinimumVaporCapacity = 0.001。
+        /// 分母的 Max(1f, ...) 是 AO 自己的防负数保护，温度低于 -242 ℃ 时必须保留。
+        /// </summary>
+        public static float VaporCapacity(float celsius)
+        {
+            float t = Mathf.Clamp(celsius, -273f, 200f);
+            float denominator = Mathf.Max(1f, 243f + t);
+            return Mathf.Max(0.001f, 6.11f * Mathf.Exp(17.6f * t / denominator));
+        }
+
         /// <summary>回路指纹：流量类型 + 回路内最小格索引。拓扑不变则指纹不变。</summary>
         public long Key;
 
@@ -194,24 +218,26 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
             // 3. 温控：一阶惯性。增益由 CompTempControl.energyPerSecond 换算而来，
             //    时间常数与 CCC 原版 DeltaSmooth=96 的响应对齐，但按 AO 步长连续积分。
+            //
+            // 这里只改温度，不动质量 —— 定压由第 5 步统一负责。
+            // 早先这里也做一次等压修正（保持 pressureBefore），结果和后面的兜底
+            // 目标不一致，每步互相对拉，气压逐帧抖动、面板数字跟着跳。
             if (tempControlGainPerSecond > 0f)
             {
-                float pressureBefore = MassKg * GasConstantDryAir * TemperatureK / Mathf.Max(0.1f, VolumeM3);
                 float alpha = 1f - Mathf.Exp(-tempControlGainPerSecond * dt);
                 TemperatureK += (targetTemperatureK - TemperatureK) * alpha;
+            }
 
-                // 等压修正：管道是定压流动系统，不是密封罐。
-                //
-                // 不修正的话，目标温度远低于室温时压力会按 PV = mRT 一路塌到房间压力以下：
-                // 出气压差变成 0（气出不去），进气却仍按背压曲线满速灌入，质量堆积又把
-                // 进气门压死 —— 表现就是「流速逐渐归零、效率归零」而且再也回不来。
-                // 反过来加热时压力虚高，同样会让进气长期关闭。
-                //
-                // 定压意味着降温时密度上升、系统自动补气，这正是风管的真实行为。
-                if (TemperatureK > 1f && pressureBefore > 0f)
-                {
-                    MassKg = pressureBefore * VolumeM3 / (GasConstantDryAir * TemperatureK);
-                }
+            // 冷风应该已经脱水。
+            //
+            // 管道把空气冷却到目标温度时，超出该温度饱和量的水汽会在盘管上凝结析出 ——
+            // 真实空调就是这样除湿的。不钳制的话，回路会带着室外绝对湿度一路吹进房间，
+            // AO 再把超出部分凝结掉，白白消耗潜热，房间湿度也会一直贴着 100%。
+            //
+            // 升温方向天然安全：饱和量随温度升高而增大，Min 不会削掉任何东西。
+            if (VaporValid && TemperatureK > 1f)
+            {
+                VaporContent = Mathf.Min(VaporContent, VaporCapacity(TemperatureK - 273.15f));
             }
 
             // 4. 出气。drive 已在第 1 步算出，这里直接复用，保证「本轮进的气」与
@@ -240,7 +266,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                 float targetMassKg = roomPressurePa * VolumeM3 / (GasConstantDryAir * TemperatureK);
                 if (targetMassKg > 0f)
                 {
-                    MassKg = Mathf.Clamp(MassKg, targetMassKg * 0.9f, targetMassKg * 1.1f);
+                    // 一阶松弛而不是硬夹。硬夹会让质量在「本步进的气」和「目标质量」
+                    // 之间来回弹，气压和 drive 跟着逐帧抖，面板上的总流速就会跳。
+                    float relax = 1f - Mathf.Exp(-PressureRelaxPerSecond * dt);
+                    MassKg += (targetMassKg - MassKg) * Mathf.Clamp01(relax);
                 }
             }
 

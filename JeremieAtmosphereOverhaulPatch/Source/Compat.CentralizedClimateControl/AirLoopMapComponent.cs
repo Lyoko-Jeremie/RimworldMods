@@ -66,6 +66,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         // 分摊到后续几步里，物理上等价于「求解器只按自己支持的步长走」。
         private const float MaxStepSeconds = 0.5f;
 
+        // 回填给面板的流量做一阶低通的比例（每步向瞬时值靠拢多少）。
+        // 0.25 约等于 4 步时间常数；配上 0.1~0.2 s 的步长，读数在 0.5 s 内跟手
+        // 又不会把步长抖动传到面板上。
+        private const float CurrentAirFlowBlend = 0.25f;
+
         // 交给 AO 的交付倍率。
         //
         // CCC 内部的气袋模型一律不动 —— 面板上的「总流速」是按 CCC 自己的
@@ -698,7 +703,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                         continue;
                     }
                     producer.IntakeTemperature = intakeKelvin - 273.15f;
-                    producer.CurrentAirFlow = airFlow;
+
+                    // 面板读的是 CCC 的慢变量：原版每 TickRare（4.17 s）才更新一次，
+                    // 而这里每 0.1~0.2 s 就写一次瞬时值。AO 的自适应步长本来就在
+                    // 0.1 / 0.2 s 之间跳，直接赋值会让「总流速」看起来不断跳动。
+                    // 做一阶低通，让读数回到原版那种稳定观感。
+                    producer.CurrentAirFlow = producer.CurrentAirFlow <= 0f
+                        ? airFlow
+                        : Mathf.Lerp(producer.CurrentAirFlow, airFlow, CurrentAirFlowBlend);
                 }
             }
 
