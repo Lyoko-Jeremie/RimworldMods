@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
@@ -128,7 +129,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
 
                 IntVec3 cell = OutputCell(unit);
-                if (!cell.InBounds(map) || GenGrid.Impassable(cell, map))
+                bool wallMounted = IsWallMounted(unit);
+                // 墙机只要求正面在地图内；壁挂机仍要求输出格可通行。
+                if (!cell.InBounds(map) || (!wallMounted && GenGrid.Impassable(cell, map)))
                 {
                     trader.ResourceOn = false;
                     continue;
@@ -406,45 +409,62 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
         }
 
-        /// <summary>墙机出风格诊断：每局只打印一次，便于确认 Rotation 与 offset 的实际关系。</summary>
+        /// <summary>出风格诊断：每局只打印一次，便于确认两类机的实际差异。</summary>
         private static bool _wallCellLogged;
 
         /// <summary>
         /// 实际出风格。
         ///
-        /// 普通壁挂机（VTE_ACUnit）的 offset 是 North，取「机身正前方」。
-        /// 墙机（VTE_ACUnitWall）的 offset 是 (0,0,0)：原版靠 GetRoom(自身格) 把温度摊到整个
-        /// 房间，写哪一格都无所谓；AO 是格级模拟，必须落在房间那一侧。
-        /// Placeworker_AttachedToWall 要求 loc + CardinalDirections[rot] 是 FillCategory.Full
-        /// 的墙，也就是 Rotation 指向身后的墙，所以正面是 RotatedBy(South, Rotation)。
+        /// VTE 两类机的 offsetNorth 都是 (0,0,0)，不能靠 offset 区分，必须看 Def：
+        /// - VTE_ACUnit（壁挂）：placeWorkers 只有 Placeworker_AcUnit，输出在自身格；
+        /// - VTE_ACUnitWall（墙机）：placeWorkers 含 Placeworker_AttachedToWall，isAttachment=true，
+        ///   输出到机身正面。Placeworker_AttachedToWall 要求 loc + CardinalDirections[rot]
+        ///   是 FillCategory.Full 的墙，即 Rotation 指向身后的墙，所以正面是 RotatedBy(South, Rotation)。
         /// </summary>
         private static IntVec3 OutputCell(Building_AcUnit unit)
         {
             IntVec3 offset = OutputOffset(unit);
-            Map map = unit.Map;
             IntVec3 cell = unit.Position + IntVec3Utility.RotatedBy(offset, unit.Rotation);
+            bool wallMounted = IsWallMounted(unit);
 
-            if (offset != IntVec3.Zero)
+            if (wallMounted)
             {
-                return cell;
+                // 墙机永远输出到机身正面，绝不回退到自身格。
+                cell = unit.Position + IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation);
             }
-
-            IntVec3 front = unit.Position + IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation);
-            IntVec3 result = front.InBounds(map) && !GenGrid.Impassable(front, map) ? front : cell;
 
             if (!_wallCellLogged)
             {
                 _wallCellLogged = true;
-                Log.Message("[AOPatch/VTE] 墙机出风格诊断：pos=" + unit.Position
+                Log.Message("[AOPatch/VTE] 出风格诊断：def=" + unit.def.defName
+                            + " pos=" + unit.Position
                             + " rot=" + unit.Rotation.AsInt
                             + " offset=" + offset
-                            + " 自身格=" + cell
-                            + " 正面候选=" + front
-                            + " 采用=" + result
-                            + " def=" + unit.def.defName);
+                            + " 墙机=" + wallMounted
+                            + " isAttachment=" + (unit.def.building != null && unit.def.building.isAttachment)
+                            + " 采用=" + cell);
             }
 
-            return result;
+            return cell;
+        }
+
+        /// <summary>墙机判定：placeWorkers 含 Placeworker_AttachedToWall，或 Def 标了 isAttachment。</summary>
+        private static bool IsWallMounted(Building_AcUnit unit)
+        {
+            ThingDef def = unit.def;
+            // BuildableDef.placeWorkers 是 List<System.Type>，不是实例列表。
+            List<Type> workerTypes = def.placeWorkers;
+            if (workerTypes != null)
+            {
+                for (int i = 0; i < workerTypes.Count; i++)
+                {
+                    if (workerTypes[i] == typeof(Placeworker_AttachedToWall))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return def.building != null && def.building.isAttachment;
         }
 
         /// <summary>
