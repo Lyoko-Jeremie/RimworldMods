@@ -9,12 +9,13 @@
 
 ## 0. 结论摘要
 
-1. **AO 已经自动接管了 8 个建筑**，不需要任何 XML：VTE 的 5 个温控（`IndustrialHeater`/`IndustrialCooler`/`WallHeater`/`WallMountedHeater`/`WallMountedCooler`）与 GC patch 过的原版 `Heater`/`Cooler` 走 `CompTempControlAtmosphere`；`VTE_StandingCooler` 走 `CompHeatSourceAtmosphere`（原版 `CompHeatPusher` 被 Prefix 抑制，无双重）。
+1. **AO 已经自动接管了 8 个建筑**，不需要任何 XML：VTE 的 5 个温控（`IndustrialHeater`/`IndustrialCooler`/`WallHeater`/`WallMountedHeater`/`WallMountedCooler`）与 GC patch 过的原版 `Heater`/`Cooler` 走 `CompTempControlAtmosphere`；`VTE_StandingCooler` 走 `CompHeatSourceAtmosphere`（原版 `CompHeatPusher` 被 Prefix 抑制，无双重）。**但"接管"不等于"正确"**：其中 4 个的输出格与 AO 写死的 `parent.Position` 不符，见第 8 章。
 2. **AO 完全没接管的 4 类**：`Building_Vent`（原版通风被 `EqualizeTemperaturesThroughBuilding` 前缀禁用，VTE/GC 各一个）、`Building_CeilingFan`（自己声明了 `CompTick`，`OwnsHeatTick` 返回 true，跳过注入）、CCC 的全部 14 个（不继承 `Building_TempControl`）、Omni 的穹顶与生物圈（不继承任何温度类，靠读值 Postfix 伪装）。
    唯一"已经是正确形态"的是 `OmniPersonalTemperatureController`——它的读值代理覆盖 `AmbientTemperature` + `Safe/ComfortableTemperatureAtCell` 三点，语义上也本就该是"个人装备"而非环境改造，不需要动。
 3. **最严重的两个隐患**：`VTE_CeilingFan` 绕过了 AO 的热源接管（它自己的 `CompCeilingFan.CompTick` 是 override 且不调 base），于是走 AO 的 `QueueLocalizedTemperatureDelta`，把本该摊到整房间的 `energy/CellCount` 集中到最多 5 格，局部强度约 5 倍；`AirThermal` 的 `CompProperties_TempControl` 是**裸标签**（`<li Class="CompProperties_TempControl" />`，`AirThermal` 段第 381 行），`energyPerSecond` 取默认 **12**、`min/maxTargetTemperature` 取默认 **−50..50** —— 在 −200 ℃ 环境下这个温控范围根本设不到室温，这是 CCC 在极寒地图上"怎么调都没用"的直接原因。
-4. **需要新增 6 个组件**：`CompAirLoop`（CCC 回路）、`CompFieldStabilizer`（Omni/GC 区域恒温）、`CompRoomFieldExchange`（Vent 类）、`CompProxyHeatBridge`（Frostpunk 三模式）、`CompVacuumSeal`（Omni 真空）、`CompFacilityProfile`（通用参数覆盖 + 单位修正）。
-5. **共 31 个建筑**要处理：VTE 9、CCC 14、GC 3（原版）、OT 5。总表 29 行是因为 CCC 的三个 `*Hidden` 管道与 OT 的两个幻影墙变体各合并成一行。
+4. **需要新增 8 个组件**：`CompAirLoop`（CCC 回路）、`CompFieldStabilizer`（Omni/GC 区域恒温）、`CompRoomFieldExchange`（Vent 类）、`CompProxyHeatBridge`（Frostpunk 三模式）、`CompVacuumSeal`（Omni 真空）、`CompFacilityProfile`（通用参数覆盖 + 单位修正）、`CompTempOutputShape`（修正 AO 温控的输出格，第 8 章）、`CompCeilingFanAtmosphere`（接管两个吊扇，第 8 章）。
+5. **共 31 个建筑**要处理：VTE 9、CCC 14、GC 3（原版）、OT 5。总表 29 行是因为 CCC 的三个 `*Hidden` 管道与 OT 的两个幻影墙变体各合并成一行。VTE 另有 8 个 `ACNet.xml` 里的机组与管路（`VTE_ACUnit`/`VTE_ACUnitWall`/`VTE_ACControlUnit`/`VTE_ACCompressor`/`VTE_LargeACCompressor`/`VTE_AirDuct`/`VTE_UndergroundAirDuct`/`VTE_VentValve`），属 VTE 自建冷媒网，不在本清单。
+6. **"独立温控"这一批只占 2 个新组件、6 个建筑**（第 8 章）：`CompTempOutputShape` 修正 4 个温控的输出格（AO 已接管但位置写死为 `parent.Position`），`CompCeilingFanAtmosphere` 接管 2 个未被 AO 注入的吊扇。另外查出唯一"不耗电却改气温"的漏洞是 CCC 的 4 个通风口。
 
 ---
 
@@ -386,7 +387,9 @@ Good Climate **不添加任何 ThingDef**，只 patch 原版 `Building_Heater` /
 
 | 优先级 | 内容 | 理由 |
 |---|---|---|
-| **P0** | `CompFacilityProfile`（多格 + 上限 + 扩散范围） | 2×1 只写一格、`PushHeat` 局部 5 格过热、墙暖无视 120 ℃ 上限 |
+| **P0** | `CompTempOutputShape` | 2×1 加热器只写一格、壁挂加热器偏移错（第 8 章） |
+| **P0** | `CompCeilingFanAtmosphere` | 两个吊扇绕过 AO，5 格各 −2.2 ℃、零风（第 8 章） |
+| **P0** | `CompFacilityProfile`（上限 + 扩散范围） | `PushHeat` 局部 5 格过热、墙暖无视 120 ℃ 上限 |
 | **P0** | `CompRoomFieldExchange` | 三类 Vent（VTE/CCC/GC）全部失效，影响面最大 |
 | **P1** | `CompAirLoop`（CCC 全套） | CCC 是本 patch 的核心卖点，但工作量最大 |
 | **P1** | `CompFieldStabilizer` + `CompVacuumSeal`（Omni） | 穹顶/生物圈是"人造环境"的代表 |
@@ -395,7 +398,273 @@ Good Climate **不添加任何 ThingDef**，只 patch 原版 `Building_Heater` /
 
 ---
 
-## 8. 未决项
+## 8. 独立温控建筑：接管现状与组件设计
+
+> 本章只覆盖"自身耗电、直接改变气温、不接任何管网"的建筑：VTE 的 4 个温控与 2 个吊扇。
+> CCC 的 14 个全部属于中央空调系统，见第 4 章；`VTE_ACUnit` 系列属于 VTE 自己的冷媒管网，同样不在本章。
+
+### 8.1 范围与 AO 现状
+
+| 建筑 | 类 | 能耗 | AO 组件 | 结论 |
+|---|---|---|---|---|
+| `VTE_IndustrialHeater` | `Building_TwoCellHeater` | 250 W / `+63` | `CompTempControlAtmosphere` | **要修正**：只加热 `Position` 一格，原版是 2 格 |
+| `VTE_IndustrialCooler` | `Building_TwoCellCooler` | 300 W / `−63` | `CompTempControlAtmosphere` | **要修正**：第二列方向算成 `+S+S`，原版是 `+S+E` |
+| `VTE_WallHeater` | `Building_HeaterWithOffset` | 175 W / `+21` | `CompTempControlAtmosphere` | **要修正**：加热脚下，原版是 `+North` |
+| `VTE_WallMountedHeater` | 同上 + `TemperatureOutputPositionModExtension` | 175 W / `+21` | `CompTempControlAtmosphere` | 位置正确（`offsetNorth=(0,0,0)`），走同一路径保持一致性 |
+| `VTE_WallMountedCooler` | `Building_Cooler` | 200 W / `−21` | `CompTempControlAtmosphere` | 正确，**不加组件** |
+| `VTE_StandingCooler` | `Building` + `CompHeatPusherPoweredWithIdleDraw` | 135 W / `−21` | `CompHeatSourceAtmosphere` | 正确，**不加组件** |
+| `VTE_SmallCeilingFan` | `Building_CeilingFan` | 30 W / `−11` | **无** | **要接管**：`OwnsHeatTick=true` 被跳过 |
+| `VTE_LargeCeilingFan` | 同上 | 50 W / `−32` | **无** | **要接管** |
+
+### 8.2 为什么"再挂一个组件"行不通
+
+AO 的 `TempControlSubclassPatches`（`Buildings/6VanillaFacilities.cs:27-46`）在静态构造时遍历 `GenTypes.AllSubclasses(typeof(Building_TempControl))`，对**每个子类自己声明的** `TickRare` 打 Prefix/Finalizer：
+
+```csharp
+MethodInfo original = AccessTools.DeclaredMethod(allSubclass, "TickRare", Type.EmptyTypes);
+if (original != null && !original.IsAbstract) harmony.Patch(original, prefix, finalizer);
+```
+
+Prefix 不跳过原方法，而是：
+
+```csharp
+public static void Prefix(Building_TempControl __instance, out bool __state)
+{
+    __state = !FacilityPatchUtility.RunTempControl(__instance);
+    if (!__state) return;
+    RoomTemperatureWriteHook.Enter();     // 抬高抑制深度
+}
+```
+
+`RunTempControl` 在 AO 地图上返回 `false`（表示"已接管"），于是 `__state = true`，`Enter()` 把 `Room.Temperature` 的 setter 钩子抑制掉。原方法里 `GridsUtility.GetRoom(cell).Temperature += a` 只改了 Room 的缓存值，不进 AO 场。
+
+结论：**每个建筑的 AO 热源只有一条**，就是 `CompTempControlAtmosphere.Run`。它的输出格写死在 `RunHeater` 的 `this.parent.Position`，再挂一个组件只会变成两条通道叠加（一边加热脚下、一边加热正确格），而不是替换。
+
+### 8.3 拦截点
+
+`AtmosphereOverhaul.Buildings.FacilityPatchUtility.RunTempControl(Building_TempControl)`，`public static bool`。
+
+我们的 Prefix 逻辑：
+
+1. `parent` 没有挂 `CompTempOutputShape` → `return true`，交回 AO；
+2. 有 → 通过反射拿 AO comp 的私有 `SourceSlots slots` 字段，`ZeroFrom(parent, 0)` 后按 shape 逐格 `Set(parent, i, cell, rates)`；
+3. `__result = false`（宣告"AO 已接管"，让调用方 `Enter()` 抑制原方法）；
+4. `return false` 跳过 AO 的原实现。
+
+复用 AO 的 `SourceSlots` 而不是自建注册表，是为了让 `PostDeSpawn` 的清理、`RemoveAll` 的生命周期继续由 AO 负责。
+
+### 8.4 `CompTempOutputShape`
+
+```csharp
+public enum TempOutputShape { Single, TwoCellHeater, TwoCellCooler, WallOffset }
+
+public class CompProperties_TempOutputShape : CompProperties
+{
+    public TempOutputShape shape = TempOutputShape.Single;
+    public float heatFactor = 3f;          // 与 AO_FacilityExtension.heatFactor 对齐
+    public float outletToleranceK = 2f;    // 与 AO_FacilityExtension.outletToleranceK 对齐
+    public float hotReturnFactor = 1.25f;
+    public IntVec3 wallOffsetNorth = IntVec3.North;
+}
+```
+
+偏移表（`N/S/E` 一律经 `IntVec3Utility.RotatedBy(..., parent.Rotation)`）：
+
+| shape | 加热格 | 制冷冷格 | 制冷热格 |
+|---|---|---|---|
+| `Single` | `pos` | `pos+S` | `pos+N` |
+| `TwoCellHeater` | `pos+N`、`pos+N+E` | — | — |
+| `TwoCellCooler` | — | `pos+S`、`pos+S+E` | `pos+N`、`pos+N+E` |
+| `WallOffset` | `pos+Rot(wallOffsetNorth)` | — | — |
+
+逐格公式（与 AO 的 `4VanillaFacilities.cs` 同形，只改摊薄方式）：
+
+```
+fullRate = |energyPerSecond| * heatFactor / 60          // ℃/tick
+```
+
+加热：
+
+```
+nOut  = 有效输出格数
+Tout  = 每个输出格各自的摄氏温度
+aim   = TargetTemperature + outletToleranceK
+drive = clamp01((aim - Tout) / 1)                       // 1 K 带宽
+eff   = Tout <= 200 ? 1 : clamp01((300 - Tout) / 100)
+每格 TemperaturePerTick = drive * eff * fullRate / nOut
+```
+
+制冷（冷热两侧必须同源，否则不守恒）：
+
+```
+Tcold = 冷格平均温度, Thot = 热格平均温度
+eff   = 1/(1 + max(0, max(Thot - Tcold, Thot - 40)) / 65)
+        * clamp01((Tcold + 273.15) / 150)
+aim   = TargetTemperature - outletToleranceK
+drive = clamp01((Tcold - aim) / 1)
+每冷格 = -drive * eff * fullRate / nCold
+每热格 = +drive * eff * fullRate * hotReturnFactor / nHot
+```
+
+与原版的对照：
+
+| 建筑 | 原版 | AO 现状 | 本设计 |
+|---|---|---|---|
+| `IndustrialHeater` | 两格各自 `PushHeat`，25 格房间约 `+10.5 ℃` | 单格 `3.15 ℃/tick × 6 = 18.9 ℃` | 两格各 `1.575 ℃/tick × 6 = 9.45 ℃` |
+| `IndustrialCooler` | 冷 `South`/`South+East`，热 `North`/`North+East` | 冷 `S`/`S+S`、热 `N`/`N+N` | 冷两格各 `-1.575 ℃/tick`，热两格各 `+0.984 ℃/tick` |
+| `WallHeater` | `pos+North` 单格 | `pos` 单格 | `pos+North` 单格 `1.05 ℃/tick` |
+| `WallMountedHeater` | `pos` 单格 | `pos` 单格 | `pos` 单格 `1.05 ℃/tick` |
+
+### 8.5 四个建筑的 XML
+
+```xml
+<Patch>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_IndustrialHeater"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>TwoCellHeater</shape>
+      </li>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_IndustrialCooler"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>TwoCellCooler</shape>
+      </li>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_WallHeater"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>WallOffset</shape>
+      </li>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_WallMountedHeater"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_TempOutputShape">
+        <shape>WallOffset</shape>
+      </li>
+    </value>
+  </Operation>
+</Patch>
+```
+
+`VTE_WallMountedHeater` 的 `wallOffsetNorth` 从 `TemperatureOutputPositionModExtension.offsetNorth` 读，缺省 `IntVec3.North`；这与原版 `Building_HeaterWithOffset.SpawnSetup` 的行为一致，不要重复硬编码。
+
+### 8.6 `CompCeilingFanAtmosphere`
+
+吊扇不能走 `RunTempControl`（它不是 `Building_TempControl`，也没有 `CompTempControl`）。直接 patch `CompCeilingFan.CompTick`：
+
+```csharp
+[HarmonyPatch(typeof(CompCeilingFan), "CompTick")]
+static bool Prefix(CompCeilingFan __instance) { ... return false; }   // 完全替换
+```
+
+字段：
+
+```csharp
+public class CompProperties_CeilingFanAtmosphere : CompProperties
+{
+    public float radius = 6f;              // 小 6、大 9
+    public float coolingFactor = 1f;       // 乘 heatPerSecond
+    public float windSpeed = 3f;           // 切向 m/s
+    public float windBlendPerTick = 0.1f;
+    public int scanIntervalTicks = 60;
+}
+```
+
+逻辑（`CompTick`，每 60 tick 重算一次格子集）：
+
+1. `PowerOn` 为假 → 清零，保留 `spinRate` 衰减；
+2. 以 `parent.Position` 为圆心，取 `GenRadial.RadialCellsAround(pos, radius, true)`；
+3. 过滤：`InBounds && ObstacleMask > 0 && GetRoom(cell) == GetRoom(pos)`；
+4. `n = 过滤后格数`；
+5. 每格：
+
+```
+TemperaturePerTick = heatPerSecond * coolingFactor * 3 / 60 / n
+MaintainTargetWind = true
+dir     = normalize(cell - pos)
+TargetWind = (-dir.z, dir.x) * windSpeed        // 切向
+TargetWindBlendPerTick = 0.1
+```
+
+6. `spinRate` 仍按原版逻辑增长/衰减，只是不再调 `GenTemperature.PushHeat`。
+
+为什么是切向而不是径向：2D 单层模型没有垂直方向，风扇的真实气流是"向下→触地→向外扩散"。径向会制造净散度，把空气推到墙边堆积；切向无净散度，表现为环流，最接近"搅动"的观感，也不会污染压力场。
+
+数值（25 格房间，`n = 25`）：
+
+| 建筑 | `heatPerSecond` | `radius` | `windSpeed` | 每格 / 60 tick |
+|---|---|---|---|---|
+| `VTE_SmallCeilingFan` | `−11` | 6 | 3 m/s | `−0.44 ℃` |
+| `VTE_LargeCeilingFan` | `−32` | 9 | 5 m/s | `−1.28 ℃` |
+
+与原版 `Room.Temperature += energy/CellCount` 完全一致；与 AO 现状（最多 5 格、每格 `−2.2 ℃`）相比，消除了局部 5 倍过冷，并新增了环流。
+
+```xml
+<Patch>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_SmallCeilingFan"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_CeilingFanAtmosphere">
+        <radius>6</radius>
+        <windSpeed>3</windSpeed>
+        <coolingFactor>1</coolingFactor>
+      </li>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="VTE_LargeCeilingFan"]/comps</xpath>
+    <value>
+      <li Class="Jeremie.AtmosphereOverhaulPatch.Comps.CompProperties_CeilingFanAtmosphere">
+        <radius>9</radius>
+        <windSpeed>5</windSpeed>
+        <coolingFactor>1</coolingFactor>
+      </li>
+    </value>
+  </Operation>
+</Patch>
+```
+
+### 8.7 不耗电建筑
+
+按"Def 里有没有 `CompProperties_Power`"逐个数：
+
+| Mod | 不耗电的建筑 | 是否改变气温 |
+|---|---|---|
+| VTE | `VTE_WallMountedVent`（`Building_Vent`） | 是（两房间换气），但 AO 已禁用 `EqualizeTemperaturesThroughBuilding` → 实际无效 |
+| VTE | `VTE_AirDuct`、`VTE_UndergroundAirDuct`、`VTE_VentValve` | 否（纯管路） |
+| CCC | `WallAirVentSmall`、`WallAirVent`、`SurroundAirVent`、`SurroundAirVentWide` | **是**，`Room.Temperature += a`，见下 |
+| CCC | `redAirPipe`/`blueAirPipe`/`cyanAirPipe` + 3 个 `*Hidden` | 否（纯管路） |
+| GC | 原版 `Vent` **被 patch 成 10 W**（`1.7/Patches/GoodClimate.xml:27-29`，`basePowerConsumption=10`） | 是，`ventIntensiveExchangeRate=0.8` |
+| OT | `OmniPhantomWall`/`2` | 待核实。未在 workshop 下找到 OT 的 Def 目录；此前记录它带 `CompProperties_Power` 与 Glower，若有电力组件则不属于"不耗电"。无论耗电与否，它只影响透风、不改气温 |
+
+**唯一需要堵的漏洞**：CCC 的 4 个通风口不耗电，却在 `TickRare` 里走 `GenTemperature.ControlTemperatureTempChange` + `Room.Temperature += a`，被 `ApplyRoomTemperatureWrite` 整房间平移——等于凭空搬运热量，代价只是上游 `AirThermal` 的电。这属于第 4 章 `CompAirLoop` 的范围：通风口必须从回路气袋取气，热量由气袋支付。
+
+### 8.8 实施顺序
+
+| 顺序 | 内容 | 依赖 |
+|---|---|---|
+| 1 | `CompTempOutputShape` + `RunTempControl` Prefix | 无 |
+| 2 | 四个温控建筑的 XML patch | 1 |
+| 3 | `CompCeilingFanAtmosphere` | 无 |
+| 4 | 两个吊扇的 XML patch | 3 |
+| 5 | 不耗电通风口的堵漏（并入 `CompAirLoop`） | 第 4 章 |
+
+### 8.9 未决项
+
+1. `SourceSlots` 是 AO 的 `internal` 还是 `public`：反编译显示可实例化，但字段可见性要在实现时用 `AccessTools.FieldRefAccess` 兜底。
+2. `CompCeilingFan.spinRate` 的读写：`spinRate` 是 public 字段，可直接写；但 `Building_CeilingFan.angle` 的累加要保留，否则视觉停转。
+3. 切向环流的 `TargetWind` 在 `MaxWindSpeed` 截断下的实际效果：3 m/s 与 5 m/s 都远低于 AO 的 `MaxWindSpeed`，应该不会被截断，待实测。
+4. 多台吊扇重叠区域的叠加：每格会被多台各写一次，`MaintainTargetWind` 后写者覆盖，可能出现方向抖动；需要"取最大风速、方向按最近风扇"的合并规则，暂定不处理。
+
+## 9. 未决项
 
 > 共 6 条，已关闭 4 条，剩 2 条。
 
@@ -432,6 +701,13 @@ Good Climate **不添加任何 ThingDef**，只 patch 原版 `Building_Heater` /
 | `Patches/RoomTemperatureWriteHook.cs` | `OnSet` → `ApplyRoomTemperatureWrite`，整房间 `+= Δ`，`MaxDeltaKelvin=200`，`MaxRoomCells=3000` |
 | `RimWorld/MapObstacleMaskBuilder.cs:180` | `AirCanMoveThrough(Building)`，按 `def.Fillage` 判定，不按 `passability` |
 | `RimWorld/AtmosphereMapComponent.cs:1135-1142` | `EncodeInt16` 的六个字段范围 |
+| `RimWorld/AtmosphereMapComponent.cs:2931` | `PushHeat(cell, energy)`，只对 `origin + 十字` 最多 5 格写 `QueueLocalizedTemperatureDelta` |
+| `Buildings/6VanillaFacilities.cs:27-46` | `TempControlSubclassPatches` 静态构造，对每个子类 `DeclaredMethod("TickRare")` 打 Prefix |
+| `Buildings/6VanillaFacilities.cs:50` | Prefix：`__state = !RunTempControl(b)`，`true` 时 `RoomTemperatureWriteHook.Enter()` |
+| `Buildings/13VanillaFacilities.cs:16` | `RunTempControl`：已接管返回 `false`，未接管返回 `true` |
+| `Buildings/5VanillaFacilities.cs:20-40` | `FacilityCompInjection`，`CompTempControlAtmosphere` 注入条件 |
+| `Buildings/2HeatSources.cs:19` | `OwnsHeatTick`，`AccessTools.DeclaredMethod(compClass, "CompTick")` 判定 |
+| `Buildings/2HeatSources.cs:35` | `HeatSourceInjection`，`category==3` + `heatPerSecond!=0` + `!OwnsHeatTick` |
 
 ### RimWorld 原版（`f:/RimworldCodeIL/Assembly-CSharp/`）
 
@@ -457,6 +733,11 @@ Good Climate **不添加任何 ThingDef**，只 patch 原版 `Building_Heater` /
 | 文件:行 | 内容 |
 |---|---|
 | VTE `Comps/CompCeilingFan.cs:25` | `CompTick` override **不调 base** → 绕过 `CompHeatPusher` 的 Prefix |
+| VTE `Comps/CompHeatPusherPoweredWithIdleDraw.cs:15` | 只 override `ShouldPushHeatNow` 属性，未声明 `CompTick` → `OwnsHeatTick=false` → 注入 |
+| VTE `Buildings/Building_HeaterWithOffset.cs:24` | `TickRare`，`PushHeat(Position + RotatedBy(outputOffsetNorth))` |
+| VTE `Buildings/Building_HeaterWithOffset.cs:37` | `PushHeat`，`num3 = energyPerSecond × num1 × 4.1667`，末尾 `Room.Temperature += a` |
+| VTE `Buildings/Building_TwoCellHeater.cs:15` | `TickRare`，加热 `pos+N` 与 `pos+N+E` 两格 |
+| VTE `Buildings/Building_TwoCellCooler.cs:16` | `TickRare`，冷 `pos+S`/`pos+S+E`，热 `pos+N`/`pos+N+E` |
 | GC `GC_MapComponent.cs` | `GC_IE_ventIntensiveExchange()`，`room2.Temperature += (room.Temperature - room2.Temperature) * 0.8f` |
 | Omni `OmniForceFieldDome.cs:1348` | `TryGetTemperatureForCell` Postfix，直接返回 `targetTemperature`，不写场 |
 | Omni `OmniForceFieldDome.cs:1369` | `VacuumUtility.GetVacuum` Postfix，返回 0 |
