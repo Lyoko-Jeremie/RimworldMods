@@ -478,3 +478,6 @@ FodyWeavers.xsd
 *.sln.iml
 
 Analysis
+
+.dsh-meow
+
