@@ -9,7 +9,7 @@
 
 ## 0. 结论摘要
 
-1. **AO 已经自动接管了 8 个建筑**，不需要任何 XML：VTE 的 5 个温控（`IndustrialHeater`/`IndustrialCooler`/`WallHeater`/`WallMountedHeater`/`WallMountedCooler`）与 GC patch 过的原版 `Heater`/`Cooler` 走 `CompTempControlAtmosphere`；`VTE_StandingCooler` 走 `CompHeatSourceAtmosphere`（原版 `CompHeatPusher` 被 Prefix 抑制，无双重）。**但"接管"不等于"正确"**：其中 4 个的输出格与 AO 写死的 `parent.Position` 不符，见第 8 章。
+1. **AO 已经自动接管了 8 个建筑**，其中 7 个不需要任何 XML：VTE 的 5 个温控（`IndustrialHeater`/`IndustrialCooler`/`WallHeater`/`WallMountedHeater`/`WallMountedCooler`）与 GC patch 过的原版 `Heater`/`Cooler` 走 `CompTempControlAtmosphere`；`VTE_StandingCooler` 走 `CompHeatSourceAtmosphere`（原版 `CompHeatPusher` 被 Prefix 抑制，无双重），但它原 Def 的 `tickerType=Rare` 与 AO 的 `CompTick` 不匹配，实际完全不生效，需要 XML 改成 `Normal`（见 3.7）。**但"接管"不等于"正确"**：其中 4 个的输出格与 AO 写死的 `parent.Position` 不符，见第 8 章。
 2. **AO 完全没接管的 4 类**：`Building_Vent`（原版通风被 `EqualizeTemperaturesThroughBuilding` 前缀禁用，VTE/GC 各一个）、`Building_CeilingFan`（自己声明了 `CompTick`，`OwnsHeatTick` 返回 true，跳过注入）、CCC 的全部 14 个（不继承 `Building_TempControl`）、Omni 的穹顶与生物圈（不继承任何温度类，靠读值 Postfix 伪装）。
    唯一"已经是正确形态"的是 `OmniPersonalTemperatureController`——它的读值代理覆盖 `AmbientTemperature` + `Safe/ComfortableTemperatureAtCell` 三点，语义上也本就该是"个人装备"而非环境改造，不需要动。
 3. **最严重的两个隐患**：`VTE_CeilingFan` 绕过了 AO 的热源接管（它自己的 `CompCeilingFan.CompTick` 是 override 且不调 base），于是走 AO 的 `QueueLocalizedTemperatureDelta`，把本该摊到整房间的 `energy/CellCount` 集中到最多 5 格，局部强度约 5 倍；`AirThermal` 的 `CompProperties_TempControl` 是**裸标签**（`<li Class="CompProperties_TempControl" />`，`AirThermal` 段第 381 行），`energyPerSecond` 取默认 **12**、`min/maxTargetTemperature` 取默认 **−50..50** —— 在 −200 ℃ 环境下这个温控范围根本设不到室温，这是 CCC 在极寒地图上"怎么调都没用"的直接原因。
@@ -89,7 +89,7 @@ TemperaturePerTick = ShouldPushHeatNow ? num3 * num5 : 0
 | 4 | VTE | `VTE_WallMountedHeater` | `Building_HeaterWithOffset` | ✅ 同上 | `CompFacilityProfile`（输出格偏移） |
 | 5 | VTE | `VTE_WallMountedCooler` | `Building_Cooler` | ✅ 同上 | 无 |
 | 6 | VTE | `VTE_WallMountedVent` | `Building_Vent` | ❌ 通风被禁 | `CompRoomFieldExchange` |
-| 7 | VTE | `VTE_StandingCooler` | `Building` + `CompHeatPusher` | ✅ `CompHeatSourceAtmosphere`，原版被 Prefix 抑制，无双重 | 无（可选 `CompFacilityProfile` 调强度） |
+| 7 | VTE | `VTE_StandingCooler` | `Building` + `CompHeatPusher` | ⚠️ `CompHeatSourceAtmosphere` 已注入，但原 Def `tickerType=Rare` 不调 `CompTick` → 完全不生效 | **已修复**：`tickerType=Normal`（`VteStandingCoolerTicker.xml`） |
 | 8 | VTE | `VTE_SmallCeilingFan` | `Building_CeilingFan` | ❌ 未注入（`OwnsHeatTick`）；走 AO 局部 5 格 | `CompFacilityProfile`（`spreadCells`+`stirRadius`） |
 | 9 | VTE | `VTE_LargeCeilingFan` | `Building_CeilingFan` | ❌ 同上 | 同上 |
 | 10 | CCC | `IntakeFan` | `Building_IntakeFan` | ❌ 无 | `CompAirLoop` |
@@ -180,17 +180,18 @@ TemperaturePerTick = ShouldPushHeatNow ? num3 * num5 : 0
 ### 3.7 `VTE_StandingCooler`
 
 - 类：`Building` + `CompProperties_HeatPusher`（`compClass = CompHeatPusherPoweredWithIdleDraw : CompHeatPusherPowered`）
-- Def：135 W、`heatPerSecond=-21`、`heatPushMinTemperature=16`、`idlePowerDraw=13`
+- Def：135 W、`heatPerSecond=-21`、`heatPushMinTemperature=16`、`idlePowerDraw=13`、**`tickerType=Rare`**
+- **原版工作原理**：每 250 tick 走 `CompHeatPusher.CompTickRare` → `ShouldPushHeatNow`（`AmbientTemperature > 16` 才放行）→ `GenTemperature.PushHeat(pos, map, -21 × 4.16667)` = `-87.5` → `Room.PushHeat` 使房间温度变化 `-87.5 / CellCount`。房间降到 16 ℃ 即停，稳态约 16 ℃，达不到冷藏温度。
 - **AO 现状**：`HeatSourceInjection` 检查 `OwnsHeatTick(CompHeatPusherPoweredWithIdleDraw)` —— 该类**没有**声明 `CompTick`/`CompTickRare` → `OwnsHeatTick` 返回 false → **注入** `CompHeatSourceAtmosphere`。
   - `num3 = -21 × 3 / 60 = -1.05 ℃/tick`，`num5 = clamp01((T+273.15)/150)`
   - `ShouldPushHeatNow` 反射调用 VTE 的 override，`heatPushMinTemperature=16` 生效
-- **已确认无双重**：`CompHeatPusher.CompTick` 和 `CompTickRare` 都被 `CompHeatPusher_CompTick_SourcePatch` / `CompHeatPusher_CompTickRare_SourcePatch` Prefix 拦截（`Buildings/3HeatSources.cs:18`、`Buildings/4HeatSources.cs:18`）：
+- **致命缺口（已修复）**：`CompHeatSourceAtmosphere` 只实现 `CompTick()`，没有覆盖 `CompTickRare`；而 `tickerType=Rare` 在 `Thing.DoTick` 中只调用 `TickRare()` → `comps[i].CompTickRare()`（`ThingComp.CompTickRare` 默认空实现）。原版路径又被下面两个 Prefix 掐断（`Buildings/3HeatSources.cs:18`、`Buildings/4HeatSources.cs:18`）：
   ```csharp
   CompHeatSourceAtmosphere comp = __instance.parent.GetComp<CompHeatSourceAtmosphere>();
   return comp == null || !comp.Replaces;    // Replaces = Spawned && 有 AO 组件
   ```
-  所以 AO 地图上原版 `CompHeatPusher` 不跑，只有 `CompHeatSourceAtmosphere` 生效。
-- **需要**：无。`CompHeatSourceAtmosphere` 已正确处理负 `heatPerSecond`。
+  于是两条路径同时落空：建筑按上电默认 135 W 计费，却完全没有制冷，`idlePowerDraw=13` 的待机切换也永不求值。
+- **修复**：`1.7/Compat/VanillaTemperatureExpanded/Patches/VteStandingCoolerTicker.xml` 用 `PatchOperationReplace` 把该 Def 的 `tickerType` 改成 `Normal`。改后 AO 的 `CompTick` 才会被调度；原版 `CompHeatPusher.CompTick` 仍被同一 Prefix 拦住，不会双重计算。
 - **可选**：`CompFacilityProfile.heatFactor` 调整 `-21` 的实际强度（默认 `pusherHeatFactor=3`，即每 tick `-1.05 ℃`，每 60 tick 累计 `-63 ℃`）。
 
 ### 3.8 / 3.9 `VTE_SmallCeilingFan` / `VTE_LargeCeilingFan`
@@ -412,7 +413,7 @@ Good Climate **不添加任何 ThingDef**，只 patch 原版 `Building_Heater` /
 | `VTE_WallHeater` | `Building_HeaterWithOffset` | 175 W / `+21` | `CompTempControlAtmosphere` | **要修正**：加热脚下，原版是 `+North` |
 | `VTE_WallMountedHeater` | 同上 + `TemperatureOutputPositionModExtension` | 175 W / `+21` | `CompTempControlAtmosphere` | 位置正确（`offsetNorth=(0,0,0)`），走同一路径保持一致性 |
 | `VTE_WallMountedCooler` | `Building_Cooler` | 200 W / `−21` | `CompTempControlAtmosphere` | 正确，**不加组件** |
-| `VTE_StandingCooler` | `Building` + `CompHeatPusherPoweredWithIdleDraw` | 135 W / `−21` | `CompHeatSourceAtmosphere` | 正确，**不加组件** |
+| `VTE_StandingCooler` | `Building` + `CompHeatPusherPoweredWithIdleDraw` | 135 W / `−21` | `CompHeatSourceAtmosphere`（原 `tickerType=Rare` 下不执行） | **已修复**：`tickerType=Normal`（`VteStandingCoolerTicker.xml`），数值不改 |
 | `VTE_SmallCeilingFan` | `Building_CeilingFan` | 30 W / `−11` | **无** | **要接管**：`OwnsHeatTick=true` 被跳过 |
 | `VTE_LargeCeilingFan` | 同上 | 50 W / `−32` | **无** | **要接管** |
 
@@ -674,7 +675,7 @@ TargetWindBlendPerTick = 0.1
 ### 已关闭的四条（供追溯）
 
 - **`Room.PushHeat` 的单位**：`energy` 是"整房间温度增量 × 格数"（K·格），不是 J。`Verse/Room.cs:480` `Temperature += energy / CellCount`。所以 `CompFacilityProfile.energyUnit` 默认取 `KelvinPerRoom`，不需要焦耳换算。
-- **`CompHeatPusher` 是否被抑制**：被抑制。`Buildings/3HeatSources.cs:18` 与 `Buildings/4HeatSources.cs:18` 的 Prefix 在 `CompHeatSourceAtmosphere.Replaces == true` 时返回 false。`VTE_StandingCooler` 无双重。`VTE_CeilingFan` 因其 `CompCeilingFan.CompTick` 是 override 且不调 base，绕过了该 Prefix。
+- **`CompHeatPusher` 是否被抑制**：被抑制。`Buildings/3HeatSources.cs:18` 与 `Buildings/4HeatSources.cs:18` 的 Prefix 在 `CompHeatSourceAtmosphere.Replaces == true` 时返回 false。`VTE_StandingCooler` 无双重，但它原 Def 的 `tickerType=Rare` 使 AO 替代品的 `CompTick` 不被调度，两条路径同时落空（已用 `tickerType=Normal` patch 修复）。`VTE_CeilingFan` 因其 `CompCeilingFan.CompTick` 是 override 且不调 base，绕过了该 Prefix。
 - **`AirThermal` 的 `CompProperties_TempControl` 是否被 CCC 读取**：**被读取**。`Building_AirThermal.SpawnSetup` 里 `GetComp<CompTempControl>()`，`TickRare` 传给 `CompAirFlowTempControl.TickRare(compTempControl)`，后者 `TargetTemperature = compTempControl.targetTemperature`。`CompProperties_TempControl` 是裸标签 → `energyPerSecond = 12`（默认）、`min/maxTargetTemperature = -50..50`（默认）。所以 AO 的 `CompTempControlAtmosphere` 若接管这台机器，`fullRate = 12 × 1 / 60 = 0.2 ℃/tick`，**不为 0**；真正的问题是 −50..50 的目标范围。
 - **`OmniPhantomWall` 的 `ObstacleMask`**：读 `def.Fillage`，不读 `passability`。幻影墙 XML 只设 `passability=Standable`，`fillage` 未设 → `FillCategory.None` → 透风，无需处理。见 6.4。
 

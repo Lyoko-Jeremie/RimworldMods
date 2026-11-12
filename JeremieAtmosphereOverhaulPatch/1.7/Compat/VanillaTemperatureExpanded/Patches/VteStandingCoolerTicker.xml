@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!--
+    立式制冷机（VTE_StandingCooler）：把 tickerType 从 Rare 改成 Normal。
+
+    为什么必须改：
+    AO 的 HeatSourceInjection 会因为这栋楼只有 CompHeatPusher、没有自己声明
+    CompTick/CompTickRare，而给它注入 CompHeatSourceAtmosphere；随后
+    CompHeatPusher_CompTick / CompHeatPusher_CompTickRare 两个 Prefix 在
+    Replaces == true 时返回 false，把原版推热整段掐掉。
+
+    问题在于 AO 的替代品 CompHeatSourceAtmosphere 只实现了 CompTick()，
+    而 VTE 这个 Def 原本是 tickerType = Rare。Rare 建筑在 Thing.DoTick 里
+    只会调用 TickRare() → comps[i].CompTickRare()，而它没有覆盖
+    CompTickRare（ThingComp 默认空实现）。
+
+    结果：原版路径被 Prefix 拦住，AO 路径不被调度，两条都不跑 ——
+    建筑按 135 W 计费却完全不制冷，CompHeatPusherPoweredWithIdleDraw
+    里的 13 W 待机切换也不会被求值。
+
+    改成 Normal 后由 AO 的 CompHeatSourceAtmosphere.CompTick 接管；
+    原版 CompHeatPusher.CompTick 仍会被同一个 Prefix 拦住，不会双重计算。
+    注意：即使修好，房间本身已低于 16℃ 时它仍按原设计停止制冷。
+  -->
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/ThingDef[defName="VTE_StandingCooler"]/tickerType</xpath>
+    <value>
+      <tickerType>Normal</tickerType>
+    </value>
+  </Operation>
+</Patch>
