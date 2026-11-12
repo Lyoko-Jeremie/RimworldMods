@@ -34,9 +34,6 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
         /// <summary>低于此值的净差视为完全平衡。</summary>
         private const float MinNetThreshold = 0.01f;
 
-        /// <summary>VTE 原版的高温停机阈值。</summary>
-        private const float MaxOutletCelsius = 120f;
-
         /// <summary>没有室内机时用于把压缩机台数换算成热容量的默认参考值。</summary>
         private const float DefaultRefCapacity = 87.5f;
 
@@ -113,6 +110,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 return;
             }
 
+            // 控制器的 ResourceOn 默认是 false（只有从存档加载时 Scribe 缺省才为 true），
+            // 而 PipeSystemTick 已被本 mod 短路，再没有别人会把它打开。
+            // 控制器不参与账本的开关机，只要 CanBeOn 就保持开启，否则 inspect 会一直显示
+            // 「缺少压缩机 / 缺少中控器」，且 ShutDownAll 之后永远不会恢复。
+            controller.resourceComp.ResourceOn = true;
+
             float target = controller.TargetNetworkTemperature;
 
             // 2. 收集室内机需求。反向（制热）与正向（制冷）在同一个循环里分开累加。
@@ -165,6 +168,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     continue;
                 }
 
+                // 反馈用房间平均温度，而不是出风格本身的温度。
+                // 出风格就是我们刚写入热量的那一格，几秒内就会被抬到目标附近，
+                // 于是 |target - cell| 掉到 1% 左右、房间却升不上去；改成房间平均后
+                // drive 会稳定在「离目标还有几度」的真实差距上。
+                // AO 把 RoomTempTracker.Temperature 的 getter 换成了 GetAverageAuthoritativeTemperature，
+                // 所以 room.Temperature 读到的就是 AO 的权威房间温度。
+                float feedback = cellTemperature;
+                Room room = RegionAndRoomQuery.RoomAt(cell, map);
+                if (room != null && !room.UsesOutdoorTemperature)
+                {
+                    feedback = room.Temperature;
+                }
+
                 float eps = control.Props.energyPerSecond;
                 if (eps == 0f)
                 {
@@ -179,17 +195,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
                 qRef = qFull;
 
-                float drive = Mathf.Clamp01(Mathf.Abs(target - cellTemperature) / 1f);
-                // 与原版同符号：eps 为负，目标低于格温时乘 +1 得到负值（制冷），
-                // 目标高于格温时乘 -1 得到正值（制热），于是 ACUnit 天然是双向机。
+                float drive = Mathf.Clamp01(Mathf.Abs(target - feedback) / 1f);
+                // 与原版同符号：eps 为负，目标低于室温时乘 +1 得到负值（制冷），
+                // 目标高于室温时乘 -1 得到正值（制热），于是 ACUnit 天然是双向机。
                 float qi = eps * (dtTicks / 60f)
-                           * (target < cellTemperature ? 1f : -1f)
+                           * (target < feedback ? 1f : -1f)
                            * drive * heatFactor;
-
-                if (cellTemperature > MaxOutletCelsius)
-                {
-                    qi = 0f;
-                }
 
                 if (qi > 0f)
                 {
