@@ -107,6 +107,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 ShutDownAll(net);
                 net.Efficiency = 0f;
                 LastEfficiency = 0f;
+                RefreshControllerIcons(net, true);
                 return;
             }
 
@@ -116,7 +117,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             // 「缺少压缩机 / 缺少中控器」，且 ShutDownAll 之后永远不会恢复。
             controller.resourceComp.ResourceOn = true;
 
-            float target = controller.TargetNetworkTemperature;
+            float networkTarget = controller.TargetNetworkTemperature;
 
             // 2. 收集室内机需求。反向（制热）与正向（制冷）在同一个循环里分开累加。
             float a = 0f;
@@ -151,6 +152,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 if (control == null || control.Props == null)
                 {
                     continue;
+                }
+
+                // 逐台读自己的目标温度，而不是网络统一值。
+                // 非独立机在控制器调温时已被广播写入 targetTemperature，
+                // 独立机（CompAcTempControl.IndependentTemp）保留玩家单独设的值。
+                // 用统一值会让「一台制热、一台制冷」被强行掰成同一方向，
+                // 于是 a 或 b 恒为 0：网内回收始终 0，且只有一种方向能工作。
+                float target = control.TargetTemperature;
+                if (target <= -99998f)
+                {
+                    target = networkTarget;
                 }
 
                 IntVec3 cell = OutputCell(unit);
@@ -396,6 +408,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             LastCompressorUnits = unitsSum;
             LastLoadRatio = loadRatio;
 
+            // VTE 的 UpdateOverlayHandle 在 ResourceOn 时直接 return，而我们让控制器常开，
+            // 所以必须在这里自己刷新「缺少室外机」图标，否则它一旦亮过就永久卡住。
+            RefreshControllerIcons(net, s <= 0f);
+
             // 临时诊断：每 2000 tick 打一行，确认账本确实跑到了、且各个量不是 0。
             if (tick % 2000 < 30)
             {
@@ -409,6 +425,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     "[AOPatch/VTE] 账本 net={0} 室内机={1} 压缩机={2} receivers={3} producers={4} a={5:F2} b={6:F2} cap={7:F1} s={8:F3} 首台[{9}]",
                     net.GetHashCode(), _entries.Count, _compressors.Count, net.receivers.Count, net.producers.Count,
                     a, b, capacity, s, first));
+            }
+        }
+
+        /// <summary>刷新所有中控器的错误图标；missingCompressors 为 true 时显示「缺少室外机」。</summary>
+        private static void RefreshControllerIcons(AcPipeNet net, bool missingCompressors)
+        {
+            List<Building_AcControlUnit> controllers = net.ControllerList;
+            for (int i = 0; i < controllers.Count; i++)
+            {
+                AcNetOverlay.Refresh(controllers[i], missingCompressors);
             }
         }
 
