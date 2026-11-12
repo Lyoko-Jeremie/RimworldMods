@@ -29,16 +29,23 @@
 [h1]Atmosphere Overhaul Patch[/h1]
 [color=#9fd3ff]大气层重构 · 第三方温控 Mod 兼容层[/color]
 
-[b]仅支持 RimWorld 1.7。[/b]
-
-[h2]计划覆盖的目标[/h2]
+[h2] Support Mod [/h2]
 [list]
-[*] [b]Good Climate[/b]（GOS.GoodClimate）
-[*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature）
-[*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl）
-[*] [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower）
-[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter）
+[*] [b]宜人气候 Good Climate[/b]（GOS.GoodClimate） https://steamcommunity.com/sharedfiles/filedetails/?id=3669891833
+[*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature） https://steamcommunity.com/sharedfiles/filedetails/?id=3202046258
+[*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl） https://steamcommunity.com/sharedfiles/filedetails/?id=2007268173
+[*] [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower） https://steamcommunity.com/workshop/filedetails/?id=3545379519
+[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter） https://steamcommunity.com/sharedfiles/filedetails/?id=3712146789
 [/list]
+
+使用三种方案替换了 Vanilla Temperature Expanded 的 HeatProxy 机制，使其更符合AO的真实世界： 热辐射加热地面、热辐射加热空气、高温热流喷射。 在 Frostpunk Heat Generator Tower 中实现了这个特性。
+
+将 Centralized Climate Control 中的中央空调按照真实世界的中央风管机空调系统原理，采用AO的系统重新进行了实现，实现了从 户外吸入空气、加热/冷却空气、将空气排入室内 的过程。
+
+将 Vanilla Temperature Expanded 的中央空调按照真实世界的多联机冷媒空调系统原理，采用AO的系统重新进行了实现，实现了三热管制VRF架构，室内机制冷的制冷或制热量相互抵消，未抵消的量才需要对应容量的室外机进行补偿。
+
+
+
 
     </description>
 </ModMetaData>
