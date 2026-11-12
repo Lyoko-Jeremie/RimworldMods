@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal
 rem 构建顺序很重要：兼容项目引用宿主 DLL，必须先编宿主。
 rem 用法：
@@ -19,7 +20,7 @@ if errorlevel 1 goto fail
 
 for %%D in (Compat.GoodClimate Compat.VanillaTemperatureExpanded Compat.CentralizedClimateControl Compat.OmniCrafter) do (
     echo [*] %%D
-    dotnet build "Source\%%D\*.csproj" -c %CONFIG% %RIMWORLD_ARG%
+    dotnet build "Source\%%D\%%D.csproj" -c %CONFIG% %RIMWORLD_ARG%
     if errorlevel 1 goto fail
 )
 

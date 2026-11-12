@@ -192,6 +192,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             }
         }
 
+        /// <summary>
+        /// 扇叶周围的气流切向单位向量。
+        ///
+        /// 与扇叶视觉转向保持一致：RimWorld 的 (x, z) 投影到屏幕上 x 向右、z 向上，
+        /// 顺时针切向为 (dz, -dx) / |r|。
+        /// </summary>
         private static Vector2 Tangent(IntVec3 cell, IntVec3 center)
         {
             float dx = cell.x - center.x;
@@ -201,8 +207,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             {
                 return Vector2.zero;
             }
-            // 逆时针切向：(-dz, dx) / |r|
-            return new Vector2(-dz / length, dx / length);
+            // 顺时针切向：(dz, -dx) / |r|
+            return new Vector2(dz / length, -dx / length);
         }
     }
 }
