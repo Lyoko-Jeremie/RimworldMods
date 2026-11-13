@@ -37,10 +37,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         internal const float NaturalVentDefaultSpeed = 10f;
 
         // 喷流参数：Volumes = min(1000, C * elapsed / 5)；默认 6 tick 一步 → 12 格体积/步。
-        // ExhaustSpeed 同时决定 substeps，10 时约 24 个子步，总流量 12 格/步。
+        // ExhaustSpeed 同时决定 substeps：30 时约 72 个子步，风速体感 = 30 * (1-exp(-V))，
+        // V≈0.5 时约 12 m/s；体积混合仍由 CubicMetresPerTick 单独控制，不会因提速而加剧温度振荡。
         private const float JetCubicMetresPerTick = 10f;
         private const float JetColumnHeight = 5f;
-        private const float JetExhaustSpeed = 10f;
+        private const float JetExhaustSpeed = 30f;
         private const float JetExhaustPressureRatio = 0.02f;
         private const float JetInletPressureRatio = 0f;
         private const float JetMaxPressureRisePascals = 1000f;
@@ -609,7 +610,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         private static float ComputeCubicMetresPerTick(float inletTemperature, float outletTemperature)
         {
             float delta = Mathf.Abs(inletTemperature - outletTemperature);
-            float alphaMax = Mathf.Min(0.5f, 2f / Mathf.Max(1f, delta));
+            float alphaMax = Mathf.Min(0.6f, 2f / Mathf.Max(1f, delta));
             float volumes = -Mathf.Log(1f - alphaMax);
             return Mathf.Clamp(volumes * JetColumnHeight / 6f, 0.5f, JetCubicMetresPerTick);
         }

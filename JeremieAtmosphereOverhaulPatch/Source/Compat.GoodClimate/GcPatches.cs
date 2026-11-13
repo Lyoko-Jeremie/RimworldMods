@@ -153,6 +153,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
 
         private static void Postfix(Building __instance)
         {
+            // 建造任何建筑（含墙）都会走 Building.SpawnSetup；先按 def 过滤，
+            // 避免对每一块墙都做一次 AllComps 遍历 + 反射字段读取。
+            if (__instance == null || __instance.def == null
+                || !__instance.def.HasComp(GcAirRelay.AirVentType))
+            {
+                return;
+            }
+
             GcAirRelay.EnsureDefaultClosed(__instance);
         }
     }
