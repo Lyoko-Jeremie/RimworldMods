@@ -328,11 +328,13 @@ if (dt <= 0) return;          // 同一周期重复调用时去重
 
 ### 8.3 喷流模式（默认关）
 
-走 `AtmosphereInterface.RegisterAirMover(map, owner, key, inlet, outlet, settings, activeTicks)`，`AtmosphereAirMoverSettings` 里 `ConditionExhaust = true`、`ExhaustTemperatureFloor = target`。
+v1 实现为**定向空气注入**：沿 `parent.Rotation.FacingCell` 取 1~3 格，把这些格的目标温差乘 `JetMultiplier = 2` 写进 `pending`。
 
-喷流是唯一能「绕过闭环」把温度推高的通道（旧文档 §6：`ExhaustTemperatureFloor` 是下限，实际喷出温度 = `max(环境, 入口邻格均温, floor)`）。
+为什么不用 `AtmosphereInterface.RegisterAirMover`：`AtmosphereAirMoverSettings` 是 11 字段的结构体，全字段反射构造 + 每源一个 handle 的注册/更新/注销生命周期成本远高于收益；而它相对定向注入多出来的只有一个 `ExhaustTemperatureFloor`（下限语义）。v1 用 `JetMultiplier` 近似这个「比空气模式更猛」的观感。
 
-`inlet` = 建筑格，`outlet` = 沿朝向的 2~3 格外。每源一个 key（`"JAP.ProxyHeatRelay." + thingIDNumber`），`PostDeSpawn` / 失活时 `UnregisterAirMovers`。
+如果实测发现喷流必须要有「喷出温度 = max(环境, 入口邻格均温, floor)」的精确语义，再升级到 `RegisterAirMover`。
+
+`inlet` = 建筑格，`outlet` = 沿朝向的 1~3 格。注入时同样遵守「只正不制」。
 
 ### 8.4 主动制冷（默认关）
 
@@ -356,25 +358,23 @@ if (isCooler && settings.AllowActiveCooling)
 
 ## 9. UI
 
-### 9.1 逐建筑室内开关
+### 9.1 逐建筑开关（4 个）
 
-Postfix `ThingWithComps.GetGizmos`：
+Postfix `ThingWithComps.GetGizmos`，只要 `thing.TryGetComp<CompTemperatureSource>() != null`（反射类型）就追加 4 个 `Command_Toggle`：
 
-```
-if (ProxyHeatBridge.TryGetSource(thing, out comp))
-    yield return new Command_Toggle {
-        defaultLabel = "JAP_ProxyHeatIndoors".Translate(),
-        isActive = () => state.IncludesIndoors,
-        toggleAction = () => { state.IncludesIndoors = !state.IncludesIndoors; MarkDirty(); }
-    };
-```
+| gizmo | 作用 | 存储 |
+|---|---|---|
+| 空气模式 | 把该源的温差注入 AO 气温场 | `_modeMasks` bit0 |
+| 地暖模式 | 注入 AO 地温场 | `_modeMasks` bit1 |
+| 喷流模式 | 沿朝向做短距离定向注入 | `_modeMasks` bit2 |
+| 范围效果及于室内 | 该源的照射区是否覆盖室内格 | `_indoorOn` |
+
+**三模式是逐建筑的**（2026-11-13 用户要求改）。mod 设置页里的三个同名 checkbox 降级为「新放置建筑的默认值」，**只对还没有显式记录的建筑生效**；玩家一旦在某台机器上点过开关，就写入显式记录，之后不再受默认值影响。
 
 状态存 `ProxyHeatRelayMapComponent`：
-- 运行时 `HashSet<Thing>` 做 O(1) 查询；
-- 存档转 `List<Thing>`，`Scribe_Collections.Look(ref list, "indoorSources", LookMode.Reference)`；
-- `PostDeSpawn` / `PostDestroy` 从集合移除，防悬空引用。
-
-**哪些建筑有开关**：`thing.TryGetComp<CompTemperatureSource>() != null`（反射类型），即 ProxyHeat 自动派生过的所有源。不需要额外 Def。
+- 运行时 `Dictionary<Thing, int>` 做 O(1) 查询（`_modeCache`）；
+- 存档用两条并行 `List<Thing>` + `List<int>`，`Scribe_Collections.Look(..., LookMode.Reference)` / `(..., LookMode.Value)`；读档后按较短的对齐重建索引，防老存档错位；
+- 每周期 `TrimDeadModeEntries()` 从尾部删已拆除建筑，删完重建索引。
 
 ### 9.2 保留 ProxyHeat 设置面板
 
@@ -389,12 +389,13 @@ foreach (comp in manager.compTemperatures) comp.MarkDirty();
 
 ### 9.3 强度暴露
 
-`ProxyHeatRelaySettings`：
-- `rangeStrengthCelsiusPerSecond`（默认 1.0，范围 0.1~10）
-- `allowTemperatureStacking`（默认 true）
-- `allowActiveCooling`（默认 false）
-- `maxCoolPerTick`（默认 0.3）
-- `defaultIndoorEffect`（默认 false）
+`AOPatchSettings`：
+- `RangeStrengthCelsiusPerSecond`（默认 1.0，范围 0.1~10）
+- `AllowTemperatureStacking`（默认 true）
+- `AllowActiveCooling`（默认 false）
+- `MaxCoolPerTick`（默认 0.3）
+- `DefaultIndoorEffect`（默认 false）
+- `AirModeEnabled` / `GroundModeEnabled` / `JetModeEnabled`（默认值，不是全局开关）
 
 设置面板用 `Listing_Standard`，与 `AOPatchMod` 现有设置面板同风格。
 
@@ -510,10 +511,54 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 18 | 三种模式一次做全 | 用户 m00474 |
 | 19 | 融雪交原版，不自实现 | 用户 m00239 |
 | 20 | 保留 ProxyHeat 设置面板 + `WriteSettings` 后 `MarkDirty` | 用户 m00239 |
+| 21 | 三模式改为**逐建筑** gizmo；mod 设置页三项降级为「新建筑默认值」，显式记录后不再受默认影响 | 用户 m00938/m00970 |
 
 ---
 
 ## 14. 后续
+
+> 状态：**已落码，`dotnet build -c Debug` 通过（2026-11-13）**。实机尚未验收，§12.3 的实测数据待补。
+
+### 14.1 v1.1 修复记录（2026-11-13，实测「完全没生效」后）
+
+首轮实机测试现象：建筑只出现「范围效果及于室内」gizmo，塔周围温度无变化，篝火仅下风方向轻微升温。
+
+定位到的三个 bug：
+
+1. **只遍历 `compTemperatures`**。`Inject` 开头 `if (comps.Count == 0) return;`，而该列表只收 active 的源 → 空列表直接短路。
+2. **active 死锁**。`active` 只在 `PostSpawnSetup :60` 初始化、由 `TempTick :196-202` 维护；我们设 `enableProxyHeat=false` 后 `TempTick` 不跑，断电状态下生成的建筑永久 `active=false`，`RecalculateAffectedCells :98-99` 直接 return → 永不进 `compTemperatures` → 也没机会被 `RefreshActive` 修回来。
+3. **`GetActive` 检查在 `RefreshActive` 之前**。即使源在某些列表里，第 288 行的 `!GetActive(comp)` 会把它 continue 掉，`RefreshActive` 永远不执行。
+
+修复：
+
+- 新增 `_knownSources` 全量名单，Postfix `CompTemperatureSource.PostSpawnSetup(bool)` 登记；兜底从 `compTemperatures ∪ compTemperaturesToTick` 捞（纯静态源只能靠 PostSpawnSetup）。
+- `Inject` 改为遍历 `_knownSources`，`RefreshActive` 提到 `GetActive` 判断之前；`active` 变为 true 时 `SetActive` + `MarkDirty`，下一个 `MapComponentTick` 的 dirty 分支重建照射区。
+- 新增 `ProxyHeatDebugLog` 设置（默认开）：前 5 次注入 + 每 600 tick 打一条 `sources/active/touched/airWrite/first=[defName act out cells]` 摘要；`PrepareTemperatureSources_Postfix` 前 3 次打「命中 + relay 是否存在」。
+
+### 14.2 v1.2 修复记录（2026-11-13，实测「三个模式按钮点击无反应」后）
+
+现象：三个模式 gizmo 能看到，点下去毫无反应，按钮状态也不变。
+
+根因不是 UI 点击链路，而是 `_modeCache` 的**下标/掩码类型混用**：
+
+```csharp
+// RebuildModeCache：注释说存「下标」，实际存了掩码
+_modeCache[thing] = _modeMasks[i];
+
+// ToggleMode：把它当「下标」写
+_modeMasks[index] = (int)next;   // index 其实是掩码值，如 Air=1
+```
+
+于是点击时 `_modeMasks[1] = next` 在只有一个记录项时直接越界抛 `ArgumentOutOfRangeException`，被 Unity GUI 静默吞掉；而 `_modeCache` 本身从不刷新，`GetModes` 永远返回旧掩码，`isActive()` 因此固定在初始值。
+
+修复：
+
+- `RebuildModeCache` 存下标：`_modeCache[thing] = i;`
+- `GetModes` 按下标读且在界内才用：`index >= 0 && index < _modeMasks.Count` 时返回 `(ProxyHeatMode)_modeMasks[index]`，否则回落 `DefaultModes()`。
+- 顺带把四个 toggle 换成 `ProxyHeatToggleCommand`（`GroupsWith` / `InheritInteractionsFrom` 均返回 false），排除同组点击转发这一层干扰。
+- 新增诊断：`ToggleMode` 前 20 次打 `toggle <defName> <mode> -> <新掩码>`；`GetGizmos_Postfix` 前 3 次打命中记录。
+
+**教训**：缓存「实体→下标」只存下标；「点击无反应」先怀疑方法抛异常被 GUI 吞掉，再怀疑缓存自相矛盾，最后才是 UI 分组。
 
 - 落码完成后，把本文状态改为「已实现」，并在 §12.3 补实测数据。
 - 若实测发现「点源 + 范围层」在 Frostpunk 上仍有视觉热点，再评估是否引入「点源附近半径内降权」。

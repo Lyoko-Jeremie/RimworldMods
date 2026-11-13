@@ -1,6 +1,7 @@
 using HarmonyLib;
 using Jeremie.AtmosphereOverhaulPatch.Bridge;
 using Jeremie.AtmosphereOverhaulPatch.Patches;
+using Jeremie.AtmosphereOverhaulPatch.ProxyHeat;
 using Verse;
 
 namespace Jeremie.AtmosphereOverhaulPatch
@@ -13,7 +14,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
     /// 被 patch 类型的静态构造，把它的 DefDatabase&lt;T&gt;.GetNamed 字段永久钉成 null。
     ///
     /// 安装失败一律降级为「不接管」并写日志，绝不抛异常中断加载：
-    /// AO 未装、AO 改名、AO 版本不匹配时，游戏仍应能正常开局。
+    /// AO / ProxyHeat 未装、改名、版本不匹配时，游戏仍应能正常开局。
     /// </summary>
     [StaticConstructorOnStartup]
     public static class Bootstrap
@@ -26,7 +27,8 @@ namespace Jeremie.AtmosphereOverhaulPatch
                 return;
             }
 
-            if (AOPatchMod.Settings != null && !AOPatchMod.Settings.MasterEnabled)
+            AOPatchSettings settings = AOPatchMod.Settings;
+            if (settings != null && !settings.MasterEnabled)
             {
                 return;
             }
@@ -38,6 +40,12 @@ namespace Jeremie.AtmosphereOverhaulPatch
                 AOPatchMod.HarmonyInstance = harmony;
             }
 
+            InstallTempOutputShape(harmony);
+            InstallProxyHeatRelay(harmony, settings);
+        }
+
+        private static void InstallTempOutputShape(Harmony harmony)
+        {
             AoBridge.Resolve();
             if (!AoBridge.Available)
             {
@@ -49,6 +57,61 @@ namespace Jeremie.AtmosphereOverhaulPatch
             {
                 Log.Warning("[AOPatch] 未能挂载 FacilityPatchUtility.RunTempControl，温控输出形状模块停用。");
             }
+        }
+
+        private static void InstallProxyHeatRelay(Harmony harmony, AOPatchSettings settings)
+        {
+            if (settings != null && !settings.ProxyHeatRelayEnabled)
+            {
+                return;
+            }
+
+            ProxyHeatBridge.Resolve();
+            if (!ProxyHeatBridge.Available)
+            {
+                Log.Warning("[AOPatch] ProxyHeat 未安装或成员不完整，范围效果模块停用。原因：" + ProxyHeatBridge.Failure);
+                return;
+            }
+
+            if (!AtmosphereFieldBridge.Available)
+            {
+                Log.Warning("[AOPatch] AO 模拟场 API 不完整，范围效果模块停用。原因：" + AtmosphereFieldBridge.Failure);
+                return;
+            }
+
+            bool ok = ProxyHeatRelayPatches.Install(harmony);
+            if (!ok)
+            {
+                Log.Warning("[AOPatch] 部分范围效果补丁挂载失败，功能可能不完整。");
+            }
+
+            // ProxyHeatMod.settings 要等 Mod 实例构造完成，延后到加载收尾再强制关闭读值层。
+            LongEventHandler.ExecuteWhenFinished(ProxyHeatPostInit);
+        }
+
+        /// <summary>
+        /// 加载收尾：关掉 ProxyHeat 自己的读值层，并保证照射区包含室内格。
+        ///
+        /// enableProxyHeatEffectIndoors 必须为 true：CompTemperatureSource.CanWorkIn 靠它
+        /// 决定室内格是否进 AffectedCells；为 false 时室内格根本不进照射区，
+        /// 逐建筑「室内也生效」开关就没有东西可注入。
+        /// </summary>
+        private static void ProxyHeatPostInit()
+        {
+            AOPatchSettings settings = AOPatchMod.Settings;
+            if (settings == null || !settings.MasterEnabled || !settings.ProxyHeatRelayEnabled)
+            {
+                return;
+            }
+            if (!ProxyHeatBridge.Available)
+            {
+                return;
+            }
+
+            ProxyHeatBridge.SetEnableProxyHeat(false);
+            ProxyHeatBridge.SetEnableIndoors(true);
+
+            VtePatchDetector.WarnIfPresent();
         }
     }
 }

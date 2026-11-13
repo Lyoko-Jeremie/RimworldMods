@@ -6,6 +6,37 @@
     <AOPatch_Master>Enable this mod</AOPatch_Master>
     <AOPatch_MasterDesc>Master switch. When off, no patches are installed.</AOPatch_MasterDesc>
 
+    <!-- ProxyHeat range effect replacement -->
+    <AOPatch_ProxyHeatSection>ProxyHeat range effect (replacement)</AOPatch_ProxyHeatSection>
+    <AOPatch_ProxyHeatEnabled>Enable range effect</AOPatch_ProxyHeatEnabled>
+    <AOPatch_ProxyHeatEnabledDesc>Hand ProxyHeat's range heating to AO's simulation field. Enabling this force-disables ProxyHeat's own read-value layer.</AOPatch_ProxyHeatEnabledDesc>
+    <AOPatch_ProxyHeatStrength>Range strength: {0} °C/s</AOPatch_ProxyHeatStrength>
+    <AOPatch_ProxyHeatAirMode>Default: air mode</AOPatch_ProxyHeatAirMode>
+    <AOPatch_ProxyHeatAirModeDesc>Default for newly placed buildings. Inject the range delta into the air temperature field. Overridable per building.</AOPatch_ProxyHeatAirModeDesc>
+    <AOPatch_ProxyHeatGroundMode>Default: ground mode</AOPatch_ProxyHeatGroundMode>
+    <AOPatch_ProxyHeatGroundModeDesc>Default for newly placed buildings. Inject into the ground temperature field; slower but reaches through roofs, no effect on vacuum maps. Overridable per building.</AOPatch_ProxyHeatGroundModeDesc>
+    <AOPatch_ProxyHeatJetMode>Default: jet mode</AOPatch_ProxyHeatJetMode>
+    <AOPatch_ProxyHeatJetModeDesc>Default for newly placed buildings. Directional injection along the building's facing. Overridable per building.</AOPatch_ProxyHeatJetModeDesc>
+    <AOPatch_ProxyHeatAir>Air mode</AOPatch_ProxyHeatAir>
+    <AOPatch_ProxyHeatAirDesc>This building's range delta is injected into the air temperature field.</AOPatch_ProxyHeatAirDesc>
+    <AOPatch_ProxyHeatSoil>Ground mode</AOPatch_ProxyHeatSoil>
+    <AOPatch_ProxyHeatSoilDesc>This building's range delta is injected into the ground temperature field. Slower, but the heat reaches through roofs.</AOPatch_ProxyHeatSoilDesc>
+    <AOPatch_ProxyHeatJet>Jet mode</AOPatch_ProxyHeatJet>
+    <AOPatch_ProxyHeatJetDesc>This building blows a heat jet forward along its facing. Suited to chimneys and hot-air outlets.</AOPatch_ProxyHeatJetDesc>
+    <AOPatch_ProxyHeatStacking>Allow temperature stacking</AOPatch_ProxyHeatStacking>
+    <AOPatch_ProxyHeatStackingDesc>Overlapping heat sources add their deltas; off takes the maximum instead.</AOPatch_ProxyHeatStackingDesc>
+    <AOPatch_ProxyHeatIndoorDefault>New sources affect indoors by default</AOPatch_ProxyHeatIndoorDefault>
+    <AOPatch_ProxyHeatIndoorDefaultDesc>Newly spawned buildings include indoor cells in their range by default. Can be overridden per building on its gizmo bar.</AOPatch_ProxyHeatIndoorDefaultDesc>
+    <AOPatch_ProxyHeatCooling>Allow active cooling</AOPatch_ProxyHeatCooling>
+    <AOPatch_ProxyHeatCoolingDesc>Lets coolers use the range effect too. May cancel out AO's point sources; off by default.</AOPatch_ProxyHeatCoolingDesc>
+    <AOPatch_ProxyHeatCoolingRate>Cooling cap: {0} °C/tick</AOPatch_ProxyHeatCoolingRate>
+
+    <AOPatch_ProxyHeatIndoors>Affects indoors</AOPatch_ProxyHeatIndoors>
+    <AOPatch_ProxyHeatIndoorsDesc>When on, this device's range also covers indoor cells; when off it only applies outdoors.</AOPatch_ProxyHeatIndoorsDesc>
+
+    <AOPatch_VteProxyHeatTitle>VTE-ProxyHeatPatch detected</AOPatch_VteProxyHeatTitle>
+    <AOPatch_VteProxyHeatDesc>VTE-ProxyHeatPatch rewrites ProxyHeat's method structure and may prevent this mod's range effect from working. Please remove that patch from the mod list and restart.</AOPatch_VteProxyHeatDesc>
+
     <!-- VTE central AC three-pipe VRF: inspect panel -->
     <JAP.ACNet.Satisfaction>Satisfaction</JAP.ACNet.Satisfaction>
     <JAP.ACNet.LoadRatio>Load</JAP.ACNet.LoadRatio>
@@ -20,4 +51,6 @@
     <JAP.ACNet.Unit>unit</JAP.ACNet.Unit>
     <JAP.ACNet.Workload>Workload</JAP.ACNet.Workload>
     <JAP.ACNet.OutdoorLoad>Outdoor load</JAP.ACNet.OutdoorLoad>
+    <AOPatch_ProxyHeatDebugLog>Diagnostic log</AOPatch_ProxyHeatDebugLog>
+    <AOPatch_ProxyHeatDebugLogDesc>Print a status summary (source count, active count, injected total) to the developer log. Enable when the range effect appears not to work.</AOPatch_ProxyHeatDebugLogDesc>
 </LanguageData>

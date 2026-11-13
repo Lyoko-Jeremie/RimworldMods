@@ -6,6 +6,37 @@
     <AOPatch_Master>启用本 Mod</AOPatch_Master>
     <AOPatch_MasterDesc>总开关。关闭后不安装任何补丁。</AOPatch_MasterDesc>
 
+    <!-- ProxyHeat 范围效果替代机制 -->
+    <AOPatch_ProxyHeatSection>ProxyHeat 范围效果（替代 ProxyHeat）</AOPatch_ProxyHeatSection>
+    <AOPatch_ProxyHeatEnabled>启用范围效果</AOPatch_ProxyHeatEnabled>
+    <AOPatch_ProxyHeatEnabledDesc>用 AO 的模拟场接管 ProxyHeat 的范围加热。启用后 ProxyHeat 自身的读值层会被强制关闭。</AOPatch_ProxyHeatEnabledDesc>
+    <AOPatch_ProxyHeatStrength>范围强度：{0} ℃/秒</AOPatch_ProxyHeatStrength>
+    <AOPatch_ProxyHeatAirMode>默认启用空气模式</AOPatch_ProxyHeatAirMode>
+    <AOPatch_ProxyHeatAirModeDesc>新放置建筑的默认值。把范围温差注入气温场，最直观，也最安全。可逐建筑在建筑面板上覆盖。</AOPatch_ProxyHeatAirModeDesc>
+    <AOPatch_ProxyHeatGroundMode>默认启用地暖模式</AOPatch_ProxyHeatGroundMode>
+    <AOPatch_ProxyHeatGroundModeDesc>新放置建筑的默认值。把范围温差注入地温场，升温慢但能穿透屋顶，真空地图无效。可逐建筑覆盖。</AOPatch_ProxyHeatGroundModeDesc>
+    <AOPatch_ProxyHeatJetMode>默认启用喷流模式</AOPatch_ProxyHeatJetMode>
+    <AOPatch_ProxyHeatJetModeDesc>新放置建筑的默认值。沿建筑朝向做定向强注，适合烟囱、热风出口。可逐建筑覆盖。</AOPatch_ProxyHeatJetModeDesc>
+    <AOPatch_ProxyHeatAir>空气模式</AOPatch_ProxyHeatAir>
+    <AOPatch_ProxyHeatAirDesc>开启后，这台设备的范围温差会注入 AO 的气温场。</AOPatch_ProxyHeatAirDesc>
+    <AOPatch_ProxyHeatSoil>地暖模式</AOPatch_ProxyHeatSoil>
+    <AOPatch_ProxyHeatSoilDesc>开启后，这台设备的范围温差会注入 AO 的地温场。升温慢，但热量能穿过屋顶。</AOPatch_ProxyHeatSoilDesc>
+    <AOPatch_ProxyHeatJet>喷流模式</AOPatch_ProxyHeatJet>
+    <AOPatch_ProxyHeatJetDesc>开启后，这台设备会沿朝向向前方喷出热流。适合烟囱、热风出口。</AOPatch_ProxyHeatJetDesc>
+    <AOPatch_ProxyHeatStacking>允许温度叠加</AOPatch_ProxyHeatStacking>
+    <AOPatch_ProxyHeatStackingDesc>多个热源重叠时按温差累加；关闭则取最大值。</AOPatch_ProxyHeatStackingDesc>
+    <AOPatch_ProxyHeatIndoorDefault>新热源默认影响室内</AOPatch_ProxyHeatIndoorDefault>
+    <AOPatch_ProxyHeatIndoorDefaultDesc>新生成的建筑默认把室内格也纳入范围效果。可逐建筑在建筑面板上覆盖。</AOPatch_ProxyHeatIndoorDefaultDesc>
+    <AOPatch_ProxyHeatCooling>允许主动制冷</AOPatch_ProxyHeatCooling>
+    <AOPatch_ProxyHeatCoolingDesc>让制冷机也能用范围效果。可能与 AO 点源互相抵消，默认关闭。</AOPatch_ProxyHeatCoolingDesc>
+    <AOPatch_ProxyHeatCoolingRate>制冷上限：{0} ℃/tick</AOPatch_ProxyHeatCoolingRate>
+
+    <AOPatch_ProxyHeatIndoors>室内生效</AOPatch_ProxyHeatIndoors>
+    <AOPatch_ProxyHeatIndoorsDesc>开启后，这台设备的作用范围会覆盖室内格；关闭则只在室外生效。</AOPatch_ProxyHeatIndoorsDesc>
+
+    <AOPatch_VteProxyHeatTitle>检测到 VTE-ProxyHeatPatch</AOPatch_VteProxyHeatTitle>
+    <AOPatch_VteProxyHeatDesc>VTE-ProxyHeatPatch 会破坏 ProxyHeat 的方法结构，可能导致本 Mod 的范围效果无法生效。建议在模组列表中移除该补丁后重启游戏。</AOPatch_VteProxyHeatDesc>
+
     <!-- VTE 中央空调三管式 VRF：inspect 面板 -->
     <JAP.ACNet.Satisfaction>满足率</JAP.ACNet.Satisfaction>
     <JAP.ACNet.LoadRatio>负荷</JAP.ACNet.LoadRatio>
@@ -20,4 +51,6 @@
     <JAP.ACNet.Unit>台</JAP.ACNet.Unit>
     <JAP.ACNet.Workload>工作负荷</JAP.ACNet.Workload>
     <JAP.ACNet.OutdoorLoad>室外机负荷</JAP.ACNet.OutdoorLoad>
+    <AOPatch_ProxyHeatDebugLog>输出诊断日志</AOPatch_ProxyHeatDebugLog>
+    <AOPatch_ProxyHeatDebugLogDesc>在开发者日志里打印范围效果的状态摘要（源数量、活跃数、注入总量）。排查「范围效果没生效」时打开。</AOPatch_ProxyHeatDebugLogDesc>
 </LanguageData>
