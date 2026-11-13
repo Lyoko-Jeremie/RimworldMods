@@ -84,6 +84,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         private static int scanCount;
         private static int reportsLeft = 30;
         private static int diagLeft = 8;
+        private static int gizmoDiagLeft = 4;
+        private static int toggleDiagLeft = 8;
+        private static int speedDiagLeft = 8;
 
         static GcAirRelay()
         {
@@ -513,6 +516,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
 
         internal static void ToggleNaturalVent(ThingComp airVent)
         {
+            if (toggleDiagLeft > 0)
+            {
+                toggleDiagLeft--;
+                int diagId = airVent != null && airVent.parent != null ? airVent.parent.thingIDNumber : -1;
+                Log.Message("[AO Patch][GC] toggle id=" + diagId
+                    + " intensive=" + IsIntensiveActive(airVent != null ? airVent.parent : null)
+                    + " open=" + IsNaturalVentOpen(airVent)
+                    + " speed=" + CurrentSpeed(airVent));
+            }
+
             if (airVent == null || airVent.parent == null || IsIntensiveActive(airVent.parent))
             {
                 return;
@@ -560,6 +573,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
                 return;
             }
 
+            float before = CurrentSpeed(airVent);
             try
             {
                 SetSpeedLimitMethod.Invoke(airVent, new object[] { value });
@@ -567,12 +581,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             catch (Exception e)
             {
                 Log.ErrorOnce("[AO Patch][GC] SetSpeedLimit 调用失败：" + e, 0x4748);
+                return;
+            }
+
+            if (speedDiagLeft > 0)
+            {
+                speedDiagLeft--;
+                int diagId = airVent.parent != null ? airVent.parent.thingIDNumber : -1;
+                Log.Message("[AO Patch][GC] SetSpeedLimit id=" + diagId + " " + before
+                    + " -> " + CurrentSpeed(airVent) + " (want " + value + ")");
             }
         }
 
         /// <summary>自然通风开关按钮，由 CompGetGizmosExtra 的 Postfix 追加。</summary>
         internal static Gizmo BuildNaturalVentGizmo(ThingComp airVent)
         {
+            if (gizmoDiagLeft > 0)
+            {
+                gizmoDiagLeft--;
+                int diagId = airVent != null && airVent.parent != null ? airVent.parent.thingIDNumber : -1;
+                Log.Message("[AO Patch][GC] gizmo 追加 id=" + diagId
+                    + " intensive=" + IsIntensiveActive(airVent != null ? airVent.parent : null)
+                    + " open=" + IsNaturalVentOpen(airVent));
+            }
+
             Command_Toggle command = new Command_Toggle();
             command.defaultLabel = NaturalVentGizmoLabelKey.Translate();
             command.defaultDesc = NaturalVentGizmoDescKey.Translate();

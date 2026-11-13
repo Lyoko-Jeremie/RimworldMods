@@ -112,28 +112,32 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             return AccessTools.Method(GcAirRelay.GcThingCompType, "CompGetGizmosExtra");
         }
 
-        private static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> __result, ThingComp __instance)
+        private static void Postfix(ref IEnumerable<Gizmo> __result, ThingComp __instance)
         {
+            // Harmony 对 iterator 方法的返回值替换并不总是可靠（Postfix 直接 yield
+            // 在部分 Harmony 版本里不会写回 __result），这里显式构造列表再赋值。
+            List<Gizmo> gizmos = new List<Gizmo>();
             if (__result != null)
             {
                 foreach (Gizmo gizmo in __result)
                 {
-                    yield return gizmo;
+                    gizmos.Add(gizmo);
                 }
             }
 
             if (__instance == null || __instance.parent == null)
             {
-                yield break;
+                __result = gizmos;
+                return;
             }
 
             ThingComp airVent = GcAirRelay.FindAirVent(__instance.parent);
-            if (airVent == null)
+            if (airVent != null)
             {
-                yield break;
+                gizmos.Add(GcAirRelay.BuildNaturalVentGizmo(airVent));
             }
 
-            yield return GcAirRelay.BuildNaturalVentGizmo(airVent);
+            __result = gizmos;
         }
     }
 
