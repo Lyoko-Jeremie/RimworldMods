@@ -332,7 +332,7 @@ if (dt <= 0) return;          // 同一周期重复调用时去重
 
 ### 8.3 喷流模式（默认关）
 
-v5 实现为**从建筑外围向外、可多层接力的 AO 原生 AirMover**。
+v6 实现为**从建筑外围向外、可多层接力的 AO 原生 AirMover，且只负责风**（热量见 §8.3.1）。
 
 为什么不跟建筑朝向：喷流是「热源向四周散开」，不是定向吹风。用户 m01313 明确「喷流的方向应该是径向始终指向远离建筑的方向」。
 
@@ -375,6 +375,18 @@ for layer in 0..layers-1:
 `origin` 用 `OccupiedRect.CenterCell` 而不是 `Position`——多格建筑的 `Position` 是左下角，用它算极角会整体偏一个建筑尺寸。
 
 出口必须沿射线逐格找，而不是随便 `round(center + dir*dist)`：终点若落在墙里，AO 的 `JetTransport.HasOpenPath` 会把这条喷流静默清零。现在改成「先找到第一个开放格再注册」，找不到就干脆不注册，省掉那部分白遍历。
+
+#### 8.3.1 喷流只出风，热量走空气通道（v1.9）
+
+v1.9 起，喷流模式的**热量不再由喷流自己传**，而是和空气模式共用同一条逐格面注入通道：
+
+- `useHeat = (modes & Air) != 0 || (modes & Jet) != 0`，一个源只累加一次，热量均匀铺满整个 `AffectedCells`；
+- `ExhaustTemperatureFloor` 改成**出口格当前温度**（量化 5℃ 台阶），于是 `JetTransport` 里 outlet 的 `Mix` 和沿 path 的 `Exchange` 都没有温差可传；
+- 风照旧走 `ConditionExhaust = true` 的 `AirMover`（压力通道 `AddNozzlePump`），不受 `Project` 投影影响。
+
+原因：AO 的 `JetTransport.BuildPath` 只用 `Math.Sign` 取 ±x/±z（`Simulation/JetTransport.cs:133-135`），所以热量只会沿四条平行直线交换——这正是用户 m02127 看到的十字。**动量方向本身是自由的浮点 `Vector2`**，不受这条限制，所以「风保留、热改道」是唯一同时满足两者的做法。
+
+量化 5℃ 仍然是必须的：`RegisterAirMover` 只要发现 `Settings` 有任何字段变化就会 `UpdateAirMover`，而它会把 `LastTick` 重置到当前 tick，使本周期 `ActiveTicks = 0`、整条喷流没有流量。
 
 参数（`AtmosphereAirMoverSettings`，反射构造）：
 
@@ -600,6 +612,7 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 27 | 喷流端口从半径外环改到**建筑外围一圈**，风速初值按半径 `clamp(r*1.5, 20, 150)`，玩家仍可逐建筑调 | 用户 m01809/m01828 |
 | 28 | 喷流改为**每个周长格一条 + 出口沿射线取整格放到 0.5r**（不用两圈接力），消除十字 | 用户 m01955/m01960 |
 | 29 | 喷流端口候选 = 几何周长 ∩ AffectedCells（被遮挡的格不生成喷口）；层数 1~3 可调、层间距 1 格；出口沿射线找第一个开放格 | 用户 m02017/m02021 |
+| 30 | 喷流模式**只出风**：热量并入空气通道的逐格面注入（`useHeat = Air \|\| Jet`）；`ExhaustTemperatureFloor` 改为出口格当前温度（量化 5℃），消除 `JetTransport` 四向 path 画的十字 | 用户 m02313 |
 
 ---
 
@@ -767,6 +780,35 @@ AO 的 `RegisterAirMover` 按 owner+key 找到已有记录后，只要 `Settings
 
 **编译**：0 警告 0 错误。
 
-- 落码完成后，把本文状态改为「已实现」，并在 §12.3 补实测数据。
+### 14.9 v1.9：喷流只出风，热量改走空气通道的面注入
+
+**触发**：用户 m02313「尝试实现「温度面注入 + 喷流只出风」」。
+
+**根因回顾**：v1.8 之后 3 层仍是十字。复核 AO 源码后确认，`JetTransport.BuildPath`（`Simulation/JetTransport.cs:133-135`）用
+`num1 = |dx| >= |dy| ? Math.Sign(dx) : 0; num2 = num1 == 0 ? Math.Sign(dy) : 0;`
+把路径限制成 ±x/±z 四条直线；而 `Exchange`（`:73-81`）沿这条 path 逐格交换温度。于是所有同轴向 path 平行重叠，热被画成十字，四角没有 path 经过。
+
+**关键区分**：动量（风）走的是另一条通道——`AddAirMoverMomentum`（`AtmosphereMapComponent.cs:734`）→ `AddAirMoverPortMomentum`（`LocalAtmosphereEngine.cs:881-895`）→ `VelocityX/Z[outlet] += direction.normalized * ((speed - dot) * blend)`，`Direction` 是浮点 `Vector2`，**任意角都不折叠**。所以「方向少」不是喷流的能力上限，只是「热」的通道上限。
+
+**实现**：
+1. `Inject` 中把逐建筑通道判定改成 `useHeat = Air || Jet`，`useSoil` 不变；同一源只 `Accumulate` 一次 → 喷流开启时热量也由空气通道的逐格面注入完成，均匀覆盖 `AffectedCells`。
+2. `InjectJets` 增加 `float[] temperature` 参数；`ExhaustTemperatureFloor` 从「`baseline + outcome`（目标温度）」改为「**出口格当前温度** 量化 5℃ 台阶」：
+   ```csharp
+   float outletTemp = temperature[outletIndex];
+   float jetFloor = Mathf.Round(outletTemp / 5f) * 5f;
+   ```
+   这样 `JetTransport` 的 `Mix(T[outlet], source.Temperature, fraction1)` 与沿 path 的 `Exchange` 都没有温差，path 不再画十字；风仍由 `AddNozzlePump` 从 outlet 推出。
+3. 量化 5℃ 保留：不量化则 `Settings` 每周期都变 → `UpdateAirMover` 重置 `LastTick` → `ActiveTicks = 0` → 永远无风。
+
+**为什么不用 `AddWindImpulse` 造风**（方案 B 的风部分）：`AddWindImpulse` 写的是速度通道，会被 `Project` 的散度投影削掉（径向向外是纯散度场），再被 `DampVelocity(0.5)` 每步减半；AO 自己的定向输送走 `externalDivergence` / `AddNozzlePump` 压力通道。所以风必须留给 `AirMover`。
+
+**性能**：`useHeat` 只是合并了通道，面注入的成本与空气模式相同（r=60 约 1.1 万格/源，直写 `pendingTemperatureDeltas`，不走 `AddTemperatureDelta` 的 journal）。
+
+**编译**：0 警告 0 错误，DLL 已写入 `Assemblies/`。
+
+**待实测**：十字是否消失、四角是否升温、风是否仍在、`Logs/Player.log` 里 `AOPatch/ProxyHeat` 的 `jet=` 状态。
+
+两件后续事项：
+
 - 若实测发现「点源 + 范围层」在 Frostpunk 上仍有视觉热点，再评估是否引入「点源附近半径内降权」。
 - 旧文档 `AO-ProxyHeat接管与三模式设计.md` 保留，但读者应先读本文。

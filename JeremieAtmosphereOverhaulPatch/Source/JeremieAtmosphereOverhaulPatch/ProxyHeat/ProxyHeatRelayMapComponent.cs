@@ -1005,10 +1005,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
 
                 // 逐建筑通道：同一格可能只被空气命中、只被地暖命中，或两个都要。
+                //
+                // 喷流只负责「风」：它的热量改由空气通道的面注入提供，这样热量均匀铺满
+                // 整个照射区，不会走 AO 的 JetTransport 四向 path 交换（那会把热量画成十字）。
+                // 所以「空气或喷流任一开启」都走空气通道，且同一源只累加一次。
                 ProxyHeatMode modes = GetModes(parent);
                 bool useAir = (modes & ProxyHeatMode.Air) != 0;
+                bool useJet = (modes & ProxyHeatMode.Jet) != 0;
+                bool useHeat = useAir || useJet;
                 bool useSoil = (modes & ProxyHeatMode.Soil) != 0 && soilAvailable;
-                if (!useAir && !useSoil)
+                if (!useHeat && !useSoil)
                 {
                     continue;
                 }
@@ -1032,7 +1038,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                         continue;
                     }
 
-                    if (useAir)
+                    if (useHeat)
                     {
                         Accumulate(
                             _sumAir, _maxAir, _baselineAir, _capAir, _floorAir, _coolAir,
@@ -1070,7 +1076,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             // 逐建筑开关才是实际开关。是否真的喷流由 InjectJets 内部逐源判断。
             if (AtmosphereFieldBridge.AirMoverAvailable)
             {
-                InjectJets(_knownSources, outdoor, obstacle, width);
+                InjectJets(_knownSources, outdoor, obstacle, temperature, width);
             }
 
             TrimDeadIndoorEntries();
@@ -1249,17 +1255,20 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         }
 
         /// <summary>
-        /// 喷流通道：沿建筑外缘的 8 个径向，各注册一条 AO 原生 AirMover。
+        /// 喷流通道：沿建筑外缘一圈（必要时可叠层）逐格注册 AO 原生 AirMover。
         ///
-        /// 方向取「从建筑中心指向外侧」的固定八向，不跟建筑朝向走 —— 喷流是
-        /// 热源向四周散开，不是定向吹风。风的强度、压升、排气温度全部交给
-        /// AO 的模拟，我们只提供入口/出口格和 <c>ExhaustTemperatureFloor</c>。
+        /// 方向取「从建筑中心指向该格」的真实径向，不跟建筑朝向走 —— 喷流是热源
+        /// 向四周散开，不是定向吹风。风的强度、压升全部交给 AO 的模拟。
+        ///
+        /// 热量**不**从这里出：出风温度被设成出口格当前温度，让 JetTransport 的
+        /// Mix/Exchange 没有温差可传，加热只由空气通道的面注入完成。这样既保留
+        /// 风，又避免四条平行 path 把热量画成十字。
         ///
         /// AO 的 <c>RegisterAirMover</c> 按 owner+key 就地更新，所以每个模拟周期
         /// 重复调用是安全的。但**不能**依赖「不注册就自动过期」：我们用
         /// <c>activeTicks = -1</c>（永不过期），关掉开关时必须显式注销。
         /// </summary>
-        private void InjectJets(System.Collections.IList comps, float outdoor, float[] obstacle, int width)
+        private void InjectJets(System.Collections.IList comps, float outdoor, float[] obstacle, float[] temperature, int width)
         {
             if (!AtmosphereFieldBridge.AirMoverAvailable)
             {
@@ -1309,14 +1318,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 float target = state.Baseline + state.Outcome;
                 float speed = GetJetSpeed(parent, state.Radius);
 
-                // 出风温度量化到 5℃ 台阶：AO 的 RegisterAirMover 只要发现
-                // Settings 有任何字段变化就会 UpdateAirMover，而 UpdateAirMover 会把
-                // LastTick 重置到当前 tick，使本周期算出的 ActiveTicks 为 0。
-                // target 每周期都在小幅漂移，不量化就会每周期都触发更新、永远没有流量。
-                float jetFloor = Mathf.Round(target / 5f) * 5f;
-
-                // 出口集在 RecalculateAffectedCells 的 Postfix 里按极角分桶建好，
-                // 这里只做注册，不再算几何。
+                // 出口集在 RecalculateAffectedCells 的 Postfix 里按建筑外围一圈的
+                // 周长格建好（可选叠层），这里只做注册，不再算几何。
                 List<JetPort> jets = state.Jets;
                 for (int d = 0; d < jets.Count; d++)
                 {
@@ -1332,6 +1335,21 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     {
                         continue;
                     }
+
+                    // 出风温度取「出口格当前温度」，量化到 5℃ 台阶。
+                    //
+                    // 取当前温度 → JetTransport 里 outlet 的 Mix、以及沿 path 的 Exchange
+                    // 都没有温差可传，热量不会沿 AO 的四向 path 画成十字；真正的加热由
+                    // 空气通道的逐格面注入完成。
+                    //
+                    // 必须量化：RegisterAirMover 发现 Settings 有任何字段变化就会
+                    // UpdateAirMover，而它会把 LastTick 重置到当前 tick，使本周期
+                    // ActiveTicks 为 0、整条喷流不产生流量。温度场每周期都在小幅漂移，
+                    // 不量化就会每周期都触发更新、永远没有风。
+                    float outletTemp = (temperature != null && outletIndex < temperature.Length)
+                        ? temperature[outletIndex]
+                        : target;
+                    float jetFloor = Mathf.Round(outletTemp / 5f) * 5f;
 
                     var p = new AtmosphereFieldBridge.AirMoverParams
                     {
