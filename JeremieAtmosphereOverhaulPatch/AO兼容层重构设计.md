@@ -233,6 +233,8 @@ public sealed class CompProperties_FieldStabilizer : CompProperties
 
 ## 5. 能力层 3：房间交换器 `CompAoRoomExchange`
 
+> ⚠️ **本节已被取代（2026-11-14）**。用户 m00486 明确否决「一把写掉整个 Room」：AO 没有逐格质量，房间级成对写在 AO 上不成立；m00500 又否掉了改模拟步进。GC 主动通风口的最终路线改为 **AirMover 单对端口**，见 `AO-主动气体转移装置设计分析.md`（v2）。本节仅作历史设计留档，不要据此实现。
+
 ### 目的
 
 替代"直接写 `Room.Temperature`"的做法，做**成对守恒**的能量搬运。

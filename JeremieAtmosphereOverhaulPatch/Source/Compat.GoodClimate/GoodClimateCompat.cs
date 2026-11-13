@@ -1,11 +1,13 @@
 namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
 {
     /// <summary>
-    /// Good Climate 兼容模块的占位骨架。
+    /// Good Climate 兼容模块的入口占位。
     ///
-    /// 当前版本已推倒重写：这里不包含任何 Harmony 补丁或业务逻辑，
-    /// 只保留程序集输出位置，让 LoadFolders 的条件目录继续可用。
-    /// 接管方案见 AO-四Mod温度建筑组件清单.md 第 5 节。
+    /// 实际实现已拆到：
+    /// - <c>GcAirRelay.cs</c>：反射桥接、AirMover 注册/注销、真空关断；
+    /// - <c>GcPatches.cs</c>：放宽 IE 按钮门控、抑制 GC 房间级交换、StaticConstructorOnStartup 自举。
+    ///
+    /// 设计说明见仓库根目录的 <c>AO-主动气体转移装置设计分析.md</c> §11。
     /// </summary>
     internal static class GoodClimateCompatPlaceholder
     {

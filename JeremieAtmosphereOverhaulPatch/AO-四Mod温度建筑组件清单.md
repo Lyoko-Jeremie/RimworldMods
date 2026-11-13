@@ -317,9 +317,10 @@ Good Climate **不添加任何 ThingDef**，只 patch 原版 `Building_Heater` /
   ```
   这是**直接写房间**，AO 在 `Patches/5TemperaturePatches.cs:13` 拦截了 `RoomTempTracker.set_Temperature`，转到 `RoomTemperatureWriteHook.OnSet` → `ApplyRoomTemperatureWrite`，整房间逐格平移。
 - **问题**：不守恒（A 房间不减少），0.8 的系数在 AO 下被 `MaxDeltaKelvin=200` 截断，但仍然是"魔法交换"。
-- **需要**：`CompRoomFieldExchange`，并 patch 掉 `GC_IE_ventIntensiveExchange`
-  - `exchangeRate = 0.8 × (min(cellsA, cellsB) / 25)`（按格数缩放，避免大房间瞬间拉平）
-  - 写场而不是 `Room.Temperature`
+- **需要**：~~`CompRoomFieldExchange`~~，并 patch 掉 `GC_IE_ventIntensiveExchange`
+  - ~~`exchangeRate = 0.8 × (min(cellsA, cellsB) / 25)`（按格数缩放，避免大房间瞬间拉平）~~
+  - ~~写场而不是 `Room.Temperature`~~
+  - **2026-11-14 更新**：本轮结论已被取代。用户 m00486 否决房间级成对写（AO 没有逐格质量），m00500 否决改模拟步进，m00506 要求只影响两端各一格。GC 主动通风口改为 **AirMover 单对端口**，详见 `AO-主动气体转移装置设计分析.md`（v2）§3、§7、§8。
 
 ---
 
