@@ -535,149 +535,213 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 state.RingCells.Add(cell);
             }
 
-            BuildJetPorts(state, radius, origin, occupied, state.Parent.Map);
+            // 端口来源要用 AO 的 ObstacleMask 校验出口是否开放；AO 未就绪时退化为几何判断。
+            float[] obstacle = null;
+            int width = 0;
+            object aoComponent = AtmosphereFieldBridge.FindComponent(state.Parent.Map);
+            if (aoComponent != null)
+            {
+                object engine = AtmosphereFieldBridge.GetEngine(aoComponent);
+                if (engine != null)
+                {
+                    obstacle = AtmosphereFieldBridge.GetObstacleMask(engine);
+                    width = AtmosphereFieldBridge.GetWidth(engine);
+                }
+            }
+            int layers = 1;
+            AOPatchSettings cfg = AOPatchMod.Settings;
+            if (cfg != null)
+            {
+                layers = cfg.JetLayers;
+            }
+            state.Layers = layers;
+            BuildJetPorts(state, radius, origin, occupied, state.Parent.Map, layers, obstacle, width);
         }
 
         /// <summary>
-        /// 由环形采样格构造喷流出口集：按与建筑中心的极角分桶，每桶保留最外侧的格，
-        /// 方向取该格相对中心的真实单位向量。
+        /// 由 ProxyHeat 的照射区构造喷流端口。
         ///
-        /// 桶数随半径自适应（约每 4 格弧长一个桶），下限 8、上限 24。
-        /// 这样半径 3 的火堆有 8 条，半径 60 的塔也只要 24 条，不会注册上千个 AirMover。
-        /// </summary>
-        /// <summary>
-        /// 由建筑外围一圈的周长格构造喷流口：按与建筑中心的极角分桶，
-        /// 每桶取角度最接近桶中心的那格作为入口，出口沿同一方向再往外两格。
+        /// 端口来源必须落在 <c>state.Cells</c>（AffectedCells）里：那张表已经过 FloodFill 连通性
+        /// 和 GenSight 可见性筛选，被墙、山体挡住的格根本不在集合里。所以「格是否真的存在」由
+        /// ProxyHeat 决定，我们只在存在的格里挑端口——被遮挡的方向自然不会生成喷口。
         ///
-        /// 端口贴在建筑外围而不是半径外环——喷流的直觉是「从塔身向外喷」，
-        /// 落在 0.75r~r 的外环上会让气流起点离建筑几十格，区域内反而没有风；
-        /// 而且外环的出口容易顶到基地外墙或山体，被 AO 的开放面检查成批清零。
+        /// 层数由设置给（1~3）。第 k 层的候选是「建筑外扩 k+1 圈的几何周长 ∩ AffectedCells」，
+        /// 因此第 2 层紧贴第 1 层；除最后一层外，出口对准下一圈的同一方向，形成接力。
         /// </summary>
-        private static void BuildJetPorts(ProxyHeatSourceState state, float radius, IntVec3 origin, CellRect occupied, Map map)
+        private static void BuildJetPorts(
+            ProxyHeatSourceState state,
+            float radius,
+            IntVec3 origin,
+            CellRect occupied,
+            Map map,
+            int layers,
+            float[] obstacle,
+            int width)
         {
             state.Jets.Clear();
-            if (map == null || radius <= 0f)
+            if (radius <= 0f || map == null || state.Cells == null || state.Cells.Count == 0)
             {
                 return;
             }
-
-            // 建筑外围一圈（外扩 1 格）。上下两边整条取，左右两边只取中间段，避免四个角重复。
-            CellRect outer = occupied.ExpandedBy(1);
-            IntVec3 min = outer.Min;
-            IntVec3 max = outer.Max;
-            List<IntVec3> boundary = new List<IntVec3>();
-            for (int x = min.x; x <= max.x; x++)
+            if (layers < 1)
             {
-                boundary.Add(new IntVec3(x, 0, min.z));
-                boundary.Add(new IntVec3(x, 0, max.z));
+                layers = 1;
             }
-            for (int z = min.z + 1; z <= max.z - 1; z++)
+            if (layers > 3)
             {
-                boundary.Add(new IntVec3(min.x, 0, z));
-                boundary.Add(new IntVec3(max.x, 0, z));
+                layers = 3;
             }
 
-            // 大约每两格周长一个口，6×6 塔 24 格周长 → 12 个方向；小建筑兜底 8 个。
-            int buckets = Mathf.CeilToInt(boundary.Count / 2f);
-            if (buckets < 8)
-            {
-                buckets = 8;
-            }
-            if (buckets > 24)
-            {
-                buckets = 24;
-            }
+            // 最外层出口放到半径的一半；超过 40 格后收益递减，压住上限。
+            float maxDist = Mathf.Clamp(radius * 0.5f, 3f, 40f);
 
-            // 每桶记录「角度最接近桶中心」的格，让出口方向尽可能均匀。
-            int[] bestIndex = new int[buckets];
-            float[] bestDelta = new float[buckets];
-            for (int i = 0; i < buckets; i++)
+            for (int layer = 0; layer < layers; layer++)
             {
-                bestIndex[i] = -1;
-                bestDelta[i] = float.MaxValue;
-            }
+                int ring = layer + 1;
+                CellRect rect = occupied.ExpandedBy(ring);
+                int perimeter = rect.Width * 2 + rect.Height * 2 - 4;
+                // 周长 > 32 的巨型建筑抽稀成每 2 格一条，避免半径 100 的塔注册上百条。
+                int stride = perimeter > 32 ? 2 : 1;
 
-            float twoPi = 6.2831855f;
-            float pi = 3.1415927f;
-            for (int i = 0; i < boundary.Count; i++)
-            {
-                IntVec3 cell = boundary[i];
-                if (!cell.InBounds(map))
-                {
-                    continue;
-                }
-                int dx = cell.x - origin.x;
-                int dz = cell.z - origin.z;
-                if (dx == 0 && dz == 0)
-                {
-                    continue;
-                }
-                float angle = (float)System.Math.Atan2(dz, dx);
-                int bucket = (int)((angle + pi) / twoPi * buckets);
-                if (bucket < 0)
-                {
-                    bucket = 0;
-                }
-                if (bucket >= buckets)
-                {
-                    bucket = buckets - 1;
-                }
-                float center = -pi + (bucket + 0.5f) * (twoPi / buckets);
-                float delta = Mathf.Abs(Mathf.DeltaAngle(angle * Mathf.Rad2Deg, center * Mathf.Rad2Deg));
-                if (delta < bestDelta[bucket])
-                {
-                    bestDelta[bucket] = delta;
-                    bestIndex[bucket] = i;
-                }
-            }
+                // 中间层把出口对准下一圈（紧贴），最后一层放到 maxDist。
+                float dist = layer + 1 < layers ? ring + 1 : maxDist;
 
-            for (int b = 0; b < buckets; b++)
-            {
-                int i = bestIndex[b];
-                if (i < 0)
+                int index = 0;
+                foreach (IntVec3 cell in EnumeratePerimeter(rect))
                 {
-                    continue;
-                }
-                IntVec3 cell = boundary[i];
-                float vx = cell.x - origin.x;
-                float vz = cell.z - origin.z;
-                float len = Mathf.Sqrt(vx * vx + vz * vz);
-                if (len <= 0.0001f)
-                {
-                    continue;
-                }
-                vx /= len;
-                vz /= len;
+                    if (index++ % stride != 0)
+                    {
+                        continue;
+                    }
+                    if (occupied.Contains(cell) || !cell.InBounds(map))
+                    {
+                        continue;
+                    }
+                    // 核心：端口必须真实存在于 ProxyHeat 的照射区。
+                    if (!state.Cells.Contains(cell))
+                    {
+                        continue;
+                    }
 
-                // 方向取四舍五入后的整数步，避免浮点抖动；气流方向仍用真实单位向量。
-                IntVec3 step = new IntVec3(
-                    Mathf.RoundToInt(vx),
-                    0,
-                    Mathf.RoundToInt(vz));
-                if (step.x == 0 && step.z == 0)
-                {
-                    continue;
-                }
-                IntVec3 outlet = cell + step + step;
-                if (!outlet.InBounds(map))
-                {
-                    continue;
-                }
-                // 入口在建筑外扩一圈上，正常不会命中本体；这里再挡一次，出口也不能压在建筑上。
-                if (occupied.Contains(cell) || occupied.Contains(outlet))
-                {
-                    continue;
-                }
+                    IntVec3 outlet;
+                    float dirX;
+                    float dirZ;
+                    if (!TryFindOutlet(origin, cell, dist, map, occupied, obstacle, width, out outlet, out dirX, out dirZ))
+                    {
+                        continue;
+                    }
 
-                state.Jets.Add(new JetPort
-                {
-                    Inlet = cell,
-                    Outlet = outlet,
-                    DirX = vx,
-                    DirY = vz,
-                });
+                    state.Jets.Add(new JetPort
+                    {
+                        Inlet = cell,
+                        Outlet = outlet,
+                        DirX = dirX,
+                        DirY = dirZ,
+                    });
+                }
             }
         }
+
+        /// <summary>
+        /// 从 inlet 沿「建筑中心 → inlet」的射线往外走，找第一个合法且开放的格作为出口。
+        /// 一路全是墙或占用就返回 false，这条喷口不注册——省得 AO 那边注册完再静默清零。
+        /// </summary>
+        private static bool TryFindOutlet(
+            IntVec3 origin,
+            IntVec3 inlet,
+            float dist,
+            Map map,
+            CellRect occupied,
+            float[] obstacle,
+            int width,
+            out IntVec3 outlet,
+            out float dirX,
+            out float dirZ)
+        {
+            outlet = IntVec3.Invalid;
+            dirX = 0f;
+            dirZ = 0f;
+
+            float vx = inlet.x - origin.x;
+            float vz = inlet.z - origin.z;
+            float len = Mathf.Sqrt(vx * vx + vz * vz);
+            if (len <= 0.0001f)
+            {
+                return false;
+            }
+            vx /= len;
+            vz /= len;
+
+            int steps = Mathf.Max(1, Mathf.RoundToInt(dist));
+            IntVec3 previous = inlet;
+            for (int step = 1; step <= steps; step++)
+            {
+                IntVec3 candidate = new IntVec3(
+                    Mathf.RoundToInt(origin.x + vx * (len + step)),
+                    0,
+                    Mathf.RoundToInt(origin.z + vz * (len + step)));
+                if (candidate == previous)
+                {
+                    continue;
+                }
+                previous = candidate;
+                if (!candidate.InBounds(map) || occupied.Contains(candidate))
+                {
+                    continue;
+                }
+                if (obstacle != null)
+                {
+                    int i = candidate.z * width + candidate.x;
+                    if (i < 0 || i >= obstacle.Length || obstacle[i] <= 0f)
+                    {
+                        continue;
+                    }
+                }
+
+                float dx = candidate.x - inlet.x;
+                float dz = candidate.z - inlet.z;
+                float dlen = Mathf.Sqrt(dx * dx + dz * dz);
+                if (dlen <= 0.0001f)
+                {
+                    continue;
+                }
+                outlet = candidate;
+                dirX = dx / dlen;
+                dirZ = dz / dlen;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 按顺序枚举一个矩形的周长格：上边、下边、左边（去角）、右边（去角）。
+        /// 顺序固定，供抽稀时按序取模，保证疏密均匀而不是随机丢格。
+        /// </summary>
+        private static IEnumerable<IntVec3> EnumeratePerimeter(CellRect rect)
+        {
+            int minX = rect.minX;
+            int maxX = rect.maxX;
+            int minZ = rect.minZ;
+            int maxZ = rect.maxZ;
+            for (int x = minX; x <= maxX; x++)
+            {
+                yield return new IntVec3(x, 0, minZ);
+            }
+            for (int x = minX; x <= maxX; x++)
+            {
+                yield return new IntVec3(x, 0, maxZ);
+            }
+            for (int z = minZ + 1; z <= maxZ - 1; z++)
+            {
+                yield return new IntVec3(minX, 0, z);
+            }
+            for (int z = minZ + 1; z <= maxZ - 1; z++)
+            {
+                yield return new IntVec3(maxX, 0, z);
+            }
+        }
+
+
 
         // ------------------------------------------------------------ 源登记
 
@@ -797,6 +861,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
 
             _injectCalls++;
 
+            int layers = settings.JetLayers;
+            if (layers < 1)
+            {
+                layers = 1;
+            }
+            if (layers > 3)
+            {
+                layers = 3;
+            }
+
             object manager = ProxyHeatBridge.FindManager(map);
             if (manager == null)
             {
@@ -914,8 +988,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 activeCount++;
 
                 ProxyHeatSourceState state = GetOrCreateState(comp, parent);
-                if (state.Cells == null || state.Cells.Count == 0)
+                if (state.Cells == null || state.Cells.Count == 0 || state.Layers != layers)
                 {
+                    // 层数是玩家可调的，变了就重建端口（不影响照射区本身）。
                     RefreshRing(state, comp);
                     if (state.Cells == null || state.Cells.Count == 0)
                     {
@@ -995,7 +1070,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             // 逐建筑开关才是实际开关。是否真的喷流由 InjectJets 内部逐源判断。
             if (AtmosphereFieldBridge.AirMoverAvailable)
             {
-                InjectJets(_knownSources, outdoor);
+                InjectJets(_knownSources, outdoor, obstacle, width);
             }
 
             TrimDeadIndoorEntries();
@@ -1184,7 +1259,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// 重复调用是安全的。但**不能**依赖「不注册就自动过期」：我们用
         /// <c>activeTicks = -1</c>（永不过期），关掉开关时必须显式注销。
         /// </summary>
-        private void InjectJets(System.Collections.IList comps, float outdoor)
+        private void InjectJets(System.Collections.IList comps, float outdoor, float[] obstacle, int width)
         {
             if (!AtmosphereFieldBridge.AirMoverAvailable)
             {
@@ -1247,6 +1322,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     JetPort port = jets[d];
                     if (!port.Inlet.InBounds(map) || !port.Outlet.InBounds(map))
+                    {
+                        continue;
+                    }
+                    // 出口必须落在开放格上：AO 会在 ApplyJetTransportUnsafe 里用
+                    // HasOpenPath 把走不通的喷流静默清零，与其注册完再被丢，不如这里跳过。
+                    int outletIndex = port.Outlet.z * width + port.Outlet.x;
+                    if (outletIndex < 0 || outletIndex >= obstacle.Length || obstacle[outletIndex] <= 0f)
                     {
                         continue;
                     }

@@ -50,6 +50,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// <summary>本源的 ProxyHeat 半径（Props.radius），用于按半径推算默认风速。</summary>
         public float Radius;
 
+        /// <summary>构造这批喷口时用的层数，用于检测设置变化后重建。</summary>
+        public int Layers = 1;
+
         /// <summary>
         /// 当前是否已向 AO 注册过喷流。因为我们用 activeTicks = -1（永不过期），
         /// 关掉开关后必须显式注销，这个标志用来避免每周期都去注销一遍。

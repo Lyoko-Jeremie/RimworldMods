@@ -58,5 +58,7 @@
     <JAP.ACNet.OutdoorLoad>Outdoor load</JAP.ACNet.OutdoorLoad>
     <AOPatch_ProxyHeatDebugLog>Diagnostic log</AOPatch_ProxyHeatDebugLog>
     <AOPatch_ProxyHeatDebugLogDesc>Print a status summary (source count, active count, injected total) to the developer log. Enable when the range effect appears not to work.</AOPatch_ProxyHeatDebugLogDesc>
+    <AOPatch_ProxyHeatJetLayers>Jet layers: {0}</AOPatch_ProxyHeatJetLayers>
+    <AOPatch_ProxyHeatJetLayersDesc>Jets start from the ring around the building; each extra layer sits one cell further out. Cells blocked by walls produce no jet.</AOPatch_ProxyHeatJetLayersDesc>
     <AOPatch_ProxyHeatJetSpeedHint>Initial jet speed is derived from the building radius; use the per-building Jet Speed button to fine-tune.</AOPatch_ProxyHeatJetSpeedHint>
 </LanguageData>

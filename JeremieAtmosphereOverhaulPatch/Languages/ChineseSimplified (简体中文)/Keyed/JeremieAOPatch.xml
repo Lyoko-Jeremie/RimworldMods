@@ -58,5 +58,7 @@
     <JAP.ACNet.OutdoorLoad>室外机负荷</JAP.ACNet.OutdoorLoad>
     <AOPatch_ProxyHeatDebugLog>输出诊断日志</AOPatch_ProxyHeatDebugLog>
     <AOPatch_ProxyHeatDebugLogDesc>在开发者日志里打印范围效果的状态摘要（源数量、活跃数、注入总量）。排查「范围效果没生效」时打开。</AOPatch_ProxyHeatDebugLogDesc>
+    <AOPatch_ProxyHeatJetLayers>喷口层数：{0}</AOPatch_ProxyHeatJetLayers>
+    <AOPatch_ProxyHeatJetLayersDesc>喷流从建筑外围一圈开始，每多一层就向外紧贴一层（间距 1 格）；被墙挡住的格子不会生成喷口。</AOPatch_ProxyHeatJetLayersDesc>
     <AOPatch_ProxyHeatJetSpeedHint>风速按建筑半径自动给出初值，点建筑上的「风速」按钮可逐台调整。</AOPatch_ProxyHeatJetSpeedHint>
 </LanguageData>

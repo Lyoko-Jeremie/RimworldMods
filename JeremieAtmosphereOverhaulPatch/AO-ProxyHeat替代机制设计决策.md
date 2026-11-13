@@ -332,38 +332,49 @@ if (dt <= 0) return;          // 同一周期重复调用时去重
 
 ### 8.3 喷流模式（默认关）
 
-v4 实现为**从建筑外围向外的 AO 原生 AirMover**。
+v5 实现为**从建筑外围向外、可多层接力的 AO 原生 AirMover**。
 
 为什么不跟建筑朝向：喷流是「热源向四周散开」，不是定向吹风。用户 m01313 明确「喷流的方向应该是径向始终指向远离建筑的方向」。
 
-为什么端口贴在建筑外围而不是半径外环：v3 从 `[0.75r, r]` 的外环取格，半径 60 的塔气流起点就在 60 格开外，**区域内部根本没有风**；而且外环出口容易顶到基地外墙或山体，被 AO 的开放面检查成批清零，实测表现为「只在最外缘零星几点」。用户 m01761 实测指出该问题，v4 按 m01828 改为方案 B。
+**端口来源必须是 ProxyHeat 的照射区**（用户 m02017）。`AffectedCells` 已经过 `floodFiller.FloodFill` 的连通性检查和 `GenSight.LineOfSight` 的可见性检查，被墙、山体挡住的格根本不在集合里。所以「这个格到底存不存在」由 ProxyHeat 决定，我们只在存在的格里挑端口：
+
+```
+候选 = 建筑外扩 (k+1) 圈的几何周长 ∩ AffectedCells
+```
+
+这条约束同时解决了两件事：
+- 单层时不会在墙里生成喷口（v1.7 之前是纯几何周长，被挡的格照样注册，然后被 AO 静默清零）；
+- **多层变得安全**——每一层都从同一份合法集合里取，不存在「外圈一半落在墙里」。
+
+层数由设置给（1~3，默认 1）。第 k 层用 `OccupiedRect.ExpandedBy(k+1)` 的周长，因此**第 2 层紧贴第 1 层**（间距 1 格），不是跨到 0.5r：
+
+| 层 | 候选环 | 出口 |
+|---|---|---|
+| 第 1 层 | 建筑外扩 1 圈 | 对准第 2 圈（或最后一层时放到 `maxDist`） |
+| 第 2 层 | 建筑外扩 2 圈 | 对准第 3 圈（或 `maxDist`） |
+| 第 3 层 | 建筑外扩 3 圈 | `maxDist` |
+
+除最后一层外，出口对准下一圈的同一方向，形成接力：第 1 层把热推到第 2 层，第 2 层再往外推。`maxDist = clamp(radius * 0.5, 3, 40)`。
 
 构建方式（在 `RecalculateAffectedCells` 的 Postfix 里做，只在照射区重建时算一次）：
 
 ```
-outer = OccupiedRect.ExpandedBy(1)           // 建筑外扩一圈
-boundary = outer 的四条边（上下整条、左右去掉四个角）
-buckets = clamp(ceil(boundary.Count / 2), 8, 24)
-for cell in boundary:
-    angle = atan2(cell.z - center.z, cell.x - center.x)
-    bucket = floor((angle + π) / 2π * buckets)
-    每桶只保留「角度最接近桶中心」的格        // 让方向尽量均匀
-之后对每桶选中的格：
-    dir = normalize(dx, dz)                   // 真实方向，不是固定 45° 的倍数
-    step = round(dir)                         // 取整，避免浮点抖动
-    inlet  = cell                             // 就贴在建筑外围
-    outlet = cell + step * 2                  // 再往外两格
+for layer in 0..layers-1:
+    rect = OccupiedRect.ExpandedBy(layer + 1)
+    stride = 周长 > 32 ? 2 : 1
+    dist = (不是最后一层) ? layer + 2 : maxDist
+    for cell in EnumeratePerimeter(rect):        // 顺序固定，抽稀时疏密均匀
+        跳过 occupied / 越界
+        跳过 !AffectedCells.Contains(cell)        // ← 核心：格必须真实存在
+        outlet = 从中心沿「中心→cell」射线逐格外推，取第一个
+                 InBounds && !occupied && ObstacleMask > 0 的格
+        找不到 -> 这条不注册
+        dir = normalize(outlet - cell)
 ```
 
-桶数按周长自适应，比按半径更贴合「口开在墙边」：
-
-| 建筑 | 周长 | 桶数 |
-|---|---|---|
-| 3×3（篝火） | 8 | 8 |
-| 5×5（标准塔） | 16 | 8 |
-| 6×6（升级塔） | 24 | 12 |
-
 `origin` 用 `OccupiedRect.CenterCell` 而不是 `Position`——多格建筑的 `Position` 是左下角，用它算极角会整体偏一个建筑尺寸。
+
+出口必须沿射线逐格找，而不是随便 `round(center + dir*dist)`：终点若落在墙里，AO 的 `JetTransport.HasOpenPath` 会把这条喷流静默清零。现在改成「先找到第一个开放格再注册」，找不到就干脆不注册，省掉那部分白遍历。
 
 参数（`AtmosphereAirMoverSettings`，反射构造）：
 
@@ -372,7 +383,7 @@ for cell in boundary:
 | `CubicMetresPerTick` | `speed / 60` | `speed` 是 m/s，除以 60 换成每 tick 体积 |
 | `AirColumnHeightMetres` | `5` | 与 AO `CompPairedJet.columnHeight` 默认值一致 |
 | `InletDirection` | `-dir` | 风从内侧来 |
-| `OutletDirection` | `dir` | |
+| `OutletDirection` | `dir` | `Vector2`，可任意角，所以方向不会被折叠成 8 向 |
 | `MaxPressureRisePascals` | `1000000` | |
 | `ConditionExhaust` | `true` | 走 `ApplyJetTransportUnsafe` 的喷流通道 |
 | `ExhaustSpeed` | `speed` | |
@@ -382,11 +393,11 @@ for cell in boundary:
 | `ExhaustOxygenPercent` | `21` | |
 | `WaterKgPerTick` | `0` | 不产水 |
 
-风速：**仍由玩家控制，但初值按建筑半径推算**（用户 m01828）。`AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)`——半径 3 得 20、半径 26 得 39、半径 60 得 90（与 AO 自己 `CompPairedJet.maxSpeed` 的 90 接近）。玩家在逐建筑「风速」弹窗里改过之后，以玩家值为准；全局设置页不再提供风速滑块。
+风速：**仍由玩家控制，但初值按建筑半径推算**（用户 m01828）。`AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)`——半径 3 得 20、半径 26 得 39、半径 60 得 90。玩家在逐建筑「风速」弹窗里改过之后，以玩家值为准；全局设置页不再提供风速滑块。
 
-生命周期：`activeTicks = -1`（永不过期），AO 的 `RegisterAirMover` 按 `owner + key` 就地更新；因为不会自动过期，关喷流、断电、模块关闭时必须显式 `UnregisterAirMovers`，否则会残留一条永远在吹的气流。建筑拆除不用管，`PrepareAirMovers` 会按 `Owner.Destroyed` 移除。
+生命周期：`activeTicks = -1`（永不过期），AO 的 `RegisterAirMover` 按 `owner + key` 就地更新；因为不会自动过期，关喷流、断电、模块关闭时必须显式 `UnregisterAirMovers`。建筑拆除不用管，`PrepareAirMovers` 会按 `Owner.Destroyed` 移除。
 
-`ExhaustTemperatureFloor` 必须量化：`RegisterAirMover` 发现 `Settings` 任何字段变化就会 `UpdateAirMover`，而 `UpdateAirMover` 里的 `CaptureAirMover` 会把 `LastTick` 重置到当前 tick，使同周期 `ActiveTicks = max(0, min(tick, validUntil) - lastTick) = 0`，本周期零流量。`baseline + outcome` 每周期都在小幅漂移，不量化就会每周期都触发更新、永远没有风。
+`ExhaustTemperatureFloor` 必须量化：`RegisterAirMover` 发现 `Settings` 任何字段变化就会 `UpdateAirMover`，而 `UpdateAirMover` 里的 `CaptureAirMover` 会把 `LastTick` 重置到当前 tick，使同周期 `ActiveTicks = max(0, min(tick, validUntil) - lastTick) = 0`，本周期零流量。
 
 `AtmosphereFieldBridge.ResolveAirMover()` 是**独立能力**：解析失败只让喷流降级，不影响空气/地暖。字段依次缓存在 `_airMoverFields[12]`，避免每次按名字查找。
 
@@ -587,6 +598,8 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 25 | 三个模式默认**全关**（新建筑必须逐建筑手动开启）；Scribe key 改为 `airModeDefault`/`groundModeDefault`/`jetModeDefault` | 用户 m01542 |
 | 26 | 喷流用 `activeTicks = -1` + 出风温度量化 5℃ 台阶（规避 AO `UpdateAirMover` 重置 `LastTick` 导致 `ActiveTicks == 0`）；关喷流/关模块时必须显式 `UnregisterAirMovers` | 实测 |
 | 27 | 喷流端口从半径外环改到**建筑外围一圈**，风速初值按半径 `clamp(r*1.5, 20, 150)`，玩家仍可逐建筑调 | 用户 m01809/m01828 |
+| 28 | 喷流改为**每个周长格一条 + 出口沿射线取整格放到 0.5r**（不用两圈接力），消除十字 | 用户 m01955/m01960 |
+| 29 | 喷流端口候选 = 几何周长 ∩ AffectedCells（被遮挡的格不生成喷口）；层数 1~3 可调、层间距 1 格；出口沿射线找第一个开放格 | 用户 m02017/m02021 |
 
 ---
 
@@ -706,12 +719,51 @@ AO 的 `RegisterAirMover` 按 owner+key 找到已有记录后，只要 `Settings
 **用户否决的方案 A**（对有效区域每格施加带温度的风场）：`LocalAtmosphereEngine.VelocityX/VelocityZ` 虽是 public `AtmosphereField`，但 `ProjectAndFinalize` 里的 `Project(...)` 是压力投影，职责就是消掉速度场的散度分量，而径向向外的风是纯散度场，写进去会被削掉；绕过去只能写 private 的 `externalDivergence`，上万格同时当源会让固定迭代次数的压力求解不收敛。
 
 **v1.6 改动**：
-- `BuildJetPorts` 改为从 `OccupiedRect.ExpandedBy(1)` 的周长环取格；`inlet = 周长格`，`outlet = cell + step*2`。
+- `BuildJetPorts` 改为从 `OccupiedRect.ExpandedBy(1)` 的周长环取格；`inlet = 周长格`，`outlet = cell + step*2`（v1.6）→ v1.7 再改为「沿射线取整格、放到 0.5r」，见 §14.7。
 - 桶数从「按半径」改为「按周长」：`clamp(ceil(周长 / 2), 8, 24)`。
 - 每桶选「角度最接近桶中心」的格，而不是「距中心最远」，让方向均匀。
 - `origin` 从 `Position` 改为 `OccupiedRect.CenterCell`（多格建筑的 `Position` 是左下角）。
 - 风速仍由玩家控制，但初值改为 `AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)`；删除全局风速设置项与 `JetSpeedMetresPerSecond` 字段，逐建筑弹窗保留。
 - `BuildJetPorts` 增加 `Map` 参数用于 `InBounds` 检查。
+
+**编译**：0 警告 0 错误。
+
+### 14.7 v1.7：喷流方向不再折叠成十字
+
+**触发**：用户 m01955 实测（半径 60 大塔）「效果还可以，但会出现一个十字」，并要求「周围一圈包括角落都产生喷流、方向按建筑正中心的矢量方向」以及「再外增加一圈」。
+
+**十字的根因**：v1.6 用 `step = round(dir)` 当步长、`outlet = cell + step*2`。`round(dir)` 只有 8 种取值，6×6 塔 `ExpandedBy(1)` 周长 28 格、14 个角度桶（每 25.7°）折叠后变成「轴向各 3 条、斜向各 1 条」，出口又只差 2 格，视觉上就是四臂粗、斜角细的十字。
+
+**关键事实**：AO 的 `OutletDirection` 是 `Vector2`，可以取任意浮点角，不受 8 邻域限制；受限的只有 `inlet`/`outlet` 必须是整数格。所以只要让出口格沿射线连续取整，方向多样性立刻恢复。
+
+**方案取舍**：分析过「两圈接力」（内圈贴建筑、外圈在 0.45r 再推一次），代价是 mover 翻倍、外圈 inlet 频繁落在墙里被 `IsAirMoverPortOpen` 静默丢弃、以及额外抽走环境空气造成局部低压。用户 m01960 选方案 A：**单圈 + 出口直接放大到 0.5r**，靠 `JetTransport` 一次把热推到中段，中段到边缘交给平流。
+
+**v1.7 改动**（集中在 `BuildJetPorts` 与新增的 `EnumeratePerimeter`）：
+- 不再按角度分桶；直接遍历周长格，每个格一条（四角天然包含），角度间隔从 25.7° 降到 12.9°。
+- `dist = Mathf.Clamp(radius * 0.5f, 3f, 40f)`；`outlet = round(center + dir * dist)`。
+- 方向改用 `normalize(outlet - cell)`，避免「从 A 排出却朝 B 吹」。
+- 周长 > 32 时按序每 2 格抽一条（`EnumeratePerimeter` 顺序固定，取模保证疏密均匀而不是随机丢格）。
+- 跳过 `outlet` 越界、落在 `OccupiedRect` 内、或与 `cell` 重合的情形。
+
+**条数**：3×3 → 8、5×5 → 16、6×6 → 28；单圈即可覆盖整圈方向。
+
+### 14.8 v1.8：端口来源改用 ProxyHeat 照射区 + 分层
+
+**触发**：用户 m02017 指出「射流起点都应该在 heatProxy 区域已经计算出来的格子上，如果被遮挡，则不会计算出这个格子，格子不存在，也就不应该为这个格子创建喷射点」，并追问是否可以支持多层。
+
+**结论**：这是把「端口合法性」的判定权交还给 ProxyHeat。`BuildJetPorts` 的候选从「几何周长」改为「几何周长 ∩ `state.Cells`」：
+
+- `AffectedCells` 已过 `FloodFill`（连通）与 `GenSight.LineOfSight`（可见），被墙挡的格不存在；
+- `RecalculateAffectedCells` 的 predicate 排除实心 edifice，占用格也不存在；
+- 我们再排除 `OccupiedRect`（自身格，ProxyHeat 会主动加进去）。
+
+**多层因此变得安全**：v1.6 否决「两圈」的理由是「外圈 inlet 容易落墙」，那其实是「端口来源不是照射区」的症状；改成照射区白名单后，落墙的格本来就不在候选里。
+
+**层间距按用户要求改为 1 格**：第 k 层用 `OccupiedRect.ExpandedBy(k+1)` 的周长，第 2 层紧贴第 1 层，而不是跨到 0.5r。除最后一层外，出口对准下一圈的同一方向，形成接力。
+
+**出口也校验**：`TryFindOutlet` 沿「中心→inlet」射线逐格外推，取第一个 `InBounds && !occupied && ObstacleMask > 0` 的格；找不到这条就不注册。`InjectJets` 里再用 `obstacle` 二次确认，避免 AO 的 `HasOpenPath` 静默清零。
+
+**层数暴露给玩家**：`AOPatchSettings.JetLayers`（1~3，默认 1，Scribe key `jetLayers`），设置页「喷流模式」下方一个 1~3 滑条，不进 `JetModeEnabled` 的条件分支——因为喷流是逐建筑开关的，层数必须随时可调。`Inject` 里检测 `state.Layers != layers` 时重建端口。
 
 **编译**：0 警告 0 错误。
 

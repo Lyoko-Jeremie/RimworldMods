@@ -30,6 +30,9 @@ namespace Jeremie.AtmosphereOverhaulPatch
         /// <summary>新建筑的默认喷流模式。</summary>
         public bool JetModeEnabled;
 
+        /// <summary>喷口层数（1~3）。第 2 层紧贴第 1 层，每层间距 1 格。</summary>
+        public int JetLayers = 1;
+
         /// <summary>
         /// 范围强度（℃/秒）。默认 8，即每 60 tick 补 8℃（每 tick 0.133℃）。
         /// 闭环会在接近目标温度时自动减速，所以调大不会冲过头。
@@ -65,6 +68,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
             Scribe_Values.Look(ref AirModeEnabled, "airModeDefault", false);
             Scribe_Values.Look(ref GroundModeEnabled, "groundModeDefault", false);
             Scribe_Values.Look(ref JetModeEnabled, "jetModeDefault", false);
+            Scribe_Values.Look(ref JetLayers, "jetLayers", 1);
             Scribe_Values.Look(ref RangeStrengthCelsiusPerSecond, "rangeStrength", 8f);
             Scribe_Values.Look(ref AllowTemperatureStacking, "allowTemperatureStacking", true);
             Scribe_Values.Look(ref AllowActiveCooling, "allowActiveCooling", false);

@@ -76,10 +76,10 @@ namespace Jeremie.AtmosphereOverhaulPatch
                     ref Settings.JetModeEnabled,
                     "AOPatch_ProxyHeatJetModeDesc".Translate());
 
-                if (Settings.JetModeEnabled)
-                {
-                    list.Label("AOPatch_ProxyHeatJetSpeedHint".Translate());
-                }
+                // 层数对所有建筑生效（喷流是逐建筑开关的，不能藏在默认值后面）。
+                list.Label("AOPatch_ProxyHeatJetLayers".Translate(Settings.JetLayers));
+                Settings.JetLayers = (int)list.Slider(Settings.JetLayers, 1f, 3f);
+                list.Label("AOPatch_ProxyHeatJetSpeedHint".Translate());
 
                 list.GapLine();
 
