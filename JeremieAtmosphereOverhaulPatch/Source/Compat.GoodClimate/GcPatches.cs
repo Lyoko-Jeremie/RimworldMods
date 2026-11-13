@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using RimWorld;
@@ -93,6 +94,106 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
     }
 
     /// <summary>
+    /// 给通风口追加「自然通风」开关按钮。
+    ///
+    /// 强力模式开启时按钮禁用并提示原因；关闭强力模式后玩家可手动打开自然通风。
+    /// 新放置的通风口默认关闭自然通风（见 GcAirRelay.EnsureDefaultClosed）。
+    /// </summary>
+    [HarmonyPatch]
+    internal static class GcNaturalVentGizmoPatch
+    {
+        private static bool Prepare()
+        {
+            return GcAirRelay.GcThingCompType != null && GcAirRelay.AirVentType != null;
+        }
+
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(GcAirRelay.GcThingCompType, "CompGetGizmosExtra");
+        }
+
+        private static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> __result, ThingComp __instance)
+        {
+            if (__result != null)
+            {
+                foreach (Gizmo gizmo in __result)
+                {
+                    yield return gizmo;
+                }
+            }
+
+            if (__instance == null || __instance.parent == null)
+            {
+                yield break;
+            }
+
+            ThingComp airVent = GcAirRelay.FindAirVent(__instance.parent);
+            if (airVent == null)
+            {
+                yield break;
+            }
+
+            yield return GcAirRelay.BuildNaturalVentGizmo(airVent);
+        }
+    }
+
+    /// <summary>
+    /// 通风口一建造出来就关闭自然通风，不等 60 tick 扫描。
+    ///
+    /// patch 的是 Building.SpawnSetup（override），普通建筑（含 Building_Vent）都走这里；
+    /// 少数再 override 的建筑会由扫描兜底。
+    /// </summary>
+    [HarmonyPatch(typeof(Building), nameof(Building.SpawnSetup))]
+    internal static class GcVentSpawnPatch
+    {
+        private static bool Prepare()
+        {
+            return GcAirRelay.AirVentType != null;
+        }
+
+        private static void Postfix(Building __instance)
+        {
+            GcAirRelay.EnsureDefaultClosed(__instance);
+        }
+    }
+
+    /// <summary>
+    /// 每模拟周期在 AO 完成本步输入准备后，做一次成对温度注入：
+    /// 出口 +delta、入口 -delta。
+    ///
+    /// 喷流的喷出温度被 AO 钳在 max(室外温度, 入口邻格均温) 以上，冷端搬不过去；
+    /// 这里改用公开的 AddTemperatureDelta 直接写两端，既没有室外下限，也不参与整格混合。
+    /// </summary>
+    [HarmonyPatch]
+    internal static class GcTemperatureRelayPatch
+    {
+        private static Type ComponentType()
+        {
+            return AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
+        }
+
+        private static bool Prepare()
+        {
+            Type type = ComponentType();
+            return type != null && AccessTools.Method(type, "PrepareTemperatureSources") != null;
+        }
+
+        private static MethodBase TargetMethod()
+        {
+            Type type = ComponentType();
+            return type == null ? null : AccessTools.Method(type, "PrepareTemperatureSources");
+        }
+
+        private static void Postfix(MapComponent __instance)
+        {
+            if (__instance != null)
+            {
+                GcAirRelay.RelayTemperature(__instance.map);
+            }
+        }
+    }
+
+    /// <summary>
     /// 本程序集只在 AO 与 Good Climate 同时启用时由 LoadFolders 加载，
     /// 因此用 StaticConstructorOnStartup 自举，不需要主程序集调用。
     /// </summary>
@@ -111,7 +212,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             {
                 Harmony harmony = new Harmony("Jeremie.AtmosphereOverhaulPatch.GoodClimate");
                 harmony.PatchAll(typeof(GcBootstrap).Assembly);
-                Log.Message("[AO Patch][GC] 主动通风口 AirMover 接管已启用。");
+                Log.Message("[AO Patch][GC] 主动通风口定向喷流接管已启用。");
             }
             catch (Exception e)
             {

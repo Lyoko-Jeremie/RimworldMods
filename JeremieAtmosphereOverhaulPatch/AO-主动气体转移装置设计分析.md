@@ -478,6 +478,223 @@ private const float CubicMetresPerTick = 0.5f * AirColumnHeight / 3f;   // ≈ 0
 
 ---
 
+## 12. 定向喷流实现（v3 定稿，取代 §11 的 AirMover 普通模式）
+
+### 12.1 目标语义
+
+强力通风口 = 一台「风机 + 喷嘴」：开启后从入口格抽气、从出口格定向喷出，体积守恒地搬运入口空气的温度（带下限）、湿度、氧气，并在两侧产生定向风；同时关闭该格的自然通风通道，避免 AO 的 Vent 自然流反向短路。
+
+选择喷流而不是普通 AirMover 的原因：
+
+- 普通 AirMover 的 `LimitedVolumes` 硬顶 0.5 格体积/步，风速封顶 0.5 m/s，调 `CubicMetresPerTick` 无效；
+- 喷流走 `ApplyJetTransportUnsafe`，用 `LastSubsteps` 拆分，总流量上限 256 格/步；
+- 喷流方向由 `OutletDirection` 固定，沿 `Direction` 建 path 并做动量，天然定向；
+- 喷流的 `AddAirMoverVolumeRate(inlet, outlet, ...)` 成对写入，体积守恒。
+
+### 12.2 自然通风开关
+
+- 每个 Vent 的「允许自然通风」状态编码在 `CompAirVent.speedLimit`：`0` = 关闭，`>0` = 允许（值即自然通风速度上限）。
+- **默认关闭**：新放置或旧档未初始化（`speedLimit < 0`）的 Vent，由 `Building.SpawnSetup` Postfix 立即置 0，不等 60 tick 扫描。
+- **按钮**：`Command_Toggle`，追加在 `GC_ThingComp.CompGetGizmosExtra` 之后，标签「自然通风」。
+- **联动**：GC 强力模式 active 时按钮禁用（`disabledReason`），并强制 `speedLimit = 0`；关闭强力模式后仍保持 0，玩家需手动点按钮才允许自然通风。
+- **恢复上次值**：`EnsureNaturalVentOff` 关闭前把当前 `SpeedLimit` 存入 `SavedSpeed`，按钮打开时恢复该值（从未设过则用 10）。
+- 注意：`IsIntensiveActive` 必须传**父建筑**（`GC_ThingComp` 在建筑上），不能传 `CompAirVent`——否则 `FieldInfo.GetValue` 抛 `Object does not match target type`，按钮永远不会禁用，点击后被扫描覆盖回 0，表现为「按钮无效」。
+- 修改 `speedLimit` 后必须调 `AtmosphereMapComponent.MarkCachedMapDataDirty()`：`IsOpen` 决定 `BuildVents` 是否把该格写入 `engine.Vents`，也决定 `AirCanMoveThrough` 返回 1 还是 0（vent 格实心/可通行）。
+
+### 12.3 喷流参数
+
+**限流（关键）**：`CubicMetresPerTick` 按两侧最小室内房间格数动态限制为
+`0.25 * cells * AirColumnHeight / 6`，即每模拟步交换体积不超过房间体积的 25%。
+否则 `1-exp(-V)` 在 V=12 格时已接近 100%，两个反向喷流会每步把对方出口格完全替换，
+形成 2 周期交替振荡。两侧都是室外（大气）时不限流。
+
+| 字段 | 值 | 说明 |
+|---|---|---|
+| `ConditionExhaust` | `true` | 走 `ApplyJetTransportUnsafe`，与普通 AirMover 互斥 |
+| `CubicMetresPerTick` | `10f` | `Volumes = min(1000, C * elapsed / 5)`；默认 6 tick → 12 格体积/步 |
+| `AirColumnHeightMetres` | `5f` | 与 AO 气柱高一致 |
+| `InletDirection` | `facing` | 入口在 `Position + facing` |
+| `OutletDirection` | `-facing` | 出口在 `Position - facing`，方向从入口指向出口 |
+| `ExhaustSpeed` | `10f` | 射流风速，同时决定 substeps（`max(speed*2, demand*2)`） |
+| `InletPressureRatio` | `0f` | 压差头 = `surfacePressurePa * (Exhaust - Inlet)` |
+| `ExhaustPressureRatio` | `0.02f` | 2000 Pa 压差头，驱动 `AddNozzlePump` |
+| `ExhaustTemperatureFloor` | 入口温度（量化 1℃） | 喷出温度下限；AO 会再 `max(ambient, 入口周边均值)` |
+| `ExhaustOxygenPercent` | 入口氧（量化 1%） | 喷出氧浓度 |
+| `WaterKgPerTick` | `0f` | 不额外加水；湿靠 `Moisture.Read[inlet]` 实测混合 |
+| `MaxPressureRisePascals` | `1000f` | 非喷流字段，占位 |
+
+### 12.4 回填与时机
+
+- 每 60 tick（GC 的 `GC_IE_ventIntensiveExchange` 节拍）读入口格温度与氧：温度用 `AtmosphereFieldBridge.GetTemperatureRead(engine)[index]`，氧用 `AoBridge.TryGetOxygenPercent(map, inlet, out float)`。
+- 量化到 1℃ / 1% 后与已注册参数比较，只有跨档才 `RegisterAirMover`（AO 内部走 `UpdateAirMover`）。
+- 量化是为了避免 `Settings` 每周期变化：`UpdateAirMover` 会先 `CaptureAirMover` 把 `mover.LastTick = CurrentGameTick`，同周期再 Capture 时 `ActiveTicks = 0`，那一周期零流量。
+- `activeTicks = -1f` → `ValidUntilTick = double.MaxValue`，不自动过期；拆除时由 AO 按 `Owner.Spawned/Destroyed` 剔除，我们另在 `Stale` 分支 `UnregisterAirMovers`。
+
+### 12.5 门控顺序
+
+1. `GoodClimate_IE_Active == true`；
+2. `CompPowerTrader.PowerOn`（存在时）；
+3. `CompFlickable.SwitchIsOn`（存在时）；
+4. 两侧 `Room.Vacuum <= 0`（任一真空 → `DoFlick()` + 复刻 GC 负事件信 + 注销）；
+5. `EnsureNaturalVentOff(building)`：`SpeedLimit > 0` 时反射调 `SetSpeedLimit(0)`（AO 内部已 `MarkCachedMapDataDirty()`，无需重复通知）；
+6. `PortLooksOpen(inlet)` 与 `PortLooksOpen(outlet)`：`ObstacleMask > 0.001`、非地图边缘；
+7. 注册/刷新喷流；方向变化时先注销旧区间再注册。
+
+**不再要求 `CompAirVent.IsOpen`**：自然通风关闭（`speedLimit = 0`）正是本方案的目标状态，若仍要求 `IsOpen` 会永久拒绝注册。
+
+### 12.6 已知限制
+
+- **温度下限**：`ExhaustTemperatureFloor` 被 AO 抬到 `max(ambient, 入口周边均值)`，冷气搬不过去；这是喷流的物理假设，不是 bug。要精确搬运低温只能改用 AirMover 普通模式或自研体积源。
+- **反向双喷会振荡**：两台喷流对吹时，若每步交换量超过房间体积的 50%，闭环特征值变负，温度会在两房间之间交替翻转；已被 12.3 的 25% 限流压住。
+- 喷流沿 path 做 `Exchange`，射流会与路径环境混合，方向性随距离衰减。
+- 出口沿 `facing` 必须有可通行的下一格（`JetTransport.HasOpenPath`），贴墙/贴山体时静默无流量。
+- 60 tick 回填一次，温度快速变化时喷出温度会滞后一个节拍。
+- 喷流用 `ExhaustOxygenPercent` 参数而非入口实测，需回填才接近「搬运」。
+
+### 12.7 实现清单
+
+| 文件 | 改动 |
+|---|---|
+| `Source/JeremieAtmosphereOverhaulPatch/Bridge/AtmosphereFieldBridge.cs` | 新增 `MarkCachedMapDataDirty(Map)` 反射封装 |
+| `Source/Compat.GoodClimate/GcAirRelay.cs` | 反射 `speedLimit` 字段 / `SpeedLimit` 属性 / `SetSpeedLimit`；`EnsureNaturalVentOff`；喷流参数与温/氧回填；门控去掉 `IsOpen` |
+| `Source/Compat.GoodClimate/GcPatches.cs` | 新增 `CompGetGizmosExtra` Postfix 追加自然通风按钮；`Building.SpawnSetup` Postfix 让新通风口立即置 0 |
+| `Languages/ChineseSimplified (简体中文)/Keyed/JeremieAOPatch.xml` | 按钮标签 / 描述 / 禁用原因 |
+| `Languages/English/Keyed/JeremieAOPatch.xml` | 同上英文 |
+
+### 12.8 与 §11 的差异
+
+§11 的 AirMover 普通模式（`ConditionExhaust=false`）被本方案取代：0.5 格/步限流、方向由压差决定、且只要 vent 保持 `IsOpen` 就会与自然通道互相短路。§11 中「SetSpeedLimit(0) + 自研体积源」的讨论保留为备选路线，仅当喷流的「喷出温度下限」无法接受时才考虑。
+
+---
+
+## 13. 喷流 + 端口源叠加（v5 方案）与性能核算
+
+> 本节是 m01586 提出的叠加方案：在通风口**输出端口格**同时挂一个连续源和一台喷流，用源补温度/氧，用喷流搬体积/湿度/风。§12 的纯喷流方案仍有效，本节是它的增强版。
+
+### 13.1 为什么叠加
+
+§12 的纯喷流有两个固有缺陷：
+
+1. 喷出温度受 `num9 = max(室外温度, 入口邻格均温, ExhaustTemperatureFloor)` 限制（`AtmosphereMapComponent.cs:633-651`），低温端搬不过去；
+2. 温度混合与体积绑定（`fraction = 1-exp(-V)`，`JetTransport.cs:57-63`），大风量必然带来大温度阶跃。
+
+源通道（`SourceSlots` → `ApplyContinuousSourcesUnsafe`）恰好能补这两点：`TemperaturePerTick` 直接写该格，无室外下限、无整格混合。两者叠加后：
+
+- 喷流负责「搬空气」：体积、湿度、风、压差；
+- 源负责「搬能量」：温度、氧。
+
+### 13.2 分工（必须严格，否则三处打架）
+
+| 物理量 | 负责方 | 依据 |
+|---|---|---|
+| 体积/质量 | 喷流 | `AddAirMoverVolumeRate`（`LocalAtmosphereEngine.cs:801-805`）是唯一守恒体积通道 |
+| 湿度/雾 | 喷流 | `JetTransport.cs:61-62` 已按 `Moisture.Read[inlet]` 实测搬运 |
+| 氧 | 源 `OxygenPercentPerTick` | 喷流的 `ExhaustOxygenPercent` 是设置值（`:63`），源可精确修正 |
+| 温度 | 源 `TemperaturePerTick` | 喷流有室外下限且整格混合 |
+| 风 | 喷流 | `AddAirMoverMomentum` 是真正的射流；源不要再开 `MaintainTargetWind` |
+| 压力 | 喷流 | `AddNozzlePump` 已建立压差；源不要重复写 `PressurePerTick` |
+
+**一个槽即可同时承载温度与风**：`AtmosphereSourceRates` 同时含 `TemperaturePerTick`、`WindPerTick`、`MaintainTargetWind`、`TargetWind`、`TargetWindBlendPerTick`、`PressurePerTick`、`OxygenPercentPerTick`（`RimWorld/AtmosphereSourceRates.cs:12-24`），不需要两个源。
+
+### 13.3 执行顺序（决定谁覆盖谁）
+
+`AtmosphereMapComponent.cs:2991-3012`：
+
+```
+AdvanceProvisional
+ApplyAirMoversUnsafe              // 非喷流
+ApplyJetTransportUnsafe           // 喷流：体积/湿/氧/动量（2994/3003）
+ProjectAndFinalize                // 压力投影（2995/3004）
+ApplyWallLeakage
+CompleteJetTransportUnsafe
+ApplyVelocityDeltasAfterSolver
+ApplyTargetWindSourcesAfterSolverUnsafe   // 源的目标风（3010）
+LocalForcing.AfterSolve
+```
+
+结论：
+
+- 喷流动量写在 `ProjectAndFinalize` **之前**，会被投影削弱一部分；
+- 源的目标风写在投影**之后**，保留更直接，但**会覆盖喷流刚写的速度**（按 `1-(1-blend)^ticks` 向 `TargetWind` 混合）；
+- 所以风只能选一方。选喷流，源不设 `MaintainTargetWind` 与 `WindPerTick`。
+
+### 13.4 温度闭环
+
+喷流温度混合：`T_out' = T_out + (1-exp(-V)) * (num9 - T_out)`。把 `ExhaustTemperatureFloor` 设成出口当前温度并量化后：
+
+- `T_out ≥ 室外` 且 `T_out ≥ 入口邻格均温` 时，`num9 = T_out`，喷流「等温搬体积」，温度净变化为 0；
+- 入口更热时 `num9 = 入口邻格均温`，喷流仍会额外加热出口，这一步无法预知。
+
+因此温度**不要开环对账**，用闭环（每模拟周期末尾读一次实际值）：
+
+```csharp
+// 每模拟周期（6 tick）执行一次
+float actual = ReadTemperature(map, outlet);          // AtmosphereInterface.TryGetTemperature
+float delta  = targetDelta - (actual - lastOutlet);   // targetDelta = 本步希望出口变化的量
+AddTemperatureDelta(map, outlet,  delta);
+AddTemperatureDelta(map, inlet,  -delta);              // 成对，守恒
+lastOutlet = actual;
+```
+
+喷流多混了多少，下一周期反向补多少，不依赖 `num9` 的具体数值。
+
+### 13.5 参数
+
+| 参数 | 值 | 说明 |
+|---|---|---|
+| `CubicMetresPerTick` | 按 ΔT 上限动态算 | `α_max = min(0.5, 2/|T_in-T_out|)`，`V = -ln(1-α_max)`，`C = V*AirColumnHeight/6`，clamp `[0.5,10]` |
+| `AirColumnHeightMetres` | 5 | 与 §12 一致 |
+| `ExhaustSpeed` | 10 | 喷流风 |
+| `ExhaustPressureRatio` / `InletPressureRatio` | 0.02 / 0 | 与 §12 一致 |
+| `ExhaustTemperatureFloor` | 出口当前温度（量化 1℃） | 让喷流尽量等温 |
+| `ExhaustOxygenPercent` | 入口氧（量化 1%） | 与源二选一，建议交给源 |
+| `targetDelta`（源温度率） | `k * (T_in - T_out)`，`k≈0.15` | 每周期按温差写 |
+| `OxygenPercentPerTick` | `k_o * (O2_in - O2_out)` | 同上 |
+
+### 13.6 性能核算
+
+| 项 | 每模拟周期成本 | 说明 |
+|---|---|---|
+| `ApplyJetTransportUnsafe` | `O(源数)` 次 `new Dictionary` + 每源 `new Source` | `:605` 每步新建字典；2 台 ≈ 2 个小对象/步 |
+| `JetTransport.Advance` | `LastSubsteps × 每源` | `LastSubsteps = min(512, max(1, ceil(max(speed*TimeStep*2, demandMax*2))))`；`ExhaustSpeed=10`、`Volumes≈12` → 约 24 子步；每子步 4 次 `Mix` + path（约 12 格）× 3 通道 `Exchange` → 约 960 次数组操作/源/步 |
+| `ApplyContinuousSourcesUnsafe` | `O(槽数)` | 每槽约 10 次数组写；无分配（坏源时才 `new List`） |
+| `ApplyTargetWindSourcesAfterSolverUnsafe` | `O(槽数)` | 未开 `MaintainTargetWind` 则整段跳过 |
+| `ConsiderContinuousSourcesForPatchUnsafe` | `O(槽数)` | `EnableTemporalPatches<=0` 时 `ConsiderCell` 立即返回（`:138`） |
+| `AddTemperatureDelta` ×2/源 | 加锁 + `PatchSourceJournal.Record` 字典查找 | `EnableTemporalPatches<=0` 时 `domain=null`（`:172`），但 `RebaseAfterGlobalProjection` **无条件** `DiscardThrough(synchronizationTick)`（`:362`），journal 不会累积 |
+| 掩膜重建 | 仅 `masksDirty` 时全图 O(N) | 与源/喷流注册次数相关，注册只在状态变化时发生 |
+
+按 2–3 台通风口、默认 6 tick/步估算：
+
+- 喷流是唯一大头，约 24 子步 × 2 源 ≈ 5 千次数组操作/步；
+- 源部分约 40–60 次数组写/步；
+- `AddTemperatureDelta` 每步 4 次加锁，量级可忽略；
+- 整体 < 0.1 ms/步（估算），远低于 AO 主求解的 Poisson/压力迭代。
+
+结论：**性能不是瓶颈**。真正需要控制的是注册频率——`AtmosphereAirMoverSettings` 是 12 字段 struct 且未重写 `Equals`，`RegisterAirMover` 内部 `!Settings.Equals` 会走 `ValueType.Equals` 反射逐字段比较（含装箱），所以只在开关/旋转/参数变化时注册，不要每周期重注册。
+
+### 13.7 已知问题
+
+1. **「等温搬体积」不是严格守恒**：AO 的温度场只存温度不存焓，喷流在 `num9=T_out` 时搬了体积/质量但出口温度不变，等于没有随质量搬运焓。AO 自己的 AirMover 也是这个近似。
+2. **入口更热时喷流仍加热出口**：只能靠 13.4 的闭环补偿，不能消除。
+3. **两套句柄**：`RegisterAirMover`（owner+key）与 `RegisterContinuousSource`（返回 `AtmosphereSourceHandle`）必须分别维护；`AtmosphereSourceHandle` 是 public struct，`RegisterContinuousSource`/`UpdateContinuousSource`/`UnregisterContinuousSource` 都是 public static（`AtmosphereInterface.cs:300-357`），但本工程不静态引用 AO，需反射构造 struct 并装箱传参。
+4. **双反向振荡残余耦合**：源闭环温度稳定，但喷流体积搬运仍会让两侧质量/压力交替变化；`num9` 跟随入口邻格时两个反向喷流仍有弱耦合。限流（13.5 的 ΔT 上限）仍要做。
+5. **源写温度不会扩散到整房间**：只写端口格，靠 AO 扩散摊开；大房间整体变化慢，但不会过冲。
+
+### 13.8 实现清单（2026-11-14 已落码）
+
+| 文件 | 改动 | 状态 |
+|---|---|---|
+| `Source/JeremieAtmosphereOverhaulPatch/Bridge/AtmosphereFieldBridge.cs` | 新增 `SourceRates` struct、`RegisterContinuousSource`/`UpdateContinuousSource`/`UnregisterContinuousSources`/`AddTemperatureDelta` 反射封装，以及 `SourceAvailable`/`SourceFailure` | 已完成 |
+| `Source/Compat.GoodClimate/GcAirRelay.cs` | 每 vent 两槽连续源（`SIN_`/`SOUT_`，只写氧）；`RelayTemperature` 每模拟周期成对注入温度（`TemperatureRelayRate=0.15`、单步上限 2℃）；`ExhaustTemperatureFloor`/`ExhaustOxygenPercent` 改用出口值；限流改 `α_max=min(0.5,2/ΔT)`、不再看房间格数；`Unregister` 同步注销源与句柄 | 已完成 |
+| `Source/Compat.GoodClimate/GcPatches.cs` | 新增 `GcTemperatureRelayPatch`（Postfix `AtmosphereMapComponent.PrepareTemperatureSources` → `GcAirRelay.RelayTemperature`）；其余 patch 不变 | 已完成 |
+| `Languages/*/Keyed/JeremieAOPatch.xml` | 不需要新键（自然通风按钮沿用 §12） | 不变 |
+
+编译：主工程 `Assemblies/JeremieAtmosphereOverhaulPatch.dll` 72192 字节、GC 兼容 `1.7/Compat/GoodClimate/Assemblies/Jeremie.AtmosphereOverhaulPatch.GoodClimate.dll` 23040 字节，均 0 警告 0 错误。
+
+注意：`Compat.GoodClimate.csproj` 引用的是**已编译的**主工程 dll，改 `AtmosphereFieldBridge` 后必须先编主工程、再编 GC 兼容，否则新成员不可见。
+
+---
+
 ## 附：关键代码位置索引
 
 | 内容 | 位置 |

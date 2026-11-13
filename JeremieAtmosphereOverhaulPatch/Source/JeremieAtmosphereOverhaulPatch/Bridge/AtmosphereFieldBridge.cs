@@ -23,6 +23,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private const string FieldTypeName = "AtmosphereOverhaul.Simulation.AtmosphereField";
         private const string AirMoverTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereAirMoverSettings";
         private const string AirMoverInterfaceName = "AtmosphereOverhaul.RimWorld.AtmosphereInterface";
+        private const string SourceRatesTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereSourceRates";
+        private const string SourceHandleTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereSourceHandle";
 
         private static bool _resolved;
         private static bool _available;
@@ -40,6 +42,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static PropertyInfo _groundTemperatureProp;
         private static PropertyInfo _obstacleMaskProp;
         private static PropertyInfo _fieldReadProp;
+        private static MethodInfo _markCachedDirty;
 
         private static Type _airMoverSettingsType;
         private static MethodInfo _registerAirMover;
@@ -65,6 +68,31 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static bool _airMoverAvailable;
         private static string _airMoverFailure;
 
+        private static Type _sourceRatesType;
+        private static Type _sourceHandleType;
+        private static MethodInfo _registerSource;
+        private static MethodInfo _updateSource;
+        private static MethodInfo _unregisterSources;
+        private static PropertyInfo _sourceHandleIsValid;
+        private static MethodInfo _addTemperatureDelta;
+        private static FieldInfo[] _sourceFields;
+        private static readonly string[] SourceFieldNames =
+        {
+            "TemperaturePerTick",
+            "GroundTemperaturePerTick",
+            "MoisturePerTick",
+            "MistPerTick",
+            "WindPerTick",
+            "PressurePerTick",
+            "OxygenPercentPerTick",
+            "MaintainTargetWind",
+            "TargetWind",
+            "TargetWindBlendPerTick",
+        };
+
+        private static bool _sourceAvailable;
+        private static string _sourceFailure;
+
         public static bool Available
         {
             get { Resolve(); return _available; }
@@ -84,6 +112,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static string AirMoverFailure
         {
             get { Resolve(); return _airMoverFailure; }
+        }
+
+        /// <summary>连续源通道是否可用。</summary>
+        public static bool SourceAvailable
+        {
+            get { Resolve(); return _sourceAvailable; }
+        }
+
+        public static string SourceFailure
+        {
+            get { Resolve(); return _sourceFailure; }
         }
 
         /// <summary>解析 AO 的模拟场内部成员。可重复调用，只在首次真正解析。</summary>
@@ -114,6 +153,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _groundTemperatureProp = AccessTools.Property(_engineType, "GroundTemperature");
                 _obstacleMaskProp = AccessTools.Property(_engineType, "ObstacleMask");
                 _fieldReadProp = AccessTools.Property(_fieldType, "Read");
+                _markCachedDirty = AccessTools.Method(_componentType, "MarkCachedMapDataDirty");
 
                 if (_engineField == null || _pendingDeltasField == null
                     || _engineSize == null || _engineWidth == null
@@ -125,6 +165,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 }
 
                 ResolveAirMover();
+                ResolveSources();
 
                 _available = true;
                 return true;
@@ -203,6 +244,77 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 _airMoverFailure = e.GetType().Name + ": " + e.Message;
                 _airMoverFields = null;
+            }
+        }
+
+        /// <summary>
+        /// 解析连续源通道（AtmosphereInterface.RegisterContinuousSource 等）。
+        /// 与喷流一样是独立能力：失败只让「端口源」降级，不影响其它通道。
+        /// </summary>
+        private static void ResolveSources()
+        {
+            try
+            {
+                _sourceRatesType = AccessTools.TypeByName(SourceRatesTypeName);
+                _sourceHandleType = AccessTools.TypeByName(SourceHandleTypeName);
+                Type interfaceType = AccessTools.TypeByName(AirMoverInterfaceName);
+                if (_sourceRatesType == null || _sourceHandleType == null || interfaceType == null)
+                {
+                    _sourceFailure = "AO 连续源类型缺失";
+                    return;
+                }
+
+                _sourceFields = new FieldInfo[SourceFieldNames.Length];
+                for (int i = 0; i < SourceFieldNames.Length; i++)
+                {
+                    _sourceFields[i] = AccessTools.Field(_sourceRatesType, SourceFieldNames[i]);
+                    if (_sourceFields[i] == null)
+                    {
+                        _sourceFailure = "AO 连续源字段缺失: " + SourceFieldNames[i];
+                        _sourceFields = null;
+                        return;
+                    }
+                }
+
+                _registerSource = AccessTools.Method(interfaceType, "RegisterContinuousSource", new[]
+                {
+                    typeof(Map), typeof(Thing), typeof(string), typeof(IntVec3), _sourceRatesType,
+                });
+                _updateSource = AccessTools.Method(interfaceType, "UpdateContinuousSource", new[]
+                {
+                    typeof(Map), typeof(Thing), _sourceHandleType, typeof(IntVec3), _sourceRatesType,
+                });
+                _unregisterSources = AccessTools.Method(interfaceType, "UnregisterContinuousSources", new[]
+                {
+                    typeof(Map), typeof(Thing),
+                });
+                _addTemperatureDelta = AccessTools.Method(interfaceType, "AddTemperatureDelta", new[]
+                {
+                    typeof(Map), typeof(IntVec3), typeof(float),
+                });
+
+                if (_registerSource == null || _updateSource == null || _unregisterSources == null
+                    || _addTemperatureDelta == null)
+                {
+                    _sourceFailure = "AtmosphereInterface 连续源方法缺失";
+                    _sourceFields = null;
+                    return;
+                }
+
+                _sourceHandleIsValid = AccessTools.Property(_sourceHandleType, "IsValid");
+                if (_sourceHandleIsValid == null)
+                {
+                    _sourceFailure = "AtmosphereSourceHandle.IsValid 未找到";
+                    _sourceFields = null;
+                    return;
+                }
+
+                _sourceAvailable = true;
+            }
+            catch (Exception e)
+            {
+                _sourceFailure = e.GetType().Name + ": " + e.Message;
+                _sourceFields = null;
             }
         }
 
@@ -304,6 +416,164 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return null;
             }
             return _obstacleMaskProp.GetValue(engine) as float[];
+        }
+
+        /// <summary>
+        /// 通知 AO 重建地图掩码（障碍/屋顶/面开放/通风口表）。
+        /// 改 CompAirVent.speedLimit 后必须调用，否则 vent 格的 obstacleMask 与 faceOpen 不会更新。
+        /// </summary>
+        public static void MarkCachedMapDataDirty(Map map)
+        {
+            Resolve();
+            if (map == null || _markCachedDirty == null)
+            {
+                return;
+            }
+
+            object component = FindComponent(map);
+            if (component == null)
+            {
+                return;
+            }
+
+            _markCachedDirty.Invoke(component, null);
+        }
+
+        /// <summary>
+        /// 连续源参数。字段顺序与 AO 的 <c>AtmosphereSourceRates</c> 一一对应。
+        /// 单位：TemperaturePerTick 摄氏度/游戏 tick；Wind 为 Vector2。
+        /// </summary>
+        public struct SourceRates
+        {
+            public float TemperaturePerTick;
+            public float GroundTemperaturePerTick;
+            public float MoisturePerTick;
+            public float MistPerTick;
+            public float WindX;
+            public float WindY;
+            public float PressurePerTick;
+            public float OxygenPercentPerTick;
+            public bool MaintainTargetWind;
+            public float TargetWindX;
+            public float TargetWindY;
+            public float TargetWindBlendPerTick;
+        }
+
+        /// <summary>
+        /// 注册一条连续源，返回 AO 的句柄（装箱的 AtmosphereSourceHandle），失败返回 null。
+        /// 句柄必须由调用方保存，后续用 <see cref="UpdateContinuousSource"/> 更新；
+        /// 注销用 <see cref="UnregisterContinuousSources"/>（按 owner 一次清全部）。
+        /// </summary>
+        public static object RegisterContinuousSource(Map map, Thing owner, string key, IntVec3 cell, SourceRates r)
+        {
+            Resolve();
+            if (!_sourceAvailable || map == null || owner == null || _sourceFields == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                object rates = Activator.CreateInstance(_sourceRatesType);
+                WriteSourceRates(rates, r);
+                object handle = _registerSource.Invoke(null, new object[] { map, owner, key, cell, rates });
+                if (handle == null)
+                {
+                    return null;
+                }
+                return (bool)_sourceHandleIsValid.GetValue(handle) ? handle : null;
+            }
+            catch (Exception e)
+            {
+                _sourceFailure = e.GetType().Name + ": " + e.Message;
+                _sourceAvailable = false;
+                return null;
+            }
+        }
+
+        /// <summary>更新已有连续源的参数（可同时改挂载格）。</summary>
+        public static bool UpdateContinuousSource(Map map, Thing owner, object handle, IntVec3 cell, SourceRates r)
+        {
+            Resolve();
+            if (!_sourceAvailable || handle == null || map == null || owner == null || _sourceFields == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                object rates = Activator.CreateInstance(_sourceRatesType);
+                WriteSourceRates(rates, r);
+                object result = _updateSource.Invoke(null, new object[] { map, owner, handle, cell, rates });
+                return result is bool && (bool)result;
+            }
+            catch (Exception e)
+            {
+                _sourceFailure = e.GetType().Name + ": " + e.Message;
+                _sourceAvailable = false;
+                return false;
+            }
+        }
+
+        /// <summary>注销某个 owner 名下的全部连续源，返回清理数量。</summary>
+        public static int UnregisterContinuousSources(Map map, Thing owner)
+        {
+            Resolve();
+            if (!_sourceAvailable || _unregisterSources == null || map == null || owner == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                object result = _unregisterSources.Invoke(null, new object[] { map, owner });
+                return result is int ? (int)result : 0;
+            }
+            catch (Exception e)
+            {
+                _sourceFailure = e.GetType().Name + ": " + e.Message;
+                _sourceAvailable = false;
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// 成对温度注入的单边调用。AO 内部会加锁并入队到下一步，
+        /// 因此同一模拟周期内对 inlet/outlet 各调一次即可。
+        /// </summary>
+        public static bool AddTemperatureDelta(Map map, IntVec3 cell, float deltaCelsius)
+        {
+            Resolve();
+            if (!_sourceAvailable || _addTemperatureDelta == null || map == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                object result = _addTemperatureDelta.Invoke(null, new object[] { map, cell, deltaCelsius });
+                return result is bool && (bool)result;
+            }
+            catch (Exception e)
+            {
+                _sourceFailure = e.GetType().Name + ": " + e.Message;
+                _sourceAvailable = false;
+                return false;
+            }
+        }
+
+        private static void WriteSourceRates(object rates, SourceRates r)
+        {
+            _sourceFields[0].SetValue(rates, r.TemperaturePerTick);
+            _sourceFields[1].SetValue(rates, r.GroundTemperaturePerTick);
+            _sourceFields[2].SetValue(rates, r.MoisturePerTick);
+            _sourceFields[3].SetValue(rates, r.MistPerTick);
+            _sourceFields[4].SetValue(rates, new UnityEngine.Vector2(r.WindX, r.WindY));
+            _sourceFields[5].SetValue(rates, r.PressurePerTick);
+            _sourceFields[6].SetValue(rates, r.OxygenPercentPerTick);
+            _sourceFields[7].SetValue(rates, r.MaintainTargetWind);
+            _sourceFields[8].SetValue(rates, new UnityEngine.Vector2(r.TargetWindX, r.TargetWindY));
+            _sourceFields[9].SetValue(rates, r.TargetWindBlendPerTick);
         }
 
         /// <summary>

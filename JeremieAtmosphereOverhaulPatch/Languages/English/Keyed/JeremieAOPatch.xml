@@ -61,4 +61,9 @@
     <AOPatch_ProxyHeatJetLayers>Jet layers: {0}</AOPatch_ProxyHeatJetLayers>
     <AOPatch_ProxyHeatJetLayersDesc>Jets start from the ring around the building; each extra layer sits one cell further out. Cells blocked by walls produce no jet.</AOPatch_ProxyHeatJetLayersDesc>
     <AOPatch_ProxyHeatJetSpeedHint>Initial jet speed is derived from the building radius; use the per-building Jet Speed button to fine-tune.</AOPatch_ProxyHeatJetSpeedHint>
+
+    <!-- Good Climate active vent -->
+    <JGC_NaturalVent_Label>Natural ventilation</JGC_NaturalVent_Label>
+    <JGC_NaturalVent_Desc>Allow this vent to exchange air through AO's natural vent channel while intensive exchange is off. Off by default.</JGC_NaturalVent_Desc>
+    <JGC_NaturalVent_Disabled>Unavailable while intensive exchange is running.</JGC_NaturalVent_Disabled>
 </LanguageData>
