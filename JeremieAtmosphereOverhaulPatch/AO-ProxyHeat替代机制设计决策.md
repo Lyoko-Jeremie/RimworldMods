@@ -1,6 +1,6 @@
 # AO · ProxyHeat 替代机制设计决策
 
-> 状态：**定稿 v1**（2026-11-13），全部设计决策已拍板，待落码。
+> 状态：**已落码并实机确认**（2026-11-13，v1.9）。全部设计决策已拍板，`dotnet build -c Debug` 0 警告 0 错误，用户 m02400 确认效果良好。演进过程与验收记录见 §12.4 / §14。
 > 取代关系：本文取代 `AO-ProxyHeat接管与三模式设计.md` 的「结论」与「实现方案」部分。旧文档保留为调研记录（其 §5 物理推导、§6 温度语义仍有效），但其中 **§5.11.3「接管并移除 AO 点源」已被推翻**——最终方案是点源保留、范围效果作为额外层共存。
 > 依据：AO 1.7 源码（`F:\RimworldCodeIL\AtmosphereOverhaul\`，MVID `4E9F1EAE-1C1D-40E4-8CE7-79113DF84BA7`）、ProxyHeat 源码（`F:\RimworldCodeIL\ProxyHeat\`，MVID `7358A296-A2E2-46F8-A5D3-4C48DE897B1C`）、Frostpunk Heat Generator Tower Def（`294100/3545379519`）。
 
@@ -8,7 +8,7 @@
 
 ## 0. 一句话
 
-**保留 AO 自己的热源系统，另外做一层「把 ProxyHeat 的读数魔法翻译成 AO 场里的真实热源」的转译器；频率、积分、扩散、耦合全部交给 AO，转译器只负责每隔一个模拟周期往 AO 的入队数组里加一笔增量。**
+**保留 AO 自己的热源系统，另外做一层「把 ProxyHeat 的读数魔法翻译成 AO 场里的真实热源」的转译器；频率、积分、扩散、耦合全部交给 AO，转译器只负责每隔一个模拟周期往 AO 的入队数组里加一笔增量。喷流模式额外提供风，但同样只往 AO 的压力通道里塞参数，热量仍走面注入。**
 
 ---
 
@@ -43,13 +43,15 @@
 
 | 文件 | 职责 |
 |---|---|
-| `Source/JeremieAtmosphereOverhaulPatch/ProxyHeat/ProxyHeatBridge.cs` | 反射入口：`ProxyHeatMod.settings`（internal）、`ProxyHeatManager` 类型、`compTemperatures` / `compTemperaturesToTick`、`CompTemperatureSource` 的 `Props` / `AffectedCells` / `active` / `ShouldBeActive` / `SetActive` / `MarkDirty` / `CanWorkIn` |
-| `ProxyHeat/ProxyHeatRelayMapComponent.cs` | `MapComponent`：持有全部源状态、每模拟周期注入、存档 |
-| `ProxyHeat/ProxyHeatSourceState.cs` | 单源状态：`cells[]`、`cellIndices[]`、`outerCells[]`、`baseline`、`cachedTarget` |
-| `ProxyHeat/ProxyHeatRelaySettings.cs` | Mod 设置：强度（℃/秒）、主动制冷开关、默认室内开关、最大制冷速率 |
-| `ProxyHeat/VtePatchDetector.cs` | 检测 `ewolfy.vtePatch` 并出蓝信 |
-| `Patches/ProxyHeatRelayPatch.cs` | 4 个 Harmony 补丁（见 §12） |
-| `Bootstrap.cs` | 追加 `ProxyHeatRelayPatch.Install(harmony)`，失败降级只 `Log.Warning` |
+| `Source/JeremieAtmosphereOverhaulPatch/Bridge/AtmosphereFieldBridge.cs` | 反射 AO：`AtmosphereMapComponent.engine` / `pendingTemperatureDeltas`、`LocalAtmosphereEngine.Size/Width/Temperature/GroundTemperature/ObstacleMask`、`AtmosphereField.Read`；以及 `AtmosphereAirMoverSettings`（12 字段）与 `AtmosphereInterface.RegisterAirMover` / `UnregisterAirMovers` |
+| `ProxyHeat/ProxyHeatBridge.cs` | 反射 ProxyHeat：`ProxyHeatMod.settings`（internal）、`ProxyHeatManager.compTemperatures` / `compTemperaturesToTick`、`CompTemperatureSource` 的 `Props` / `AffectedCells` / `active` / `ShouldBeActive` / `SetActive` / `MarkDirty` / `CanWorkIn` |
+| `ProxyHeat/ProxyHeatRelayMapComponent.cs` | `MapComponent`：持有全部源状态、每模拟周期注入、喷流注册，以及逐建筑的模式 / 室内 / 强度 / 风速存档 |
+| `ProxyHeat/ProxyHeatSourceState.cs` | 单源状态：`Cells`、`RingCells`、`Baseline`、`Outcome`、`Cap`、`Floor`、`IsCooler`、`Jets`、`Layers`、`Radius`、`JetRegistered` |
+| `ProxyHeat/ProxyHeatMode.cs` | `[Flags] ProxyHeatMode { None = 0, Air = 1, Soil = 2, Jet = 4, All }` |
+| `ProxyHeat/ProxyHeatToggleCommand.cs` | `Command_Toggle` 子类，关掉 `GroupsWith` / `InheritInteractionsFrom`，防止四个模式按钮被 gizmo 分组合并 |
+| `ProxyHeat/ProxyHeatRelayPatches.cs` | 5 个 Harmony 补丁（`PrepareTemperatureSources` / `RecalculateAffectedCells` / `PostSpawnSetup` / `ProxyHeatMod.WriteSettings`+`ApplySettings` / `ThingWithComps.GetGizmos`） |
+| `ProxyHeat/VtePatchDetector.cs` | 检测 `VTE_ProxyHeatPatch` 并出蓝信 |
+| `Bootstrap.cs` | `InstallTempOutputShape(harmony)` + `InstallProxyHeatRelay(harmony, settings)`，失败只 `Log.Warning` 降级 |
 
 不新增任何 Def、不新增 XML。全部运行时反射 + MapComponent。
 
@@ -62,12 +64,18 @@ ProxyHeat.CompTemperatureSource
   └─ active               （我们反射驱动）
         │
         ▼
-ProxyHeatRelayMapComponent（每模拟周期）
-  ├─ 算 baseline（环形采样）
-  ├─ 算 target（sum + clamp）
-  ├─ 算 qPerTick = Clamp01((target - T)/1) * rate
-  └─ 注入：pendingTemperatureDeltas[i] += q*dt
-           engine.GroundTemperature[i] += q*dt
+ProxyHeatRelayMapComponent（每模拟周期，Postfix PrepareTemperatureSources）
+  ├─ 算 baseline（环形采样，<4 格回退 OutdoorTemp）
+  ├─ 算 outcome（Props 或 Target - baseline）
+  ├─ 算 target（sum / max，按 cap/floor 夹取）
+  ├─ 空气通道（Air 或 Jet 任一开启）
+  │    qPerTick = Clamp01((target - T)/1) * strength/60
+  │    pendingTemperatureDeltas[i] += qPerTick * dt
+  ├─ 地暖通道（Soil）
+  │    engine.GroundTemperature[i]  += qPerTick * dt
+  └─ 喷流通道（Jet，只出风）
+       ExhaustTemperatureFloor = 出口格当前温度（量化 5℃）
+       RegisterAirMover(...)  // AO 的压力通道，不搬热
         │
         ▼
 AO 自己：ApplyGroundEnergy → ApplyTemperatureDeltas → 扩散/耦合/投影
@@ -482,12 +490,16 @@ foreach (comp in manager.compTemperatures) comp.MarkDirty();
 
 `AOPatchSettings`：
 - `RangeStrengthCelsiusPerSecond`（默认 **8.0**，设置页范围 0.5~30；key 用 `rangeStrength`）
+- `JetLayers`（默认 **1**，设置页 1~3；key `jetLayers`）。第 k 层用 `OccupiedRect.ExpandedBy(k+1)` 的周长，所以第 2 层**紧贴**第 1 层（间距 1 格），不是跨到 0.5r
 - 风速**不再有全局设置项**：初值由 `AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)` 按建筑半径给出，玩家在逐建筑「风速」弹窗里覆盖
 - `AllowTemperatureStacking`（默认 true）
 - `AllowActiveCooling`（默认 false）
 - `MaxCoolPerTick`（默认 0.3）
 - `DefaultIndoorEffect`（默认 false）
 - `AirModeEnabled` / `GroundModeEnabled` / `JetModeEnabled`（**均为 false**，只是「新建筑的默认值」，不是全局开关；逐建筑必须以 gizmo 显式开启）
+- `ProxyHeatDebugLog`（默认 true）：前几次注入和每次 `PrepareTemperatureSources` 命中会往 `Player.log` 打 `[AOPatch/ProxyHeat]` 行
+
+**喷流模式的语义**：只出风。它的热量不走喷流自己，而是并入空气通道的面注入（`useHeat = Air || Jet`）。所以「开喷流 = 该建筑获得与空气模式相同的均匀加热 + 一圈向外的风」。空气与喷流同开时热量只算一次，不会翻倍。
 
 设置页的值只对**没有逐建筑覆盖**的建筑生效；每栋建筑都能用自己的 gizmo 调强度与风速。设置面板用 `Listing_Standard`，与 `AOPatchMod` 现有设置面板同风格。
 
@@ -500,11 +512,14 @@ foreach (comp in manager.compTemperatures) comp.MarkDirty();
 | 重算 `outerCells` | O(πr²) | 仅 `dirty` 时 |
 | 重算 `baseline` | O(outerCells) | 每模拟周期 |
 | 注入 | O(注入格数) | 每模拟周期 |
+| 喷流注册 | O(端口数) = O(周长 × 层数)，6×6 单层 28 条 | 每模拟周期 |
 
 - Frostpunk 升级机 radius 60 ≈ 11310 格；两台 + 原版若干源，总量约 2~3 万格。
 - 每模拟周期（默认 6 tick）一次，纯数组累加 + 一次乘法，约 **0.3~0.8 ms**。
 - **必须**用 `Temperature.Read` 数组直读，不要 `cell.GetTemperature(map)`（每次走 Harmony patch 链）。
-- `cell → index` 用 `cell.z * engine.Size + cell.x` 直接算，不走 `AtmosphereInterface.ResolveIndex`（避免每格一次 `Component(map)` 查找）。
+- `cell → index` 用 `cell.z * engine.Width + cell.x` 直接算，不走 `AtmosphereInterface.ResolveIndex`（避免每格一次 `Component(map)` 查找）。
+- **温度面注入必须直写 `pendingTemperatureDeltas`**，不能改用 `AddTemperatureDelta`：后者每次都要过 `PatchSourceJournal.Record`（加锁 + 字典），200 源 × 1.1 万格会成为几十毫秒级开销。
+- 喷流量级小（周长 28 格/源），走 `AddWindImpulse` 一类的逐格回调是可接受的，但喷流实际走的是 `RegisterAirMover`（按 owner+key 幂等更新），成本更低。
 - `temperatureSources[cell]` 的 List 可能残留已失活源，必须用自维护 `activeSet` 过滤，不能假设都活跃。
 
 ---
@@ -577,6 +592,17 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 - 存档读档：开关状态、源状态恢复；温度不跳变。
 - 性能：200 源场景下模拟周期耗时增加 < 1ms。
 
+### 12.4 实测记录
+
+| 日期 | 版本 | 现象 | 结论 |
+|---|---|---|---|
+| 2026-11-13 | v1.0 | 建筑只出现一个「室内生效」开关，塔周围无升温，篝火仅下风轻微升温 | 三个 bug（只遍历 `compTemperatures` / active 死锁 / `GetActive` 早于 `RefreshActive`）→ v1.1 |
+| 2026-11-13 | v1.1 | 三个模式按钮点击无反应 | `_modeCache` 存的是掩码却当索引用，`_modeMasks[1]` 越界被 Unity GUI 静默吞掉 → v1.2 |
+| 2026-11-13 | v1.2 | 生效，但喷流风速太小、户外加热太慢 | 喷流 v1 只是沿朝向注热、没有风 → v1.3 改 AO 原生 `AirMover`，默认强度 8℃/秒，滑块逐建筑 |
+| 2026-11-13 | v1.3 | 喷流出现十字，四角无热 | 出口格用 `RoundToInt(dir)*2` 折叠成 8 向 → v1.7 每格一条 + 出口沿射线取整 |
+| 2026-11-13 | v1.7 | 3 层仍十字 | 真正根因：`JetTransport.BuildPath` 用 `Math.Sign` 把热交换路径锁成 ±x/±z；动量方向其实是自由的 → v1.9 喷流只出风 |
+| 2026-11-13 | v1.9 | 「现在效果很好」 | 收束：范围为面注入，喷流只负责风 |
+
 ---
 
 ## 13. 决策台账
@@ -612,13 +638,17 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 27 | 喷流端口从半径外环改到**建筑外围一圈**，风速初值按半径 `clamp(r*1.5, 20, 150)`，玩家仍可逐建筑调 | 用户 m01809/m01828 |
 | 28 | 喷流改为**每个周长格一条 + 出口沿射线取整格放到 0.5r**（不用两圈接力），消除十字 | 用户 m01955/m01960 |
 | 29 | 喷流端口候选 = 几何周长 ∩ AffectedCells（被遮挡的格不生成喷口）；层数 1~3 可调、层间距 1 格；出口沿射线找第一个开放格 | 用户 m02017/m02021 |
-| 30 | 喷流模式**只出风**：热量并入空气通道的逐格面注入（`useHeat = Air \|\| Jet`）；`ExhaustTemperatureFloor` 改为出口格当前温度（量化 5℃），消除 `JetTransport` 四向 path 画的十字 | 用户 m02313 |
+| 30 | 喷流模式**只出风**：热量并入空气通道的逐格面注入（`useHeat = Air \|\| Jet`）；`ExhaustTemperatureFloor` 改为出口格当前温度（量化 5℃），消除 `JetTransport` 四向 path 画的十字 | 用户 m02313（m02400 实测确认） |
 
 ---
 
 ## 14. 后续
 
-> 状态：**已落码，`dotnet build -c Debug` 通过（2026-11-13）**。实机已验证范围效果生效；v1.3 按实测观感调整了喷流（改 AO 原生 AirMover）、默认强度（8℃/秒）与逐建筑滑块。
+> 状态：**已落码并实机确认（2026-11-13，v1.9）**。`dotnet build -c Debug` 0 警告 0 错误。
+>
+> 最终形态：范围效果由 Postfix `PrepareTemperatureSources` 直写 `pendingTemperatureDeltas` / `GroundTemperature`，物理全部交给 AO；三模式逐建筑开关；喷流走 AO 原生 `AirMover`（压力通道），但**只负责风**，热量由空气通道的逐格面注入提供。用户 m02400：「现在效果很好」。
+>
+> 演进简表：v1.1 修「完全没生效」→ v1.2 修 gizmo 无响应 → v1.3 喷流改 AirMover + 默认 8℃/s + 逐建筑滑块 → v1.4 极角分桶 → v1.5 默认全关 + 修 `LastTick` 重置 → v1.6 端口搬到建筑外围 + 风速按半径 → v1.7 每格一条 + 出口 0.5r → v1.8 端口候选 = 照射区 ∩ 周长 + 分层 → v1.9 喷流只出风。
 
 ### 14.1 v1.1 修复记录（2026-11-13，实测「完全没生效」后）
 
@@ -807,6 +837,8 @@ AO 的 `RegisterAirMover` 按 owner+key 找到已有记录后，只要 `Settings
 **编译**：0 警告 0 错误，DLL 已写入 `Assemblies/`。
 
 **待实测**：十字是否消失、四角是否升温、风是否仍在、`Logs/Player.log` 里 `AOPatch/ProxyHeat` 的 `jet=` 状态。
+
+**实测结果（2026-11-13，用户 m02400）**：「现在效果很好」。十字消失、四角升温、风保留，v1.9 定为当前形态，不再继续调参数。相关验收记录见 §12.4。
 
 两件后续事项：
 

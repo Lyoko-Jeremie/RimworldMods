@@ -18,6 +18,7 @@
     <exclude>AO源码全景阅读报告.md</exclude>
     <exclude>build.bat</exclude>
     <exclude>JeremieAtmosphereOverhaulPatch_CCC与强制稳定方案.md</exclude>
+    <exclude>README.md</exclude>
     <exclude>Source</exclude>
   </Excluded>
 </Configuration>

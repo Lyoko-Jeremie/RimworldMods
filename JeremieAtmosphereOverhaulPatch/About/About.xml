@@ -29,6 +29,14 @@
 [h1]Atmosphere Overhaul Patch[/h1]
 大气层重构 · 第三方温控 Mod 兼容补丁
 
+支持 宜人气候 Good Climate 的主动出风口
+支持 原版温度扩展 Vanilla Temperature Expanded 的空调
+支持 原版温度扩展 Vanilla Temperature Expanded 的 HeatProxy 机制
+支持 中央空调 Centralized Climate Control 的中央空调
+
+特别支持 Frostpunk Heat Generator Tower 《冰汽时代》能量塔 Mod （其基于 HeatProxy 机制工作），现在可以正常玩风雪遗孤了
+
+
 [h2] Support Mod [/h2]
 [list]
 [*] [b]宜人气候 Good Climate[/b]（GOS.GoodClimate） https://steamcommunity.com/sharedfiles/filedetails/?id=3669891833
