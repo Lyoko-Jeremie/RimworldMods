@@ -36,8 +36,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// <summary>喷流气柱高度（米）。参考 AO 自己的 CompPairedJet 默认值 5。</summary>
         private const float JetColumnHeight = 5f;
 
-        /// <summary>喷流注册的有效期（tick）。比模拟周期大得多，避免两次注入间失效。</summary>
-        private const float JetActiveTicks = 60f;
+        /// <summary>
+        /// 喷流注册的有效期。-1 表示永不过期，只在建筑被拆除时由 AO 的
+        /// <c>PrepareAirMovers</c> 移除。
+        ///
+        /// 不能用正数：AO 的 <c>RegisterAirMover</c> 在参数变化时会先调
+        /// <c>UpdateAirMover</c>，而后者会把 <c>LastTick</c> 重置为当前 tick，
+        /// 导致本周期 <c>CaptureAirMover</c> 算出的 <c>ActiveTicks == 0</c>、不产生流量。
+        /// 出风温度每周期都在漂移，若每周期都触发更新，喷流就永远没有风。
+        /// </summary>
+        private const float JetActiveTicks = -1f;
 
         private readonly Dictionary<object, ProxyHeatSourceState> _states =
             new Dictionary<object, ProxyHeatSourceState>();
@@ -681,6 +689,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             AOPatchSettings settings = AOPatchMod.Settings;
             if (settings == null || !settings.MasterEnabled || !settings.ProxyHeatRelayEnabled)
             {
+                // 模块关掉时必须清掉已注册的喷流：它们 activeTicks = -1，不会自己过期。
+                StopAllJets();
                 DiagOnce("settings=null 或模块已关闭");
                 return;
             }
@@ -895,9 +905,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     _touchedSoil, ground, temperature, outdoor, stacking, cooling, maxCool, dt);
             }
 
-            // ---- 喷流：逐建筑判断，向建筑四周的八个径向注册 AO 原生 AirMover
-            bool jet = settings.JetModeEnabled && AtmosphereFieldBridge.AirMoverAvailable;
-            if (jet)
+            // ---- 喷流：逐建筑判断，向建筑四周的径向注册 AO 原生 AirMover
+            // 这里不能再用全局 JetModeEnabled 做门禁：全局开关只是「新建筑的默认值」，
+            // 逐建筑开关才是实际开关。是否真的喷流由 InjectJets 内部逐源判断。
+            if (AtmosphereFieldBridge.AirMoverAvailable)
             {
                 InjectJets(_knownSources, outdoor);
             }
@@ -917,7 +928,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                      " airWrite=" + airWritten.ToString("F2") +
                      " soilWrite=" + soilWritten.ToString("F2") +
                      " dt=" + dt +
-                     " jet=" + jet +
+                     " jet=" + AtmosphereFieldBridge.AirMoverAvailable +
                      " first=" + FirstSourcesSummary());
             }
         }
@@ -1085,8 +1096,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// AO 的模拟，我们只提供入口/出口格和 <c>ExhaustTemperatureFloor</c>。
         ///
         /// AO 的 <c>RegisterAirMover</c> 按 owner+key 就地更新，所以每个模拟周期
-        /// 重复调用是安全的；不注册时旧记录会在 <paramref name="JetActiveTicks"/>
-        /// 后自动过期，无需显式注销。
+        /// 重复调用是安全的。但**不能**依赖「不注册就自动过期」：我们用
+        /// <c>activeTicks = -1</c>（永不过期），关掉开关时必须显式注销。
         /// </summary>
         private void InjectJets(System.Collections.IList comps, float outdoor)
         {
@@ -1094,8 +1105,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 return;
             }
-            AOPatchSettings settings = AOPatchMod.Settings;
-            if (settings == null)
+            if (AOPatchMod.Settings == null)
             {
                 return;
             }
@@ -1103,39 +1113,47 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             for (int i = 0; i < comps.Count; i++)
             {
                 object comp = comps[i];
-                if (comp == null || !ProxyHeatBridge.GetActive(comp))
-                {
-                    continue;
-                }
-                Thing parent = ProxyHeatBridge.GetParent(comp);
-                if (parent == null || parent.Destroyed || !parent.Spawned)
-                {
-                    continue;
-                }
-
-                // 逐建筑：只有开了喷流通道的源才喷。
-                if ((GetModes(parent) & ProxyHeatMode.Jet) == 0)
+                if (comp == null)
                 {
                     continue;
                 }
 
                 ProxyHeatSourceState state;
-                if (!_states.TryGetValue(comp, out state) || state.Outcome == 0f)
+                if (!_states.TryGetValue(comp, out state) || state.Parent == null)
                 {
+                    continue;
+                }
+
+                Thing parent = state.Parent;
+                if (parent.Destroyed || !parent.Spawned)
+                {
+                    // 建筑没了，AO 的 PrepareAirMovers 会自己清掉，这里不用管。
+                    continue;
+                }
+
+                // 逐建筑：只有开了喷流通道、仍然活跃、且目标温度高于户外的源才喷。
+                bool wantJet =
+                    ProxyHeatBridge.GetActive(comp) &&
+                    (GetModes(parent) & ProxyHeatMode.Jet) != 0 &&
+                    state.Outcome != 0f &&
+                    state.Jets.Count > 0 &&
+                    state.Baseline + state.Outcome > outdoor &&
+                    GetJetSpeed(parent) > 0f;
+
+                if (!wantJet)
+                {
+                    StopJets(state);
                     continue;
                 }
 
                 float target = state.Baseline + state.Outcome;
-                if (target <= outdoor)
-                {
-                    continue;
-                }
-
                 float speed = GetJetSpeed(parent);
-                if (speed <= 0f)
-                {
-                    continue;
-                }
+
+                // 出风温度量化到 5℃ 台阶：AO 的 RegisterAirMover 只要发现
+                // Settings 有任何字段变化就会 UpdateAirMover，而 UpdateAirMover 会把
+                // LastTick 重置到当前 tick，使本周期算出的 ActiveTicks 为 0。
+                // target 每周期都在小幅漂移，不量化就会每周期都触发更新、永远没有流量。
+                float jetFloor = Mathf.Round(target / 5f) * 5f;
 
                 // 出口集在 RecalculateAffectedCells 的 Postfix 里按极角分桶建好，
                 // 这里只做注册，不再算几何。
@@ -1159,7 +1177,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                         MaxPressureRisePascals = 1000000f,
                         ConditionExhaust = true,
                         ExhaustSpeed = speed,
-                        ExhaustTemperatureFloor = target,
+                        ExhaustTemperatureFloor = jetFloor,
                         ExhaustPressureRatio = 1.5f,
                         InletPressureRatio = 0.5f,
                         ExhaustOxygenPercent = 21f,
@@ -1171,7 +1189,43 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                         "aopjet:" + parent.thingIDNumber + ":" + d,
                         port.Inlet, port.Outlet, p, JetActiveTicks);
                 }
+
+                state.JetRegistered = true;
             }
+        }
+
+        /// <summary>
+        /// 停掉本图所有已注册的喷流。模块关闭、地图卸载时用。
+        /// </summary>
+        private void StopAllJets()
+        {
+            foreach (ProxyHeatSourceState state in _states.Values)
+            {
+                if (state.JetRegistered)
+                {
+                    StopJets(state);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 停掉一个源已经注册的喷流。只在它此前注册过时才真的去注销，
+        /// 避免每周期对所有未开喷流的源都扫一遍 AO 的 airMovers 列表。
+        /// </summary>
+        private void StopJets(ProxyHeatSourceState state)
+        {
+            if (!state.JetRegistered)
+            {
+                return;
+            }
+            state.JetRegistered = false;
+
+            Thing parent = state.Parent;
+            if (parent == null || parent.Destroyed || !parent.Spawned)
+            {
+                return;
+            }
+            AtmosphereFieldBridge.UnregisterAirMovers(map, parent);
         }
 
         // ------------------------------------------------------------ 单源刷新

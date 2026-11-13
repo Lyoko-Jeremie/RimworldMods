@@ -43,6 +43,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
         private static Type _airMoverSettingsType;
         private static MethodInfo _registerAirMover;
+        private static MethodInfo _unregisterAirMovers;
         private static PropertyInfo _airMoverHandleIsValid;
         private static FieldInfo[] _airMoverFields;
         private static readonly string[] AirMoverFieldNames =
@@ -179,6 +180,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 if (_airMoverHandleIsValid == null)
                 {
                     _airMoverFailure = "AtmosphereAirMoverHandle.IsValid 未找到";
+                    _airMoverFields = null;
+                    return;
+                }
+
+                // 注销用：关掉喷流开关后必须主动清掉已经注册的 mover，
+                // 因为我们用 activeTicks = -1（永不过期），不会自己消失。
+                _unregisterAirMovers = AccessTools.Method(interfaceType, "UnregisterAirMovers", new[]
+                {
+                    typeof(Map), typeof(Thing),
+                });
+                if (_unregisterAirMovers == null)
+                {
+                    _airMoverFailure = "AtmosphereInterface.UnregisterAirMovers 未找到";
                     _airMoverFields = null;
                     return;
                 }
@@ -360,6 +374,31 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _airMoverFailure = e.GetType().Name + ": " + e.Message;
                 _airMoverAvailable = false;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 注销某个 owner 注册过的全部 AirMover。
+        /// 我们统一用 activeTicks = -1，AO 不会自己让它们过期，
+        /// 所以关掉喷流开关、建筑断电、目标温度跌破环境温度时都必须显式清掉，
+        /// 否则会残留一条永远在吹的热气流。
+        /// </summary>
+        public static void UnregisterAirMovers(Map map, Thing owner)
+        {
+            Resolve();
+            if (!_airMoverAvailable || _unregisterAirMovers == null || map == null || owner == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _unregisterAirMovers.Invoke(null, new object[] { map, owner });
+            }
+            catch (Exception e)
+            {
+                _airMoverFailure = e.GetType().Name + ": " + e.Message;
+                _airMoverAvailable = false;
             }
         }
     }

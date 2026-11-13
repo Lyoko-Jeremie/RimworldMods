@@ -460,7 +460,7 @@ foreach (comp in manager.compTemperatures) comp.MarkDirty();
 - `AllowActiveCooling`（默认 false）
 - `MaxCoolPerTick`（默认 0.3）
 - `DefaultIndoorEffect`（默认 false）
-- `AirModeEnabled` / `GroundModeEnabled` / `JetModeEnabled`（默认值，不是全局开关）
+- `AirModeEnabled` / `GroundModeEnabled` / `JetModeEnabled`（**均为 false**，只是「新建筑的默认值」，不是全局开关；逐建筑必须以 gizmo 显式开启）
 
 设置页的值只对**没有逐建筑覆盖**的建筑生效；每栋建筑都能用自己的 gizmo 调强度与风速。设置面板用 `Listing_Standard`，与 `AOPatchMod` 现有设置面板同风格。
 
@@ -580,6 +580,8 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 22 | 喷流改为**径向 AO 原生 AirMover**，方向不跟建筑朝向 | 用户 m01313 |
 | 23 | 强度/风速滑块**逐建筑**，点击弹 `Dialog_Slider` | 用户 m01313/m01320 |
 | 24 | 喷流出口按**格与中心的真实极角**分桶（每桶取最外格），不用固定八向 | 用户 m01470 |
+| 25 | 三个模式默认**全关**（新建筑必须逐建筑手动开启）；Scribe key 改为 `airModeDefault`/`groundModeDefault`/`jetModeDefault` | 用户 m01542 |
+| 26 | 喷流用 `activeTicks = -1` + 出风温度量化 5℃ 台阶（规避 AO `UpdateAirMover` 重置 `LastTick` 导致 `ActiveTicks == 0`）；关喷流/关模块时必须显式 `UnregisterAirMovers` | 实测 |
 
 ---
 
@@ -658,6 +660,34 @@ _modeMasks[index] = (int)next;   // index 其实是掩码值，如 Air=1
 - 删除 `JetDirections`/`JetOffsets` 两个固定方向常量。
 
 这样每 15° 一条气流且每条都精确指向它对应的那片区域，避免了固定八向在大半径下的空档。
+
+### 14.5 v1.5 修复（2026-11-13，喷流无风 + 默认全关）
+
+用户 m01542：「做修改，默认三个模式都不启用。当前存在问题，喷流模式似乎没有产生风。」
+
+喷流无风是**两个独立缺陷叠在一起**，任何一个都足以让喷流完全不工作：
+
+**缺陷 A：全局开关把逐建筑开关架空了。**
+`Inject` 里原本写 `bool jet = settings.JetModeEnabled && AtmosphereFieldBridge.AirMoverAvailable;`。`JetModeEnabled` 的语义在 v1.3 已经降级成「新建筑的默认值」，但这里仍拿它当门禁——只要玩家没在设置页开「默认启用喷流」，逐建筑按钮点开了也进不到 `InjectJets`。
+修复：门禁只保留 `AirMoverAvailable`，是否真的喷流交给 `InjectJets` 内部的 `GetModes(parent) & ProxyHeatMode.Jet` 逐源判断。
+
+**缺陷 B：`RegisterAirMover` 的 `LastTick` 重置陷阱。**
+AO 的 `RegisterAirMover` 按 owner+key 找到已有记录后，只要 `Settings` 有任何字段不等就调 `UpdateAirMover`，而 `UpdateAirMover` 内部会 `CaptureAirMover(airMover, CurrentGameTick)`，把 `LastTick` 重置到当前 tick。随后本周期 `PrepareAirMovers` 再调 `CaptureAirMover` 时，`AirMoverTransport.ActiveTicks(lastTick = tick, tick, validUntil) == 0`，直接 return，**这一周期不产生任何流量**。
+我们原来每周期都把 `ExhaustTemperatureFloor` 设成 `baseline + outcome`，它随温度场每周期漂移 → `Settings.Equals` 恒不成立 → 每周期都 `UpdateAirMover` → `LastTick` 每周期被重置 → 永远没有流量。
+修复两条：
+- `JetActiveTicks` 从 `60f` 改为 `-1f`（永不过期，建筑拆除时由 `PrepareAirMovers` 移除），不再依赖周期性续期。
+- 出风温度量化到 5℃ 台阶：`jetFloor = round(target / 5f) * 5f`。温度缓慢漂移时几十个周期才跨一次台阶，绝大多数周期 `Settings` 不变，`LastTick` 得以保留、流量正常累积。
+
+**默认全关：**
+`AirModeEnabled` 默认从 `true` 改为 `false`，三个模式的 Scribe key 一并改为 `airModeDefault` / `groundModeDefault` / `jetModeDefault`——按 v1.3 的教训（改默认值对老存档无效），换 key 才能让老存档也落到「全关」。
+
+**随之而来的注销义务：**
+`activeTicks = -1` 意味着 AO 不会让喷流自己过期，所以以下情况必须显式注销，否则会残留一条永远在吹的热气流：
+- 逐建筑关掉喷流 / 建筑断电 / 目标温度跌破环境温度 / `state.Jets` 为空 → `StopJets(state)`（只在 `state.JetRegistered` 为 true 时真去注销，避免每周期扫 AO 的 airMovers 列表）；
+- 模块总开关或 `ProxyHeatRelayEnabled` 关闭 → `StopAllJets()`；
+- 建筑被拆除 → 不用管，AO 的 `PrepareAirMovers` 会按 `Owner.Destroyed` 移除。
+
+副作用说明：老存档里玩家此前通过 gizmo 逐建筑开过的模式仍保留（那是 `_modeThings/_modeMasks`，与全局默认值无关），只是新放置的建筑默认三个模式都不开。
 
 - 落码完成后，把本文状态改为「已实现」，并在 §12.3 补实测数据。
 - 若实测发现「点源 + 范围层」在 Frostpunk 上仍有视觉热点，再评估是否引入「点源附近半径内降权」。

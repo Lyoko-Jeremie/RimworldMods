@@ -17,13 +17,17 @@ namespace Jeremie.AtmosphereOverhaulPatch
         /// <summary>范围效果模块总开关。</summary>
         public bool ProxyHeatRelayEnabled = true;
 
-        /// <summary>空气模式：把范围温差注入 AO 的气温场。</summary>
-        public bool AirModeEnabled = true;
+        /// <summary>
+        /// 新建筑的默认空气模式。默认关：玩家必须逐建筑点开，避免刚进游戏就被范围效果改变平衡。
+        /// key 用 <c>airModeDefault</c> 而不是旧版的 <c>airModeEnabled</c>，
+        /// 是为了让老存档也落到新的默认值（关）上。
+        /// </summary>
+        public bool AirModeEnabled;
 
-        /// <summary>地暖模式：把范围温差注入 AO 的地温场。</summary>
+        /// <summary>新建筑的默认地暖模式。</summary>
         public bool GroundModeEnabled;
 
-        /// <summary>喷流模式：向建筑四周八个径向注册 AO 原生 AirMover。</summary>
+        /// <summary>新建筑的默认喷流模式。</summary>
         public bool JetModeEnabled;
 
         /// <summary>
@@ -61,9 +65,9 @@ namespace Jeremie.AtmosphereOverhaulPatch
             Scribe_Values.Look(ref MasterEnabled, "masterEnabled", true);
 
             Scribe_Values.Look(ref ProxyHeatRelayEnabled, "proxyHeatRelayEnabled", true);
-            Scribe_Values.Look(ref AirModeEnabled, "airModeEnabled", true);
-            Scribe_Values.Look(ref GroundModeEnabled, "groundModeEnabled", false);
-            Scribe_Values.Look(ref JetModeEnabled, "jetModeEnabled", false);
+            Scribe_Values.Look(ref AirModeEnabled, "airModeDefault", false);
+            Scribe_Values.Look(ref GroundModeEnabled, "groundModeDefault", false);
+            Scribe_Values.Look(ref JetModeEnabled, "jetModeDefault", false);
             Scribe_Values.Look(ref RangeStrengthCelsiusPerSecond, "rangeStrength", 8f);
             Scribe_Values.Look(ref JetSpeedMetresPerSecond, "jetSpeedMetresPerSecond", 60f);
             Scribe_Values.Look(ref AllowTemperatureStacking, "allowTemperatureStacking", true);

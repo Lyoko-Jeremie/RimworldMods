@@ -47,6 +47,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// </summary>
         public List<JetPort> Jets = new List<JetPort>();
 
+        /// <summary>
+        /// 当前是否已向 AO 注册过喷流。因为我们用 activeTicks = -1（永不过期），
+        /// 关掉开关后必须显式注销，这个标志用来避免每周期都去注销一遍。
+        /// </summary>
+        public bool JetRegistered;
+
         /// <summary>本周期重采样得到的环形基线温度（℃）。</summary>
         public float Baseline;
 
