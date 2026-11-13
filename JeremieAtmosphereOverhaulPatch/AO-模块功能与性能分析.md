@@ -10,7 +10,7 @@
 
 ## 0. 结论摘要
 
-### 0.1 十二条核心结论
+### 0.1 十四条核心结论
 
 | # | 结论 | 证据 |
 |---|---|---|
@@ -26,6 +26,8 @@
 | 10 | **渲染侧两个最大户**：地图风线最坏 **1200 次 `Graphics.DrawMesh`/帧**（`WindStreamlineRenderer`）；植物摆动每 60 tick 全图两遍 + `MapMeshDirty` 触发 section 重建。 | `RimWorld/WindStreamlineRenderer.cs:184`、`RimWorld/PlantWindSway.cs:261-286,601` |
 | 11 | **本项目 patch 侧的最大单点成本**是 `InjectJets` 每端口"字符串 + `Activator.CreateInstance` + 12 次 `FieldInfo.SetValue` + `Invoke`"；其次是 `GetGizmos` Postfix 每渲染帧每选中物 6 个 Gizmo + 6 次 `Translate` + 4 个闭包。 | `Source/.../ProxyHeat/ProxyHeatRelayMapComponent.cs:1349-1378`、`ProxyHeatRelayPatches.cs:297-369` |
 | 12 | **写 AO 的正确窗口只有一个**：`PrepareTemperatureSources` 的 Postfix（`pending*` 已 `Array.Clear`、已合并队列、已叠加连续源，但主任务尚未 `ApplyTemperatureDeltas`）。地温直写也在此窗口并**有效**——`ApplyGroundEnergy` 以 `groundT[i]` 作为积分初值。 | `RimWorld/AtmosphereMapComponent.cs:1788-1815`、`Simulation/LocalAtmosphereEngine.cs:3056-3057`（已逐行核实） |
+| 13 | **世界引擎的瓶颈是"每游戏小时 35 MB LOH 分配 + 每次 GPU 回读的忙等自旋"**，不是算力。`CreateView`(21.5 MB) + `BuildView` 临时数组(10.5 MB) + `ConfigureCellInputs`(3.4 MB)，全在 worker 线程；`WebGpuContext.Read` 是 `Submit → MapAsync → while(!mapDone) DevicePoll` 的硬同步。 | `GpuAutodriveGlobalClimateEngine.cs:380-388,402-461,596-666`、Perf81 `WebGpuContext.Read` |
+| 14 | **本地 overlay 每个模拟步都会 `SetOverlayDrawersDirty`**（`AMC:3095`）→ 下一渲染帧 8 个 `CellBoolDrawer` 全部重铺整图 mesh。所以"降 interval"同时也在降 overlay 重建频率，收益被放大。 | `RimWorld/AtmosphereMapComponent.cs:3095`、`AtmosphereOverlayDrawer.cs:75-79` |
 
 ### 0.2 每粗步性能预算（默认配置，可压 packed SOR）
 
@@ -57,7 +59,8 @@
 
 | 杠杆 | 位置 | 收益 | 代价 |
 |---|---|---|---|
-| `simulationIntervalTicks` 6 → 20/30 | `AtmosphereOverhaulSettings.cs:16,24` | **省 72%~82%** 模拟计算量 | 大气演化变粗、瞬态响应变慢；≥20 时才会尝试激活补丁域（但默认被可压关闭） |
+| `weatherEngine = VanillaDerivation` | `AtmosphereOverhaulSettings` 设置页 | **一刀切掉整个世界气候引擎 + 23 个世界 overlay 层** | 失去 AO 的世界天气与预报；**需重开游戏** |
+| `simulationIntervalTicks` 6 → 20/30 | `AtmosphereOverhaulSettings.cs:16,24` | **省 72%~82%** 模拟计算量（并同时降 overlay 重建频率） | 大气演化变粗、瞬态响应变慢；≥20 时才会尝试激活补丁域（但默认被可压关闭） |
 | 关 `WindTransportEnabled` / `WindCarriesItems` | `WindTransport.cs:90` | 省 30 tick 一次的 HaulableEver 全列表 + Pawn 全遍历 | 失去搬运风害玩法 |
 | 关 `ShowStreamlineOverlay` | `AtmosphereMapComponent.cs:3116` | 省最坏 1200 draw call/帧 | 失去风线可视化 |
 | `PlantSwayEnabled` 关 | `PlantWindSway.cs:114` | 省每 60 tick 两遍全图 + MeshDirty | 失去植物摆动 |
@@ -607,7 +610,119 @@ cursor >= count → next = gasCycleStartTick + interval
 
 ## 8. 世界引擎与渲染
 
-（待补：`GlobalSimulationScheduler` / `WeatherClockGate` / `GpuAutodriveGlobalClimateEngine` 推进频率、`GlobalAtmosphereFrameSnapshot` 与 `GlobalClimateTileCache` 的更新成本、overlay 世界层渲染。）
+### 8.1 时间基与两个入口
+
+**1 帧 = 2500 tick = 1 游戏小时**（`GlobalClimateConstants`：`GlobalFrameIntervalTicks=2500`、`FrameStartTick(tick)=tick-tick%2500`）。这里的"帧"是**游戏时间概念**，与渲染帧无关。
+
+| 入口 | 频率 | 工作 |
+|---|---|---|
+| `GlobalAtmosphereWorldComponent.WorldComponentTick()`（`:1004-1020`） | **每游戏 tick** | `SyncAtmosphericHeaters`、`SyncClimateDevices`、`GlobalGasMapCoupling.Tick`（内部按 `tick%2500` 早退）、污染刷新（`ticksGame % 60000 == 30000` → **每游戏日一次全图 `RefreshPollution`**）、`TryPromoteDisplayFrame`、`SetPublishedFrame`、`ProcessQueuedOverlayDirty`（**每 tick 只出队一个**脏层） |
+| `WorldComponentUpdate()`（`:1022-1041`） | **每渲染帧** | `WeatherForecastPreview.WorldUpdate`、`ReportGpuEngineState`、`UpdateActualTickRate`、`scheduler.Pump(...)`、`TryPromoteDisplayFrame`+`SetPublishedFrame`、`SyncSeaIceBiomes`（按游戏日早退）、`UpdateWeatherClock` |
+
+`WarmUpForecast()`（`:805-847`）在 LongEvent 内**最长阻塞主线程 600 秒**等首帧（`Thread.Sleep(100)` 轮询）。
+
+### 8.2 调度器与"游戏被强制暂停"
+
+`Simulation/Global/GlobalSimulationScheduler.cs`：
+
+- **单飞**：有任务在跑就只收割，不再启动（`:140`）。
+- **储备目标 23 帧**：`reserve = CountFutureFrames(publishedFrameTick, 23)`；`reserve >= 23` 直接不启动（`:145-147`）。
+- **节流**：`2500.0 / max(1, TargetSolverTicksPerSecond(reserve, actualTps))` 秒内不重复启动（`:149-151`）；`TargetSolverTicksPerSecond` 在 reserve≥21 时返回 `actualTps`，否则 `max(180, actualTps*(3+5n²))`，`n=(21-reserve)/21`（`:306-311`）——**储备越少，允许的求解速度下限越高（180 tick/s 起）**。
+- **缺帧选择** `TryFindMissingFrameTick`（`:334`）：先试 `latest+2500`，再扫未来 24 帧找空洞。
+- **单帧整体丢进一个后台 `Task.Run`**（`:276`），无分片/分帧推进；主线程只决定"要不要启动下一个"。
+- **门控会暂停游戏**：`GlobalWeatherClockGate.Wait()` 置 `OwnsPause=true`；`TryResume()` 要求 `!OwnsPause | producerStopped | contiguousReadyFrames>=4`（`ResumeFutureFrames=3`）。`GlobalAtmosphereWorldComponent.cs:896` `AllowNextGameTick()` 在下一帧还没算好时调 `SetWeatherTimeSpeed(0)` **强制暂停**，`:917` 恢复。→ **任何让单帧超时的 patch 都会表现成"游戏卡住不动"**。
+
+### 8.3 世界网格规模与每帧计算量
+
+- 世界数值网格不是行星 tile，而是 **V2 二十面体网格**：`IcosahedralAtmosphereMeshV2.Build(frequency=81, 6371000f)` → **`10*81²+2 = 65 612 cells`、`30*81² = 196 830 edges`**，垂直 **8 层**（`LayerTemperature/Humidity/Pressure/East/North/CloudMm` 均 `float[8*n]`）。
+- 游戏侧 tile 通过发布 stencil 从最近至多 **7 个 column** 混合写入（`GpuAutodriveGlobalClimateEngine.cs:549-580` `BuildPublicationStencils`、`:582-594` `Blend`）。
+- **每帧（1 游戏小时）遍历量**：GPU `AdvanceHour` ×1（`:380-388`）；CPU 侧 `CreateView` + 逐 tile 写回：内层 8 层 ×（≤7 次 `Blend`）+ 每 tile ~30 个 2D 字段（`:402-461`）。追帧/回填时 `while (session.SimulationSeconds < num12)` 会**连续跑多次 `AdvanceHour`**（`:380-388`）→ 读档/大幅跳时间的尖峰来源。
+
+### 8.4 GPU 侧：dispatch 与同步回读（世界引擎的真正瓶颈）
+
+- **每步 BiCGStab = 11 次 dispatch**（Reduce×4、Vector×4、Apply×2、Dispatch×1）；`WaveIterationLimit=320`，`batchSize` 固定 **12**。
+- **每 12 次迭代回读一次 `Status`**（`batch.Flush()` + 读 16 个 float）→ 单次 solve 最多约 **27 次同步回读**。
+- **solve 收尾回读 x 与 du 各 n 个 float**（`gpu.Read(work,0,xStage)` + `gpu.Read(work,12*p.M*4,duStage)`）→ 65 612 × 4 B × 2 ≈ **0.5 MB/solve**。
+- **`WebGpuContext.Read` 是硬同步 + 忙等自旋**：`CreateBuffer → CopyBufferToBuffer → Submit → BufferMapAsync → while(!mapDone) WebGpuNative.DevicePoll(Device,1,0);` → `MemoryCopy` → `Unmap`。**每次回读都是"提交+映射+自旋"**。
+- 每帧只有一次 `Submit`（`DispatchBatch.Flush()` 在一个 `BeginComputePass` 里逐条 `SetPipeline/SetBindGroup/DispatchWorkgroups`，参数块 256 B/dispatch）。
+- 解算精度 **FP32**（`Status` 串含 `waves=FP32-BiCGStab`），动力学前端标签 `GPU-vi-trisk-clust25-v1`。
+- shader 名 `Waves.wgsl` / `DynamicsVI.wgsl` / `Surface.wgsl`，但**落盘没有 .wgsl/.hlsl/.spv 文件**（`1.6/Native/WebGpu/*` 只有 `wgpu_native.dll`）→ shader 内嵌在 Perf81.dll 里。
+
+### 8.5 每游戏小时的 CPU 分配（LOH 级）
+
+| 位置 | 量级 |
+|---|---|
+| `AutodriveSession.CreateView` 产出 `AutodriveView` | 30×`float[n]` + `float[4][n]` + 6×`float[8n]` = **82n float ≈ 21.5 MB/小时** |
+| `BuildView` 临时数组 | `double[8n]`×2 + `double[n]`×4 ≈ **10.5 MB/小时** |
+| `ConfigureCellInputs` | `new AutodriveExternalInputs(columnCount)` ≈ **3.4 MB/小时** |
+| **合计** | **≈35 MB/小时，全在 worker 线程，全部进 LOH** |
+
+`ConfigureCellInputs`（`:596-666`、`:668-700+`）对未缓存的新设备指令会做 **65 612 次 `ColumnCenter` 全列扫描**。
+
+### 8.6 Tile cache 与帧对象
+
+`GlobalClimateTileCache`（564 行）是**每行星 tile 一份静态地理缓存**，不是滑动窗口：
+
+- 规模 ≈ **120–160 B/tile + 邻接 CSR**（`neighborOffsets[N+1]`、`neighborIds[edgeCount]`）。
+- 构建：两遍全图（`:133-166` 走 `LongLatOf/GetTileCenter/GetTileNeighbor*`；`:180-234` 算切向基），耗时写 `BuildMilliseconds` 并在首帧日志打印 `"tile cache (main thread) {x} s"`。
+- **没有按内容失效**：唯一刷新入口 `RefreshPollution` 每游戏日一次；换行星整份重建。
+- `OceanCurrentEast/North` 是**非 readonly**，会被**引擎后台线程**回写（`GpuAutodriveGlobalClimateEngine.cs:320-335`），主线程 overlay 的 fallback 路径会读 → **跨线程无同步读**。
+
+`GlobalAtmosphereFrame` 每帧 **新分配** 24×`byte[N]` + 3×`ushort[N]` + 5×`byte[8N]` + 1×`ushort[8N]` ≈ **86 B/tile**；`GlobalForecastRingBuffer(24)` 的 `TakeOrCreateFrame` **每次 new、不池化**，旧槽先置 null → 最坏常驻 **24 × 86 B/tile**。
+
+显示侧是三层：ring buffer（24 帧）→ `GlobalForecastReader`（`publishedFrame` / `previewFrame` 分离，`DisplayFrame => previewFrame ?? publishedFrame`）→ 存档时 `GlobalAtmosphereFrameSnapshot.FromFrame` 对 ~30 个数组深拷贝（主线程一次性 86 B/tile）。
+
+### 8.7 世界 overlay 渲染（23 个层，每渲染帧）
+
+`1.7/Patches/World_AtmosphereOverlays.xml` 向 `PlanetLayerDef[Surface]/worldDrawLayers` 追加 **23 个** layer；`WorldRenderer.DrawWorldLayers()` 每渲染帧对每个 `Visible` 层调 `Render()`。
+
+`AtmosphereWorldOverlayLayer`（1063 行，最大一块）：
+
+- **按 tileId 连续切块**：`RenderChunkCount=128`（全云 `AllCloudChunkCount=256`），每 chunk 区间 `TilesCount*i/ChunkCount .. TilesCount*(i+1)/ChunkCount`。
+- **几何只建一次**：`EnsureStaticGeometry → BuildStaticChunk`，每 chunk 一个 subMesh（顶点 >65 000 时切 `IndexFormat 1`）；全云模式每 tile **3 层壳**。只在 `Regenerate()`（层开关/模式变化）时重建。
+- **颜色是全量重传、没有脏区**：`ProcessGpuOverlayUpload` 在 `displayVersion`/选层/云模式/海冰版本变化时才继续，一旦继续就 `UploadPublishedColors` 全量 `for tileId < tileColors.Length` 重算 + 逐 chunk 重建 `mesh.colors32`。
+- `ColorForTile` 最多 4 级 fallback（Layer 数组 → `TrySampleDisplayTile` → 原版 tile 字段），每 tile 还查 `Current` 与 `TicksGame`；`BucketColor` 是 14/15 段线性扫描，Altitude 内含 2 次 `RGBToHSV`。
+- **7 个层被硬编码禁用**：UpperTemperature/UpperHumidity/UpperAirPressure/UpperWind/UpperStreamline/AllClouds/UpperClouds 在 `IsEnabled()` 里 `return false`。
+
+其它世界层：
+
+| 层 | 重建频率 | 成本 |
+|---|---|---|
+| `AtmosphereWorldFrontLayer` | **每游戏小时**（新 weather 实例） | 锋面/气旋/雷暴/龙卷/气轨全部 mesh |
+| `AtmosphereWorldIcebergLayer` | **每 6 游戏小时**（或版本变化） | 扫全图 tile |
+| `AtmosphereWorldSeaIceTerrainLayer` | 版本变化才重建 | **遍历全部 TilesCount + 每块 `GetTileVertices` 铺满**，无增量 |
+| `AtmosphereWorldLatLonGridLayer` | **每渲染帧** | 24 条经线（192 段）+ 11 实纬线 + 4 虚纬线，`List` 预分配 24000/36000/24000，然后 `DrawMesh` |
+
+### 8.8 本地 overlay / mist 渲染
+
+`MapComponentDraw` → `DrawActiveAtmosphereOverlays`，**每渲染帧**：
+
+- 8 个 `CellBoolDrawer`（水分/气压/风/氧/地温/体感…）统一 `Update()`；每 cell 跑 `GetCellBool`（`TryGetSample` + `ObstacleMask>0.5`）与 `GetCellExtraColor`。
+- **重建条件是 `SetDirty()`**；全文件 **11 处** `SetOverlayDrawersDirty()`，其中 `AMC:3095` 在**每个本地模拟步完成**时调用 → 下一帧 8 个 drawer **全部重铺整图 mesh**（`Size.x × Size.z`）。
+- `WaterMistSectionRenderer.Draw`：`dirty || viewRect 变化 || excludedTopology 变化 || GetRenderVersion 变化` 才 `RebuildMesh`，在 viewRect 内逐格双层循环，每次重建 `new int[7]`/`new List`。
+- `TemporalPatchMistRenderer.Draw`：**每帧 `new MaterialPropertyBlock()`** 再 `DrawMesh`（但默认补丁域死，该路径不触发）。
+- `managedGasRenderer.Draw(...)` 每帧执行（4 种气体都是 `VanillaGasLayer` → 空转）。
+
+### 8.9 世界侧主线程卡顿点
+
+| 点 | 影响 |
+|---|---|
+| `WarmUpForecast`（`:805-847`） | 最长 600 s 阻塞主线程 |
+| `AtmosphereFrameCacheLibrary.TryBuildStartCheckpoint` | 扫 `1.6/Atmospheres/*.aofc` 全部加载并按距离比较，随后 `InjectInto(..., 5 小时)` |
+| `ExposeData` | 86 B/tile 深拷贝 + `Weather.Serialize()` |
+| `AllowNextGameTick` | 未算完即**强制暂停游戏** |
+| `SyncSeaIceBiomes`（`:1274-1349`） | 每游戏日 + 当天真有冻/融时**遍历全部 TilesCount 改 `PrimaryBiome`**，连锁触发 biome 重算 |
+
+### 8.10 世界侧一刀切开关
+
+| 开关 | 效果 |
+|---|---|
+| `settings.weatherEngine = 1`（VanillaDerivation） | **最彻底的一刀**：`WorldComponentTick`/`WorldComponentUpdate` 直接 return，整个气候引擎与 23 个世界层不跑，overlay 走原版 fallback。**需重开游戏** |
+| `SimulationIntervalTicks` | 控制本地 `SetOverlayDrawersDirty` 频率（见 §4） |
+| 经纬网开关 | 省掉**每渲染帧**的网格重建 |
+| 天气系统开关 | 省掉每小时锋面 mesh 重建 |
+| 全云模式 | chunk 128→256、tile 3 壳、`tileColors`×3 → 成本三倍 |
+| 预报滑条 | 切 `previewFrame` → `++displayVersion` → **一次全量颜色重传** |
 
 ---
 
@@ -727,7 +842,8 @@ cursor >= count → next = gasCycleStartTick + interval
 
 | 项 | 状态 |
 |---|---|
-| 世界引擎（V2 WebGPU）的推进频率、GPU→CPU readback 频率与阻塞点 | **待补（§8）** |
+| V2 内部每小时实际触发多少次波场 solve / dynamics dispatch | 未确认（取决于 Perf81 内部步进） |
+| WebGPU 忙等自旋在真实机器上的毫秒数 | 未测 |
 | `TornadoGenesis.HourlyCheck` 内部成本 | 未读 |
 | `AtmosphereGasWorker.TickRareEffects` 各 Worker 实现 | 未读 |
 | `ApplyGasBatchResult`/`UpdateDensity` 的写入范围 | 未读 |
