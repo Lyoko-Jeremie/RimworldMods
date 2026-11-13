@@ -1,6 +1,6 @@
 # AO · ProxyHeat 接管与三模式热场设计
 
-> 状态：设计稿 **v2**，已按真实源码逐条核对修订；仍未实现代码。
+> 状态：设计稿 **v2**，已按真实源码逐条核对修订；**结论已被 `AO-ProxyHeat替代机制设计决策.md` 取代**——v2 的「接管并移除 AO 点源」（§5.11.3）已推翻，最终方案是点源保留 + 范围层共存。本文保留作为调研记录，其 §5 物理推导与 §6 温度语义仍有效。
 > 日期：2026-11-12（v1：2026-11-11）。
 > 依据：AO 1.7 源码（`f:\RimworldCodeIL\AtmosphereOverhaul\`，MVID `4E9F1EAE-1C1D-40E4-8CE7-79113DF84BA7`）、ProxyHeat 源码（`f:\RimworldCodeIL\ProxyHeat\`，MVID `7358A296-A2E2-46F8-A5D3-4C48DE897B1C`）、Frostpunk Heat Generator Tower Def（`294100/3545379519`）、VTE-ProxyHeatPatch 源码（`f:\RimworldCodeIL\VTE-ProxyHeatPatch\`）。
 > 配套文档：`AO源码全景阅读报告.md`、`AO-Frostpunk发电机分析.md`、`AO兼容层重构设计.md`、`AO-CCC与VTE重设计.md`。
