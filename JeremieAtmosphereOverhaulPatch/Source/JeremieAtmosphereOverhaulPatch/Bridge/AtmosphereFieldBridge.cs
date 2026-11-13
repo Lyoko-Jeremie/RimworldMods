@@ -21,6 +21,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private const string ComponentTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereMapComponent";
         private const string EngineTypeName = "AtmosphereOverhaul.Simulation.LocalAtmosphereEngine";
         private const string FieldTypeName = "AtmosphereOverhaul.Simulation.AtmosphereField";
+        private const string AirMoverTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereAirMoverSettings";
+        private const string AirMoverInterfaceName = "AtmosphereOverhaul.RimWorld.AtmosphereInterface";
 
         private static bool _resolved;
         private static bool _available;
@@ -39,6 +41,29 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static PropertyInfo _obstacleMaskProp;
         private static PropertyInfo _fieldReadProp;
 
+        private static Type _airMoverSettingsType;
+        private static MethodInfo _registerAirMover;
+        private static PropertyInfo _airMoverHandleIsValid;
+        private static FieldInfo[] _airMoverFields;
+        private static readonly string[] AirMoverFieldNames =
+        {
+            "CubicMetresPerTick",
+            "AirColumnHeightMetres",
+            "InletDirection",
+            "OutletDirection",
+            "MaxPressureRisePascals",
+            "ConditionExhaust",
+            "ExhaustSpeed",
+            "ExhaustTemperatureFloor",
+            "ExhaustPressureRatio",
+            "InletPressureRatio",
+            "ExhaustOxygenPercent",
+            "WaterKgPerTick",
+        };
+
+        private static bool _airMoverAvailable;
+        private static string _airMoverFailure;
+
         public static bool Available
         {
             get { Resolve(); return _available; }
@@ -47,6 +72,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static string Failure
         {
             get { Resolve(); return _failure; }
+        }
+
+        /// <summary>喷流通道是否可用（独立于空气/地暖）。</summary>
+        public static bool AirMoverAvailable
+        {
+            get { Resolve(); return _airMoverAvailable; }
+        }
+
+        public static string AirMoverFailure
+        {
+            get { Resolve(); return _airMoverFailure; }
         }
 
         /// <summary>解析 AO 的模拟场内部成员。可重复调用，只在首次真正解析。</summary>
@@ -87,6 +123,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     return false;
                 }
 
+                ResolveAirMover();
+
                 _available = true;
                 return true;
             }
@@ -94,6 +132,63 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 _failure = e.GetType().Name + ": " + e.Message;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 解析喷流通道需要的 AtmosphereInterface.RegisterAirMover。
+        /// 这是独立能力：失败只让「喷流模式」降级，不影响空气/地暖。
+        /// </summary>
+        private static void ResolveAirMover()
+        {
+            try
+            {
+                _airMoverSettingsType = AccessTools.TypeByName(AirMoverTypeName);
+                Type interfaceType = AccessTools.TypeByName(AirMoverInterfaceName);
+                if (_airMoverSettingsType == null || interfaceType == null)
+                {
+                    _airMoverFailure = "AO 喷流类型缺失";
+                    return;
+                }
+
+                _airMoverFields = new FieldInfo[AirMoverFieldNames.Length];
+                for (int i = 0; i < AirMoverFieldNames.Length; i++)
+                {
+                    _airMoverFields[i] = AccessTools.Field(_airMoverSettingsType, AirMoverFieldNames[i]);
+                    if (_airMoverFields[i] == null)
+                    {
+                        _airMoverFailure = "AO 喷流字段缺失: " + AirMoverFieldNames[i];
+                        _airMoverFields = null;
+                        return;
+                    }
+                }
+
+                _registerAirMover = AccessTools.Method(interfaceType, "RegisterAirMover", new[]
+                {
+                    typeof(Map), typeof(Thing), typeof(string), typeof(IntVec3), typeof(IntVec3),
+                    _airMoverSettingsType, typeof(float),
+                });
+                if (_registerAirMover == null)
+                {
+                    _airMoverFailure = "AtmosphereInterface.RegisterAirMover 未找到";
+                    _airMoverFields = null;
+                    return;
+                }
+
+                _airMoverHandleIsValid = AccessTools.Property(_registerAirMover.ReturnType, "IsValid");
+                if (_airMoverHandleIsValid == null)
+                {
+                    _airMoverFailure = "AtmosphereAirMoverHandle.IsValid 未找到";
+                    _airMoverFields = null;
+                    return;
+                }
+
+                _airMoverAvailable = true;
+            }
+            catch (Exception e)
+            {
+                _airMoverFailure = e.GetType().Name + ": " + e.Message;
+                _airMoverFields = null;
             }
         }
 
@@ -195,6 +290,77 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return null;
             }
             return _obstacleMaskProp.GetValue(engine) as float[];
+        }
+
+        /// <summary>
+        /// 喷流参数。字段顺序与 AO 的 <c>AtmosphereAirMoverSettings</c> 一一对应，
+        /// 由 <see cref="RegisterAirMover"/> 反射填进去。
+        /// 单位：CubicMetresPerTick 立方米/tick，方向为归一化 Vector2。
+        /// </summary>
+        public struct AirMoverParams
+        {
+            public float CubicMetresPerTick;
+            public float AirColumnHeightMetres;
+            public float InletDirectionX;
+            public float InletDirectionY;
+            public float OutletDirectionX;
+            public float OutletDirectionY;
+            public float MaxPressureRisePascals;
+            public bool ConditionExhaust;
+            public float ExhaustSpeed;
+            public float ExhaustTemperatureFloor;
+            public float ExhaustPressureRatio;
+            public float InletPressureRatio;
+            public float ExhaustOxygenPercent;
+            public float WaterKgPerTick;
+        }
+
+        /// <summary>
+        /// 注册（或刷新）一条喷流。AO 内部按 owner+key 去重并就地更新，
+        /// 因此可以每模拟周期无脑调用，不必自己维护 handle 生命周期。
+        /// 返回 AO 是否接受了这条喷流。
+        /// </summary>
+        public static bool RegisterAirMover(Map map, Thing owner, string key, IntVec3 inlet, IntVec3 outlet,
+                                           AirMoverParams p, float activeTicks)
+        {
+            Resolve();
+            if (!_airMoverAvailable || map == null || owner == null || _airMoverFields == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                object settings = Activator.CreateInstance(_airMoverSettingsType);
+                _airMoverFields[0].SetValue(settings, p.CubicMetresPerTick);
+                _airMoverFields[1].SetValue(settings, p.AirColumnHeightMetres);
+                _airMoverFields[2].SetValue(settings, new UnityEngine.Vector2(p.InletDirectionX, p.InletDirectionY));
+                _airMoverFields[3].SetValue(settings, new UnityEngine.Vector2(p.OutletDirectionX, p.OutletDirectionY));
+                _airMoverFields[4].SetValue(settings, p.MaxPressureRisePascals);
+                _airMoverFields[5].SetValue(settings, p.ConditionExhaust);
+                _airMoverFields[6].SetValue(settings, p.ExhaustSpeed);
+                _airMoverFields[7].SetValue(settings, p.ExhaustTemperatureFloor);
+                _airMoverFields[8].SetValue(settings, p.ExhaustPressureRatio);
+                _airMoverFields[9].SetValue(settings, p.InletPressureRatio);
+                _airMoverFields[10].SetValue(settings, p.ExhaustOxygenPercent);
+                _airMoverFields[11].SetValue(settings, p.WaterKgPerTick);
+
+                object handle = _registerAirMover.Invoke(null, new object[]
+                {
+                    map, owner, key, inlet, outlet, settings, activeTicks,
+                });
+                if (handle == null)
+                {
+                    return false;
+                }
+                return (bool)_airMoverHandleIsValid.GetValue(handle);
+            }
+            catch (Exception e)
+            {
+                _airMoverFailure = e.GetType().Name + ": " + e.Message;
+                _airMoverAvailable = false;
+                return false;
+            }
         }
     }
 }

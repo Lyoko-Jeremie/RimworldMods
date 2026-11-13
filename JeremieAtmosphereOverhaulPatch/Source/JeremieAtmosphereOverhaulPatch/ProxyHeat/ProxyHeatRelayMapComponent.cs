@@ -33,10 +33,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
 
         private const int RingCellMinimum = 4;
 
-        /// <summary>喷流模式的额外倍率。喷流是「定向强注」，比空气模式更猛。</summary>
-        private const float JetMultiplier = 2f;
+        /// <summary>喷流气柱高度（米）。参考 AO 自己的 CompPairedJet 默认值 5。</summary>
+        private const float JetColumnHeight = 5f;
 
-        private const int JetCells = 3;
+        /// <summary>喷流注册的有效期（tick）。比模拟周期大得多，避免两次注入间失效。</summary>
+        private const float JetActiveTicks = 60f;
 
         private readonly Dictionary<object, ProxyHeatSourceState> _states =
             new Dictionary<object, ProxyHeatSourceState>();
@@ -60,6 +61,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private float[] _floorAir;
         private int[] _stampAir;
         private bool[] _coolAir;
+        /// <summary>该格上命中空气通道的最强「℃/秒」设置，逐建筑强度用。</summary>
+        private float[] _strengthAir;
         private readonly List<int> _touchedAir = new List<int>();
 
         private float[] _sumSoil;
@@ -69,6 +72,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private float[] _floorSoil;
         private int[] _stampSoil;
         private bool[] _coolSoil;
+        /// <summary>该格上命中地暖通道的最强「℃/秒」设置。</summary>
+        private float[] _strengthSoil;
         private readonly List<int> _touchedSoil = new List<int>();
 
         private readonly List<object> _deadKeys = new List<object>();
@@ -89,6 +94,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private int _lastDiagTick;
         private int _toggleCalls;
 
+        /// <summary>
+        /// 逐建筑的参数覆盖。只存「玩家显式调过」的建筑，未列出 = 用设置页的默认值。
+        /// 三条 List 按下标对齐（建筑 / 强度 ℃每秒 / 喷流速度 m每秒），
+        /// <see cref="_tuningCache"/> 存「建筑 → 下标」。
+        /// </summary>
+        private List<Thing> _tunedThings = new List<Thing>();
+        private List<float> _tunedStrength = new List<float>();
+        private List<float> _tunedJetSpeed = new List<float>();
+        private readonly Dictionary<Thing, int> _tuningCache = new Dictionary<Thing, int>();
+
         private int _stampCounter;
         private int _size;
         private int _width;
@@ -107,6 +122,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             Scribe_Collections.Look(ref _indoorOn, "japProxyHeatIndoors", LookMode.Reference);
             Scribe_Collections.Look(ref _modeThings, "japProxyHeatModeThings", LookMode.Reference);
             Scribe_Collections.Look(ref _modeMasks, "japProxyHeatModeMasks", LookMode.Value);
+            Scribe_Collections.Look(ref _tunedThings, "japProxyHeatTunedThings", LookMode.Reference);
+            Scribe_Collections.Look(ref _tunedStrength, "japProxyHeatTunedStrength", LookMode.Value);
+            Scribe_Collections.Look(ref _tunedJetSpeed, "japProxyHeatTunedJetSpeed", LookMode.Value);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (_indoorOn == null)
@@ -121,7 +139,20 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     _modeMasks = new List<int>();
                 }
+                if (_tunedThings == null)
+                {
+                    _tunedThings = new List<Thing>();
+                }
+                if (_tunedStrength == null)
+                {
+                    _tunedStrength = new List<float>();
+                }
+                if (_tunedJetSpeed == null)
+                {
+                    _tunedJetSpeed = new List<float>();
+                }
                 RebuildModeCache();
+                RebuildTuningCache();
             }
         }
 
@@ -139,6 +170,133 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
                 // 缓存的是 _modeMasks 的下标，不是掩码本身；掩码可能随后被改写。
                 _modeCache[thing] = i;
+            }
+        }
+
+        /// <summary>读档后重建逐建筑参数索引。三条列表可能不等长，按最短的对齐。</summary>
+        private void RebuildTuningCache()
+        {
+            _tuningCache.Clear();
+            int count = _tunedThings.Count;
+            if (_tunedStrength.Count < count)
+            {
+                count = _tunedStrength.Count;
+            }
+            if (_tunedJetSpeed.Count < count)
+            {
+                count = _tunedJetSpeed.Count;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                Thing thing = _tunedThings[i];
+                if (thing == null || _tuningCache.ContainsKey(thing))
+                {
+                    continue;
+                }
+                _tuningCache[thing] = i;
+            }
+        }
+
+        // ------------------------------------------------------------ 逐建筑参数
+
+        /// <summary>取某建筑的范围强度（℃/秒）。没有显式记录时用设置页默认值。</summary>
+        public float GetStrength(Thing parent)
+        {
+            int index;
+            if (parent != null && _tuningCache.TryGetValue(parent, out index)
+                && index >= 0 && index < _tunedStrength.Count)
+            {
+                return _tunedStrength[index];
+            }
+            AOPatchSettings settings = AOPatchMod.Settings;
+            return settings != null ? settings.RangeStrengthCelsiusPerSecond : 8f;
+        }
+
+        public void SetStrength(Thing parent, float value)
+        {
+            int index = EnsureTuningEntry(parent);
+            if (index >= 0)
+            {
+                _tunedStrength[index] = value;
+            }
+        }
+
+        /// <summary>取某建筑的喷流速度（米/秒）。没有显式记录时用设置页默认值。</summary>
+        public float GetJetSpeed(Thing parent)
+        {
+            int index;
+            if (parent != null && _tuningCache.TryGetValue(parent, out index)
+                && index >= 0 && index < _tunedJetSpeed.Count)
+            {
+                return _tunedJetSpeed[index];
+            }
+            AOPatchSettings settings = AOPatchMod.Settings;
+            return settings != null ? settings.JetSpeedMetresPerSecond : 60f;
+        }
+
+        public void SetJetSpeed(Thing parent, float value)
+        {
+            int index = EnsureTuningEntry(parent);
+            if (index >= 0)
+            {
+                _tunedJetSpeed[index] = value;
+            }
+        }
+
+        /// <summary>确保某建筑在三条调参列表里有一行，返回其下标。</summary>
+        private int EnsureTuningEntry(Thing parent)
+        {
+            if (parent == null)
+            {
+                return -1;
+            }
+            int index;
+            if (_tuningCache.TryGetValue(parent, out index))
+            {
+                if (index >= 0 && index < _tunedStrength.Count && index < _tunedJetSpeed.Count)
+                {
+                    return index;
+                }
+                // 缓存与列表不同步（极端情况下被裁剪过），重建后再试一次。
+                RebuildTuningCache();
+                if (_tuningCache.TryGetValue(parent, out index)
+                    && index >= 0 && index < _tunedStrength.Count && index < _tunedJetSpeed.Count)
+                {
+                    return index;
+                }
+            }
+
+            _tunedThings.Add(parent);
+            _tunedStrength.Add(GetStrength(parent));
+            _tunedJetSpeed.Add(GetJetSpeed(parent));
+            index = _tunedThings.Count - 1;
+            _tuningCache[parent] = index;
+            return index;
+        }
+
+        /// <summary>清理已拆除建筑的调参行。</summary>
+        private void TrimDeadTuningEntries()
+        {
+            int i = _tunedThings.Count - 1;
+            bool removed = false;
+            for (; i >= 0; i--)
+            {
+                Thing thing = _tunedThings[i];
+                if (thing == null || thing.Destroyed)
+                {
+                    _tunedThings.RemoveAt(i);
+                    _tunedStrength.RemoveAt(i);
+                    _tunedJetSpeed.RemoveAt(i);
+                    removed = true;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if (removed)
+            {
+                RebuildTuningCache();
             }
         }
 
@@ -277,6 +435,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             HashSet<IntVec3> cells = ProxyHeatBridge.GetAffectedCells(comp);
             state.Cells = cells;
             state.RingCells.Clear();
+            state.Jets.Clear();
             if (cells == null || cells.Count == 0 || state.Parent == null)
             {
                 return;
@@ -310,6 +469,120 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     continue;
                 }
                 state.RingCells.Add(cell);
+            }
+
+            BuildJetPorts(state, radius, origin, occupied);
+        }
+
+        /// <summary>
+        /// 由环形采样格构造喷流出口集：按与建筑中心的极角分桶，每桶保留最外侧的格，
+        /// 方向取该格相对中心的真实单位向量。
+        ///
+        /// 桶数随半径自适应（约每 4 格弧长一个桶），下限 8、上限 24。
+        /// 这样半径 3 的火堆有 8 条，半径 60 的塔也只要 24 条，不会注册上千个 AirMover。
+        /// </summary>
+        private static void BuildJetPorts(ProxyHeatSourceState state, float radius, IntVec3 origin, CellRect occupied)
+        {
+            state.Jets.Clear();
+            int count = state.RingCells.Count;
+            if (count == 0 || radius <= 0f)
+            {
+                return;
+            }
+
+            int buckets = Mathf.CeilToInt(6.2831855f * radius / 4f);
+            if (buckets < 8)
+            {
+                buckets = 8;
+            }
+            if (buckets > 24)
+            {
+                buckets = 24;
+            }
+
+            // 每桶记录「距中心最远」的格；用平方距离比较，免开方。
+            int[] bestIndex = new int[buckets];
+            int[] bestDistSq = new int[buckets];
+            for (int i = 0; i < buckets; i++)
+            {
+                bestIndex[i] = -1;
+                bestDistSq[i] = -1;
+            }
+
+            float twoPi = 6.2831855f;
+            float pi = 3.1415927f;
+            for (int i = 0; i < count; i++)
+            {
+                IntVec3 cell = state.RingCells[i];
+                int dx = cell.x - origin.x;
+                int dz = cell.z - origin.z;
+                int distSq = dx * dx + dz * dz;
+                if (distSq <= 0)
+                {
+                    continue;
+                }
+                float angle = (float)System.Math.Atan2(dz, dx);
+                int bucket = (int)((angle + pi) / twoPi * buckets);
+                if (bucket < 0)
+                {
+                    bucket = 0;
+                }
+                if (bucket >= buckets)
+                {
+                    bucket = buckets - 1;
+                }
+                if (distSq > bestDistSq[bucket])
+                {
+                    bestDistSq[bucket] = distSq;
+                    bestIndex[bucket] = i;
+                }
+            }
+
+            for (int b = 0; b < buckets; b++)
+            {
+                int i = bestIndex[b];
+                if (i < 0)
+                {
+                    continue;
+                }
+                IntVec3 cell = state.RingCells[i];
+                float vx = cell.x - origin.x;
+                float vz = cell.z - origin.z;
+                float len = Mathf.Sqrt(vx * vx + vz * vz);
+                if (len <= 0.0001f)
+                {
+                    continue;
+                }
+                vx /= len;
+                vz /= len;
+
+                // 入口贴在出口格内侧一格，出口再往外两格；都用四舍五入后的整数方向，避免浮点抖动。
+                IntVec3 step = new IntVec3(
+                    Mathf.RoundToInt(vx),
+                    0,
+                    Mathf.RoundToInt(vz));
+                if (step.x == 0 && step.z == 0)
+                {
+                    continue;
+                }
+                IntVec3 inlet = cell - step;
+                IntVec3 outlet = cell + step + step;
+                if (!inlet.InBounds(state.Parent.Map) || !outlet.InBounds(state.Parent.Map))
+                {
+                    continue;
+                }
+                if (occupied.Contains(inlet))
+                {
+                    continue;
+                }
+
+                state.Jets.Add(new JetPort
+                {
+                    Inlet = inlet,
+                    Outlet = outlet,
+                    DirX = vx,
+                    DirY = vz,
+                });
             }
         }
 
@@ -509,12 +782,6 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 CleanupStates();
             }
 
-            float ratePerTick = settings.RangeStrengthCelsiusPerSecond / 60f;
-            if (ratePerTick <= 0f)
-            {
-                return;
-            }
-
             _stampCounter++;
             if (_stampCounter == int.MaxValue)
             {
@@ -578,6 +845,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 modeOnCount++;
 
                 bool indoors = _indoorOn.Contains(parent);
+                float strength = GetStrength(parent);
                 foreach (IntVec3 cell in state.Cells)
                 {
                     if (!indoors && !cell.UsesOutdoorTemperature(map))
@@ -598,13 +866,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     {
                         Accumulate(
                             _sumAir, _maxAir, _baselineAir, _capAir, _floorAir, _coolAir,
-                            _stampAir, _touchedAir, index, stamp, state);
+                            _stampAir, _strengthAir, _touchedAir, index, stamp, state, strength);
                     }
                     if (useSoil)
                     {
                         Accumulate(
                             _sumSoil, _maxSoil, _baselineSoil, _capSoil, _floorSoil, _coolSoil,
-                            _stampSoil, _touchedSoil, index, stamp, state);
+                            _stampSoil, _strengthSoil, _touchedSoil, index, stamp, state, strength);
                     }
                 }
             }
@@ -616,26 +884,27 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             float maxCool = settings.MaxCoolPerTick;
 
             float airWritten = WriteChannel(
-                _sumAir, _maxAir, _baselineAir, _capAir, _floorAir, _coolAir, _touchedAir,
-                pending, temperature, outdoor, stacking, cooling, maxCool, ratePerTick, dt);
+                _sumAir, _maxAir, _baselineAir, _capAir, _floorAir, _coolAir, _strengthAir, _touchedAir,
+                pending, temperature, outdoor, stacking, cooling, maxCool, dt);
 
             float soilWritten = 0f;
             if (soilAvailable)
             {
                 soilWritten = WriteChannel(
-                    _sumSoil, _maxSoil, _baselineSoil, _capSoil, _floorSoil, _coolSoil, _touchedSoil,
-                    ground, temperature, outdoor, stacking, cooling, maxCool, ratePerTick, dt);
+                    _sumSoil, _maxSoil, _baselineSoil, _capSoil, _floorSoil, _coolSoil, _strengthSoil,
+                    _touchedSoil, ground, temperature, outdoor, stacking, cooling, maxCool, dt);
             }
 
-            // ---- 喷流：逐建筑判断，沿朝向做短距离定向注入
-            bool jet = settings.JetModeEnabled;
+            // ---- 喷流：逐建筑判断，向建筑四周的八个径向注册 AO 原生 AirMover
+            bool jet = settings.JetModeEnabled && AtmosphereFieldBridge.AirMoverAvailable;
             if (jet)
             {
-                InjectJets(_knownSources, temperature, pending, width, size, ratePerTick, dt, outdoor);
+                InjectJets(_knownSources, outdoor);
             }
 
             TrimDeadIndoorEntries();
             TrimDeadModeEntries();
+            TrimDeadTuningEntries();
 
             if (_injectCalls <= 5 || now - _lastDiagTick > 600)
             {
@@ -656,7 +925,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// <summary>把一个源的温差累加到某通道的格缓冲里。</summary>
         private static void Accumulate(
             float[] sum, float[] max, float[] baselineMax, float[] cap, float[] floor, bool[] cool,
-            int[] stampArr, List<int> touched, int index, int stamp, ProxyHeatSourceState state)
+            int[] stampArr, float[] strengthArr, List<int> touched, int index, int stamp,
+            ProxyHeatSourceState state, float strength)
         {
             if (stampArr[index] != stamp)
             {
@@ -668,6 +938,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 cap[index] = float.NaN;
                 floor[index] = float.NaN;
                 cool[index] = false;
+                strengthArr[index] = 0f;
             }
 
             sum[index] += state.Outcome;
@@ -678,6 +949,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             if (state.Baseline > baselineMax[index])
             {
                 baselineMax[index] = state.Baseline;
+            }
+            // 同一格被多个源覆盖时，用最强的那个源的速率，避免「弱源拖慢强源」。
+            if (strength > strengthArr[index])
+            {
+                strengthArr[index] = strength;
             }
             if (state.Cap.HasValue)
             {
@@ -704,8 +980,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// <summary>把某通道的格缓冲折算成增量写进 AO 数组，返回本通道写入总量。</summary>
         private static float WriteChannel(
             float[] sum, float[] max, float[] baselineMax, float[] cap, float[] floor, bool[] cool,
-            List<int> touched, float[] destination, float[] temperature,
-            float outdoor, bool stacking, bool cooling, float maxCool, float ratePerTick, int dt)
+            float[] strengthArr, List<int> touched, float[] destination, float[] temperature,
+            float outdoor, bool stacking, bool cooling, float maxCool, int dt)
         {
             float written = 0f;
             for (int i = 0; i < touched.Count; i++)
@@ -729,6 +1005,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     target = floor[index];
                 }
 
+                // 逐建筑强度：该格取命中它的最强源的 ℃/秒，再换算成每 tick。
+                float ratePerTick = strengthArr[index] / 60f;
                 float diff = target - current;
                 float q;
                 if (diff >= 0f)
@@ -799,16 +1077,29 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             return sb.ToString();
         }
 
-        private void InjectJets(
-            System.Collections.IList comps,
-            float[] temperature,
-            float[] pending,
-            int width,
-            int size,
-            float ratePerTick,
-            int dt,
-            float outdoor)
+        /// <summary>
+        /// 喷流通道：沿建筑外缘的 8 个径向，各注册一条 AO 原生 AirMover。
+        ///
+        /// 方向取「从建筑中心指向外侧」的固定八向，不跟建筑朝向走 —— 喷流是
+        /// 热源向四周散开，不是定向吹风。风的强度、压升、排气温度全部交给
+        /// AO 的模拟，我们只提供入口/出口格和 <c>ExhaustTemperatureFloor</c>。
+        ///
+        /// AO 的 <c>RegisterAirMover</c> 按 owner+key 就地更新，所以每个模拟周期
+        /// 重复调用是安全的；不注册时旧记录会在 <paramref name="JetActiveTicks"/>
+        /// 后自动过期，无需显式注销。
+        /// </summary>
+        private void InjectJets(System.Collections.IList comps, float outdoor)
         {
+            if (!AtmosphereFieldBridge.AirMoverAvailable)
+            {
+                return;
+            }
+            AOPatchSettings settings = AOPatchMod.Settings;
+            if (settings == null)
+            {
+                return;
+            }
+
             for (int i = 0; i < comps.Count; i++)
             {
                 object comp = comps[i];
@@ -840,31 +1131,45 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     continue;
                 }
 
-                IntVec3 facing = parent.Rotation.FacingCell;
-                IntVec3 origin = parent.Position;
-                for (int step = 1; step <= JetCells; step++)
+                float speed = GetJetSpeed(parent);
+                if (speed <= 0f)
                 {
-                    IntVec3 cell = origin + new IntVec3(facing.x * step, 0, facing.z * step);
-                    if (!cell.InBounds(map))
-                    {
-                        break;
-                    }
-                    int index = cell.z * width + cell.x;
-                    if (index < 0 || index >= size)
-                    {
-                        break;
-                    }
-                    float current = temperature[index];
-                    float diff = target - current;
-                    if (diff <= 0f)
+                    continue;
+                }
+
+                // 出口集在 RecalculateAffectedCells 的 Postfix 里按极角分桶建好，
+                // 这里只做注册，不再算几何。
+                List<JetPort> jets = state.Jets;
+                for (int d = 0; d < jets.Count; d++)
+                {
+                    JetPort port = jets[d];
+                    if (!port.Inlet.InBounds(map) || !port.Outlet.InBounds(map))
                     {
                         continue;
                     }
-                    if (diff > Deadband)
+
+                    var p = new AtmosphereFieldBridge.AirMoverParams
                     {
-                        diff = Deadband;
-                    }
-                    pending[index] += diff * ratePerTick * dt * JetMultiplier;
+                        CubicMetresPerTick = speed / 60f,
+                        AirColumnHeightMetres = JetColumnHeight,
+                        InletDirectionX = -port.DirX,
+                        InletDirectionY = -port.DirY,
+                        OutletDirectionX = port.DirX,
+                        OutletDirectionY = port.DirY,
+                        MaxPressureRisePascals = 1000000f,
+                        ConditionExhaust = true,
+                        ExhaustSpeed = speed,
+                        ExhaustTemperatureFloor = target,
+                        ExhaustPressureRatio = 1.5f,
+                        InletPressureRatio = 0.5f,
+                        ExhaustOxygenPercent = 21f,
+                        WaterKgPerTick = 0f,
+                    };
+
+                    AtmosphereFieldBridge.RegisterAirMover(
+                        map, parent,
+                        "aopjet:" + parent.thingIDNumber + ":" + d,
+                        port.Inlet, port.Outlet, p, JetActiveTicks);
                 }
             }
         }
@@ -1071,6 +1376,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             _floorAir = new float[size];
             _stampAir = new int[size];
             _coolAir = new bool[size];
+            _strengthAir = new float[size];
             _touchedAir.Clear();
 
             _sumSoil = new float[size];
@@ -1080,6 +1386,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             _floorSoil = new float[size];
             _stampSoil = new int[size];
             _coolSoil = new bool[size];
+            _strengthSoil = new float[size];
             _touchedSoil.Clear();
 
             _stampCounter = 0;

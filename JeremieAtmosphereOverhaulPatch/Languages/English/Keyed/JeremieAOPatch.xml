@@ -16,7 +16,12 @@
     <AOPatch_ProxyHeatGroundMode>Default: ground mode</AOPatch_ProxyHeatGroundMode>
     <AOPatch_ProxyHeatGroundModeDesc>Default for newly placed buildings. Inject into the ground temperature field; slower but reaches through roofs, no effect on vacuum maps. Overridable per building.</AOPatch_ProxyHeatGroundModeDesc>
     <AOPatch_ProxyHeatJetMode>Default: jet mode</AOPatch_ProxyHeatJetMode>
-    <AOPatch_ProxyHeatJetModeDesc>Default for newly placed buildings. Directional injection along the building's facing. Overridable per building.</AOPatch_ProxyHeatJetModeDesc>
+    <AOPatch_ProxyHeatJetModeDesc>Default for newly placed buildings. Blows hot air outwards along eight radials (AO native wind field). Overridable per building.</AOPatch_ProxyHeatJetModeDesc>
+    <AOPatch_ProxyHeatJetSpeed>Jet speed: {0} m/s</AOPatch_ProxyHeatJetSpeed>
+    <AOPatch_ProxyHeatStrengthShort>Strength: {0} °C/s</AOPatch_ProxyHeatStrengthShort>
+    <AOPatch_ProxyHeatStrengthDesc>Click to adjust how fast this device brings its range to the target temperature.</AOPatch_ProxyHeatStrengthDesc>
+    <AOPatch_ProxyHeatJetSpeedShort>Jet speed: {0} m/s</AOPatch_ProxyHeatJetSpeedShort>
+    <AOPatch_ProxyHeatJetSpeedDesc>Click to adjust this device's jet outlet speed.</AOPatch_ProxyHeatJetSpeedDesc>
     <AOPatch_ProxyHeatAir>Air mode</AOPatch_ProxyHeatAir>
     <AOPatch_ProxyHeatAirDesc>This building's range delta is injected into the air temperature field.</AOPatch_ProxyHeatAirDesc>
     <AOPatch_ProxyHeatSoil>Ground mode</AOPatch_ProxyHeatSoil>

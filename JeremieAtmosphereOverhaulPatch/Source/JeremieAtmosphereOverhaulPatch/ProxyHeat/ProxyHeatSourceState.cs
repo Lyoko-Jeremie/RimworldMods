@@ -3,6 +3,15 @@ using Verse;
 
 namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
 {
+    /// <summary>一条喷流的入口/出口格与方向（已归一化）。</summary>
+    public struct JetPort
+    {
+        public IntVec3 Inlet;
+        public IntVec3 Outlet;
+        public float DirX;
+        public float DirY;
+    }
+
     /// <summary>
     /// 单个 ProxyHeat 源的转译状态。
     ///
@@ -27,6 +36,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// 只在 <c>RecalculateAffectedCells</c> 之后重建。
         /// </summary>
         public List<IntVec3> RingCells = new List<IntVec3>();
+
+        /// <summary>
+        /// 喷流出口集：由 <see cref="RingCells"/> 按「与建筑中心的极角」分桶，
+        /// 每桶取最外侧的格，方向取该格真实的方向向量。
+        ///
+        /// 不用固定八向：固定方向在半径大时会留下明显的空档，而按真实格取角度
+        /// 能让每一缕气流都精确指向它对应的那片区域。桶数随半径自适应，
+        /// 上限 24，避免大半径源注册上千条 AirMover。
+        /// </summary>
+        public List<JetPort> Jets = new List<JetPort>();
 
         /// <summary>本周期重采样得到的环形基线温度（℃）。</summary>
         public float Baseline;

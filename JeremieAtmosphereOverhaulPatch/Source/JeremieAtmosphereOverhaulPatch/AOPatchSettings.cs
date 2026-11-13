@@ -23,11 +23,19 @@ namespace Jeremie.AtmosphereOverhaulPatch
         /// <summary>地暖模式：把范围温差注入 AO 的地温场。</summary>
         public bool GroundModeEnabled;
 
-        /// <summary>喷流模式：沿建筑朝向做定向注入。</summary>
+        /// <summary>喷流模式：向建筑四周八个径向注册 AO 原生 AirMover。</summary>
         public bool JetModeEnabled;
 
-        /// <summary>强度（℃/秒）。默认 1，即每 60 tick 补 1℃。</summary>
-        public float RangeStrengthCelsiusPerSecond = 1f;
+        /// <summary>
+        /// 范围强度（℃/秒）。默认 8，即每 60 tick 补 8℃（每 tick 0.133℃）。
+        /// 闭环会在接近目标温度时自动减速，所以调大不会冲过头。
+        /// 注意 key 用 <c>rangeStrength</c>：旧版的 1℃/秒存在另一个 key 下，
+        /// 换 key 是为了让老存档也能拿到新的默认值。
+        /// </summary>
+        public float RangeStrengthCelsiusPerSecond = 8f;
+
+        /// <summary>喷流出风速度（米/秒）。AO 自己的喷流 default 是 halfSpeed 30 / maxSpeed 90。</summary>
+        public float JetSpeedMetresPerSecond = 60f;
 
         /// <summary>多源重叠时是否累加温差。关闭则取最大值。</summary>
         public bool AllowTemperatureStacking = true;
@@ -56,7 +64,8 @@ namespace Jeremie.AtmosphereOverhaulPatch
             Scribe_Values.Look(ref AirModeEnabled, "airModeEnabled", true);
             Scribe_Values.Look(ref GroundModeEnabled, "groundModeEnabled", false);
             Scribe_Values.Look(ref JetModeEnabled, "jetModeEnabled", false);
-            Scribe_Values.Look(ref RangeStrengthCelsiusPerSecond, "rangeStrengthCelsiusPerSecond", 1f);
+            Scribe_Values.Look(ref RangeStrengthCelsiusPerSecond, "rangeStrength", 8f);
+            Scribe_Values.Look(ref JetSpeedMetresPerSecond, "jetSpeedMetresPerSecond", 60f);
             Scribe_Values.Look(ref AllowTemperatureStacking, "allowTemperatureStacking", true);
             Scribe_Values.Look(ref AllowActiveCooling, "allowActiveCooling", false);
             Scribe_Values.Look(ref MaxCoolPerTick, "maxCoolPerTick", 0.3f);

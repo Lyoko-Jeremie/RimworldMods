@@ -58,7 +58,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
                 list.Gap();
 
                 list.Label("AOPatch_ProxyHeatStrength".Translate(Settings.RangeStrengthCelsiusPerSecond.ToString("F1")));
-                float strength = list.Slider(Settings.RangeStrengthCelsiusPerSecond, 0.1f, 10f);
+                float strength = list.Slider(Settings.RangeStrengthCelsiusPerSecond, 0.5f, 30f);
                 Settings.RangeStrengthCelsiusPerSecond = Mathf.Round(strength * 10f) / 10f;
 
                 list.CheckboxLabeled(
@@ -75,6 +75,13 @@ namespace Jeremie.AtmosphereOverhaulPatch
                     "AOPatch_ProxyHeatJetMode".Translate(),
                     ref Settings.JetModeEnabled,
                     "AOPatch_ProxyHeatJetModeDesc".Translate());
+
+                if (Settings.JetModeEnabled)
+                {
+                    list.Label("AOPatch_ProxyHeatJetSpeed".Translate(Settings.JetSpeedMetresPerSecond.ToString("F0")));
+                    float jetSpeed = list.Slider(Settings.JetSpeedMetresPerSecond, 10f, 200f);
+                    Settings.JetSpeedMetresPerSecond = Mathf.Round(jetSpeed);
+                }
 
                 list.GapLine();
 

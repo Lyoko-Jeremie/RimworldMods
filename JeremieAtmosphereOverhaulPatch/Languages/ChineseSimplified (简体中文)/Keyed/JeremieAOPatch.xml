@@ -16,7 +16,12 @@
     <AOPatch_ProxyHeatGroundMode>默认启用地暖模式</AOPatch_ProxyHeatGroundMode>
     <AOPatch_ProxyHeatGroundModeDesc>新放置建筑的默认值。把范围温差注入地温场，升温慢但能穿透屋顶，真空地图无效。可逐建筑覆盖。</AOPatch_ProxyHeatGroundModeDesc>
     <AOPatch_ProxyHeatJetMode>默认启用喷流模式</AOPatch_ProxyHeatJetMode>
-    <AOPatch_ProxyHeatJetModeDesc>新放置建筑的默认值。沿建筑朝向做定向强注，适合烟囱、热风出口。可逐建筑覆盖。</AOPatch_ProxyHeatJetModeDesc>
+    <AOPatch_ProxyHeatJetModeDesc>新放置建筑的默认值。向建筑四周的八个径向吹出热气流（AO 原生风场），可逐建筑覆盖。</AOPatch_ProxyHeatJetModeDesc>
+    <AOPatch_ProxyHeatJetSpeed>出风速度：{0} m/s</AOPatch_ProxyHeatJetSpeed>
+    <AOPatch_ProxyHeatStrengthShort>强度：{0} ℃/s</AOPatch_ProxyHeatStrengthShort>
+    <AOPatch_ProxyHeatStrengthDesc>点击调整这台设备把范围拉到目标温度的速度。</AOPatch_ProxyHeatStrengthDesc>
+    <AOPatch_ProxyHeatJetSpeedShort>风速：{0} m/s</AOPatch_ProxyHeatJetSpeedShort>
+    <AOPatch_ProxyHeatJetSpeedDesc>点击调整这台设备的喷流出风速度。</AOPatch_ProxyHeatJetSpeedDesc>
     <AOPatch_ProxyHeatAir>空气模式</AOPatch_ProxyHeatAir>
     <AOPatch_ProxyHeatAirDesc>开启后，这台设备的范围温差会注入 AO 的气温场。</AOPatch_ProxyHeatAirDesc>
     <AOPatch_ProxyHeatSoil>地暖模式</AOPatch_ProxyHeatSoil>

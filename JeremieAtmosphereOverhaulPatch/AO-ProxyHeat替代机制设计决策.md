@@ -282,7 +282,7 @@ Postfix 执行时 `engineLock` 已释放（`:1816`），但 `Task.Factory.StartN
 T      = 该格当前 AO 温度（Temperature.Read[index]，数组直读）
 target = 见 §5
 dead   = 1.0℃ 死区
-rate   = 设置值（℃/秒）/ 60，默认 1/60 ℃/tick
+rate   = 该格上「最强命中源」的逐建筑强度（℃/秒）/ 60
 q      = Clamp01((target - T) / dead) * rate
 ```
 
@@ -290,7 +290,11 @@ q      = Clamp01((target - T) / dead) * rate
 
 ### 7.2 默认强度
 
-`rate = 1℃/秒`（`1/60 ℃/tick`）。玩家在 mod 设置里可调，建议范围 `0.1 ~ 10 ℃/秒`。
+默认 `8℃/秒`（`8/60 ℃/tick`）。设置页可调 `0.5 ~ 30 ℃/秒`，并且**每栋建筑可以在自己的 gizmo 里单独覆盖**（见 §9.1）。
+
+关键：同一格可能被多个源覆盖，取**命中它的最强源的强度**，而不是全局平均——弱源不该拖慢强源。实现上 `Accumulate` 把 `strength` 取 max 存进 `_strengthAir/_strengthSoil`，`WriteChannel` 逐格读它算 `q`。
+
+旧版 1℃/秒 的 key 是 `rangeStrengthCelsiusPerSecond`，改成 `rangeStrength` 是为了让老存档也能拿到新的默认值（Scribe 缺 key 时用默认参数）。
 
 ### 7.3 dt 积分
 
@@ -328,13 +332,59 @@ if (dt <= 0) return;          // 同一周期重复调用时去重
 
 ### 8.3 喷流模式（默认关）
 
-v1 实现为**定向空气注入**：沿 `parent.Rotation.FacingCell` 取 1~3 格，把这些格的目标温差乘 `JetMultiplier = 2` 写进 `pending`。
+v3 实现为**按极角自适应的 AO 原生 AirMover**。
 
-为什么不用 `AtmosphereInterface.RegisterAirMover`：`AtmosphereAirMoverSettings` 是 11 字段的结构体，全字段反射构造 + 每源一个 handle 的注册/更新/注销生命周期成本远高于收益；而它相对定向注入多出来的只有一个 `ExhaustTemperatureFloor`（下限语义）。v1 用 `JetMultiplier` 近似这个「比空气模式更猛」的观感。
+为什么不跟建筑朝向：喷流是「热源向四周散开」，不是定向吹风。用户 m01313 明确「喷流的方向应该是径向始终指向远离建筑的方向」。
 
-如果实测发现喷流必须要有「喷出温度 = max(环境, 入口邻格均温, floor)」的精确语义，再升级到 `RegisterAirMover`。
+为什么不用固定八向（v2）：固定方向在半径大时会留下明显空档——半径 26 的塔，相邻两条气流之间隔了 22.5°，中间一大片照不到。用户 m01470 提出「直接通过各个格子与建筑中心的矢量角度」，v3 采纳。
 
-`inlet` = 建筑格，`outlet` = 沿朝向的 1~3 格。注入时同样遵守「只正不制」。
+构建方式（在 `RecalculateAffectedCells` 的 Postfix 里做，只在照射区重建时算一次）：
+
+```
+for cell in RingCells:                       // 已按 [0.75r, r] 筛过的外环格
+    dx = cell.x - center.x; dz = cell.z - center.z
+    angle = atan2(dz, dx)
+    bucket = floor((angle + π) / 2π * buckets)
+    每桶只保留 distSq 最大的那个格           // 取最外侧
+之后对每桶选中的格：
+    dir = normalize(dx, dz)                   // 真实方向，不是固定 45° 的倍数
+    step = round(dir)                         // 取整，避免浮点抖动
+    inlet  = cell - step                      // 贴在内侧一格
+    outlet = cell + step * 2                  // 再往外两格
+```
+
+桶数随半径自适应：`buckets = clamp(ceil(2πr / 4), 8, 24)`。
+
+| 半径 | 桶数 | 说明 |
+|---|---|---|
+| 3（篝火） | 8 | 小半径也能裹住一圈 |
+| 26（标准塔） | 24 | 每 15° 一条 |
+| 60（升级塔） | 24 | 上限，避免注册上千条 AirMover |
+
+代价与收益：每个源最多 24 个 handle，200 个开喷流的源约 4800 条；相比逐格注册（半径 60 约 1.1 万格/源）低两个数量级，而方向精度已经从「固定 8 向」提升到「每 15° 一条且指向真实格」。
+
+参数（`AtmosphereAirMoverSettings`，反射构造）：
+
+| 字段 | 值 | 说明 |
+|---|---|---|
+| `CubicMetresPerTick` | `speed / 60` | `speed` 是 m/s，除以 60 换成每 tick 体积 |
+| `AirColumnHeightMetres` | `5` | 与 AO `CompPairedJet.columnHeight` 默认值一致 |
+| `InletDirection` | `-dir` | 风从内侧来 |
+| `OutletDirection` | `dir` | 朝外 |
+| `MaxPressureRisePascals` | `1e6` | 近似不限压，AO 自己也这么给 |
+| `ConditionExhaust` | `true` | 启用出口温度 |
+| `ExhaustSpeed` | `speed` | 默认 60 m/s（AO 喷流 half=30 / max=90） |
+| `ExhaustTemperatureFloor` | `baseline + outcome` | **关键**：出口温度下限 = 目标温度，所以喷出的气是热的 |
+| `ExhaustPressureRatio` | `1.5` | 轻微增压 |
+| `InletPressureRatio` | `0.5` | 与 AO 默认一致 |
+| `ExhaustOxygenPercent` | `21` | 正常空气 |
+| `WaterKgPerTick` | `0` | 不产水 |
+
+生命周期：AO 的 `RegisterAirMover` 按 `owner + key` 就地更新，所以每模拟周期重复调用是安全的；`activeTicks = 60` 远大于模拟周期，源关闭喷流后旧记录会自动过期，无需显式注销。
+
+`AtmosphereFieldBridge.ResolveAirMover()` 是**独立能力**：解析失败只让喷流降级，不影响空气/地暖。字段依次缓存在 `_airMoverFields[12]`，避免每次按名字查找。
+
+`inlet`/`outlet` 是建筑外侧格，不经过建筑实体格，绕过 `ObstacleMask = 0` 的问题。
 
 ### 8.4 主动制冷（默认关）
 
@@ -358,23 +408,37 @@ if (isCooler && settings.AllowActiveCooling)
 
 ## 9. UI
 
-### 9.1 逐建筑开关（4 个）
+### 9.1 逐建筑开关与参数（6 个）
 
-Postfix `ThingWithComps.GetGizmos`，只要 `thing.TryGetComp<CompTemperatureSource>() != null`（反射类型）就追加 4 个 `Command_Toggle`：
+Postfix `ThingWithComps.GetGizmos`，只要 `thing.TryGetComp<CompTemperatureSource>() != null`（反射类型）就追加 6 个 gizmo：
 
-| gizmo | 作用 | 存储 |
-|---|---|---|
-| 空气模式 | 把该源的温差注入 AO 气温场 | `_modeMasks` bit0 |
-| 地暖模式 | 注入 AO 地温场 | `_modeMasks` bit1 |
-| 喷流模式 | 沿朝向做短距离定向注入 | `_modeMasks` bit2 |
-| 范围效果及于室内 | 该源的照射区是否覆盖室内格 | `_indoorOn` |
+| gizmo | 类型 | 作用 | 存储 |
+|---|---|---|---|
+| 空气模式 | `ProxyHeatToggleCommand` | 把该源的温差注入 AO 气温场 | `_modeMasks` bit0 |
+| 地暖模式 | `ProxyHeatToggleCommand` | 注入 AO 地温场 | `_modeMasks` bit1 |
+| 喷流模式 | `ProxyHeatToggleCommand` | 八径向注册 AO 原生 AirMover | `_modeMasks` bit2 |
+| 室内生效 | `ProxyHeatToggleCommand` | 该源的照射区是否覆盖室内格 | `_indoorOn` |
+| 强度：x ℃/s | `Command_Action` | 弹出 `Dialog_Slider`，0.5~30 | `_tunedStrength` |
+| 风速：x m/s | `Command_Action` | 弹出 `Dialog_Slider`，10~200 | `_tunedJetSpeed` |
+
+四个 toggle 统一用 `ProxyHeatToggleCommand`（`GroupsWith` / `InheritInteractionsFrom` 均返回 false），避免同组点击转发。
+六个图标全部是 `BaseContent.WhiteTex` 白色占位，等美术资源替换。
+
+**逐建筑参数**（2026-11-13 用户要求滑块也逐建筑）：
+- `_tunedThings` / `_tunedStrength` / `_tunedJetSpeed` 三条并行 List + `_tuningCache`（Thing → 下标）；
+- `GetStrength` / `GetJetSpeed` 未命中回落设置页默认值；`SetStrength` / `SetJetSpeed` 首次写入时用默认值初始化其余列；
+- `Dialog_Slider` 只吃整数：强度内部按 `0.1℃/秒` 一格换算，显示时除回去；
+- 注入时逐格取「命中该格的最强源的强度」（`_strengthAir/_strengthSoil`），不是全局平均；
+- 每周期 `TrimDeadTuningEntries()` 从尾部清理已拆除建筑。
 
 **三模式是逐建筑的**（2026-11-13 用户要求改）。mod 设置页里的三个同名 checkbox 降级为「新放置建筑的默认值」，**只对还没有显式记录的建筑生效**；玩家一旦在某台机器上点过开关，就写入显式记录，之后不再受默认值影响。
 
 状态存 `ProxyHeatRelayMapComponent`：
-- 运行时 `Dictionary<Thing, int>` 做 O(1) 查询（`_modeCache`）；
-- 存档用两条并行 `List<Thing>` + `List<int>`，`Scribe_Collections.Look(..., LookMode.Reference)` / `(..., LookMode.Value)`；读档后按较短的对齐重建索引，防老存档错位；
-- 每周期 `TrimDeadModeEntries()` 从尾部删已拆除建筑，删完重建索引。
+- 运行时 `Dictionary<Thing, int>` 做 O(1) 查询（`_modeCache` / `_tuningCache`）；
+- 存档用并行 `List`，`Scribe_Collections.Look(..., LookMode.Reference)` / `(..., LookMode.Value)`；读档后按较短的对齐重建索引，防老存档错位；
+- 每周期 `TrimDeadModeEntries()` / `TrimDeadTuningEntries()` 从尾部删已拆除建筑，删完重建索引。
+
+**索引语义**：`_modeCache` / `_tuningCache` 存的必须是**下标**，不是值。v1.2 曾在这里把掩码当索引，导致 `List` 越界被 Unity GUI 静默吞掉，表现是「按钮点了没反应」。
 
 ### 9.2 保留 ProxyHeat 设置面板
 
@@ -390,14 +454,15 @@ foreach (comp in manager.compTemperatures) comp.MarkDirty();
 ### 9.3 强度暴露
 
 `AOPatchSettings`：
-- `RangeStrengthCelsiusPerSecond`（默认 1.0，范围 0.1~10）
+- `RangeStrengthCelsiusPerSecond`（默认 **8.0**，设置页范围 0.5~30；key 用 `rangeStrength`）
+- `JetSpeedMetresPerSecond`（默认 **60**，设置页范围 10~200）
 - `AllowTemperatureStacking`（默认 true）
 - `AllowActiveCooling`（默认 false）
 - `MaxCoolPerTick`（默认 0.3）
 - `DefaultIndoorEffect`（默认 false）
 - `AirModeEnabled` / `GroundModeEnabled` / `JetModeEnabled`（默认值，不是全局开关）
 
-设置面板用 `Listing_Standard`，与 `AOPatchMod` 现有设置面板同风格。
+设置页的值只对**没有逐建筑覆盖**的建筑生效；每栋建筑都能用自己的 gizmo 调强度与风速。设置面板用 `Listing_Standard`，与 `AOPatchMod` 现有设置面板同风格。
 
 ---
 
@@ -507,17 +572,20 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 14 | 注入点 = Postfix `PrepareTemperatureSources`，写 `pending`/`GroundTemperature` | 源码核查（m00436） |
 | 15 | 不用 `SourceSlots`（一格一 handle，面源不可行） | 源码核查 |
 | 16 | 频率 = AO 模拟周期，积分 = AO，`dt = TicksGame - lastInjectTick` | 用户 m00394 |
-| 17 | `ratePerTick` 默认 1℃/秒 | 用户 m00474 |
+| 17 | `ratePerTick` 默认 1℃/秒（v1.3 改为 **8℃/秒**，key 改名 `rangeStrength`） | 用户 m00474，m01313 调整 |
 | 18 | 三种模式一次做全 | 用户 m00474 |
 | 19 | 融雪交原版，不自实现 | 用户 m00239 |
 | 20 | 保留 ProxyHeat 设置面板 + `WriteSettings` 后 `MarkDirty` | 用户 m00239 |
 | 21 | 三模式改为**逐建筑** gizmo；mod 设置页三项降级为「新建筑默认值」，显式记录后不再受默认影响 | 用户 m00938/m00970 |
+| 22 | 喷流改为**径向 AO 原生 AirMover**，方向不跟建筑朝向 | 用户 m01313 |
+| 23 | 强度/风速滑块**逐建筑**，点击弹 `Dialog_Slider` | 用户 m01313/m01320 |
+| 24 | 喷流出口按**格与中心的真实极角**分桶（每桶取最外格），不用固定八向 | 用户 m01470 |
 
 ---
 
 ## 14. 后续
 
-> 状态：**已落码，`dotnet build -c Debug` 通过（2026-11-13）**。实机尚未验收，§12.3 的实测数据待补。
+> 状态：**已落码，`dotnet build -c Debug` 通过（2026-11-13）**。实机已验证范围效果生效；v1.3 按实测观感调整了喷流（改 AO 原生 AirMover）、默认强度（8℃/秒）与逐建筑滑块。
 
 ### 14.1 v1.1 修复记录（2026-11-13，实测「完全没生效」后）
 
@@ -559,6 +627,37 @@ _modeMasks[index] = (int)next;   // index 其实是掩码值，如 Air=1
 - 新增诊断：`ToggleMode` 前 20 次打 `toggle <defName> <mode> -> <新掩码>`；`GetGizmos_Postfix` 前 3 次打命中记录。
 
 **教训**：缓存「实体→下标」只存下标；「点击无反应」先怀疑方法抛异常被 GUI 吞掉，再怀疑缓存自相矛盾，最后才是 UI 分组。
+
+### 14.3 v1.3 调整（2026-11-13，实机确认生效后）
+
+实测确认范围效果已生效，用户提出三个调整：
+
+1. **喷流风速太小** → v1 的喷流只是「沿朝向前 3 格温度注入」，压根没有风。改为八径向 `RegisterAirMover`，默认 60 m/s（AO 自己的喷流 half=30 / max=90）。
+2. **空气模式户外加热太慢** → 默认强度 1℃/秒 → 8℃/秒，设置页范围放宽到 0.5~30；强度 key 改名 `rangeStrength` 以便老存档拿到新默认值。
+3. **四个图标改白色占位** → 全部换成 `BaseContent.WhiteTex`，等美术资源。
+
+追加要求（同轮）：
+
+4. **喷流方向必须径向**（m01313）→ 不跟 `Rotation`，固定 8 向，从建筑中心向外。
+5. **滑块也逐建筑**（m01313）→ 强度与风速各加一个 gizmo，点击弹 `Dialog_Slider`；存储用 `_tunedThings/_tunedStrength/_tunedJetSpeed` 三条并行 List；注入时逐格取最强源的强度。
+6. **滑块用弹出对话框**（m01320）→ `Dialog_Slider` 只吃整数，强度按 0.1℃/秒 一格换算。
+
+随之调整：`Accumulate`/`WriteChannel` 多带一条 `strength` 通道；`_strengthAir/_strengthSoil` 两个新数组；`InjectJets` 不再手工写 `pending`，改为注册 AirMover，物理全交 AO。
+
+`AtmosphereFieldBridge` 新增独立的 `ResolveAirMover()` 与 `RegisterAirMover(...)`，12 个字段按索引缓存，解析失败只让喷流降级。
+
+### 14.4 v1.4 调整（2026-11-13，喷流方向改真实极角）
+
+用户 m01470：「方向径向，是否可以直接通过各个格子与建筑中心的矢量角度，而不是固定方向？」
+
+结论：可以，而且比固定八向更正确。改为：
+
+- `RefreshRing` 里顺带 `BuildJetPorts`：遍历外环格，按 `atan2(dz,dx)` 分桶，每桶取距中心最远的格，方向用该格的真实单位向量（不是 45° 的倍数）。
+- 桶数 `clamp(ceil(2πr/4), 8, 24)`：篝火 8 条、半径 26/60 都 24 条。
+- `JetPort`（`Inlet`/`Outlet`/`DirX`/`DirY`）缓存在 `ProxyHeatSourceState.Jets`，`InjectJets` 只负责注册，不再算几何。
+- 删除 `JetDirections`/`JetOffsets` 两个固定方向常量。
+
+这样每 15° 一条气流且每条都精确指向它对应的那片区域，避免了固定八向在大半径下的空档。
 
 - 落码完成后，把本文状态改为「已实现」，并在 §12.3 补实测数据。
 - 若实测发现「点源 + 范围层」在 Frostpunk 上仍有视觉热点，再评估是否引入「点源附近半径内降权」。

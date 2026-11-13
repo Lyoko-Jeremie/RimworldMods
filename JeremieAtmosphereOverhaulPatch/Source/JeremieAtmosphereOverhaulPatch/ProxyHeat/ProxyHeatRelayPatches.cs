@@ -319,7 +319,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 defaultLabel = "AOPatch_ProxyHeatAir".Translate(),
                 defaultDesc = "AOPatch_ProxyHeatAirDesc".Translate(),
-                icon = TexCommand.GatherSpotActive,
+                icon = BaseContent.WhiteTex,
                 isActive = () => relay.HasMode(thing, ProxyHeatMode.Air),
                 toggleAction = () => relay.ToggleMode(thing, ProxyHeatMode.Air),
             };
@@ -328,7 +328,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 defaultLabel = "AOPatch_ProxyHeatSoil".Translate(),
                 defaultDesc = "AOPatch_ProxyHeatSoilDesc".Translate(),
-                icon = TexCommand.DesirePower,
+                icon = BaseContent.WhiteTex,
                 isActive = () => relay.HasMode(thing, ProxyHeatMode.Soil),
                 toggleAction = () => relay.ToggleMode(thing, ProxyHeatMode.Soil),
             };
@@ -337,7 +337,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 defaultLabel = "AOPatch_ProxyHeatJet".Translate(),
                 defaultDesc = "AOPatch_ProxyHeatJetDesc".Translate(),
-                icon = TexCommand.FireAtWill,
+                icon = BaseContent.WhiteTex,
                 isActive = () => relay.HasMode(thing, ProxyHeatMode.Jet),
                 toggleAction = () => relay.ToggleMode(thing, ProxyHeatMode.Jet),
             };
@@ -346,10 +346,66 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 defaultLabel = "AOPatch_ProxyHeatIndoors".Translate(),
                 defaultDesc = "AOPatch_ProxyHeatIndoorsDesc".Translate(),
-                icon = TexCommand.HoldOpen,
+                icon = BaseContent.WhiteTex,
                 isActive = () => relay.IncludesIndoors(thing),
                 toggleAction = () => relay.ToggleIndoors(thing),
             };
+
+            yield return new Command_Action
+            {
+                defaultLabel = "AOPatch_ProxyHeatStrengthShort".Translate(relay.GetStrength(thing).ToString("F1")),
+                defaultDesc = "AOPatch_ProxyHeatStrengthDesc".Translate(),
+                icon = BaseContent.WhiteTex,
+                action = () => OpenStrengthDialog(relay, thing),
+            };
+
+            yield return new Command_Action
+            {
+                defaultLabel = "AOPatch_ProxyHeatJetSpeedShort".Translate(relay.GetJetSpeed(thing).ToString("F0")),
+                defaultDesc = "AOPatch_ProxyHeatJetSpeedDesc".Translate(),
+                icon = BaseContent.WhiteTex,
+                action = () => OpenJetSpeedDialog(relay, thing),
+            };
+        }
+
+        /// <summary>
+        /// 弹出强度滑块。Dialog_Slider 只吃整数，所以内部按 0.1℃/秒 一格换算，
+        /// 面板显示时再除回去。
+        /// </summary>
+        private static void OpenStrengthDialog(ProxyHeatRelayMapComponent relay, Thing thing)
+        {
+            int current = (int)Math.Round(relay.GetStrength(thing) * 10f);
+            if (current < 5)
+            {
+                current = 5;
+            }
+            if (current > 300)
+            {
+                current = 300;
+            }
+            Find.WindowStack.Add(new Dialog_Slider(
+                v => "AOPatch_ProxyHeatStrength".Translate((v / 10f).ToString("F1")),
+                5, 300,
+                v => relay.SetStrength(thing, v / 10f),
+                current));
+        }
+
+        private static void OpenJetSpeedDialog(ProxyHeatRelayMapComponent relay, Thing thing)
+        {
+            int current = (int)Math.Round(relay.GetJetSpeed(thing));
+            if (current < 10)
+            {
+                current = 10;
+            }
+            if (current > 200)
+            {
+                current = 200;
+            }
+            Find.WindowStack.Add(new Dialog_Slider(
+                v => "AOPatch_ProxyHeatJetSpeed".Translate(v.ToString("F0")),
+                10, 200,
+                v => relay.SetJetSpeed(thing, v),
+                current));
         }
     }
 }
