@@ -332,36 +332,38 @@ if (dt <= 0) return;          // 同一周期重复调用时去重
 
 ### 8.3 喷流模式（默认关）
 
-v3 实现为**按极角自适应的 AO 原生 AirMover**。
+v4 实现为**从建筑外围向外的 AO 原生 AirMover**。
 
 为什么不跟建筑朝向：喷流是「热源向四周散开」，不是定向吹风。用户 m01313 明确「喷流的方向应该是径向始终指向远离建筑的方向」。
 
-为什么不用固定八向（v2）：固定方向在半径大时会留下明显空档——半径 26 的塔，相邻两条气流之间隔了 22.5°，中间一大片照不到。用户 m01470 提出「直接通过各个格子与建筑中心的矢量角度」，v3 采纳。
+为什么端口贴在建筑外围而不是半径外环：v3 从 `[0.75r, r]` 的外环取格，半径 60 的塔气流起点就在 60 格开外，**区域内部根本没有风**；而且外环出口容易顶到基地外墙或山体，被 AO 的开放面检查成批清零，实测表现为「只在最外缘零星几点」。用户 m01761 实测指出该问题，v4 按 m01828 改为方案 B。
 
 构建方式（在 `RecalculateAffectedCells` 的 Postfix 里做，只在照射区重建时算一次）：
 
 ```
-for cell in RingCells:                       // 已按 [0.75r, r] 筛过的外环格
-    dx = cell.x - center.x; dz = cell.z - center.z
-    angle = atan2(dz, dx)
+outer = OccupiedRect.ExpandedBy(1)           // 建筑外扩一圈
+boundary = outer 的四条边（上下整条、左右去掉四个角）
+buckets = clamp(ceil(boundary.Count / 2), 8, 24)
+for cell in boundary:
+    angle = atan2(cell.z - center.z, cell.x - center.x)
     bucket = floor((angle + π) / 2π * buckets)
-    每桶只保留 distSq 最大的那个格           // 取最外侧
+    每桶只保留「角度最接近桶中心」的格        // 让方向尽量均匀
 之后对每桶选中的格：
     dir = normalize(dx, dz)                   // 真实方向，不是固定 45° 的倍数
     step = round(dir)                         // 取整，避免浮点抖动
-    inlet  = cell - step                      // 贴在内侧一格
+    inlet  = cell                             // 就贴在建筑外围
     outlet = cell + step * 2                  // 再往外两格
 ```
 
-桶数随半径自适应：`buckets = clamp(ceil(2πr / 4), 8, 24)`。
+桶数按周长自适应，比按半径更贴合「口开在墙边」：
 
-| 半径 | 桶数 | 说明 |
+| 建筑 | 周长 | 桶数 |
 |---|---|---|
-| 3（篝火） | 8 | 小半径也能裹住一圈 |
-| 26（标准塔） | 24 | 每 15° 一条 |
-| 60（升级塔） | 24 | 上限，避免注册上千条 AirMover |
+| 3×3（篝火） | 8 | 8 |
+| 5×5（标准塔） | 16 | 8 |
+| 6×6（升级塔） | 24 | 12 |
 
-代价与收益：每个源最多 24 个 handle，200 个开喷流的源约 4800 条；相比逐格注册（半径 60 约 1.1 万格/源）低两个数量级，而方向精度已经从「固定 8 向」提升到「每 15° 一条且指向真实格」。
+`origin` 用 `OccupiedRect.CenterCell` 而不是 `Position`——多格建筑的 `Position` 是左下角，用它算极角会整体偏一个建筑尺寸。
 
 参数（`AtmosphereAirMoverSettings`，反射构造）：
 
@@ -370,21 +372,23 @@ for cell in RingCells:                       // 已按 [0.75r, r] 筛过的外�
 | `CubicMetresPerTick` | `speed / 60` | `speed` 是 m/s，除以 60 换成每 tick 体积 |
 | `AirColumnHeightMetres` | `5` | 与 AO `CompPairedJet.columnHeight` 默认值一致 |
 | `InletDirection` | `-dir` | 风从内侧来 |
-| `OutletDirection` | `dir` | 朝外 |
-| `MaxPressureRisePascals` | `1e6` | 近似不限压，AO 自己也这么给 |
-| `ConditionExhaust` | `true` | 启用出口温度 |
-| `ExhaustSpeed` | `speed` | 默认 60 m/s（AO 喷流 half=30 / max=90） |
-| `ExhaustTemperatureFloor` | `baseline + outcome` | **关键**：出口温度下限 = 目标温度，所以喷出的气是热的 |
-| `ExhaustPressureRatio` | `1.5` | 轻微增压 |
-| `InletPressureRatio` | `0.5` | 与 AO 默认一致 |
-| `ExhaustOxygenPercent` | `21` | 正常空气 |
+| `OutletDirection` | `dir` | |
+| `MaxPressureRisePascals` | `1000000` | |
+| `ConditionExhaust` | `true` | 走 `ApplyJetTransportUnsafe` 的喷流通道 |
+| `ExhaustSpeed` | `speed` | |
+| `ExhaustTemperatureFloor` | `round((baseline + outcome) / 5) * 5` | 量化到 5℃ 台阶，见下 |
+| `ExhaustPressureRatio` | `1.5` | |
+| `InletPressureRatio` | `0.5` | |
+| `ExhaustOxygenPercent` | `21` | |
 | `WaterKgPerTick` | `0` | 不产水 |
 
-生命周期：AO 的 `RegisterAirMover` 按 `owner + key` 就地更新，所以每模拟周期重复调用是安全的；`activeTicks = 60` 远大于模拟周期，源关闭喷流后旧记录会自动过期，无需显式注销。
+风速：**仍由玩家控制，但初值按建筑半径推算**（用户 m01828）。`AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)`——半径 3 得 20、半径 26 得 39、半径 60 得 90（与 AO 自己 `CompPairedJet.maxSpeed` 的 90 接近）。玩家在逐建筑「风速」弹窗里改过之后，以玩家值为准；全局设置页不再提供风速滑块。
+
+生命周期：`activeTicks = -1`（永不过期），AO 的 `RegisterAirMover` 按 `owner + key` 就地更新；因为不会自动过期，关喷流、断电、模块关闭时必须显式 `UnregisterAirMovers`，否则会残留一条永远在吹的气流。建筑拆除不用管，`PrepareAirMovers` 会按 `Owner.Destroyed` 移除。
+
+`ExhaustTemperatureFloor` 必须量化：`RegisterAirMover` 发现 `Settings` 任何字段变化就会 `UpdateAirMover`，而 `UpdateAirMover` 里的 `CaptureAirMover` 会把 `LastTick` 重置到当前 tick，使同周期 `ActiveTicks = max(0, min(tick, validUntil) - lastTick) = 0`，本周期零流量。`baseline + outcome` 每周期都在小幅漂移，不量化就会每周期都触发更新、永远没有风。
 
 `AtmosphereFieldBridge.ResolveAirMover()` 是**独立能力**：解析失败只让喷流降级，不影响空气/地暖。字段依次缓存在 `_airMoverFields[12]`，避免每次按名字查找。
-
-`inlet`/`outlet` 是建筑外侧格，不经过建筑实体格，绕过 `ObstacleMask = 0` 的问题。
 
 ### 8.4 主动制冷（默认关）
 
@@ -455,7 +459,7 @@ foreach (comp in manager.compTemperatures) comp.MarkDirty();
 
 `AOPatchSettings`：
 - `RangeStrengthCelsiusPerSecond`（默认 **8.0**，设置页范围 0.5~30；key 用 `rangeStrength`）
-- `JetSpeedMetresPerSecond`（默认 **60**，设置页范围 10~200）
+- 风速**不再有全局设置项**：初值由 `AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)` 按建筑半径给出，玩家在逐建筑「风速」弹窗里覆盖
 - `AllowTemperatureStacking`（默认 true）
 - `AllowActiveCooling`（默认 false）
 - `MaxCoolPerTick`（默认 0.3）
@@ -582,6 +586,7 @@ AO 的 `EncodeInt16` 把地温映射到 `-100..150℃`、空气 `-100..120℃`�
 | 24 | 喷流出口按**格与中心的真实极角**分桶（每桶取最外格），不用固定八向 | 用户 m01470 |
 | 25 | 三个模式默认**全关**（新建筑必须逐建筑手动开启）；Scribe key 改为 `airModeDefault`/`groundModeDefault`/`jetModeDefault` | 用户 m01542 |
 | 26 | 喷流用 `activeTicks = -1` + 出风温度量化 5℃ 台阶（规避 AO `UpdateAirMover` 重置 `LastTick` 导致 `ActiveTicks == 0`）；关喷流/关模块时必须显式 `UnregisterAirMovers` | 实测 |
+| 27 | 喷流端口从半径外环改到**建筑外围一圈**，风速初值按半径 `clamp(r*1.5, 20, 150)`，玩家仍可逐建筑调 | 用户 m01809/m01828 |
 
 ---
 
@@ -688,6 +693,27 @@ AO 的 `RegisterAirMover` 按 owner+key 找到已有记录后，只要 `Settings
 - 建筑被拆除 → 不用管，AO 的 `PrepareAirMovers` 会按 `Owner.Destroyed` 移除。
 
 副作用说明：老存档里玩家此前通过 gizmo 逐建筑开过的模式仍保留（那是 `_modeThings/_modeMasks`，与全局默认值无关），只是新放置的建筑默认三个模式都不开。
+
+### 14.6 v1.6：喷流端口改到建筑外围
+
+**触发**：用户 m01761 实测（半径 60 的升级塔）「只在区域外边缘的边角出现气流，区域内完全没有气流」，m01809 补充「测试用的是大加热塔，半径 60，故不存在半径过小问题」。
+
+**诊断**（三层叠加）：
+- 端口取在 `chebyshev ∈ [0.75r, r]` 的外环，`outlet = cell + 2*step`，半径 60 时气流起点距塔 60 格——区域内部必然没有风，看到的就是「最外缘」。
+- `RingCells` 用 Chebyshev 筛，而 `AffectedCells` 是欧氏圆，45° 方向 `0.707r < 0.75r` 被排除，24 个角度桶里四个对角桶恒为空。
+- 外环出口落点随机，贴基地外墙或山体时被 `IsAirMoverPortOpen`（四面 `FaceOpen` 之和为 0）/ `TryGetNozzleReturnPath` / `JetTransport.HasOpenPath` 静默清零，只剩零星几条。
+
+**用户否决的方案 A**（对有效区域每格施加带温度的风场）：`LocalAtmosphereEngine.VelocityX/VelocityZ` 虽是 public `AtmosphereField`，但 `ProjectAndFinalize` 里的 `Project(...)` 是压力投影，职责就是消掉速度场的散度分量，而径向向外的风是纯散度场，写进去会被削掉；绕过去只能写 private 的 `externalDivergence`，上万格同时当源会让固定迭代次数的压力求解不收敛。
+
+**v1.6 改动**：
+- `BuildJetPorts` 改为从 `OccupiedRect.ExpandedBy(1)` 的周长环取格；`inlet = 周长格`，`outlet = cell + step*2`。
+- 桶数从「按半径」改为「按周长」：`clamp(ceil(周长 / 2), 8, 24)`。
+- 每桶选「角度最接近桶中心」的格，而不是「距中心最远」，让方向均匀。
+- `origin` 从 `Position` 改为 `OccupiedRect.CenterCell`（多格建筑的 `Position` 是左下角）。
+- 风速仍由玩家控制，但初值改为 `AutoJetSpeed(radius) = clamp(radius * 1.5, 20, 150)`；删除全局风速设置项与 `JetSpeedMetresPerSecond` 字段，逐建筑弹窗保留。
+- `BuildJetPorts` 增加 `Map` 参数用于 `InBounds` 检查。
+
+**编译**：0 警告 0 错误。
 
 - 落码完成后，把本文状态改为「已实现」，并在 §12.3 补实测数据。
 - 若实测发现「点源 + 范围层」在 Frostpunk 上仍有视觉热点，再评估是否引入「点源附近半径内降权」。

@@ -38,9 +38,6 @@ namespace Jeremie.AtmosphereOverhaulPatch
         /// </summary>
         public float RangeStrengthCelsiusPerSecond = 8f;
 
-        /// <summary>喷流出风速度（米/秒）。AO 自己的喷流 default 是 halfSpeed 30 / maxSpeed 90。</summary>
-        public float JetSpeedMetresPerSecond = 60f;
-
         /// <summary>多源重叠时是否累加温差。关闭则取最大值。</summary>
         public bool AllowTemperatureStacking = true;
 
@@ -69,7 +66,6 @@ namespace Jeremie.AtmosphereOverhaulPatch
             Scribe_Values.Look(ref GroundModeEnabled, "groundModeDefault", false);
             Scribe_Values.Look(ref JetModeEnabled, "jetModeDefault", false);
             Scribe_Values.Look(ref RangeStrengthCelsiusPerSecond, "rangeStrength", 8f);
-            Scribe_Values.Look(ref JetSpeedMetresPerSecond, "jetSpeedMetresPerSecond", 60f);
             Scribe_Values.Look(ref AllowTemperatureStacking, "allowTemperatureStacking", true);
             Scribe_Values.Look(ref AllowActiveCooling, "allowActiveCooling", false);
             Scribe_Values.Look(ref MaxCoolPerTick, "maxCoolPerTick", 0.3f);

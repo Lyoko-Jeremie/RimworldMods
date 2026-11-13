@@ -229,8 +229,51 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             }
         }
 
-        /// <summary>取某建筑的喷流速度（米/秒）。没有显式记录时用设置页默认值。</summary>
-        public float GetJetSpeed(Thing parent)
+        /// <summary>
+        /// 按建筑半径推算的初始风速（米/秒）。半径越大需要的出口速度越高，
+        /// 否则气流推不到半径边缘；小半径（篝火）只需要很小的风。
+        /// 这只是初值，玩家仍可在 gizmo 里逐建筑改。
+        /// </summary>
+        public static float AutoJetSpeed(float radius)
+        {
+            if (radius <= 0f)
+            {
+                return 40f;
+            }
+            // 半径 3 → 20，半径 26 → 39，半径 60 → 90，与 AO 自己 CompPairedJet 的 90 上限贴近。
+            float speed = radius * 1.5f;
+            if (speed < 20f)
+            {
+                speed = 20f;
+            }
+            if (speed > 150f)
+            {
+                speed = 150f;
+            }
+            return speed;
+        }
+
+        /// <summary>按建筑反查它的源状态。只在 gizmo 这类低频路径上用，别放进每周期循环。</summary>
+        private bool TryGetStateFor(Thing parent, out ProxyHeatSourceState state)
+        {
+            state = null;
+            if (parent == null)
+            {
+                return false;
+            }
+            foreach (KeyValuePair<object, ProxyHeatSourceState> pair in _states)
+            {
+                if (pair.Value.Parent == parent)
+                {
+                    state = pair.Value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>取某建筑的喷流速度（米/秒）。没有显式记录时按该建筑的半径推算。</summary>
+        public float GetJetSpeed(Thing parent, float radius)
         {
             int index;
             if (parent != null && _tuningCache.TryGetValue(parent, out index)
@@ -238,8 +281,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 return _tunedJetSpeed[index];
             }
-            AOPatchSettings settings = AOPatchMod.Settings;
-            return settings != null ? settings.JetSpeedMetresPerSecond : 60f;
+            return AutoJetSpeed(radius);
+        }
+
+        /// <summary>取某建筑的喷流速度，半径从它自己的源状态里取；没有状态时用 26 估算。</summary>
+        public float GetJetSpeed(Thing parent)
+        {
+            ProxyHeatSourceState state;
+            float radius = 26f;
+            if (parent != null && TryGetStateFor(parent, out state) && state.Radius > 0f)
+            {
+                radius = state.Radius;
+            }
+            return GetJetSpeed(parent, radius);
         }
 
         public void SetJetSpeed(Thing parent, float value)
@@ -452,8 +506,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             object props = ProxyHeatBridge.GetProps(comp);
             float radius = ProxyHeatBridge.GetRadius(props);
             float inner = radius * RingInnerRatio;
-            IntVec3 origin = state.Parent.Position;
             CellRect occupied = state.Parent.OccupiedRect();
+            // 多格建筑用中心而不是左下角，否则极角会整体偏一个建筑尺寸。
+            IntVec3 origin = occupied.CenterCell;
+            state.Radius = radius;
 
             foreach (IntVec3 cell in cells)
             {
@@ -479,7 +535,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 state.RingCells.Add(cell);
             }
 
-            BuildJetPorts(state, radius, origin, occupied);
+            BuildJetPorts(state, radius, origin, occupied, state.Parent.Map);
         }
 
         /// <summary>
@@ -489,16 +545,40 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// 桶数随半径自适应（约每 4 格弧长一个桶），下限 8、上限 24。
         /// 这样半径 3 的火堆有 8 条，半径 60 的塔也只要 24 条，不会注册上千个 AirMover。
         /// </summary>
-        private static void BuildJetPorts(ProxyHeatSourceState state, float radius, IntVec3 origin, CellRect occupied)
+        /// <summary>
+        /// 由建筑外围一圈的周长格构造喷流口：按与建筑中心的极角分桶，
+        /// 每桶取角度最接近桶中心的那格作为入口，出口沿同一方向再往外两格。
+        ///
+        /// 端口贴在建筑外围而不是半径外环——喷流的直觉是「从塔身向外喷」，
+        /// 落在 0.75r~r 的外环上会让气流起点离建筑几十格，区域内反而没有风；
+        /// 而且外环的出口容易顶到基地外墙或山体，被 AO 的开放面检查成批清零。
+        /// </summary>
+        private static void BuildJetPorts(ProxyHeatSourceState state, float radius, IntVec3 origin, CellRect occupied, Map map)
         {
             state.Jets.Clear();
-            int count = state.RingCells.Count;
-            if (count == 0 || radius <= 0f)
+            if (map == null || radius <= 0f)
             {
                 return;
             }
 
-            int buckets = Mathf.CeilToInt(6.2831855f * radius / 4f);
+            // 建筑外围一圈（外扩 1 格）。上下两边整条取，左右两边只取中间段，避免四个角重复。
+            CellRect outer = occupied.ExpandedBy(1);
+            IntVec3 min = outer.Min;
+            IntVec3 max = outer.Max;
+            List<IntVec3> boundary = new List<IntVec3>();
+            for (int x = min.x; x <= max.x; x++)
+            {
+                boundary.Add(new IntVec3(x, 0, min.z));
+                boundary.Add(new IntVec3(x, 0, max.z));
+            }
+            for (int z = min.z + 1; z <= max.z - 1; z++)
+            {
+                boundary.Add(new IntVec3(min.x, 0, z));
+                boundary.Add(new IntVec3(max.x, 0, z));
+            }
+
+            // 大约每两格周长一个口，6×6 塔 24 格周长 → 12 个方向；小建筑兜底 8 个。
+            int buckets = Mathf.CeilToInt(boundary.Count / 2f);
             if (buckets < 8)
             {
                 buckets = 8;
@@ -508,24 +588,27 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 buckets = 24;
             }
 
-            // 每桶记录「距中心最远」的格；用平方距离比较，免开方。
+            // 每桶记录「角度最接近桶中心」的格，让出口方向尽可能均匀。
             int[] bestIndex = new int[buckets];
-            int[] bestDistSq = new int[buckets];
+            float[] bestDelta = new float[buckets];
             for (int i = 0; i < buckets; i++)
             {
                 bestIndex[i] = -1;
-                bestDistSq[i] = -1;
+                bestDelta[i] = float.MaxValue;
             }
 
             float twoPi = 6.2831855f;
             float pi = 3.1415927f;
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < boundary.Count; i++)
             {
-                IntVec3 cell = state.RingCells[i];
+                IntVec3 cell = boundary[i];
+                if (!cell.InBounds(map))
+                {
+                    continue;
+                }
                 int dx = cell.x - origin.x;
                 int dz = cell.z - origin.z;
-                int distSq = dx * dx + dz * dz;
-                if (distSq <= 0)
+                if (dx == 0 && dz == 0)
                 {
                     continue;
                 }
@@ -539,9 +622,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     bucket = buckets - 1;
                 }
-                if (distSq > bestDistSq[bucket])
+                float center = -pi + (bucket + 0.5f) * (twoPi / buckets);
+                float delta = Mathf.Abs(Mathf.DeltaAngle(angle * Mathf.Rad2Deg, center * Mathf.Rad2Deg));
+                if (delta < bestDelta[bucket])
                 {
-                    bestDistSq[bucket] = distSq;
+                    bestDelta[bucket] = delta;
                     bestIndex[bucket] = i;
                 }
             }
@@ -553,7 +638,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     continue;
                 }
-                IntVec3 cell = state.RingCells[i];
+                IntVec3 cell = boundary[i];
                 float vx = cell.x - origin.x;
                 float vz = cell.z - origin.z;
                 float len = Mathf.Sqrt(vx * vx + vz * vz);
@@ -564,7 +649,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 vx /= len;
                 vz /= len;
 
-                // 入口贴在出口格内侧一格，出口再往外两格；都用四舍五入后的整数方向，避免浮点抖动。
+                // 方向取四舍五入后的整数步，避免浮点抖动；气流方向仍用真实单位向量。
                 IntVec3 step = new IntVec3(
                     Mathf.RoundToInt(vx),
                     0,
@@ -573,20 +658,20 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     continue;
                 }
-                IntVec3 inlet = cell - step;
                 IntVec3 outlet = cell + step + step;
-                if (!inlet.InBounds(state.Parent.Map) || !outlet.InBounds(state.Parent.Map))
+                if (!outlet.InBounds(map))
                 {
                     continue;
                 }
-                if (occupied.Contains(inlet))
+                // 入口在建筑外扩一圈上，正常不会命中本体；这里再挡一次，出口也不能压在建筑上。
+                if (occupied.Contains(cell) || occupied.Contains(outlet))
                 {
                     continue;
                 }
 
                 state.Jets.Add(new JetPort
                 {
-                    Inlet = inlet,
+                    Inlet = cell,
                     Outlet = outlet,
                     DirX = vx,
                     DirY = vz,
@@ -1138,7 +1223,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     state.Outcome != 0f &&
                     state.Jets.Count > 0 &&
                     state.Baseline + state.Outcome > outdoor &&
-                    GetJetSpeed(parent) > 0f;
+                    GetJetSpeed(parent, state.Radius) > 0f;
 
                 if (!wantJet)
                 {
@@ -1147,7 +1232,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
 
                 float target = state.Baseline + state.Outcome;
-                float speed = GetJetSpeed(parent);
+                float speed = GetJetSpeed(parent, state.Radius);
 
                 // 出风温度量化到 5℃ 台阶：AO 的 RegisterAirMover 只要发现
                 // Settings 有任何字段变化就会 UpdateAirMover，而 UpdateAirMover 会把

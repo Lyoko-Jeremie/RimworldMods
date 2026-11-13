@@ -38,14 +38,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         public List<IntVec3> RingCells = new List<IntVec3>();
 
         /// <summary>
-        /// 喷流出口集：由 <see cref="RingCells"/> 按「与建筑中心的极角」分桶，
-        /// 每桶取最外侧的格，方向取该格真实的方向向量。
+        /// 喷流出口集：由建筑外扩一圈的周长格按「与建筑中心的极角」分桶，
+        /// 每桶取角度最接近桶中心的那格，方向取该格真实的方向向量。
         ///
-        /// 不用固定八向：固定方向在半径大时会留下明显的空档，而按真实格取角度
-        /// 能让每一缕气流都精确指向它对应的那片区域。桶数随半径自适应，
-        /// 上限 24，避免大半径源注册上千条 AirMover。
+        /// 端口贴在建筑外围而不是半径外环：喷流的直觉是「从塔身向外喷」，
+        /// 落在 0.75r~r 的外环上会让气流起点离建筑几十格，区域内反而没有风。
+        /// 桶数按周长自适应，上限 24，避免大建筑注册过多 AirMover。
         /// </summary>
         public List<JetPort> Jets = new List<JetPort>();
+
+        /// <summary>本源的 ProxyHeat 半径（Props.radius），用于按半径推算默认风速。</summary>
+        public float Radius;
 
         /// <summary>
         /// 当前是否已向 AO 注册过喷流。因为我们用 activeTicks = -1（永不过期），

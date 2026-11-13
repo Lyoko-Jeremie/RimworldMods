@@ -78,9 +78,7 @@ namespace Jeremie.AtmosphereOverhaulPatch
 
                 if (Settings.JetModeEnabled)
                 {
-                    list.Label("AOPatch_ProxyHeatJetSpeed".Translate(Settings.JetSpeedMetresPerSecond.ToString("F0")));
-                    float jetSpeed = list.Slider(Settings.JetSpeedMetresPerSecond, 10f, 200f);
-                    Settings.JetSpeedMetresPerSecond = Mathf.Round(jetSpeed);
+                    list.Label("AOPatch_ProxyHeatJetSpeedHint".Translate());
                 }
 
                 list.GapLine();
