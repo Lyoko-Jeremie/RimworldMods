@@ -83,6 +83,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         private static readonly StringBuilder Report = new StringBuilder();
         private static int scanCount;
         private static int reportsLeft = 30;
+        private static int diagLeft = 8;
 
         static GcAirRelay()
         {
@@ -405,6 +406,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
                 Registered[id] = building;
                 Directions[id] = rotation;
                 EnsureSources(map, building, inlet, outlet, inletOxygen, outletOxygen);
+
+                if (diagLeft > 0)
+                {
+                    diagLeft--;
+                    Log.Message("[AO Patch][GC] 端口 id=" + id
+                        + " pos=(" + building.Position.x + "," + building.Position.z + ")"
+                        + " facing=(" + facing.x + "," + facing.z + ")"
+                        + " inlet=(" + inlet.x + "," + inlet.z + ")"
+                        + " outlet=(" + outlet.x + "," + outlet.z + ")");
+                }
             }
             else
             {
@@ -622,8 +633,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             {
                 CubicMetresPerTick = cubicMetresPerTick,
                 AirColumnHeightMetres = JetColumnHeight,
-                InletDirectionX = facing.x,
-                InletDirectionY = facing.z,
+                // 方向约定与 AO 的 CompPairedJet 一致：InletDirection 是「空气流入端口」的方向，
+                // OutletDirection 是「空气离开端口」的方向。inlet 在 Position+facing，
+                // 所以吸入方向是 -facing；outlet 在 Position-facing，喷出方向也是 -facing。
+                InletDirectionX = -facing.x,
+                InletDirectionY = -facing.z,
                 OutletDirectionX = -facing.x,
                 OutletDirectionY = -facing.z,
                 MaxPressureRisePascals = JetMaxPressureRisePascals,
