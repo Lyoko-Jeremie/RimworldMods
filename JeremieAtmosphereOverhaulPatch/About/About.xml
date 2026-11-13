@@ -34,11 +34,11 @@
 [*] [b]宜人气候 Good Climate[/b]（GOS.GoodClimate） https://steamcommunity.com/sharedfiles/filedetails/?id=3669891833
 [*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature） https://steamcommunity.com/sharedfiles/filedetails/?id=3202046258
 [*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl） https://steamcommunity.com/sharedfiles/filedetails/?id=2007268173
-[*] (Working) [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower） https://steamcommunity.com/workshop/filedetails/?id=3545379519
+[*] [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower） https://steamcommunity.com/workshop/filedetails/?id=3545379519
 [*] (Working) [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter） https://steamcommunity.com/sharedfiles/filedetails/?id=3712146789
 [/list]
 
-(WIP) 使用三种方案替换 Vanilla Temperature Expanded 的 HeatProxy 机制，使其更符合AO的真实世界： 热辐射加热地面、热辐射加热空气、高温热流喷射。 在 Frostpunk Heat Generator Tower 中实现了这个特性。
+使用三种方案替换 Vanilla Temperature Expanded 的 HeatProxy 机制，使其更符合AO的真实世界： 热辐射加热地面、热辐射加热空气、高温热流喷射。 在 Frostpunk Heat Generator Tower 中实现了这个特性。
 
 将 Centralized Climate Control 中的中央空调按照真实世界的中央风管机空调系统原理，采用AO的系统重新进行了实现，实现了从 户外吸入空气、加热/冷却空气、将空气排入室内 的过程。
 
