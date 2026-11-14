@@ -53,6 +53,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// <summary>逐建筑的「室内也生效」开关。只存显式开启的，未列出 = 关。</summary>
         private List<Thing> _indoorOn = new List<Thing>();
 
+        /// <summary>
+        /// <see cref="_indoorOn"/> 的查询索引。<c>Inject</c> 每个源每周期都要问一次
+        /// 「这个源是否室内也生效」，List.Contains 是 O(_indoorOn.Count)，
+        /// 在源循环里累积成 O(源数 × 开关数)。写成 HashSet 后查询 O(1)。
+        /// 列表仍保留，因为 Scribe 的存档格式按 List 存。
+        /// </summary>
+        private readonly HashSet<Thing> _indoorOnSet = new HashSet<Thing>();
+
         /// <summary>逐建筑的通道开关（ProxyHeatMode 位掩码）。未列出 = 用设置里的默认值。</summary>
         private List<Thing> _modeThings = new List<Thing>();
         private List<int> _modeMasks = new List<int>();
@@ -159,8 +167,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     _tunedJetSpeed = new List<float>();
                 }
+                RebuildIndoorCache();
                 RebuildModeCache();
                 RebuildTuningCache();
+            }
+        }
+
+        /// <summary>读档后重建「室内也生效」索引；列表里可能有加载失败的 null。</summary>
+        private void RebuildIndoorCache()
+        {
+            _indoorOnSet.Clear();
+            for (int i = 0; i < _indoorOn.Count; i++)
+            {
+                Thing thing = _indoorOn[i];
+                if (thing != null)
+                {
+                    _indoorOnSet.Add(thing);
+                }
             }
         }
 
@@ -442,7 +465,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
 
         public bool IncludesIndoors(Thing parent)
         {
-            return parent != null && _indoorOn.Contains(parent);
+            return parent != null && _indoorOnSet.Contains(parent);
         }
 
         /// <summary>切换某建筑的「室内也生效」。返回切换后的状态。</summary>
@@ -452,12 +475,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 return false;
             }
-            if (_indoorOn.Contains(parent))
+            if (_indoorOnSet.Contains(parent))
             {
                 _indoorOn.Remove(parent);
+                _indoorOnSet.Remove(parent);
                 return false;
             }
             _indoorOn.Add(parent);
+            _indoorOnSet.Add(parent);
             return true;
         }
 
@@ -470,9 +495,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             }
             state.Initialized = true;
             AOPatchSettings settings = AOPatchMod.Settings;
-            if (settings != null && settings.DefaultIndoorEffect && !_indoorOn.Contains(state.Parent))
+            if (settings != null && settings.DefaultIndoorEffect && !_indoorOnSet.Contains(state.Parent))
             {
                 _indoorOn.Add(state.Parent);
+                _indoorOnSet.Add(state.Parent);
             }
         }
 
@@ -498,6 +524,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             state.Cells = cells;
             state.RingCells.Clear();
             state.Jets.Clear();
+            // 端口集重建后旧的签名全部失效，下一次 InjectJets 必须重新注册。
+            state.JetSignature = null;
             if (cells == null || cells.Count == 0 || state.Parent == null)
             {
                 return;
@@ -1020,7 +1048,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
                 modeOnCount++;
 
-                bool indoors = _indoorOn.Contains(parent);
+                bool indoors = _indoorOnSet.Contains(parent);
                 float strength = GetStrength(parent);
                 foreach (IntVec3 cell in state.Cells)
                 {
@@ -1306,8 +1334,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     (GetModes(parent) & ProxyHeatMode.Jet) != 0 &&
                     state.Outcome != 0f &&
                     state.Jets.Count > 0 &&
-                    state.Baseline + state.Outcome > outdoor &&
-                    GetJetSpeed(parent, state.Radius) > 0f;
+                    state.Baseline + state.Outcome > outdoor;
+
+                // 速度只算一次：原来 wantJet 里一次、下面注册前又一次。
+                float speed = 0f;
+                if (wantJet)
+                {
+                    speed = GetJetSpeed(parent, state.Radius);
+                    wantJet = speed > 0f;
+                }
 
                 if (!wantJet)
                 {
@@ -1316,11 +1351,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
 
                 float target = state.Baseline + state.Outcome;
-                float speed = GetJetSpeed(parent, state.Radius);
 
                 // 出口集在 RecalculateAffectedCells 的 Postfix 里按建筑外围一圈的
                 // 周长格建好（可选叠层），这里只做注册，不再算几何。
                 List<JetPort> jets = state.Jets;
+                int signatureLength = jets.Count * 4;
+                float[] signature = state.JetSignature;
+                if (signature == null || signature.Length != signatureLength)
+                {
+                    signature = new float[signatureLength];
+                    state.JetSignature = signature;
+                }
+                int mapWidth = width > 0 ? width : map.Size.x;
                 for (int d = 0; d < jets.Count; d++)
                 {
                     JetPort port = jets[d];
@@ -1351,6 +1393,20 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                         : target;
                     float jetFloor = Mathf.Round(outletTemp / 5f) * 5f;
 
+                    // 只在签名变化时注册。AO 的 RegisterAirMover 按 owner+key 线性扫
+                    // airMovers，每周期每端口都调会退化成 O(端口数 × 已注册数)。
+                    int sig = d * 4;
+                    int inletCell = port.Inlet.z * mapWidth + port.Inlet.x;
+                    int outletCell = port.Outlet.z * mapWidth + port.Outlet.x;
+                    if (state.JetRegistered
+                        && signature[sig] == speed
+                        && signature[sig + 1] == jetFloor
+                        && signature[sig + 2] == inletCell
+                        && signature[sig + 3] == outletCell)
+                    {
+                        continue;
+                    }
+
                     var p = new AtmosphereFieldBridge.AirMoverParams
                     {
                         CubicMetresPerTick = speed / 60f,
@@ -1369,10 +1425,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                         WaterKgPerTick = 0f,
                     };
 
-                    AtmosphereFieldBridge.RegisterAirMover(
+                    if (AtmosphereFieldBridge.RegisterAirMover(
                         map, parent,
                         "aopjet:" + parent.thingIDNumber + ":" + d,
-                        port.Inlet, port.Outlet, p, JetActiveTicks);
+                        port.Inlet, port.Outlet, p, JetActiveTicks))
+                    {
+                        signature[sig] = speed;
+                        signature[sig + 1] = jetFloor;
+                        signature[sig + 2] = inletCell;
+                        signature[sig + 3] = outletCell;
+                    }
                 }
 
                 state.JetRegistered = true;
@@ -1399,6 +1461,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// </summary>
         private void StopJets(ProxyHeatSourceState state)
         {
+            // 签名必须随注销一起清掉：否则下次重新开启时，端口/速度没变就会被
+            // 误判为「已注册」而跳过 RegisterAirMover。
+            state.JetSignature = null;
             if (!state.JetRegistered)
             {
                 return;
@@ -1545,6 +1610,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 if (thing == null || thing.Destroyed || !thing.Spawned)
                 {
                     _indoorOn.RemoveAt(i);
+                    if (thing != null)
+                    {
+                        _indoorOnSet.Remove(thing);
+                    }
                 }
             }
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Linq.Expressions;
 using System.Reflection;
 using HarmonyLib;
 using Verse;
@@ -100,6 +101,22 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         [ThreadStatic] private static object[] _sourceArgs5;
         [ThreadStatic] private static object[] _sourceArgs3;
         [ThreadStatic] private static object[] _sourceArgs2;
+
+        // 喷流设置同样是 struct，注册时反射写字段必须装箱；按线程复用。
+        [ThreadStatic] private static object _airMoverSettingsBox;
+        [ThreadStatic] private static object[] _airMoverArgs7;
+
+        // 装箱实例的构造委托：Activator.CreateInstance 每次都要查构造器，
+        // 这里在首次使用时编译一次。
+        private static Func<object> _sourceRatesFactory;
+        private static Func<object> _airMoverSettingsFactory;
+
+        // 参数全是 BCL/游戏类型的方法可以缓存强类型委托，绕过 Invoke 的打包。
+        private delegate bool AddTemperatureDeltaDelegate(Map map, IntVec3 cell, float delta);
+        private delegate int UnregisterByOwnerDelegate(Map map, Thing owner);
+        private static AddTemperatureDeltaDelegate _addTemperatureDeltaFast;
+        private static UnregisterByOwnerDelegate _unregisterSourcesFast;
+        private static UnregisterByOwnerDelegate _unregisterAirMoversFast;
 
         public static bool Available
         {
@@ -246,6 +263,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     return;
                 }
 
+                _unregisterAirMoversFast = MakeFast<UnregisterByOwnerDelegate>(_unregisterAirMovers);
                 _airMoverAvailable = true;
             }
             catch (Exception e)
@@ -317,12 +335,48 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     return;
                 }
 
+                _addTemperatureDeltaFast = MakeFast<AddTemperatureDeltaDelegate>(_addTemperatureDelta);
+                _unregisterSourcesFast = MakeFast<UnregisterByOwnerDelegate>(_unregisterSources);
                 _sourceAvailable = true;
             }
             catch (Exception e)
             {
                 _sourceFailure = e.GetType().Name + ": " + e.Message;
                 _sourceFields = null;
+            }
+        }
+
+        /// <summary>把 MethodInfo 绑定成强类型委托；失败返回 null，调用点回退到 Invoke。</summary>
+        private static T MakeFast<T>(MethodInfo method) where T : class
+        {
+            if (method == null)
+            {
+                return null;
+            }
+            try
+            {
+                return (T)(object)method.CreateDelegate(typeof(T));
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>为 AO struct 的装箱实例生成构造委托，替代每次 Activator.CreateInstance。</summary>
+        private static Func<object> CreateFactory(Type type)
+        {
+            if (type == null)
+            {
+                return null;
+            }
+            try
+            {
+                return Expression.Lambda<Func<object>>(Expression.New(type)).Compile();
+            }
+            catch (Exception)
+            {
+                return delegate { return Activator.CreateInstance(type); };
             }
         }
 
@@ -483,6 +537,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             try
             {
                 object rates = GetSourceRatesBox();
+                if (rates == null)
+                {
+                    return null;
+                }
                 WriteSourceRates(rates, r);
                 object[] args = GetArgs(ref _sourceArgs5, 5);
                 args[0] = map;
@@ -527,6 +585,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             try
             {
                 object rates = GetSourceRatesBox();
+                if (rates == null)
+                {
+                    return false;
+                }
                 WriteSourceRates(rates, r);
                 object[] args = GetArgs(ref _sourceArgs5, 5);
                 args[0] = map;
@@ -564,6 +626,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
+                if (_unregisterSourcesFast != null)
+                {
+                    return _unregisterSourcesFast(map, owner);
+                }
                 object[] args = GetArgs(ref _sourceArgs2, 2);
                 args[0] = map;
                 args[1] = owner;
@@ -594,6 +660,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
+                if (_addTemperatureDeltaFast != null)
+                {
+                    return _addTemperatureDeltaFast(map, cell, deltaCelsius);
+                }
                 object[] args = GetArgs(ref _sourceArgs3, 3);
                 args[0] = map;
                 args[1] = cell;
@@ -663,7 +733,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                object settings = Activator.CreateInstance(_airMoverSettingsType);
+                object settings = GetAirMoverSettingsBox();
+                if (settings == null)
+                {
+                    return false;
+                }
                 _airMoverFields[0].SetValue(settings, p.CubicMetresPerTick);
                 _airMoverFields[1].SetValue(settings, p.AirColumnHeightMetres);
                 _airMoverFields[2].SetValue(settings, new UnityEngine.Vector2(p.InletDirectionX, p.InletDirectionY));
@@ -677,10 +751,27 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _airMoverFields[10].SetValue(settings, p.ExhaustOxygenPercent);
                 _airMoverFields[11].SetValue(settings, p.WaterKgPerTick);
 
-                object handle = _registerAirMover.Invoke(null, new object[]
+                object[] args = GetArgs(ref _airMoverArgs7, 7);
+                args[0] = map;
+                args[1] = owner;
+                args[2] = key;
+                args[3] = inlet;
+                args[4] = outlet;
+                args[5] = settings;
+                args[6] = activeTicks;
+                object handle;
+                try
                 {
-                    map, owner, key, inlet, outlet, settings, activeTicks,
-                });
+                    handle = _registerAirMover.Invoke(null, args);
+                }
+                finally
+                {
+                    // 复用数组不能长期持有地图/建筑引用。
+                    args[0] = null;
+                    args[1] = null;
+                    args[2] = null;
+                    args[5] = null;
+                }
                 if (handle == null)
                 {
                     return false;
@@ -711,6 +802,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
+                if (_unregisterAirMoversFast != null)
+                {
+                    _unregisterAirMoversFast(map, owner);
+                    return;
+                }
                 object[] args = GetArgs(ref _sourceArgs2, 2);
                 args[0] = map;
                 args[1] = owner;
@@ -734,8 +830,28 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             object boxed = _sourceRatesBox;
             if (boxed == null)
             {
-                boxed = Activator.CreateInstance(_sourceRatesType);
+                if (_sourceRatesFactory == null)
+                {
+                    _sourceRatesFactory = CreateFactory(_sourceRatesType);
+                }
+                boxed = _sourceRatesFactory != null ? _sourceRatesFactory() : null;
                 _sourceRatesBox = boxed;
+            }
+            return boxed;
+        }
+
+        /// <summary>取本线程复用的喷流设置装箱实例。</summary>
+        private static object GetAirMoverSettingsBox()
+        {
+            object boxed = _airMoverSettingsBox;
+            if (boxed == null)
+            {
+                if (_airMoverSettingsFactory == null)
+                {
+                    _airMoverSettingsFactory = CreateFactory(_airMoverSettingsType);
+                }
+                boxed = _airMoverSettingsFactory != null ? _airMoverSettingsFactory() : null;
+                _airMoverSettingsBox = boxed;
             }
             return boxed;
         }

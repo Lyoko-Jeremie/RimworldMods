@@ -122,6 +122,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         private readonly Dictionary<int, int> spreadVisited = new Dictionary<int, int>();
         private readonly List<int> spreadQueue = new List<int>();
 
+        // 管道格数缓存：CountPipeCells 原来每模拟步对每条 net 全量扫一遍 pipes，
+        // 总代价 O(net 数 × 管道数)。CCC 的网络重建会置 manager.IsDirty，
+        // 这里在 dirty、pipes 列表引用变化或数量变化时清空缓存。
+        private readonly Dictionary<int, int> pipeCellCache = new Dictionary<int, int>();
+        private List<CompAirFlow> cachedPipesList;
+        private int cachedPipesCount = -1;
+
         // 运行期诊断。
         //
         // CCC 面板上的「总流速 / 变温效率 / 空气流动效率」全部由 AirFlowNetTick 从气袋模型算出，
@@ -255,6 +262,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             AirFlowNetManager manager = CentralizedClimateControlUtility.GetNetManager(map);
             if (manager == null || manager.IsDirty || NetsField == null)
             {
+                // 网络正在重建：管道列表与 GridID 都可能变，格数缓存必须作废。
+                ClearPipeCellCache();
                 return null;
             }
             return NetsField.GetValue(manager) as List<AirFlowNet>;
@@ -265,9 +274,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             AirFlowNetManager manager = CentralizedClimateControlUtility.GetNetManager(map);
             if (manager == null || PipesField == null)
             {
+                ClearPipeCellCache();
                 return null;
             }
-            return PipesField.GetValue(manager) as List<CompAirFlow>;
+            List<CompAirFlow> pipes = PipesField.GetValue(manager) as List<CompAirFlow>;
+            int count = pipes != null ? pipes.Count : 0;
+            if (!object.ReferenceEquals(pipes, cachedPipesList) || count != cachedPipesCount)
+            {
+                ClearPipeCellCache();
+                cachedPipesList = pipes;
+                cachedPipesCount = count;
+            }
+            return pipes;
+        }
+
+        private void ClearPipeCellCache()
+        {
+            pipeCellCache.Clear();
+            cachedPipesList = null;
+            cachedPipesCount = -1;
         }
 
         /// <summary>统计属于某个网络的管道格数。设备不计入管道容积，另按台数折算。</summary>
@@ -281,6 +306,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             if (gridId < 0)
             {
                 return 0;
+            }
+
+            int cached;
+            if (pipeCellCache.TryGetValue(gridId, out cached))
+            {
+                return cached;
             }
 
             int count = 0;
@@ -297,6 +328,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                 }
                 count += Mathf.Max(1, pipe.parent.def.size.x * pipe.parent.def.size.z);
             }
+            pipeCellCache[gridId] = count;
             return count;
         }
 

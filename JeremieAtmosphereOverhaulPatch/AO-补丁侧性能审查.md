@@ -243,3 +243,16 @@ CCC 的 `windSlots/liveWindOwners/spreadCells` 等 scratch 复用（`:104-123`�
 
 > 结论：**真正构成“复杂度 > O(n log n)”的是 2.1（AirMover O(A²)）、2.2（CCC O(M×P)）、2.3（O(S²)）、2.4（O(A²) 低频）**。
 > 其余是“热路径上的常数过大/分配过多”，量级上更值得优先处理的是 2.1、3.5、3.2 的反射与每步全量重注册。
+
+## 9. 修复落地记录（2026-11-14）
+
+用户确认后按 §7 落地，`dotnet build -c Debug` 通过（0 警告 / 0 错误）。
+
+| 项 | 文件 | 改法 | 行为保持 |
+|---|---|---|---|
+| 2.1 喷流重注册 | `ProxyHeat/ProxyHeatSourceState.cs`、`ProxyHeat/ProxyHeatRelayMapComponent.cs` | 新增 `JetSignature`（每端口 4 个 float：speed、jetFloor、inletCell、outletCell）；签名相同且 `JetRegistered` 时跳过 `RegisterAirMover`；`RefreshRing` 与 `StopJets` 置 null | AO `PrepareAirMovers:430-444` 只在 owner 失效时移除 mover，缓存句柄安全；端口/速度/出气温度量化台阶变化都会重注册 |
+| 2.2 CCC 管格数 | `Compat.CentralizedClimateControl/AirLoopMapComponent.cs` | `pipeCellCache` 按 `GridID` 缓存；`ReadNets` 在 `IsDirty` 时清，`ReadPipes` 在列表引用/数量变化时清 | `RefreshLoopShape` 每步仍重算 volume/friction，只把 `CountPipeCells` 降为 O(1) |
+| 2.3 室内开关 | `ProxyHeat/ProxyHeatRelayMapComponent.cs` | 新增 `_indoorOnSet`，List（Scribe）与 Set 双写；读档 `RebuildIndoorCache` | 存档格式不变 |
+| 2.4 / 3.5 反射 | `Bridge/AoBridge.cs`、`Bridge/AtmosphereFieldBridge.cs` | `CreateDelegate` 缓存 `TryGetTemperature/Oxygen/Vapor/AddVolume/AddMoisture/AddTemperatureDelta/Unregister*`；表达式树写 `AtmosphereSourceRates` 10 字段（替代 10 次 `SetValue`）；`Expression.New` 生成装箱工厂；参数数组 ThreadStatic 复用 | 失败全部回退原 `Invoke`/`SetValue`；`SetSlot` 因 `SourceSlots` 是 AO 内部类型，跨程序集表达式树不可见，仍走 `Invoke`（参数数组已复用） |
+| 3.4 GetSlots | `Bridge/AoBridge.cs` | `ConditionalWeakTable<Thing,object>` 缓存非 null slots | `slots` 是 `CompTempControlAtmosphere` 的 `readonly` 字段（`Buildings/4VanillaFacilities.cs:20`），不会替换 |
+| 3.6 吊扇 | `Compat.VanillaTemperatureExpanded/CompCeilingFanAtmosphere.cs` | `applyIntervalTicks` 15→30；`_rateCache` 按 `count`+`perTick` 缓存，`RebuildCells` 置 null | AO `UpdateContinuousSource` 先 `FlushContinuousIntervalToQueues` 再重置 `LastAppliedTick`，拉长间隔不丢积分 |

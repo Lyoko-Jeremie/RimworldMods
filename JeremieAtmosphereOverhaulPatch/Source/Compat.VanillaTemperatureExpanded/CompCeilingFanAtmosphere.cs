@@ -24,8 +24,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
         /// <summary>重扫格子的间隔。房间结构很少变，不必每 tick 扫。</summary>
         public int scanIntervalTicks = 60;
 
-        /// <summary>重写连续源的间隔。温度变化慢，每 15 tick 一次足够，且省反射开销。</summary>
-        public int applyIntervalTicks = 15;
+        /// <summary>重写连续源的间隔。温度变化慢，每 30 tick 一次足够；
+        /// AO 的 UpdateContinuousSource 会先结算旧速率，间隔拉长不会丢积分。</summary>
+        public int applyIntervalTicks = 30;
 
         public CompProperties_CeilingFanAtmosphere()
         {
@@ -49,6 +50,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
     public class CompCeilingFanAtmosphere : ThingComp
     {
         private readonly List<IntVec3> _cells = new List<IntVec3>(128);
+
+        /// <summary>每格已算好的 rates，RebuildCells 或 perTick 变化时重建。</summary>
+        private SlotRates[] _rateCache;
+        private float _rateCachePerTick;
 
         private object _slots;
         private int _lastScanTick = -99999;
@@ -147,17 +152,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             float perTick = fan.Props.heatPerSecond * Props.coolingFactor / 60f / count;
             IntVec3 center = parent.Position;
 
+            // 每格的 rates 只和格位置、perTick 有关；格集在 RebuildCells 后不变，
+            // 所以缓存数组，避免每次 Apply 都重算切向并构造 count 个 struct。
+            SlotRates[] rates = _rateCache;
+            if (rates == null || rates.Length != count || _rateCachePerTick != perTick)
+            {
+                rates = new SlotRates[count];
+                for (int i = 0; i < count; i++)
+                {
+                    Vector2 tangent = Tangent(_cells[i], center);
+                    rates[i] = new SlotRates
+                    {
+                        TemperaturePerTick = perTick,
+                        MaintainTargetWind = true,
+                        TargetWind = tangent * Props.windSpeed,
+                        TargetWindBlendPerTick = Props.windBlendPerTick,
+                    };
+                }
+                _rateCache = rates;
+                _rateCachePerTick = perTick;
+            }
+
             for (int i = 0; i < count; i++)
             {
-                IntVec3 cell = _cells[i];
-                Vector2 tangent = Tangent(cell, center);
-
-                SlotRates rates = new SlotRates();
-                rates.TemperaturePerTick = perTick;
-                rates.MaintainTargetWind = true;
-                rates.TargetWind = tangent * Props.windSpeed;
-                rates.TargetWindBlendPerTick = Props.windBlendPerTick;
-                AoBridge.SetSlot(_slots, parent, i, cell, rates);
+                AoBridge.SetSlot(_slots, parent, i, _cells[i], rates[i]);
             }
 
             // 只有上一次写过的槽位比本次多时，才需要清尾部残留；
@@ -189,6 +207,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
         private void RebuildCells()
         {
             _cells.Clear();
+            // 格集变了，切向与 perTick 都可能变，缓存必须作废。
+            _rateCache = null;
 
             Map map = parent.Map;
             if (map == null)

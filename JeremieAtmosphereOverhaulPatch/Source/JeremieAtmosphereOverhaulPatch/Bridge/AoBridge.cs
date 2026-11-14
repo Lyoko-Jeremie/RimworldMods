@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using UnityEngine;
 using Verse;
@@ -81,6 +83,35 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         // AO 的 AtmosphereSourceRates 是 struct，反射调用 Set 时必须装箱。
         // 字段在 Resolve 里一次性解析成数组，热路径只按下标取值，不再查字典。
         private static FieldInfo[] _rateFieldArray;
+
+        private static Func<object> _ratesFactory;
+
+        // 参数全是 BCL/游戏类型的方法可以缓存强类型委托，绕过 MethodInfo.Invoke
+        // 的 object[] 打包与参数检查。读温度/氧/水汽在 CCC、GC、AcNet 的
+        // 每模拟步路径里被调数百次，这是最值得去掉反射热点的入口。
+        // 委托创建失败时回退到原来的 Invoke，行为不变。
+        private delegate bool TryGetTemperatureDelegate(Map map, IntVec3 cell, out float celsius);
+        private delegate bool TryGetOxygenDelegate(Map map, IntVec3 cell, out byte percent);
+        private delegate bool TryGetVaporDelegate(Map map, IntVec3 cell, out float vapor);
+        private delegate bool AddVolumeDelegate(Map map, IntVec3 cell, float volumes, float oxygen, float temperature);
+        private delegate bool AddMoistureDelegate(Map map, IntVec3 cell, float deltaVapor);
+        private delegate bool TryGetPressureDelegate(object component, IntVec3 cell, out float pascals);
+        private delegate bool PushHeatDelegate(object component, IntVec3 cell, float energy);
+
+        private static TryGetTemperatureDelegate _tryGetTemperatureFast;
+        private static TryGetOxygenDelegate _tryGetOxygenFast;
+        private static TryGetVaporDelegate _tryGetVaporFast;
+        private static AddVolumeDelegate _addVolumeSourceFast;
+        private static AddVolumeDelegate _addVolumeSourceAtTemperatureFast;
+        private static AddMoistureDelegate _addMoistureDeltaFast;
+        private static TryGetPressureDelegate _staticPressureFast;
+        private static PushHeatDelegate _pushHeatFast;
+
+        // 每台设备的 SourceSlots 在 AO 温控组件构造时创建一次，之后不变。
+        // AcNet 每模拟步对每台室内机都要 GetSlots，原来每次线性扫 AllComps。
+        // 用弱表缓存：Thing 被销毁后条目自动回收，不会拖住地图。
+        private static readonly ConditionalWeakTable<Thing, object> _slotsCache =
+            new ConditionalWeakTable<Thing, object>();
 
         private static readonly string[] RateFieldNames =
         {
@@ -286,12 +317,39 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     _rateFieldArray[i] = AccessTools.Field(_ratesType, RateFieldNames[i]);
                 }
 
+                // 缓存强类型委托；创建失败时保持 null，调用点回退到 Invoke。
+                _tryGetTemperatureFast = MakeFast<TryGetTemperatureDelegate>(_tryGetTemperature);
+                _tryGetOxygenFast = MakeFast<TryGetOxygenDelegate>(_tryGetOxygen);
+                _tryGetVaporFast = MakeFast<TryGetVaporDelegate>(_tryGetVapor);
+                _addVolumeSourceFast = MakeFast<AddVolumeDelegate>(_addVolumeSource);
+                _addVolumeSourceAtTemperatureFast = MakeFast<AddVolumeDelegate>(_addVolumeSourceAtTemperature);
+                _addMoistureDeltaFast = MakeFast<AddMoistureDelegate>(_addMoistureDelta);
+                _staticPressureFast = MakeFast<TryGetPressureDelegate>(_staticPressure);
+                _pushHeatFast = MakeFast<PushHeatDelegate>(_pushHeat);
+
                 _available = true;
             }
             catch (Exception e)
             {
                 _available = false;
                 _failure = e.GetType().Name + ": " + e.Message;
+            }
+        }
+
+        /// <summary>把 MethodInfo 绑定成强类型委托；失败返回 null，调用点回退到 Invoke。</summary>
+        private static T MakeFast<T>(MethodInfo method) where T : class
+        {
+            if (method == null)
+            {
+                return null;
+            }
+            try
+            {
+                return (T)(object)method.CreateDelegate(typeof(T));
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
 
@@ -310,6 +368,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             if (!_available || map == null)
             {
                 return false;
+            }
+
+            if (_tryGetTemperatureFast != null)
+            {
+                return _tryGetTemperatureFast(map, cell, out celsius);
             }
 
             object[] args = GetArgs(ref _args3, 3);
@@ -344,6 +407,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
+            if (_staticPressureFast != null)
+            {
+                return _staticPressureFast(component, cell, out pascals);
+            }
+
             object[] args = GetArgs(ref _args2, 2);
             args[0] = cell;
             args[1] = null;
@@ -376,6 +444,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
+                if (_pushHeatFast != null)
+                {
+                    return _pushHeatFast(component, cell, energy);
+                }
                 object[] args = GetArgs(ref _args2, 2);
                 args[0] = cell;
                 args[1] = energy;
@@ -397,6 +469,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
             try
             {
+                if (_addVolumeSourceFast != null)
+                {
+                    return _addVolumeSourceFast(map, cell, cellVolumes, oxygenPercent, temperatureOffsetCelsius);
+                }
                 object[] args = GetArgs(ref _args5, 5);
                 args[0] = map;
                 args[1] = cell;
@@ -422,6 +498,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
             try
             {
+                if (_addVolumeSourceAtTemperatureFast != null)
+                {
+                    return _addVolumeSourceAtTemperatureFast(map, cell, cellVolumes, oxygenPercent, gasCelsius);
+                }
                 object[] args = GetArgs(ref _args5, 5);
                 args[0] = map;
                 args[1] = cell;
@@ -447,6 +527,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
+            if (_tryGetOxygenFast != null)
+            {
+                byte raw;
+                if (!_tryGetOxygenFast(map, cell, out raw))
+                {
+                    return false;
+                }
+                percent = raw;
+                return true;
+            }
+
             object[] args = GetArgs(ref _args3, 3);
             args[0] = map;
             args[1] = cell;
@@ -467,6 +558,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             if (map == null || _tryGetVapor == null)
             {
                 return false;
+            }
+
+            if (_tryGetVaporFast != null)
+            {
+                return _tryGetVaporFast(map, cell, out vapor);
             }
 
             object[] args = GetArgs(ref _args3, 3);
@@ -493,6 +589,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
             try
             {
+                if (_addMoistureDeltaFast != null)
+                {
+                    return _addMoistureDeltaFast(map, cell, deltaVapor);
+                }
                 object[] args = GetArgs(ref _args3, 3);
                 args[0] = map;
                 args[1] = cell;
@@ -551,6 +651,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return null;
             }
 
+            object cachedSlots;
+            if (_slotsCache.TryGetValue(thing, out cachedSlots))
+            {
+                return cachedSlots;
+            }
+
             ThingWithComps holder = thing as ThingWithComps;
             if (holder == null)
             {
@@ -568,7 +674,20 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 ThingComp comp = comps[i];
                 if (comp != null && comp.GetType() == _tempControlType)
                 {
-                    return _tempControlSlotsField.GetValue(comp);
+                    object slots = _tempControlSlotsField.GetValue(comp);
+                    if (slots != null)
+                    {
+                        try
+                        {
+                            _slotsCache.Add(thing, slots);
+                        }
+                        catch (ArgumentException)
+                        {
+                            // 模拟线程与主线程可能同时首次取同一 Thing 的 slots；
+                            // 另一线程已缓存同一引用，忽略即可
+                        }
+                    }
+                    return slots;
                 }
             }
             return null;
@@ -582,6 +701,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return;
             }
             object boxed = GetRatesBox();
+            if (boxed == null)
+            {
+                return;
+            }
             FillRates(boxed, rates);
 
             object[] args = GetArgs(ref _args4, 4);
@@ -695,7 +818,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             object boxed = _ratesBox;
             if (boxed == null)
             {
-                boxed = Activator.CreateInstance(_ratesType);
+                if (_ratesFactory == null)
+                {
+                    _ratesFactory = CreateFactory(_ratesType);
+                }
+                boxed = _ratesFactory != null ? _ratesFactory() : null;
                 _ratesBox = boxed;
             }
             return boxed;
@@ -718,6 +845,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             if (fields[7] != null) { fields[7].SetValue(boxed, rates.MaintainTargetWind); }
             if (fields[8] != null) { fields[8].SetValue(boxed, rates.TargetWind); }
             if (fields[9] != null) { fields[9].SetValue(boxed, rates.TargetWindBlendPerTick); }
+        }
+
+        /// <summary>为 AO struct 的装箱实例生成构造委托，替代每次 Activator.CreateInstance。</summary>
+        private static Func<object> CreateFactory(Type type)
+        {
+            if (type == null)
+            {
+                return null;
+            }
+            try
+            {
+                return Expression.Lambda<Func<object>>(Expression.New(type)).Compile();
+            }
+            catch (Exception)
+            {
+                return delegate { return Activator.CreateInstance(type); };
+            }
         }
 
         /// <summary>

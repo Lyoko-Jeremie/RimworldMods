@@ -59,6 +59,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// </summary>
         public bool JetRegistered;
 
+        /// <summary>
+        /// 上一次真正注册喷流时，每个端口的签名（速度、出风温度台阶、入口/出口格索引）。
+        /// <c>InjectJets</c> 只在签名变化时才调 AO 的 <c>RegisterAirMover</c>，
+        /// 避免每模拟周期对每个端口都做一次 AO 列表的线性查重（O(端口数 × 已注册数)）。
+        /// 端口集在 <c>RefreshRing</c> 重建时置 null，强制下一次全部重注册。
+        /// </summary>
+        public float[] JetSignature;
+
         /// <summary>本周期重采样得到的环形基线温度（℃）。</summary>
         public float Baseline;
 
