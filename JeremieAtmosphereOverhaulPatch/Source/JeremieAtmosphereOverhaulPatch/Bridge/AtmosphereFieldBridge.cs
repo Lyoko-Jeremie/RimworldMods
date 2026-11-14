@@ -93,6 +93,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static bool _sourceAvailable;
         private static string _sourceFailure;
 
+        // AO 的 AtmosphereSourceRates 是 struct，反射调用必须装箱。
+        // 连续源在每期通风/喷流刷新时都要调一次，这里按线程复用装箱实例与参数数组，
+        // 避免每 60 tick、每条源都产生一次分配。AO 端按值接收 rates，不保留装箱引用。
+        [ThreadStatic] private static object _sourceRatesBox;
+        [ThreadStatic] private static object[] _sourceArgs5;
+        [ThreadStatic] private static object[] _sourceArgs3;
+        [ThreadStatic] private static object[] _sourceArgs2;
+
         public static bool Available
         {
             get { Resolve(); return _available; }
@@ -474,9 +482,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                object rates = Activator.CreateInstance(_sourceRatesType);
+                object rates = GetSourceRatesBox();
                 WriteSourceRates(rates, r);
-                object handle = _registerSource.Invoke(null, new object[] { map, owner, key, cell, rates });
+                object[] args = GetArgs(ref _sourceArgs5, 5);
+                args[0] = map;
+                args[1] = owner;
+                args[2] = key;
+                args[3] = cell;
+                args[4] = rates;
+                object handle = _registerSource.Invoke(null, args);
                 if (handle == null)
                 {
                     return null;
@@ -488,6 +502,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _sourceFailure = e.GetType().Name + ": " + e.Message;
                 _sourceAvailable = false;
                 return null;
+            }
+            finally
+            {
+                // 复用数组不能长期持有地图/建筑引用。
+                if (_sourceArgs5 != null)
+                {
+                    _sourceArgs5[0] = null;
+                    _sourceArgs5[1] = null;
+                    _sourceArgs5[2] = null;
+                }
             }
         }
 
@@ -502,9 +526,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                object rates = Activator.CreateInstance(_sourceRatesType);
+                object rates = GetSourceRatesBox();
                 WriteSourceRates(rates, r);
-                object result = _updateSource.Invoke(null, new object[] { map, owner, handle, cell, rates });
+                object[] args = GetArgs(ref _sourceArgs5, 5);
+                args[0] = map;
+                args[1] = owner;
+                args[2] = handle;
+                args[3] = cell;
+                args[4] = rates;
+                object result = _updateSource.Invoke(null, args);
                 return result is bool && (bool)result;
             }
             catch (Exception e)
@@ -512,6 +542,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _sourceFailure = e.GetType().Name + ": " + e.Message;
                 _sourceAvailable = false;
                 return false;
+            }
+            finally
+            {
+                if (_sourceArgs5 != null)
+                {
+                    _sourceArgs5[0] = null;
+                    _sourceArgs5[1] = null;
+                }
             }
         }
 
@@ -526,7 +564,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                object result = _unregisterSources.Invoke(null, new object[] { map, owner });
+                object[] args = GetArgs(ref _sourceArgs2, 2);
+                args[0] = map;
+                args[1] = owner;
+                object result = _unregisterSources.Invoke(null, args);
+                args[0] = null;
+                args[1] = null;
                 return result is int ? (int)result : 0;
             }
             catch (Exception e)
@@ -551,7 +594,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                object result = _addTemperatureDelta.Invoke(null, new object[] { map, cell, deltaCelsius });
+                object[] args = GetArgs(ref _sourceArgs3, 3);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = deltaCelsius;
+                object result = _addTemperatureDelta.Invoke(null, args);
+                args[0] = null;
                 return result is bool && (bool)result;
             }
             catch (Exception e)
@@ -663,13 +711,45 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                _unregisterAirMovers.Invoke(null, new object[] { map, owner });
+                object[] args = GetArgs(ref _sourceArgs2, 2);
+                args[0] = map;
+                args[1] = owner;
+                _unregisterAirMovers.Invoke(null, args);
+                args[0] = null;
+                args[1] = null;
             }
             catch (Exception e)
             {
                 _airMoverFailure = e.GetType().Name + ": " + e.Message;
                 _airMoverAvailable = false;
             }
+        }
+
+        /// <summary>
+        /// 取本线程复用的 rates 装箱实例。AO 的接口按值接收 struct，
+        /// 不会把装箱对象留到下一次调用之后，因此同线程内原地改写是安全的。
+        /// </summary>
+        private static object GetSourceRatesBox()
+        {
+            object boxed = _sourceRatesBox;
+            if (boxed == null)
+            {
+                boxed = Activator.CreateInstance(_sourceRatesType);
+                _sourceRatesBox = boxed;
+            }
+            return boxed;
+        }
+
+        /// <summary>取本线程复用的反射参数数组，长度固定后不再分配。</summary>
+        private static object[] GetArgs(ref object[] pool, int length)
+        {
+            object[] args = pool;
+            if (args == null || args.Length != length)
+            {
+                args = new object[length];
+                pool = args;
+            }
+            return args;
         }
     }
 }

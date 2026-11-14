@@ -54,6 +54,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
         private int _lastScanTick = -99999;
         private int _lastApplyTick = -99999;
 
+        /// <summary>槽位是否已经全部清零。断电/停转时只在「从有到无」清一次。</summary>
+        private bool _slotsCleared = true;
+
+        /// <summary>上一次 Apply 写入的槽位数，用于判断是否需要清尾部残留。</summary>
+        private int _writtenSlots;
+
         public CompProperties_CeilingFanAtmosphere Props
         {
             get { return (CompProperties_CeilingFanAtmosphere)props; }
@@ -100,7 +106,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             if (!power.PowerOn)
             {
                 // 与原版一致：断电时完全不动作，扇叶停在当前角度。
-                AoBridge.ZeroFrom(_slots, parent, 0);
+                // 槽位只需清一次，不必每 tick 重复调 AO。
+                ClearSlotsOnce();
                 return true;
             }
 
@@ -115,7 +122,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
 
             if (!on || _cells.Count == 0)
             {
-                AoBridge.ZeroFrom(_slots, parent, 0);
+                ClearSlotsOnce();
                 return true;
             }
 
@@ -132,7 +139,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             int count = _cells.Count;
             if (count == 0)
             {
-                AoBridge.ZeroFrom(_slots, parent, 0);
+                ClearSlotsOnce();
                 return;
             }
 
@@ -153,7 +160,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
                 AoBridge.SetSlot(_slots, parent, i, cell, rates);
             }
 
-            AoBridge.ZeroFrom(_slots, parent, count);
+            // 只有上一次写过的槽位比本次多时，才需要清尾部残留；
+            // 槽位数不变时 AO 那边本来就没有多余 handle。
+            if (_writtenSlots > count)
+            {
+                AoBridge.ZeroFrom(_slots, parent, count);
+            }
+            _writtenSlots = count;
+            _slotsCleared = false;
+        }
+
+        /// <summary>
+        /// 只在「从有到无」时清一次槽位。原来每 tick 都调 ZeroFrom，
+        /// AO 每次都要遍历 handles 并逐个 UpdateContinuousSource，
+        /// 断电或停转的吊扇会白白占满 tick 预算。
+        /// </summary>
+        private void ClearSlotsOnce()
+        {
+            if (_slotsCleared)
+            {
+                return;
+            }
+            AoBridge.ZeroFrom(_slots, parent, 0);
+            _slotsCleared = true;
+            _writtenSlots = 0;
         }
 
         private void RebuildCells()

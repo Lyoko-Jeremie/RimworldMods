@@ -60,6 +60,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private static FieldInfo _propRadius;
         private static FieldInfo _propDisabled;
 
+        // SetActive 在每期模拟里按源调用，复用参数数组避免每次分配。
+        // 模拟可能跑在线程池上，共享静态数组会写竞争，因此按线程各一份。
+        [ThreadStatic] private static object[] _setActiveArgs;
+
         public static bool Available
         {
             get { Resolve(); return _available; }
@@ -262,7 +266,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             {
                 return;
             }
-            _setActiveMethod.Invoke(comp, new object[] { value });
+            object[] args = _setActiveArgs;
+            if (args == null)
+            {
+                args = new object[1];
+                _setActiveArgs = args;
+            }
+            args[0] = value;
+            _setActiveMethod.Invoke(comp, args);
+            args[0] = null;
         }
 
         /// <summary>public MarkDirty()，把自己塞进 manager 的 dirtyComps，下一个 tick 会重建照射区。</summary>

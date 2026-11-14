@@ -78,7 +78,34 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static Type _waterMathType;
         private static MethodInfo _emitWater;
 
-        private static readonly Dictionary<string, FieldInfo> RateFields = new Dictionary<string, FieldInfo>();
+        // AO 的 AtmosphereSourceRates 是 struct，反射调用 Set 时必须装箱。
+        // 字段在 Resolve 里一次性解析成数组，热路径只按下标取值，不再查字典。
+        private static FieldInfo[] _rateFieldArray;
+
+        private static readonly string[] RateFieldNames =
+        {
+            "TemperaturePerTick",
+            "GroundTemperaturePerTick",
+            "MoisturePerTick",
+            "MistPerTick",
+            "WindPerTick",
+            "PressurePerTick",
+            "OxygenPercentPerTick",
+            "MaintainTargetWind",
+            "TargetWind",
+            "TargetWindBlendPerTick",
+        };
+
+        // Invoke 的参数数组与装箱速率按线程复用：AO 的模拟跑在线程池上，
+        // 共享静态实例会写竞争；每线程一份既避免每步分配，也不会串数据。
+        // 同线程内若有重入，Invoke 在进入被调方法前已读完参数，不会被后来的写入影响。
+        // SourceSlots.Set 按值读取 rates，复用同一个装箱实例是安全的。
+        [ThreadStatic] private static object[] _args1;
+        [ThreadStatic] private static object[] _args2;
+        [ThreadStatic] private static object[] _args3;
+        [ThreadStatic] private static object[] _args4;
+        [ThreadStatic] private static object[] _args5;
+        [ThreadStatic] private static object _ratesBox;
 
         /// <summary>AO 连续源 API 是否完整可用。</summary>
         public static bool Available
@@ -126,7 +153,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return poolKg;
             }
 
-            object[] args = { parent, poolKg };
+            object[] args = GetArgs(ref _args2, 2);
+            args[0] = parent;
+            args[1] = poolKg;
             try
             {
                 _emitWater.Invoke(null, args);
@@ -136,6 +165,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 // AO 换版本把签名改了也不要让整个模拟停摆，水就地丢弃。
                 return poolKg;
+            }
+            finally
+            {
+                args[0] = null;
             }
         }
 
@@ -247,6 +280,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 if (_slotsRemoveAll == null) { _failure = "SourceSlots.RemoveAll 未找到"; return; }
                 if (_tempControlSlotsField == null) { _failure = "CompTempControlAtmosphere.slots 未找到"; return; }
 
+                _rateFieldArray = new FieldInfo[RateFieldNames.Length];
+                for (int i = 0; i < RateFieldNames.Length; i++)
+                {
+                    _rateFieldArray[i] = AccessTools.Field(_ratesType, RateFieldNames[i]);
+                }
+
                 _available = true;
             }
             catch (Exception e)
@@ -273,7 +312,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
-            object[] args = { map, cell, null };
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = map;
+            args[1] = cell;
+            args[2] = null;
             bool ok = (bool)_tryGetTemperature.Invoke(null, args);
             if (ok)
             {
@@ -302,7 +344,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
-            object[] args = { cell, null };
+            object[] args = GetArgs(ref _args2, 2);
+            args[0] = cell;
+            args[1] = null;
             bool ok = (bool)_staticPressure.Invoke(component, args);
             if (ok)
             {
@@ -332,7 +376,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                return (bool)_pushHeat.Invoke(component, new object[] { cell, energy });
+                object[] args = GetArgs(ref _args2, 2);
+                args[0] = cell;
+                args[1] = energy;
+                return (bool)_pushHeat.Invoke(component, args);
             }
             catch (Exception)
             {
@@ -350,7 +397,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
             try
             {
-                _addVolumeSource.Invoke(null, new object[] { map, cell, cellVolumes, oxygenPercent, temperatureOffsetCelsius });
+                object[] args = GetArgs(ref _args5, 5);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = cellVolumes;
+                args[3] = oxygenPercent;
+                args[4] = temperatureOffsetCelsius;
+                _addVolumeSource.Invoke(null, args);
                 return true;
             }
             catch (Exception)
@@ -369,7 +422,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
             try
             {
-                _addVolumeSourceAtTemperature.Invoke(null, new object[] { map, cell, cellVolumes, oxygenPercent, gasCelsius });
+                object[] args = GetArgs(ref _args5, 5);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = cellVolumes;
+                args[3] = oxygenPercent;
+                args[4] = gasCelsius;
+                _addVolumeSourceAtTemperature.Invoke(null, args);
                 return true;
             }
             catch (Exception)
@@ -388,7 +447,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
-            object[] args = { map, cell, (byte)0 };
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = map;
+            args[1] = cell;
+            args[2] = null;
             bool ok = (bool)_tryGetOxygen.Invoke(null, args);
             if (ok)
             {
@@ -407,7 +469,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
-            object[] args = { map, cell, null };
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = map;
+            args[1] = cell;
+            args[2] = null;
             bool ok = (bool)_tryGetVapor.Invoke(null, args);
             if (ok)
             {
@@ -428,7 +493,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
             try
             {
-                _addMoistureDelta.Invoke(null, new object[] { map, cell, deltaVapor });
+                object[] args = GetArgs(ref _args3, 3);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = deltaVapor;
+                _addMoistureDelta.Invoke(null, args);
                 return true;
             }
             catch (Exception)
@@ -512,8 +581,24 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 return;
             }
-            object boxed = NewRates(rates);
-            _slotsSet.Invoke(slots, new object[] { owner, slot, cell, boxed });
+            object boxed = GetRatesBox();
+            FillRates(boxed, rates);
+
+            object[] args = GetArgs(ref _args4, 4);
+            args[0] = owner;
+            args[1] = slot;
+            args[2] = cell;
+            args[3] = boxed;
+            try
+            {
+                _slotsSet.Invoke(slots, args);
+            }
+            finally
+            {
+                // 复用数组不能长期持有 Thing 引用，否则地图销毁后会被拖住。
+                args[0] = null;
+                args[3] = null;
+            }
         }
 
         /// <summary>把 from 号及之后的所有槽位清零。</summary>
@@ -523,7 +608,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 return;
             }
-            _slotsZeroFrom.Invoke(slots, new object[] { owner, from });
+            object[] args = GetArgs(ref _args2, 2);
+            args[0] = owner;
+            args[1] = from;
+            try
+            {
+                _slotsZeroFrom.Invoke(slots, args);
+            }
+            finally
+            {
+                args[0] = null;
+            }
         }
 
         /// <summary>注销该 owner 的全部槽位。用于建筑拆除。</summary>
@@ -533,7 +628,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 return;
             }
-            _slotsRemoveAll.Invoke(slots, new object[] { owner, map });
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = owner;
+            args[1] = map;
+            try
+            {
+                _slotsRemoveAll.Invoke(slots, args);
+            }
+            finally
+            {
+                args[0] = null;
+                args[1] = null;
+            }
         }
 
         /// <summary>读 AO_FacilityExtension.heatFactor；没有扩展时用 fallback。</summary>
@@ -564,7 +670,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
             try
             {
-                object ext = _facilityExtFor.Invoke(null, new object[] { def });
+                object[] args = GetArgs(ref _args1, 1);
+                args[0] = def;
+                object ext = _facilityExtFor.Invoke(null, args);
                 if (ext == null)
                 {
                     return fallback;
@@ -577,36 +685,54 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
         }
 
-        private static object NewRates(SlotRates rates)
+        /// <summary>
+        /// 取本线程复用的 rates 装箱实例。
+        /// AO 的 SourceSlots.Set 按值接收 rates，不会保留装箱引用，
+        /// 因此同一线程内原地改写是安全的；每线程一份则避免模拟线程与主线程写竞争。
+        /// </summary>
+        private static object GetRatesBox()
         {
-            // AtmosphereSourceRates 是 struct：CreateInstance 得到装箱副本，
-            // 反射写字段后整箱传给 SourceSlots.Set，Set 内部拆箱读值。
-            object boxed = Activator.CreateInstance(_ratesType);
-            SetRateField(boxed, "TemperaturePerTick", rates.TemperaturePerTick);
-            SetRateField(boxed, "GroundTemperaturePerTick", rates.GroundTemperaturePerTick);
-            SetRateField(boxed, "MoisturePerTick", rates.MoisturePerTick);
-            SetRateField(boxed, "MistPerTick", rates.MistPerTick);
-            SetRateField(boxed, "WindPerTick", rates.WindPerTick);
-            SetRateField(boxed, "PressurePerTick", rates.PressurePerTick);
-            SetRateField(boxed, "OxygenPercentPerTick", rates.OxygenPercentPerTick);
-            SetRateField(boxed, "MaintainTargetWind", rates.MaintainTargetWind);
-            SetRateField(boxed, "TargetWind", rates.TargetWind);
-            SetRateField(boxed, "TargetWindBlendPerTick", rates.TargetWindBlendPerTick);
+            object boxed = _ratesBox;
+            if (boxed == null)
+            {
+                boxed = Activator.CreateInstance(_ratesType);
+                _ratesBox = boxed;
+            }
             return boxed;
         }
 
-        private static void SetRateField(object boxed, string name, object value)
+        private static void FillRates(object boxed, SlotRates rates)
         {
-            FieldInfo field;
-            if (!RateFields.TryGetValue(name, out field))
+            FieldInfo[] fields = _rateFieldArray;
+            if (fields == null)
             {
-                field = AccessTools.Field(_ratesType, name);
-                RateFields[name] = field;
+                return;
             }
-            if (field != null)
+            if (fields[0] != null) { fields[0].SetValue(boxed, rates.TemperaturePerTick); }
+            if (fields[1] != null) { fields[1].SetValue(boxed, rates.GroundTemperaturePerTick); }
+            if (fields[2] != null) { fields[2].SetValue(boxed, rates.MoisturePerTick); }
+            if (fields[3] != null) { fields[3].SetValue(boxed, rates.MistPerTick); }
+            if (fields[4] != null) { fields[4].SetValue(boxed, rates.WindPerTick); }
+            if (fields[5] != null) { fields[5].SetValue(boxed, rates.PressurePerTick); }
+            if (fields[6] != null) { fields[6].SetValue(boxed, rates.OxygenPercentPerTick); }
+            if (fields[7] != null) { fields[7].SetValue(boxed, rates.MaintainTargetWind); }
+            if (fields[8] != null) { fields[8].SetValue(boxed, rates.TargetWind); }
+            if (fields[9] != null) { fields[9].SetValue(boxed, rates.TargetWindBlendPerTick); }
+        }
+
+        /// <summary>
+        /// 取本线程复用的反射参数数组。长度固定后不再分配；
+        /// 调用方必须在每次使用前写满全部元素，避免残留上一次的引用。
+        /// </summary>
+        private static object[] GetArgs(ref object[] pool, int length)
+        {
+            object[] args = pool;
+            if (args == null || args.Length != length)
             {
-                field.SetValue(boxed, value);
+                args = new object[length];
+                pool = args;
             }
+            return args;
         }
     }
 }
