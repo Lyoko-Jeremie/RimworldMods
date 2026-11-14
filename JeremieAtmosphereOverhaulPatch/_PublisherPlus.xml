@@ -9,9 +9,14 @@
     <exclude>AO-Frostpunk发电机分析.md</exclude>
     <exclude>AO-GPU-WGSL分析.md</exclude>
     <exclude>AO-ProxyHeat接管与三模式设计.md</exclude>
+    <exclude>AO-ProxyHeat替代机制设计决策.md</exclude>
     <exclude>AO-VTE三管式VRF设计.md</exclude>
+    <exclude>AO-主动气体转移装置设计分析.md</exclude>
     <exclude>AO-四Mod温度建筑组件清单.md</exclude>
     <exclude>AO-建筑体系与四Mod定位分析.md</exclude>
+    <exclude>AO-模块功能与性能分析.md</exclude>
+    <exclude>AO-补丁侧性能审查.md</exclude>
+    <exclude>AO-超维科技穹顶与生物圈语义分析.md</exclude>
     <exclude>AO-逐建筑特性与公式.md</exclude>
     <exclude>AO元素耦合模型分析.md</exclude>
     <exclude>AO兼容层重构设计.md</exclude>
