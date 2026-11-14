@@ -12,14 +12,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
     /// <summary>
     /// 中控器的错误图标刷新。
     ///
-    /// VTE 的 <c>CompResourceSingleton.UpdateOverlayHandle</c> 只在 spawn/despawn 时被调用，
-    /// 而且开头就是 <c>if (ResourceOn || !CanBeOn()) return;</c>。本 mod 让控制器一直保持
-    /// <c>ResourceOn = true</c>（它不参与账本开关机），于是这个方法永远不会再刷新图标：
-    /// 只要历史上出现过一次 <c>Efficiency == 0</c>（重建室内机、网络瞬时断开的那个模拟步），
-    /// 「缺少室外机」的脉动图标就会一直亮着，直到控制器被拆掉重建。
+    /// 为什么必须由账本来写：
+    /// VTE 的 <c>CompResourceSingleton.UpdateOverlayHandle</c> 只有两个调用时机——
+    /// <c>AcPipeNet.PipeSystemTick</c>（被本 mod 短路掉）和
+    /// <c>AcPipeNet.RegisterComp</c> / <c>UnregisterComp</c>（管网合并、拆分时）。
+    /// 后者会按「当时」的 <c>AcPipeNet.Efficiency</c> 直接 <c>TogglePulsing</c>：
+    /// 新建空调自成一网时账本把这个空网写成 0，随后玩家用管道把它接到主网上，
+    /// 一旦是「新网吞并主网」，中控器就被注册进这个 Efficiency 还是 0 的网，
+    /// 图标当场被点亮。
     ///
-    /// 这里用反射调 <c>PipeNetOverlayDrawer.TogglePulsing</c>，绕开那个 early-return，
-    /// 并且只在状态变化时调用，避免每 30 tick 反复 Enable/Disable 造成闪烁。
+    /// 注意这里没有 <c>ResourceOn</c> 早退（有早退的是 <c>CompResourceTrader_AC</c> 和
+    /// <c>CompResourceTrader_Compressor</c>），所以「控制器常开」并不能挡住它。
+    ///
+    /// 光靠本类每步写还不够：下面的 <c>_lastState</c> 只在「我们上次写过的值」变化时才写。
+    /// VTE 绕过缓存点亮图标后，账本下一步算出的 <c>false</c> 会被当成「没变化」丢弃，
+    /// 图标就永久脉动。因此 <c>AcNetPatches</c> 给 RegisterComp/UnregisterComp 打了 Postfix：
+    /// 只要有控制器被搬动就 <see cref="Forget"/> 掉它的缓存，逼账本下一步无条件重写一次。
+    ///
     /// 材质是 UnityEngine.Material，本程序集不直接引用 CoreModule，所以整条调用链都走反射。
     /// </summary>
     internal static class AcNetOverlay
@@ -90,7 +99,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             _togglePulsing.Invoke(drawer, new object[] { thing, material, on });
         }
 
-        /// <summary>控制器被拆掉后清掉缓存，避免字典无限增长。</summary>
+        /// <summary>
+        /// 丢掉某个中控器的图标缓存，让它下次进 Refresh 时无条件重写一次 overlay。
+        ///
+        /// 调用点（都在 AcNetPatches）：
+        /// 1. AcPipeNet.RegisterComp / UnregisterComp 的 Postfix：VTE 在这些钩子里
+        ///    绕开本类直接写 overlay，缓存必须作废，否则纠正写会被 early-return 吞掉；
+        /// 2. CompResourceSingleton.PostDeSpawn 的 Postfix：控制器被拆除后清账，
+        ///    避免字典随拆建无限增长。
+        /// </summary>
         public static void Forget(int thingIdNumber)
         {
             _lastState.Remove(thingIdNumber);

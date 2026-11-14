@@ -495,6 +495,16 @@ static class AtmosphereSimulationHook {
 | 拆除建筑 | `SourceSlots.RemoveAll` 由 AO 组件自己的 `PostDeSpawn` 处理；账本每 250 tick 重扫，自动剔除 |
 | 多线程 | 账本只在主线程的 tick 里跑；AO 的 `incomingDeltasLock` 已处理并发写 |
 
+### 9.1 错误图标的所有权
+
+图标的实际状态存在 `PipeNetOverlayDrawer`（`CustomOverlayDrawer` 的脉动层 + `OverlayForThing` 字典）里，是**全局共享的可变状态**：谁都能写，写进去也不会自动回读。所以：
+
+- **只有账本有权写中控器图标**：`AcNetOverlay.Refresh` 每账本步按 `s <= 0` 写一次，且只在值变化时写。
+- VTE 自己还会在 `AcPipeNet.RegisterComp` / `UnregisterComp`（管网合并、拆分）里对 `CompResourceSingleton` 调 `UpdateOverlayHandle`，按**当时**的 `Efficiency` 直接写 drawer。合并那一刻被并入的网往往还是账本给「无控制器网」写下的 `0`：新空调先自成一网（`Efficiency = 0`），玩家再用管道把它接到主网，若新网恰好是「第一个邻接格」所在的网（邻接顺序北→东→南→西），它吞并主网，中控器就被注册进这个 `0` 网，图标当场被点亮。
+- 因为 `_lastState` 只认「自己上次写过的值」，VTE 绕过缓存写入后，账本下一步算出的 `false` 会被 early-return 丢弃 → 图标永久脉动，而网络照常运行（`Efficiency`、`ResourceOn`、功率都是账本重算的）。
+
+结论：**对这类共享可变状态做「缓存 + 只在变化时写」的节流，必须配套失效点。** `AcNetPatches` 因此给 `AcPipeNet.RegisterComp` / `UnregisterComp` 挂了 Postfix（`ControllerMovedPostfix`）：只要有 `CompResourceSingleton` 被搬动就 `AcNetOverlay.Forget(id)`，逼账本下一步无条件重写一次。中控器拆除时由 `CompResourceSingleton.PostDeSpawn` 的 Postfix（`ControllerDeSpawnPostfix`）清账，避免 `_lastState` 随拆建增长。
+
 ---
 
 ## 第十章 验收标准

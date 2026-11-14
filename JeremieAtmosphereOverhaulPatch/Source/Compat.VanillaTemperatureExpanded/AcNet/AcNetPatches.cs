@@ -7,6 +7,7 @@ using PipeSystem;
 using RimWorld;
 using VanillaTemperatureExpanded;
 using VanillaTemperatureExpanded.Buildings;
+using VanillaTemperatureExpanded.Comps;
 using Verse;
 
 namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNet
@@ -47,6 +48,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             harmony.Patch(pipeTick, new HarmonyMethod(typeof(AcNetPatches), "PipeSystemTickPrefix"));
 
+            // 图标纠正：VTE 在管网合并/拆分时（AcPipeNet.RegisterComp/UnregisterComp）会直接按
+            // 「当时」的 Efficiency 写 PipeNetOverlayDrawer，绕过 AcNetOverlay 的 _lastState 缓存。
+            // 合并那一刻被并入的网往往还是账本给「无控制器网」写下的 0，于是中控器图标被点亮；
+            // 不在这里让缓存失效，账本下一步算出的 false 会被当成「没变化」丢弃，图标永久脉动。
+            bool overlayPatched = false;
+            MethodInfo registerComp = AccessTools.Method(typeof(AcPipeNet), "RegisterComp");
+            MethodInfo unregisterComp = AccessTools.Method(typeof(AcPipeNet), "UnregisterComp");
+            MethodInfo singletonDeSpawn = AccessTools.Method(typeof(CompResourceSingleton), "PostDeSpawn");
+            if (registerComp != null && unregisterComp != null)
+            {
+                harmony.Patch(registerComp, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerMovedPostfix"));
+                harmony.Patch(unregisterComp, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerMovedPostfix"));
+                overlayPatched = true;
+            }
+            if (singletonDeSpawn != null)
+            {
+                harmony.Patch(singletonDeSpawn, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerDeSpawnPostfix"));
+            }
+
             // AO 的组件不在本程序集，按名字找；找不到就只失去「防覆盖」这一层，
             // 账本仍然会在下一 tick 把槽位写回来，不至于停摆。
             Type aoCompType = AccessTools.TypeByName("AtmosphereOverhaul.Buildings.CompTempControlAtmosphere");
@@ -85,6 +105,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             Log.Message("[AOPatch/VTE] 中央空调三管式 VRF 已接管：Building_AcUnit.TickRare + AcPipeNet.PipeSystemTick"
                         + (stepPatched ? " + AO 模拟步推进" : "（未找到 CompleteFinishedSimulation，账本停摆）")
                         + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）")
+                        + (overlayPatched ? " + 图标纠正" : "（未找到 RegisterComp/UnregisterComp，图标仍可能卡死）")
                         + " + inspect + " + AcNetOverlay.Describe());
             return true;
         }
@@ -138,6 +159,37 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
             _fallbackLogged = true;
             Log.Warning("[AOPatch/VTE] 中央空调回退原逻辑：" + reason);
+        }
+
+        /// <summary>
+        /// 控制器在管网之间被搬动时（合并/拆分）清掉它的图标缓存。
+        ///
+        /// 只有 comp 是 <see cref="CompResourceSingleton"/> 时才需要：图标取值只由
+        /// 「控制器集合」和 Efficiency 决定，而控制器集合只在 singleton 注册/注销时变化。
+        /// VTE 在注册/注销这两个钩子里会对 singleton 调 UpdateOverlayHandle 并直接写 drawer，
+        /// 缓存不作废，账本下一步算出的纠正值就会被 _lastState 的 early-return 丢弃，
+        /// 图标会一直脉动到中控器被拆掉重建。
+        /// </summary>
+        public static void ControllerMovedPostfix(CompResource __0)
+        {
+            CompResourceSingleton singleton = __0 as CompResourceSingleton;
+            if (singleton == null || singleton.parent == null)
+            {
+                return;
+            }
+
+            AcNetOverlay.Forget(singleton.parent.thingIDNumber);
+        }
+
+        /// <summary>控制器被拆除/销毁后清账，避免 _lastState 随拆建无限增长。</summary>
+        public static void ControllerDeSpawnPostfix(CompResourceSingleton __instance)
+        {
+            if (__instance == null || __instance.parent == null)
+            {
+                return;
+            }
+
+            AcNetOverlay.Forget(__instance.parent.thingIDNumber);
         }
 
         public static bool PipeSystemTickPrefix(AcPipeNet __instance)
