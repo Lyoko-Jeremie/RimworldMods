@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Patch>
 
-    <li Class="PatchOperationAdd">
+    <Operation Class="PatchOperationAdd">
         <xpath>/Defs/ThingDef[@Name="RPP_Bot_V"]/statBases</xpath>
         <value>
             <RestRateMultiplier>10</RestRateMultiplier>
         </value>
-    </li>
+    </Operation>
 
     <Operation Class="PatchOperationReplace">
         <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/robotSkills/li/level</xpath>-->
