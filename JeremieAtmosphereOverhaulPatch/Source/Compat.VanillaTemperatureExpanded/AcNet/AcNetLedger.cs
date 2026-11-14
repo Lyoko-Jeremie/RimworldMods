@@ -43,6 +43,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             public CompResourceTrader Trader;
             public CompPowerTrader Power;
             public IntVec3 Cell;
+            public IntVec3 WindDirection; // 出风方向：墙体机取作用格偏移，壁挂机取背墙的反方向
             public float Qi;      // 带符号的需求，K·格 / 本次模拟步
             public float QFull;   // 满额 |Qi|，K·格 / 本次模拟步
             public float Drive;   // 负荷率 |Qi|/QFull，与温差相关
@@ -224,6 +225,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 entry.Trader = trader;
                 entry.Power = power;
                 entry.Cell = cell;
+                // 出风方向：
+                // - 墙体空调（canPlaceOverWall）：作用格相对自身的偏移，即面对的房间方向；
+                // - 壁挂空调（isAttachment）：作用格就是自身格，偏移为零，
+                //   方向取背墙的反方向（Placeworker_AttachedToWall 保证 rot 指向墙），也就是朝室内。
+                // 不给壁挂机方向时 TargetWind 恒为 (0,0)，AO 的热膨胀散度会主导该格，
+                // 表现为前后左右都有乱流。
+                IntVec3 windDirection = cell - unit.Position;
+                if (windDirection == IntVec3.Zero)
+                {
+                    windDirection = IntVec3Utility.RotatedBy(IntVec3.South, unit.Rotation);
+                }
+                entry.WindDirection = windDirection;
                 entry.Qi = qi;
                 entry.QFull = qFull;
                 entry.Drive = drive;
@@ -305,7 +318,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     continue;
                 }
 
-                IntVec3 direction = entry.Cell - entry.Unit.Position;
+                IntVec3 direction = entry.WindDirection;
                 SlotRates rates = new SlotRates();
                 rates.TemperaturePerTick = qOut / dtTicks;
                 rates.MaintainTargetWind = true;
@@ -584,9 +597,148 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                             + " rot=" + unit.Rotation.AsInt
                             + " 贴墙=" + attached
                             + " 采用=" + cell);
+                LogWallDiagnostics(unit, attached, cell);
             }
 
             return cell;
+        }
+
+        /// <summary>
+        /// 临时诊断：打印壁挂机背墙格在 AO 眼里的形态。
+        /// 目的：确认幻影墙这类「欺骗引擎」建筑到底在不在 edificeGrid、Fillage 是不是 Full。
+        /// AO 的 MapObstacleMaskBuilder.AirCanMoveThrough 只看 edifice / Fillage / CompAirVent / airPassable / Door，
+        /// 所以把这几项打出来就能反推该格 obstacleMask 是 0 还是 1。
+        /// 每台机器只打一次，确认后应移除。
+        /// </summary>
+        private static void LogWallDiagnostics(Building_AcUnit unit, bool attached, IntVec3 cell)
+        {
+            Map map = unit.Map;
+            if (map == null)
+            {
+                return;
+            }
+
+            IntVec3 wall = unit.Position + IntVec3Utility.RotatedBy(IntVec3.North, unit.Rotation);
+            bool inBounds = wall.InBounds(map);
+            Building edifice = inBounds ? map.edificeGrid[wall] : null;
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(256);
+            sb.Append("[AOPatch/VTE] 墙格诊断：unit=").Append(unit.def.defName)
+              .Append(" pos=").Append(unit.Position)
+              .Append(" rot=").Append(unit.Rotation.AsInt)
+              .Append(" 贴墙=").Append(attached)
+              .Append(" 墙格=").Append(inBounds ? wall.ToString() : wall + "(越界)")
+              .Append(" edifice=").Append(edifice == null ? "null" : edifice.def.defName);
+
+            if (edifice != null)
+            {
+                ThingDef wd = edifice.def;
+                sb.Append(" fill=").Append(wd.fillPercent.ToString("0.00"))
+                  .Append(" fillage=").Append(wd.Fillage)
+                  .Append(" pass=").Append(wd.passability)
+                  .Append(" isEdifice=").Append(wd.building != null && wd.building.isEdifice)
+                  .Append(" isDoor=").Append(edifice is Building_Door);
+            }
+
+            if (inBounds)
+            {
+                sb.Append(" roof=").Append(map.roofGrid.RoofAt(wall) != null);
+                sb.Append(" things=[");
+                List<Thing> things = map.thingGrid.ThingsListAt(wall);
+                for (int i = 0; i < things.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        sb.Append(',');
+                    }
+                    sb.Append(things[i].def.defName);
+                }
+                sb.Append(']');
+            }
+
+            AppendActualMask(map, wall, cell, sb);
+
+            // 反推结论：edifice 非空、Fillage=Full、非门、无 CompAirVent 时，AO 会判该格为障碍（mask=0）。
+            bool predictedObstacle = edifice != null
+                                     && edifice.def.Fillage == FillCategory.Full
+                                     && !(edifice is Building_Door);
+            sb.Append(" 预测obstacleMask=").Append(predictedObstacle ? "0" : "1");
+            Log.Message(sb.ToString());
+        }
+
+        /// <summary>
+        /// 临时诊断：反射读 AO 引擎的实际 ObstacleMask / RoofMask，确认墙格是否真的被当成障碍。
+        /// 与 LogWallDiagnostics 同批移除。
+        /// </summary>
+        private static void AppendActualMask(Map map, IntVec3 wall, IntVec3 cell, System.Text.StringBuilder sb)
+        {
+            try
+            {
+                Type compType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
+                if (compType == null)
+                {
+                    sb.Append(" 实际mask=N/A(noType)");
+                    return;
+                }
+
+                object comp = null;
+                List<MapComponent> comps = map.components;
+                for (int i = 0; i < comps.Count; i++)
+                {
+                    if (comps[i] != null && comps[i].GetType() == compType)
+                    {
+                        comp = comps[i];
+                        break;
+                    }
+                }
+                if (comp == null)
+                {
+                    sb.Append(" 实际mask=N/A(noComponent)");
+                    return;
+                }
+
+                FieldInfo engineField = compType.GetField("engine", BindingFlags.Instance | BindingFlags.NonPublic);
+                object engine = engineField == null ? null : engineField.GetValue(comp);
+                if (engine == null)
+                {
+                    sb.Append(" 实际mask=N/A(noEngine)");
+                    return;
+                }
+
+                Type engineType = engine.GetType();
+                float[] obstacleMask = GetFloatArray(engineType, engine, "ObstacleMask");
+                float[] roofMask = GetFloatArray(engineType, engine, "RoofMask");
+                int wallIdx = wall.InBounds(map) ? map.cellIndices.CellToIndex(wall) : -1;
+                int cellIdx = map.cellIndices.CellToIndex(cell);
+
+                sb.Append(" 实际mask[墙]=").Append(ReadMask(obstacleMask, wallIdx))
+                  .Append(" mask[自身]=").Append(ReadMask(obstacleMask, cellIdx))
+                  .Append(" roof[墙]=").Append(ReadMask(roofMask, wallIdx));
+            }
+            catch (Exception ex)
+            {
+                sb.Append(" 实际mask=ERR(").Append(ex.GetType().Name).Append(')');
+            }
+        }
+
+        private static float[] GetFloatArray(Type type, object instance, string name)
+        {
+            PropertyInfo prop = type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (prop != null)
+            {
+                return prop.GetValue(instance) as float[];
+            }
+            FieldInfo field = type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            return field == null ? null : field.GetValue(instance) as float[];
+        }
+
+        private static string ReadMask(float[] mask, int index)
+        {
+            if (mask == null || index < 0 || index >= mask.Length)
+            {
+                return "N/A";
+            }
+            return mask[index].ToString("0.0");
         }
 
         /// <summary>壁挂判定：placeWorkers 含 Placeworker_AttachedToWall，或 Def 标了 isAttachment。</summary>

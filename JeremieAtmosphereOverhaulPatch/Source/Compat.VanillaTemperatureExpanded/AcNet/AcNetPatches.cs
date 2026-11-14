@@ -74,13 +74,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             // AO 的组件不在本程序集，按名字找；找不到就只失去「防覆盖」这一层，
             // 账本仍然会在下一 tick 把槽位写回来，不至于停摆。
+            //
+            // Run 才是唯一换热门：CompTickRare 和 AO 自己的 TempControlSubclassPatches.Prefix
+            // 最终都走 RunTempControl -> Run。Harmony 里高优先级 Prefix 返回 false 只跳过原方法，
+            // 低优先级 Prefix 仍会执行，所以只靠 Priority.High 拦不住 AO 的 Prefix，
+            // 必须直接拦在 Run 上（见 AoRunPrefix）。
             Type aoCompType = AccessTools.TypeByName("AtmosphereOverhaul.Buildings.CompTempControlAtmosphere");
+            bool runPatched = false;
             if (aoCompType != null)
             {
                 MethodInfo aoTickRare = AccessTools.Method(aoCompType, "CompTickRare", Type.EmptyTypes);
                 if (aoTickRare != null)
                 {
                     harmony.Patch(aoTickRare, new HarmonyMethod(typeof(AcNetPatches), "AoCompTickRarePrefix"));
+                }
+
+                MethodInfo aoRun = AccessTools.Method(aoCompType, "Run", new[] { typeof(Building_TempControl) });
+                if (aoRun != null)
+                {
+                    _aoSlotsField = AccessTools.Field(aoCompType, "slots");
+                    if (_aoSlotsField != null)
+                    {
+                        harmony.Patch(aoRun, new HarmonyMethod(typeof(AcNetPatches), "AoRunPrefix"));
+                        runPatched = true;
+                    }
                 }
             }
 
@@ -110,6 +127,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             Log.Message("[AOPatch/VTE] 中央空调三管式 VRF 已接管：Building_AcUnit.TickRare + AcPipeNet.PipeSystemTick"
                         + (stepPatched ? " + AO 模拟步推进" : "（未找到 CompleteFinishedSimulation，账本停摆）")
                         + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）")
+                        + (runPatched ? " + AO Run 拦截" : "（未找到 AO Run，背面风可能残留）")
                         + (overlayPatched ? " + 图标纠正 + 目标温度同步" : "（未找到 RegisterComp/UnregisterComp，图标与温度同步均缺失）")
                         + " + inspect + " + AcNetOverlay.Describe());
             return true;
@@ -152,6 +170,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             return false;
         }
 
+        /// <summary>AO 温控组件的私有槽位容器，用于清理 RunCooler 可能留在 slot1..3 的热侧源。</summary>
+        private static FieldInfo _aoSlotsField;
         private static FieldInfo _simulationTickField;
 
         private static bool _fallbackLogged;
@@ -342,6 +362,38 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             // VTE 空调的 AO 温控组件不再自行换热，避免覆盖账本槽位。
             return !(__instance.parent is Building_AcUnit);
+        }
+
+        /// <summary>
+        /// AO 的唯一换热门。两条路径最终都落到这里：
+        /// CompTempControlAtmosphere.CompTickRare（组件 tick）和
+        /// TempControlSubclassPatches.Prefix -> FacilityPatchUtility.RunTempControl（Building_AcUnit.TickRare 的 AO Prefix）。
+        ///
+        /// 后者拦不住：Harmony 里我们高优先级的 Prefix 返回 false 只跳过原方法，
+        /// AO 那个没有 __runOriginal 参数的 Prefix 仍会执行 RunTempControl，把 RunCooler 跑一遍。
+        ///
+        /// 也不能给「未接入管网」的空调放行：AO 的 Run 只看 compPowerTrader.PowerOn、不看
+        /// resourceComp.ResourceOn，放行等于给一台没有接管的空调凭空造冷热；VTE 本身要求接入管网才工作。
+        /// </summary>
+        public static bool AoRunPrefix(ThingComp __instance, Building_TempControl b)
+        {
+            if (!(b is Building_AcUnit))
+            {
+                return true;
+            }
+
+            if (_aoSlotsField != null)
+            {
+                object slots = _aoSlotsField.GetValue(__instance);
+                if (slots != null)
+                {
+                    // AO 之前可能已经把热侧源写到 slot1..3（贴墙机的墙外那格会真的生效），
+                    // 这里清掉防止残留源继续被每步应用；slot0 留给账本，下次模拟步会重写。
+                    AoBridge.ZeroFrom(slots, b, 1);
+                }
+            }
+
+            return false;
         }
 
         /// <summary>记录本次模拟开始前的同步 tick，Postfix 里算差值得到真实 dt。</summary>
