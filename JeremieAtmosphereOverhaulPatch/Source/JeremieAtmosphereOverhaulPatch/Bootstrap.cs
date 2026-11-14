@@ -42,6 +42,25 @@ namespace Jeremie.AtmosphereOverhaulPatch
 
             InstallTempOutputShape(harmony);
             InstallProxyHeatRelay(harmony, settings);
+
+            // 这一项不依赖 AO / ProxyHeat，也不依赖 Replace Stuff：
+            // 它修的是原版 Building.DeSpawn 会清空同格 edificeGrid 的缺陷。
+            InstallEdificeGridRestore(harmony);
+        }
+
+        /// <summary>
+        /// 安装 edificeGrid 回填修复。
+        ///
+        /// 原版 EdificeGrid 每格只存一个 Building：DeSpawn 的 DeRegister 会把占格全部写成
+        /// null，同格另一个 edifice（典型是墙与壁挂通风口）就此从 edificeGrid 消失。
+        /// AO 的 obstacleMask 直接读 edificeGrid，会把这格误判成空气可自由通行。
+        /// </summary>
+        private static void InstallEdificeGridRestore(Harmony harmony)
+        {
+            if (!EdificeGridRestorePatch.Install(harmony))
+            {
+                Log.Warning("[AOPatch] 未能挂载 Verse.Building.DeSpawn，edificeGrid 回填修复停用。");
+            }
         }
 
         private static void InstallTempOutputShape(Harmony harmony)
