@@ -1251,11 +1251,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             {
                 Thing owner = deadWindOwners[i];
                 object slots;
-                if (windSlots.TryGetValue(owner, out slots))
+                bool hadSlots = windSlots.TryGetValue(owner, out slots);
+                // 先摘账本再注销：注销走反射，一旦抛异常，账本若还留着这个死 owner，
+                // 它会被每 tick 重新选中，变成无限重复的报错。
+                windSlots.Remove(owner);
+                if (hadSlots)
                 {
                     AoBridge.RemoveAll(slots, owner, map);
                 }
-                windSlots.Remove(owner);
             }
         }
 

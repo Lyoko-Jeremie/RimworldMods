@@ -751,12 +751,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 return;
             }
-            object[] args = GetArgs(ref _args3, 3);
+            // 参数个数必须与 SourceSlots.RemoveAll(Thing, Map) 严格一致，
+            // 多传一个会在 Invoke 之前直接抛 TargetParameterCountException。
+            object[] args = GetArgs(ref _args2, 2);
             args[0] = owner;
             args[1] = map;
             try
             {
                 _slotsRemoveAll.Invoke(slots, args);
+            }
+            catch (Exception)
+            {
+                // AO 换版本改了签名也不要让异常冲穿 tick；句柄会随建筑销毁自行失效。
             }
             finally
             {
