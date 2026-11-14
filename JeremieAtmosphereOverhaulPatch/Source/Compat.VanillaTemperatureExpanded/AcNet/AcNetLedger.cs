@@ -322,8 +322,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 SlotRates rates = new SlotRates();
                 rates.TemperaturePerTick = qOut / dtTicks;
                 rates.MaintainTargetWind = true;
+                // AO 原生 RunCooler 在冷侧写两格、各 outletWindSpeed(15)；账本只写单格，
+                // 且位置退到贴墙格，所以这里把单格风速提到 30，补回少掉的那一半动量。
+                // MaxWindSpeed 是 120，仍有充足余量。
                 rates.TargetWind = new Vector2(direction.x, direction.z)
-                                   * AoBridge.OutletWindSpeed(entry.Unit.def, 15f);
+                                   * AoBridge.OutletWindSpeed(entry.Unit.def, 30f);
                 rates.TargetWindBlendPerTick = 0.1f;
                 AoBridge.SetSlot(slots, entry.Unit, 0, entry.Cell, rates);
             }
