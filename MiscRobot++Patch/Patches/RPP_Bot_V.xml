@@ -9,27 +9,36 @@
     </Operation>
 
     <Operation Class="PatchOperationReplace">
-        <!--        <xpath>Defs/ThingDef[defName="RPP_Bot_Omni_V"]/robotSkills/li/level</xpath>-->
-        <xpath>Defs/ThingDef[@Name="RPP_Bot_V"]/robotSkills/li/level</xpath>
-        <!--        <xpath>Defs/ThingDef-->
-        <!--            [-->
-        <!--            defName="AIRobot_Hauler_V" or-->
-
-        <!--            defName="RPP_Bot_Crafter_V" or-->
-
-        <!--            defName="RPP_Bot_Kitchen_V" or-->
-
-        <!--            defName="RPP_Bot_Builder_V" or-->
-
-        <!--            defName="RPP_Bot_ER_V" or-->
-
-        <!--            defName="RPP_Bot_Omni_V"-->
-        <!--            ]-->
-        <!--            /robotSkills/li/level-->
-        <!--        </xpath>-->
+        <!-- MiscRobots WorkTab support 会把 RPP_Bot_V 的 robotSkills 整体移除，
+             并给各 V 级 bot 单独添加 robotSkills；因此这里直接改 5 个 R++ V 级 bot 的等级 -->
+        <xpath>Defs/ThingDef[
+            defName="RPP_Bot_Crafter_V" or
+            defName="RPP_Bot_Kitchen_V" or
+            defName="RPP_Bot_Builder_V" or
+            defName="RPP_Bot_ER_V" or
+            defName="RPP_Bot_Omni_V"
+            ]/robotSkills/li/level</xpath>
         <value>
             <!--技能等级-->
             <level>99</level>
+        </value>
+    </Operation>
+
+    <Operation Class="PatchOperationAdd">
+        <!-- AIRobot_Hauler_V 不在 WorkTab support 的处理列表里，robotSkills 已被移除，这里补回全技能 99 -->
+        <xpath>Defs/ThingDef[defName="AIRobot_Hauler_V"]</xpath>
+        <value>
+            <robotSkills>
+                <li><skillDef>Medicine</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Cooking</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Plants</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Construction</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Mining</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Crafting</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Social</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Intellectual</skillDef><level>99</level><passion>Minor</passion></li>
+                <li><skillDef>Animals</skillDef><level>99</level><passion>Minor</passion></li>
+            </robotSkills>
         </value>
     </Operation>
     <Operation Class="PatchOperationReplace">
