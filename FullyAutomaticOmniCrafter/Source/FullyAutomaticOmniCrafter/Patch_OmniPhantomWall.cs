@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -622,42 +623,106 @@ namespace FullyAutomaticOmniCrafter
     [HarmonyPatch(typeof(Region), nameof(Region.Allows))]
     public static class Region_Allows_PhantomWall_Patch
     {
+        // Region → 该区域内的幻影墙。Region 一旦重建就是新对象，旧条目会随
+        // ConditionalWeakTable 自动回收，不存在过期缓存的问题。
+        // ConditionalWeakTable 以引用相等比较键（不受 Region 重写 Equals 影响），且线程安全。
+        private static readonly ConditionalWeakTable<Region, Building> PhantomWallOfRegion =
+            new ConditionalWeakTable<Region, Building>();
+
         public static void Postfix(Region __instance, TraverseParms tp, ref bool __result)
         {
-            if (!RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(__instance.type))
-                return;
-
-            // Log.Message(
-            //     $"[OmniPhantomWall] Region.Allows PhantomWallRegion: pawn={tp.pawn}, " +
-            //     $"regionType={__instance.type}, originalResult={__result}");
-
             if (tp.pawn == null)
             {
-                // 如果没有提供 Pawn 信息（如区域检查），不执行进一步拦截，以免破坏系统功能
+                // 没有 Pawn 信息（纯区域检查），不拦截，以免破坏系统功能
                 return;
             }
 
-            // 从该区域的任意幻影墙 Thing 上读取规则
-            var cell = __instance.AnyCell;
-            var building = cell.GetEdifice(__instance.Map);
-            
-            // 检查是否是OmniPhantomWall2
+            if (!RegionTypeUtility_GetExpectedRegionType_Patch.IsPhantomWallRegion(__instance.type))
+                return;
+
+            // 原版已判定不可进入时不再放行：
+            //   • RegionType 不可通行
+            //   • 目标区域的危险度超过 maxDanger（高温/真空等）
+            // 这里只做“额外封锁”，不做“额外放行”，否则会让 BFS 认为可达，
+            // 而实际 A* 寻路失败，产生反复重试的无效 AI 行为。
+            if (!__result)
+                return;
+
+            // 【关键】区域系统重建期间，RegionLink 里仍可能残留已失效的 Region
+            // （Reachability.CheckRegionBasedReachability 只判空、不判 valid）。
+            // 此时绝不能访问 Region.AnyCell：它内部走 RegionGrid.DirectGrid，
+            // 会触发 TryRebuildDirtyRegionsAndRooms()，在遍历中途重入区域重建，
+            // 把当前 Region 的格子从网格中清空，最终打出
+            // "Couldn't find any cell in region Region(id=...)" 错误。
+            // 同等防护见下方 Room_Temperature_Getter_Patch。
+            if (!__instance.valid)
+                return;
+
+            Building building = GetPhantomWall(__instance);
+            if (building == null)
+            {
+                // 过渡态（墙已拆除但 Region 尚未重建）：保留原版结果，不强制放行。
+                return;
+            }
+
+            // 检查是否是 OmniPhantomWall2
             if (building is Building_OmniPhantomWall2 wall2)
             {
                 __result = wall2.CanPawnPassInstance(tp.pawn);
                 return;
             }
-            
-            // 检查是否是OmniPhantomWall
+
+            // 检查是否是 OmniPhantomWall
             if (building is Building_OmniPhantomWall wall1)
             {
                 var ext = wall1.def.GetModExtension<PhantomWallExtension>();
                 __result = Building_OmniPhantomWall.CanPawnPass(tp.pawn, ext);
-                return;
             }
-            
-            // 默认允许通过
-            __result = true;
+        }
+
+        /// <summary>
+        /// 找出该 Region 内的幻影墙（带缓存）。
+        ///
+        /// 不直接使用 Region.AnyCell 的原因有两点：
+        ///   1. AnyCell 走 RegionGrid.DirectGrid，会触发区域重建，在可达性/寻路
+        ///      遍历中重入重建会破坏当前遍历（见上方 Postfix 注释）。
+        ///   2. Region.Allows 是 BFS 热路径，每次都要扫 extentsClose 太贵。
+        /// </summary>
+        private static Building GetPhantomWall(Region region)
+        {
+            Building cached;
+            if (PhantomWallOfRegion.TryGetValue(region, out cached))
+                return cached;
+
+            Building found = null;
+            Map map = region.Map;
+            if (map != null)
+            {
+                // 使用 NoRebuild 版本：在遍历过程中绝不触发区域重建。
+                RegionGrid regionGrid = map.regionGrid;
+                CellIndices cellIndices = map.cellIndices;
+                foreach (IntVec3 c in region.extentsClose)
+                {
+                    if (regionGrid.GetRegionAt_NoRebuild_InvalidAllowed(c) != region)
+                        continue;
+
+                    Building edifice = c.GetEdifice(map);
+                    if (edifice is Building_OmniPhantomWall2 || edifice is Building_OmniPhantomWall)
+                    {
+                        found = edifice;
+                        break;
+                    }
+                }
+            }
+
+            if (found != null)
+            {
+                // GetValue 是原子的：并发惰性写入时不会抛重复键异常，
+                // 多线程寻路（RegionTraverser 工作线程）下也能安全读取。
+                return PhantomWallOfRegion.GetValue(region, _ => found);
+            }
+
+            return null;
         }
     }
 
