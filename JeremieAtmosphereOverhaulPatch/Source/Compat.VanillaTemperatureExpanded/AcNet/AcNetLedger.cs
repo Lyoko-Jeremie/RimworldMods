@@ -148,22 +148,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     continue;
                 }
 
-                CompTempControl control = unit.compTempControl;
+                CompTempControl control = GetTempControl(unit);
                 if (control == null || control.Props == null)
                 {
                     continue;
                 }
 
-                // 逐台读自己的目标温度，而不是网络统一值。
-                // 非独立机在控制器调温时已被广播写入 targetTemperature，
-                // 独立机（CompAcTempControl.IndependentTemp）保留玩家单独设的值。
-                // 用统一值会让「一台制热、一台制冷」被强行掰成同一方向，
-                // 于是 a 或 b 恒为 0：网内回收始终 0，且只有一种方向能工作。
-                float target = control.TargetTemperature;
-                if (target <= -99998f)
-                {
-                    target = networkTarget;
-                }
+                // 目标温度：非独立机直接取中控器的网络值，不依赖 targetTemperature 字段。
+                // VTE 是 push 模型（中控器改温时只写给当时在网里的机器），新建或合并进网的
+                // 机器永远收不到广播，字段会一直停在 defaultTargetTemperature。
+                // 方向由 target 与「该机所在房间」的 feedback 比较得出（见下面 qi），
+                // 所以共用网络值并不会把制热机与制冷机掰成同向，网内回收照常成立。
+                float target = ResolveTarget(unit, networkTarget);
 
                 IntVec3 cell = OutputCell(unit);
                 // AO 的连续源允许写在任意地图内格；建筑自身格也可写，不能再按 Impassable 拦。
@@ -459,7 +455,68 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             return false;
         }
 
-        private static Building_AcControlUnit FindController(AcPipeNet net)
+        /// <summary>
+        /// 取一台室内机的温控组件。
+        ///
+        /// 不能直接用 <c>unit.compTempControl</c> 字段：<c>Building_TempControl.SpawnSetup</c>
+        /// 是先 <c>base.SpawnSetup</c>（里面跑完所有 comp 的 PostSpawnSetup）再给这个字段赋值，
+        /// 而我们的温度同步恰好发生在 <c>CompResourceTrader_AC.PostSpawnSetup</c> → RegisterComp
+        /// 的 Postfix 里（更早），此时字段还是 null。GetComp 查的是组件列表，不受该顺序影响。
+        /// </summary>
+        internal static CompTempControl GetTempControl(Building_AcUnit unit)
+        {
+            if (unit == null)
+            {
+                return null;
+            }
+
+            CompTempControl control = unit.compTempControl;
+            if (control != null)
+            {
+                return control;
+            }
+
+            return unit.GetComp<CompTempControl>();
+        }
+
+        /// <summary>
+        /// 一台室内机本步应采用的目标温度。
+        ///
+        /// 非独立机（联动）用中控器的网络值：VTE 是 push 模型，<c>Building_AcControlUnit</c>
+        /// 只在玩家改温时把值广播给「那一刻已在 net.receivers 里」的机器
+        /// （<c>InterfaceChangeTargetNetworkTemperature</c>）；新建、合并、重建管网进来的机器
+        /// 收不到任何广播，字段会永远停在 <c>CompProperties_TempControl.defaultTargetTemperature</c>。
+        /// 独立机（<c>CompAcTempControl.IndependentTemp</c>）保留玩家单独设的值。
+        /// 组件不是 VTE 的（cast 失败）按独立机处理：那是别的 mod 复用 Building_AcUnit，
+        /// 不该被中控器接管。
+        ///
+        /// 与 <c>AcNetPatches.ControllerRegisteredPostfix</c> 里的字段同步共用这一处判定，
+        /// 避免「账本按网络值算、面板按字段显示」两套真源。
+        /// </summary>
+        internal static float ResolveTarget(Building_AcUnit unit, float networkTarget)
+        {
+            CompTempControl control = GetTempControl(unit);
+            if (control == null)
+            {
+                return networkTarget;
+            }
+
+            CompAcTempControl acTemp = control as CompAcTempControl;
+            if (acTemp != null && acTemp.IndependentTemp)
+            {
+                float own = control.TargetTemperature;
+                // 独立机也保留了「从未初始化」的兜底（-99999f），此时仍退回网络值。
+                return own > -99998f ? own : networkTarget;
+            }
+
+            return networkTarget;
+        }
+
+        /// <summary>
+        /// 选出本网的代表控制器：第一个已生成且 CanBeOn 的中控器。
+        /// 账本与 <c>AcNetPatches</c> 的温度同步共用，保证两边指向同一台。
+        /// </summary>
+        internal static Building_AcControlUnit FindController(AcPipeNet net)
         {
             List<Building_AcControlUnit> controllers = net.ControllerList;
             for (int i = 0; i < controllers.Count; i++)

@@ -48,18 +48,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             harmony.Patch(pipeTick, new HarmonyMethod(typeof(AcNetPatches), "PipeSystemTickPrefix"));
 
-            // 图标纠正：VTE 在管网合并/拆分时（AcPipeNet.RegisterComp/UnregisterComp）会直接按
-            // 「当时」的 Efficiency 写 PipeNetOverlayDrawer，绕过 AcNetOverlay 的 _lastState 缓存。
-            // 合并那一刻被并入的网往往还是账本给「无控制器网」写下的 0，于是中控器图标被点亮；
-            // 不在这里让缓存失效，账本下一步算出的 false 会被当成「没变化」丢弃，图标永久脉动。
+            // 图标纠正 + 目标温度同步：VTE 在管网合并/拆分时（AcPipeNet.RegisterComp/UnregisterComp）
+            // 会直接按「当时」的 Efficiency 写 PipeNetOverlayDrawer，绕过 AcNetOverlay 的 _lastState 缓存；
+            // 合并那一刻被并入的网往往还是账本给「无控制器网」写下的 0，于是中控器图标被点亮。
+            // 同时这两个钩子是「机器刚刚进入一张网」的唯一可靠时机，在这里把中控器的网络温度
+            // 补写进新机器的 targetTemperature（VTE 的 push 广播会漏掉它们）。
+            //
+            // 两个钩子必须拆成两个 Postfix：UnregisterComp 时 comp.PipeNet 不会被清空，
+            // 而 PipeNet.Destroy 是边遍历 connectors 边调 UnregisterComp 的半拆状态，
+            // 在那里同步温度会读到即将解散的网。
             bool overlayPatched = false;
             MethodInfo registerComp = AccessTools.Method(typeof(AcPipeNet), "RegisterComp");
             MethodInfo unregisterComp = AccessTools.Method(typeof(AcPipeNet), "UnregisterComp");
             MethodInfo singletonDeSpawn = AccessTools.Method(typeof(CompResourceSingleton), "PostDeSpawn");
             if (registerComp != null && unregisterComp != null)
             {
-                harmony.Patch(registerComp, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerMovedPostfix"));
-                harmony.Patch(unregisterComp, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerMovedPostfix"));
+                harmony.Patch(registerComp, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerRegisteredPostfix"));
+                harmony.Patch(unregisterComp, postfix: new HarmonyMethod(typeof(AcNetPatches), "ControllerUnregisteredPostfix"));
                 overlayPatched = true;
             }
             if (singletonDeSpawn != null)
@@ -105,7 +110,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             Log.Message("[AOPatch/VTE] 中央空调三管式 VRF 已接管：Building_AcUnit.TickRare + AcPipeNet.PipeSystemTick"
                         + (stepPatched ? " + AO 模拟步推进" : "（未找到 CompleteFinishedSimulation，账本停摆）")
                         + (aoCompType != null ? " + AO 组件防覆盖" : "（未找到 AO 温控组件类型，防覆盖层缺失）")
-                        + (overlayPatched ? " + 图标纠正" : "（未找到 RegisterComp/UnregisterComp，图标仍可能卡死）")
+                        + (overlayPatched ? " + 图标纠正 + 目标温度同步" : "（未找到 RegisterComp/UnregisterComp，图标与温度同步均缺失）")
                         + " + inspect + " + AcNetOverlay.Describe());
             return true;
         }
@@ -162,15 +167,50 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
         }
 
         /// <summary>
-        /// 控制器在管网之间被搬动时（合并/拆分）清掉它的图标缓存。
+        /// 机器刚被注册进一张网（新建、合并、拆分后重建都会走这里）时的收尾：
+        /// 1. 控制器（singleton）：作废图标缓存；若它是中控器，再把它这一刻的网络温度
+        ///    补写给网内所有联动室内机（可能它比室内机更晚注册）。
+        /// 2. 室内机：直接向本网中控器取一次温度写进字段。
         ///
-        /// 只有 comp 是 <see cref="CompResourceSingleton"/> 时才需要：图标取值只由
-        /// 「控制器集合」和 Efficiency 决定，而控制器集合只在 singleton 注册/注销时变化。
-        /// VTE 在注册/注销这两个钩子里会对 singleton 调 UpdateOverlayHandle 并直接写 drawer，
-        /// 缓存不作废，账本下一步算出的纠正值就会被 _lastState 的 early-return 丢弃，
-        /// 图标会一直脉动到中控器被拆掉重建。
+        /// 为什么必须在这里同步：VTE 的 push 模型只在「玩家改温那一刻」广播给当时在网的机器，
+        /// 之后进网的机器永远收不到；而 AcPipeNet/CompResource 的 PostSpawnSetup 顺序又保证
+        /// CompAcTempControl.PostSpawnSetup 早于 RegisterComp（PipeNet 还是 null），
+        /// 于是它自己的初始化分支必然早退。这里是唯一的可靠时机。
         /// </summary>
-        public static void ControllerMovedPostfix(CompResource __0)
+        public static void ControllerRegisteredPostfix(CompResource __0)
+        {
+            if (__0 == null || __0.parent == null)
+            {
+                return;
+            }
+
+            AcPipeNet net = __0.PipeNet as AcPipeNet;
+            if (net == null)
+            {
+                return;
+            }
+
+            CompResourceSingleton singleton = __0 as CompResourceSingleton;
+            if (singleton != null)
+            {
+                AcNetOverlay.Forget(__0.parent.thingIDNumber);
+                Building_AcControlUnit controller = __0.parent as Building_AcControlUnit;
+                if (controller != null)
+                {
+                    SyncNetworkTarget(controller, net);
+                }
+                return;
+            }
+
+            SyncUnitTarget(__0.parent as Building_AcUnit, net);
+        }
+
+        /// <summary>
+        /// 机器被移出管网时的收尾。这里只作废图标缓存，绝不同步温度：
+        /// <c>PipeNet.UnregisterComp</c> 不会清空 <c>comp.PipeNet</c>，而 <c>PipeNet.Destroy</c>
+        /// 是边遍历 connectors 边调用本钩子的半拆状态，此时读网内控制器/室内机都是残余数据。
+        /// </summary>
+        public static void ControllerUnregisteredPostfix(CompResource __0)
         {
             CompResourceSingleton singleton = __0 as CompResourceSingleton;
             if (singleton == null || singleton.parent == null)
@@ -179,6 +219,90 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
 
             AcNetOverlay.Forget(singleton.parent.thingIDNumber);
+        }
+
+        /// <summary>把中控器当前的网络温度写给本网所有联动室内机。</summary>
+        private static void SyncNetworkTarget(Building_AcControlUnit controller, AcPipeNet net)
+        {
+            if (controller == null || net == null)
+            {
+                return;
+            }
+
+            // 多控制器时用账本会选中的那一台，而不是「刚注册的这台」：
+            // 否则新建的中控器把自己尚未设置的默认温度写进全网字段，
+            // 面板显示与账本（取 FindController 的第一个）就会不一致。
+            Building_AcControlUnit effective = AcNetLedger.FindController(net);
+            if (effective == null || !effective.Spawned)
+            {
+                return;
+            }
+
+            Map map = effective.Map;
+            if (map == null || !AoBridge.IsActive(map))
+            {
+                return;
+            }
+
+            float networkTarget = effective.TargetNetworkTemperature;
+            List<CompResourceTrader> receivers = net.receivers;
+            for (int i = 0; i < receivers.Count; i++)
+            {
+                CompResourceTrader trader = receivers[i];
+                if (trader == null)
+                {
+                    continue;
+                }
+
+                WriteUnitTarget(trader.parent as Building_AcUnit, networkTarget);
+            }
+        }
+
+        /// <summary>让某台室内机向本网中控器取一次温度。</summary>
+        private static void SyncUnitTarget(Building_AcUnit unit, AcPipeNet net)
+        {
+            if (unit == null || net == null || !unit.Spawned)
+            {
+                return;
+            }
+
+            Map map = unit.Map;
+            if (map == null || !AoBridge.IsActive(map))
+            {
+                return;
+            }
+
+            Building_AcControlUnit controller = AcNetLedger.FindController(net);
+            if (controller == null)
+            {
+                return;
+            }
+
+            WriteUnitTarget(unit, controller.TargetNetworkTemperature);
+        }
+
+        /// <summary>
+        /// 把网络温度写进某台室内机的 targetTemperature 字段（只写联动机，独立机不动）。
+        /// 与账本共用 <see cref="AcNetLedger.ResolveTarget"/>，保证面板与出风同源。
+        /// </summary>
+        private static void WriteUnitTarget(Building_AcUnit unit, float networkTarget)
+        {
+            if (unit == null || !unit.Spawned)
+            {
+                return;
+            }
+
+            CompTempControl control = AcNetLedger.GetTempControl(unit);
+            if (control == null)
+            {
+                return;
+            }
+
+            float target = AcNetLedger.ResolveTarget(unit, networkTarget);
+            if (control.TargetTemperature != target)
+            {
+                control.TargetTemperature = target;
+            }
         }
 
         /// <summary>控制器被拆除/销毁后清账，避免 _lastState 随拆建无限增长。</summary>

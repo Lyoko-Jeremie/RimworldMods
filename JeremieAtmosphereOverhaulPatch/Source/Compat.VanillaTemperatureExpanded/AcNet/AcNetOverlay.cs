@@ -103,9 +103,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
         /// 丢掉某个中控器的图标缓存，让它下次进 Refresh 时无条件重写一次 overlay。
         ///
         /// 调用点（都在 AcNetPatches）：
-        /// 1. AcPipeNet.RegisterComp / UnregisterComp 的 Postfix：VTE 在这些钩子里
-        ///    绕开本类直接写 overlay，缓存必须作废，否则纠正写会被 early-return 吞掉；
-        /// 2. CompResourceSingleton.PostDeSpawn 的 Postfix：控制器被拆除后清账，
+        /// 1. <c>AcPipeNet.RegisterComp</c> 的 Postfix（<c>ControllerRegisteredPostfix</c>）：
+        ///    VTE 在这个钩子里绕开本类直接写 overlay，缓存必须作废，否则纠正写会被 early-return 吞掉；
+        /// 2. <c>AcPipeNet.UnregisterComp</c> 的 Postfix（<c>ControllerUnregisteredPostfix</c>）：
+        ///    拆网/合并时同样作废，只清缓存、不同步温度（那时是半拆状态）；
+        /// 3. <c>CompResourceSingleton.PostDeSpawn</c> 的 Postfix：控制器被拆除后清账，
         ///    避免字典随拆建无限增长。
         /// </summary>
         public static void Forget(int thingIdNumber)

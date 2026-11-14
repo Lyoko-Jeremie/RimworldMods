@@ -503,7 +503,32 @@ static class AtmosphereSimulationHook {
 - VTE 自己还会在 `AcPipeNet.RegisterComp` / `UnregisterComp`（管网合并、拆分）里对 `CompResourceSingleton` 调 `UpdateOverlayHandle`，按**当时**的 `Efficiency` 直接写 drawer。合并那一刻被并入的网往往还是账本给「无控制器网」写下的 `0`：新空调先自成一网（`Efficiency = 0`），玩家再用管道把它接到主网，若新网恰好是「第一个邻接格」所在的网（邻接顺序北→东→南→西），它吞并主网，中控器就被注册进这个 `0` 网，图标当场被点亮。
 - 因为 `_lastState` 只认「自己上次写过的值」，VTE 绕过缓存写入后，账本下一步算出的 `false` 会被 early-return 丢弃 → 图标永久脉动，而网络照常运行（`Efficiency`、`ResourceOn`、功率都是账本重算的）。
 
-结论：**对这类共享可变状态做「缓存 + 只在变化时写」的节流，必须配套失效点。** `AcNetPatches` 因此给 `AcPipeNet.RegisterComp` / `UnregisterComp` 挂了 Postfix（`ControllerMovedPostfix`）：只要有 `CompResourceSingleton` 被搬动就 `AcNetOverlay.Forget(id)`，逼账本下一步无条件重写一次。中控器拆除时由 `CompResourceSingleton.PostDeSpawn` 的 Postfix（`ControllerDeSpawnPostfix`）清账，避免 `_lastState` 随拆建增长。
+结论：**对这类共享可变状态做「缓存 + 只在变化时写」的节流，必须配套失效点。** `AcNetPatches` 因此给 `AcPipeNet.RegisterComp` / `UnregisterComp` 挂了两个 Postfix：`ControllerRegisteredPostfix`（作废缓存 + 同步温度）与 `ControllerUnregisteredPostfix`（只作废缓存），只要有 `CompResourceSingleton` 被搬动就 `AcNetOverlay.Forget(id)`，逼账本下一步无条件重写一次。中控器拆除时由 `CompResourceSingleton.PostDeSpawn` 的 Postfix（`ControllerDeSpawnPostfix`）清账，避免 `_lastState` 随拆建增长。
+
+**为什么必须拆成两个**：`PipeNet.UnregisterComp` 不会清空 `comp.PipeNet`，而 `PipeNet.Destroy` 是边遍历 `connectors` 边调用 `UnregisterComp` 的半拆状态，此时读网络里的控制器/室内机全是残余数据。
+
+### 9.2 目标温度的所有权
+
+VTE 是**推送（push）模型**，不是轮询：
+
+| 写入点 | 时机 | 覆盖面 |
+|---|---|---|
+| `CompAcTempControl.PostSpawnSetup:29` | 机器生成时 | 必然早退（见下），等于不生效 |
+| `CompAcTempControl:50` | 玩家点「取消联动」 | 单台 |
+| `Building_AcControlUnit:112` 广播 | 玩家改中控器温度 | 仅「那一刻已在 `net.receivers` 里」的机器 |
+
+第一个写入点失效的原因是组件顺序：`ACNet.xml` 里 `CompAcTempControl`（324 行）排在 `CompResourceTrader_AC`（328 行）之前，同一次 `SpawnSetup` 中先跑的它读到的 `PipeNet` 还是 null（由后者的 `PostSpawnSetup` → `RegisterConnector` → `RegisterComp` 才赋值），于是 `CompAcTempControl.cs:27-28` 直接 return。
+
+结果：新建、合并进网、拆管道重建后重新入网的机器，`targetTemperature` 永远停在 `CompProperties_TempControl.defaultTargetTemperature`（21℃），网络里出现两种出风温度。
+
+**修复分两层，缺一不可：**
+
+1. **物理层（账本）**：`AcNetLedger.ResolveTarget` —— 非独立机直接用中控器的 `TargetNetworkTemperature`，独立机用自己的字段。字段从此只是显示/存档用的副本，不是计算的唯一真源。
+2. **显示层（同步）**：`ControllerRegisteredPostfix` 在每次 `RegisterComp` 后把网络温度补写进该机字段（中控器后注册时反向扫 `net.receivers`），保证 `CompTempControl.CompInspectStringExtra` 显示的值与实际出风一致。
+
+同步的方向判定不需要「每台一个目标值」：`Q_i` 的符号由 `target` 与该机**所在房间**温度的差决定（`AcNetLedger.cs:214`），共用同一个 `target` 时，屋里热的机制热、屋里冷的机制冷，热回收照常成立。
+
+**注意**：`CompAcTempControl` 自己没有 override `TargetTemperature`，写字段不会触发副作用；非独立机本来也没有温度按钮（`CompAcTempControl.cs:58` 只在 `IndependentTemp || pipeNet == null` 时给基类按钮），所以同步不会覆盖玩家手动值。唯一的副作用是新机的 `pipeNet` 字段可能仍为 null（同一个早退导致），会临时显示一个温度按钮 —— 点了也只是改字段，下一次注册同步会被覆盖回来。
 
 ---
 
@@ -520,6 +545,8 @@ static class AtmosphereSimulationHook {
 9. **性能**：100 台室内机 + 20 台压缩机的网络，账本单次 < 1 ms；无每 tick 分配。
 10. **兼容**：与 AO 的 `CompTempControlAtmosphere`、`RoomTemperatureWriteHook` 无冲突；`CompTempOutputShape` 不被触发（我们的 Prefix 优先级更高）。
 11. **存档**：读档后 `TargetNetworkTemperature`、`IndependentTemp`、`Efficiency` 保持；账本在一个周期内重建。
+12. **温度继承**：新建、合并进网、拆管道重建后入网的联动机，在 `RegisterComp` 回调内（不等下一个模拟步）就取到中控器温度；面板显示与实际出风一致。独立机与「取消联动」的机器不受影响。
+13. **独立机**：`IndependentTemp = true` 的机器改自己的温度，不触发全网同步，也不被同步覆盖。
 
 ---
 
