@@ -496,10 +496,13 @@ private const float CubicMetresPerTick = 0.5f * AirColumnHeight / 3f;   // ≈ 0
 - 每个 Vent 的「允许自然通风」状态编码在 `CompAirVent.speedLimit`：`0` = 关闭，`>0` = 允许（值即自然通风速度上限）。
 - **默认关闭**：新放置或旧档未初始化（`speedLimit < 0`）的 Vent，由 `Building.SpawnSetup` Postfix 立即置 0，不等 60 tick 扫描。
 - **按钮**：`Command_Toggle`，追加在 `GC_ThingComp.CompGetGizmosExtra` 之后，标签「自然通风」。
-- **联动**：GC 强力模式 active 时按钮禁用（`disabledReason`），并强制 `speedLimit = 0`；关闭强力模式后仍保持 0，玩家需手动点按钮才允许自然通风。
-- **恢复上次值**：`EnsureNaturalVentOff` 关闭前把当前 `SpeedLimit` 存入 `SavedSpeed`，按钮打开时恢复该值（从未设过则用 10）。
-- 注意：`IsIntensiveActive` 必须传**父建筑**（`GC_ThingComp` 在建筑上），不能传 `CompAirVent`——否则 `FieldInfo.GetValue` 抛 `Object does not match target type`，按钮永远不会禁用，点击后被扫描覆盖回 0，表现为「按钮无效」。
+- **二值快捷按钮（滑条仍在）**：`speedLimit` 就是「自然通风」的唯一状态——0 = 关，>0 = 开，值越大自然通风越强。玩家照常拖 AO 的速度滑条调任意速度；「自然通风」按钮只是一个快捷方式：点击关闭 → 设 0，点击开启 → 设 `CompProperties_AirVent.maxSpeedLimit`（原版 Vent 为 20）。按钮的灯读 `SpeedLimit > 0`，所以拖滑条也会反过来点亮/熄灭按钮。
+- **联动**：GC 强力模式 active 时按钮禁用（`disabledReason`），并强制 `speedLimit = 0`；同时用 Prefix 把滑条写入压成 0（滑条锁死）。
+- **直接写字段，不走 AO 的 `SetSpeedLimit`**：AO 的 `SetSpeedLimit` 有 `if (num == SpeedLimit) return;`，而 `SpeedLimit` 属性在字段为 -1 时回退到 `defaultSpeedLimit`（10）。因此字段 -1 时写 10 会被误判为「值没变」而直接 return，字段仍是 -1；随后 `EnsureDefaultClosed` 每 60 tick 又把它设成 0，表现为「打开后自己关回去」。按钮路径改为反射写 `speedLimit` 字段，再显式调 `AtmosphereMapComponent.MarkCachedMapDataDirty()`。
+- **同一帧写回**（点击后按钮「没反应」的真正原因）：原版 `Gizmo_Slider.GizmoOnGUI` 每次绘制都执行 `this.Target = this.targetValuePct;`（`Verse/Gizmo_Slider.cs:114-117`），而 `GizmoGridDrawer` 在同一个 `Time.frameCount` 内复用已经建好的 gizmo 列表（`Verse/GizmoGridDrawer.cs:52-82`）。点击发生在该帧中段，滑条实例的 `targetValuePct` 还是点击前的旧值，Repaint 时把旧值写回来，点击即被撤销。处理：给 `CompAirVent.SetSpeedLimit` 加 Prefix，按钮点击时记录 `(thingID, Time.frameCount)`，同帧内该通风口的滑条写入直接丢弃（`__0` 不生效、返回 false）。
+- 注意：`IsIntensiveActive` 必须传**父建筑**（`GC_ThingComp` 在建筑上），不能传 `CompAirVent`——否则 `FieldInfo.GetValue` 抛 `Object does not match target type`。
 - 修改 `speedLimit` 后必须调 `AtmosphereMapComponent.MarkCachedMapDataDirty()`：`IsOpen` 决定 `BuildVents` 是否把该格写入 `engine.Vents`，也决定 `AirCanMoveThrough` 返回 1 还是 0（vent 格实心/可通行）。
+- **拆除清速度**：`ClampVentVelocities` 会把 vent 格 + 轴向两侧邻格的速度钳到 ±SpeedLimit；拆除后 `engine.Vents` 重建，这三格不再被钳制，残留速度会永久留在速度场里。`Thing.DeSpawn` Prefix 里读三格 `AtmosphereInterface.TryGetWind`，再用 `AddWindImpulse(map, cell, -wind)` 把增量排进下一模拟步抵消为 0。
 
 ### 12.3 喷流参数
 
@@ -536,7 +539,7 @@ private const float CubicMetresPerTick = 0.5f * AirColumnHeight / 3f;   // ≈ 0
 2. `CompPowerTrader.PowerOn`（存在时）；
 3. `CompFlickable.SwitchIsOn`（存在时）；
 4. 两侧 `Room.Vacuum <= 0`（任一真空 → `DoFlick()` + 复刻 GC 负事件信 + 注销）；
-5. `EnsureNaturalVentOff(building)`：`SpeedLimit > 0` 时反射调 `SetSpeedLimit(0)`（AO 内部已 `MarkCachedMapDataDirty()`，无需重复通知）；
+5. `EnsureNaturalVentOff(building)`：`SpeedLimit > 0` 时直接写 `speedLimit = 0` 并 `MarkCachedMapDataDirty()`；
 6. `PortLooksOpen(inlet)` 与 `PortLooksOpen(outlet)`：`ObstacleMask > 0.001`、非地图边缘；
 7. 注册/刷新喷流；方向变化时先注销旧区间再注册。
 
@@ -555,9 +558,9 @@ private const float CubicMetresPerTick = 0.5f * AirColumnHeight / 3f;   // ≈ 0
 
 | 文件 | 改动 |
 |---|---|
-| `Source/JeremieAtmosphereOverhaulPatch/Bridge/AtmosphereFieldBridge.cs` | 新增 `MarkCachedMapDataDirty(Map)` 反射封装 |
-| `Source/Compat.GoodClimate/GcAirRelay.cs` | 反射 `speedLimit` 字段 / `SpeedLimit` 属性 / `SetSpeedLimit`；`EnsureNaturalVentOff`；喷流参数与温/氧回填；门控去掉 `IsOpen` |
-| `Source/Compat.GoodClimate/GcPatches.cs` | 新增 `CompGetGizmosExtra` Postfix 追加自然通风按钮；`Building.SpawnSetup` Postfix 让新通风口立即置 0 |
+| `Source/JeremieAtmosphereOverhaulPatch/Bridge/AtmosphereFieldBridge.cs` | 新增 `MarkCachedMapDataDirty(Map)`、`TryGetWind(Map,IntVec3,out Vector2)`、`AddWindImpulse(Map,IntVec3,Vector2)` 反射封装 |
+| `Source/Compat.GoodClimate/GcAirRelay.cs` | 反射 `speedLimit` 字段 / `SpeedLimit` 属性 / `maxSpeedLimit`；直写字段 + 重建缓存；按钮 0 / 最大值的快捷切换；拆除时清该格与轴向邻格流速 |
+| `Source/Compat.GoodClimate/GcPatches.cs` | `GC_ThingComp.CompGetGizmosExtra` Postfix 追加自然通风按钮；`CompAirVent.SetSpeedLimit` Prefix 丢弃按钮同帧的滑条写回、并在强力模式把滑条锁 0；`Building.SpawnSetup` Postfix 让新通风口立即置 0；`Thing.DeSpawn` Prefix 清残留流速 |
 | `Languages/ChineseSimplified (简体中文)/Keyed/JeremieAOPatch.xml` | 按钮标签 / 描述 / 禁用原因 |
 | `Languages/English/Keyed/JeremieAOPatch.xml` | 同上英文 |
 

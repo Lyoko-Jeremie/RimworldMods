@@ -77,6 +77,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static PropertyInfo _sourceHandleIsValid;
         private static MethodInfo _addTemperatureDelta;
         private static FieldInfo[] _sourceFields;
+
+        // 风场通道：拆除通风口时需要把该格残留的流速清零。
+        // AO 只提供「读快照」与「排入增量」两个公开入口，没有直接写数组的 API。
+        private static MethodInfo _tryGetWind;
+        private static MethodInfo _addWindImpulse;
+        private static bool _windAvailable;
+        private static string _windFailure;
+        private static TryGetWindDelegate _tryGetWindFast;
         private static readonly string[] SourceFieldNames =
         {
             "TemperaturePerTick",
@@ -113,6 +121,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
         // 参数全是 BCL/游戏类型的方法可以缓存强类型委托，绕过 Invoke 的打包。
         private delegate bool AddTemperatureDeltaDelegate(Map map, IntVec3 cell, float delta);
+        private delegate bool TryGetWindDelegate(Map map, IntVec3 cell, out UnityEngine.Vector2 wind);
         private delegate int UnregisterByOwnerDelegate(Map map, Thing owner);
         private static AddTemperatureDeltaDelegate _addTemperatureDeltaFast;
         private static UnregisterByOwnerDelegate _unregisterSourcesFast;
@@ -191,6 +200,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
 
                 ResolveAirMover();
                 ResolveSources();
+                ResolveWind();
 
                 _available = true;
                 return true;
@@ -346,7 +356,41 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
         }
 
-        /// <summary>把 MethodInfo 绑定成强类型委托；失败返回 null，调用点回退到 Invoke。</summary>
+        /// <summary>
+        /// 解析风场通道（AtmosphereInterface.TryGetWind / AddWindImpulse）。
+        /// 只用于拆除通风口时清掉该格残留速度，失败只让清速度降级。
+        /// </summary>
+        private static void ResolveWind()
+        {
+            try
+            {
+                Type interfaceType = AccessTools.TypeByName(AirMoverInterfaceName);
+                if (interfaceType == null)
+                {
+                    _windFailure = "AO 接口类型缺失";
+                    return;
+                }
+
+                _tryGetWind = AccessTools.Method(interfaceType, "TryGetWind");
+                _addWindImpulse = AccessTools.Method(interfaceType, "AddWindImpulse");
+                if (_tryGetWind == null || _addWindImpulse == null)
+                {
+                    _windFailure = "AtmosphereInterface 风场方法缺失";
+                    return;
+                }
+
+                _tryGetWindFast = MakeFast<TryGetWindDelegate>(_tryGetWind);
+                _windAvailable = true;
+            }
+            catch (Exception e)
+            {
+                _windFailure = e.GetType().Name + ": " + e.Message;
+            }
+        }
+
+        /// <summary>
+        /// 把 MethodInfo 绑定成强类型委托；失败返回 null，调用点回退到 Invoke。
+        /// </summary>
         private static T MakeFast<T>(MethodInfo method) where T : class
         {
             if (method == null)
@@ -676,6 +720,108 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             {
                 _sourceFailure = e.GetType().Name + ": " + e.Message;
                 _sourceAvailable = false;
+                return false;
+            }
+        }
+
+        /// <summary>风场通道是否可用（独立能力）。</summary>
+        public static bool WindAvailable
+        {
+            get { Resolve(); return _windAvailable; }
+        }
+
+        public static string WindFailure
+        {
+            get { Resolve(); return _windFailure; }
+        }
+
+        /// <summary>
+        /// 读某格的当前风（m/s）。AO 从快照读取，可安全在渲染/主线程调用。
+        /// </summary>
+        public static bool TryGetWind(Map map, IntVec3 cell, out UnityEngine.Vector2 wind)
+        {
+            wind = default(UnityEngine.Vector2);
+            Resolve();
+            if (!_windAvailable || map == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (_tryGetWindFast != null)
+                {
+                    return _tryGetWindFast(map, cell, out wind);
+                }
+
+                object[] args = GetArgs(ref _sourceArgs3, 3);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = null;
+                object result;
+                try
+                {
+                    result = _tryGetWind.Invoke(null, args);
+                }
+                finally
+                {
+                    args[0] = null;
+                }
+
+                if (args[2] is UnityEngine.Vector2)
+                {
+                    wind = (UnityEngine.Vector2)args[2];
+                }
+
+                return result is bool && (bool)result;
+            }
+            catch (Exception e)
+            {
+                _windFailure = e.GetType().Name + ": " + e.Message;
+                _windAvailable = false;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 给某格排入一份风速增量。AO 内部加锁并入队，在下一模拟步应用
+        /// （应用时会乘该格 obstacleMask）。传 -wind 即把该格速度抵消到 0。
+        /// </summary>
+        public static bool AddWindImpulse(Map map, IntVec3 cell, UnityEngine.Vector2 delta)
+        {
+            Resolve();
+            if (!_windAvailable || map == null)
+            {
+                return false;
+            }
+
+            if (delta.x == 0f && delta.y == 0f)
+            {
+                return true;
+            }
+
+            try
+            {
+                object[] args = GetArgs(ref _sourceArgs3, 3);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = delta;
+                object result;
+                try
+                {
+                    result = _addWindImpulse.Invoke(null, args);
+                }
+                finally
+                {
+                    args[0] = null;
+                }
+
+                return result is bool && (bool)result;
+            }
+            catch (Exception e)
+            {
+                _windFailure = e.GetType().Name + ": " + e.Message;
+                _windAvailable = false;
                 return false;
             }
         }

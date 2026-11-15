@@ -142,6 +142,84 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
     }
 
     /// <summary>
+    /// 让 AO 的速度滑条与「自然通风」按钮共用同一个值（CompAirVent.speedLimit），
+    /// 只处理两件事：
+    /// 1. 主动通风（GC 的 intensive 模式）运行中，把滑条的任何写入压成 0，滑条锁死；
+    /// 2. 按钮点击的那一帧，丢弃滑条的写回。
+    ///
+    /// 为什么需要第 2 点：原版 Gizmo_Slider 每次 GizmoOnGUI 都执行
+    /// `this.Target = this.targetValuePct`（Verse/Gizmo_Slider.cs:114-117），
+    /// 而 GizmoGridDrawer 在同一个 Time.frameCount 内复用已建好的 gizmo 列表
+    /// （Verse/GizmoGridDrawer.cs:52-82）。点击发生在该帧中段，滑条实例的
+    /// targetValuePct 还是点击前读到的旧值，Repaint 时会把旧值写回来，点击即被撤销。
+    ///
+    /// 只对同时挂了 GC_ThingComp 的通风口生效；纯 AO 通风建筑完全不受影响。
+    /// </summary>
+    [HarmonyPatch]
+    internal static class GcNaturalVentSpeedPatch
+    {
+        private static bool Prepare()
+        {
+            return GcAirRelay.AirVentType != null
+                && AccessTools.Method(GcAirRelay.AirVentType, "SetSpeedLimit", new[] { typeof(float) }) != null;
+        }
+
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(GcAirRelay.AirVentType, "SetSpeedLimit", new[] { typeof(float) });
+        }
+
+        private static bool Prefix(ThingComp __instance, ref float __0)
+        {
+            Building building = __instance == null ? null : __instance.parent as Building;
+            if (building == null || !GcAirRelay.HasGcComp(building))
+            {
+                return true;
+            }
+
+            // 主动通风运行中：滑条锁死在 0（AO 自己的守卫会跳过重复写入）。
+            if (GcAirRelay.IsIntensiveActive(building))
+            {
+                __0 = 0f;
+                return true;
+            }
+
+            // 按钮刚接管了这一帧：丢弃滑条的写回。
+            if (GcAirRelay.IsSliderWriteSuppressed(building))
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 通风口拆除时把该格残留风速抵消为 0。
+    ///
+    /// AO 自己的 Thing.DeSpawn Prefix 只做 MarkCachedMapDataDirty，不会清速度场；
+    /// 而拆除后 ClampVentVelocities 不再覆盖该格，残留速度会一直留在那里。
+    /// AO 的 Building.DeSpawn 会先调用 base(Thing.DeSpawn)，因此这里拦截得到。
+    /// </summary>
+    [HarmonyPatch(typeof(Thing), nameof(Thing.DeSpawn))]
+    internal static class GcVentDespawnPatch
+    {
+        private static bool Prepare()
+        {
+            return GcAirRelay.AirVentType != null;
+        }
+
+        private static void Prefix(Thing __instance)
+        {
+            Building building = __instance as Building;
+            if (building != null)
+            {
+                GcAirRelay.ClearVentVelocity(building);
+            }
+        }
+    }
+
+    /// <summary>
     /// 通风口一建造出来就关闭自然通风，不等 60 tick 扫描。
     ///
     /// patch 的是 Building.SpawnSetup（override），普通建筑（含 Building_Vent）都走这里；

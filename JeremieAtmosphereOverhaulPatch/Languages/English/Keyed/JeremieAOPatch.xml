@@ -64,6 +64,6 @@
 
     <!-- Good Climate active vent -->
     <JGC_NaturalVent_Label>Natural ventilation</JGC_NaturalVent_Label>
-    <JGC_NaturalVent_Desc>Allow this vent to exchange air through AO's natural vent channel while intensive exchange is off. Off by default.</JGC_NaturalVent_Desc>
+    <JGC_NaturalVent_Desc>Linked to this vent's speed slider: any non-zero speed means natural ventilation is on. Clicking this button sets the slider to 0 (off) or the maximum (on); dragging the slider updates this button too. While intensive exchange is running the slider is locked at 0. Off by default.</JGC_NaturalVent_Desc>
     <JGC_NaturalVent_Disabled>Unavailable while intensive exchange is running.</JGC_NaturalVent_Disabled>
 </LanguageData>

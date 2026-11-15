@@ -64,6 +64,6 @@
 
     <!-- Good Climate 主动通风口 -->
     <JGC_NaturalVent_Label>自然通风</JGC_NaturalVent_Label>
-    <JGC_NaturalVent_Desc>允许该通风口在未开启强力换热时按 AO 的自然通风通道交换空气。默认关闭。</JGC_NaturalVent_Desc>
+    <JGC_NaturalVent_Desc>与通风口的速度滑条联动：滑条不为 0 即为开启。点击本按钮会把滑条切到 0（关闭）或最大值（开启）；拖动滑条同样会改变本按钮的开关状态。主动通风运行中滑条被锁定为 0。默认关闭。</JGC_NaturalVent_Desc>
     <JGC_NaturalVent_Disabled>强力换热运行中，无法开启自然通风。</JGC_NaturalVent_Disabled>
 </LanguageData>
