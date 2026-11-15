@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!--
+    CCC 温控设备风害免疫（方案 A）
+
+    与 VteWindPassable.xml 同一套机制：
+    - 管道（red/blue/cyan 及 Hidden）的 building.isEdifice = false，
+      不进 edificeGrid，所在格 obstacleMask 恒为 1；fillPercent 未写时默认 1，
+      于是 AirFill = 1 >= 0.1，直接进通道 B；
+    - WallAirVent/WallAirVentSmall 的父类 BaseWallVent 也是 isEdifice=false，
+      且 placeWorker 只要求"相邻有墙"，实际站在地面格，mask 同样恒为 1；
+    - 这些 def 都带 minifiedDef（BaseVent 自带，管道由 MinifyEverything 运行时注入），
+      kind=1，强风下会被 MakeMinified + PlaceDownwind 吹走。
+
+    标注 airPassable=true + airFillPercent=0.05 让它们退出通道 B：
+    AirCanMoveThrough 返回 true（MapObstacleMaskBuilder.cs:182-191），
+    AirFill 降到 0.05 < WindDamageMinFillPercent(0.1)（WindPassableLoad.cs:104-105）。
+
+    已确认这些 def 当前都没有携带 BuildingAtmosphereExtension，AO 官方 patch 也未覆盖它们。
+
+    嵌入墙体、自身承担挡风密封职责的设备（fillPercent=1 且 canPlaceOverWall 可嵌入墙格）
+    不在此列，因为 airPassable 会让墙格透风、房间气密性下降。按需求已注释掉：
+      IntakeFan（入风口）
+      AirThermal（空气处理机）
+      LargeIntakeFan（大型入风口）
+      LargeAirThermal（大型空气处理机）
+    如需恢复这些，把对应 defName 移回下面的 xpath 即可。
+
+    排除项：SurroundAirVent、SurroundAirVentWide（独立排风口）属于室内出风口建筑，按需求不处理。
+  -->
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/ThingDef[(defName="redAirPipe" or defName="redAirPipeHidden" or defName="blueAirPipe" or defName="blueAirPipeHidden" or defName="cyanAirPipe" or defName="cyanAirPipeHidden" or defName="WallAirVentSmall" or defName="WallAirVent")]</xpath>
+    <value>
+      <li Class="AtmosphereOverhaul.Simulation.BuildingAtmosphereExtension">
+        <airPassable>true</airPassable>
+        <airFillPercent>0.05</airFillPercent>
+      </li>
+    </value>
+  </Operation>
+</Patch>

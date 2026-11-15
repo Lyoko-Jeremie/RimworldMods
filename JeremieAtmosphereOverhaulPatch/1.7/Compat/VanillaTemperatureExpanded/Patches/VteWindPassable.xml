@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!--
+    VTE 温控设备风害免疫（方案 A）
+
+    AO 的风害分两条通道：
+    - 通道 A（WindStructuralLoad）：只处理 obstacleMask == 0 的实体建筑，施加风压伤害（会掉血，但不会位移）；
+    - 通道 B（WindPassableLoad）：处理 obstacleMask > 0 且 AirFill >= 0.1 的建筑，
+      命中后 MakeMinified + PlaceDownwind，也就是字面上的"被吹走"。
+      判定 flag2 里不含 windToleranceFactor，所以调大容差因子对"吹走"无效。
+
+    这批 def 的 fillPercent 在 0.4~1 之间，或 isEdifice=false 使所在格 edificeGrid 为空、
+    mask 恒为 1；再加上 MinifyEverything 会在运行时给它们补 minifiedDef（kind=1），
+    强风下就会被直接吹走。
+
+    这里用 AO 官方的 BuildingAtmosphereExtension 标注 airPassable=true + airFillPercent=0.05：
+    - airPassable 让 AirCanMoveThrough 返回 true（MapObstacleMaskBuilder.cs:182-191），不再被当作实体障碍；
+    - airFillPercent 让 AirFill 降到 0.05，低于 WindDamageMinFillPercent(0.1)，
+      双保险退出通道 B（WindPassableLoad.cs:104-105）。
+
+    已确认这些 def 当前都没有携带 BuildingAtmosphereExtension，AO 官方 patch 也未覆盖它们。
+    若将来 AO 或别的 patch 给它们加了同扩展，这里会重复添加，需要改成先 Conditional 再 Replace。
+
+    注意：airFillPercent=0.05 会把 AO 空气阻尼压到约 0.081。
+    因此"嵌入墙体、自身承担挡风密封职责"的设备（fillPercent=1 且可作为墙体使用）不在此列，
+    因为它们一旦 airPassable 就会让墙体透风、房间气密性下降。按需求已注释掉：
+      VTE_ACUnit（墙体空调）
+      VTE_IndustrialHeater（工业加热器）
+      VTE_IndustrialCooler（工业制冷机）
+      VTE_WallHeater（墙体加热器）
+    如需恢复这些，把对应 defName 移回下面的 xpath 即可。
+
+    排除项：VTE_WallMountedVent（壁挂通风孔）属于室内出风口建筑，按需求不处理。
+  -->
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/ThingDef[(defName="VTE_ACCompressor" or defName="VTE_LargeACCompressor" or defName="VTE_ACControlUnit" or defName="VTE_ACUnitWall" or defName="VTE_VentValve" or defName="VTE_AirDuct" or defName="VTE_UndergroundAirDuct" or defName="VTE_WallMountedHeater" or defName="VTE_WallMountedCooler" or defName="VTE_StandingCooler" or defName="VTE_SmallCeilingFan" or defName="VTE_LargeCeilingFan")]</xpath>
+    <value>
+      <li Class="AtmosphereOverhaul.Simulation.BuildingAtmosphereExtension">
+        <airPassable>true</airPassable>
+        <airFillPercent>0.05</airFillPercent>
+      </li>
+    </value>
+  </Operation>
+</Patch>
