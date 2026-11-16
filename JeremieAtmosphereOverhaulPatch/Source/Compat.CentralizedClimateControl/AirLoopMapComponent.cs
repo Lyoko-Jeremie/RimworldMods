@@ -245,14 +245,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             if (--diagCountdown <= 0)
             {
                 diagCountdown = 60;
-                Log.Message(string.Concat(
-                    "[AOPatch/CCC] dt=", dt.ToString("F2"),
-                    " 回路=", diagNets.ToString(),
-                    " 出气=", diagExhaustM3.ToString("F4"), " m3/步",
-                    " 可用出风口=", diagLiveVents.ToString(),
-                    " 注入格=", diagInjectedCells.ToString(),
-                    " 注入体积=", diagInjectedVolumes.ToString("F4"),
-                    " 风速=", diagWindSpeed.ToString("F2"), " m/s"));
+                // Log.Message(string.Concat(
+                //     "[AOPatch/CCC] dt=", dt.ToString("F2"),
+                //     " 回路=", diagNets.ToString(),
+                //     " 出气=", diagExhaustM3.ToString("F4"), " m3/步",
+                //     " 可用出风口=", diagLiveVents.ToString(),
+                //     " 注入格=", diagInjectedCells.ToString(),
+                //     " 注入体积=", diagInjectedVolumes.ToString("F4"),
+                //     " 风速=", diagWindSpeed.ToString("F2"), " m/s"));
             }
         }
 

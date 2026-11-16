@@ -433,10 +433,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                     UnitEntry e = _entries[0];
                     first = string.Format("qi={0:F2} qFull={1:F2} cell={2}", e.Qi, e.QFull, e.Cell);
                 }
-                Log.Message(string.Format(
-                    "[AOPatch/VTE] 账本 net={0} 室内机={1} 压缩机={2} receivers={3} producers={4} a={5:F2} b={6:F2} cap={7:F1} s={8:F3} 首台[{9}]",
-                    net.GetHashCode(), _entries.Count, _compressors.Count, net.receivers.Count, net.producers.Count,
-                    a, b, capacity, s, first));
+                // Log.Message(string.Format(
+                //     "[AOPatch/VTE] 账本 net={0} 室内机={1} 压缩机={2} receivers={3} producers={4} a={5:F2} b={6:F2} cap={7:F1} s={8:F3} 首台[{9}]",
+                //     net.GetHashCode(), _entries.Count, _compressors.Count, net.receivers.Count, net.producers.Count,
+                //     a, b, capacity, s, first));
             }
         }
 
@@ -595,12 +595,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
 
             if (_outputLoggedIds.Count < 16 && _outputLoggedIds.Add(unit.thingIDNumber))
             {
-                Log.Message("[AOPatch/VTE] 出风格：def=" + unit.def.defName
-                            + " pos=" + unit.Position
-                            + " rot=" + unit.Rotation.AsInt
-                            + " 贴墙=" + attached
-                            + " 采用=" + cell);
-                LogWallDiagnostics(unit, attached, cell);
+                // Log.Message("[AOPatch/VTE] 出风格：def=" + unit.def.defName
+                //             + " pos=" + unit.Position
+                //             + " rot=" + unit.Rotation.AsInt
+                //             + " 贴墙=" + attached
+                //             + " 采用=" + cell);
+                // LogWallDiagnostics(unit, attached, cell);
             }
 
             return cell;
