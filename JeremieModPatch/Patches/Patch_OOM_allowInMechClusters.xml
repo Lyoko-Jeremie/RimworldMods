@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+<!--  https://gist.github.com/Lyoko-Jeremie/2ad75c2aea316ace02de3662522509ac-->
+  <!-- 给 fleshType=Mechanoid 且 combatPower=0 的 PawnKindDef 关闭机械集群入选 -->
+  <Operation Class="PatchOperationAdd" MayRequire="local.pvzplants">
+    <xpath>Defs/PawnKindDef[defName="PvZ_ChomperPawn"]</xpath>
+    <value><allowInMechClusters>false</allowInMechClusters></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="klimprog.rimlogic">
+    <xpath>Defs/PawnKindDef[defName="RimLogic_DroneKind"]</xpath>
+    <value><allowInMechClusters>false</allowInMechClusters></value>
+  </Operation>
+</Patch>
