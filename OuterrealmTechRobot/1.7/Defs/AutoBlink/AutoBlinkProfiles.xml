@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AutoBlink 1.7 原生 Profile 定义。
+
+  1.7 的 AutoBlink 已重写为「源头 comp + Profile」架构：
+  - 能力挂在 ThingDef / HediffDef 上的 CompProperties_AutoBlinkSource / HediffCompProperties_AutoBlinkSource；
+  - 具体参数（射程、冷却、准备时间、音效特效等）集中写在 AutoBlinkProfileDef 中。
+
+  因此本 Mod 不再直接使用旧版 AutoBlink.CompProperties_AutoBlink（1.6 写法），
+  而是让 Def 引用这里的 Profile；1.6 则由 1.6/Patches/ArtificialMaid_AutoBlink.xml 换回旧写法。
+
+  注意：1.7 的 AutoBlinkProfileDef.maxRange 有硬性上限 1000（ConfigErrors 校验），
+  故女仆的 3000 格射程在 1.7 下取上限 1000；该值已远超任何地图尺度。
+-->
+<Defs>
+
+    <!-- 人造人女仆本体：自动瞬移 -->
+    <AutoBlink.AutoBlinkProfileDef MayRequire="rabiosus.autoblink">
+        <defName>OuterrealmTechRobot_ArtificialMaidAutoBlink</defName>
+        <label>artificial maid auto blink</label>
+        <description>Automatically teleport along the current walking path.</description>
+        <maxRange>1000</maxRange>
+        <minRemainingPathNodes>5</minRemainingPathNodes>
+        <cooldownTicks>30</cooldownTicks>
+        <preparationTicks>0</preparationTicks>
+        <cellsBeforeTarget>1</cellsBeforeTarget>
+        <postBlinkStanceTicks>30</postBlinkStanceTicks>
+        <allowPartialBlink>true</allowPartialBlink>
+        <playerFactionOnly>true</playerFactionOnly>
+        <defaultEnabled>true</defaultEnabled>
+        <defaultDrafted>true</defaultDrafted>
+        <defaultUndrafted>true</defaultUndrafted>
+        <showGizmo>true</showGizmo>
+        <iconPath>UI/Commands/AutoBlink</iconPath>
+        <excludedJobs>
+            <!-- 闲逛时 -->
+            <li>GotoWander</li>
+            <!-- 被携带搬运时 -->
+            <li>Carried</li>
+        </excludedJobs>
+        <beforeSound>AutoBlink_Skip_Small</beforeSound>
+        <beforeEffect>Skip_Entry</beforeEffect>
+        <afterSound>AutoBlink_Skip_Exit_Small</afterSound>
+        <afterEffect>Skip_ExitNoDelay</afterEffect>
+    </AutoBlink.AutoBlinkProfileDef>
+
+    <!-- 人造人女仆身边光环（ArtificialMaidAura）：自动瞬移 -->
+    <AutoBlink.AutoBlinkProfileDef MayRequire="rabiosus.autoblink">
+        <defName>OuterrealmTechRobot_ArtificialMaidAuraAutoBlink</defName>
+        <label>artificial maid aura auto blink</label>
+        <description>Automatically teleport along the current walking path.</description>
+        <maxRange>300</maxRange>
+        <minRemainingPathNodes>5</minRemainingPathNodes>
+        <cooldownTicks>60</cooldownTicks>
+        <preparationTicks>40</preparationTicks>
+        <cellsBeforeTarget>1</cellsBeforeTarget>
+        <postBlinkStanceTicks>30</postBlinkStanceTicks>
+        <allowPartialBlink>true</allowPartialBlink>
+        <playerFactionOnly>true</playerFactionOnly>
+        <defaultEnabled>true</defaultEnabled>
+        <defaultDrafted>true</defaultDrafted>
+        <defaultUndrafted>true</defaultUndrafted>
+        <showGizmo>true</showGizmo>
+        <iconPath>UI/Commands/AutoBlink</iconPath>
+        <excludedJobs>
+            <!-- 闲逛时 -->
+            <li>GotoWander</li>
+            <!-- 被携带搬运时 -->
+            <li>Carried</li>
+        </excludedJobs>
+        <beforeSound>AutoBlink_Skip_Small</beforeSound>
+        <beforeEffect>Skip_Entry</beforeEffect>
+        <afterSound>AutoBlink_Skip_Exit_Small</afterSound>
+        <afterEffect>Skip_ExitNoDelay</afterEffect>
+    </AutoBlink.AutoBlinkProfileDef>
+
+</Defs>

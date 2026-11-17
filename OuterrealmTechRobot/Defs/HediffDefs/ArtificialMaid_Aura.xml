@@ -122,38 +122,10 @@
         </stages>
 
         <comps>
-            <!-- AutoBlink 自动瞬移能力；完全照抄 StatusAllocationTerminal_SuperMan，依赖 rabiosus.autoblink Mod。 -->
-            <li Class="AutoBlink.HediffCompProperties_AutoBlink" MayRequire="rabiosus.autoblink">
-                <minDistanceToBlink>5</minDistanceToBlink>
-                <maxDistanceToBlink>300</maxDistanceToBlink>
-                <blinkIntervalTicks>60</blinkIntervalTicks>
-                <delayAfterEligibleTicks>40</delayAfterEligibleTicks>
-                <cellsBeforeTarget>1</cellsBeforeTarget>
-                <postBlinkStanceTicks>30</postBlinkStanceTicks>
-                <defaultAutoBlinkDrafted>true</defaultAutoBlinkDrafted>
-                <defaultAutoBlinkIdle>true</defaultAutoBlinkIdle>
-                <defaultJumpAsFarAsPossible>true</defaultJumpAsFarAsPossible>
-                <playerFactionOnly>true</playerFactionOnly>
-                <excludedJobDefs>
-                    <!-- 闲逛时 -->
-                    <li>GotoWander</li>
-                    <!-- 被携带搬运时 -->
-                    <li>Carried</li>
-                </excludedJobDefs>
-                <drawGizmo>true</drawGizmo>
-                <gizmoIconPath>UI/Commands/AutoBlink</gizmoIconPath>
-                <preBlinkSoundDefs>
-                    <li>AutoBlink_Skip_Small</li>
-                </preBlinkSoundDefs>
-                <preBlinkEffecterDefs>
-                    <li>Skip_Entry</li>
-                </preBlinkEffecterDefs>
-                <postBlinkSoundDefs>
-                    <li>AutoBlink_Skip_Exit_Small</li>
-                </postBlinkSoundDefs>
-                <postBlinkEffecterDefs>
-                    <li>Skip_ExitNoDelay</li>
-                </postBlinkEffecterDefs>
+            <!-- AutoBlink 1.7 原生 Profile 架构：能力参数集中在 1.7/Defs/AutoBlink/AutoBlinkProfiles.xml 中定义。
+                 1.6 由 1.6/Patches/ArtificialMaid_AutoBlink.xml 在解析前换回旧版 HediffCompProperties_AutoBlink 写法。 -->
+            <li Class="AutoBlink.HediffCompProperties_AutoBlinkSource" MayRequire="rabiosus.autoblink">
+                <profile>OuterrealmTechRobot_ArtificialMaidAuraAutoBlink</profile>
             </li>
         </comps>
     </HediffDef>
