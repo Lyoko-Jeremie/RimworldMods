@@ -37,17 +37,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             }
 
             // 条目 1/2/5 只依赖 AO 的风害与 pawn 通道，不需要六通道能力。
-            if (!Patch_OmniBuildingAtmosphere.Install(harmony))
+            if (!SafeInstall("超维建筑风免疫", harmony, Patch_OmniBuildingAtmosphere.Install))
             {
                 Log.Warning("[AOPatch] 超维建筑风免疫未挂载。");
             }
 
-            if (!Patch_OmniWindExemption.Install(harmony))
+            if (!SafeInstall("护盾风豁免", harmony, Patch_OmniWindExemption.Install))
             {
                 Log.Warning("[AOPatch] 护盾风豁免未完整挂载。");
             }
 
-            if (!Patch_OmniPawnProtection.Install(harmony))
+            if (!SafeInstall("随身气压/氧保护", harmony, Patch_OmniPawnProtection.Install))
             {
                 Log.Warning("[AOPatch] 随身气压/氧保护未挂载。");
             }
@@ -56,29 +56,56 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             {
                 Log.Warning("[AOPatch] 超维科技穹顶绝对隔离停用：AO 六通道成员不完整。原因："
                     + AtmosphereFieldBridge.SixChannelFailure);
-                InstallMapCleanup(harmony);
+                SafeInstallMapCleanup(harmony);
                 return;
             }
 
-            bool isolation = Patch_AbsoluteIsolation.Install(harmony);
-            if (!isolation)
+            if (!SafeInstall("穹顶绝对隔离", harmony, Patch_AbsoluteIsolation.Install))
             {
                 Log.Warning("[AOPatch] 穹顶绝对隔离补丁未能挂载，AO 场不会按目标值硬固定。");
             }
 
-            bool gizmos = Patch_OmniAtmosphereGizmos.Install(harmony);
-            if (!gizmos)
+            if (!SafeInstall("目标值面板", harmony, Patch_OmniAtmosphereGizmos.Install))
             {
                 Log.Warning("[AOPatch] 部分超维科技 UI 补丁挂载失败，目标值面板可能不完整。");
             }
 
-            bool temperature = Patch_OmniAtmosphereTemperature.Install(harmony);
-            if (!temperature)
+            if (!SafeInstall("温度读数覆盖", harmony, Patch_OmniAtmosphereTemperature.Install))
             {
                 Log.Warning("[AOPatch] 温度读数覆盖补丁挂载失败，穹顶/生物圈读数可能与 AO 场不一致。");
             }
 
-            InstallMapCleanup(harmony);
+            SafeInstallMapCleanup(harmony);
+            Log.Message("[AOPatch/OT] 超维科技兼容补丁已安装。");
+        }
+
+        /// <summary>
+        /// 单个补丁组安装失败不应拖垮其它组：Harmony 的参数绑定错误、字段缺失等都会抛异常，
+        /// 一旦从静态构造函数抛出，整个兼容程序集都不会再被初始化（所有 OT 功能一起消失）。
+        /// </summary>
+        private static bool SafeInstall(string label, Harmony harmony, Func<Harmony, bool> install)
+        {
+            try
+            {
+                return install(harmony);
+            }
+            catch (Exception e)
+            {
+                Log.Warning("[AOPatch] " + label + " 安装异常：" + e);
+                return false;
+            }
+        }
+
+        private static void SafeInstallMapCleanup(Harmony harmony)
+        {
+            try
+            {
+                InstallMapCleanup(harmony);
+            }
+            catch (Exception e)
+            {
+                Log.Warning("[AOPatch] 地图卸载清理补丁安装异常：" + e);
+            }
         }
 
         /// <summary>

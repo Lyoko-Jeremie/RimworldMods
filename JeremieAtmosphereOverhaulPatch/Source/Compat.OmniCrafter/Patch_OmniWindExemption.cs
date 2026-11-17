@@ -253,7 +253,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
         }
 
         /// <summary>屋顶：从待移除列表里剔除护盾内的格；全被剔除时直接跳过原方法。</summary>
-        private static bool RoofPrefix(object __instance, Map __1)
+        /// <remarks>
+        /// ApplyRemovals 是实例方法，签名为 (Map map, LocalAtmosphereSettings s, int tick)，
+        /// 因此 map 是 0 号参数（__0），不是 __1——写成 __1 会被 Harmony 当成
+        /// 「LocalAtmosphereSettings 传给 Map」而在安装期抛参数绑定异常。
+        /// </remarks>
+        private static bool RoofPrefix(object __instance, Map __0)
         {
             int count = (int)roofPendingCount.GetValue(__instance);
             if (count <= 0)
@@ -268,7 +273,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 return true;
             }
 
-            Map map = __1;
+            Map map = __0;
             if (map == null)
             {
                 return true;
