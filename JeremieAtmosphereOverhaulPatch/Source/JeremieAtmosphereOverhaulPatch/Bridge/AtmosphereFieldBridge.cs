@@ -45,6 +45,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static PropertyInfo _fieldReadProp;
         private static MethodInfo _markCachedDirty;
 
+        // 六通道硬固定（穹顶绝对隔离）专用的额外成员。
+        // 与 _available 分开判定：这些缺失只让隔离模块降级，不影响 ProxyHeat 等既有模块。
+        private static PropertyInfo _moistureProp;
+        private static PropertyInfo _oxygenProp;
+        private static PropertyInfo _oxygenReadProp;
+        private static PropertyInfo _pressureProp;
+        private static PropertyInfo _storedPressureProp;
+        private static PropertyInfo _velocityXProp;
+        private static PropertyInfo _velocityZProp;
+        private static PropertyInfo _relativeHumidityProp;
+        private static PropertyInfo _roofMaskProp;
+        private static FieldInfo _oxygenResidualField;
+        private static FieldInfo _ambientSurfaceField;
+        private static FieldInfo _settingsField;
+        private static MethodInfo _calculateVaporCapacity;
+        private static MethodInfo _currentSolverPascals;
+        private static bool _sixChannelAvailable;
+        private static string _sixChannelFailure;
+
         private static Type _airMoverSettingsType;
         private static MethodInfo _registerAirMover;
         private static MethodInfo _unregisterAirMovers;
@@ -188,6 +207,42 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _obstacleMaskProp = AccessTools.Property(_engineType, "ObstacleMask");
                 _fieldReadProp = AccessTools.Property(_fieldType, "Read");
                 _markCachedDirty = AccessTools.Method(_componentType, "MarkCachedMapDataDirty");
+
+                // 六通道额外成员：独立解析，失败只降级隔离模块。
+                _moistureProp = AccessTools.Property(_engineType, "Moisture");
+                _oxygenProp = AccessTools.Property(_engineType, "Oxygen");
+                _pressureProp = AccessTools.Property(_engineType, "Pressure");
+                _relativeHumidityProp = AccessTools.Property(_engineType, "RelativeHumidity");
+                _roofMaskProp = AccessTools.Property(_engineType, "RoofMask");
+                _storedPressureProp = AccessTools.Property(_engineType, "StoredPressurePa");
+                _velocityXProp = AccessTools.Property(_engineType, "VelocityX");
+                _velocityZProp = AccessTools.Property(_engineType, "VelocityZ");
+                _ambientSurfaceField = AccessTools.Field(_engineType, "AmbientSurfacePressurePa");
+                _settingsField = AccessTools.Field(_componentType, "settings");
+                Type oxygenType = AccessTools.TypeByName("AtmosphereOverhaul.Simulation.ByteAtmosphereField");
+                _oxygenReadProp = oxygenType == null ? null : AccessTools.Property(oxygenType, "Read");
+                _currentSolverPascals = AccessTools.Method(
+                    AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereColorUtility"),
+                    "CurrentSolverPressureToPascals");
+                Type settingsType = AccessTools.TypeByName("AtmosphereOverhaul.Simulation.LocalAtmosphereSettings");
+                _calculateVaporCapacity = settingsType == null
+                    ? null
+                    : AccessTools.Method(_engineType, "CalculateVaporCapacity", new[] { typeof(float), settingsType });
+
+                // 氧气是量化 byte 场，residual 负责保留量化余数。
+                // 直接写 Read 后必须同时清 residual，否则下一步扩散会带着旧余数漂移。
+                _oxygenResidualField = AccessTools.Field(_engineType, "oxygenResidual");
+
+                _sixChannelAvailable = _moistureProp != null && _oxygenProp != null && _oxygenReadProp != null
+                    && _pressureProp != null && _storedPressureProp != null
+                    && _velocityXProp != null && _velocityZProp != null
+                    && _relativeHumidityProp != null
+                    && _ambientSurfaceField != null && _settingsField != null
+                    && _calculateVaporCapacity != null && _currentSolverPascals != null;
+                if (!_sixChannelAvailable)
+                {
+                    _sixChannelFailure = "AO 六通道成员不完整";
+                }
 
                 if (_engineField == null || _pendingDeltasField == null
                     || _engineSize == null || _engineWidth == null
@@ -486,6 +541,165 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return 0;
             }
             return (int)_engineWidth.GetValue(engine);
+        }
+
+        /// <summary>六通道硬固定（穹顶绝对隔离）所需的 AO 成员是否齐全。</summary>
+        public static bool SixChannelAvailable
+        {
+            get
+            {
+                Resolve();
+                return _sixChannelAvailable;
+            }
+        }
+
+        public static string SixChannelFailure
+        {
+            get
+            {
+                Resolve();
+                return _sixChannelFailure;
+            }
+        }
+
+        /// <summary>湿度场（绝对水汽，与 VaporCapacity 同单位）。返回活引用，可写。</summary>
+        public static float[] GetMoistureRead(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return null;
+            }
+            return _fieldReadProp.GetValue(_moistureProp.GetValue(engine)) as float[];
+        }
+
+        /// <summary>氧气场（byte 量化，0-100）。返回活引用，可写。</summary>
+        public static byte[] GetOxygenRead(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return null;
+            }
+            return _oxygenReadProp.GetValue(_oxygenProp.GetValue(engine)) as byte[];
+        }
+
+        /// <summary>氧气量化余数数组（可能为 null，AO 首次用到才分配）。返回活引用。</summary>
+        public static float[] GetOxygenResidual(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null || _oxygenResidualField == null)
+            {
+                return null;
+            }
+            return _oxygenResidualField.GetValue(engine) as float[];
+        }
+
+        /// <summary>相对湿度场（0-1）。返回活引用，可写。</summary>
+        public static float[] GetRelativeHumidityRead(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null || _relativeHumidityProp == null)
+            {
+                return null;
+            }
+            return _fieldReadProp.GetValue(_relativeHumidityProp.GetValue(engine)) as float[];
+        }
+
+        /// <summary>大气屋顶掩膜（0/1，与 map.roofGrid 解耦）。返回活引用，可写。</summary>
+        public static float[] GetRoofMask(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null || _roofMaskProp == null)
+            {
+                return null;
+            }
+            return _roofMaskProp.GetValue(engine) as float[];
+        }
+
+        /// <summary>压力场（求解器单位）。返回活引用，可写。</summary>
+        public static float[] GetPressureRead(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return null;
+            }
+            return _fieldReadProp.GetValue(_pressureProp.GetValue(engine)) as float[];
+        }
+
+        /// <summary>可压缩模式下的压力偏置（帕斯卡，相对 AmbientSurfacePressurePa）。活引用。</summary>
+        public static float[] GetStoredPressurePa(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return null;
+            }
+            return _storedPressureProp.GetValue(engine) as float[];
+        }
+
+        public static float[] GetVelocityXRead(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return null;
+            }
+            return _fieldReadProp.GetValue(_velocityXProp.GetValue(engine)) as float[];
+        }
+
+        public static float[] GetVelocityZRead(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return null;
+            }
+            return _fieldReadProp.GetValue(_velocityZProp.GetValue(engine)) as float[];
+        }
+
+        public static float GetAmbientSurfacePressurePa(object engine)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null)
+            {
+                return 0f;
+            }
+            return (float)_ambientSurfaceField.GetValue(engine);
+        }
+
+        /// <summary>AO 的每地图设置实例（LocalAtmosphereSettings）。</summary>
+        public static object GetSettings(object component)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || component == null)
+            {
+                return null;
+            }
+            return _settingsField.GetValue(component);
+        }
+
+        /// <summary>调用 AO 的 CalculateVaporCapacity，返回值与 Moisture 同单位。每步只该调一次。</summary>
+        public static float CalculateVaporCapacity(object engine, float temperatureCelsius, object settings)
+        {
+            Resolve();
+            if (!_sixChannelAvailable || engine == null || settings == null)
+            {
+                return 0f;
+            }
+            return (float)_calculateVaporCapacity.Invoke(engine, new object[] { temperatureCelsius, settings });
+        }
+
+        /// <summary>压力场单位与帕斯卡的换算系数（当前 AO 实现为 1000）。</summary>
+        public static float GetSolverPascalsPerUnit()
+        {
+            Resolve();
+            if (!_sixChannelAvailable)
+            {
+                return 0f;
+            }
+            return (float)_currentSolverPascals.Invoke(null, null);
         }
 
         /// <summary>当前空气温度场（摄氏度）。返回的是活引用，只读。</summary>

@@ -11,6 +11,7 @@
     <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <LangVersion>7.3</LangVersion>
     <RimWorldDir Condition=" '$(RimWorldDir)' == '' ">..\..\..\..\</RimWorldDir>
+    <OmniCrafterDir Condition=" '$(OmniCrafterDir)' == '' ">$(RimWorldDir)Mods\FullyAutomaticOmniCrafter\1.7\Assemblies\</OmniCrafterDir>
     <OutputPath>..\..\1.7\Compat\OmniCrafter\Assemblies\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -20,6 +21,10 @@
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\JeremieAtmosphereOverhaulPatch\packages\Lib.Harmony.2.4.2\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="FullyAutomaticOmniCrafter">
+      <HintPath>$(OmniCrafterDir)FullyAutomaticOmniCrafter.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="JeremieAtmosphereOverhaulPatch">

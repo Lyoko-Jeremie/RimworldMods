@@ -66,4 +66,15 @@
     <JGC_NaturalVent_Label>Natural ventilation</JGC_NaturalVent_Label>
     <JGC_NaturalVent_Desc>Linked to this vent's speed slider: any non-zero speed means natural ventilation is on. Clicking this button sets the slider to 0 (off) or the maximum (on); dragging the slider updates this button too. While intensive exchange is running the slider is locked at 0. Off by default.</JGC_NaturalVent_Desc>
     <JGC_NaturalVent_Disabled>Unavailable while intensive exchange is running.</JGC_NaturalVent_Disabled>
+    <!-- OuterrealmTech: dome / biosphere atmosphere targets -->
+    <AOPatch_Omni_Targets>Atmosphere targets</AOPatch_Omni_Targets>
+    <AOPatch_Omni_TargetsDesc>Set the atmosphere targets shared by every dome and biosphere on this map. AO pins the covered cells to these values each simulation step.</AOPatch_Omni_TargetsDesc>
+    <AOPatch_Omni_TargetTemperature>Temperature</AOPatch_Omni_TargetTemperature>
+    <AOPatch_Omni_TargetHumidity>Relative humidity</AOPatch_Omni_TargetHumidity>
+    <AOPatch_Omni_TargetOxygen>Oxygen</AOPatch_Omni_TargetOxygen>
+    <AOPatch_Omni_TargetPressure>Pressure</AOPatch_Omni_TargetPressure>
+    <AOPatch_Omni_PressureAuto>Follow map atmosphere</AOPatch_Omni_PressureAuto>
+    <AOPatch_Omni_PressureAmbient>Current ambient pressure: {0} hPa</AOPatch_Omni_PressureAmbient>
+    <AOPatch_Omni_GroundFollows>Ground temperature: follows air temperature (read-only)</AOPatch_Omni_GroundFollows>
+    <AOPatch_Omni_BiosphereTemperatureLocked>AO has taken over temperature; this setting no longer applies</AOPatch_Omni_BiosphereTemperatureLocked>
 </LanguageData>

@@ -66,4 +66,15 @@
     <JGC_NaturalVent_Label>自然通风</JGC_NaturalVent_Label>
     <JGC_NaturalVent_Desc>与通风口的速度滑条联动：滑条不为 0 即为开启。点击本按钮会把滑条切到 0（关闭）或最大值（开启）；拖动滑条同样会改变本按钮的开关状态。主动通风运行中滑条被锁定为 0。默认关闭。</JGC_NaturalVent_Desc>
     <JGC_NaturalVent_Disabled>强力换热运行中，无法开启自然通风。</JGC_NaturalVent_Disabled>
+    <!-- 超维科技：穹顶 / 生物圈大气目标 -->
+    <AOPatch_Omni_Targets>大气目标</AOPatch_Omni_Targets>
+    <AOPatch_Omni_TargetsDesc>设置此地图上所有穹顶与生物圈共用的大气目标值。AO 每个模拟步会把覆盖范围内的大气硬固定到这些值。</AOPatch_Omni_TargetsDesc>
+    <AOPatch_Omni_TargetTemperature>气温</AOPatch_Omni_TargetTemperature>
+    <AOPatch_Omni_TargetHumidity>相对湿度</AOPatch_Omni_TargetHumidity>
+    <AOPatch_Omni_TargetOxygen>氧气</AOPatch_Omni_TargetOxygen>
+    <AOPatch_Omni_TargetPressure>气压</AOPatch_Omni_TargetPressure>
+    <AOPatch_Omni_PressureAuto>跟随地图大气</AOPatch_Omni_PressureAuto>
+    <AOPatch_Omni_PressureAmbient>当前环境气压：{0} hPa</AOPatch_Omni_PressureAmbient>
+    <AOPatch_Omni_GroundFollows>地温：跟随气温（只读）</AOPatch_Omni_GroundFollows>
+    <AOPatch_Omni_BiosphereTemperatureLocked>AO 已接管温度，此设置不再生效</AOPatch_Omni_BiosphereTemperatureLocked>
 </LanguageData>
