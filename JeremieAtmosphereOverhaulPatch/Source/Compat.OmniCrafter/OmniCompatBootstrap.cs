@@ -29,18 +29,35 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 return;
             }
 
-            if (!AtmosphereFieldBridge.SixChannelAvailable)
-            {
-                Log.Warning("[AOPatch] 超维科技兼容模块停用：AO 六通道成员不完整。原因："
-                    + AtmosphereFieldBridge.SixChannelFailure);
-                return;
-            }
-
             Harmony harmony = AOPatchMod.HarmonyInstance;
             if (harmony == null)
             {
                 harmony = new Harmony(AOPatchMod.HarmonyId + ".OmniCrafter");
                 AOPatchMod.HarmonyInstance = harmony;
+            }
+
+            // 条目 1/2/5 只依赖 AO 的风害与 pawn 通道，不需要六通道能力。
+            if (!Patch_OmniBuildingAtmosphere.Install(harmony))
+            {
+                Log.Warning("[AOPatch] 超维建筑风免疫未挂载。");
+            }
+
+            if (!Patch_OmniWindExemption.Install(harmony))
+            {
+                Log.Warning("[AOPatch] 护盾风豁免未完整挂载。");
+            }
+
+            if (!Patch_OmniPawnProtection.Install(harmony))
+            {
+                Log.Warning("[AOPatch] 随身气压/氧保护未挂载。");
+            }
+
+            if (!AtmosphereFieldBridge.SixChannelAvailable)
+            {
+                Log.Warning("[AOPatch] 超维科技穹顶绝对隔离停用：AO 六通道成员不完整。原因："
+                    + AtmosphereFieldBridge.SixChannelFailure);
+                InstallMapCleanup(harmony);
+                return;
             }
 
             bool isolation = Patch_AbsoluteIsolation.Install(harmony);
@@ -83,6 +100,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
         {
             OmniDomeZoneCache.Forget(__instance);
             Patch_AbsoluteIsolation.Forget(__instance);
+            OmniProtection.Forget(__instance);
         }
     }
 }

@@ -271,6 +271,8 @@ AO 的模拟在 `Task.Factory.StartNew` 里跑，主线程不等待。因此：
 - 屋顶风载豁免：默认目标气压 101.325 kPa 与环境一致，压力项为零，不会压塌；玩家把目标气压调到显著偏离环境时，玩家自建屋顶仍可能受压。
 - 性能实测与面积降级阈值。
 
+> 2026-11-18 第三轮：条目 1、2、5 已实现（见 §11.5）；屋顶风载豁免随条目 2 的护盾豁免一并覆盖护盾内屋顶，穹顶内屋顶仍按「目标气压与环境一致」处理。
+
 ### 11.4 界面改造（2026-11-18 第二轮）
 
 用户要求：气压单位 kPa → AO 对外的 hPa；提供「自动跟随地图大气」；每个变量在滑条之外再给数字输入框；面板宽度两倍。
@@ -284,3 +286,57 @@ AO 的模拟在 `Task.Factory.StartNew` 里跑，主线程不等待。因此：
 - 面板：`InitialSize` 880×430（原 440×430）；`DrawRow` 统一「标签 + 滑条 + 输入框 + 单位」，输入框接受 `InvariantCulture` 数字，越界 `Mathf.Clamp`；禁用行不接收输入，只显示文本。
 - i18n 新增 `AOPatch_Omni_PressureAuto`、`AOPatch_Omni_PressureAmbient`（中英）。
 - 编译：宿主无改动；兼容项目 `dotnet build -c Debug` 0 警告 0 错误，dll 部署到 `1.7/Compat/OmniCrafter/Assemblies/`。
+
+## 12. 条目 1 / 2 / 5 实现（2026-11-18 第三轮）
+
+### 12.1 条目 1：超维建筑不受风
+
+- 不是 XML 注入 `airPassable`，而是 patch `BuildingAtmosphereExtension.AirFill(ThingDef)` 的 Postfix：凡 `def.building != null` 且 `modContentPack.PackageId == Jeremie.Fully.Automatic.OmniCrafter` 的 def，AirFill 返回 `0.01f`。
+- 效果：`WindPassableLoad.RebuildBuildings` 的筛选条件 `AirFill >= max(0.001, WindDamageMinFillPercent)` 不成立，超维建筑整体退出「可穿透物/家具」风载荷名单（不被打伤、不被吹动、不被吹走）。
+- **为什么不注入 `airPassable=true`**：`MapObstacleMaskBuilder.AirCanMoveThrough` 在 `Fillage == Full` 时会因 `extension.airPassable` 直接返回 true，把幻影墙（fillPercent=1）从 obstacleMask 里抹掉，破坏它原本的挡风/挡气能力。`AirFill` 出口只影响风载荷名单与 `ComputeDampingScale`，不动阻挡几何。
+- 副作用：超维建筑的 `DampingMask` 系数从 `fillPercent*1.6` 降到 `0.01*1.6`，风穿过建筑格时衰减更小；这是「该建筑不参与风阻」的必然结果。
+
+### 12.2 条目 2：护盾覆盖范围风豁免
+
+四个判定点全部在 `AtmosphereMapComponent.MapComponentTick`（主线程），可以安全访问 `OmniInterceptorTracker`：
+
+| 判定点 | patch 位置 | 做法 |
+| --- | --- | --- |
+| 建筑结构 | `WindStructuralLoad.ComputeChainLoads` Postfix | 护盾内成员的 `demand`/`pressureLoad`/`pendingDamage` 清零 |
+| 可穿透物/植物 | `WindPassableLoad.Evaluate` Postfix | 护盾内成员的 `PendingAction`/`LastLoad`/`LastRiskPerHour` 清零，Apply 不再执行 |
+| 屋顶 | `WindRoofLoad.ApplyRemovals` Prefix | 从 `pending` 列表剔除护盾内格；全剔除时跳过原方法（避免 `pendingCount % 0`） |
+| 物品/pawn 抛飞 | `WindTransport.TryLaunch` Prefix / `ThrowCollectedPawns` Prefix | 护盾内物品直接 `__result=false`；待抛列表移除护盾内 pawn |
+| pawn 踉跄 | `Pawn_StanceTracker.StaggerFor` Prefix | 护盾内或随身 pawn 直接跳过 |
+
+护盾覆盖判定用 `OmniInterceptorTracker.IsCellWithinShield(cell, out _)`（每格 O(1) 数组缓存，排除 hostility 检查），外加 `ConditionalWeakTable<Map, TrackerHolder>` 缓存 MapComponent 查找。
+
+### 12.3 条目 5：随身 pawn
+
+- 气压/氧：`PawnAtmosphere.TrySample` Prefix，随身启用的 pawn 直接返回地图目标值（`ResolveTargetPressurePa` / `TargetOxygenPercent`），令 `TryGetBodyAir`、套装 UI、呼吸供给整条链路一致，返回 false 阻止再读 AO 场。
+- 风：踉跄与抛飞复用 `IsPawnWindProtected`（随身启用 或 护盾内）的豁免。
+- 温度：超维自身的 `Thing.AmbientTemperature`（Priority.Last）与 `SafeTemperatureAtCell` Postfix 已覆盖，无需重复。
+- 「随身启用」判定用 `PersonalTemperatureUtility.TryGetOverride(pawn, cell, map, out _)`，即超维的原生设置，不另存状态。
+
+### 12.4 新增文件
+
+| 文件 | 职责 |
+| --- | --- |
+| `OmniProtection.cs` | 护盾格判定、随身判定、Map→Tracker 缓存 |
+| `Patch_OmniBuildingAtmosphere.cs` | 条目 1，`AirFill` Postfix |
+| `Patch_OmniWindExemption.cs` | 条目 2，四通道 + 踉跄 |
+| `Patch_OmniPawnProtection.cs` | 条目 5，`PawnAtmosphere.TrySample` Prefix |
+
+`OmniCompatBootstrap` 调整顺序：条目 1/2/5 只依赖 AO 在场，先安装；六通道能力缺失时只停用绝对隔离与目标值面板。
+
+编译：`dotnet build Source/Compat.OmniCrafter -c Debug` 0 警告 0 错误，dll 部署到 `1.7/Compat/OmniCrafter/Assemblies/`（03:21）。
+
+### 12.5 护盾掩膜缓存（2026-11-18 第四轮）
+
+按 AO 的检查间隔把护盾覆盖缓存成 `bool[]`，避免每个风害成员都做一次 tracker 查询：
+
+- `OmniProtection` 维护 `Dictionary<Map, ShieldMask>`；`ShieldMask` 含 `bool[] Cells`（长度 = `NumGridCells`）、`BuiltTick`、`Interval`。
+- 刷新条件：`GenTicks.TicksGame - BuiltTick >= Interval`，`Interval` 取自 AO `LocalAtmosphereSettings.WindDamageCheckIntervalTicks`（通过宿主桥 `AtmosphereFieldBridge.GetSettings` 反射读取，取不到时用 30）。
+- 重建只遍历护盾包围盒（矩形用 `OccupiedRect`，圆形用 `Radius` 包围盒 + `IsCellInside` 逐格），**不扫全图**；`Array.Clear` 复用旧数组。
+- 护盾开关/尺寸变化走 `OmniInterceptorTracker.DirtyCache`，其 Postfix 调 `OmniProtection.MarkAllDirty()` 立即置脏，下一次判定就重建，不等满一个间隔。
+- 批量判定（结构成员、可穿透物、屋顶、物品发射）读掩膜 O(1)；pawn 类低频单点判定仍走 `IsShieldProtectedLive` 实时查超维 `cellCache`，避免掩膜间隔导致踉跄误判。
+- `Map.Dispose` 时 `OmniProtection.Forget` 清理掩膜与 tracker 缓存。

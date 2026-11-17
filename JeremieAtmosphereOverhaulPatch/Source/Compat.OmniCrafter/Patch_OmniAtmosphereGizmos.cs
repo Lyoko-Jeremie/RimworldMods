@@ -64,6 +64,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             {
                 OmniDomeZoneCache.MarkDirty(__instance.map);
             }
+
+            // 护盾开关、尺寸变化会调 DirtyCache；掩膜与实时判定都要立刻反映。
+            OmniProtection.MarkAllDirty();
         }
 
         private static void DomeGizmosPostfix(CompOmniForceFieldDome __instance, ref IEnumerable<Gizmo> __result)
