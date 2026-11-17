@@ -69,7 +69,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             if (!Trackers.TryGetValue(map, out holder))
             {
                 holder = new TrackerHolder { Tracker = map.GetComponent<OmniInterceptorTracker>() };
-                Trackers.Add(map, holder);
+                try
+                {
+                    Trackers.Add(map, holder);
+                }
+                catch (ArgumentException)
+                {
+                    // 弱表不支持并发 Add；本入口目前只在主线程调用，这里仍防御第三方补丁
+                    // 从后台线程触发风害判定的情况。
+                }
             }
 
             return holder.Tracker;

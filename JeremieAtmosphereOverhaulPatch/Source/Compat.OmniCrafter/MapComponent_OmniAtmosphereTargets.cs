@@ -132,6 +132,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             cachedEngine = engine;
             Patch_AbsoluteIsolation.Register(engine, component, map, this);
 
+            // 主线程预热温度补丁的组件引用，避免模拟线程首次查询时遍历地图组件列表。
+            Patch_OmniAtmosphereTemperature.Warm(map);
+
             // 穹顶矩形与生物圈区域都可能被玩家随时改动，没有可靠的失效通知，
             // 这里每 30 tick 主动重建一次。判定集合很小，成本可忽略。
             OmniDomeZoneCache.MarkDirty(map);

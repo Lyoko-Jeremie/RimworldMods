@@ -340,3 +340,57 @@ AO 的模拟在 `Task.Factory.StartNew` 里跑，主线程不等待。因此：
 - 护盾开关/尺寸变化走 `OmniInterceptorTracker.DirtyCache`，其 Postfix 调 `OmniProtection.MarkAllDirty()` 立即置脏，下一次判定就重建，不等满一个间隔。
 - 批量判定（结构成员、可穿透物、屋顶、物品发射）读掩膜 O(1)；pawn 类低频单点判定仍走 `IsShieldProtectedLive` 实时查超维 `cellCache`，避免掩膜间隔导致踉跄误判。
 - `Map.Dispose` 时 `OmniProtection.Forget` 清理掩膜与 tracker 缓存。
+
+## 13. 多线程审查（2026-11-18 第五轮）
+
+审查范围：`Source/Compat.OmniCrafter/` 全部 9 个 .cs 文件 + 宿主 `Bridge/AtmosphereFieldBridge.cs`。
+方法：对每个 Harmony 补丁目标正向查 AO 与原版的调用点，确认其真实执行线程；逐条核对所有静态缓存（`ConditionalWeakTable`、`Dictionary`、`bool[]` 掩膜、静态字段）的读写线程；单独检查唯一在 AO 后台 Task 内执行的代码路径。
+
+### 13.1 结论
+
+只有**一个**补丁真正在 AO 的模拟 Task 里执行，即绝对隔离 Prefix；它读取的对象全部是主线程预先构建或线程安全的。其余补丁点全部在主线程被调用，不存在数据竞争。
+
+### 13.2 唯一后台路径：绝对隔离 Prefix
+
+`Patch_AbsoluteIsolation.cs:120-228` 挂在 `LocalAtmosphereEngine.PublishSnapshot` 上，运行在 `AtmosphereMapComponent.cs:2966` 的 `Task.Factory.StartNew` 内。它只访问：
+
+| 访问对象 | 线程安全性 |
+| --- | --- |
+| `Contexts` 字典 | 全程 `lock (Sync)`（`:128-131`），主线程 `Register/Forget` 同一把锁 |
+| `OmniDomeZoneCache.GetCells` | 锁内只读查表，返回已构建完成的不可变 `int[]`；`Build` 在锁外、替换在锁内（`OmniDomeZoneCache.cs:56-100`） |
+| `targets.Target*` 字段 | 32 位原子读；最坏情况延迟一步生效，无崩溃 |
+| `AtmosphereFieldBridge.GetSettings` | 读 AMC 的 `private readonly settings` 字段，构造后不变 |
+| `CalculateVaporCapacity` | 纯函数，转发 `AtmosphereThermodynamicKernel.VaporCapacity`（`LocalAtmosphereEngine.cs:3465-3468`） |
+| 引擎 `Read` 数组写入 | 在 `PublishSnapshot` 内、`engineLock` 内，此时引擎其余 `Parallel.For` 未启动 |
+
+### 13.3 已修竞态
+
+1. **`Patch_OmniAtmosphereTemperature.GetRefs`**（原 `:89` 的 `Refs.Add(map, refs)`）
+   net48 的 `ConditionalWeakTable.Add` 在键已存在时抛 `ArgumentException`。Harmony 补丁链覆盖全游戏，若第三方 mod 或原版从后台线程调用 `GenTemperature.GetTemperatureForCell`，同时主线程首次查询同一张地图，就会直接抛异常。
+   已改为 try/catch 兜底（`Patch_OmniAtmosphereTemperature.cs:89-99`），并新增 `Warm(Map)`（`:108`），在 `MapComponentTick` 中提前做组件查找（`MapComponent_OmniAtmosphereTargets.cs:136`）。
+2. **`OmniProtection.GetTracker`**（原 `:72` 的 `Trackers.Add`）
+   同类问题；虽只在主线程调用，仍做同样兜底（`OmniProtection.cs:71-84`）。
+
+### 13.4 未修风险（当前不触发）
+
+- **超维生物圈静态缓存无锁**：`CompBiosphereManager.GetBiosphereAt` 使用静态 `lastMap/lastGrid`（`Patch_CompBiosphere.cs:230-246`），底层 `biosphereGrid[map] = grid`（`:138`）由主线程写。只有温度 Postfix 在后台线程被调用时才会读到它。AO 自身唯一的 `GenTemperature.GetTemperatureForCell` 调用点是 `Patches/3PawnEnvironmentPatches.cs:23`，由主线程 `SafeTemperatureAtCell` 触发，故实际不触发。若日后确认有后台调用者，可加 `UnityData.IsInMainThread` 守卫（`Verse/UnityData.cs:29-32`），或自建生物圈格缓存以绕开超维字典。
+- **`ctx.Map.Disposed` 与写数组之间的窗口**（`Patch_AbsoluteIsolation.cs:133`）：最坏情况是把数据写进一个已废弃引擎的数组，无副作用。
+- **`targets` 字段无 volatile**：仅「改动延迟一步生效」的可见性问题，非崩溃。
+- **`AtmosphereFieldBridge.Resolve()` 的 `_resolved` 无锁**：Bootstrap 已在主线程预先解析（Install 时读 `SixChannelAvailable`），Task 内只读，无实际风险。
+
+### 13.5 其余补丁点的主线程证据
+
+| 补丁目标 | 调用点 | 线程 |
+| --- | --- | --- |
+| `BuildingAtmosphereExtension.AirFill` | `MapObstacleMaskBuilder.cs:201`、`WindPassableLoad.cs:104`，仅由 `AtmosphereMapComponent.cs:3302-3316` 的 `RebuildObstacleMask` 触发 | 主线程（`MapComponentTick`） |
+| `WindStructuralLoad.ComputeChainLoads` | `WindStructuralLoad.cs:451`（Tick 内） | 主线程 |
+| `WindPassableLoad.Evaluate` | `WindPassableLoad.cs:235-239`（Tick 内） | 主线程 |
+| `WindRoofLoad.ApplyRemovals` | `WindRoofLoad.cs:323`（Tick 内） | 主线程 |
+| `WindTransport.TryLaunch / ThrowCollectedPawns / StaggerFor` | `WindTransport.cs:186 / 198 / 330` | 主线程 |
+| `PawnAtmosphere.TrySample` | `1SuitStatusGizmo.cs:46`、`BreathingSupplyHediff.cs:35`、`PawnAtmosphere.cs:51` | 主线程（UI / hediff / 套装） |
+
+`OmniProtection` 的 `Masks`/`Trackers` 只在风害 tick 与 `StaggerFor` 中访问，均为单线程；宿主桥的反射参数数组用 `[ThreadStatic]` 池化，无共享缓冲。
+
+### 13.6 编译
+
+`dotnet build Source/Compat.OmniCrafter/Compat.OmniCrafter.csproj -c Debug` 0 警告 0 错误；dll 部署到 `1.7/Compat/OmniCrafter/Assemblies/`（03:38:42）。

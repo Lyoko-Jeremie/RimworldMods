@@ -86,9 +86,31 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             // 组件还没建好时不要缓存，下一次调用再试。
             if (refs.Targets != null && refs.Domes != null)
             {
-                Refs.Add(map, refs);
+                try
+                {
+                    Refs.Add(map, refs);
+                }
+                catch (ArgumentException)
+                {
+                    // 弱表不支持并发 Add：若 AO 模拟线程与主线程同时首次查询同一张地图，
+                    // 后到者会撞上「键已存在」。此时用本地实例返回即可，
+                    // 下一次调用会命中先写入的那份等价对象。
+                }
             }
             return refs;
+        }
+
+        /// <summary>
+        /// 主线程预热：把该地图的组件引用提前写进弱表。
+        /// AO 的温度查询补丁链可能在模拟线程上被调用（第三方 mod 也会调 GenTemperature），
+        /// 提前在主线程完成 GetComponent 可以避免模拟线程首次查询时遍历地图组件列表。
+        /// </summary>
+        internal static void Warm(Map map)
+        {
+            if (map != null)
+            {
+                GetRefs(map);
+            }
         }
 
         private static bool TryResolve(Map map, IntVec3 cell, out float temperature)
