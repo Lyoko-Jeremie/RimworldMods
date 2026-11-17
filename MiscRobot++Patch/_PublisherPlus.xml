@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Excluded>
+    <exclude>.dsh-meow</exclude>
+    <exclude>About\Gemini_Generated_Image_wee62pwee62pwee6-.png</exclude>
+  </Excluded>
+</Configuration>
