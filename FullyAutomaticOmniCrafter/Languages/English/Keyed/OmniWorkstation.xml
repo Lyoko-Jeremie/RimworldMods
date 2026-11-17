@@ -117,8 +117,8 @@
     <OmniWorkstation_ManagerRepairAllDone>Repaired every proxy pool: {0} newly created.</OmniWorkstation_ManagerRepairAllDone>
     <OmniWorkstation_DeathGuard>death guard: kills blocked {0} / set-dead blocked {1} / downed blocked {2} / destroyed externally {3} / vacuum hediffs blocked {4}</OmniWorkstation_DeathGuard>
     <OmniWorkstation_DeathGuardLast>death guard last event: {0}</OmniWorkstation_DeathGuardLast>
-    <OmniWorkstation_SelectArea>Select area: {0}</OmniWorkstation_SelectArea>
-    <OmniWorkstation_SelectAreaDesc>Pick this workstation's work range: the entire map, plain circular radius, or a vanilla allowed area on this map. Work targets must lie inside the chosen range.</OmniWorkstation_SelectAreaDesc>
+    <OmniWorkstation_SelectArea>Select work area: {0}</OmniWorkstation_SelectArea>
+    <OmniWorkstation_SelectAreaDesc>Pick this workstation's work range: the entire map, plain circular radius, or any area on this map (Home, allowed areas, build-roof, no-roof, snow/sand clear, pollution clear, and mod areas). Work targets must lie inside the chosen range.</OmniWorkstation_SelectAreaDesc>
     <OmniWorkstation_AreaWholeMap>Entire map</OmniWorkstation_AreaWholeMap>
     <OmniWorkstation_AreaRadiusMode>Circular (none)</OmniWorkstation_AreaRadiusMode>
     <OmniWorkstation_AreaNone>none</OmniWorkstation_AreaNone>

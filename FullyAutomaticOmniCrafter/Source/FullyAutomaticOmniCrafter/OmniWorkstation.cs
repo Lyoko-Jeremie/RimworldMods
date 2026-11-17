@@ -17,7 +17,7 @@ namespace FullyAutomaticOmniCrafter
     /// 继承 Building_VirtualStoreHost：额外实现原版存储 / 搬运接口（只出不进的虚拟存储），
     /// 实际行为全部由挂在 Def 上的 CompOmniVirtualStore 提供，本类不含存储逻辑。
     /// </summary>
-    /// <summary>工作范围模式：圆形半径、玩家指定的原版活动区，或整张地图。</summary>
+    /// <summary>工作范围模式：圆形半径、玩家指定的地图区域（家/活动区/屋顶区等），或整张地图。</summary>
     public enum OmniWorkRangeMode
     {
         Radius,
@@ -55,9 +55,9 @@ namespace FullyAutomaticOmniCrafter
         // 默认关闭 —— 代理默认只在归属地图内工作，需要跨层 / 跨图调度时由玩家在工作站上手动开启。
         // 老存档没有该字段时同样按 false 补齐，即升级后默认不再跨图。
         private bool allowCrossMapWork = false;
-        // 工作范围模式：默认沿用旧存档的圆形半径；区域模式引用玩家已有的原版活动区。
+        // 工作范围模式：默认沿用旧存档的圆形半径；区域模式引用玩家已有的地图区域（AreaManager.AllAreas 中的任意区域）。
         private OmniWorkRangeMode workRangeMode = OmniWorkRangeMode.Radius;
-        // 玩家指定的活动区引用。区域被删除、不属于当前地图或变空时由地图组件永久回退到半径模式。
+        // 玩家指定的区域引用。区域被删除、不属于当前地图或变空时由地图组件永久回退到半径模式。
         private Area configuredArea;
         // 旧存档没有该字段，载入后需要把默认过滤器补齐，否则老工作站仍会保持“全部启用”。
         private bool workFilterInitialized;
@@ -130,7 +130,7 @@ namespace FullyAutomaticOmniCrafter
             if (!Spawned || pawnMap == null || !cell.InBounds(pawnMap)) return false;
             if (workRangeMode == OmniWorkRangeMode.Area)
             {
-                // 活动区按地图独立保存；区域模式不支持跨图/跨层，避免用同坐标投影误判。
+                // 区域按地图独立保存；区域模式不支持跨图/跨层，避免用同坐标投影误判。
                 if (pawnMap != Map) return false;
                 return HasUsableConfiguredArea(pawnMap) && configuredArea[cell];
             }
@@ -338,7 +338,7 @@ namespace FullyAutomaticOmniCrafter
             Map?.GetComponent<MapComponent_OmniWorkstation>()?.NotifyConfigurationChanged(this);
         }
 
-        /// <summary>当前工作范围在「选择活动区」按钮上的显示文本。</summary>
+        /// <summary>当前工作范围在「选择工作区域」按钮上的显示文本。</summary>
         private string CurrentRangeLabel()
         {
             if (workRangeMode == OmniWorkRangeMode.Area)
@@ -351,12 +351,16 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 选择活动区菜单：参考自动修复站，先列「全图」「圆形（无区域）」，再列本图所有原版活动区。
+        /// 选择工作范围菜单：参考自动修复站的做法，先列「全图」「圆形（无区域）」，
+        /// 再列出本图 AreaManager.AllAreas 里的全部区域——家、活动区、建造屋顶区、
+        /// 不建屋顶区、清除积雪/沙、清除污染以及其它 Mod 注册的区域都能作为工作范围。
+        /// 唯一排除的是本 Mod 自己的内部镜像区 Area_OmniWorkstation：它是代理的
+        /// 实际活动区，选中会与镜像重建互相引用（configuredArea 指向镜像本身）。
         /// 选择具体区域即进入区域模式；选择圆形即清空区域并回到半径模式。
         /// </summary>
         private void OpenSelectAreaMenu()
         {
-            List<FloatMenuOption> options = new List<FloatMenuOption>(8)
+            List<FloatMenuOption> options = new List<FloatMenuOption>(24)
             {
                 new FloatMenuOption("OmniWorkstation_AreaWholeMap".Translate(),
                     () => SetRangeMode(OmniWorkRangeMode.WholeMap)),
@@ -367,13 +371,36 @@ namespace FullyAutomaticOmniCrafter
             Map map = Spawned ? Map : null;
             if (map != null)
             {
+                // AllAreas 的物理顺序取决于区域创建与 SortAreas 的触发时机，不稳定；
+                // 先复制出可见区域，再按 ListPriority 降序做稳定插入排序：
+                // 家(10000) / 建造屋顶区(9000) / 活动区(500) 依次靠前。
+                // 区域数量很少（原版系统区 4~5 个 + 最多 10 个活动区 + Mod 区域），
+                // 这里不用 LINQ、不额外分配比较器。
                 List<Area> areas = map.areaManager.AllAreas;
+                List<Area> visibleAreas = new List<Area>(areas.Count);
                 for (int i = 0; i < areas.Count; i++)
                 {
-                    if (!(areas[i] is Area_Allowed allowed)) continue;
-                    Area captured = allowed;
-                    string label = allowed.Label;
-                    if (allowed.TrueCount <= 0)
+                    Area area = areas[i];
+                    if (area == null || area is Area_OmniWorkstation) continue;
+                    visibleAreas.Add(area);
+                }
+                for (int i = 1; i < visibleAreas.Count; i++)
+                {
+                    Area current = visibleAreas[i];
+                    int j = i - 1;
+                    while (j >= 0 && visibleAreas[j].ListPriority < current.ListPriority)
+                    {
+                        visibleAreas[j + 1] = visibleAreas[j];
+                        j--;
+                    }
+                    visibleAreas[j + 1] = current;
+                }
+
+                for (int i = 0; i < visibleAreas.Count; i++)
+                {
+                    Area captured = visibleAreas[i];
+                    string label = captured.Label;
+                    if (captured.TrueCount <= 0)
                         label += " " + "OmniWorkstation_AreaEmptySuffix".Translate().ToString();
                     options.Add(new FloatMenuOption(label, () => SelectConfiguredArea(captured)));
                 }
@@ -389,7 +416,7 @@ namespace FullyAutomaticOmniCrafter
                     MessageTypeDefOf.RejectInput, false);
         }
 
-        /// <summary>设置玩家活动区；区域必须属于当前地图且非空。</summary>
+        /// <summary>设置玩家工作区域；区域必须属于当前地图且非空。</summary>
         public bool SetConfiguredArea(Area area)
         {
             if (area == null || Map == null || area.areaManager != Map.areaManager || area.TrueCount <= 0)
@@ -445,8 +472,8 @@ namespace FullyAutomaticOmniCrafter
                 toggleAction = () => OmniWorkstationMonitor.SetVisible(!OmniWorkstationMonitor.Visible)
             };
 
-            // 工作范围只保留「选择活动区」与「工作半径」两个按钮：
-            // 选择菜单同时承担模式切换（全图 / 圆形（无区域）/ 具体活动区）。
+            // 工作范围只保留「选择工作区域」与「工作半径」两个按钮：
+            // 选择菜单同时承担模式切换（全图 / 圆形（无区域）/ 具体区域）。
             Command_Action selectAreaCommand = new Command_Action
             {
                 defaultLabel = "OmniWorkstation_SelectArea".Translate(CurrentRangeLabel()),
@@ -463,7 +490,7 @@ namespace FullyAutomaticOmniCrafter
                 icon = TexCommand.Install,
                 action = () => Find.WindowStack.Add(new Dialog_OmniWorkstationRadius(this))
             };
-            // 只有圆形模式才允许调整半径；选了活动区或全图后半径不再生效。
+            // 只有圆形模式才允许调整半径；选了区域或全图后半径不再生效。
             if (workRangeMode != OmniWorkRangeMode.Radius)
             {
                 radiusCommand.Disable("OmniWorkstation_RadiusDisabledInAreaMode".Translate());
@@ -1298,7 +1325,7 @@ namespace FullyAutomaticOmniCrafter
 
     /// <summary>
     /// 工作站专用的原版系统区域。它与建造屋顶区等区域一样由 AreaManager 保存，
-    /// 但不可编辑、不可作为玩家活动区选择，因此不会占用 Area_Allowed 的数量上限。
+    /// 但不可编辑、不可作为玩家工作区域选择，因此不会占用 Area_Allowed 的数量上限。
     /// </summary>
     public sealed class Area_OmniWorkstation : Area
     {
@@ -1674,7 +1701,7 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < stations.Count; i++)
             {
                 Building_OmniWorkstation station = stations[i];
-                // 区域模式按工作站粒度禁用跨图：活动区属于单张地图，无法用同坐标投影到别图。
+                // 区域模式按工作站粒度禁用跨图：区域属于单张地图，无法用同坐标投影到别图。
                 if (station != null && !station.Destroyed
                     && station.WorkRangeMode == OmniWorkRangeMode.Radius
                     && station.AllowCrossMapWork)
@@ -2185,7 +2212,7 @@ namespace FullyAutomaticOmniCrafter
             Building_OmniWorkstation station = runtime?.station;
             if (area == null || station == null || !station.Spawned) return;
 
-            // 区域模式下镜像 = 玩家活动区 ∪ 工作站周围兜底半径：
+            // 区域模式下镜像 = 玩家区域 ∪ 工作站周围兜底半径：
             // 前者是工作目标范围，后者只保证代理出舱/待命时不会被自身区域限制困在区域外。
             bool areaMode = station.WorkRangeMode == OmniWorkRangeMode.Area
                 && station.HasValidConfiguredArea(map);
@@ -2207,7 +2234,7 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>
-        /// 玩家活动区被编辑后由 Area.Set/Invert/Clear 的补丁回调，只置脏不立即重建。
+        /// 区域被编辑后由 Area.Set/Invert/Clear 的补丁回调，只置脏不立即重建。
         /// </summary>
         public void NotifyConfiguredAreaEdited(Area area)
         {
@@ -2222,7 +2249,7 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
-        /// <summary>玩家活动区被删除后立即回退半径模式，避免维护周期窗口期内继续按失效区域工作。</summary>
+        /// <summary>区域被删除后立即回退半径模式，避免维护周期窗口期内继续按失效区域工作。</summary>
         public void NotifyConfiguredAreaRemoved(Area area)
         {
             if (area == null) return;
@@ -4688,7 +4715,7 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 玩家活动区被逐格编辑时通知地图组件。内部镜像 Area_OmniWorkstation 的写回
+    /// 区域被逐格编辑时通知地图组件。内部镜像 Area_OmniWorkstation 的写回
     /// 也走 Area.Set，必须排除，否则重建镜像会自触发。
     /// </summary>
     [HarmonyPatch(typeof(Area), "Set", new Type[] { typeof(IntVec3), typeof(bool) })]
@@ -4736,7 +4763,7 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
-    /// 活动区被真正删除后立即回退半径模式。原版 Remove 会先检查 Mutable，
+    /// 区域被真正删除后立即回退半径模式。原版 Remove 会先检查 Mutable，
     /// 未真正移除时不再通知（否则不可删除区域每次删除失败都会误触发回退）。
     /// </summary>
     [HarmonyPatch(typeof(AreaManager), "Remove", new Type[] { typeof(Area) })]

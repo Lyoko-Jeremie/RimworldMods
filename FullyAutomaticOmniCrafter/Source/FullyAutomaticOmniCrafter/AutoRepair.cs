@@ -98,11 +98,14 @@ namespace FullyAutomaticOmniCrafter
                         tracker.RepairEnabled = true;
                         tracker.SharedTargetArea = null;
                     }));
-                    // Individual areas (only user-visible Area_Allowed areas)
-                    // foreach (Area area in Map.areaManager.AllAreas.Where(a => a is Area_Allowed))
-                    // Individual areas
-                    foreach (Area area in Map.areaManager.AllAreas)
+                    // 列出本图全部区域：家、活动区、建造屋顶区、不建屋顶区、清除积雪/沙、
+                    // 清除污染以及其它 Mod 区域都可以作为修复范围；只排除本 Mod 的内部镜像区
+                    // Area_OmniWorkstation（它是工作代理的活动镜像，与建筑修复无关）。
+                    List<Area> allAreas = Map.areaManager.AllAreas;
+                    for (int i = 0; i < allAreas.Count; i++)
                     {
+                        Area area = allAreas[i];
+                        if (area == null || area is Area_OmniWorkstation) continue;
                         Area capturedArea = area;
                         options.Add(new FloatMenuOption(area.Label, () =>
                         {

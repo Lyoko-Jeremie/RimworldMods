@@ -117,19 +117,19 @@
     <OmniWorkstation_ManagerRepairAllDone>已修复全部代理池：新补建 {0} 个。</OmniWorkstation_ManagerRepairAllDone>
     <OmniWorkstation_DeathGuard>死亡守卫：拦截处死 {0} / 拦截置死 {1} / 拦截倒地 {2} / 外部销毁 {3} / 拦截真空暴露 {4}</OmniWorkstation_DeathGuard>
     <OmniWorkstation_DeathGuardLast>死亡守卫最近事件：{0}</OmniWorkstation_DeathGuardLast>
-    <OmniWorkstation_SelectArea>选择活动区：{0}</OmniWorkstation_SelectArea>
-    <OmniWorkstation_SelectAreaDesc>选择本工作站的工作范围：全图、圆形半径，或本图的一个原版活动区。工作目标必须位于所选范围内。</OmniWorkstation_SelectAreaDesc>
+    <OmniWorkstation_SelectArea>选择工作区域：{0}</OmniWorkstation_SelectArea>
+    <OmniWorkstation_SelectAreaDesc>选择本工作站的工作范围：全图、圆形半径，或本图的任意区域（家、活动区、建造屋顶区、不建屋顶区、清除积雪/沙、清除污染等）。工作目标必须位于所选范围内。</OmniWorkstation_SelectAreaDesc>
     <OmniWorkstation_AreaWholeMap>全图</OmniWorkstation_AreaWholeMap>
     <OmniWorkstation_AreaRadiusMode>圆形（无）</OmniWorkstation_AreaRadiusMode>
     <OmniWorkstation_AreaNone>未选择</OmniWorkstation_AreaNone>
-    <OmniWorkstation_AreaEmpty>该活动区为空，无法作为工作范围。</OmniWorkstation_AreaEmpty>
-    <OmniWorkstation_AreaEmptyFallback>活动区已变为空，已切回圆形半径模式。</OmniWorkstation_AreaEmptyFallback>
+    <OmniWorkstation_AreaEmpty>该区域为空，无法作为工作范围。</OmniWorkstation_AreaEmpty>
+    <OmniWorkstation_AreaEmptyFallback>区域已变为空，已切回圆形半径模式。</OmniWorkstation_AreaEmptyFallback>
     <OmniWorkstation_AreaEmptySuffix>（空）</OmniWorkstation_AreaEmptySuffix>
-    <OmniWorkstation_AreaMissing>工作站引用的活动区已不存在或不属于当前地图，已切回圆形半径模式。</OmniWorkstation_AreaMissing>
-    <OmniWorkstation_AreaWrongMap>该活动区不属于工作站所在地图。</OmniWorkstation_AreaWrongMap>
+    <OmniWorkstation_AreaMissing>工作站引用的区域已不存在或不属于当前地图，已切回圆形半径模式。</OmniWorkstation_AreaMissing>
+    <OmniWorkstation_AreaWrongMap>该区域不属于工作站所在地图。</OmniWorkstation_AreaWrongMap>
     <OmniWorkstation_AreaModeCrossMapDisabled>非圆形模式下不能跨图/跨层工作。</OmniWorkstation_AreaModeCrossMapDisabled>
     <OmniWorkstation_RadiusDisabledInAreaMode>只有圆形模式下才能调整工作半径。</OmniWorkstation_RadiusDisabledInAreaMode>
-    <OmniWorkstation_StatusArea>工作范围：活动区“{0}”</OmniWorkstation_StatusArea>
-    <OmniWorkstation_StatusAreaEmpty>工作范围：活动区（空）</OmniWorkstation_StatusAreaEmpty>
+    <OmniWorkstation_StatusArea>工作范围：区域“{0}”</OmniWorkstation_StatusArea>
+    <OmniWorkstation_StatusAreaEmpty>工作范围：区域（空）</OmniWorkstation_StatusAreaEmpty>
     <OmniWorkstation_StatusWholeMap>工作范围：全图</OmniWorkstation_StatusWholeMap>
 </LanguageData>
