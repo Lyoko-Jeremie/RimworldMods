@@ -43,7 +43,7 @@
 [*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature） https://steamcommunity.com/sharedfiles/filedetails/?id=3202046258
 [*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl） https://steamcommunity.com/sharedfiles/filedetails/?id=2007268173
 [*] [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower） https://steamcommunity.com/workshop/filedetails/?id=3545379519
-[*] (Working) [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter） https://steamcommunity.com/sharedfiles/filedetails/?id=3712146789
+[*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter） https://steamcommunity.com/sharedfiles/filedetails/?id=3712146789
 [/list]
 
 使用三种方案替换 Vanilla Temperature Expanded 的 HeatProxy 机制，使其更符合AO的真实世界： 热辐射加热地面、热辐射加热空气、高温热流喷射。 在 Frostpunk Heat Generator Tower 中实现了这个特性。
@@ -54,6 +54,7 @@
 
 实现 宜人气候 Good Climate 的主动通风口
 
+支持 超维科技 OuterrealmTech 的 护盾、穹顶、生物圈 ，可以强制稳定环境。想偷懒的时候就可以直接弄来用了。
 
 [hr][/hr]
 

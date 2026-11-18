@@ -394,3 +394,18 @@ AO 的模拟在 `Task.Factory.StartNew` 里跑，主线程不等待。因此：
 ### 13.6 编译
 
 `dotnet build Source/Compat.OmniCrafter/Compat.OmniCrafter.csproj -c Debug` 0 警告 0 错误；dll 部署到 `1.7/Compat/OmniCrafter/Assemblies/`（03:38:42）。
+
+## 14. 光照层 alpha 修复（2026-11-18 第六轮）
+
+超维科技两处 `VisualGlowAt` 补丁都把 alpha 当作亮度写入，导致 `SectionLayer_LightingOverlay` 把该格渲染成完全不透明色块（生物圈：灰块；穹顶：过曝白块）。已统一按「只抬 RGB、不动 alpha」修复：
+
+| 位置 | 修复前 | 修复后 |
+| --- | --- | --- |
+| 生物圈 `Patch_CompBiosphere.cs` `VisualGlowAtCell/AtIndex` | `GetBiosphereAt != null` 即覆盖（含 None 模式），`__result.a = 255` | 先判 `lightingMode == None` 直接返回；只抬 `r/g/b` |
+| 穹顶 `OmniForceFieldDome.cs` `WithDomeGlow` | `a = max(a, light)`；SunLamp 的 `glow=1f` 使 light 恒 255 | 只抬 `r/g/b` |
+| 穹顶 `OmniForceFieldDome.cs` `WithSkyGlow` | `a = max(a, sky)`；白天 `sky≈1` → alpha 255 | 只抬 `r/g/b` |
+
+- 生物圈 dll：2026-11-18 11:19；穹顶 dll：2026-11-18 14:28（同一次 1.7 构建，962560 字节）。
+- 未动：`Patch_OmniForceFieldDome_GroundGlowAt`（只改 float 返回值，语义正确）、`Patch_OmniForceFieldDome_IndoorMask`（透光屋顶取消室内阴影，语义正确）、`OmniForceFieldDomeGlobalGroundGlowNotPatched`（死代码，不参与 patch）。
+- 待验证：穹顶 SunLamp 白天 / Lamp 黄昏 / 默认透光 + 非自然屋顶三种组合下不再出现不透明色块。
+- 1.6 产物：`1.6/Assemblies/FullyAutomaticOmniCrafter.dll`（2026-11-18 14:43:26，963072 字节）。构建命令需显式传 `-p:RimWorldDirV16="F:/SteamLibrary/steamapps/common/RimWorld-16/"`，csproj 默认的 `..\..\..\..\..\RimWorld-16\` 解析到不存在的 `steamapps\RimWorld-16`。
