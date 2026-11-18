@@ -408,4 +408,4 @@ AO 的模拟在 `Task.Factory.StartNew` 里跑，主线程不等待。因此：
 - 生物圈 dll：2026-11-18 11:19；穹顶 dll：2026-11-18 14:28（同一次 1.7 构建，962560 字节）。
 - 未动：`Patch_OmniForceFieldDome_GroundGlowAt`（只改 float 返回值，语义正确）、`Patch_OmniForceFieldDome_IndoorMask`（透光屋顶取消室内阴影，语义正确）、`OmniForceFieldDomeGlobalGroundGlowNotPatched`（死代码，不参与 patch）。
 - 待验证：穹顶 SunLamp 白天 / Lamp 黄昏 / 默认透光 + 非自然屋顶三种组合下不再出现不透明色块。
-- 1.6 产物：`1.6/Assemblies/FullyAutomaticOmniCrafter.dll`（2026-11-18 14:43:26，963072 字节）。构建命令需显式传 `-p:RimWorldDirV16="F:/SteamLibrary/steamapps/common/RimWorld-16/"`，csproj 默认的 `..\..\..\..\..\RimWorld-16\` 解析到不存在的 `steamapps\RimWorld-16`。
+- 1.6 产物：`1.6/Assemblies/FullyAutomaticOmniCrafter.dll`（2026-11-18 14:46:24，963072 字节）。默认路径即可编译（`dotnet build -c Debug -p:RimWorldVersion=1.6`），`..\..\..\..\..\RimWorld-16\` 从项目目录解析到 `steamapps\common\RimWorld-16`，无需显式传 `RimWorldDirV16`。
