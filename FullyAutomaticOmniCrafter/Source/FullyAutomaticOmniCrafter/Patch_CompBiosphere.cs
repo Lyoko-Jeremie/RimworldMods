@@ -533,17 +533,14 @@ namespace FullyAutomaticOmniCrafter
             if (map == null) return;
 
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
-            if (biosphere != null)
-            {
-                // 直接获取逻辑亮度（GroundGlowAt），确保视觉与逻辑一致
-                float logicGlow = __instance.GroundGlowAt(c);
-                byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(logicGlow * 255f), 0, 255);
+            // None 模式不改写视觉；只提升亮度色，保留原版 alpha（alpha 是累积光照强度，写死 255 会让叠加层变成不透明灰块）
+            if (biosphere == null || biosphere.lightingMode == LightingMode.None) return;
 
-                __result.r = (byte)Mathf.Max(__result.r, light);
-                __result.g = (byte)Mathf.Max(__result.g, light);
-                __result.b = (byte)Mathf.Max(__result.b, light);
-                __result.a = (byte)Mathf.Max(__result.a, (byte)255);
-            }
+            float logicGlow = __instance.GroundGlowAt(c);
+            byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(logicGlow * 255f), 0, 255);
+            __result.r = (byte)Mathf.Max(__result.r, light);
+            __result.g = (byte)Mathf.Max(__result.g, light);
+            __result.b = (byte)Mathf.Max(__result.b, light);
         }
     }
 
@@ -560,17 +557,14 @@ namespace FullyAutomaticOmniCrafter
 
             IntVec3 c = map.cellIndices.IndexToCell(index);
             var biosphere = CompBiosphereManager.GetBiosphereAt(map, c);
-            if (biosphere != null)
-            {
-                // 直接获取逻辑亮度（GroundGlowAt），确保视觉与逻辑一致
-                float logicGlow = __instance.GroundGlowAt(c);
-                byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(logicGlow * 255f), 0, 255);
+            // None 模式不改写视觉；只提升亮度色，保留原版 alpha（alpha 是累积光照强度，写死 255 会让叠加层变成不透明灰块）
+            if (biosphere == null || biosphere.lightingMode == LightingMode.None) return;
 
-                __result.r = (byte)Mathf.Max(__result.r, light);
-                __result.g = (byte)Mathf.Max(__result.g, light);
-                __result.b = (byte)Mathf.Max(__result.b, light);
-                __result.a = (byte)Mathf.Max(__result.a, (byte)255);
-            }
+            float logicGlow = __instance.GroundGlowAt(c);
+            byte light = (byte)Mathf.Clamp(Mathf.RoundToInt(logicGlow * 255f), 0, 255);
+            __result.r = (byte)Mathf.Max(__result.r, light);
+            __result.g = (byte)Mathf.Max(__result.g, light);
+            __result.b = (byte)Mathf.Max(__result.b, light);
         }
     }
 
