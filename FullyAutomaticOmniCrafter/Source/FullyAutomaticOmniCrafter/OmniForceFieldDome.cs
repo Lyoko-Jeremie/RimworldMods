@@ -1479,7 +1479,8 @@ namespace FullyAutomaticOmniCrafter
             color.r = Math.Max(color.r, light);
             color.g = Math.Max(color.g, light);
             color.b = Math.Max(color.b, light);
-            color.a = Math.Max(color.a, light);
+            // 不修改 alpha：alpha 是 LightingOverlay 的覆盖强度，抬到 light 会把地形完全遮住（过曝白块）。
+            // 只抬 RGB 才是「更亮」，与生物圈方案 B 保持一致。
             return color;
         }
 
@@ -1505,7 +1506,7 @@ namespace FullyAutomaticOmniCrafter
             color.r = Math.Max(color.r, sky);
             color.g = Math.Max(color.g, sky);
             color.b = Math.Max(color.b, sky);
-            color.a = Math.Max(color.a, sky);
+            // 同上：只抬 RGB，不抬 alpha，避免透光穹顶变成不透明色块。
             return color;
         }
     }
