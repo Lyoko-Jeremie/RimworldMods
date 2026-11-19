@@ -1,8 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration>
   <Excluded>
+    <exclude>.dsh-meow</exclude>
+    <exclude>.git</exclude>
     <exclude>AGENTS.md</exclude>
+    <exclude>AtmosphereOverhaul_DBH兼容分析.md</exclude>
+    <exclude>AtmosphereOverhaul_使用报告.md</exclude>
+    <exclude>AtmosphereOverhaul_温控建筑接入报告.md</exclude>
     <exclude>docs</exclude>
+    <exclude>GoodClimate_通风口功能分析.md</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\.idea</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\.reasonix</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\.vs</exclude>
@@ -12,8 +18,5 @@
     <exclude>Source\FullyAutomaticOmniCrafter\packages</exclude>
     <exclude>Source\FullyAutomaticOmniCrafter\Tests</exclude>
     <exclude>Tools</exclude>
-    <exclude>*.zstd</exclude>
-    <exclude>*.dds</exclude>
-    <exclude>*.dds.zstd</exclude>
   </Excluded>
 </Configuration>

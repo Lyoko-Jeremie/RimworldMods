@@ -37,13 +37,27 @@
 特别支持 Frostpunk Heat Generator Tower 《冰汽时代》能量塔 Mod （其基于 HeatProxy 机制工作），现在可以正常玩风雪遗孤了
 
 
+Support the Good Climate mod's active vents.
+Support the Vanilla Temperature Expanded mod's central air conditioning system.
+Support the Vanilla Temperature Expanded mod's HeatProxy mechanism.
+Support the Centralized Climate Control mod's central air conditioning system.
+
+Special support for the Frostpunk Heat Generator Tower mod, which is based on the HeatProxy mechanism. Now you can play Snowstorm Orphan without issues.
+
+
 [h2] Support Mod [/h2]
 [list]
 [*] [b]宜人气候 Good Climate[/b]（GOS.GoodClimate） https://steamcommunity.com/sharedfiles/filedetails/?id=3669891833
+        
 [*] [b]Vanilla Temperature Expanded[/b]（VanillaExpanded.Temperature） https://steamcommunity.com/sharedfiles/filedetails/?id=3202046258
+        
 [*] [b]Centralized Climate Control (Continued)[/b]（Mlie.CentralizedClimateControl） https://steamcommunity.com/sharedfiles/filedetails/?id=2007268173
+        
 [*] [b]Frostpunk Heat Generator Tower[/b]（HarryRobinson.FrostpunkHeatGeneratorTower） https://steamcommunity.com/workshop/filedetails/?id=3545379519
+        
 [*] [b]超维科技 OuterrealmTech[/b]（Jeremie.Fully.Automatic.OmniCrafter） https://steamcommunity.com/sharedfiles/filedetails/?id=3712146789
+        
+[*] [b]Replace Stuff[/b]（Memegoddess.ReplaceStuff） https://steamcommunity.com/sharedfiles/filedetails/?id=3526354009
 [/list]
 
 使用三种方案替换 Vanilla Temperature Expanded 的 HeatProxy 机制，使其更符合AO的真实世界： 热辐射加热地面、热辐射加热空气、高温热流喷射。 在 Frostpunk Heat Generator Tower 中实现了这个特性。
@@ -55,6 +69,40 @@
 实现 宜人气候 Good Climate 的主动通风口
 
 支持 超维科技 OuterrealmTech 的 护盾、穹顶、生物圈 ，可以强制稳定环境。想偷懒的时候就可以直接弄来用了。
+
+修复 Replace Stuff 的跨墙通风口 (wall mounted vents) 的一些小问题。
+
+修复 超维科技 OuterrealmTech 万能幻影墙的漏气问题。
+
+玩 风雪遗孤 Snowstorm Orphan 的玩家现在可以利用 HeatProxy 机制保护你的鼠鼠。
+
+如果你厌倦了管理基地某些区域的温度，你可以使用 超维科技 OuterrealmTech 的 生物圈OmniBiosphere / 穹顶OmniForceFieldDome 来强制稳定一个区域的气候状态，也可以使用 能量防御场发生器OmniRectangleEnergyDefenseField 来仅仅保护某个区域的房顶和建筑不被吹飞。
+
+以上所有Mod都为选装，可以根据喜好安装其中任何mod。
+
+[hr][/hr]
+
+[Translate by Google Translate]
+
+Replaces the `HeatProxy` mechanism from *Vanilla Temperature Expanded* with three new methods that better reflect real-world physics: radiant heating of the ground, radiant heating of the air, and high-temperature thermal jet streams. This feature has been implemented in the *Frostpunk Heat Generator Tower*.
+
+Reimplements the central air conditioning system from *Centralized Climate Control* using the mod's own internal systems, modeled after real-world ducted HVAC setups—drawing in outdoor air, conditioning (heating/cooling) it, and distributing it into interior spaces.
+
+Reimplements the central air conditioning system from *Vanilla Temperature Expanded* based on real-world VRF (Variable Refrigerant Flow) technology. It utilizes a three-pipe architecture where cooling and heating demands from indoor units offset one another; only the net remaining load requires compensation from the outdoor unit.
+
+Adds support for active ventilation vents from the *Good Climate* mod.
+
+Adds compatibility with *OuterrealmTech* shields, domes, and biospheres, allowing for forced environmental stabilization—a perfect solution when you want to take a shortcut.
+
+Fixes minor issues with the wall-mounted vents from *Replace Stuff*.
+
+Fixes air leakage issues with the "Universal Phantom Wall" from *OuterrealmTech*.
+
+Players using *Snowstorm Orphan* can now leverage the `HeatProxy` mechanism to keep your Ratkin safe.
+
+If you grow tired of managing temperatures in specific parts of your base, you can use the *OuterrealmTech* "OmniBiosphere" or "OmniForceFieldDome" to force a stable climate within an area. Alternatively, you can use the "OmniRectangleEnergyDefenseField" to protect roofs and structures in a specific zone from being blown away.
+
+All of the above mods are optional and can be installed based on your preferences.
 
 [hr][/hr]
 

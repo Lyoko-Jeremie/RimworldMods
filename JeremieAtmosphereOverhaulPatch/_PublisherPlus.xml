@@ -24,6 +24,14 @@
     <exclude>build.bat</exclude>
     <exclude>JeremieAtmosphereOverhaulPatch_CCC与强制稳定方案.md</exclude>
     <exclude>README.md</exclude>
-    <exclude>Source</exclude>
+    <exclude>Source\.idea</exclude>
+    <exclude>Source\Compat.CentralizedClimateControl\obj</exclude>
+    <exclude>Source\Compat.GoodClimate\obj</exclude>
+    <exclude>Source\Compat.GoodClimate\Source\Compat.GoodClimate\obj</exclude>
+    <exclude>Source\Compat.OmniCrafter\obj</exclude>
+    <exclude>Source\Compat.VanillaTemperatureExpanded\obj</exclude>
+    <exclude>Source\JeremieAtmosphereOverhaulPatch\.idea</exclude>
+    <exclude>Source\JeremieAtmosphereOverhaulPatch\obj</exclude>
+    <exclude>Source\JeremieAtmosphereOverhaulPatch\packages</exclude>
   </Excluded>
 </Configuration>
