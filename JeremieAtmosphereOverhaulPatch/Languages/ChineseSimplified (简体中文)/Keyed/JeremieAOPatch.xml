@@ -77,4 +77,6 @@
     <AOPatch_Omni_PressureAmbient>当前环境气压：{0} hPa</AOPatch_Omni_PressureAmbient>
     <AOPatch_Omni_GroundFollows>地温：跟随气温（只读）</AOPatch_Omni_GroundFollows>
     <AOPatch_Omni_BiosphereTemperatureLocked>AO 已接管温度，此设置不再生效</AOPatch_Omni_BiosphereTemperatureLocked>
+    <AOPatch_Omni_Isolation>几何隔离</AOPatch_Omni_Isolation>
+    <AOPatch_Omni_IsolationDesc>开启时把穹顶与生物圈覆盖格在 AO 的大气掩膜里设为不可通行，切断与外部的一切空气交换。关闭后穹顶内仍会被固定成目标值，但会与外部平流、扩散交换空气。</AOPatch_Omni_IsolationDesc>
 </LanguageData>

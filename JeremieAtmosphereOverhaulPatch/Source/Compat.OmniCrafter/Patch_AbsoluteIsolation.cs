@@ -182,7 +182,6 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             float[] velocityX = AtmosphereFieldBridge.GetVelocityXRead(__instance);
             float[] velocityZ = AtmosphereFieldBridge.GetVelocityZRead(__instance);
             float[] groundTemperature = AtmosphereFieldBridge.GetGroundTemperature(__instance);
-            float[] obstacleMask = AtmosphereFieldBridge.GetObstacleMask(__instance);
             byte[] oxygen = AtmosphereFieldBridge.GetOxygenRead(__instance);
             float[] oxygenResidual = AtmosphereFieldBridge.GetOxygenResidual(__instance);
             float[] roofMask = AtmosphereFieldBridge.GetRoofMask(__instance);
@@ -190,7 +189,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             if (temperature == null || moisture == null || relativeHumidity == null
                 || pressure == null || storedPressure == null
                 || velocityX == null || velocityZ == null
-                || groundTemperature == null || obstacleMask == null || oxygen == null)
+                || groundTemperature == null || oxygen == null)
             {
                 return;
             }
@@ -198,12 +197,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             for (int k = 0; k < cells.Length; k++)
             {
                 int index = cells[k];
-                // 墙体格不参与大气演化，AO 自己会把它压成环境值；写进去只会污染相邻格的面通量。
-                if (obstacleMask[index] <= 0f)
-                {
-                    continue;
-                }
-
+                // 不按 obstacleMask 跳过：几何隔离开启时整片穹顶的掩膜会被置 0，
+                // 若仍跳过就会让读出层对整片区域失效。真实墙格写 Read 无害——
+                // 相邻 faceOpen 为 0，采样与守恒统计都不会取到墙格。
                 temperature[index] = temperatureTarget;
                 moisture[index] = moistureTarget;
                 relativeHumidity[index] = humidityTarget;

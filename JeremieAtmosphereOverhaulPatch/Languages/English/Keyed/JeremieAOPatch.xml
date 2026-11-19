@@ -77,4 +77,6 @@
     <AOPatch_Omni_PressureAmbient>Current ambient pressure: {0} hPa</AOPatch_Omni_PressureAmbient>
     <AOPatch_Omni_GroundFollows>Ground temperature: follows air temperature (read-only)</AOPatch_Omni_GroundFollows>
     <AOPatch_Omni_BiosphereTemperatureLocked>AO has taken over temperature; this setting no longer applies</AOPatch_Omni_BiosphereTemperatureLocked>
+    <AOPatch_Omni_Isolation>Geometric isolation</AOPatch_Omni_Isolation>
+    <AOPatch_Omni_IsolationDesc>When enabled, the cells covered by domes and biospheres are marked impassable in AO's atmosphere mask, cutting off all air exchange with the outside. When disabled, the interior is still pinned to the target values but will exchange air with the outside through advection and diffusion.</AOPatch_Omni_IsolationDesc>
 </LanguageData>

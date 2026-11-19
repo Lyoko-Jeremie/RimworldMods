@@ -42,6 +42,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static PropertyInfo _temperatureProp;
         private static PropertyInfo _groundTemperatureProp;
         private static PropertyInfo _obstacleMaskProp;
+        private static PropertyInfo _faceOpenXProp;
+        private static PropertyInfo _faceOpenZProp;
         private static PropertyInfo _fieldReadProp;
         private static MethodInfo _markCachedDirty;
 
@@ -205,6 +207,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _temperatureProp = AccessTools.Property(_engineType, "Temperature");
                 _groundTemperatureProp = AccessTools.Property(_engineType, "GroundTemperature");
                 _obstacleMaskProp = AccessTools.Property(_engineType, "ObstacleMask");
+                _faceOpenXProp = AccessTools.Property(_engineType, "FaceOpenX");
+                _faceOpenZProp = AccessTools.Property(_engineType, "FaceOpenZ");
                 _fieldReadProp = AccessTools.Property(_fieldType, "Read");
                 _markCachedDirty = AccessTools.Method(_componentType, "MarkCachedMapDataDirty");
 
@@ -562,6 +566,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             }
         }
 
+        /// <summary>
+        /// 几何隔离所需的 AO 面开度数组是否可得。
+        /// 单独判定：缺失时只让「几何隔离」降级，不影响绝对隔离的六通道硬固定。
+        /// </summary>
+        public static bool FaceOpenAvailable
+        {
+            get
+            {
+                Resolve();
+                return _faceOpenXProp != null && _faceOpenZProp != null;
+            }
+        }
+
         /// <summary>湿度场（绝对水汽，与 VaporCapacity 同单位）。返回活引用，可写。</summary>
         public static float[] GetMoistureRead(object engine)
         {
@@ -736,6 +753,31 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return null;
             }
             return _obstacleMaskProp.GetValue(engine) as float[];
+        }
+
+        /// <summary>
+        /// 东西向面开度（AO 语义：faceOpenX[i] = mask[i] * mask[i+1]）。
+        /// 返回活引用，几何隔离会直接写 0。
+        /// </summary>
+        public static float[] GetFaceOpenX(object engine)
+        {
+            Resolve();
+            if (!_available || engine == null || _faceOpenXProp == null)
+            {
+                return null;
+            }
+            return _faceOpenXProp.GetValue(engine) as float[];
+        }
+
+        /// <summary>南北向面开度（AO 语义：faceOpenZ[i] = mask[i] * mask[i+width]）。返回活引用，可写。</summary>
+        public static float[] GetFaceOpenZ(object engine)
+        {
+            Resolve();
+            if (!_available || engine == null || _faceOpenZProp == null)
+            {
+                return null;
+            }
+            return _faceOpenZProp.GetValue(engine) as float[];
         }
 
         /// <summary>

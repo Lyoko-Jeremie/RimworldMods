@@ -37,6 +37,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
         /// <summary>是否跟随地图大气环境基准气压。开启时忽略 TargetPressureHpa。</summary>
         public bool PressureFollowsAmbient = true;
 
+        /// <summary>
+        /// 是否启用几何隔离：把穹顶/生物圈覆盖格在 AO 的障碍掩膜里置为不可通行，
+        /// 切断与外部的一切空气交换。默认开启。
+        ///
+        /// 注意：六通道硬固定与这个开关无关——穹顶内任何时候都会被写回目标值。
+        /// 关闭后只是不再封住边界，内部每步仍被覆写，但会与外部平流/扩散交换。
+        /// </summary>
+        public bool UseGeometricIsolation = true;
+
         public MapComponent_OmniAtmosphereTargets(Map map) : base(map)
         {
         }
@@ -80,6 +89,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
             Scribe_Values.Look(ref TargetHumidity, "aoOmniTargetHumidity", DefaultHumidity);
             Scribe_Values.Look(ref TargetOxygenPercent, "aoOmniTargetOxygen", DefaultOxygenPercent);
             Scribe_Values.Look(ref PressureFollowsAmbient, "aoOmniPressureFollowsAmbient", true);
+            Scribe_Values.Look(ref UseGeometricIsolation, "aoOmniGeometricIsolation", true);
 
             if (Scribe.mode == LoadSaveMode.LoadingVars)
             {

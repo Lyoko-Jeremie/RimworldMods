@@ -95,6 +95,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 yield break;
             }
             yield return MakeTargetsGizmo(map);
+            yield return MakeIsolationGizmo(map);
         }
 
         private static void BiosphereGizmosPostfix(CompBiosphere __instance, ref IEnumerable<Gizmo> __result)
@@ -133,6 +134,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 yield break;
             }
             yield return MakeTargetsGizmo(map);
+            yield return MakeIsolationGizmo(map);
         }
 
         /// <summary>AO 未加载或该地图还没有模拟组件时不显示目标面板，避免无意义的 UI。</summary>
@@ -151,6 +153,33 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 action = delegate
                 {
                     Find.WindowStack.Add(new Dialog_OmniAtmosphereTargets(map));
+                }
+            };
+        }
+
+        /// <summary>
+        /// 几何隔离开关。开启时把覆盖格在 AO 掩膜里设为不可通行，切断对外交换；
+        /// 关闭后穹顶内仍会被硬固定成目标值，但会与外部平流/扩散交换。
+        /// </summary>
+        private static Gizmo MakeIsolationGizmo(Map map)
+        {
+            MapComponent_OmniAtmosphereTargets targets = MapComponent_OmniAtmosphereTargets.Get(map);
+            return new Command_Toggle
+            {
+                defaultLabel = "AOPatch_Omni_Isolation".Translate(),
+                defaultDesc = "AOPatch_Omni_IsolationDesc".Translate(),
+                icon = BaseContent.WhiteTex,
+                isActive = () => targets != null && targets.UseGeometricIsolation,
+                toggleAction = delegate
+                {
+                    if (targets == null)
+                    {
+                        return;
+                    }
+
+                    targets.UseGeometricIsolation = !targets.UseGeometricIsolation;
+                    // 掩码重建是脏标记驱动的；切换后立刻标脏，下一次主线程刷新就按新状态重算。
+                    AtmosphereFieldBridge.MarkCachedMapDataDirty(map);
                 }
             };
         }

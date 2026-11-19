@@ -65,6 +65,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 Log.Warning("[AOPatch] 穹顶绝对隔离补丁未能挂载，AO 场不会按目标值硬固定。");
             }
 
+            if (!SafeInstall("穹顶几何隔离", harmony, Patch_OmniGeometricIsolation.Install))
+            {
+                Log.Warning("[AOPatch] 穹顶几何隔离未挂载：AO 面开度接口不完整，隔离开关将不生效。");
+            }
+
             if (!SafeInstall("目标值面板", harmony, Patch_OmniAtmosphereGizmos.Install))
             {
                 Log.Warning("[AOPatch] 部分超维科技 UI 补丁挂载失败，目标值面板可能不完整。");
