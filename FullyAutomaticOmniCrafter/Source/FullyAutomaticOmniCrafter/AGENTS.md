@@ -3,7 +3,7 @@
 ***Follow Content Must Read With UTF-8 Encoding***
 
 ## 项目说明
-这是一个 Rimworld 1.6 的 Mod 项目
+这是一个 Rimworld 1.6/1.7 的 Mod 项目
 
 ## 开发指南
 
