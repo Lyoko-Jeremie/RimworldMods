@@ -244,18 +244,65 @@ namespace FullyAutomaticOmniCrafter
         private static readonly Dictionary<int, HashSet<IntVec3>> _storageCellsByMapId
             = new Dictionary<int, HashSet<IntVec3>>();
 
-        private static HashSet<IntVec3> GetOrCreateCache(int mapId)
+        // 建缓存时该地图的尺寸。地图扩张（Map Expander / Seamless Map Expansion）会在
+        // 不触发 SpawnSetup/DeSpawn 的情况下改变 map.Size 并搬移建筑，尺寸变化即视为缓存过期。
+        private static readonly Dictionary<int, IntVec3> _storageCacheSize
+            = new Dictionary<int, IntVec3>();
+
+        private static HashSet<IntVec3> GetOrCreateCache(Map map)
         {
+            int mapId = map.uniqueID;
             if (!_storageCellsByMapId.TryGetValue(mapId, out var set))
                 _storageCellsByMapId[mapId] = set = new HashSet<IntVec3>();
             return set;
         }
 
+        /// <summary>
+        /// 地图尺寸变化后按当前建筑位置重建缓存。
+        /// 只清空并按 listerBuildings 重扫，不依赖 SpawnSetup：扩张走的是静默搬移，
+        /// 建筑不会重新触发 SpawnSetup，旧坐标会一直留在集合里造成误判。
+        /// </summary>
+        private static void RebuildCache(Map map)
+        {
+            var set = GetOrCreateCache(map);
+            set.Clear();
+            _storageCacheSize[map.uniqueID] = map.Size;
+
+            List<Building> buildings = map.listerBuildings.allBuildingsColonist;
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                if (buildings[i] is Building_MatterEnergyConverter mec && mec.Spawned && mec.Map == map)
+                {
+                    foreach (IntVec3 cell in mec.AllSlotCells())
+                        set.Add(cell);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 尺寸戳守卫：尺寸变化（扩张/重载）时重建缓存。命中时只做两次字典查找与一次
+        /// IntVec3 比较，可安全放在每 Tick 都会经过的腐烂判定前缀里。
+        /// </summary>
+        private static void EnsureCacheCurrent(Map map)
+        {
+            int mapId = map.uniqueID;
+            if (_storageCacheSize.TryGetValue(mapId, out IntVec3 size)
+                && size == map.Size
+                && _storageCellsByMapId.ContainsKey(mapId))
+            {
+                return;
+            }
+
+            RebuildCache(map);
+        }
+
         /// <summary>O(1) 判断某地图格子是否位于任意 MEC 的存储区内。</summary>
         public static bool IsInMecStorage(IntVec3 cell, Map map)
-            => map != null
-               && _storageCellsByMapId.TryGetValue(map.uniqueID, out var s)
-               && s.Contains(cell);
+        {
+            if (map == null) return false;
+            EnsureCacheCurrent(map);
+            return _storageCellsByMapId.TryGetValue(map.uniqueID, out var s) && s.Contains(cell);
+        }
 
         // ── 美观度：存储区内的物品不计入美观统计（不产生负面美观） ─────────────
         // Building_Storage.IgnoreStoredThingsBeauty 不是 virtual，使用显式接口重实现来遮蔽它
@@ -274,8 +321,10 @@ namespace FullyAutomaticOmniCrafter
             if (!def.building.preventDeteriorationOnTop)
                 def.building.preventDeteriorationOnTop = true;
 
-            // 注册存储格到缓存（温度腐烂 Patch 使用）
-            var cache = GetOrCreateCache(map.uniqueID);
+            // 注册存储格到缓存（温度腐烂 Patch 使用）。
+            // 重载/扩张后 map.Size 可能已变，先把缓存校准到当前尺寸再增量登记。
+            EnsureCacheCurrent(map);
+            var cache = GetOrCreateCache(map);
             foreach (IntVec3 c in AllSlotCells())
                 cache.Add(c);
         }

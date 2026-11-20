@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -407,6 +407,26 @@ namespace FullyAutomaticOmniCrafter
             }
         }
 
+        /// <summary>
+        /// 护盾查询前的统一闸门。
+        /// 地图扩张（Map Expander / Seamless Map Expansion）会在保留 MapComponent 实例的同时
+        /// 重建 cellIndices、改变 NumGridCells；此时 cacheDirty 可能已经是 false，
+        /// 只靠 RebuildCache 内部的长度校验不会触发，随后按新下标访问旧数组就会越界。
+        /// 因此尺寸校验必须放在 dirty 判断之外，每次查询前都执行。
+        /// </summary>
+        private void EnsureCacheReady()
+        {
+            if (cellCache == null || cellCache.Length != map.cellIndices.NumGridCells)
+            {
+                cacheDirty = true;
+            }
+
+            if (cacheDirty)
+            {
+                RebuildCache();
+            }
+        }
+
         private void MaintainPawnEffects()
         {
             tmpPawnsToRemove.Clear();
@@ -466,10 +486,7 @@ namespace FullyAutomaticOmniCrafter
             protector = null;
             if (!c.InBounds(map)) return false;
 
-            if (cacheDirty)
-            {
-                RebuildCache();
-            }
+            EnsureCacheReady();
 
             // 1. 检查固定护盾 O(1)
             var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
@@ -695,10 +712,7 @@ namespace FullyAutomaticOmniCrafter
             protector = null;
             if (!c.InBounds(map)) return false;
 
-            if (cacheDirty)
-            {
-                RebuildCache();
-            }
+            EnsureCacheReady();
 
             // 1. 检查固定护盾缓存 O(1)
             var staticInter = cellCache[map.cellIndices.CellToIndex(c)];
@@ -736,10 +750,7 @@ namespace FullyAutomaticOmniCrafter
         {
             protector = null;
 
-            if (cacheDirty)
-            {
-                RebuildCache();
-            }
+            EnsureCacheReady();
 
             // 1. 优先通过 CellCache 快速检查中心点（如果半径较小）
             // 如果中心点已经被保护，则整个区域肯定被保护
