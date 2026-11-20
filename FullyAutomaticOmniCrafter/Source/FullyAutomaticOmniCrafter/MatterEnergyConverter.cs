@@ -297,6 +297,21 @@ namespace FullyAutomaticOmniCrafter
         }
 
         /// <summary>O(1) 判断某地图格子是否位于任意 MEC 的存储区内。</summary>
+        /// <summary>清空全部地图的 MEC 存储格缓存（新 Game 构造期调用）。</summary>
+        public static void ClearAllStaticCaches()
+        {
+            _storageCellsByMapId.Clear();
+            _storageCacheSize.Clear();
+        }
+
+        /// <summary>清除指定地图的 MEC 存储格缓存（MapRemoved 时调用）。</summary>
+        public static void ClearForMapStaticCaches(Map map)
+        {
+            if (map == null) return;
+            _storageCellsByMapId.Remove(map.uniqueID);
+            _storageCacheSize.Remove(map.uniqueID);
+        }
+
         public static bool IsInMecStorage(IntVec3 cell, Map map)
         {
             if (map == null) return false;

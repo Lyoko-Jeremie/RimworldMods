@@ -550,6 +550,23 @@ namespace FullyAutomaticOmniCrafter
 
         private static readonly List<Pawn> pendingArrivals = new List<Pawn>();
 
+        /// <summary>清空全部待补发的到达回调（新 Game 构造期调用）。</summary>
+        public static void ClearPendingArrivalsAll()
+        {
+            pendingArrivals.Clear();
+        }
+
+        /// <summary>清除属于指定地图的待补发到达回调（MapRemoved 时调用）。</summary>
+        public static void ClearPendingArrivalsForMap(Map map)
+        {
+            if (map == null) return;
+            for (int i = pendingArrivals.Count - 1; i >= 0; i--)
+            {
+                Pawn pawn = pendingArrivals[i];
+                if (pawn == null || pawn.Destroyed || pawn.Map == map) pendingArrivals.RemoveAt(i);
+            }
+        }
+
         /// <summary>登记一个待补发的到达回调（去重；只在主线程调用）。</summary>
         public static void RequestArrival(Pawn pawn)
         {

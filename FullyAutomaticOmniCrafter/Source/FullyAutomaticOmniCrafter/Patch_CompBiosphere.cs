@@ -82,6 +82,93 @@ namespace FullyAutomaticOmniCrafter
             RecalculateTemperatureControlCount(map);
         }
 
+        /// <summary>清空全部跨 Game 静态缓存（新 Game 构造期调用）。</summary>
+        public static void ClearAllStaticCaches()
+        {
+            biosphereComps.Clear();
+            areaToBiosphere.Clear();
+            biosphereGrid.Clear();
+            biosphereGridSize.Clear();
+            mapVacuumProtectionCount.Clear();
+            mapTemperatureControlCount.Clear();
+            pawnsGrantedHediff.Clear();
+            tmpPawnsToRemove.Clear();
+
+            lastMap = null;
+            lastGrid = null;
+            lastSize = default(IntVec3);
+            lastVacuumMap = null;
+            lastVacuumValue = false;
+            lastTempControlMap = null;
+            lastTempControlValue = false;
+        }
+
+        /// <summary>
+        /// 只清与指定地图相关的静态缓存（MapRemoved 时调用）。
+        /// areaToBiosphere 的键是 Area，按 value 中 comp.parent.Map 判断归属；先收集再删，避免边遍历边改。
+        /// </summary>
+        public static void ClearForMapStaticCaches(Map map)
+        {
+            if (map == null) return;
+
+            biosphereComps.Remove(map);
+            biosphereGrid.Remove(map);
+            biosphereGridSize.Remove(map);
+            mapVacuumProtectionCount.Remove(map);
+            mapTemperatureControlCount.Remove(map);
+
+            if (lastMap == map)
+            {
+                lastMap = null;
+                lastGrid = null;
+                lastSize = default(IntVec3);
+            }
+            if (lastVacuumMap == map)
+            {
+                lastVacuumMap = null;
+                lastVacuumValue = false;
+            }
+            if (lastTempControlMap == map)
+            {
+                lastTempControlMap = null;
+                lastTempControlValue = false;
+            }
+
+            List<Area> staleAreas = null;
+            foreach (KeyValuePair<Area, List<CompBiosphere>> pair in areaToBiosphere)
+            {
+                List<CompBiosphere> comps = pair.Value;
+                for (int i = 0; i < comps.Count; i++)
+                {
+                    CompBiosphere comp = comps[i];
+                    if (comp != null && comp.parent != null && comp.parent.Map == map)
+                    {
+                        if (staleAreas == null) staleAreas = new List<Area>();
+                        staleAreas.Add(pair.Key);
+                        break;
+                    }
+                }
+            }
+            if (staleAreas != null)
+            {
+                for (int i = 0; i < staleAreas.Count; i++) areaToBiosphere.Remove(staleAreas[i]);
+            }
+
+            List<Pawn> stalePawns = null;
+            foreach (Pawn pawn in pawnsGrantedHediff)
+            {
+                if (pawn == null || pawn.Destroyed || pawn.Map == map)
+                {
+                    if (stalePawns == null) stalePawns = new List<Pawn>();
+                    stalePawns.Add(pawn);
+                }
+            }
+            if (stalePawns != null)
+            {
+                for (int i = 0; i < stalePawns.Count; i++) pawnsGrantedHediff.Remove(stalePawns[i]);
+            }
+        }
+
         public static void UpdateAreaMapping(CompBiosphere comp, Area oldArea, Area newArea, Map map = null)
         {
             if (oldArea != null && areaToBiosphere.ContainsKey(oldArea))

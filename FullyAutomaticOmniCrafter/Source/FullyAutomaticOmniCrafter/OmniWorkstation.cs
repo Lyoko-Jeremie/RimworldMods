@@ -1387,6 +1387,62 @@ namespace FullyAutomaticOmniCrafter
             ClearAreaRestriction(pawn);
         }
 
+        /// <summary>清空全部代理上下文静态缓存（新 Game 构造期调用）。</summary>
+        public static void ClearAllStaticCaches()
+        {
+            Assignments.Clear();
+            ActiveProxies.Clear();
+            ManagedTransitions.Clear();
+            DeathAllowed.Clear();
+        }
+
+        /// <summary>只清与指定地图相关的代理上下文（MapRemoved 时调用）。</summary>
+        public static void ClearForMapStaticCaches(Map map)
+        {
+            if (map == null) return;
+
+            List<Pawn> stalePawns = null;
+            foreach (KeyValuePair<Pawn, Building_OmniWorkstation> pair in Assignments)
+            {
+                Pawn pawn = pair.Key;
+                Building_OmniWorkstation station = pair.Value;
+                if (pawn == null || pawn.Map == map
+                    || station == null || station.Destroyed || station.Map == map)
+                {
+                    if (stalePawns == null) stalePawns = new List<Pawn>();
+                    stalePawns.Add(pawn);
+                }
+            }
+            if (stalePawns != null)
+            {
+                for (int i = 0; i < stalePawns.Count; i++)
+                {
+                    if (stalePawns[i] != null) Assignments.Remove(stalePawns[i]);
+                }
+            }
+
+            RemovePawnsForMap(ActiveProxies, map);
+            RemovePawnsForMap(ManagedTransitions, map);
+            RemovePawnsForMap(DeathAllowed, map);
+        }
+
+        private static void RemovePawnsForMap(HashSet<Pawn> set, Map map)
+        {
+            List<Pawn> stale = null;
+            foreach (Pawn pawn in set)
+            {
+                if (pawn == null || pawn.Destroyed || pawn.Map == map)
+                {
+                    if (stale == null) stale = new List<Pawn>();
+                    stale.Add(pawn);
+                }
+            }
+            if (stale != null)
+            {
+                for (int i = 0; i < stale.Count; i++) set.Remove(stale[i]);
+            }
+        }
+
         public static void BeginManagedTransition(Pawn pawn)
         {
             if (pawn != null) ManagedTransitions.Add(pawn);
@@ -2332,6 +2388,10 @@ namespace FullyAutomaticOmniCrafter
 
         public override void MapRemoved()
         {
+            // 读档/扩张不走 MapRemoved，但正常删图会走到这里：先清掉本图的静态键，
+            // 避免旧 Map 及其网格被静态字典继续强引用。
+            OmniStaticCacheCleaner.ClearForMap(map);
+
             // 池随地图消失：归属本池的代理（含正在其它地图上工作的）必须一并强删，
             // 否则会留下既不受工作站控制、也无法被任何池回收的无主代理。
             GameComponent_OmniWorkProxyRegistry registry = GameComponent_OmniWorkProxyRegistry.Instance;

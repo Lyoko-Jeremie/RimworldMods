@@ -573,6 +573,8 @@
     <Compile Include="Patch_PhantomWallSight.cs" />
     <Compile Include="Patch_PhantomWallProjectile.cs" />
     <Compile Include="Patch_PhantomWallBeam.cs" />
+    <Compile Include="OmniStaticCacheCleaner.cs" />
+    <Compile Include="GameComponent_OmniStaticCacheCleaner.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

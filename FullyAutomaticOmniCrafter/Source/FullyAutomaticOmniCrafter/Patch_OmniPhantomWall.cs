@@ -68,6 +68,18 @@ namespace FullyAutomaticOmniCrafter
         private static readonly ConcurrentDictionary<Map, PhantomWall2RegionColorCache> PhantomWall2ColorCaches =
             new ConcurrentDictionary<Map, PhantomWall2RegionColorCache>();
 
+        /// <summary>清空全部地图的二代墙涂色缓存（新 Game 构造期调用）。</summary>
+        public static void ClearAllStaticCaches()
+        {
+            PhantomWall2ColorCaches.Clear();
+        }
+
+        /// <summary>清除指定地图的二代墙涂色缓存（MapRemoved 时调用）。</summary>
+        public static void ClearForMapStaticCaches(Map map)
+        {
+            if (map != null) PhantomWall2ColorCaches.TryRemove(map, out PhantomWall2RegionColorCache _);
+        }
+
         private static readonly Action<RegionDirtyer, IntVec3, bool> NotifyWalkabilityChangedInvoker =
             CreateNotifyWalkabilityChangedInvoker();
 
