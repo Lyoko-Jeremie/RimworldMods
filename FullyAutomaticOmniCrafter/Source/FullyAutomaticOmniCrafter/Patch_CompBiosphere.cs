@@ -15,6 +15,8 @@ namespace FullyAutomaticOmniCrafter
         private static Dictionary<Map, List<CompBiosphere>> biosphereComps = new Dictionary<Map, List<CompBiosphere>>();
         private static Dictionary<Area, List<CompBiosphere>> areaToBiosphere = new Dictionary<Area, List<CompBiosphere>>();
         private static Dictionary<Map, CompBiosphere[]> biosphereGrid = new Dictionary<Map, CompBiosphere[]>();
+        // 记录 biosphereGrid 分配时的 map.Size：第三方 mod 改地图尺寸后据此自愈（不依赖任何具体 mod）。
+        private static Dictionary<Map, IntVec3> biosphereGridSize = new Dictionary<Map, IntVec3>();
         private static Dictionary<Map, int> mapVacuumProtectionCount = new Dictionary<Map, int>();
         private static Dictionary<Map, int> mapTemperatureControlCount = new Dictionary<Map, int>();
         private static HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
@@ -124,6 +126,7 @@ namespace FullyAutomaticOmniCrafter
             if (map == null || area == null) return;
             foreach (IntVec3 cell in area.ActiveCells)
             {
+                if (!cell.InBounds(map)) continue;
                 RebuildGridForCell(map, cell);
                 map.glowGrid.DirtyCell(cell);
             }
@@ -131,13 +134,8 @@ namespace FullyAutomaticOmniCrafter
 
         public static void RebuildGridForCell(Map map, IntVec3 cell)
         {
-            if (map == null) return;
-            if (!biosphereGrid.TryGetValue(map, out var grid))
-            {
-                grid = new CompBiosphere[map.cellIndices.NumGridCells];
-                biosphereGrid[map] = grid;
-            }
-
+            if (map == null || !cell.InBounds(map)) return;
+            CompBiosphere[] grid = EnsureGrid(map);
             int index = map.cellIndices.CellToIndex(cell);
             grid[index] = null;
 
@@ -154,6 +152,54 @@ namespace FullyAutomaticOmniCrafter
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 取（必要时重建）网格缓存。容量按 map.Size 而非 NumGridCells：RimLayers 扩层后 Size 变大，
+        /// TrueLevels 下 Size 是逻辑单层，两者都让 CellToIndex 的下标落在数组内。
+        /// 尺寸变化时必须按现有 comp 全量重灌，只新建空数组会让已配置的生物圈静默失效。
+        /// </summary>
+        private static CompBiosphere[] EnsureGrid(Map map)
+        {
+            int cellCount = OmniGrid.CellCount(map);
+            if (map == lastMap && lastGrid != null && lastGrid.Length == cellCount && OmniGrid.SameSize(lastSize, map))
+            {
+                return lastGrid;
+            }
+
+            if (biosphereGrid.TryGetValue(map, out var existing)
+                && existing.Length == cellCount
+                && biosphereGridSize.TryGetValue(map, out var cachedSize)
+                && OmniGrid.SameSize(cachedSize, map))
+            {
+                lastMap = map;
+                lastGrid = existing;
+                lastSize = map.Size;
+                return existing;
+            }
+
+            CompBiosphere[] grid = new CompBiosphere[cellCount];
+            biosphereGrid[map] = grid;
+            biosphereGridSize[map] = map.Size;
+            lastMap = map;
+            lastGrid = grid;
+            lastSize = map.Size;
+
+            // 正序写入即“后注册覆盖先注册”，与 RebuildGridForCell 的倒序取第一个等价。
+            if (biosphereComps.TryGetValue(map, out var comps))
+            {
+                for (int i = 0; i < comps.Count; i++)
+                {
+                    CompBiosphere comp = comps[i];
+                    if (comp == null || !comp.parent.Spawned || comp.SelectedArea == null) continue;
+                    foreach (IntVec3 cell in comp.SelectedArea.ActiveCells)
+                    {
+                        int index = OmniGrid.IndexOfInBounds(map, cell);
+                        if (index >= 0 && index < grid.Length) grid[index] = comp;
+                    }
+                }
+            }
+            return grid;
         }
 
         public static void ForceRefreshAllGlow(Map map)
@@ -215,33 +261,38 @@ namespace FullyAutomaticOmniCrafter
 
         public static CompBiosphere GetBiosphereAt(Map map, IntVec3 cell)
         {
-            if (map == null) return null;
-            if (TryGetGrid(map, out var grid))
+            if (map == null || !cell.InBounds(map)) return null;
+            if (!TryGetGrid(map, out var grid))
             {
-                int index = map.cellIndices.CellToIndex(cell);
-                if (index >= 0 && index < grid.Length)
-                {
-                    return grid[index];
-                }
+                // 尺寸变化后的第一次读取：重建一次并全量重灌；从未初始化的地图仍返回 null。
+                if (!biosphereGrid.ContainsKey(map)) return null;
+                grid = EnsureGrid(map);
             }
-            return null;
+            int index = map.cellIndices.CellToIndex(cell);
+            return index >= 0 && index < grid.Length ? grid[index] : null;
         }
 
         private static Map lastMap;
         private static CompBiosphere[] lastGrid;
+        private static IntVec3 lastSize;
 
         private static bool TryGetGrid(Map map, out CompBiosphere[] grid)
         {
-            if (map == lastMap && lastGrid != null)
+            int cellCount = OmniGrid.CellCount(map);
+            if (map == lastMap && lastGrid != null && lastGrid.Length == cellCount && OmniGrid.SameSize(lastSize, map))
             {
                 grid = lastGrid;
                 return true;
             }
 
-            if (biosphereGrid.TryGetValue(map, out grid))
+            if (biosphereGrid.TryGetValue(map, out grid)
+                && grid.Length == cellCount
+                && biosphereGridSize.TryGetValue(map, out var cachedSize)
+                && OmniGrid.SameSize(cachedSize, map))
             {
                 lastMap = map;
                 lastGrid = grid;
+                lastSize = map.Size;
                 return true;
             }
 

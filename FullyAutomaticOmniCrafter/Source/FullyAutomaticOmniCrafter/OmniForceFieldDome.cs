@@ -714,6 +714,8 @@ namespace FullyAutomaticOmniCrafter
         private readonly HashSet<Pawn> pawnsGrantedHediff = new HashSet<Pawn>();
         private readonly List<Pawn> tmpPawnsToRemove = new List<Pawn>();
 
+        // 按格缓存的尺寸戳：第三方 mod 改地图尺寸后据此重建（见 EnsureCaches）。
+        private IntVec3 cacheSize;
         // 每个地图格到 network 的 O(1) 查询缓存；攻击、温度、真空等补丁会频繁查询它。
         private OmniForceFieldDomeNetwork[] networkCache;
         private bool[] roomCellCache;
@@ -724,8 +726,21 @@ namespace FullyAutomaticOmniCrafter
 
         public OmniForceFieldDomeNetworkManager(Map map) : base(map)
         {
-            networkCache = new OmniForceFieldDomeNetwork[map.cellIndices.NumGridCells];
-            roomCellCache = new bool[map.cellIndices.NumGridCells];
+            EnsureCaches();
+        }
+
+        /// <summary>
+        /// 按当前 map.Size 校验并重建按格缓存。第三方 mod 改地图尺寸（如 RimLayers 运行时扩层）后，
+        /// 旧的 NumGridCells 容量会让 CellToIndex 越界；只在尺寸变化时重建一次。
+        /// </summary>
+        private void EnsureCaches()
+        {
+            if (OmniGrid.SameSize(cacheSize, map)) return;
+            cacheSize = map.Size;
+            int cellCount = OmniGrid.CellCount(map);
+            networkCache = new OmniForceFieldDomeNetwork[cellCount];
+            roomCellCache = new bool[cellCount];
+            cacheDirty = true;
         }
 
         public void Register(CompOmniForceFieldDome dome)
@@ -756,6 +771,7 @@ namespace FullyAutomaticOmniCrafter
         public override void MapComponentTick()
         {
             base.MapComponentTick();
+            EnsureCaches();
             if (cacheDirty)
             {
                 RebuildNetworks();
@@ -795,6 +811,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 return false;
             }
+            EnsureCaches();
             // 性能优化：不再在此处同步触发 RebuildNetworks。
             // 高频查询（如温度补丁）中，即使缓存稍旧也比卡死整个主线程强。
             return roomCellCache[map.cellIndices.CellToIndex(c)];
@@ -807,6 +824,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 return false;
             }
+            EnsureCaches();
             // 同上，性能优化。
             network = networkCache[map.cellIndices.CellToIndex(c)];
             return network != null;
@@ -924,7 +942,8 @@ namespace FullyAutomaticOmniCrafter
 
         private void RebuildNetworks()
         {
-            int numCells = map.cellIndices.NumGridCells;
+            int numCells = OmniGrid.CellCount(map);
+            cacheSize = map.Size;
             var newNetworkCache = new OmniForceFieldDomeNetwork[numCells];
             var newRoomCellCache = new bool[numCells];
             var newNetworks = new List<OmniForceFieldDomeNetwork>();

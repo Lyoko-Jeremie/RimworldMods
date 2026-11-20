@@ -496,6 +496,7 @@
     <Compile Include="Patch_OmniWorkIngredientSearch.cs" />
     <Compile Include="OmniWorkstationMonitor.cs" />
     <Compile Include="OmniForceFieldDome.cs" />
+    <Compile Include="OmniGrid.cs" />
     <Compile Include="OmniPhantomWall.cs" />
     <Compile Include="OmniPhantomWall2.cs" />
     <Compile Include="OmniPhantomWall2_PassabilitySettings.cs" />

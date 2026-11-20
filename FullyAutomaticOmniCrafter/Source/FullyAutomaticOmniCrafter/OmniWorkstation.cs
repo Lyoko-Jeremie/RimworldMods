@@ -2219,7 +2219,10 @@ namespace FullyAutomaticOmniCrafter
 
             // 配置修改属于低频操作；逐格比较只通知真正发生变化的格子，
             // 避免 Clear 后遗漏原版寻路区域缓存的移除通知。
-            int cellCount = map.cellIndices.NumGridCells;
+            // 容量取「当前地图格数」与「镜像区自身尺寸」的较小者：TrueLevels 下 Area 是逻辑单层尺寸、
+            // RimLayers 下 Area 也不会随扩层变大；取小既能避免 area[index] 越界，也避免对新增层做无用扫描。
+            int cellCount = Math.Min(OmniGrid.CellCount(map),
+                area.InnerGrid.Width * area.InnerGrid.Height);
             for (int index = 0; index < cellCount; index++)
             {
                 IntVec3 cell = map.cellIndices.IndexToCell(index);
