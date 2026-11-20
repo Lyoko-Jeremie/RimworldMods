@@ -426,6 +426,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutoCollector\Building_AutoItemCollector.cs" />
+    <Compile Include="AutoCollector\ITab_AutoCollectorStorage.cs" />
     <Compile Include="AutoRepair.cs" />
     <Compile Include="CompAbsorbAllDamage.cs" />
     <Compile Include="CompAutomatedCapturer.cs" />

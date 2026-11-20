@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+    <!--
+      ══════════════════════════════════════════════════════════════════════
+      自动物品收集器 / Auto Item Collector
+      thingClass : FullyAutomaticOmniCrafter.Building_AutoItemCollector
+      功能        :
+        扫描指定活动区（或全图）地面上的未禁用物品，按筛选器瞬移进目标存储。
+      ══════════════════════════════════════════════════════════════════════
+    -->
+
+    <ThingDef ParentName="BuildingBase">
+        <defName>AutoItemCollector</defName>
+        <label>自动物品收集器</label>
+        <description>自动扫描指定活动区（或全图）地面上未禁用的物品，并按存储筛选器直接送入目标存储。可手动指定普通存储区、存储建筑、容器型存储或超维存储终端；也可按原版优先级自动选择最优存储。不耗电。</description>
+        <thingClass>FullyAutomaticOmniCrafter.Building_AutoItemCollector</thingClass>
+
+        <designationCategory>OmniCrafter_Category</designationCategory>
+
+        <!-- 占位贴图：后续可替换为专用收集器贴图 -->
+        <graphicData>
+            <texPath>Things/Building/Production/OmniAutoDetector</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(1,1)</drawSize>
+            <shaderType>CutoutComplex</shaderType>
+        </graphicData>
+        <size>(1,1)</size>
+        <uiIconPath>Things/Building/Production/OmniAutoDetector</uiIconPath>
+
+        <altitudeLayer>Building</altitudeLayer>
+        <passability>Standable</passability>
+        <pathCost>1</pathCost>
+        <fillPercent>0.5</fillPercent>
+        <blockWind>false</blockWind>
+        <castEdgeShadows>false</castEdgeShadows>
+        <staticSunShadowHeight>0.0</staticSunShadowHeight>
+        <canOverlapZones>false</canOverlapZones>
+        <rotatable>false</rotatable>
+
+        <tickerType>Normal</tickerType>
+
+        <statBases>
+            <MaxHitPoints>300</MaxHitPoints>
+            <WorkToBuild>1200</WorkToBuild>
+            <Flammability>0.5</Flammability>
+            <Beauty>-2</Beauty>
+            <Mass>20</Mass>
+        </statBases>
+
+        <costList>
+            <Steel>75</Steel>
+            <ComponentIndustrial>2</ComponentIndustrial>
+        </costList>
+
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <thingCategories>
+            <li>BuildingsProduction</li>
+        </thingCategories>
+
+        <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+        <constructEffect>ConstructMetal</constructEffect>
+        <repairEffect>Repair</repairEffect>
+
+        <building>
+            <paintable>true</paintable>
+            <destroySound>BuildingDestroyed_Metal_Small</destroySound>
+        </building>
+
+        <!-- 复用原版 ITab_Storage 的筛选器 UI；子类只隐藏优先级下拉 -->
+        <inspectorTabs>
+            <li>FullyAutomaticOmniCrafter.ITab_AutoCollectorStorage</li>
+        </inspectorTabs>
+    </ThingDef>
+
+</Defs>
