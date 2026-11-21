@@ -16,6 +16,10 @@ namespace FullyAutomaticOmniCrafter
     ///    所有按对象引用键的缓存全部失效；
     ///  • ClearForMap：MapComponent.MapRemoved 调用，只清当前这张图，覆盖正常删图。
     ///
+    /// 注意：SavedGameLoaderNow 会执行两次 new Game()（InitLoading 前 / EnterNode("game") 后），
+    /// 因此 ClearAll 会被调用两次。它必须幂等，并且不得依赖 Current.Game——两次执行时
+    /// Current.Game 分别指向旧 Game 与第一个空 Game。
+    ///
     /// 新增按 Map / Area / Pawn 键的静态缓存时，必须同时在两档里登记。
     /// </summary>
     internal static class OmniStaticCacheCleaner
