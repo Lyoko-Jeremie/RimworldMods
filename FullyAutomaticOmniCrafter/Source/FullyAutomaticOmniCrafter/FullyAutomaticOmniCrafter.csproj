@@ -426,6 +426,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutoCollector\MapComponent_AutoCollectorScheduler.cs" />
     <Compile Include="AutoCollector\Building_AutoItemCollector.cs" />
     <Compile Include="AutoCollector\ITab_AutoCollectorStorage.cs" />
     <Compile Include="AutoRepair.cs" />

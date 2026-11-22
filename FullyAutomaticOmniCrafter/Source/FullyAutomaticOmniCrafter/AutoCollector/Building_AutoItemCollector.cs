@@ -48,11 +48,14 @@ namespace FullyAutomaticOmniCrafter
     {
         private const int DefaultScanInterval = 15;
         private static readonly int[] AllowedScanIntervals = { 1, 5, 15, 30 };
+        private const int DefaultMaxStacksPerCycle = 4;
+        private static readonly int[] AllowedMaxStacksPerCycle = { 1, 4, 8, 16, 32 };
 
         // ── 存档状态 ─────────────────────────────────────────────────────────
         private bool enabled = true;
         private bool manuallyPaused;
         private int scanInterval = DefaultScanInterval;
+        private int maxStacksPerCycle = DefaultMaxStacksPerCycle;
         private CollectorTargetMode targetMode = CollectorTargetMode.Automatic;
         private Area configuredArea;
         private Zone targetZone;
@@ -62,6 +65,7 @@ namespace FullyAutomaticOmniCrafter
         // ── 运行态（不存档） ─────────────────────────────────────────────────
         private CollectorStatus status = CollectorStatus.Idle;
         private int mergeGroupCursor;
+        private int maintenanceCounter;
         private readonly List<Thing> scanBuffer = new List<Thing>();
         private readonly List<Thing> mergeBuffer = new List<Thing>();
 
@@ -80,6 +84,27 @@ namespace FullyAutomaticOmniCrafter
             scanBuffer.Clear();
             mergeBuffer.Clear();
             mergeGroupCursor = 0;
+            maintenanceCounter = 0;
+
+            MapComponent_AutoCollectorScheduler scheduler = GetScheduler();
+            if (scheduler != null)
+            {
+                scheduler.RegisterWorker(this);
+            }
+        }
+
+        public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        {
+            if (Spawned && Map != null)
+            {
+                MapComponent_AutoCollectorScheduler scheduler = GetScheduler();
+                if (scheduler != null)
+                {
+                    scheduler.UnregisterWorker(this);
+                }
+            }
+
+            base.DeSpawn(mode);
         }
 
         public override void ExposeData()
@@ -89,6 +114,7 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref enabled, "enabled", true);
             Scribe_Values.Look(ref manuallyPaused, "manuallyPaused", false);
             Scribe_Values.Look(ref scanInterval, "scanInterval", DefaultScanInterval);
+            Scribe_Values.Look(ref maxStacksPerCycle, "maxStacksPerCycle", DefaultMaxStacksPerCycle);
             Scribe_Values.Look(ref targetMode, "targetMode", CollectorTargetMode.Automatic);
             Scribe_References.Look(ref configuredArea, "configuredArea");
             Scribe_References.Look(ref targetZone, "targetZone");
@@ -98,6 +124,7 @@ namespace FullyAutomaticOmniCrafter
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 NormalizeScanInterval();
+                NormalizeMaxStacksPerCycle();
                 EnsureStorageSettings();
                 status = CollectorStatus.Idle;
             }
@@ -120,7 +147,25 @@ namespace FullyAutomaticOmniCrafter
 
         public void Notify_SettingsChanged()
         {
-            // 筛选器变化后无需重建任何缓存；下一次 TickRare 直接读取最新 filter。
+            // 筛选器变化后，调度器队列里的旧任务可能不再被本建筑接受；
+            // 标记 dirty 让下一次请求重新扫描，旧任务会在取用时被 CanSchedulerHandle 拒绝。
+            NotifySchedulerDirty();
+        }
+
+        private MapComponent_AutoCollectorScheduler GetScheduler()
+        {
+            return Spawned && Map != null
+                ? Map.GetComponent<MapComponent_AutoCollectorScheduler>()
+                : null;
+        }
+
+        private void NotifySchedulerDirty()
+        {
+            MapComponent_AutoCollectorScheduler scheduler = GetScheduler();
+            if (scheduler != null)
+            {
+                scheduler.NotifyWorkerChanged(this);
+            }
         }
 
         private void EnsureStorageSettings()
@@ -148,6 +193,19 @@ namespace FullyAutomaticOmniCrafter
             scanInterval = DefaultScanInterval;
         }
 
+        private void NormalizeMaxStacksPerCycle()
+        {
+            for (int i = 0; i < AllowedMaxStacksPerCycle.Length; i++)
+            {
+                if (AllowedMaxStacksPerCycle[i] == maxStacksPerCycle)
+                {
+                    return;
+                }
+            }
+
+            maxStacksPerCycle = DefaultMaxStacksPerCycle;
+        }
+
         // ── Tick ─────────────────────────────────────────────────────────────
 
         protected override void Tick()
@@ -170,7 +228,85 @@ namespace FullyAutomaticOmniCrafter
                 return;
             }
 
+            // 目标/区域可能在两次请求之间被拆除或换图；调度器扫描可能早于本建筑 Tick，
+            // 所以请求前先清理失效引用。
+            RefreshReferences();
+
+            MapComponent_AutoCollectorScheduler scheduler = GetScheduler();
+            if (scheduler != null)
+            {
+                bool hadFailure;
+                int worked = scheduler.RequestWork(this, maxStacksPerCycle, out hadFailure);
+
+                bool maintenanceWorked = false;
+                // 维护相位与收集解耦：每 4 次请求做一次整理/合并，避免整理饿死收集。
+                maintenanceCounter++;
+                if (maintenanceCounter >= 4)
+                {
+                    maintenanceCounter = 0;
+                    maintenanceWorked = RunMaintenance();
+                }
+
+                if (worked > 0 || maintenanceWorked)
+                {
+                    status = CollectorStatus.Running;
+                }
+                else if (hadFailure)
+                {
+                    // 已经领到任务但存不进去：最常见是目标满/目标格被占；筛选器不匹配会在
+                    // CanSchedulerHandle 阶段被排除，因此这里优先显示“目标已满”。
+                    status = CollectorStatus.Full;
+                }
+                else
+                {
+                    UpdateStatusWithoutWork();
+                }
+
+                return;
+            }
+
+            // 调度器缺失时的兜底路径（例如旧存档/异常地图组件）。
             DoCollectorCycle();
+        }
+
+        private void UpdateStatusWithoutWork()
+        {
+            if (targetMode == CollectorTargetMode.Manual)
+            {
+                IHaulDestination manualDest = ResolveManualTarget();
+                if (manualDest == null || !manualDest.HaulDestinationEnabled)
+                {
+                    status = CollectorStatus.TargetInvalid;
+                    return;
+                }
+            }
+
+            if (configuredArea != null && configuredArea.TrueCount <= 0)
+            {
+                status = CollectorStatus.AreaEmpty;
+                return;
+            }
+
+            status = CollectorStatus.Idle;
+        }
+
+        private bool RunMaintenance()
+        {
+            if (!Spawned || Map == null)
+            {
+                return false;
+            }
+
+            IHaulDestination manualDest = targetMode == CollectorTargetMode.Manual
+                ? ResolveManualTarget()
+                : null;
+
+            if (TryOrganizeOne(manualDest))
+            {
+                return true;
+            }
+
+            return TryMergeOne(manualDest);
         }
 
         private void DoCollectorCycle()
@@ -264,11 +400,21 @@ namespace FullyAutomaticOmniCrafter
         {
             if (targetZone != null)
             {
+                if (targetZone.zoneManager == null || targetZone.Map != Map)
+                {
+                    return null;
+                }
+
                 return targetZone as IHaulDestination;
             }
 
             if (targetThing != null)
             {
+                if (targetThing.Destroyed || !targetThing.Spawned || targetThing.Map != Map)
+                {
+                    return null;
+                }
+
                 return targetThing as IHaulDestination;
             }
 
@@ -387,9 +533,17 @@ namespace FullyAutomaticOmniCrafter
                 return false;
             }
 
-            if (configuredArea != null && !configuredArea[t.Position])
+            if (configuredArea != null)
             {
-                return false;
+                if (configuredArea.areaManager == null || configuredArea.areaManager != Map.areaManager)
+                {
+                    return false;
+                }
+
+                if (!configuredArea[t.Position])
+                {
+                    return false;
+                }
             }
 
             // 投影/借出副本是伪 Spawned 或真 Spawned 的视图对象，绝不搬运。
@@ -421,6 +575,100 @@ namespace FullyAutomaticOmniCrafter
             }
 
             return true;
+        }
+
+        // ── 调度器执行接口 ───────────────────────────────────────────────────
+
+        internal bool UsesAutomaticTarget
+        {
+            get { return targetMode == CollectorTargetMode.Automatic; }
+        }
+
+        /// <summary>
+        /// 调度器判断本建筑是否可能处理这个地面物品。
+        /// 只做“是否会尝试”的快速判断，不实际搜索目标格。
+        /// </summary>
+        internal bool CanSchedulerHandle(Thing t)
+        {
+            if (!enabled || manuallyPaused || !Spawned || Map == null)
+            {
+                return false;
+            }
+
+            if (!IsEligibleGroundThing(t))
+            {
+                return false;
+            }
+
+            // 已正确存储的物品不属于“收集”，交给维护相位整理。
+            IHaulDestination dest = StoreUtility.CurrentHaulDestinationOf(t);
+            if (dest != null && dest.HaulDestinationEnabled && dest.Accepts(t))
+            {
+                return false;
+            }
+
+            if (targetMode == CollectorTargetMode.Manual)
+            {
+                IHaulDestination manualDest = ResolveManualTarget();
+                if (manualDest == null
+                    || manualDest.Map != Map
+                    || !manualDest.HaulDestinationEnabled
+                    || !manualDest.Accepts(t))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 调度器在主线程调用：真正执行一组搬运。
+        /// 不重新做全表扫描，只处理调度器已经选中的这一件物品。
+        /// </summary>
+        internal bool ExecuteScheduledCollect(Thing t)
+        {
+            if (!Spawned || Map == null || t == null || t.Destroyed || !t.Spawned || t.Map != Map)
+            {
+                return false;
+            }
+
+            // 执行前重新校验：外部搬运者/玩家可能在扫描后拿走了它。
+            if (!CanSchedulerHandle(t))
+            {
+                return false;
+            }
+
+            if (targetMode == CollectorTargetMode.Manual)
+            {
+                IHaulDestination manualDest = ResolveManualTarget();
+                if (manualDest == null
+                    || manualDest.Map != Map
+                    || !manualDest.HaulDestinationEnabled
+                    || !manualDest.Accepts(t))
+                {
+                    return false;
+                }
+
+                return TryStore(t, manualDest, IntVec3.Invalid);
+            }
+
+            StoragePriority currentPriority = StoreUtility.CurrentStoragePriorityOf(t);
+            IntVec3 cell;
+            IHaulDestination bestDest;
+            if (!StoreUtility.TryFindBestBetterStorageFor(
+                    t, null, Map, currentPriority, Faction.OfPlayer,
+                    out cell, out bestDest, false))
+            {
+                return false;
+            }
+
+            if (bestDest == null)
+            {
+                return false;
+            }
+
+            return TryStore(t, bestDest, cell);
         }
 
         // ── 整理（低优先级 → 高优先级） ─────────────────────────────────────
@@ -910,6 +1158,7 @@ namespace FullyAutomaticOmniCrafter
                     if (enabled)
                     {
                         status = CollectorStatus.Idle;
+                        NotifySchedulerDirty();
                     }
                 }
             };
@@ -926,6 +1175,7 @@ namespace FullyAutomaticOmniCrafter
                     if (!manuallyPaused)
                     {
                         status = CollectorStatus.Idle;
+                        NotifySchedulerDirty();
                     }
                 }
             };
@@ -936,6 +1186,14 @@ namespace FullyAutomaticOmniCrafter
                 defaultDesc = "AutoItemCollector_ScanIntervalDesc".Translate(),
                 icon = BaseContent.WhiteTex,
                 action = ShowScanIntervalMenu
+            };
+
+            yield return new Command_Action
+            {
+                defaultLabel = "AutoItemCollector_MaxStacks".Translate(maxStacksPerCycle),
+                defaultDesc = "AutoItemCollector_MaxStacksDesc".Translate(),
+                icon = BaseContent.WhiteTex,
+                action = ShowMaxStacksMenu
             };
 
             yield return new Command_Action
@@ -995,6 +1253,27 @@ namespace FullyAutomaticOmniCrafter
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
+        private void ShowMaxStacksMenu()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+            for (int i = 0; i < AllowedMaxStacksPerCycle.Length; i++)
+            {
+                int count = AllowedMaxStacksPerCycle[i];
+                string label = count == maxStacksPerCycle
+                    ? "AutoItemCollector_CurrentOption".Translate(count)
+                    : "AutoItemCollector_MaxStacksOption".Translate(count);
+
+                options.Add(new FloatMenuOption(label, delegate
+                {
+                    maxStacksPerCycle = count;
+                    status = CollectorStatus.Idle;
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
         private void ShowTargetModeMenu()
         {
             List<FloatMenuOption> options = new List<FloatMenuOption>();
@@ -1007,6 +1286,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     targetMode = CollectorTargetMode.Automatic;
                     status = CollectorStatus.Idle;
+                    NotifySchedulerDirty();
                 }));
 
             options.Add(new FloatMenuOption(
@@ -1017,6 +1297,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     targetMode = CollectorTargetMode.Manual;
                     status = CollectorStatus.Idle;
+                    NotifySchedulerDirty();
                 }));
 
             Find.WindowStack.Add(new FloatMenu(options));
@@ -1034,6 +1315,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     configuredArea = null;
                     status = CollectorStatus.Idle;
+                    NotifySchedulerDirty();
                 }));
 
             List<Area> allAreas = Map.areaManager.AllAreas;
@@ -1077,6 +1359,7 @@ namespace FullyAutomaticOmniCrafter
                 {
                     configuredArea = area;
                     status = CollectorStatus.Idle;
+                    NotifySchedulerDirty();
                 }));
             }
 
@@ -1258,6 +1541,7 @@ namespace FullyAutomaticOmniCrafter
 
             targetMode = CollectorTargetMode.Manual;
             status = CollectorStatus.Idle;
+            NotifySchedulerDirty();
         }
 
         // ── Inspect ──────────────────────────────────────────────────────────
@@ -1286,6 +1570,9 @@ namespace FullyAutomaticOmniCrafter
 
             sb.AppendLine();
             sb.Append((string)"AutoItemCollector_InspectInterval".Translate(scanInterval));
+
+            sb.AppendLine();
+            sb.Append((string)"AutoItemCollector_InspectMaxStacks".Translate(maxStacksPerCycle));
 
             return sb.ToString();
         }

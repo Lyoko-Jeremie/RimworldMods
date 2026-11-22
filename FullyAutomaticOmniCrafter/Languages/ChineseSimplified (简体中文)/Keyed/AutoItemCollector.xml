@@ -9,6 +9,9 @@
     <AutoItemCollector_ScanIntervalDesc>每隔多少 tick 扫描一次。间隔越小吞吐越高，但全图扫描越频繁。</AutoItemCollector_ScanIntervalDesc>
     <AutoItemCollector_ScanIntervalOption>{0} tick</AutoItemCollector_ScanIntervalOption>
     <AutoItemCollector_CurrentOption>✓ {0}</AutoItemCollector_CurrentOption>
+    <AutoItemCollector_MaxStacks>每周期上限：{0} 组</AutoItemCollector_MaxStacks>
+    <AutoItemCollector_MaxStacksDesc>每次请求最多搬运多少组。一组是一个堆叠（一格），不是“每周期只能 1 组”。</AutoItemCollector_MaxStacksDesc>
+    <AutoItemCollector_MaxStacksOption>{0} 组</AutoItemCollector_MaxStacksOption>
     <AutoItemCollector_TargetMode>目标模式：{0}</AutoItemCollector_TargetMode>
     <AutoItemCollector_TargetModeDesc>自动：按原版优先级选择最优存储；手动：严格只送入指定的目标存储。</AutoItemCollector_TargetModeDesc>
     <AutoItemCollector_ModeAutomatic>自动（原版优先级）</AutoItemCollector_ModeAutomatic>
@@ -31,6 +34,7 @@
     <AutoItemCollector_InspectTarget>目标：{0}</AutoItemCollector_InspectTarget>
     <AutoItemCollector_InspectArea>活动区：{0}</AutoItemCollector_InspectArea>
     <AutoItemCollector_InspectInterval>扫描间隔：{0} tick</AutoItemCollector_InspectInterval>
+    <AutoItemCollector_InspectMaxStacks>每周期上限：{0} 组</AutoItemCollector_InspectMaxStacks>
 
     <!-- 状态 -->
     <AutoItemCollector_StatusDisabled>已停用</AutoItemCollector_StatusDisabled>
