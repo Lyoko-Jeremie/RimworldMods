@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using Jeremie.AtmosphereOverhaulPatch.Bridge;
 using RimWorld;
 using Verse;
 
@@ -36,6 +37,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
 
         private static bool PatchInjection(Harmony harmony)
         {
+            // 优先走 AO 的公共 StepPreparing 事件：不再依赖内部方法名，
+            // 也不与 AO 自己的 Array.Clear/Drain 顺序耦合。
+            // 事件缺失时才回退到旧的 PrepareTemperatureSources Postfix。
+            if (AoBridge.SubscribeStepPreparing(StepPreparing_Handler))
+            {
+                return true;
+            }
+
             Type componentType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
             if (componentType == null)
             {
@@ -50,6 +59,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             }
             harmony.Patch(target, postfix: new HarmonyMethod(typeof(ProxyHeatRelayPatches), nameof(PrepareTemperatureSources_Postfix)));
             return true;
+        }
+
+        /// <summary>
+        /// AO 的 StepPreparing：模拟线程锁之前、本步增量被 Drain 进 pending 之前。
+        /// elapsedTicks 是距上次准备的游戏 tick 数，直接当 dt 用，不再自己算差分。
+        /// </summary>
+        private static void StepPreparing_Handler(Map map, int gameTick, int elapsedTicks)
+        {
+            if (map == null || elapsedTicks <= 0)
+            {
+                return;
+            }
+            ProxyHeatRelayMapComponent relay = map.GetComponent<ProxyHeatRelayMapComponent>();
+            if (relay != null)
+            {
+                relay.Inject(elapsedTicks);
+            }
         }
 
         /// <summary>诊断用：确认补丁确实命中，且 relay 组件确实存在。</summary>

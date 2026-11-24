@@ -97,10 +97,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
                 return false;
             }
 
-            object slots = AoBridge.GetSlots(building);
-            if (slots == null)
+            if (!AoBridge.ContinuousSourceAvailable)
             {
-                // 建筑没被 AO 注入温控组件：没有槽位可写，交回 AO 自己的路径。
+                // AO 没有公共连续源接口（旧版本）：交回 AO 自己的路径。
                 return false;
             }
 
@@ -115,11 +114,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
             float drive;
             if (control.Props.energyPerSecond < 0f)
             {
-                drive = ApplyCooler(building, control, slots, fullRate, tolerance);
+                drive = ApplyCooler(building, control, fullRate, tolerance);
             }
             else
             {
-                drive = ApplyHeater(building, control, slots, fullRate, tolerance);
+                drive = ApplyHeater(building, control, fullRate, tolerance);
             }
 
             if (drive < 0f)
@@ -148,7 +147,6 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
         private float ApplyHeater(
             Building_TempControl building,
             CompTempControl control,
-            object slots,
             float fullRate,
             float tolerance)
         {
@@ -157,7 +155,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
             int count = _coldCells.Count;
             if (count == 0)
             {
-                AoBridge.ZeroFrom(slots, parent, 0);
+                ClearFrom(building, 0);
                 return -1f;
             }
 
@@ -188,11 +186,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
 
                 SlotRates rates = new SlotRates();
                 rates.TemperaturePerTick = drive * efficiency * perCell;
-                AoBridge.SetSlot(slots, parent, written, cell, rates);
+                AoBridge.SetContinuousSource(map, building, SlotKey(written), cell, rates);
                 written++;
             }
 
-            AoBridge.ZeroFrom(slots, parent, written);
+            ClearFrom(building, written);
             if (written == 0)
             {
                 // 所有输出格都读不到 AO 温度：本图没有 AO 引擎。
@@ -207,7 +205,6 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
         private float ApplyCooler(
             Building_TempControl building,
             CompTempControl control,
-            object slots,
             float fullRate,
             float tolerance)
         {
@@ -217,7 +214,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
             int hotCount = _hotCells.Count;
             if (coldCount == 0)
             {
-                AoBridge.ZeroFrom(slots, parent, 0);
+                ClearFrom(building, 0);
                 return -1f;
             }
 
@@ -236,7 +233,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
             }
             if (coldSamples == 0)
             {
-                AoBridge.ZeroFrom(slots, parent, 0);
+                ClearFrom(building, 0);
                 return -1f;
             }
             float coldAvg = coldSum / coldSamples;
@@ -269,7 +266,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
             float drive = Mathf.Clamp01((coldAvg - aim) / 1f);
             if (drive <= 0f)
             {
-                AoBridge.ZeroFrom(slots, parent, 0);
+                ClearFrom(building, 0);
                 return 0f;
             }
 
@@ -283,19 +280,41 @@ namespace Jeremie.AtmosphereOverhaulPatch.Comps
             {
                 SlotRates rates = new SlotRates();
                 rates.TemperaturePerTick = coldPerCell;
-                AoBridge.SetSlot(slots, parent, written, _coldCells[i], rates);
+                AoBridge.SetContinuousSource(map, building, SlotKey(written), _coldCells[i], rates);
                 written++;
             }
             for (int i = 0; i < hotCount; i++)
             {
                 SlotRates rates = new SlotRates();
                 rates.TemperaturePerTick = hotPerCell;
-                AoBridge.SetSlot(slots, parent, written, _hotCells[i], rates);
+                AoBridge.SetContinuousSource(map, building, SlotKey(written), _hotCells[i], rates);
                 written++;
             }
 
-            AoBridge.ZeroFrom(slots, parent, written);
+            ClearFrom(building, written);
             return drive;
+        }
+
+        /// <summary>本组件最多占用的连续源槽位数（双格制冷机：冷 2 + 热 2）。</summary>
+        private const int MaxSlots = 4;
+
+        private static string SlotKey(int slot)
+        {
+            return "Jeremie.TempShape." + slot;
+        }
+
+        /// <summary>把 from 号及之后的槽位速率清零。用前缀零化而不是直写内部数组。</summary>
+        private static void ClearFrom(Building_TempControl building, int from)
+        {
+            Map map = building.Map;
+            if (map == null)
+            {
+                return;
+            }
+            for (int i = from; i < MaxSlots; i++)
+            {
+                AoBridge.ZeroContinuousSourcesWithPrefix(map, building, SlotKey(i));
+            }
         }
 
         // ---------------------------------------------------------------- 格子布局

@@ -73,6 +73,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         internal static readonly FieldInfo SpeedLimitField;
         internal static readonly PropertyInfo SpeedLimitProperty;
         internal static readonly FieldInfo MaxSpeedLimitField;
+        // AO 新增的公共入口：直接设置风速上限、不取整，并保证在下一次掩码重建生效。
+        internal static readonly MethodInfo ApplySpeedLimitMethod;
         internal static readonly bool Ready;
 
         private static readonly Dictionary<int, Building> Registered = new Dictionary<int, Building>();
@@ -131,6 +133,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
                 SpeedLimitField = AccessTools.Field(AirVentType, "speedLimit");
                 SpeedLimitProperty = AccessTools.Property(AirVentType, "SpeedLimit");
                 MaxSpeedLimitField = AccessTools.Field(AccessTools.TypeByName(AirVentPropsTypeName), "maxSpeedLimit");
+                ApplySpeedLimitMethod = AccessTools.Method(AirVentType, "ApplySpeedLimit", new[] { typeof(float) });
                 if (SpeedLimitField == null || SpeedLimitProperty == null)
                 {
                     return;
@@ -154,16 +157,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
                 return;
             }
 
-            object component = AtmosphereFieldBridge.FindComponent(map);
-            object engine = component == null ? null : AtmosphereFieldBridge.GetEngine(component);
-            float[] mask = engine == null ? null : AtmosphereFieldBridge.GetObstacleMask(engine);
-            if (mask == null)
+            // 主线程读：走 AO 的公共场视图（上一完成步快照），
+            // 不再依赖 engine 的 internal 数组。
+            AtmosphereFieldBridge.FieldView view;
+            if (!AtmosphereFieldBridge.TryGetFieldView(map, out view))
             {
-                Log.WarningOnce("[AO Patch][GC] 该地图没有 AO 引擎/障碍掩码，跳过主动通风口接管。", 0x4745);
+                Log.WarningOnce("[AO Patch][GC] 该地图没有 AO 场视图，跳过主动通风口接管。", 0x4745);
                 return;
             }
-
-            float[] temperatures = AtmosphereFieldBridge.GetTemperatureRead(engine);
 
             object gcMapComp = map.GetComponent(GcMapComponentType);
             IList vents = gcMapComp == null ? null : GcVentsField.GetValue(gcMapComp) as IList;
@@ -194,7 +195,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
                 // 扫描由 GC 的 60 tick 节拍驱动，因此最迟 3 秒内生效。
                 EnsureDefaultClosed(building);
 
-                Consider(map, vent, building, mask, temperatures);
+                Consider(map, vent, building, view);
             }
 
             // 已拆除、或已从 GC 注册表移除的项
@@ -318,7 +319,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             Failures[reason] = count + 1;
         }
 
-        private static void Consider(Map map, ThingComp gcComp, Building building, float[] mask, float[] temperatures)
+        private static void Consider(Map map, ThingComp gcComp, Building building, AtmosphereFieldBridge.FieldView view)
         {
             bool active = (bool)IeActiveField.GetValue(gcComp);
             if (!active)
@@ -379,15 +380,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             // 也让「喷流」成为该格唯一的空气通道。
             EnsureNaturalVentOff(airVent);
 
-            if (!PortLooksOpen(map, inlet, mask) || !PortLooksOpen(map, outlet, mask))
+            if (!PortLooksOpen(map, inlet, view) || !PortLooksOpen(map, outlet, view))
             {
                 Fail("port");
                 Unregister(building);
                 return;
             }
 
-            float inletTemperature = ReadCellTemperature(map, inlet, temperatures);
-            float outletTemperature = ReadCellTemperature(map, outlet, temperatures);
+            float inletTemperature = ReadCellTemperature(map, inlet, view);
+            float outletTemperature = ReadCellTemperature(map, outlet, view);
             float inletOxygen = ReadCellOxygen(map, inlet);
             float outletOxygen = ReadCellOxygen(map, outlet);
             float cubicMetresPerTick = ComputeCubicMetresPerTick(inletTemperature, outletTemperature);
@@ -575,12 +576,41 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         /// </summary>
         private static void ApplySpeedLimit(ThingComp airVent, float value)
         {
-            if (airVent == null || SpeedLimitField == null)
+            if (airVent == null)
             {
                 return;
             }
 
             float target = Mathf.Clamp(value, 0f, NaturalVentOpenSpeed(airVent));
+
+            // 优先走 AO 的公共 ApplySpeedLimit：直接设置、不取整，内部自己请求掩码重建。
+            // 旧版 AO 没有这个方法时才回退到「直写字段 + 手动失效」。
+            if (ApplySpeedLimitMethod != null)
+            {
+                try
+                {
+                    ApplySpeedLimitMethod.Invoke(airVent, new object[] { target });
+                    if (speedDiagLeft > 0)
+                    {
+                        speedDiagLeft--;
+                        Thing p = airVent.parent;
+                        int id = p != null ? p.thingIDNumber : -1;
+                        Log.Message("[AO Patch][GC] ApplySpeedLimit id=" + id + " -> " + target
+                            + " (attr " + CurrentSpeed(airVent) + ")");
+                    }
+                    return;
+                }
+                catch (Exception)
+                {
+                    // 落到字段直写的回退路径。
+                }
+            }
+
+            if (SpeedLimitField == null)
+            {
+                return;
+            }
+
             try
             {
                 // 已经是目标值就不写，避免每 tick 重建 AO 缓存。
@@ -780,14 +810,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
             return command;
         }
 
-        private static float ReadCellTemperature(Map map, IntVec3 cell, float[] temperatures)
+        private static float ReadCellTemperature(Map map, IntVec3 cell, AtmosphereFieldBridge.FieldView view)
         {
-            if (temperatures != null)
+            if (view != null)
             {
                 int index = map.cellIndices.CellToIndex(cell);
-                if (index >= 0 && index < temperatures.Length)
+                if (index >= 0 && index < view.Size)
                 {
-                    return temperatures[index];
+                    return AtmosphereFieldBridge.FieldTemperature(view, index);
                 }
             }
 
@@ -1010,7 +1040,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
         /// 与 AO 的 IsAirMoverPortOpen 同义（四邻面开放一项由 AO 内部再查），
         /// 这里用公开的 ObstacleMask 自查，避免反射 internal。
         /// </summary>
-        private static bool PortLooksOpen(Map map, IntVec3 cell, float[] mask)
+        private static bool PortLooksOpen(Map map, IntVec3 cell, AtmosphereFieldBridge.FieldView view)
         {
             if (!cell.InBounds(map))
             {
@@ -1022,13 +1052,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.GoodClimate
                 return false;
             }
 
-            int index = map.cellIndices.CellToIndex(cell);
-            if (index < 0 || index >= mask.Length)
+            if (view == null)
             {
                 return false;
             }
 
-            return mask[index] > 0.001f;
+            int index = map.cellIndices.CellToIndex(cell);
+            if (index < 0 || index >= view.Size)
+            {
+                return false;
+            }
+
+            return AtmosphereFieldBridge.FieldIsAir(view, index);
         }
 
         private static void SendVacuumLetter(Building building, ThingComp comp)

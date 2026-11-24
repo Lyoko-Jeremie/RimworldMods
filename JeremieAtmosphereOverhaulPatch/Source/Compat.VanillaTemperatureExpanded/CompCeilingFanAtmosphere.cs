@@ -55,7 +55,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
         private SlotRates[] _rateCache;
         private float _rateCachePerTick;
 
-        private object _slots;
+        private bool _sourceReady;
         private int _lastScanTick = -99999;
         private int _lastApplyTick = -99999;
 
@@ -74,21 +74,18 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
         {
             base.PostSpawnSetup(respawningAfterLoad);
 
+            // 连续源按 owner+key 自动注册/更新，不需要预建槽位表。
             AoBridge.Resolve();
-            if (!AoBridge.Available)
-            {
-                return;
-            }
-            _slots = AoBridge.NewSlots("JAP.Fan." + parent.thingIDNumber + ".");
+            _sourceReady = AoBridge.ContinuousSourceAvailable;
         }
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
-            if (_slots != null)
+            if (map != null)
             {
-                AoBridge.RemoveAll(_slots, parent, map);
-                _slots = null;
+                AoBridge.UnregisterContinuousSources(map, parent);
             }
+            _sourceReady = false;
             base.PostDeSpawn(map, mode);
         }
 
@@ -98,7 +95,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
         /// </summary>
         public bool Tick(CompCeilingFan fan)
         {
-            if (_slots == null || !AoBridge.Available)
+            if (!_sourceReady)
             {
                 return false;
             }
@@ -175,17 +172,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
 
             for (int i = 0; i < count; i++)
             {
-                AoBridge.SetSlot(_slots, parent, i, _cells[i], rates[i]);
+                AoBridge.SetContinuousSource(parent.Map, parent, SlotKey(i), _cells[i], rates[i]);
             }
 
             // 只有上一次写过的槽位比本次多时，才需要清尾部残留；
             // 槽位数不变时 AO 那边本来就没有多余 handle。
             if (_writtenSlots > count)
             {
-                AoBridge.ZeroFrom(_slots, parent, count);
+                for (int i = count; i < _writtenSlots; i++)
+                {
+                    AoBridge.ZeroContinuousSourcesWithPrefix(parent.Map, parent, SlotKey(i));
+                }
             }
             _writtenSlots = count;
             _slotsCleared = false;
+        }
+
+        private string SlotKey(int slot)
+        {
+            return "JAP.Fan." + parent.thingIDNumber + "." + slot;
         }
 
         /// <summary>
@@ -199,7 +204,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded
             {
                 return;
             }
-            AoBridge.ZeroFrom(_slots, parent, 0);
+            Map map = parent.Map;
+            if (map != null)
+            {
+                AoBridge.UnregisterContinuousSources(map, parent);
+            }
             _slotsCleared = true;
             _writtenSlots = 0;
         }

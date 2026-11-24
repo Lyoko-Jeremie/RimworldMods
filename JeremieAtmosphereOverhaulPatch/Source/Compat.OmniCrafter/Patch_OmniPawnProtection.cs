@@ -19,6 +19,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
     {
         internal static bool Install(Harmony harmony)
         {
+            // 优先走公共接口：AO 的 PawnAtmosphere.TrySample 会先问所有 provider，
+            // 返回 true 就直接用我们给的气压/氧分压，覆盖整条缺氧/高氧/压力病链路。
+            if (OmniAtmosphereApi.TryInstallPawnAir())
+            {
+                return true;
+            }
+
+            // 回退路径：AO 版本没有 IAtmospherePawnAirProvider 时 patch TrySample。
             Type type = AccessTools.TypeByName("AtmosphereOverhaul.Pawns.PawnAtmosphere");
             MethodInfo trySample = type == null ? null : AccessTools.Method(type, "TrySample");
             if (trySample == null)

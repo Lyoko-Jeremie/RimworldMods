@@ -30,6 +30,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Patches
                 return false;
             }
 
+            // 优先把形状翻译成 AO 的 XML 出风口布局：AO 原生实现已经覆盖
+            // 多格出风、效率、热侧倍率与除湿，不需要再接管 RunTempControl。
+            if (OutletLayoutBootstrap.TryApplyAll())
+            {
+                return false;
+            }
+
             Type utilityType = AccessTools.TypeByName(FacilityPatchUtilityTypeName);
             if (utilityType == null)
             {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
 using UnityEngine;
@@ -79,12 +80,53 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static MethodInfo _addMoistureDelta;
         private static Type _waterMathType;
         private static MethodInfo _emitWater;
+        // 公共产水接口：AO 作者推荐用它替代内部 WaterMath.EmitWater。
+        // 同一套出口（每 0.25 kg 一个 AO_Water，含 Dubs 兼容），返回剩余 kg。
+        private static MethodInfo _emitCondensate;
 
         // AO 的 AtmosphereSourceRates 是 struct，反射调用 Set 时必须装箱。
         // 字段在 Resolve 里一次性解析成数组，热路径只按下标取值，不再查字典。
         private static FieldInfo[] _rateFieldArray;
 
         private static Func<object> _ratesFactory;
+
+        // AO 的每步完成事件。StepApplied 在 AO 主线程、一步模拟完成并发布快照后触发，
+        // 存档期间不触发。用它替代「patch CompleteFinishedSimulation + 反射
+        // lastSynchronizedSimulationTick 算差值」的旧写法：elapsedTicks 由 AO 直接给出，
+        // 不会因为补丁安装顺序或存档流程出现偏差。
+        private static EventInfo _stepAppliedEvent;
+        private static Delegate _stepAppliedDelegate;
+        private static bool _stepAppliedBound;
+        private static string _stepAppliedFailure;
+        private static readonly List<StepAppliedHandler> _stepAppliedHandlers = new List<StepAppliedHandler>();
+        private static readonly object _stepAppliedLock = new object();
+
+        // AO 的每步准备事件。StepPreparing 在 AO 主线程、模拟线程锁之前触发，
+        // 这一步要消费的大气增量/连续源/热量都在它之后被 Drain 进 pending。
+        // 用它替代「patch PrepareTemperatureSources 直接写 pending 数组」的旧写法：
+        // 不再依赖 AO 内部数组名，也不会与 AO 自己的 Clear/Drain 顺序耦合。
+        private static EventInfo _stepPreparingEvent;
+        private static Delegate _stepPreparingDelegate;
+        private static bool _stepPreparingBound;
+        private static string _stepPreparingFailure;
+        private static readonly List<StepPreparingHandler> _stepPreparingHandlers = new List<StepPreparingHandler>();
+        private static readonly object _stepPreparingLock = new object();
+
+        // 批量温度增量：AO 在一次 lock 内把整批 indices/deltas 累加进 incoming 缓冲，
+        // 比逐格 AddTemperatureDelta 少 N-1 次锁与 N-1 次参数打包。ProxyHeat 每步
+        // 要写上千格，这是第 4 步里最值得走的公共入口。
+        private static MethodInfo _addTemperatureDeltas;
+        private static AddTemperatureDeltasDelegate _addTemperatureDeltasFast;
+        private static string _addTemperatureDeltasFailure;
+        [ThreadStatic] private static object[] _argsAddTemperatureDeltas;
+
+        // 公共连续源接口：替代内部 SourceSlots（ctor/Set/ZeroFrom/RemoveAll）。
+        // AO 作者明确推荐用这套公共 API，迁移完成后内部成员才允许重构。
+        private static MethodInfo _setContinuousSource;
+        private static MethodInfo _zeroContinuousSourcesWithPrefix;
+        private static MethodInfo _removeContinuousSourcesWithPrefix;
+        private static MethodInfo _unregisterContinuousSources;
+        private static string _continuousSourceFailure;
 
         // 参数全是 BCL/游戏类型的方法可以缓存强类型委托，绕过 MethodInfo.Invoke
         // 的 object[] 打包与参数检查。读温度/氧/水汽在 CCC、GC、AcNet 的
@@ -95,8 +137,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private delegate bool TryGetVaporDelegate(Map map, IntVec3 cell, out float vapor);
         private delegate bool AddVolumeDelegate(Map map, IntVec3 cell, float volumes, float oxygen, float temperature);
         private delegate bool AddMoistureDelegate(Map map, IntVec3 cell, float deltaVapor);
-        private delegate bool TryGetPressureDelegate(object component, IntVec3 cell, out float pascals);
-        private delegate bool PushHeatDelegate(object component, IntVec3 cell, float energy);
+        private delegate bool TryGetPressureDelegate(Map map, IntVec3 cell, out float pascals);
+        private delegate bool PushHeatDelegate(Map map, IntVec3 cell, float energy);
 
         private static TryGetTemperatureDelegate _tryGetTemperatureFast;
         private static TryGetOxygenDelegate _tryGetOxygenFast;
@@ -138,6 +180,21 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         [ThreadStatic] private static object[] _args5;
         [ThreadStatic] private static object _ratesBox;
 
+        /// <summary>
+        /// AO 每完成一步模拟后的回调。map 是本次推进的地图，gameTick 是当前游戏 tick，
+        /// elapsedTicks 是这一步实际覆盖的游戏 tick 数（AO 直接给出，不需要自己算差分）。
+        /// </summary>
+        public delegate void StepAppliedHandler(Map map, int gameTick, int elapsedTicks);
+
+        /// <summary>
+        /// AO 每步准备阶段的回调。map 是本次推进的地图，gameTick 是当前游戏 tick，
+        /// elapsedTicks 是距上次准备的游戏 tick 数。回调在 AO 主线程、模拟线程锁之前触发。
+        /// </summary>
+        public delegate void StepPreparingHandler(Map map, int gameTick, int elapsedTicks);
+
+        /// <summary>批量写温度增量；一次锁内累加整批。</summary>
+        private delegate void AddTemperatureDeltasDelegate(Map map, int[] indices, float[] deltas, int count);
+
         /// <summary>AO 连续源 API 是否完整可用。</summary>
         public static bool Available
         {
@@ -168,7 +225,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             get
             {
                 Resolve();
-                return _emitWater != null && DefDatabase<ThingDef>.GetNamedSilentFail("AO_Water") != null;
+                return (_emitCondensate != null || _emitWater != null)
+                       && DefDatabase<ThingDef>.GetNamedSilentFail("AO_Water") != null;
             }
         }
 
@@ -179,27 +237,50 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static float EmitWater(Thing parent, float poolKg)
         {
             Resolve();
-            if (_emitWater == null || parent == null || !parent.Spawned || poolKg <= 0f)
+            if (parent == null || !parent.Spawned || poolKg <= 0f)
             {
                 return poolKg;
             }
 
-            object[] args = GetArgs(ref _args2, 2);
-            args[0] = parent;
-            args[1] = poolKg;
             try
             {
-                _emitWater.Invoke(null, args);
-                return (float)args[1];
+                if (_emitCondensate != null)
+                {
+                    object[] cargs = GetArgs(ref _args2, 2);
+                    cargs[0] = parent;
+                    cargs[1] = poolKg;
+                    try
+                    {
+                        return (float)_emitCondensate.Invoke(null, cargs);
+                    }
+                    finally
+                    {
+                        cargs[0] = null;
+                    }
+                }
+
+                if (_emitWater == null)
+                {
+                    return poolKg;
+                }
+
+                object[] args = GetArgs(ref _args2, 2);
+                args[0] = parent;
+                args[1] = poolKg;
+                try
+                {
+                    _emitWater.Invoke(null, args);
+                    return (float)args[1];
+                }
+                finally
+                {
+                    args[0] = null;
+                }
             }
             catch (Exception)
             {
                 // AO 换版本把签名改了也不要让整个模拟停摆，水就地丢弃。
                 return poolKg;
-            }
-            finally
-            {
-                args[0] = null;
             }
         }
 
@@ -220,10 +301,34 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _tempControlType = AccessTools.TypeByName(TempControlTypeName);
                 _facilityExtType = AccessTools.TypeByName(FacilityExtTypeName);
 
-                if (_ratesType == null || _slotsType == null || interfaceType == null)
+                if (_ratesType == null || interfaceType == null)
                 {
-                    _failure = "AO 核心类型缺失：" + RatesTypeName + " / " + SlotsTypeName + " / " + InterfaceTypeName;
+                    _failure = "AO 核心类型缺失：" + RatesTypeName + " / " + InterfaceTypeName;
                     return;
+                }
+
+                // 每步完成事件：可选能力，缺失时不影响其它接口，调用方各自回退到旧补丁。
+                try
+                {
+                    _stepAppliedEvent = interfaceType.GetEvent(
+                        "StepApplied",
+                        BindingFlags.Public | BindingFlags.Static);
+                }
+                catch (Exception)
+                {
+                    _stepAppliedEvent = null;
+                }
+
+                // 每步准备事件：同样是可选能力，缺失时调用方回退到旧补丁。
+                try
+                {
+                    _stepPreparingEvent = interfaceType.GetEvent(
+                        "StepPreparing",
+                        BindingFlags.Public | BindingFlags.Static);
+                }
+                catch (Exception)
+                {
+                    _stepPreparingEvent = null;
                 }
 
                 _tryGetTemperature = AccessTools.Method(
@@ -263,18 +368,51 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                     interfaceType,
                     "AddVolumeSourceAtTemperature",
                     new[] { typeof(Map), typeof(IntVec3), typeof(float), typeof(float), typeof(float) });
-                if (_atmosphereComponentType != null)
+                // 气压改走公共接口：TryGetPressurePascals 内部就是 TryGetStaticPressurePascals，
+                // 返回绝对压力（含海拔/真空/密封房间修正），不再需要区分 solver 单位。
+                _staticPressure = AccessTools.Method(
+                    interfaceType,
+                    "TryGetPressurePascals",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(float).MakeByRefType() });
+
+                // 批量温度增量：AO 一次锁内累加整批，参数全是 BCL/游戏类型，可缓存强类型委托。
+                _addTemperatureDeltas = AccessTools.Method(
+                    interfaceType,
+                    "AddTemperatureDeltas",
+                    new[] { typeof(Map), typeof(int[]), typeof(float[]), typeof(int) });
+                if (_addTemperatureDeltas == null)
                 {
-                    _staticPressure = AccessTools.Method(
-                        _atmosphereComponentType,
-                        "TryGetStaticPressurePascals",
-                        new[] { typeof(IntVec3), typeof(float).MakeByRefType() });
-                    // 室外机排热/吸热：能量单位是 K·格总量，内部均分到十字 5 格。
-                    _pushHeat = AccessTools.Method(
-                        _atmosphereComponentType,
-                        "PushHeat",
-                        new[] { typeof(IntVec3), typeof(float) });
+                    _addTemperatureDeltasFailure = "AtmosphereInterface.AddTemperatureDeltas 未找到";
                 }
+
+                // 公共连续源：SetContinuousSource 有则更新、无则注册；前缀版本用于批量清零/删除。
+                _setContinuousSource = AccessTools.Method(
+                    interfaceType,
+                    "SetContinuousSource",
+                    new[] { typeof(Map), typeof(Thing), typeof(string), typeof(IntVec3), _ratesType });
+                _zeroContinuousSourcesWithPrefix = AccessTools.Method(
+                    interfaceType,
+                    "ZeroContinuousSourcesWithPrefix",
+                    new[] { typeof(Map), typeof(Thing), typeof(string) });
+                _removeContinuousSourcesWithPrefix = AccessTools.Method(
+                    interfaceType,
+                    "RemoveContinuousSourcesWithPrefix",
+                    new[] { typeof(Map), typeof(Thing), typeof(string) });
+                _unregisterContinuousSources = AccessTools.Method(
+                    interfaceType,
+                    "UnregisterContinuousSources",
+                    new[] { typeof(Map), typeof(Thing) });
+                if (_setContinuousSource == null || _zeroContinuousSourcesWithPrefix == null)
+                {
+                    _continuousSourceFailure = "AtmosphereInterface.SetContinuousSource/ZeroContinuousSourcesWithPrefix 未找到";
+                }
+
+                // 室外机排热/吸热：走公共 AtmosphereInterface.PushHeat。
+                // 能量单位是 K·格总量，AO 内部把它均分到该格所在房间的十字 5 格。
+                _pushHeat = AccessTools.Method(
+                    interfaceType,
+                    "PushHeat",
+                    new[] { typeof(Map), typeof(IntVec3), typeof(float) });
 
                 // 氧与水汽：CCC 气袋要把进气成分带进管道、出气时再吐回房间。
                 // AO 的 MixReleasedGas 只处理氧与温度，水汽必须单独走 AddMoistureDelta。
@@ -294,6 +432,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 // 产水：AO 自带 AO_Water（250 g/单位）与 WaterMath.EmitWater，
                 // 除湿器和「空气压缩机的冷凝水」都走这条路。CCC 的空气处理机
                 // 把回路里的过饱和水汽凝结下来时，直接复用同一套出口。
+                // 公共产水接口优先：AO 作者推荐 EmitCondensate，签名更简单且不依赖 internal 类型。
+                _emitCondensate = AccessTools.Method(
+                    interfaceType,
+                    "EmitCondensate",
+                    new[] { typeof(Thing), typeof(float) });
+
+                // 回退路径：旧版 AO 只有 internal WaterMath.EmitWater。
                 // internal 类型，只能按名字找。
                 _waterMathType = AccessTools.TypeByName("AtmosphereOverhaul.Buildings.WaterMath");
                 if (_waterMathType != null)
@@ -305,11 +450,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 }
 
                 if (_tryGetTemperature == null) { _failure = "AtmosphereInterface.TryGetTemperature 未找到"; return; }
-                if (_slotsCtor == null) { _failure = "SourceSlots(string) 未找到"; return; }
-                if (_slotsSet == null) { _failure = "SourceSlots.Set 未找到"; return; }
-                if (_slotsZeroFrom == null) { _failure = "SourceSlots.ZeroFrom 未找到"; return; }
-                if (_slotsRemoveAll == null) { _failure = "SourceSlots.RemoveAll 未找到"; return; }
-                if (_tempControlSlotsField == null) { _failure = "CompTempControlAtmosphere.slots 未找到"; return; }
+                if (_tryGetTemperature == null) { _failure = "AtmosphereInterface.TryGetTemperature 未找到"; return; }
+
+                // SourceSlots 与 CompTempControlAtmosphere.slots 是 AO 的内部实现，
+                // 作者已声明迁移完成后会重构。它们只作为旧版兼容路径，不再作为可用性门禁；
+                // 新版 AO 缺失时，公共 SetContinuousSource / AO_OutletLayout 仍能工作。
 
                 _rateFieldArray = new FieldInfo[RateFieldNames.Length];
                 for (int i = 0; i < RateFieldNames.Length; i++)
@@ -324,6 +469,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _addVolumeSourceFast = MakeFast<AddVolumeDelegate>(_addVolumeSource);
                 _addVolumeSourceAtTemperatureFast = MakeFast<AddVolumeDelegate>(_addVolumeSourceAtTemperature);
                 _addMoistureDeltaFast = MakeFast<AddMoistureDelegate>(_addMoistureDelta);
+                _addTemperatureDeltasFast = MakeFast<AddTemperatureDeltasDelegate>(_addTemperatureDeltas);
                 _staticPressureFast = MakeFast<TryGetPressureDelegate>(_staticPressure);
                 _pushHeatFast = MakeFast<PushHeatDelegate>(_pushHeat);
 
@@ -350,6 +496,295 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
             catch (Exception)
             {
                 return null;
+            }
+        }
+
+        /// <summary>AO 的 StepApplied 事件是否可用。</summary>
+        public static bool StepAppliedAvailable
+        {
+            get { Resolve(); return _stepAppliedEvent != null; }
+        }
+
+        /// <summary>StepApplied 不可用时的具体原因，用于日志。</summary>
+        public static string StepAppliedFailure
+        {
+            get { Resolve(); return _stepAppliedFailure; }
+        }
+
+        /// <summary>
+        /// 订阅 AO 的每步完成事件。第一次订阅时反射绑定静态事件；
+        /// 返回 false 表示 AO 没有这个事件，调用方应回退到「patch
+        /// CompleteFinishedSimulation + lastSynchronizedSimulationTick 差分」的旧写法。
+        /// 回调在 AO 主线程、一步完成并发布快照后触发，存档期间不触发。
+        /// </summary>
+        public static bool SubscribeStepApplied(StepAppliedHandler handler)
+        {
+            if (handler == null)
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_stepAppliedEvent == null)
+            {
+                if (string.IsNullOrEmpty(_stepAppliedFailure))
+                {
+                    _stepAppliedFailure = "AtmosphereInterface.StepApplied 未找到";
+                }
+                return false;
+            }
+
+            lock (_stepAppliedLock)
+            {
+                if (_stepAppliedHandlers.Contains(handler))
+                {
+                    return true;
+                }
+
+                if (!_stepAppliedBound)
+                {
+                    try
+                    {
+                        MethodInfo callback = typeof(AoBridge).GetMethod(
+                            nameof(OnStepAppliedEvent),
+                            BindingFlags.NonPublic | BindingFlags.Static);
+                        _stepAppliedDelegate = Delegate.CreateDelegate(
+                            _stepAppliedEvent.EventHandlerType, callback);
+                        _stepAppliedEvent.AddEventHandler(null, _stepAppliedDelegate);
+                        _stepAppliedBound = true;
+                    }
+                    catch (Exception e)
+                    {
+                        _stepAppliedFailure = e.GetType().Name + ": " + e.Message;
+                        _stepAppliedDelegate = null;
+                        return false;
+                    }
+                }
+
+                _stepAppliedHandlers.Add(handler);
+            }
+
+            return true;
+        }
+
+        /// <summary>取消订阅；最后一个订阅者移除后保留静态挂钩，避免反复增删事件。</summary>
+        public static void UnsubscribeStepApplied(StepAppliedHandler handler)
+        {
+            if (handler == null)
+            {
+                return;
+            }
+
+            lock (_stepAppliedLock)
+            {
+                _stepAppliedHandlers.Remove(handler);
+            }
+        }
+
+        /// <summary>
+        /// 事件转发。AO 的 StepApplied 在主线程触发，但订阅者仍逐个 try/catch：
+        /// 一个模块抛异常不能拖垮其它模块，也不能让 AO 的 Raise 记录一次失败。
+        /// </summary>
+        private static void OnStepAppliedEvent(Map map, int gameTick, int elapsedTicks)
+        {
+            StepAppliedHandler[] handlers;
+            lock (_stepAppliedLock)
+            {
+                if (_stepAppliedHandlers.Count == 0)
+                {
+                    return;
+                }
+                handlers = _stepAppliedHandlers.ToArray();
+            }
+
+            for (int i = 0; i < handlers.Length; i++)
+            {
+                try
+                {
+                    handlers[i](map, gameTick, elapsedTicks);
+                }
+                catch (Exception e)
+                {
+                    Log.ErrorOnce(
+                        "[AOPatch/AO] StepApplied 订阅者异常：" + e.GetType().Name + ": " + e.Message,
+                        ("AOPatch.StepApplied." + handlers[i].Method.Name).GetHashCode());
+                }
+            }
+        }
+
+        /// <summary>AO 的 StepPreparing 事件是否可用。</summary>
+        public static bool StepPreparingAvailable
+        {
+            get { Resolve(); return _stepPreparingEvent != null; }
+        }
+
+        /// <summary>StepPreparing 不可用时的具体原因，用于日志。</summary>
+        public static string StepPreparingFailure
+        {
+            get { Resolve(); return _stepPreparingFailure; }
+        }
+
+        /// <summary>
+        /// 订阅 AO 的每步准备事件。返回 false 表示 AO 没有这个事件，
+        /// 调用方应回退到 patch PrepareTemperatureSources 的旧写法。
+        /// 回调在 AO 主线程、模拟线程锁之前触发。
+        /// </summary>
+        public static bool SubscribeStepPreparing(StepPreparingHandler handler)
+        {
+            if (handler == null)
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_stepPreparingEvent == null)
+            {
+                if (string.IsNullOrEmpty(_stepPreparingFailure))
+                {
+                    _stepPreparingFailure = "AtmosphereInterface.StepPreparing 未找到";
+                }
+                return false;
+            }
+
+            lock (_stepPreparingLock)
+            {
+                if (_stepPreparingHandlers.Contains(handler))
+                {
+                    return true;
+                }
+
+                if (!_stepPreparingBound)
+                {
+                    try
+                    {
+                        MethodInfo callback = typeof(AoBridge).GetMethod(
+                            nameof(OnStepPreparingEvent),
+                            BindingFlags.NonPublic | BindingFlags.Static);
+                        _stepPreparingDelegate = Delegate.CreateDelegate(
+                            _stepPreparingEvent.EventHandlerType, callback);
+                        _stepPreparingEvent.AddEventHandler(null, _stepPreparingDelegate);
+                        _stepPreparingBound = true;
+                    }
+                    catch (Exception e)
+                    {
+                        _stepPreparingFailure = e.GetType().Name + ": " + e.Message;
+                        _stepPreparingDelegate = null;
+                        return false;
+                    }
+                }
+
+                _stepPreparingHandlers.Add(handler);
+            }
+
+            return true;
+        }
+
+        /// <summary>取消订阅；最后一个订阅者移除后保留静态挂钩，避免反复增删事件。</summary>
+        public static void UnsubscribeStepPreparing(StepPreparingHandler handler)
+        {
+            if (handler == null)
+            {
+                return;
+            }
+
+            lock (_stepPreparingLock)
+            {
+                _stepPreparingHandlers.Remove(handler);
+            }
+        }
+
+        /// <summary>事件转发：逐个 try/catch，一个模块抛异常不拖垮其它模块。</summary>
+        private static void OnStepPreparingEvent(Map map, int gameTick, int elapsedTicks)
+        {
+            StepPreparingHandler[] handlers;
+            lock (_stepPreparingLock)
+            {
+                if (_stepPreparingHandlers.Count == 0)
+                {
+                    return;
+                }
+                handlers = _stepPreparingHandlers.ToArray();
+            }
+
+            for (int i = 0; i < handlers.Length; i++)
+            {
+                try
+                {
+                    handlers[i](map, gameTick, elapsedTicks);
+                }
+                catch (Exception e)
+                {
+                    Log.ErrorOnce(
+                        "[AOPatch/AO] StepPreparing 订阅者异常：" + e.GetType().Name + ": " + e.Message,
+                        ("AOPatch.StepPreparing." + handlers[i].Method.Name).GetHashCode());
+                }
+            }
+        }
+
+        /// <summary>批量温度增量入口是否可用。</summary>
+        public static bool AddTemperatureDeltasAvailable
+        {
+            get { Resolve(); return _addTemperatureDeltas != null && _addTemperatureDeltasFailure == null; }
+        }
+
+        /// <summary>批量温度增量不可用时的具体原因，用于日志。</summary>
+        public static string AddTemperatureDeltasFailure
+        {
+            get { Resolve(); return _addTemperatureDeltasFailure; }
+        }
+
+        /// <summary>
+        /// 一次锁内给一批格子累加温度增量（摄氏度）。index 是 z*Width+x。
+        /// count 为有效条目数；越界/NaN 的条目由 AO 自己跳过并计数。
+        /// </summary>
+        public static bool AddTemperatureDeltas(Map map, int[] indices, float[] deltas, int count)
+        {
+            if (map == null || indices == null || deltas == null || count <= 0)
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_addTemperatureDeltas == null)
+            {
+                return false;
+            }
+
+            int n = count;
+            if (n > indices.Length)
+            {
+                n = indices.Length;
+            }
+            if (n > deltas.Length)
+            {
+                n = deltas.Length;
+            }
+            if (n <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (_addTemperatureDeltasFast != null)
+                {
+                    _addTemperatureDeltasFast(map, indices, deltas, n);
+                }
+                else
+                {
+                    object[] args = GetArgs(ref _argsAddTemperatureDeltas, 4);
+                    args[0] = map;
+                    args[1] = indices;
+                    args[2] = deltas;
+                    args[3] = n;
+                    _addTemperatureDeltas.Invoke(null, args);
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                _addTemperatureDeltasFailure = e.GetType().Name + ": " + e.Message;
+                return false;
             }
         }
 
@@ -388,9 +823,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         }
 
         /// <summary>
-        /// 读一格的静态气压（Pa，绝对压力）。
-        /// 用 AO 的 internal TryGetStaticPressurePascals，而不是公开的 TryGetPressurePascals
-        /// ——后者把 solver 单位按 1000 Pa 换算，偏差被放大到约 83 倍。
+        /// 读一格的绝对气压（Pa）。走 AO 公开的 TryGetPressurePascals：
+        /// 它内部转发到 TryGetStaticPressurePascals，返回
+        /// AmbientSurfacePressurePa + StoredPressureAt，已经包含海拔/真空/密封房间修正，
+        /// 不需要调用方再区分 solver 单位。
         /// </summary>
         public static bool TryGetStaticPressure(Map map, IntVec3 cell, out float pascals)
         {
@@ -401,24 +837,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
-            MapComponent component = FindAtmosphereComponent(map);
-            if (component == null)
-            {
-                return false;
-            }
-
             if (_staticPressureFast != null)
             {
-                return _staticPressureFast(component, cell, out pascals);
+                return _staticPressureFast(map, cell, out pascals);
             }
 
-            object[] args = GetArgs(ref _args2, 2);
-            args[0] = cell;
-            args[1] = null;
-            bool ok = (bool)_staticPressure.Invoke(component, args);
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = map;
+            args[1] = cell;
+            args[2] = null;
+            bool ok = (bool)_staticPressure.Invoke(null, args);
             if (ok)
             {
-                pascals = (float)args[1];
+                pascals = (float)args[2];
             }
             return ok;
         }
@@ -436,22 +867,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 return false;
             }
 
-            MapComponent component = FindAtmosphereComponent(map);
-            if (component == null)
-            {
-                return false;
-            }
-
             try
             {
                 if (_pushHeatFast != null)
                 {
-                    return _pushHeatFast(component, cell, energy);
+                    return _pushHeatFast(map, cell, energy);
                 }
-                object[] args = GetArgs(ref _args2, 2);
-                args[0] = cell;
-                args[1] = energy;
-                return (bool)_pushHeat.Invoke(component, args);
+                object[] args = GetArgs(ref _args3, 3);
+                args[0] = map;
+                args[1] = cell;
+                args[2] = energy;
+                return (bool)_pushHeat.Invoke(null, args);
             }
             catch (Exception)
             {
@@ -646,8 +1072,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static object GetSlots(Thing thing)
         {
             Resolve();
-            if (!_available || thing == null)
+            if (!_available || thing == null || _tempControlSlotsField == null)
             {
+                // 新版 AO 若移除了 CompTempControlAtmosphere.slots，旧槽位路径直接不可用；
+                // 调用方应改用公共 SetContinuousSource。
                 return null;
             }
 
@@ -772,6 +1200,169 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         }
 
         /// <summary>读 AO_FacilityExtension.heatFactor；没有扩展时用 fallback。</summary>
+        /// <summary>公共连续源接口是否可用（SetContinuousSource/前缀清零）。</summary>
+        public static bool ContinuousSourceAvailable
+        {
+            get { Resolve(); return _setContinuousSource != null && _zeroContinuousSourcesWithPrefix != null; }
+        }
+
+        /// <summary>公共连续源接口不可用时的具体原因，用于日志。</summary>
+        public static string ContinuousSourceFailure
+        {
+            get { Resolve(); return _continuousSourceFailure; }
+        }
+
+        /// <summary>
+        /// 注册或更新一个连续源：同 owner+key 已存在时更新速率并移动格子。
+        /// rates 每游戏 tick 生效；owner 摧毁后自动失效。key 建议带本 mod 前缀。
+        /// </summary>
+        public static bool SetContinuousSource(Map map, Thing owner, string key, IntVec3 cell, SlotRates rates)
+        {
+            if (map == null || owner == null || string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_setContinuousSource == null)
+            {
+                return false;
+            }
+
+            object boxed = GetRatesBox();
+            if (boxed == null)
+            {
+                return false;
+            }
+            FillRates(boxed, rates);
+
+            object[] args = GetArgs(ref _args5, 5);
+            args[0] = map;
+            args[1] = owner;
+            args[2] = key;
+            args[3] = cell;
+            args[4] = boxed;
+            try
+            {
+                return (bool)_setContinuousSource.Invoke(null, args);
+            }
+            catch (Exception e)
+            {
+                _continuousSourceFailure = e.GetType().Name + ": " + e.Message;
+                return false;
+            }
+            finally
+            {
+                args[0] = null;
+                args[1] = null;
+                args[2] = null;
+                args[4] = null;
+            }
+        }
+
+        /// <summary>把 owner 名下 key 以 prefix 开头的连续源速率清零（源仍在，不再产出）。</summary>
+        public static bool ZeroContinuousSourcesWithPrefix(Map map, Thing owner, string prefix)
+        {
+            if (map == null || owner == null || string.IsNullOrEmpty(prefix))
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_zeroContinuousSourcesWithPrefix == null)
+            {
+                return false;
+            }
+
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = map;
+            args[1] = owner;
+            args[2] = prefix;
+            try
+            {
+                return (bool)_zeroContinuousSourcesWithPrefix.Invoke(null, args);
+            }
+            catch (Exception e)
+            {
+                _continuousSourceFailure = e.GetType().Name + ": " + e.Message;
+                return false;
+            }
+            finally
+            {
+                args[0] = null;
+                args[1] = null;
+                args[2] = null;
+            }
+        }
+
+        /// <summary>删除 owner 名下 key 以 prefix 开头的连续源。</summary>
+        public static bool RemoveContinuousSourcesWithPrefix(Map map, Thing owner, string prefix)
+        {
+            if (map == null || owner == null || string.IsNullOrEmpty(prefix))
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_removeContinuousSourcesWithPrefix == null)
+            {
+                return false;
+            }
+
+            object[] args = GetArgs(ref _args3, 3);
+            args[0] = map;
+            args[1] = owner;
+            args[2] = prefix;
+            try
+            {
+                return (bool)_removeContinuousSourcesWithPrefix.Invoke(null, args);
+            }
+            catch (Exception e)
+            {
+                _continuousSourceFailure = e.GetType().Name + ": " + e.Message;
+                return false;
+            }
+            finally
+            {
+                args[0] = null;
+                args[1] = null;
+                args[2] = null;
+            }
+        }
+
+        /// <summary>注销 owner 名下的全部连续源（建筑拆除/换图时用）。</summary>
+        public static bool UnregisterContinuousSources(Map map, Thing owner)
+        {
+            if (map == null || owner == null)
+            {
+                return false;
+            }
+
+            Resolve();
+            if (_unregisterContinuousSources == null)
+            {
+                return false;
+            }
+
+            object[] args = GetArgs(ref _args2, 2);
+            args[0] = map;
+            args[1] = owner;
+            try
+            {
+                return (bool)_unregisterContinuousSources.Invoke(null, args);
+            }
+            catch (Exception e)
+            {
+                _continuousSourceFailure = e.GetType().Name + ": " + e.Message;
+                return false;
+            }
+            finally
+            {
+                args[0] = null;
+                args[1] = null;
+            }
+        }
+
         public static float HeatFactor(ThingDef def, float fallback)
         {
             return ReadExtFloat(def, _extHeatFactor, fallback);
@@ -883,6 +1474,123 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 pool = args;
             }
             return args;
+        }
+
+        // ===== 动态接口代理 =====
+        // AO 的 IAtmosphereShield / IAtmospherePawnAirProvider 是接口，注册与注销都要求
+        // 真实实现实例。本工程编译期不引用 AO，无法写 class : IAtmosphereShield，
+        // 因此在运行时用 Reflection.Emit 生成一个只做静态转发的类型，例如：
+        //   Covers(Map, IntVec3) -> 我们的静态判定
+        //   TryGetAir(Pawn, out float, out float) -> 我们的静态判定
+        // 类型只生成一次并缓存，之后每次判定都是普通静态调用，没有反射开销。
+
+        private static ModuleBuilder _proxyModule;
+
+        /// <summary>
+        /// 生成一个实现 interfaceType 的代理实例，把名为 methodName 的接口方法
+        /// 原样转发给静态方法 target。target 的参数与返回类型必须与接口方法一致。
+        /// 生成失败返回 null，调用方回退到旧的 Harmony 补丁。
+        /// </summary>
+        public static object CreateForwardingProxy(Type interfaceType, string methodName, MethodInfo target)
+        {
+            if (interfaceType == null || string.IsNullOrEmpty(methodName) || target == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                MethodInfo ifaceMethod = interfaceType.GetMethod(
+                    methodName,
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (ifaceMethod == null || !SignatureMatches(ifaceMethod, target))
+                {
+                    return null;
+                }
+
+                ModuleBuilder module = GetProxyModule();
+                if (module == null)
+                {
+                    return null;
+                }
+
+                string typeName = "AOPatch.Proxy." + interfaceType.Name + "." + methodName;
+                TypeBuilder builder = module.DefineType(
+                    typeName,
+                    TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+                    typeof(object),
+                    new[] { interfaceType });
+
+                ParameterInfo[] parameters = ifaceMethod.GetParameters();
+                Type[] parameterTypes = new Type[parameters.Length];
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    parameterTypes[i] = parameters[i].ParameterType;
+                }
+
+                MethodBuilder method = builder.DefineMethod(
+                    methodName,
+                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final
+                        | MethodAttributes.HideBySig | MethodAttributes.NewSlot,
+                    ifaceMethod.ReturnType,
+                    parameterTypes);
+
+                ILGenerator il = method.GetILGenerator();
+                for (int i = 0; i < parameterTypes.Length; i++)
+                {
+                    il.Emit(OpCodes.Ldarg, (short)(i + 1));
+                }
+                il.Emit(OpCodes.Call, target);
+                il.Emit(OpCodes.Ret);
+
+                builder.DefineMethodOverride(method, ifaceMethod);
+                Type proxyType = builder.CreateType();
+                return proxyType == null ? null : Activator.CreateInstance(proxyType);
+            }
+            catch (Exception e)
+            {
+                Log.Warning(
+                    "[AOPatch/AO] 动态接口代理生成失败（" + interfaceType.Name + "." + methodName + "）："
+                    + e.GetType().Name + ": " + e.Message);
+                return null;
+            }
+        }
+
+        private static ModuleBuilder GetProxyModule()
+        {
+            if (_proxyModule == null)
+            {
+                AssemblyBuilder assembly = AppDomain.CurrentDomain.DefineDynamicAssembly(
+                    new AssemblyName("AOPatch.DynamicProxies"),
+                    AssemblyBuilderAccess.Run);
+                _proxyModule = assembly.DefineDynamicModule("AOPatch.DynamicProxies");
+            }
+            return _proxyModule;
+        }
+
+        private static bool SignatureMatches(MethodInfo ifaceMethod, MethodInfo target)
+        {
+            if (ifaceMethod.ReturnType != target.ReturnType)
+            {
+                return false;
+            }
+
+            ParameterInfo[] a = ifaceMethod.GetParameters();
+            ParameterInfo[] b = target.GetParameters();
+            if (a.Length != b.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (a[i].ParameterType != b[i].ParameterType)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

@@ -102,22 +102,26 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
 
             // 账本随 AO 的模拟步推进（默认 30 tick 一步），而不是每 250 tick 抽一次。
-            // 与 CCC 的 AirLoopStepPatch 同一入口：CompleteFinishedSimulation 前后
-            // lastSynchronizedSimulationTick 的差值就是本次模拟实际推进的 tick 数。
-            bool stepPatched = false;
-            Type aoMapType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
-            if (aoMapType != null)
+            // 优先订阅 StepApplied：elapsedTicks 由 AO 直接给出，不依赖内部字段，
+            // 也不会因为补丁顺序出现偏差；存档期间 AO 不触发，符合「不扰动存档」。
+            bool stepPatched = AoBridge.SubscribeStepApplied(OnStepApplied);
+            if (!stepPatched)
             {
-                FieldInfo tickField = AccessTools.Field(aoMapType, "lastSynchronizedSimulationTick");
-                MethodInfo complete = AccessTools.Method(aoMapType, "CompleteFinishedSimulation");
-                if (tickField != null && complete != null)
+                // 回退路径：AO 版本没有 StepApplied 时维持旧写法。
+                Type aoMapType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
+                if (aoMapType != null)
                 {
-                    _simulationTickField = tickField;
-                    harmony.Patch(
-                        complete,
-                        new HarmonyMethod(typeof(AcNetPatches), "SimulationStepPrefix"),
-                        new HarmonyMethod(typeof(AcNetPatches), "SimulationStepPostfix"));
-                    stepPatched = true;
+                    FieldInfo tickField = AccessTools.Field(aoMapType, "lastSynchronizedSimulationTick");
+                    MethodInfo complete = AccessTools.Method(aoMapType, "CompleteFinishedSimulation");
+                    if (tickField != null && complete != null)
+                    {
+                        _simulationTickField = tickField;
+                        harmony.Patch(
+                            complete,
+                            new HarmonyMethod(typeof(AcNetPatches), "SimulationStepPrefix"),
+                            new HarmonyMethod(typeof(AcNetPatches), "SimulationStepPostfix"));
+                        stepPatched = true;
+                    }
                 }
             }
 
@@ -394,6 +398,45 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// StepApplied 回调：AO 主线程、一步完成并发布快照后。
+        /// elapsedTicks 是这一步实际覆盖的游戏 tick 数。
+        /// </summary>
+        private static void OnStepApplied(Map map, int gameTick, int elapsedTicks)
+        {
+            if (map == null || elapsedTicks <= 0)
+            {
+                return;
+            }
+
+            if (!AoBridge.IsActive(map))
+            {
+                return;
+            }
+
+            PipeNetManager manager = map.GetComponent<PipeNetManager>();
+            if (manager == null)
+            {
+                return;
+            }
+
+            List<PipeNet> nets = manager.pipeNets;
+            for (int i = 0; i < nets.Count; i++)
+            {
+                AcPipeNet net = nets[i] as AcPipeNet;
+                if (net == null)
+                {
+                    continue;
+                }
+
+                AcNetLedger ledger = AcNetLedgerManager.Get(net);
+                if (ledger != null)
+                {
+                    ledger.Run(net, elapsedTicks);
+                }
+            }
         }
 
         /// <summary>记录本次模拟开始前的同步 tick，Postfix 里算差值得到真实 dt。</summary>

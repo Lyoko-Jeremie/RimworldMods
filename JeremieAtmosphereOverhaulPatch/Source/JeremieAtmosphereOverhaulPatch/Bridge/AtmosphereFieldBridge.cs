@@ -26,6 +26,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private const string AirMoverInterfaceName = "AtmosphereOverhaul.RimWorld.AtmosphereInterface";
         private const string SourceRatesTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereSourceRates";
         private const string SourceHandleTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereSourceHandle";
+        private const string FieldViewTypeName = "AtmosphereOverhaul.RimWorld.AtmosphereFieldView";
 
         private static bool _resolved;
         private static bool _available;
@@ -46,6 +47,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static PropertyInfo _faceOpenZProp;
         private static PropertyInfo _fieldReadProp;
         private static MethodInfo _markCachedDirty;
+        // 公共失效接口：AO 作者推荐用 InvalidateMapMasks(Map) 替代内部 MarkCachedMapDataDirty。
+        private static MethodInfo _invalidateMapMasks;
 
         // 六通道硬固定（穹顶绝对隔离）专用的额外成员。
         // 与 _available 分开判定：这些缺失只让隔离模块降级，不影响 ProxyHeat 等既有模块。
@@ -65,6 +68,19 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         private static MethodInfo _currentSolverPascals;
         private static bool _sixChannelAvailable;
         private static string _sixChannelFailure;
+
+        // 只读场视图：AO 公共接口 AtmosphereFieldView，持有上一完成步的快照。
+        // 与六通道分开判定；缺失时调用方回退到 engine 数组读（模拟线程用）。
+        private static Type _fieldViewType;
+        private static MethodInfo _tryGetFieldView;
+        private static PropertyInfo _fvWidth;
+        private static PropertyInfo _fvSize;
+        private static MethodInfo _fvTemperature;
+        private static MethodInfo _fvIsAir;
+        private static bool _fieldViewAvailable;
+        private static string _fieldViewFailure;
+        [ThreadStatic] private static object[] _fieldViewArgs;
+        [ThreadStatic] private static object[] _fieldViewIndexArgs;
 
         private static Type _airMoverSettingsType;
         private static MethodInfo _registerAirMover;
@@ -212,6 +228,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 _fieldReadProp = AccessTools.Property(_fieldType, "Read");
                 _markCachedDirty = AccessTools.Method(_componentType, "MarkCachedMapDataDirty");
 
+                Type interfaceType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereInterface");
+                if (interfaceType != null)
+                {
+                    _invalidateMapMasks = AccessTools.Method(
+                        interfaceType,
+                        "InvalidateMapMasks",
+                        new[] { typeof(Map) });
+                }
+
                 // 六通道额外成员：独立解析，失败只降级隔离模块。
                 _moistureProp = AccessTools.Property(_engineType, "Moisture");
                 _oxygenProp = AccessTools.Property(_engineType, "Oxygen");
@@ -260,6 +285,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
                 ResolveAirMover();
                 ResolveSources();
                 ResolveWind();
+                ResolveFieldView();
 
                 _available = true;
                 return true;
@@ -787,7 +813,26 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static void MarkCachedMapDataDirty(Map map)
         {
             Resolve();
-            if (map == null || _markCachedDirty == null)
+            if (map == null)
+            {
+                return;
+            }
+
+            // 优先走公共失效接口；旧版 AO 没有时才回退到组件上的内部方法。
+            if (_invalidateMapMasks != null)
+            {
+                try
+                {
+                    _invalidateMapMasks.Invoke(null, new object[] { map });
+                    return;
+                }
+                catch (Exception)
+                {
+                    // 落到下面的回退路径。
+                }
+            }
+
+            if (_markCachedDirty == null)
             {
                 return;
             }
@@ -989,6 +1034,136 @@ namespace Jeremie.AtmosphereOverhaulPatch.Bridge
         public static string WindFailure
         {
             get { Resolve(); return _windFailure; }
+        }
+
+        /// <summary>
+        /// 解析 AO 的只读场视图接口。失败只让主线程读降级，不影响 engine 数组读。
+        /// </summary>
+        private static void ResolveFieldView()
+        {
+            try
+            {
+                Type interfaceType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereInterface");
+                _fieldViewType = AccessTools.TypeByName(FieldViewTypeName);
+                if (interfaceType == null || _fieldViewType == null)
+                {
+                    _fieldViewFailure = "AO 场视图类型缺失";
+                    return;
+                }
+
+                _tryGetFieldView = AccessTools.Method(
+                    interfaceType,
+                    "TryGetFieldView",
+                    new[] { typeof(Map), _fieldViewType.MakeByRefType() });
+                _fvWidth = AccessTools.Property(_fieldViewType, "Width");
+                _fvSize = AccessTools.Property(_fieldViewType, "Size");
+                _fvTemperature = AccessTools.Method(_fieldViewType, "Temperature", new[] { typeof(int) });
+                _fvIsAir = AccessTools.Method(_fieldViewType, "IsAir", new[] { typeof(int) });
+
+                if (_tryGetFieldView == null || _fvWidth == null || _fvSize == null
+                    || _fvTemperature == null || _fvIsAir == null)
+                {
+                    _fieldViewFailure = "AO 场视图成员缺失";
+                    _tryGetFieldView = null;
+                    return;
+                }
+
+                _fieldViewAvailable = true;
+            }
+            catch (Exception e)
+            {
+                _fieldViewFailure = e.GetType().Name + ": " + e.Message;
+            }
+        }
+
+        /// <summary>
+        /// AO 只读场视图的句柄。装箱的 struct 由 AO 在下一步发布后覆盖旧数组，
+        /// 因此不能跨模拟步保存，只在当前主线程调用内使用。
+        /// </summary>
+        public sealed class FieldView
+        {
+            internal object Boxed;
+            public int Width;
+            public int Size;
+        }
+
+        /// <summary>场视图是否可用。</summary>
+        public static bool FieldViewAvailable
+        {
+            get { Resolve(); return _fieldViewAvailable; }
+        }
+
+        /// <summary>场视图不可用的原因。</summary>
+        public static string FieldViewFailure
+        {
+            get { Resolve(); return _fieldViewFailure; }
+        }
+
+        /// <summary>
+        /// 取 AO 的只读场视图（上一完成步快照）。只能在主线程调用。
+        /// 批量数组读仍建议直接用 engine 快照；本接口适合逐格少量读。
+        /// </summary>
+        public static bool TryGetFieldView(Map map, out FieldView view)
+        {
+            view = null;
+            Resolve();
+            if (!_fieldViewAvailable || map == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                object[] args = GetArgs(ref _fieldViewArgs, 2);
+                args[0] = map;
+                args[1] = null;
+                bool ok = (bool)_tryGetFieldView.Invoke(null, args);
+                object boxed = args[1];
+                args[0] = null;
+                if (!ok || boxed == null)
+                {
+                    return false;
+                }
+
+                FieldView result = new FieldView();
+                result.Boxed = boxed;
+                result.Width = (int)_fvWidth.GetValue(boxed);
+                result.Size = (int)_fvSize.GetValue(boxed);
+                view = result;
+                return true;
+            }
+            catch (Exception e)
+            {
+                _fieldViewFailure = e.GetType().Name + ": " + e.Message;
+                _fieldViewAvailable = false;
+                return false;
+            }
+        }
+
+        /// <summary>视图内某格的温度（摄氏度）。</summary>
+        public static float FieldTemperature(FieldView view, int index)
+        {
+            if (view == null || view.Boxed == null)
+            {
+                return 0f;
+            }
+
+            object[] args = GetArgs(ref _fieldViewIndexArgs, 1);
+            args[0] = index;
+            return (float)_fvTemperature.Invoke(view.Boxed, args);
+        }
+
+        /// <summary>视图内某格是否可通行空气（ObstacleMask &gt; 0）。</summary>
+        public static bool FieldIsAir(FieldView view, int index)
+        {
+            if (view == null || view.Boxed == null)
+            {
+                return false;
+            }
+
+            object[] args = GetArgs(ref _fieldViewIndexArgs, 1);
+            args[0] = index;
+            return (bool)_fvIsAir.Invoke(view.Boxed, args);
         }
 
         /// <summary>

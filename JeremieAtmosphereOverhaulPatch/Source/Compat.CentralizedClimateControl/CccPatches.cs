@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using CentralizedClimateControl;
 using HarmonyLib;
+using Jeremie.AtmosphereOverhaulPatch.Bridge;
 using RimWorld;
 using Verse;
 
@@ -69,6 +70,15 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
         public static bool Prepare()
         {
+            // 优先订阅 AO 的 StepApplied：elapsedTicks 由 AO 直接给出，
+            // 不依赖内部字段，也不会因为补丁安装顺序出现偏差。
+            if (AoBridge.SubscribeStepApplied(OnStepApplied))
+            {
+                // 已挂到公共事件上，旧补丁不再安装。
+                return false;
+            }
+
+            // 回退路径：AO 版本没有 StepApplied 时维持原行为。
             _targetType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
             if (_targetType == null)
             {
@@ -86,6 +96,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
         public static MethodBase TargetMethod()
         {
             return AccessTools.Method(_targetType, "CompleteFinishedSimulation");
+        }
+
+        /// <summary>StepApplied 回调：AO 主线程、一步完成并发布快照后。</summary>
+        private static void OnStepApplied(Map map, int gameTick, int elapsedTicks)
+        {
+            if (map == null || elapsedTicks <= 0)
+            {
+                return;
+            }
+
+            AirLoopMapComponent loops = map.GetComponent<AirLoopMapComponent>();
+            if (loops == null)
+            {
+                return;
+            }
+
+            loops.StepAll(elapsedTicks / 60f);
         }
 
         public static void Prefix(object __instance, out int __state)

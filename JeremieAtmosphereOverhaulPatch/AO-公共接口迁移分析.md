@@ -858,3 +858,29 @@ void AddDeltas(Map map, IntVec3[] cells, AtmosphereDeltas deltas, int count);
 ### 一条新核对结论
 
 `Isolated` **会切分压力/air mover 组件**：组件 BFS 用 `FaceOpenX/Z` 扩展（`LocalAtmosphereEngine.cs:724-731`），且 `VisitAirMoverNeighbor` 要求 `face > 0`（`:818`）。所以 `Isolated` 等价于「独立密封压力组件」，而不是单纯关通量——这一点建议写进 AO 文档。
+
+---
+
+## 附录 F 迁移实施记录（2026-11-24）
+
+按 m00442 的 7 步顺序落地，五工程 `dotnet build -c Debug` 均 0 警告 0 错误。**游戏内逐建筑验证尚未进行**。
+
+| 步 | 内容 | 落点 |
+|---|---|---|
+| 1 | `StepApplied` 事件替换 `CompleteFinishedSimulation` + `lastSynchronizedSimulationTick` 差分 | `Bridge/AoBridge.cs` 新增订阅与 Emit 动态代理；`Compat.CentralizedClimateControl/CccPatches.cs`、`Compat.VanillaTemperatureExpanded/AcNet/AcNetPatches.cs` 优先订阅，失败回退旧 patch |
+| 2 | `IAtmosphereShield` + `IAtmospherePawnAirProvider` | 新建 `Compat.OmniCrafter/OmniAtmosphereApi.cs`；`Patch_OmniWindExemption` 成功时跳过 4 个旧 patch，保留 `ThrowCollectedPawns`/`StaggerFor`/`TrackerDirty`；`Patch_OmniPawnProtection` 优先 provider；修复 `OmniProtection` 把属性当字段导致恒 30 tick |
+| 3 | 读接口 | 压力改 `TryGetPressurePascals(Map,…)`；`Bridge/AtmosphereFieldBridge.cs` 加 `TryGetFieldView` 与 `FieldView`；`Compat.GoodClimate/GcAirRelay.cs` 主线程读改 FieldView；FaceOpen 反射保留 |
+| 4 | 写接口 | `AoBridge` 加 `StepPreparing`、`AddTemperatureDeltas`、`SetContinuousSource/ZeroContinuousSourcesWithPrefix/RemoveContinuousSourcesWithPrefix/UnregisterContinuousSources`；`PushHeat`/`EmitCondensate`/`InvalidateMapMasks`/`ApplySpeedLimit` 走公共入口；ProxyHeat 空气通道批量、地温仍直写；`CompTempOutputShape` 改连续源 |
+| 5 | 温控出风格 | 新建 `Patches/OutletLayoutBootstrap.cs`：把 `CompProperties_TempOutputShape.shape` 翻译成 `AO_OutletLayout` 挂 `def.modExtensions`；`Bootstrap`/`TempOutputShapePatch` 优先使用，成功即不再 patch `RunTempControl`（AO 原生已含多格出风、效率、热侧倍率与除湿） |
+| 6 | 区域接口 | **暂缓**：当前没有需要 `RegisterRegion(Isolated)` 的新功能；穹顶几何隔离继续用 `Rebuild` Postfix（见 §5） |
+| 7 | 清理 `SourceSlots` | 吊扇、VTE `AcNetLedger`、CCC `AirLoopMapComponent` 全部改 `SetContinuousSource`；`AoBridge.Resolve()` 不再把 `SourceSlots`/`CompTempControlAtmosphere.slots` 作为可用性门禁 |
+
+### 残留（有意保留）
+
+- `Compat.VanillaTemperatureExpanded/AcNet/AcNetPatches.cs` 的 `AoRunPrefix` 仍读 `CompTempControlAtmosphere.slots` 并 `ZeroFrom(b, 1)`：这是清 AO **自己**写进 slot1..3 的热侧残留源，不属于我们的 key 空间；`_aoSlotsField` 为 null 时整段跳过，AO 重构后自动失效。
+- `ProxyHeatRelayMapComponent.Inject` 仍读 `engine.Temperature.Read` / `GroundTemperature` / `ObstacleMask` 三个内部数组：地温与障碍暂无公共批量入口；空气通道已改为 `AddTemperatureDeltas`，`pendingTemperatureDeltas` 不再作为硬要求。
+
+### 需要游戏内验证的项
+
+温控出风口（Single/TwoCellHeater/TwoCellCooler/WallOffset）、空调除湿产水、吊扇、VTE 空调管网、CCC 出风方向与断电清零、ProxyHeat 温度注入、超维护盾与随身温控。
+

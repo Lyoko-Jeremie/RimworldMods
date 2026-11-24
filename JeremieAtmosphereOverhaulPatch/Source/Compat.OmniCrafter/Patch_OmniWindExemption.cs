@@ -50,41 +50,23 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
 
         internal static bool Install(Harmony harmony)
         {
+            // 优先走公共接口：AO 自己在结构载荷/可穿透物/屋顶/物品抛飞/pawn 抛飞/
+            // 踉跄/飞行物撞击七个点调 IsShielded，我们只需注册一个 O(1) 的 Covers。
+            bool shieldInstalled = OmniAtmosphereApi.TryInstallShield();
+
             structuralType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.WindStructuralLoad");
             roofType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.WindRoofLoad");
             transportType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.WindTransport");
             memberSetType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.WindPassableLoad+MemberSet");
 
-            if (structuralType == null || roofType == null || transportType == null || memberSetType == null)
+            if (transportType == null)
             {
                 Log.Warning("[AOPatch] 护盾风豁免：AO 风害类型缺失，补丁未挂载。");
                 return false;
             }
 
-            structCount = AccessTools.Field(structuralType, "count");
-            structDemand = AccessTools.Field(structuralType, "demand");
-            structPressure = AccessTools.Field(structuralType, "pressureLoad");
-            structPendingDamage = AccessTools.Field(structuralType, "pendingDamage");
-            structBuilding = AccessTools.Field(structuralType, "building");
-
-            memberCount = AccessTools.Field(memberSetType, "Count");
-            memberThings = AccessTools.Field(memberSetType, "Things");
-            memberPendingAction = AccessTools.Field(memberSetType, "PendingAction");
-            memberLastLoad = AccessTools.Field(memberSetType, "LastLoad");
-            memberLastRisk = AccessTools.Field(memberSetType, "LastRiskPerHour");
-
-            roofPendingCount = AccessTools.Field(roofType, "pendingCount");
-            roofPending = AccessTools.Field(roofType, "pending");
-            roofCell = AccessTools.Field(roofType, "cellIndex");
-
             transportTmpThrow = AccessTools.Field(transportType, "TmpThrow");
-
-            if (structCount == null || structDemand == null || structPressure == null
-                || structPendingDamage == null || structBuilding == null
-                || memberCount == null || memberThings == null || memberPendingAction == null
-                || memberLastLoad == null || memberLastRisk == null
-                || roofPendingCount == null || roofPending == null || roofCell == null
-                || transportTmpThrow == null)
+            if (transportTmpThrow == null)
             {
                 Log.Warning("[AOPatch] 护盾风豁免：AO 内部字段缺失，补丁未挂载。");
                 return false;
@@ -92,50 +74,88 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
 
             bool ok = true;
 
-            MethodInfo computeChainLoads = AccessTools.Method(structuralType, "ComputeChainLoads");
-            if (computeChainLoads != null)
+            if (!shieldInstalled)
             {
-                harmony.Patch(computeChainLoads, postfix: new HarmonyMethod(
-                    typeof(Patch_OmniWindExemption), nameof(StructuralPostfix)));
-            }
-            else
-            {
-                ok = false;
+                // 回退路径：AO 版本没有 IAtmosphereShield 时逐个 patch AO 的内部循环。
+                if (structuralType == null || roofType == null || memberSetType == null)
+                {
+                    Log.Warning("[AOPatch] 护盾风豁免：AO 风害类型缺失，补丁未挂载。");
+                    return false;
+                }
+
+                structCount = AccessTools.Field(structuralType, "count");
+                structDemand = AccessTools.Field(structuralType, "demand");
+                structPressure = AccessTools.Field(structuralType, "pressureLoad");
+                structPendingDamage = AccessTools.Field(structuralType, "pendingDamage");
+                structBuilding = AccessTools.Field(structuralType, "building");
+
+                memberCount = AccessTools.Field(memberSetType, "Count");
+                memberThings = AccessTools.Field(memberSetType, "Things");
+                memberPendingAction = AccessTools.Field(memberSetType, "PendingAction");
+                memberLastLoad = AccessTools.Field(memberSetType, "LastLoad");
+                memberLastRisk = AccessTools.Field(memberSetType, "LastRiskPerHour");
+
+                roofPendingCount = AccessTools.Field(roofType, "pendingCount");
+                roofPending = AccessTools.Field(roofType, "pending");
+                roofCell = AccessTools.Field(roofType, "cellIndex");
+
+                if (structCount == null || structDemand == null || structPressure == null
+                    || structPendingDamage == null || structBuilding == null
+                    || memberCount == null || memberThings == null || memberPendingAction == null
+                    || memberLastLoad == null || memberLastRisk == null
+                    || roofPendingCount == null || roofPending == null || roofCell == null)
+                {
+                    Log.Warning("[AOPatch] 护盾风豁免：AO 内部字段缺失，补丁未挂载。");
+                    return false;
+                }
+
+                MethodInfo computeChainLoads = AccessTools.Method(structuralType, "ComputeChainLoads");
+                if (computeChainLoads != null)
+                {
+                    harmony.Patch(computeChainLoads, postfix: new HarmonyMethod(
+                        typeof(Patch_OmniWindExemption), nameof(StructuralPostfix)));
+                }
+                else
+                {
+                    ok = false;
+                }
+
+                MethodInfo evaluate = AccessTools.Method(AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.WindPassableLoad"), "Evaluate");
+                if (evaluate != null)
+                {
+                    harmony.Patch(evaluate, postfix: new HarmonyMethod(
+                        typeof(Patch_OmniWindExemption), nameof(PassablePostfix)));
+                }
+                else
+                {
+                    ok = false;
+                }
+
+                MethodInfo applyRemovals = AccessTools.Method(roofType, "ApplyRemovals");
+                if (applyRemovals != null)
+                {
+                    harmony.Patch(applyRemovals, prefix: new HarmonyMethod(
+                        typeof(Patch_OmniWindExemption), nameof(RoofPrefix)));
+                }
+                else
+                {
+                    ok = false;
+                }
+
+                MethodInfo tryLaunch = AccessTools.Method(transportType, "TryLaunch");
+                if (tryLaunch != null)
+                {
+                    harmony.Patch(tryLaunch, prefix: new HarmonyMethod(
+                        typeof(Patch_OmniWindExemption), nameof(TryLaunchPrefix)));
+                }
+                else
+                {
+                    ok = false;
+                }
             }
 
-            MethodInfo evaluate = AccessTools.Method(AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.WindPassableLoad"), "Evaluate");
-            if (evaluate != null)
-            {
-                harmony.Patch(evaluate, postfix: new HarmonyMethod(
-                    typeof(Patch_OmniWindExemption), nameof(PassablePostfix)));
-            }
-            else
-            {
-                ok = false;
-            }
-
-            MethodInfo applyRemovals = AccessTools.Method(roofType, "ApplyRemovals");
-            if (applyRemovals != null)
-            {
-                harmony.Patch(applyRemovals, prefix: new HarmonyMethod(
-                    typeof(Patch_OmniWindExemption), nameof(RoofPrefix)));
-            }
-            else
-            {
-                ok = false;
-            }
-
-            MethodInfo tryLaunch = AccessTools.Method(transportType, "TryLaunch");
-            if (tryLaunch != null)
-            {
-                harmony.Patch(tryLaunch, prefix: new HarmonyMethod(
-                    typeof(Patch_OmniWindExemption), nameof(TryLaunchPrefix)));
-            }
-            else
-            {
-                ok = false;
-            }
-
+            // pawn 抛飞与踉跄始终保留补丁：随身温控 pawn 不在护盾格上，
+            // IAtmosphereShield 只有格子维度，表达不了「某个 pawn 个人免疫」。
             MethodInfo throwCollected = AccessTools.Method(transportType, "ThrowCollectedPawns");
             if (throwCollected != null)
             {

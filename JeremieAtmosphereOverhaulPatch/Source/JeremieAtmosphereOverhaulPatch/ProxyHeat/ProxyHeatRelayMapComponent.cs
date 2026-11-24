@@ -92,6 +92,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private float[] _strengthSoil;
         private readonly List<int> _touchedSoil = new List<int>();
 
+        // 走公共 AddTemperatureDeltas 的批量缓冲（空气通道）。
+        // 地温通道暂时仍直写 engine.GroundTemperature：AO 没有批量地温入口。
+        private int[] _publicIndices;
+        private float[] _publicDeltas;
+
         private readonly List<object> _deadKeys = new List<object>();
 
         /// <summary>
@@ -861,7 +866,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// 由 Postfix <c>AtmosphereMapComponent.PrepareTemperatureSources</c> 调用。
         /// 每个模拟周期一次。
         /// </summary>
-        public void Inject()
+        public void Inject(int elapsedTicks = 0)
         {
             AOPatchSettings settings = AOPatchMod.Settings;
             if (settings == null || !settings.MasterEnabled || !settings.ProxyHeatRelayEnabled)
@@ -942,13 +947,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             }
 
             float[] temperature = AtmosphereFieldBridge.GetTemperatureRead(engine);
+            // 空气通道已改走公共 AddTemperatureDeltas，pending 只作为旧回退，
+            // 不再要求它存在（AO 重构内部字段时空气通道仍能工作）。
             float[] pending = AtmosphereFieldBridge.GetPendingDeltas(_aoComponent);
             float[] ground = AtmosphereFieldBridge.GetGroundTemperature(engine);
             float[] obstacle = AtmosphereFieldBridge.GetObstacleMask(engine);
-            if (temperature == null || pending == null)
+            if (temperature == null)
             {
-                DiagOnce("temperature=" + (temperature == null ? "null" : "ok")
-                         + " pending=" + (pending == null ? "null" : "ok"));
+                DiagOnce("temperature=null");
                 return;
             }
 
@@ -961,7 +967,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 _lastInjectTick = now;
                 return;
             }
-            int dt = now - _lastInjectTick;
+            int dt = elapsedTicks > 0 ? elapsedTicks : now - _lastInjectTick;
             if (dt <= 0)
             {
                 return;
@@ -1087,16 +1093,25 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             bool cooling = settings.AllowActiveCooling;
             float maxCool = settings.MaxCoolPerTick;
 
+            int airCount;
             float airWritten = WriteChannel(
                 _sumAir, _maxAir, _baselineAir, _capAir, _floorAir, _coolAir, _strengthAir, _touchedAir,
-                pending, temperature, outdoor, stacking, cooling, maxCool, dt);
+                pending, temperature, outdoor, stacking, cooling, maxCool, dt,
+                _publicIndices, _publicDeltas, out airCount);
+            if (airCount > 0)
+            {
+                // 走 AO 的公共批量入口：一次锁内累加整批，不再逐格碰内部数组。
+                AoBridge.AddTemperatureDeltas(map, _publicIndices, _publicDeltas, airCount);
+            }
 
             float soilWritten = 0f;
             if (soilAvailable)
             {
+                int soilCount;
                 soilWritten = WriteChannel(
                     _sumSoil, _maxSoil, _baselineSoil, _capSoil, _floorSoil, _coolSoil, _strengthSoil,
-                    _touchedSoil, ground, temperature, outdoor, stacking, cooling, maxCool, dt);
+                    _touchedSoil, ground, temperature, outdoor, stacking, cooling, maxCool, dt,
+                    null, null, out soilCount);
             }
 
             // ---- 喷流：逐建筑判断，向建筑四周的径向注册 AO 原生 AirMover
@@ -1186,9 +1201,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private static float WriteChannel(
             float[] sum, float[] max, float[] baselineMax, float[] cap, float[] floor, bool[] cool,
             float[] strengthArr, List<int> touched, float[] destination, float[] temperature,
-            float outdoor, bool stacking, bool cooling, float maxCool, int dt)
+            float outdoor, bool stacking, bool cooling, float maxCool, int dt,
+            int[] collectIndices, float[] collectDeltas, out int collectCount)
         {
             float written = 0f;
+            collectCount = 0;
             for (int i = 0; i < touched.Count; i++)
             {
                 int index = touched[i];
@@ -1241,7 +1258,16 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
 
                 float amount = q * dt;
-                destination[index] += amount;
+                if (collectIndices != null)
+                {
+                    collectIndices[collectCount] = index;
+                    collectDeltas[collectCount] = amount;
+                    collectCount++;
+                }
+                else
+                {
+                    destination[index] += amount;
+                }
                 written += amount;
             }
             return written;
@@ -1696,6 +1722,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             _coolSoil = new bool[size];
             _strengthSoil = new float[size];
             _touchedSoil.Clear();
+
+            // 走公共 AddTemperatureDeltas 的批量缓冲：一次锁内写整批，避免逐格加锁。
+            _publicIndices = new int[size];
+            _publicDeltas = new float[size];
 
             _stampCounter = 0;
         }

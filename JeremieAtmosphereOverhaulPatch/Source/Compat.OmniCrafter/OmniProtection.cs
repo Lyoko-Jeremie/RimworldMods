@@ -29,7 +29,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
         private static readonly Dictionary<Map, ShieldMask> Masks = new Dictionary<Map, ShieldMask>();
 
         private static FieldInfo allInterceptorsField;
-        private static FieldInfo windCheckIntervalField;
+        private static MethodInfo windCheckIntervalGetter;
         private static bool resolved;
 
         private sealed class TrackerHolder
@@ -53,9 +53,13 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
 
             resolved = true;
             allInterceptorsField = AccessTools.Field(typeof(OmniInterceptorTracker), "allInterceptors");
-            windCheckIntervalField = AccessTools.Field(
-                AccessTools.TypeByName("AtmosphereOverhaul.Simulation.LocalAtmosphereSettings"),
-                "WindDamageCheckIntervalTicks");
+
+            // LocalAtmosphereSettings 里 WindDamageCheckIntervalTicks 是属性（get; set;），
+            // 不是字段。用 AccessTools.Field 会永远拿到 null，掩膜就只能按 30 tick 刷新。
+            Type settingsType = AccessTools.TypeByName("AtmosphereOverhaul.Simulation.LocalAtmosphereSettings");
+            windCheckIntervalGetter = settingsType == null
+                ? null
+                : AccessTools.PropertyGetter(settingsType, "WindDamageCheckIntervalTicks");
         }
 
         internal static OmniInterceptorTracker GetTracker(Map map)
@@ -275,7 +279,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
 
         private static int GetInterval(Map map)
         {
-            if (windCheckIntervalField == null)
+            if (windCheckIntervalGetter == null)
             {
                 return 30;
             }
@@ -287,7 +291,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.OmniCrafter
                 return 30;
             }
 
-            int interval = Convert.ToInt32(windCheckIntervalField.GetValue(settings));
+            int interval = Convert.ToInt32(windCheckIntervalGetter.Invoke(settings, null));
             return interval < 1 ? 1 : interval;
         }
     }

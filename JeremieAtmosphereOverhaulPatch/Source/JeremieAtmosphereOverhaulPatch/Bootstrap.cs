@@ -72,6 +72,13 @@ namespace Jeremie.AtmosphereOverhaulPatch
                 return;
             }
 
+            if (OutletLayoutBootstrap.TryApplyAll())
+            {
+                // 形状已翻译成 AO_OutletLayout：由 AO 原生 RunHeater/RunCooler 处理出风格、
+                // 效率、热侧倍率与除湿，不再接管 RunTempControl。
+                return;
+            }
+
             if (!TempOutputShapePatch.Install(harmony))
             {
                 Log.Warning("[AOPatch] 未能挂载 FacilityPatchUtility.RunTempControl，温控输出形状模块停用。");

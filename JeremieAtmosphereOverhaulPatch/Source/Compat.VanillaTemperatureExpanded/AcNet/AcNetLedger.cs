@@ -305,8 +305,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             for (int i = 0; i < _entries.Count; i++)
             {
                 UnitEntry entry = _entries[i];
-                object slots = AoBridge.GetSlots(entry.Unit);
-                if (slots == null)
+                Map unitMap = entry.Unit.Map;
+                if (unitMap == null)
                 {
                     continue;
                 }
@@ -314,7 +314,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 float qOut = entry.Qi * s;
                 if (qOut == 0f || entry.Trader.ResourceOn == false)
                 {
-                    AoBridge.ZeroFrom(slots, entry.Unit, 0);
+                    AoBridge.ZeroContinuousSourcesWithPrefix(unitMap, entry.Unit, UnitKey(entry.Unit));
                     continue;
                 }
 
@@ -328,7 +328,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 rates.TargetWind = new Vector2(direction.x, direction.z)
                                    * AoBridge.OutletWindSpeed(entry.Unit.def, 30f);
                 rates.TargetWindBlendPerTick = 0.1f;
-                AoBridge.SetSlot(slots, entry.Unit, 0, entry.Cell, rates);
+                AoBridge.SetContinuousSource(unitMap, entry.Unit, UnitKey(entry.Unit), entry.Cell, rates);
             }
 
             // 6. 室外机：净制热从室外吸热（负值），净制冷向室外排热（正值）。
@@ -547,6 +547,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
             return null;
         }
 
+        /// <summary>每台室内机一个连续源，key 带本 mod 前缀，避免与 AO 原生槽位串号。</summary>
+        private static string UnitKey(Thing unit)
+        {
+            return "JAP.AcNet." + unit.thingIDNumber + ".0";
+        }
+
         private static void ShutDownAll(AcPipeNet net)
         {
             List<CompResourceTrader> receivers = net.receivers;
@@ -559,13 +565,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.VanillaTemperatureExpanded.AcNe
                 }
 
                 trader.ResourceOn = false;
-                if (trader.parent != null)
+                if (trader.parent != null && trader.parent.Map != null)
                 {
-                    object slots = AoBridge.GetSlots(trader.parent);
-                    if (slots != null)
-                    {
-                        AoBridge.ZeroFrom(slots, trader.parent, 0);
-                    }
+                    AoBridge.ZeroContinuousSourcesWithPrefix(
+                        trader.parent.Map, trader.parent, UnitKey(trader.parent));
                 }
             }
 

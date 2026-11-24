@@ -107,7 +107,8 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
 
         // 每个出风口一组 AO 连续源槽位，只用来写风矢量。
         // 槽位名是 prefix + slot，不按 owner 区分，所以每个 owner 必须有独立 prefix。
-        private readonly Dictionary<Thing, object> windSlots = new Dictionary<Thing, object>();
+        // 每个出风口上次写到第几号槽位；改走公共连续源后不再需要预建 slots 表。
+        private readonly Dictionary<Thing, int> windWritten = new Dictionary<Thing, int>();
         private readonly HashSet<Thing> liveWindOwners = new HashSet<Thing>();
         private readonly List<Thing> deadWindOwners = new List<Thing>();
 
@@ -960,15 +961,9 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                 return;
             }
 
-            object slots;
-            if (!windSlots.TryGetValue(owner, out slots))
+            if (!AoBridge.ContinuousSourceAvailable)
             {
-                slots = AoBridge.NewSlots("JAP.Wind." + owner.thingIDNumber + ".");
-                if (slots == null)
-                {
-                    return;
-                }
-                windSlots[owner] = slots;
+                return;
             }
 
             liveWindOwners.Add(owner);
@@ -977,7 +972,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             // 否则 AO 会一直按上一次的目标速度吹。
             if (cells.Count == 0)
             {
-                AoBridge.ZeroFrom(slots, owner, 0);
+                ClearWind(owner);
                 return;
             }
 
@@ -989,7 +984,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             bool active = powered && switchedOn && !owner.IsBrokenDown();
             if (!active)
             {
-                AoBridge.ZeroFrom(slots, owner, 0);
+                ClearWind(owner);
                 return;
             }
 
@@ -1086,12 +1081,45 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
                     rates.TemperaturePerTick = totalHeatPerTick * spreadWeights[i];
                 }
 
-                AoBridge.SetSlot(slots, owner, slot, cell, rates);
+                AoBridge.SetContinuousSource(owner.Map, owner, WindKey(owner, slot), cell, rates);
                 ++slot;
             }
 
             // 出风格或扩散格变少时清掉多余槽位。
-            AoBridge.ZeroFrom(slots, owner, slot);
+            int lastWritten;
+            if (windWritten.TryGetValue(owner, out lastWritten))
+            {
+                for (int i = slot; i < lastWritten; i++)
+                {
+                    AoBridge.ZeroContinuousSourcesWithPrefix(owner.Map, owner, WindKey(owner, i));
+                }
+            }
+            windWritten[owner] = slot;
+        }
+
+        /// <summary>每个出风口一个连续源，key 带本 mod 前缀与槽位号。</summary>
+        private static string WindKey(Thing owner, int slot)
+        {
+            return "JAP.Wind." + owner.thingIDNumber + "." + slot;
+        }
+
+        /// <summary>清掉该出风口上次写过的全部风源（断电/关闭/无可出风格时）。</summary>
+        private void ClearWind(Thing owner)
+        {
+            int written;
+            if (!windWritten.TryGetValue(owner, out written) || written <= 0)
+            {
+                return;
+            }
+            Map map = owner.Map;
+            if (map != null)
+            {
+                for (int i = 0; i < written; i++)
+                {
+                    AoBridge.ZeroContinuousSourcesWithPrefix(map, owner, WindKey(owner, i));
+                }
+            }
+            windWritten[owner] = 0;
         }
 
         /// <summary>
@@ -1239,7 +1267,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             // 不能用「数量相等」早退：拆一个、加一个时数量不变但集合不同，
             // 漏掉的 owner 会让 AO 侧的风一直吹。
             deadWindOwners.Clear();
-            foreach (KeyValuePair<Thing, object> pair in windSlots)
+            foreach (KeyValuePair<Thing, int> pair in windWritten)
             {
                 if (!liveWindOwners.Contains(pair.Key))
                 {
@@ -1250,14 +1278,12 @@ namespace Jeremie.AtmosphereOverhaulPatch.Compat.CentralizedClimateControl
             for (int i = 0; i < deadWindOwners.Count; i++)
             {
                 Thing owner = deadWindOwners[i];
-                object slots;
-                bool hadSlots = windSlots.TryGetValue(owner, out slots);
                 // 先摘账本再注销：注销走反射，一旦抛异常，账本若还留着这个死 owner，
                 // 它会被每 tick 重新选中，变成无限重复的报错。
-                windSlots.Remove(owner);
-                if (hadSlots)
+                windWritten.Remove(owner);
+                if (owner != null && owner.Map != null)
                 {
-                    AoBridge.RemoveAll(slots, owner, map);
+                    AoBridge.UnregisterContinuousSources(owner.Map, owner);
                 }
             }
         }
