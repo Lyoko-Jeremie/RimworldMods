@@ -240,6 +240,28 @@ namespace FullyAutomaticOmniCrafter
         private int failedCount;
         private int expiredLeaseCount;
 
+        // ── 全图共享的填充间隔 ───────────────────────────────────────────────
+        // 填充判定本身与建筑位置无关，间隔没必要逐建筑各存一份；
+        // 任意收集器上的「填充间隔」按钮改的都是这个值，便于统一调速。
+        private const int DefaultFillScanInterval = 60;
+        private int fillScanInterval = DefaultFillScanInterval;
+
+        public int FillScanInterval => fillScanInterval > 0 ? fillScanInterval : DefaultFillScanInterval;
+
+        public void SetFillScanInterval(int value)
+        {
+            if (value > 0)
+            {
+                fillScanInterval = value;
+            }
+        }
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref fillScanInterval, "fillScanInterval", DefaultFillScanInterval);
+        }
+
         public MapComponent_AutoCollectorScheduler(Map map) : base(map)
         {
         }
@@ -270,6 +292,7 @@ namespace FullyAutomaticOmniCrafter
         public override void MapRemoved()
         {
             AutoCollectorScheduler.Unregister(map.uniqueID, this);
+            OmniHaulJudge.ReleaseMap(map);
             ClearState();
             base.MapRemoved();
         }

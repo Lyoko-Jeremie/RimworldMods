@@ -29,6 +29,19 @@
     <AutoItemCollector_TargetAutomatic>按原版优先级自动选择</AutoItemCollector_TargetAutomatic>
     <AutoItemCollector_TargetNone>未选择</AutoItemCollector_TargetNone>
 
+    <!-- 填充可达性 -->
+    <AutoItemCollector_Reachability>填充范围：{0}</AutoItemCollector_Reachability>
+    <AutoItemCollector_ReachabilityDesc>控制替代搬运时如何判断目标是否可达。全图：只判断目标是否有效，不受墙体/距离限制；仅物理连通：从本建筑出发按普通 Pawn 的连通性判断（包含敌方阵地，不额外排除）。</AutoItemCollector_ReachabilityDesc>
+    <AutoItemCollector_ReachabilityWholeMap>全图</AutoItemCollector_ReachabilityWholeMap>
+    <AutoItemCollector_ReachabilityPhysicalOnly>仅物理连通</AutoItemCollector_ReachabilityPhysicalOnly>
+    <AutoItemCollector_FillInterval>填充间隔：{0} tick</AutoItemCollector_FillInterval>
+    <AutoItemCollector_FillIntervalDesc>每隔多少 tick 为燃料建筑、运输舱、料斗等补一次料。默认 60 tick（1 秒）；越小响应越快，但全图判定越频繁。</AutoItemCollector_FillIntervalDesc>
+    <AutoItemCollector_FillIntervalOption>{0} tick</AutoItemCollector_FillIntervalOption>
+
+    <!-- 开发期自检 -->
+    <AutoItemCollector_SelfCheckJudge>自检判定 Pawn</AutoItemCollector_SelfCheckJudge>
+    <AutoItemCollector_SelfCheckJudgeDesc>生成判定 Pawn，并打印进入/退出窗口前后的 Spawned/Map/Position 状态。</AutoItemCollector_SelfCheckJudgeDesc>
+
     <!-- 详细信息 -->
     <AutoItemCollector_InspectStatus>状态：{0}</AutoItemCollector_InspectStatus>
     <AutoItemCollector_InspectTarget>目标：{0}</AutoItemCollector_InspectTarget>
@@ -45,4 +58,8 @@
     <AutoItemCollector_StatusFilterMismatch>筛选器不匹配</AutoItemCollector_StatusFilterMismatch>
     <AutoItemCollector_StatusTargetInvalid>目标失效</AutoItemCollector_StatusTargetInvalid>
     <AutoItemCollector_StatusAreaEmpty>活动区为空</AutoItemCollector_StatusAreaEmpty>
+
+    <!-- 多选 -->
+    <AutoItemCollector_MixedValue>多值</AutoItemCollector_MixedValue>
+    <AutoItemCollector_MultiSelectDisabled>多选时不可用</AutoItemCollector_MultiSelectDisabled>
 </LanguageData>

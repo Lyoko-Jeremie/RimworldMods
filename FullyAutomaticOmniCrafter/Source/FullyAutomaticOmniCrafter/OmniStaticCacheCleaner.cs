@@ -33,6 +33,9 @@ namespace FullyAutomaticOmniCrafter
             OmniWorkProxyUtility.ClearAllStaticCaches();
             GameComponent_OmniWorkProxyRegistry.ClearPendingArrivalsAll();
             Building_MatterEnergyConverter.ClearAllStaticCaches();
+            // 判定 Pawn 与填充需求缓存都按 Map / building 键持有对象引用，换 Game 必须清。
+            OmniHaulJudge.ClearAll();
+            HaulDemandRunner.ClearAllCaches();
         }
 
         /// <summary>只清与指定地图相关的静态缓存。正常删图（MapRemoved）时调用。</summary>
@@ -46,6 +49,7 @@ namespace FullyAutomaticOmniCrafter
             OmniWorkProxyUtility.ClearForMapStaticCaches(map);
             GameComponent_OmniWorkProxyRegistry.ClearPendingArrivalsForMap(map);
             Building_MatterEnergyConverter.ClearForMapStaticCaches(map);
+            OmniHaulJudge.ReleaseMap(map);
         }
     }
 }

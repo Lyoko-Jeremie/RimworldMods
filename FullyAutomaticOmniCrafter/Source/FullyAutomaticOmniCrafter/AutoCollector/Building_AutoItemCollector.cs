@@ -21,6 +21,18 @@ namespace FullyAutomaticOmniCrafter
     }
 
     /// <summary>
+    /// 填充（替代搬运）时的可达性语义。
+    /// </summary>
+    public enum CollectorReachabilityMode
+    {
+        /// <summary>全图（默认）：只判断目标是否有效，不考虑路径连通性。</summary>
+        WholeMap,
+
+        /// <summary>仅物理连通：从本建筑位置出发，按普通 Pawn 的连通性判定（含敌方阵地）。</summary>
+        PhysicalOnly
+    }
+
+    /// <summary>
     /// 收集装置状态（只读展示，不参与是否扫描的判定）。
     /// </summary>
     public enum CollectorStatus
@@ -50,13 +62,18 @@ namespace FullyAutomaticOmniCrafter
         private static readonly int[] AllowedScanIntervals = { 1, 5, 15, 30 };
         private const int DefaultMaxStacksPerCycle = 4;
         private static readonly int[] AllowedMaxStacksPerCycle = { 1, 4, 8, 16, 32 };
+        // 填充通道的判定间隔：燃料/弹药/装舱属低频需求，默认 1 秒比收集节拍宽松。
+        private const int DefaultFillScanInterval = 60;
+        private static readonly int[] AllowedFillScanIntervals = { 5, 15, 30, 60, 120, 240 };
 
         // ── 存档状态 ─────────────────────────────────────────────────────────
         private bool enabled = true;
         private bool manuallyPaused;
         private int scanInterval = DefaultScanInterval;
         private int maxStacksPerCycle = DefaultMaxStacksPerCycle;
+        private int fillScanInterval = DefaultFillScanInterval;
         private CollectorTargetMode targetMode = CollectorTargetMode.Automatic;
+        private CollectorReachabilityMode reachabilityMode = CollectorReachabilityMode.WholeMap;
         private Area configuredArea;
         private Zone targetZone;
         private Thing targetThing;
@@ -115,7 +132,9 @@ namespace FullyAutomaticOmniCrafter
             Scribe_Values.Look(ref manuallyPaused, "manuallyPaused", false);
             Scribe_Values.Look(ref scanInterval, "scanInterval", DefaultScanInterval);
             Scribe_Values.Look(ref maxStacksPerCycle, "maxStacksPerCycle", DefaultMaxStacksPerCycle);
+            Scribe_Values.Look(ref fillScanInterval, "fillScanInterval", DefaultFillScanInterval);
             Scribe_Values.Look(ref targetMode, "targetMode", CollectorTargetMode.Automatic);
+            Scribe_Values.Look(ref reachabilityMode, "reachabilityMode", CollectorReachabilityMode.WholeMap);
             Scribe_References.Look(ref configuredArea, "configuredArea");
             Scribe_References.Look(ref targetZone, "targetZone");
             Scribe_References.Look(ref targetThing, "targetThing");
@@ -125,6 +144,7 @@ namespace FullyAutomaticOmniCrafter
             {
                 NormalizeScanInterval();
                 NormalizeMaxStacksPerCycle();
+                NormalizeFillScanInterval();
                 EnsureStorageSettings();
                 status = CollectorStatus.Idle;
             }
@@ -133,6 +153,19 @@ namespace FullyAutomaticOmniCrafter
         // ── IStoreSettingsParent ─────────────────────────────────────────────
 
         public bool StorageTabVisible => true;
+
+        /// <summary>填充通道的可达性语义（全图 / 仅物理连通）。</summary>
+        public CollectorReachabilityMode ReachabilityMode => reachabilityMode;
+
+        /// <summary>填充通道的判定间隔（tick）。由本图所有收集器共享，任意一个建筑上的按钮都能改。</summary>
+        public int FillScanInterval
+        {
+            get
+            {
+                MapComponent_AutoCollectorScheduler scheduler = GetScheduler();
+                return scheduler != null ? scheduler.FillScanInterval : fillScanInterval;
+            }
+        }
 
         public StorageSettings GetStoreSettings()
         {
@@ -206,6 +239,19 @@ namespace FullyAutomaticOmniCrafter
             maxStacksPerCycle = DefaultMaxStacksPerCycle;
         }
 
+        private void NormalizeFillScanInterval()
+        {
+            for (int i = 0; i < AllowedFillScanIntervals.Length; i++)
+            {
+                if (AllowedFillScanIntervals[i] == fillScanInterval)
+                {
+                    return;
+                }
+            }
+
+            fillScanInterval = DefaultFillScanInterval;
+        }
+
         // ── Tick ─────────────────────────────────────────────────────────────
 
         protected override void Tick()
@@ -222,9 +268,27 @@ namespace FullyAutomaticOmniCrafter
                 scanInterval = DefaultScanInterval;
             }
 
+            // 填充通道走自己的节拍（每建筑可单独设置），因此放在收集扫描的 hash 门之外：
+            // 否则玩家把填充间隔设成 5 tick 时，仍会被 15 tick 的收集门限拖慢。
+            // TryRun 内部按 FillScanInterval 限频，这里每 tick 调用只是一次字典查找。
+            int fillWorked = 0;
+            try
+            {
+                fillWorked = HaulDemandRunner.TryRun(this);
+            }
+            catch (Exception error)
+            {
+                Log.ErrorOnce("AutoItemCollector fill exception: " + error, 197403501);
+            }
+
             // 原版 hash 错峰：不同建筑按 thingIDNumber 天然落在不同 tick，无需自维护计数器。
             if (!this.IsHashIntervalTick(scanInterval))
             {
+                if (fillWorked > 0)
+                {
+                    status = CollectorStatus.Running;
+                }
+
                 return;
             }
 
@@ -247,7 +311,8 @@ namespace FullyAutomaticOmniCrafter
                     maintenanceWorked = RunMaintenance();
                 }
 
-                if (worked > 0 || maintenanceWorked)
+                // 填充通道已在上方按本建筑的 FillScanInterval 独立跑过，这里只合并状态。
+                if (worked > 0 || maintenanceWorked || fillWorked > 0)
                 {
                     status = CollectorStatus.Running;
                 }
@@ -1180,143 +1245,368 @@ namespace FullyAutomaticOmniCrafter
                 }
             };
 
-            yield return new Command_Action
-            {
-                defaultLabel = "AutoItemCollector_ScanInterval".Translate(scanInterval),
-                defaultDesc = "AutoItemCollector_ScanIntervalDesc".Translate(),
-                icon = BaseContent.WhiteTex,
-                action = ShowScanIntervalMenu
-            };
+            // 以下设置项都使用 Command_CollectorSetting：多选时按 groupKeyIgnoreContent 合并成一组，
+            // 点击后由同一个菜单一次性改写所有选中建筑，而不是各改各的。
+            yield return MakeSettingGizmo(
+                "AutoItemCollector_ScanInterval".Translate(scanInterval),
+                "AutoItemCollector_ScanIntervalDesc".Translate(),
+                7401301,
+                ShowScanIntervalMenu);
 
-            yield return new Command_Action
-            {
-                defaultLabel = "AutoItemCollector_MaxStacks".Translate(maxStacksPerCycle),
-                defaultDesc = "AutoItemCollector_MaxStacksDesc".Translate(),
-                icon = BaseContent.WhiteTex,
-                action = ShowMaxStacksMenu
-            };
+            yield return MakeSettingGizmo(
+                "AutoItemCollector_MaxStacks".Translate(maxStacksPerCycle),
+                "AutoItemCollector_MaxStacksDesc".Translate(),
+                7401302,
+                ShowMaxStacksMenu);
 
-            yield return new Command_Action
-            {
-                defaultLabel = "AutoItemCollector_TargetMode".Translate(TargetModeLabel()),
-                defaultDesc = "AutoItemCollector_TargetModeDesc".Translate(),
-                icon = BaseContent.WhiteTex,
-                action = ShowTargetModeMenu
-            };
+            yield return MakeSettingGizmo(
+                "AutoItemCollector_TargetMode".Translate(TargetModeLabel()),
+                "AutoItemCollector_TargetModeDesc".Translate(),
+                7401303,
+                ShowTargetModeMenu);
 
-            yield return new Command_Action
-            {
-                defaultLabel = "AutoItemCollector_SelectArea".Translate(AreaLabel()),
-                defaultDesc = "AutoItemCollector_SelectAreaDesc".Translate(),
-                icon = BaseContent.WhiteTex,
-                action = ShowAreaMenu
-            };
+            yield return MakeSettingGizmo(
+                "AutoItemCollector_Reachability".Translate(ReachabilityLabel()),
+                "AutoItemCollector_ReachabilityDesc".Translate(),
+                7401304,
+                ShowReachabilityMenu);
+
+            yield return MakeSettingGizmo(
+                "AutoItemCollector_FillInterval".Translate(FillScanInterval),
+                "AutoItemCollector_FillIntervalDesc".Translate(),
+                7401305,
+                ShowFillScanIntervalMenu);
+
+            yield return MakeSettingGizmo(
+                "AutoItemCollector_SelectArea".Translate(AreaLabel()),
+                "AutoItemCollector_SelectAreaDesc".Translate(),
+                7401306,
+                ShowAreaMenu);
 
             if (targetMode == CollectorTargetMode.Manual)
             {
-                yield return new Command_Action
+                // 选择目标属于“针对当前建筑的一次操作”，不适合广播到所有选中建筑，
+                // 多选时直接禁用，避免玩家误以为会给全部建筑设置同一个目标。
+                bool multipleSelected = Find.Selector.NumSelected > 1;
+
+                Command_Action selectTargetCommand = new Command_Action
                 {
                     defaultLabel = "AutoItemCollector_SelectTarget".Translate(),
                     defaultDesc = "AutoItemCollector_SelectTargetDesc".Translate(),
                     icon = BaseContent.WhiteTex,
                     action = BeginSelectTarget
                 };
+                if (multipleSelected)
+                {
+                    selectTargetCommand.Disable("AutoItemCollector_MultiSelectDisabled".Translate());
+                }
+                yield return selectTargetCommand;
 
-                yield return new Command_Action
+                Command_Action targetListCommand = new Command_Action
                 {
                     defaultLabel = "AutoItemCollector_SelectTargetFromList".Translate(),
                     defaultDesc = "AutoItemCollector_SelectTargetFromListDesc".Translate(),
                     icon = BaseContent.WhiteTex,
                     action = ShowTargetListMenu
                 };
+                if (multipleSelected)
+                {
+                    targetListCommand.Disable("AutoItemCollector_MultiSelectDisabled".Translate());
+                }
+                yield return targetListCommand;
+            }
+
+            if (Prefs.DevMode)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "AutoItemCollector_SelfCheckJudge".Translate(),
+                    defaultDesc = "AutoItemCollector_SelfCheckJudgeDesc".Translate(),
+                    icon = BaseContent.WhiteTex,
+                    action = delegate
+                    {
+                        Pawn judge = OmniHaulJudge.GetOrCreate(Map);
+                        Log.Message("[FAOC] 判定 Pawn 自检：" + OmniHaulJudge.SelfCheck(judge, Map, Position));
+                    }
+                };
             }
         }
 
-        private void ShowScanIntervalMenu()
+        /// <summary>
+        /// 构造一个参与多选同步的设置命令。
+        /// label 带当前值，多选时各建筑的 label 不同；
+        /// groupKeyIgnoreContent 相同可以让它们仍被 GizmoGridDrawer 归为同一组，
+        /// 点击时由 Command_CollectorSetting.InheritInteractionsFrom 收集全部目标。
+        /// </summary>
+        private Command_CollectorSetting MakeSettingGizmo(
+            string label,
+            string desc,
+            int groupKey,
+            Action<List<Building_AutoItemCollector>> menu)
         {
+            Command_CollectorSetting command = new Command_CollectorSetting
+            {
+                defaultLabel = label,
+                defaultDesc = desc,
+                icon = BaseContent.WhiteTex,
+                groupKeyIgnoreContent = groupKey
+            };
+            command.collectors.Add(this);
+            command.action = delegate { menu(command.collectors); };
+            return command;
+        }
+
+        private void ShowReachabilityMenu(List<Building_AutoItemCollector> targets)
+        {
+            int current = CommonReachability(targets);
+            List<FloatMenuOption> options = new List<FloatMenuOption>(2);
+
+            options.Add(new FloatMenuOption(
+                ReachabilityOptionLabel(CollectorReachabilityMode.WholeMap, current),
+                delegate { SetAllReachability(targets, CollectorReachabilityMode.WholeMap); }));
+
+            options.Add(new FloatMenuOption(
+                ReachabilityOptionLabel(CollectorReachabilityMode.PhysicalOnly, current),
+                delegate { SetAllReachability(targets, CollectorReachabilityMode.PhysicalOnly); }));
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private static void SetAllReachability(
+            List<Building_AutoItemCollector> targets,
+            CollectorReachabilityMode mode)
+        {
+            for (int i = 0; i < targets.Count; i++)
+            {
+                targets[i].reachabilityMode = mode;
+                targets[i].status = CollectorStatus.Idle;
+            }
+        }
+
+        private static int CommonReachability(List<Building_AutoItemCollector> targets)
+        {
+            int value = (int)targets[0].reachabilityMode;
+            for (int i = 1; i < targets.Count; i++)
+            {
+                if ((int)targets[i].reachabilityMode != value)
+                {
+                    return -1;
+                }
+            }
+
+            return value;
+        }
+
+        private string ReachabilityOptionLabel(CollectorReachabilityMode mode, int current)
+        {
+            string text = mode == CollectorReachabilityMode.WholeMap
+                ? "AutoItemCollector_ReachabilityWholeMap".Translate().ToString()
+                : "AutoItemCollector_ReachabilityPhysicalOnly".Translate().ToString();
+
+            return (int)mode == current
+                ? "AutoItemCollector_CurrentOption".Translate(text).ToString()
+                : text;
+        }
+
+        private string ReachabilityLabel()
+        {
+            return reachabilityMode == CollectorReachabilityMode.WholeMap
+                ? "AutoItemCollector_ReachabilityWholeMap".Translate().ToString()
+                : "AutoItemCollector_ReachabilityPhysicalOnly".Translate().ToString();
+        }
+
+        private void ShowScanIntervalMenu(List<Building_AutoItemCollector> targets)
+        {
+            int current = CommonScanInterval(targets);
             List<FloatMenuOption> options = new List<FloatMenuOption>();
 
             for (int i = 0; i < AllowedScanIntervals.Length; i++)
             {
                 int interval = AllowedScanIntervals[i];
-                string label = interval == scanInterval
+                string label = interval == current
                     ? "AutoItemCollector_CurrentOption".Translate(interval)
                     : "AutoItemCollector_ScanIntervalOption".Translate(interval);
 
+                int captured = interval;
                 options.Add(new FloatMenuOption(label, delegate
                 {
-                    scanInterval = interval;
-                    status = CollectorStatus.Idle;
+                    for (int j = 0; j < targets.Count; j++)
+                    {
+                        targets[j].scanInterval = captured;
+                        targets[j].status = CollectorStatus.Idle;
+                    }
                 }));
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
-        private void ShowMaxStacksMenu()
+        private static int CommonScanInterval(List<Building_AutoItemCollector> targets)
         {
+            int value = targets[0].scanInterval;
+            for (int i = 1; i < targets.Count; i++)
+            {
+                if (targets[i].scanInterval != value)
+                {
+                    return -1;
+                }
+            }
+
+            return value;
+        }
+
+        private void ShowFillScanIntervalMenu(List<Building_AutoItemCollector> targets)
+        {
+            Building_AutoItemCollector first = targets[0];
+            MapComponent_AutoCollectorScheduler scheduler = first.GetScheduler();
+            int current = scheduler != null ? scheduler.FillScanInterval : first.fillScanInterval;
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+            for (int i = 0; i < AllowedFillScanIntervals.Length; i++)
+            {
+                int interval = AllowedFillScanIntervals[i];
+                string label = interval == current
+                    ? "AutoItemCollector_CurrentOption".Translate(interval)
+                    : "AutoItemCollector_FillIntervalOption".Translate(interval);
+
+                int captured = interval;
+                options.Add(new FloatMenuOption(label, delegate
+                {
+                    // 全图共享：任意建筑上改，所有收集器一起生效。
+                    for (int j = 0; j < targets.Count; j++)
+                    {
+                        Building_AutoItemCollector collector = targets[j];
+                        collector.fillScanInterval = captured;
+                        collector.status = CollectorStatus.Idle;
+
+                        MapComponent_AutoCollectorScheduler collectorScheduler = collector.GetScheduler();
+                        if (collectorScheduler != null)
+                        {
+                            collectorScheduler.SetFillScanInterval(captured);
+                        }
+                    }
+
+                    first.ApplyFillIntervalToAllCollectors();
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void ApplyFillIntervalToAllCollectors()
+        {
+            if (Map == null) return;
+
+            List<Building> buildings = Map.listerBuildings.allBuildingsColonist;
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                Building_AutoItemCollector collector = buildings[i] as Building_AutoItemCollector;
+                if (collector != null)
+                {
+                    HaulDemandRunner.ForgetBuilding(collector);
+                }
+            }
+        }
+
+        private void ShowMaxStacksMenu(List<Building_AutoItemCollector> targets)
+        {
+            int current = CommonMaxStacks(targets);
             List<FloatMenuOption> options = new List<FloatMenuOption>();
 
             for (int i = 0; i < AllowedMaxStacksPerCycle.Length; i++)
             {
                 int count = AllowedMaxStacksPerCycle[i];
-                string label = count == maxStacksPerCycle
+                string label = count == current
                     ? "AutoItemCollector_CurrentOption".Translate(count)
                     : "AutoItemCollector_MaxStacksOption".Translate(count);
 
+                int captured = count;
                 options.Add(new FloatMenuOption(label, delegate
                 {
-                    maxStacksPerCycle = count;
-                    status = CollectorStatus.Idle;
+                    for (int j = 0; j < targets.Count; j++)
+                    {
+                        targets[j].maxStacksPerCycle = captured;
+                        targets[j].status = CollectorStatus.Idle;
+                    }
                 }));
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
-        private void ShowTargetModeMenu()
+        private static int CommonMaxStacks(List<Building_AutoItemCollector> targets)
         {
+            int value = targets[0].maxStacksPerCycle;
+            for (int i = 1; i < targets.Count; i++)
+            {
+                if (targets[i].maxStacksPerCycle != value)
+                {
+                    return -1;
+                }
+            }
+
+            return value;
+        }
+
+        private void ShowTargetModeMenu(List<Building_AutoItemCollector> targets)
+        {
+            int current = CommonTargetMode(targets);
             List<FloatMenuOption> options = new List<FloatMenuOption>();
 
             options.Add(new FloatMenuOption(
-                targetMode == CollectorTargetMode.Automatic
+                current == (int)CollectorTargetMode.Automatic
                     ? "AutoItemCollector_CurrentOption".Translate("AutoItemCollector_ModeAutomatic".Translate())
                     : "AutoItemCollector_ModeAutomatic".Translate(),
-                delegate
-                {
-                    targetMode = CollectorTargetMode.Automatic;
-                    status = CollectorStatus.Idle;
-                    NotifySchedulerDirty();
-                }));
+                delegate { SetAllTargetMode(targets, CollectorTargetMode.Automatic); }));
 
             options.Add(new FloatMenuOption(
-                targetMode == CollectorTargetMode.Manual
+                current == (int)CollectorTargetMode.Manual
                     ? "AutoItemCollector_CurrentOption".Translate("AutoItemCollector_ModeManual".Translate())
                     : "AutoItemCollector_ModeManual".Translate(),
-                delegate
-                {
-                    targetMode = CollectorTargetMode.Manual;
-                    status = CollectorStatus.Idle;
-                    NotifySchedulerDirty();
-                }));
+                delegate { SetAllTargetMode(targets, CollectorTargetMode.Manual); }));
 
             Find.WindowStack.Add(new FloatMenu(options));
         }
 
-        private void ShowAreaMenu()
+        private static void SetAllTargetMode(
+            List<Building_AutoItemCollector> targets,
+            CollectorTargetMode mode)
         {
+            for (int i = 0; i < targets.Count; i++)
+            {
+                targets[i].targetMode = mode;
+                targets[i].status = CollectorStatus.Idle;
+                targets[i].NotifySchedulerDirty();
+            }
+        }
+
+        private static int CommonTargetMode(List<Building_AutoItemCollector> targets)
+        {
+            int value = (int)targets[0].targetMode;
+            for (int i = 1; i < targets.Count; i++)
+            {
+                if ((int)targets[i].targetMode != value)
+                {
+                    return -1;
+                }
+            }
+
+            return value;
+        }
+
+        private void ShowAreaMenu(List<Building_AutoItemCollector> targets)
+        {
+            Area commonArea;
+            bool allSame = TryGetCommonArea(targets, out commonArea);
+
             List<FloatMenuOption> options = new List<FloatMenuOption>();
 
             options.Add(new FloatMenuOption(
-                configuredArea == null
+                allSame && commonArea == null
                     ? "AutoItemCollector_CurrentOption".Translate("AutoItemCollector_WholeMap".Translate())
                     : "AutoItemCollector_WholeMap".Translate(),
-                delegate
-                {
-                    configuredArea = null;
-                    status = CollectorStatus.Idle;
-                    NotifySchedulerDirty();
-                }));
+                delegate { SetAllArea(targets, null); }));
 
             List<Area> allAreas = Map.areaManager.AllAreas;
             List<Area> sorted = new List<Area>();
@@ -1345,25 +1635,39 @@ namespace FullyAutomaticOmniCrafter
             for (int i = 0; i < sorted.Count; i++)
             {
                 Area area = sorted[i];
-                string label;
-                if (area == configuredArea)
-                {
-                    label = (string)"AutoItemCollector_CurrentOption".Translate(area.Label);
-                }
-                else
-                {
-                    label = area.Label;
-                }
+                string label = allSame && area == commonArea
+                    ? (string)"AutoItemCollector_CurrentOption".Translate(area.Label)
+                    : area.Label;
 
-                options.Add(new FloatMenuOption(label, delegate
-                {
-                    configuredArea = area;
-                    status = CollectorStatus.Idle;
-                    NotifySchedulerDirty();
-                }));
+                Area captured = area;
+                options.Add(new FloatMenuOption(label, delegate { SetAllArea(targets, captured); }));
             }
 
             Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private static void SetAllArea(List<Building_AutoItemCollector> targets, Area area)
+        {
+            for (int i = 0; i < targets.Count; i++)
+            {
+                targets[i].configuredArea = area;
+                targets[i].status = CollectorStatus.Idle;
+                targets[i].NotifySchedulerDirty();
+            }
+        }
+
+        private static bool TryGetCommonArea(List<Building_AutoItemCollector> targets, out Area area)
+        {
+            area = targets[0].configuredArea;
+            for (int i = 1; i < targets.Count; i++)
+            {
+                if (targets[i].configuredArea != area)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void ShowTargetListMenu()

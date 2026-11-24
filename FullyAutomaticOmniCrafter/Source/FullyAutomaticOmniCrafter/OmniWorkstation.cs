@@ -1293,6 +1293,7 @@ namespace FullyAutomaticOmniCrafter
     public static class OmniWorkstationDefOf
     {
         public static PawnKindDef FAOC_OmniWorkProxy;
+        public static PawnKindDef FAOC_OmniJudge;
         public static HediffDef FAOC_OmniWorkProxyBoost;
         public static HediffDef FAOC_OmniWorkProxyHome;
         public static BackstoryDef FAOC_OmniWorkProxyChildhood;

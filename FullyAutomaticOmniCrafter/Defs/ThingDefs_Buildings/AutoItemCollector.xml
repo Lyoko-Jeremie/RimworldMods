@@ -73,4 +73,24 @@
         </inspectorTabs>
     </ThingDef>
 
+    <!--
+      判定用 Pawn：只作为原版 WorkGiver 判定的参数载体，永不 Spawn。
+      使用独立 kindDef，绝不复用 FAOC_OmniWorkProxy —— 代理专用补丁会把它
+      当成真 Spawn 的代理处理。
+    -->
+    <PawnKindDef ParentName="BasePlayerPawnKind">
+        <defName>FAOC_OmniJudge</defName>
+        <label>omni haul judge</label>
+        <race>Human</race>
+        <combatPower>0</combatPower>
+        <initialResistanceRange>0~0</initialResistanceRange>
+        <initialWillRange>0~0</initialWillRange>
+        <fixedChildBackstories>
+            <li>FAOC_OmniWorkProxyChildhood</li>
+        </fixedChildBackstories>
+        <fixedAdultBackstories>
+            <li>FAOC_OmniWorkProxyAdulthood</li>
+        </fixedAdultBackstories>
+    </PawnKindDef>
+
 </Defs>
