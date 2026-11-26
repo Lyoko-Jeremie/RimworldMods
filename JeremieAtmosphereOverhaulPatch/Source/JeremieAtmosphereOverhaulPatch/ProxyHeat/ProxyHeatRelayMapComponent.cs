@@ -2084,25 +2084,57 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             for (int i = 0; i < state.WindRingCells.Count; i++)
             {
                 IntVec3 cell = state.WindRingCells[i];
-                float dx = cell.x - origin.x;
-                float dz = cell.z - origin.z;
-                float len = Mathf.Sqrt(dx * dx + dz * dz);
-                if (len <= 0.0001f)
+                RegisterWindCell(parentMap, parent, prefix + i, origin, cell, speed);
+
+                // 沿径向把矢量风再延伸到链上 2 格：四角比四边长的主因是轴向速度
+                // 在 4 邻域扩散里被两侧建筑抹平，给轴向链格也钉住方向/速度即可抵消。
+                float rx = cell.x - origin.x;
+                float rz = cell.z - origin.z;
+                float rlen = Mathf.Sqrt(rx * rx + rz * rz);
+                if (rlen <= 0.0001f)
                 {
                     continue;
                 }
-
-                SlotRates rates = new SlotRates
+                float ux = rx / rlen;
+                float uz = rz / rlen;
+                for (int step = 1; step <= VolumeChainDepth; step++)
                 {
-                    MaintainTargetWind = true,
-                    TargetWind = new Vector2(dx / len, dz / len) * speed,
-                    TargetWindBlendPerTick = RingBlendPerTick,
-                };
-                AoBridge.SetContinuousSource(parentMap, parent, prefix + i, cell, rates);
+                    IntVec3 chainCell = new IntVec3(
+                        Mathf.RoundToInt(cell.x + ux * step), 0,
+                        Mathf.RoundToInt(cell.z + uz * step));
+                    if (chainCell == cell || state.Cells == null || !state.Cells.Contains(chainCell))
+                    {
+                        break;
+                    }
+                    RegisterWindCell(
+                        parentMap, parent, prefix + i + "c" + step, origin,
+                        chainCell, speed * Mathf.Pow(VolumeChainFalloff, step));
+                }
             }
 
             state.RingRegistered = true;
             state.RingSpeed = speed;
+        }
+
+        /// <summary>给单格注册一条径向 TargetWind 源。</summary>
+        private static void RegisterWindCell(
+            Map map, Thing parent, string key, IntVec3 origin, IntVec3 cell, float speed)
+        {
+            float dx = cell.x - origin.x;
+            float dz = cell.z - origin.z;
+            float len = Mathf.Sqrt(dx * dx + dz * dz);
+            if (len <= 0.0001f)
+            {
+                return;
+            }
+
+            SlotRates rates = new SlotRates
+            {
+                MaintainTargetWind = true,
+                TargetWind = new Vector2(dx / len, dz / len) * speed,
+                TargetWindBlendPerTick = RingBlendPerTick,
+            };
+            AoBridge.SetContinuousSource(map, parent, key, cell, rates);
         }
 
         /// <summary>关掉喷流/降温停摆时注销 ring 源，避免塔边继续吹风。</summary>
@@ -2141,7 +2173,7 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
 
             int mapWidth = width > 0 ? width : map.Size.x;
             int layers = Mathf.Clamp(AOPatchMod.Settings.JetLayers, 1, 2);
-            float volumes = AOPatchMod.Settings.WindVolumePerCell > 0f
+            float baseVolumes = AOPatchMod.Settings.WindVolumePerCell > 0f
                 ? AOPatchMod.Settings.WindVolumePerCell
                 : DefaultVolumePerCell;
 
@@ -2177,6 +2209,14 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     StopRing(state);
                     continue;
                 }
+
+                // 体积量随该塔的喷流速度缩放：用户调「喷流速度」时，环格 TargetWind 与
+                // 体积驱动一起变，否则只改环格速度、环外体积不动，看起来「调了没反应」。
+                float referenceSpeed = AutoJetSpeed(state.Radius);
+                float tunedSpeed = GetJetSpeed(parent, state.Radius);
+                float volumes = baseVolumes * (referenceSpeed > 0.1f
+                    ? Mathf.Clamp(tunedSpeed / referenceSpeed, 0.25f, 3f)
+                    : 1f);
 
                 CellRect occupied = parent.OccupiedRect();
                 IntVec3 origin = occupied.CenterCell;
