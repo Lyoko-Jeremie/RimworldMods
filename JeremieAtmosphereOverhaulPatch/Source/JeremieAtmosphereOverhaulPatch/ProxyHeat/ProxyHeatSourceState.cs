@@ -47,6 +47,28 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// </summary>
         public List<JetPort> Jets = new List<JetPort>();
 
+        /// <summary>
+        /// 环形风源格：建筑外扩 1~2 圈的周长格里、AO 障碍数组允许通行的格。
+        /// 不走 ProxyHeat 的 AffectedCells——那里已经做过连通性筛选，
+        /// 但「不假设塔周围可达」要求我们只按 AO 的空气格判定，让流场自己绕开障碍。
+        /// </summary>
+        public List<IntVec3> WindRingCells = new List<IntVec3>();
+
+        /// <summary>上一次构建环形风源时用的层数（1~2），用于检测设置变化。</summary>
+        public int RingLayers;
+
+        /// <summary>上一次构建环形风源时的建筑中心，用于检测建筑移动。</summary>
+        public IntVec3 RingOrigin;
+
+        /// <summary>上一次构建环形风源时的朝向，用于检测旋转。</summary>
+        public Rot4 RingRot;
+
+        /// <summary>当前是否已向 AO 注册过环形风源（只在参数变化时更新，绝不每 tick 刷）。</summary>
+        public bool RingRegistered;
+
+        /// <summary>上一次注册时每格的目标风速（米/秒），用于检测调参变化。</summary>
+        public float RingSpeed;
+
         /// <summary>本源的 ProxyHeat 半径（Props.radius），用于按半径推算默认风速。</summary>
         public float Radius;
 

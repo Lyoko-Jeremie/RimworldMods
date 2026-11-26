@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using HarmonyLib;
 using Jeremie.AtmosphereOverhaulPatch.Bridge;
 using RimWorld;
 using UnityEngine;
@@ -46,6 +47,30 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         /// 出风温度每周期都在漂移，若每周期都触发更新，喷流就永远没有风。
         /// </summary>
         private const float JetActiveTicks = -1f;
+
+        /// <summary>
+        /// 环形风源（ring TargetWind）的 key 前缀。与喷流（aopjet:）分开，
+        /// 便于开关时只清本通道的源，不影响同一 owner 的其它连续源。
+        /// </summary>
+        private const string RingKeyPrefix = "aopring:";
+
+        /// <summary>
+        /// 环上每格目标风速相对喷流速度的系数。
+        /// 喷流速度是「一条射线的出口风速」，环上每格面积更小，取一半避免风墙过强。
+        /// </summary>
+        private const float RingSpeedFactor = 0.5f;
+
+        /// <summary>每 tick 把该格速度拉向径向目标的比例。AO 温控出风同款。</summary>
+        private const float RingBlendPerTick = 0.1f;
+
+        /// <summary>体积环每格每步的默认注入量（格体积），设置里可调；量级参考 Jets 的约 1.8 格体积。</summary>
+        private const float DefaultVolumePerCell = 1.5f;
+
+        /// <summary>体积链沿径向再推进的格数（链式注入，模拟 Jet 的路径体积分配）。</summary>
+        private const int VolumeChainDepth = 2;
+
+        /// <summary>体积链每前进一格的衰减系数。</summary>
+        private const float VolumeChainFalloff = 0.6f;
 
         private readonly Dictionary<object, ProxyHeatSourceState> _states =
             new Dictionary<object, ProxyHeatSourceState>();
@@ -114,6 +139,32 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         private int _injectCalls;
         private int _lastDiagTick;
         private int _toggleCalls;
+
+        /// <summary>喷流端口诊断：前 8 条 + 每 600 tick 一条，避免每 tick 刷屏。</summary>
+        private int _jetDiagCount;
+        private int _lastJetDiagTick;
+
+        /// <summary>环形风源诊断节流：前 8 条 + 每 600 tick 一条。</summary>
+        private int _ringDiagCount;
+        private int _lastRingDiagTick;
+
+        /// <summary>端口构建诊断只打一次。</summary>
+        private bool _portDiagDone;
+
+        /// <summary>
+        /// AO 侧喷流诊断字段缓存。只读反射，仅用于排查日志，不参与任何模拟逻辑。
+        /// AO 的 PublishJetDiagnosis 把每个 inlet 的判定结果写进私有字典，
+        /// 借此区分「端口不开放 / 无回流路径 / 轴向被挡」三种失败。
+        /// </summary>
+        private static bool _aoJetDiagResolved;
+        private static System.Type _aoComponentType;
+        private static System.Reflection.FieldInfo _aoJetDiagField;
+        private static System.Reflection.FieldInfo _aoPairsField;
+        private static System.Reflection.FieldInfo _aoClosedField;
+        private static System.Reflection.FieldInfo _aoNoReturnField;
+        private static System.Reflection.FieldInfo _aoBlockedField;
+        private static System.Reflection.FieldInfo _aoRequestedField;
+        private static System.Reflection.FieldInfo _aoAcceptedField;
 
         /// <summary>
         /// 逐建筑的参数覆盖。只存「玩家显式调过」的建筑，未列出 = 用设置页的默认值。
@@ -531,6 +582,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             state.Jets.Clear();
             // 端口集重建后旧的签名全部失效，下一次 InjectJets 必须重新注册。
             state.JetSignature = null;
+            // 环形风源同样依赖建筑几何/朝向，照射区重建后必须重新构建。
+            // 注意：不要在这里把 RingRegistered 置 false——关掉喷流时需要靠它
+            // 判断「旧 key 是否需要清」，否则 RefreshRing 后再关开关会残留风源。
+            state.WindRingCells.Clear();
+            state.RingLayers = 0;
             if (cells == null || cells.Count == 0 || state.Parent == null)
             {
                 return;
@@ -589,6 +645,45 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
             }
             state.Layers = layers;
             BuildJetPorts(state, radius, origin, occupied, state.Parent.Map, layers, obstacle, width);
+            DiagPortBuild(state, occupied, obstacle, width);
+        }
+
+        /// <summary>
+        /// 诊断：端口构建时 AO 障碍数组与占用区的真实状态。
+        /// 用来判断「出口贴边 1 格」是不是 obstacle 为 null（跳过障碍检查）导致的。
+        /// </summary>
+        private void DiagPortBuild(ProxyHeatSourceState state, CellRect occupied, float[] obstacle, int width)
+        {
+            if (_portDiagDone)
+            {
+                return;
+            }
+            _portDiagDone = true;
+            StringBuilder sb = new StringBuilder();
+            sb.Append("ports-build layers=").Append(state.Layers)
+              .Append(" obst=").Append(obstacle == null ? "null" : "len=" + obstacle.Length)
+              .Append(" width=").Append(width)
+              .Append(" cells=").Append(state.Cells != null ? state.Cells.Count : 0)
+              .Append(" rect=").Append(occupied)
+              .Append(" jets=").Append(state.Jets.Count);
+            if (state.Jets.Count > 0)
+            {
+                JetPort p = state.Jets[0];
+                sb.Append(" first=").Append(p.Inlet).Append("->").Append(p.Outlet);
+                if (obstacle != null && width > 0)
+                {
+                    for (int k = 1; k <= 3; k++)
+                    {
+                        IntVec3 c = new IntVec3(p.Inlet.x, 0, p.Inlet.z - k);
+                        int i = c.z * width + c.x;
+                        if (i >= 0 && i < obstacle.Length)
+                        {
+                            sb.Append(" m").Append(k).Append('=').Append(obstacle[i].ToString("F2"));
+                        }
+                    }
+                }
+            }
+            Diag(sb.ToString());
         }
 
         /// <summary>
@@ -1114,12 +1209,20 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                     null, null, out soilCount);
             }
 
-            // ---- 喷流：逐建筑判断，向建筑四周的径向注册 AO 原生 AirMover
-            // 这里不能再用全局 JetModeEnabled 做门禁：全局开关只是「新建筑的默认值」，
-            // 逐建筑开关才是实际开关。是否真的喷流由 InjectJets 内部逐源判断。
-            if (AtmosphereFieldBridge.AirMoverAvailable)
+            // 风驱动方式：0=环形 TargetWind（钉速度），1=体积环（注入空气，压力驱动），2=喷流（迁移前的 JetTransport）。
+            // 体积环复用同一套环格几何，但走 AO 的散度通道，才能把风送到远场。
+            int windDrive = AOPatchMod.Settings != null ? AOPatchMod.Settings.WindDriveMode : 0;
+            if (windDrive == 1)
+            {
+                InjectWindVolumeRing(_knownSources, outdoor, obstacle, width);
+            }
+            else if (windDrive == 2 && AtmosphereFieldBridge.AirMoverAvailable)
             {
                 InjectJets(_knownSources, outdoor, obstacle, temperature, width);
+            }
+            else if (AoBridge.ContinuousSourceAvailable)
+            {
+                InjectWindRing(_knownSources, outdoor, obstacle, width);
             }
 
             TrimDeadIndoorEntries();
@@ -1355,9 +1458,11 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 }
 
                 // 逐建筑：只有开了喷流通道、仍然活跃、且目标温度高于户外的源才喷。
+                ProxyHeatMode modes = GetModes(parent);
+                bool jetOn = (modes & ProxyHeatMode.Jet) != 0;
                 bool wantJet =
                     ProxyHeatBridge.GetActive(comp) &&
-                    (GetModes(parent) & ProxyHeatMode.Jet) != 0 &&
+                    jetOn &&
                     state.Outcome != 0f &&
                     state.Jets.Count > 0 &&
                     state.Baseline + state.Outcome > outdoor;
@@ -1368,6 +1473,17 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 {
                     speed = GetJetSpeed(parent, state.Radius);
                     wantJet = speed > 0f;
+                }
+
+                // 诊断：只对显式开了喷流通道的建筑打印端口几何，避免全图源刷屏。
+                // 前 8 条 + 每 600 tick 一条，用来区分「端口没建全」与「方向被判成对角」。
+                if (jetOn)
+                {
+                    int now = Find.TickManager.TicksGame;
+                    if (_jetDiagCount < 8 || now - _lastJetDiagTick > 600)
+                    {
+                        DiagJets(parent, state, speed, outdoor, wantJet);
+                    }
                 }
 
                 if (!wantJet)
@@ -1468,6 +1584,288 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
         }
 
         /// <summary>
+        /// 诊断：列出某个已开喷流通道的建筑的端口几何与判定结果。
+        /// 由 <see cref="InjectJets"/> 节流调用（前 8 条 + 每 600 tick 一条）。
+        /// </summary>
+        private void DiagJets(Thing parent, ProxyHeatSourceState state, float speed, float outdoor, bool wantJet)
+        {
+            _jetDiagCount++;
+            _lastJetDiagTick = Find.TickManager.TicksGame;
+            StringBuilder sb = new StringBuilder();
+            sb.Append("jets ").Append(parent.def != null ? parent.def.defName : "?")
+              .Append(" want=").Append(wantJet ? 1 : 0)
+              .Append(" speed=").Append(speed.ToString("F2"))
+              .Append(" ports=").Append(state.Jets != null ? state.Jets.Count : 0)
+              .Append(" cells=").Append(state.Cells != null ? state.Cells.Count : 0)
+              .Append(" radius=").Append(state.Radius)
+              .Append(" base=").Append(state.Baseline.ToString("F1"))
+              .Append(" out=").Append(state.Outcome.ToString("F1"))
+              .Append(" outd=").Append(outdoor.ToString("F1"))
+              .Append(" pos=").Append(parent.Position)
+              .Append(" rot=").Append(parent.Rotation);
+            List<JetPort> jets = state.Jets;
+            if (jets != null && jets.Count > 0)
+            {
+                int n = jets.Count < 8 ? jets.Count : 8;
+                for (int i = 0; i < n; i++)
+                {
+                    JetPort p = jets[i];
+                    sb.Append(" [").Append(i).Append(':').Append(p.Inlet).Append("->").Append(p.Outlet)
+                      .Append(" d=(").Append(p.DirX.ToString("F2")).Append(',').Append(p.DirY.ToString("F2")).Append(")]");
+                }
+                if (jets.Count > n)
+                {
+                    sb.Append(" +").Append(jets.Count - n);
+                }
+            }
+            AppendAoJetDiagnosis(sb, parent, state);
+            AppendJetDirectionSummary(sb, state);
+            AppendJetWindSample(sb, parent, state);
+            Diag(sb.ToString());
+        }
+
+        /// <summary>
+        /// 诊断：沿各端口的出口方向采样风速，按 8 方向桶求平均。
+        /// 直接回答「哪个方向真的有风」，避免再从代码推断。
+        /// 采样点取 outlet 沿 Direction 的 1/4/7/10 格；走公共 TryGetWind（含插值），主线程安全。
+        /// </summary>
+        private static void AppendJetWindSample(StringBuilder sb, Thing parent, ProxyHeatSourceState state)
+        {
+            List<JetPort> jets = state.Jets;
+            if (jets == null || jets.Count == 0 || parent == null || parent.Map == null)
+            {
+                return;
+            }
+
+            Map map = parent.Map;
+            float[] sum = new float[8];
+            int[] count = new int[8];
+            string[] names = { "E", "NE", "N", "NW", "W", "SW", "S", "SE" };
+            for (int i = 0; i < jets.Count; i++)
+            {
+                JetPort p = jets[i];
+                float ang = Mathf.Atan2(p.DirY, p.DirX) * Mathf.Rad2Deg;
+                int bucket = Mathf.RoundToInt((ang + 360f) % 360f / 45f) % 8;
+                float total = 0f;
+                int hits = 0;
+                for (int step = 1; step <= 10; step += 3)
+                {
+                    IntVec3 cell = new IntVec3(
+                        p.Outlet.x + Mathf.RoundToInt(p.DirX * step),
+                        0,
+                        p.Outlet.z + Mathf.RoundToInt(p.DirY * step));
+                    if (!cell.InBounds(map))
+                    {
+                        continue;
+                    }
+                    Vector2 wind;
+                    if (AtmosphereFieldBridge.TryGetWind(map, cell, out wind))
+                    {
+                        total += wind.magnitude;
+                        hits++;
+                    }
+                }
+                if (hits > 0)
+                {
+                    sum[bucket] += total / hits;
+                    count[bucket]++;
+                }
+            }
+
+            sb.Append(" wind[");
+            for (int i = 0; i < 8; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(' ');
+                }
+                sb.Append(names[i]).Append('=');
+                sb.Append(count[i] > 0 ? (sum[i] / count[i]).ToString("F1") : "-");
+            }
+            sb.Append(']');
+        }
+
+        /// <summary>
+        /// 诊断：统计端口方向分布（8 桶）与出口距离，并列出较远的若干端口。
+        /// 用来判断「只朝四角」是端口方向分布造成的，还是渲染层的问题。
+        /// </summary>
+        private static void AppendJetDirectionSummary(StringBuilder sb, ProxyHeatSourceState state)
+        {
+            List<JetPort> jets = state.Jets;
+            if (jets == null || jets.Count == 0)
+            {
+                return;
+            }
+
+            int[] buckets = new int[8];
+            string[] names = { "E", "NE", "N", "NW", "W", "SW", "S", "SE" };
+            float distMin = float.MaxValue;
+            float distMax = 0f;
+            float distSum = 0f;
+            int farListed = 0;
+            sb.Append(" dirs[");
+            for (int i = 0; i < jets.Count; i++)
+            {
+                JetPort p = jets[i];
+                float ang = Mathf.Atan2(p.DirY, p.DirX) * Mathf.Rad2Deg;
+                int bucket = Mathf.RoundToInt((ang + 360f) % 360f / 45f) % 8;
+                buckets[bucket]++;
+
+                float dx = p.Outlet.x - p.Inlet.x;
+                float dz = p.Outlet.z - p.Inlet.z;
+                float d = Mathf.Sqrt(dx * dx + dz * dz);
+                if (d < distMin)
+                {
+                    distMin = d;
+                }
+                if (d > distMax)
+                {
+                    distMax = d;
+                }
+                distSum += d;
+
+                if (d >= 10f && farListed < 8)
+                {
+                    if (farListed > 0)
+                    {
+                        sb.Append(' ');
+                    }
+                    sb.Append('[').Append(p.Inlet).Append("->").Append(p.Outlet)
+                      .Append(" d=").Append(d.ToString("F1")).Append(']');
+                    farListed++;
+                }
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(' ');
+                }
+                sb.Append(names[i]).Append('=').Append(buckets[i]);
+            }
+            sb.Append("] dist[min=").Append(distMin.ToString("F1"))
+              .Append(" max=").Append(distMax.ToString("F1"))
+              .Append(" avg=").Append((distSum / jets.Count).ToString("F1"))
+              .Append(']');
+        }
+
+        /// <summary>
+        /// 诊断：把 AO 侧 <c>jetDiagnosisPublished</c> 里本建筑各端口的判定结果读出来。
+        /// 区分三种失败：端口不开放(closed)、无回流路径(noReturn)、轴向被挡(blocked)。
+        /// </summary>
+        private static void AppendAoJetDiagnosis(StringBuilder sb, Thing parent, ProxyHeatSourceState state)
+        {
+            if (!ResolveAoJetDiag() || parent == null || parent.Map == null || state.Jets == null || state.Jets.Count == 0)
+            {
+                return;
+            }
+
+            object component = parent.Map.GetComponent(_aoComponentType);
+            if (component == null)
+            {
+                return;
+            }
+
+            object raw = _aoJetDiagField.GetValue(component);
+            System.Collections.IDictionary dict = raw as System.Collections.IDictionary;
+            if (dict == null)
+            {
+                return;
+            }
+
+            int closed = 0, noReturn = 0, blocked = 0, ok = 0, seen = 0, listed = 0;
+            float requested = 0f, accepted = 0f;
+            CellIndices indices = parent.Map.cellIndices;
+            for (int i = 0; i < state.Jets.Count; i++)
+            {
+                JetPort port = state.Jets[i];
+                int inletIndex = indices.CellToIndex(port.Inlet);
+                if (!dict.Contains(inletIndex))
+                {
+                    continue;
+                }
+
+                object boxed = dict[inletIndex];
+                int p = (int)_aoPairsField.GetValue(boxed);
+                int c = (int)_aoClosedField.GetValue(boxed);
+                int n = (int)_aoNoReturnField.GetValue(boxed);
+                int b = (int)_aoBlockedField.GetValue(boxed);
+                requested += (float)_aoRequestedField.GetValue(boxed);
+                accepted += (float)_aoAcceptedField.GetValue(boxed);
+                seen++;
+                if (c > 0)
+                {
+                    closed++;
+                }
+                if (n > 0)
+                {
+                    noReturn++;
+                }
+                if (b > 0)
+                {
+                    blocked++;
+                }
+                if (p > 0 && c == 0 && n == 0 && b == 0)
+                {
+                    ok++;
+                }
+                if ((c > 0 || n > 0 || b > 0) && listed < 6)
+                {
+                    sb.Append(" [").Append(port.Inlet).Append(" c=").Append(c)
+                      .Append(" n=").Append(n).Append(" b=").Append(b).Append(" p=").Append(p).Append(']');
+                    listed++;
+                }
+            }
+
+            sb.Append(" ao[seen=").Append(seen).Append(" ok=").Append(ok)
+              .Append(" closed=").Append(closed).Append(" noRet=").Append(noReturn)
+              .Append(" blocked=").Append(blocked)
+              .Append(" req=").Append(requested.ToString("F1"))
+              .Append(" acc=").Append(accepted.ToString("F1"))
+              .Append(" f=").Append((requested > 0f ? accepted / requested : 0f).ToString("F2"))
+              .Append(']');
+        }
+
+        private static bool ResolveAoJetDiag()
+        {
+            if (_aoJetDiagResolved)
+            {
+                return _aoJetDiagField != null;
+            }
+
+            _aoJetDiagResolved = true;
+            try
+            {
+                _aoComponentType = AccessTools.TypeByName("AtmosphereOverhaul.RimWorld.AtmosphereMapComponent");
+                if (_aoComponentType == null)
+                {
+                    return false;
+                }
+
+                _aoJetDiagField = AccessTools.Field(_aoComponentType, "jetDiagnosisPublished");
+                if (_aoJetDiagField == null)
+                {
+                    return false;
+                }
+
+                System.Type diagType = _aoJetDiagField.FieldType.GetGenericArguments()[1];
+                _aoPairsField = AccessTools.Field(diagType, "Pairs");
+                _aoClosedField = AccessTools.Field(diagType, "PortClosed");
+                _aoNoReturnField = AccessTools.Field(diagType, "NoReturnPath");
+                _aoBlockedField = AccessTools.Field(diagType, "AxialBlocked");
+                _aoRequestedField = AccessTools.Field(diagType, "Requested");
+                _aoAcceptedField = AccessTools.Field(diagType, "Accepted");
+            }
+            catch (System.Exception ex)
+            {
+                Log.WarningOnce("[AOPatch/ProxyHeat] 解析 AO 喷流诊断失败：" + ex.GetType().Name + ": " + ex.Message, 0x4A11);
+            }
+            return _aoJetDiagField != null && _aoPairsField != null && _aoClosedField != null
+                && _aoNoReturnField != null && _aoBlockedField != null
+                && _aoRequestedField != null && _aoAcceptedField != null;
+        }
+
+        /// <summary>
         /// 停掉本图所有已注册的喷流。模块关闭、地图卸载时用。
         /// </summary>
         private void StopAllJets()
@@ -1477,6 +1875,10 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 if (state.JetRegistered)
                 {
                     StopJets(state);
+                }
+                if (state.RingRegistered || state.WindRingCells.Count > 0)
+                {
+                    StopRing(state);
                 }
             }
         }
@@ -1502,6 +1904,480 @@ namespace Jeremie.AtmosphereOverhaulPatch.ProxyHeat
                 return;
             }
             AtmosphereFieldBridge.UnregisterAirMovers(map, parent);
+        }
+
+        // ------------------------------------------------------------ 环形风源（ring TargetWind）
+
+        private static string RingPrefix(Thing parent)
+        {
+            return RingKeyPrefix + parent.thingIDNumber + ":";
+        }
+
+        /// <summary>
+        /// 塔边最近 1~2 圈的环形风源。
+        ///
+        /// 为什么不用 <c>RegisterAirMover</c>：AO 的 JetTransport 只沿 4 条轴向走
+        /// （<c>BuildPath</c> 对角方向取 Sign(dx)、忽略 dz），对角端口会借相邻
+        /// 端口出口格接力，表现为「四角强、四面短」。这里改为在塔外第一/二圈
+        /// 注册 TargetWind 连续源——它在 solver 之后应用
+        /// （<c>ApplyTargetWindSourcesAfterSolverUnsafe</c>），不会被压力投影
+        /// 当成散度吃掉；方向是连续的径向，外侧由 AO 的 advection/diffusion
+        /// 自行演化。
+        ///
+        /// 关键约束：只在参数变化时注册，绝不每 tick 调 <c>SetContinuousSource</c>。
+        /// 后者的 <c>UpdateContinuousSource</c> 会先 FlushContinuousIntervalToQueues，
+        /// 把 TargetWind 退化成 Project 之前的速度增量（会被投影削弱），
+        /// 并重置 <c>LastAppliedTick</c>。
+        /// </summary>
+        private void InjectWindRing(System.Collections.IList comps, float outdoor, float[] obstacle, int width)
+        {
+            if (!AoBridge.ContinuousSourceAvailable || AOPatchMod.Settings == null)
+            {
+                return;
+            }
+
+            int mapWidth = width > 0 ? width : map.Size.x;
+            // 用户要求「最近一圈或最近两圈」；超过 2 圈交给 AO 的流场自己演化。
+            int layers = Mathf.Clamp(AOPatchMod.Settings.JetLayers, 1, 2);
+
+            for (int i = 0; i < comps.Count; i++)
+            {
+                object comp = comps[i];
+                if (comp == null)
+                {
+                    continue;
+                }
+
+                ProxyHeatSourceState state;
+                if (!_states.TryGetValue(comp, out state) || state.Parent == null)
+                {
+                    continue;
+                }
+
+                Thing parent = state.Parent;
+                if (parent.Destroyed || !parent.Spawned)
+                {
+                    continue;
+                }
+
+                ProxyHeatMode modes = GetModes(parent);
+                bool jetOn = (modes & ProxyHeatMode.Jet) != 0;
+                bool want = ProxyHeatBridge.GetActive(comp)
+                    && jetOn
+                    && state.Outcome != 0f
+                    && state.Baseline + state.Outcome > outdoor;
+
+                float speed = want ? GetJetSpeed(parent, state.Radius) * RingSpeedFactor : 0f;
+                want = want && speed > 0f;
+
+                if (!want)
+                {
+                    StopRing(state);
+                    continue;
+                }
+
+                CellRect occupied = parent.OccupiedRect();
+                IntVec3 origin = occupied.CenterCell;
+
+                bool rebuild = state.WindRingCells.Count == 0
+                    || state.RingLayers != layers
+                    || state.RingOrigin != origin
+                    || state.RingRot != parent.Rotation;
+
+                if (rebuild)
+                {
+                    BuildWindRing(state, parent, occupied, layers, obstacle, mapWidth);
+                    state.RingLayers = layers;
+                    state.RingOrigin = origin;
+                    state.RingRot = parent.Rotation;
+                    state.RingRegistered = false;
+                    state.RingSpeed = 0f;
+                }
+
+                if (state.WindRingCells.Count == 0)
+                {
+                    StopRing(state);
+                    continue;
+                }
+
+                if (state.RingRegistered && Mathf.Approximately(state.RingSpeed, speed))
+                {
+                    if (_ringDiagCount < 8 || Find.TickManager.TicksGame - _lastRingDiagTick > 600)
+                    {
+                        DiagRing(parent, state, speed, want);
+                    }
+                    continue;
+                }
+
+                RegisterWindRing(parent, state, speed);
+                if (_ringDiagCount < 8 || Find.TickManager.TicksGame - _lastRingDiagTick > 600)
+                {
+                    DiagRing(parent, state, speed, want);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 构建塔外 1~2 圈的开放格。用 AO 的 ObstacleMask 而不是 ProxyHeat 的
+        /// AffectedCells：后者已经做过连通性筛选，但「不假设塔周围可达」要求
+        /// 我们只按空气格判定，让 AO 的流场自己绕开障碍。
+        /// </summary>
+        private void BuildWindRing(
+            ProxyHeatSourceState state,
+            Thing parent,
+            CellRect occupied,
+            int layers,
+            float[] obstacle,
+            int width)
+        {
+            state.WindRingCells.Clear();
+            Map parentMap = parent.Map;
+            for (int layer = 0; layer < layers; layer++)
+            {
+                CellRect rect = occupied.ExpandedBy(layer + 1);
+                for (int z = rect.minZ; z <= rect.maxZ; z++)
+                {
+                    for (int x = rect.minX; x <= rect.maxX; x++)
+                    {
+                        // 只取矩形边界（外扩圈），内部已被上一层覆盖。
+                        if (x != rect.minX && x != rect.maxX && z != rect.minZ && z != rect.maxZ)
+                        {
+                            continue;
+                        }
+
+                        IntVec3 cell = new IntVec3(x, 0, z);
+                        if (!cell.InBounds(parentMap) || occupied.Contains(cell))
+                        {
+                            continue;
+                        }
+
+                        int index = cell.z * width + cell.x;
+                        if (index < 0 || index >= width * parentMap.Size.z)
+                        {
+                            continue;
+                        }
+                        if (obstacle != null && (index >= obstacle.Length || obstacle[index] <= 0f))
+                        {
+                            continue;
+                        }
+                        // 建筑遮挡：以 HeatProxy 的 AffectedCells 为准（它已经做过 FloodFill 连通性
+                        // 与遮挡筛选），环上落在有效格之外的格不喷。
+                        if (state.Cells != null && state.Cells.Count > 0 && !state.Cells.Contains(cell))
+                        {
+                            continue;
+                        }
+
+                        state.WindRingCells.Add(cell);
+                    }
+                }
+            }
+        }
+
+        /// <summary>把 ring 格注册成 TargetWind 连续源；先清旧 key 再全量写入。</summary>
+        private void RegisterWindRing(Thing parent, ProxyHeatSourceState state, float speed)
+        {
+            Map parentMap = parent.Map;
+            string prefix = RingPrefix(parent);
+            AoBridge.RemoveContinuousSourcesWithPrefix(parentMap, parent, prefix);
+
+            IntVec3 origin = state.RingOrigin;
+            for (int i = 0; i < state.WindRingCells.Count; i++)
+            {
+                IntVec3 cell = state.WindRingCells[i];
+                float dx = cell.x - origin.x;
+                float dz = cell.z - origin.z;
+                float len = Mathf.Sqrt(dx * dx + dz * dz);
+                if (len <= 0.0001f)
+                {
+                    continue;
+                }
+
+                SlotRates rates = new SlotRates
+                {
+                    MaintainTargetWind = true,
+                    TargetWind = new Vector2(dx / len, dz / len) * speed,
+                    TargetWindBlendPerTick = RingBlendPerTick,
+                };
+                AoBridge.SetContinuousSource(parentMap, parent, prefix + i, cell, rates);
+            }
+
+            state.RingRegistered = true;
+            state.RingSpeed = speed;
+        }
+
+        /// <summary>关掉喷流/降温停摆时注销 ring 源，避免塔边继续吹风。</summary>
+        private void StopRing(ProxyHeatSourceState state)
+        {
+            bool had = state.RingRegistered;
+            state.RingRegistered = false;
+            state.RingSpeed = 0f;
+            if (!had && state.WindRingCells.Count == 0)
+            {
+                return;
+            }
+
+            Thing parent = state.Parent;
+            if (parent == null || parent.Destroyed || !parent.Spawned)
+            {
+                return;
+            }
+            AoBridge.RemoveContinuousSourcesWithPrefix(parent.Map, parent, RingPrefix(parent));
+        }
+
+        /// <summary>
+        /// 体积环：复用 <see cref="BuildWindRing"/> 的环格几何，但每步向这些格注入体积源，
+        /// 由 AO 的 <c>externalDivergence → Project</c> 解出压力驱动的径向流。
+        ///
+        /// 与环形 TargetWind 的区别：TargetWind 在 solver 之后钉速度，出环一步就被平流/投影/阻尼削掉；
+        /// 体积源在 solver 之前制造散度，速度是从压力场解出来的，能传到远场。
+        /// 体积源一次性提交（pendingPointVolumes 每步清空），不需要注册/注销 key。
+        /// </summary>
+        private void InjectWindVolumeRing(System.Collections.IList comps, float outdoor, float[] obstacle, int width)
+        {
+            if (AOPatchMod.Settings == null)
+            {
+                return;
+            }
+
+            int mapWidth = width > 0 ? width : map.Size.x;
+            int layers = Mathf.Clamp(AOPatchMod.Settings.JetLayers, 1, 2);
+            float volumes = AOPatchMod.Settings.WindVolumePerCell > 0f
+                ? AOPatchMod.Settings.WindVolumePerCell
+                : DefaultVolumePerCell;
+
+            for (int i = 0; i < comps.Count; i++)
+            {
+                object comp = comps[i];
+                if (comp == null)
+                {
+                    continue;
+                }
+
+                ProxyHeatSourceState state;
+                if (!_states.TryGetValue(comp, out state) || state.Parent == null)
+                {
+                    continue;
+                }
+
+                Thing parent = state.Parent;
+                if (parent.Destroyed || !parent.Spawned)
+                {
+                    continue;
+                }
+
+                ProxyHeatMode modes = GetModes(parent);
+                bool jetOn = (modes & ProxyHeatMode.Jet) != 0;
+                bool want = ProxyHeatBridge.GetActive(comp)
+                    && jetOn
+                    && state.Outcome != 0f
+                    && state.Baseline + state.Outcome > outdoor;
+
+                if (!want)
+                {
+                    StopRing(state);
+                    continue;
+                }
+
+                CellRect occupied = parent.OccupiedRect();
+                IntVec3 origin = occupied.CenterCell;
+                bool rebuild = state.WindRingCells.Count == 0
+                    || state.RingLayers != layers
+                    || state.RingOrigin != origin
+                    || state.RingRot != parent.Rotation;
+
+                if (rebuild)
+                {
+                    BuildWindRing(state, parent, occupied, layers, obstacle, mapWidth);
+                    state.RingLayers = layers;
+                    state.RingOrigin = origin;
+                    state.RingRot = parent.Rotation;
+                    state.RingRegistered = false;
+                    state.RingSpeed = 0f;
+                }
+
+                if (state.WindRingCells.Count == 0)
+                {
+                    StopRing(state);
+                    continue;
+                }
+
+                // 矢量风：体积源负责把压力场推出去（射程），TargetWind 负责在 solver 之后
+                // 把环格速度钉在径向上（方向）。两者阶段不同、方向一致，叠加后出环的第一跳
+                // 就有明确方向，不会被 Project 抹成各向同性；只注册一次，避免每步 Flush 退化。
+                float ringSpeed = GetJetSpeed(parent, state.Radius) * RingSpeedFactor;
+                if (!state.RingRegistered || !Mathf.Approximately(state.RingSpeed, ringSpeed))
+                {
+                    RegisterWindRing(parent, state, ringSpeed);
+                }
+
+                Map parentMap = parent.Map;
+                int injected = 0;
+                int rejected = 0;
+                for (int c = 0; c < state.WindRingCells.Count; c++)
+                {
+                    IntVec3 cell = state.WindRingCells[c];
+                    float celsius = outdoor;
+                    AoBridge.TryGetTemperature(parentMap, cell, out celsius);
+                    if (AoBridge.AddVolumeSourceAtTemperature(parentMap, cell, volumes, 21f, celsius))
+                    {
+                        injected++;
+                    }
+                    else
+                    {
+                        rejected++;
+                    }
+                }
+
+                // 链式注入：环格之外沿径向再推 2 格，按 0.6 衰减继续灌体积，形成 AO Jet
+                // 那种「沿路径逐格分配体积」的链式散度——单靠环格的话，压力波一过就散，
+                // 环外 8/12 步只剩天然风。推进时以 AffectedCells 为边界，建筑遮挡即停。
+                int chainCells = 0;
+                if (state.Cells != null && state.Cells.Count > 0)
+                {
+                    IntVec3 ringOrigin = state.RingOrigin;
+                    for (int c = 0; c < state.WindRingCells.Count; c++)
+                    {
+                        IntVec3 ringCell = state.WindRingCells[c];
+                        float rx = ringCell.x - ringOrigin.x;
+                        float rz = ringCell.z - ringOrigin.z;
+                        float rlen = Mathf.Sqrt(rx * rx + rz * rz);
+                        if (rlen <= 0.0001f)
+                        {
+                            continue;
+                        }
+                        float ux = rx / rlen;
+                        float uz = rz / rlen;
+                        for (int step = 1; step <= VolumeChainDepth; step++)
+                        {
+                            IntVec3 cell = new IntVec3(
+                                Mathf.RoundToInt(ringCell.x + ux * step), 0,
+                                Mathf.RoundToInt(ringCell.z + uz * step));
+                            if (cell == ringCell || !state.Cells.Contains(cell))
+                            {
+                                break;
+                            }
+                            float celsius = outdoor;
+                            AoBridge.TryGetTemperature(parentMap, cell, out celsius);
+                            if (AoBridge.AddVolumeSourceAtTemperature(
+                                    parentMap, cell, volumes * Mathf.Pow(VolumeChainFalloff, step), 21f, celsius))
+                            {
+                                chainCells++;
+                            }
+                        }
+                    }
+                }
+
+                if (_ringDiagCount < 8 || Find.TickManager.TicksGame - _lastRingDiagTick > 600)
+                {
+                    _ringDiagCount++;
+                    _lastRingDiagTick = Find.TickManager.TicksGame;
+                    Diag("volring " + parent.def.defName
+                        + " cells=" + state.WindRingCells.Count
+                        + " vol=" + volumes.ToString("F3")
+                        + " inj=" + injected + "/" + rejected
+                        + " chain=" + chainCells
+                        + " vec=" + (state.RingRegistered ? 1 : 0)
+                        + " pos=" + parent.Position);
+                    DiagRingDirs(parent, state);
+                }
+            }
+        }
+
+        /// <summary>诊断：环形风源的格数/层数/首格方向，前 8 条 + 每 600 tick 一条。</summary>
+        private void DiagRing(Thing parent, ProxyHeatSourceState state, float speed, bool want)
+        {
+            _ringDiagCount++;
+            _lastRingDiagTick = Find.TickManager.TicksGame;
+            StringBuilder sb = new StringBuilder();
+            sb.Append("ring ").Append(parent.def.defName)
+              .Append(" want=").Append(want ? 1 : 0)
+              .Append(" speed=").Append(speed.ToString("F1"))
+              .Append(" cells=").Append(state.WindRingCells.Count)
+              .Append(" layers=").Append(state.RingLayers)
+              .Append(" reg=").Append(state.RingRegistered ? 1 : 0)
+              .Append(" pos=").Append(parent.Position);
+            if (state.WindRingCells.Count > 0)
+            {
+                IntVec3 c = state.WindRingCells[0];
+                sb.Append(" first=").Append(c)
+                  .Append(" d=(").Append((c.x - state.RingOrigin.x).ToString("F1"))
+                  .Append(',').Append((c.z - state.RingOrigin.z).ToString("F1")).Append(')');
+            }
+            Diag(sb.ToString());
+            DiagRingDirs(parent, state);
+        }
+
+        /// <summary>诊断用的 8 方向单位步进（E/NE/N/NW/W/SW/S/SE）。</summary>
+        private static readonly int[] RingDiagDirX = { 1, 1, 0, -1, -1, -1, 0, 1 };
+        private static readonly int[] RingDiagDirZ = { 0, 1, 1, 1, 0, -1, -1, -1 };
+        private static readonly string[] RingDiagDirName = { "E", "NE", "N", "NW", "W", "SW", "S", "SE" };
+
+        /// <summary>
+        /// 诊断：沿 8 个方向各找一个环格，再沿同方向每 4 格采样一次实测风速（环格/4/8/12 步），
+        /// 用来区分「环格注入不到位」与「AO 平流/投影把不同方向传播得不一样」。
+        /// 只读，不写任何场。
+        /// </summary>
+        private void DiagRingDirs(Thing parent, ProxyHeatSourceState state)
+        {
+            Map map = parent.Map;
+            if (map == null || state.WindRingCells.Count == 0)
+            {
+                return;
+            }
+            IntVec3 origin = state.RingOrigin;
+            CellRect occ = parent.OccupiedRect();
+            int reach = Mathf.Max(occ.Width, occ.Height) / 2 + Mathf.Max(1, state.RingLayers);
+            StringBuilder sb = new StringBuilder("ringdir ");
+            for (int k = 0; k < RingDiagDirX.Length; k++)
+            {
+                int dx = RingDiagDirX[k];
+                int dz = RingDiagDirZ[k];
+                string name = RingDiagDirName[k];
+                IntVec3 ring = IntVec3.Invalid;
+                for (int d = 1; d <= reach + 2; d++)
+                {
+                    IntVec3 probe = new IntVec3(origin.x + dx * d, 0, origin.z + dz * d);
+                    if (probe.InBounds(map) && state.WindRingCells.Contains(probe))
+                    {
+                        ring = probe;
+                        break;
+                    }
+                }
+                if (!ring.IsValid)
+                {
+                    sb.Append(name).Append("=none ");
+                    continue;
+                }
+                sb.Append(name).Append('(');
+                AppendWindAt(sb, map, ring);
+                for (int step = 4; step <= 12; step += 4)
+                {
+                    IntVec3 probe = new IntVec3(ring.x + dx * step, 0, ring.z + dz * step);
+                    if (probe.InBounds(map))
+                    {
+                        sb.Append('/');
+                        AppendWindAt(sb, map, probe);
+                    }
+                    else
+                    {
+                        sb.Append("/x");
+                    }
+                }
+                sb.Append(") ");
+            }
+            Diag(sb.ToString());
+        }
+
+        /// <summary>把某格实测风速模长（m/s）写进诊断串；读不到记 ?。</summary>
+        private static void AppendWindAt(StringBuilder sb, Map map, IntVec3 cell)
+        {
+            if (!AtmosphereFieldBridge.TryGetWind(map, cell, out Vector2 wind))
+            {
+                sb.Append('?');
+                return;
+            }
+            float speed = Mathf.Sqrt(wind.x * wind.x + wind.y * wind.y);
+            sb.Append(speed.ToString("F1"));
         }
 
         // ------------------------------------------------------------ 单源刷新

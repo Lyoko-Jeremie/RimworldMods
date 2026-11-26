@@ -61,6 +61,13 @@
     <AOPatch_ProxyHeatJetLayers>Jet layers: {0}</AOPatch_ProxyHeatJetLayers>
     <AOPatch_ProxyHeatJetLayersDesc>Jets start from the ring around the building; each extra layer sits one cell further out. Cells blocked by walls produce no jet.</AOPatch_ProxyHeatJetLayersDesc>
     <AOPatch_ProxyHeatJetSpeedHint>Initial jet speed is derived from the building radius; use the per-building Jet Speed button to fine-tune.</AOPatch_ProxyHeatJetSpeedHint>
+    <AOPatch_ProxyHeatWindDrive>Wind drive: {0}</AOPatch_ProxyHeatWindDrive>
+    <AOPatch_ProxyHeatWindDriveMode0>Ring (target wind)</AOPatch_ProxyHeatWindDriveMode0>
+    <AOPatch_ProxyHeatWindDriveMode1>Volume ring (new)</AOPatch_ProxyHeatWindDriveMode1>
+    <AOPatch_ProxyHeatWindDriveMode2>Jets (legacy)</AOPatch_ProxyHeatWindDriveMode2>
+    <AOPatch_ProxyHeatWindDriveCycle>Switch wind drive</AOPatch_ProxyHeatWindDriveCycle>
+    <AOPatch_ProxyHeatWindVolume>Volume per ring cell: {0}</AOPatch_ProxyHeatWindVolume>
+    <AOPatch_ProxyHeatWindVolumeDesc>Air volume injected into each ring cell every simulation step. Larger values push the air further; the value is in map cell volumes.</AOPatch_ProxyHeatWindVolumeDesc>
 
     <!-- Good Climate active vent -->
     <JGC_NaturalVent_Label>Natural ventilation</JGC_NaturalVent_Label>

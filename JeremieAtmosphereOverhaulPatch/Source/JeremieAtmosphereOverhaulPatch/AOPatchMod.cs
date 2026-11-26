@@ -81,6 +81,19 @@ namespace Jeremie.AtmosphereOverhaulPatch
                 Settings.JetLayers = (int)list.Slider(Settings.JetLayers, 1f, 3f);
                 list.Label("AOPatch_ProxyHeatJetSpeedHint".Translate());
 
+                // 风驱动方式：体积环是新的默认，环/喷流保留作对照。
+                list.Label("AOPatch_ProxyHeatWindDrive".Translate(
+                    ("AOPatch_ProxyHeatWindDriveMode" + Settings.WindDriveMode).Translate()));
+                if (list.ButtonText("AOPatch_ProxyHeatWindDriveCycle".Translate()))
+                {
+                    Settings.WindDriveMode = (Settings.WindDriveMode + 1) % 3;
+                }
+                if (Settings.WindDriveMode == 1)
+                {
+                    list.Label("AOPatch_ProxyHeatWindVolume".Translate(Settings.WindVolumePerCell.ToString("F2")));
+                    Settings.WindVolumePerCell = Mathf.Round(list.Slider(Settings.WindVolumePerCell, 0.1f, 5f) * 100f) / 100f;
+                }
+
                 list.GapLine();
 
                 list.CheckboxLabeled(

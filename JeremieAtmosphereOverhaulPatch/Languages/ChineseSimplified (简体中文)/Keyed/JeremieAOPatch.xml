@@ -61,6 +61,13 @@
     <AOPatch_ProxyHeatJetLayers>喷口层数：{0}</AOPatch_ProxyHeatJetLayers>
     <AOPatch_ProxyHeatJetLayersDesc>喷流从建筑外围一圈开始，每多一层就向外紧贴一层（间距 1 格）；被墙挡住的格子不会生成喷口。</AOPatch_ProxyHeatJetLayersDesc>
     <AOPatch_ProxyHeatJetSpeedHint>风速按建筑半径自动给出初值，点建筑上的「风速」按钮可逐台调整。</AOPatch_ProxyHeatJetSpeedHint>
+    <AOPatch_ProxyHeatWindDrive>风驱动方式：{0}</AOPatch_ProxyHeatWindDrive>
+    <AOPatch_ProxyHeatWindDriveMode0>环形目标风</AOPatch_ProxyHeatWindDriveMode0>
+    <AOPatch_ProxyHeatWindDriveMode1>体积环（新）</AOPatch_ProxyHeatWindDriveMode1>
+    <AOPatch_ProxyHeatWindDriveMode2>喷流（旧）</AOPatch_ProxyHeatWindDriveMode2>
+    <AOPatch_ProxyHeatWindDriveCycle>切换风驱动</AOPatch_ProxyHeatWindDriveCycle>
+    <AOPatch_ProxyHeatWindVolume>每格注入体积：{0}</AOPatch_ProxyHeatWindVolume>
+    <AOPatch_ProxyHeatWindVolumeDesc>每个模拟步向环格注入的空气体积（格体积）。数值越大推力越强、吹得越远。</AOPatch_ProxyHeatWindVolumeDesc>
 
     <!-- Good Climate 主动通风口 -->
     <JGC_NaturalVent_Label>自然通风</JGC_NaturalVent_Label>

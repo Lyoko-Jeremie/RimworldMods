@@ -34,6 +34,18 @@ namespace Jeremie.AtmosphereOverhaulPatch
         public int JetLayers = 1;
 
         /// <summary>
+        /// 能量塔的风驱动方式：0=环形 TargetWind，1=体积环（注入空气，压力驱动），2=喷流（旧）。
+        /// 默认 1：只有体积源能经 AO 的 Project 把风送到远场。
+        /// </summary>
+        public int WindDriveMode = 1;
+
+        /// <summary>
+        /// 体积环每格每步注入的格体积（m³）。量级参考 Jets：90 m/s 的喷口每步注入约 1.8 格体积。
+        /// key 带 V2：旧的 0.08 默认值太小（产生的风速只有零点几），换 key 让老存档吃到新默认。
+        /// </summary>
+        public float WindVolumePerCell = 1.5f;
+
+        /// <summary>
         /// 范围强度（℃/秒）。默认 8，即每 60 tick 补 8℃（每 tick 0.133℃）。
         /// 闭环会在接近目标温度时自动减速，所以调大不会冲过头。
         /// 注意 key 用 <c>rangeStrength</c>：旧版的 1℃/秒存在另一个 key 下，
@@ -69,6 +81,8 @@ namespace Jeremie.AtmosphereOverhaulPatch
             Scribe_Values.Look(ref GroundModeEnabled, "groundModeDefault", false);
             Scribe_Values.Look(ref JetModeEnabled, "jetModeDefault", false);
             Scribe_Values.Look(ref JetLayers, "jetLayers", 1);
+            Scribe_Values.Look(ref WindDriveMode, "windDriveMode", 1);
+            Scribe_Values.Look(ref WindVolumePerCell, "windVolumePerCellV2", 1.5f);
             Scribe_Values.Look(ref RangeStrengthCelsiusPerSecond, "rangeStrength", 8f);
             Scribe_Values.Look(ref AllowTemperatureStacking, "allowTemperatureStacking", true);
             Scribe_Values.Look(ref AllowActiveCooling, "allowActiveCooling", false);
